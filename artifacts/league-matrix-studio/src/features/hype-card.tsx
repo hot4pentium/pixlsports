@@ -454,21 +454,25 @@ function cardContent(project: HypeCardProject) {
 function buildSluggerCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
+  const ns = Math.random().toString(36).substring(2, 9);
   
   const frame = { x: 33, y: 33, width: 934, height: 1334 };
-  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
-  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const overscan = 200;
+  const photoX = frame.x - overscan / 2 + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y - overscan / 2 + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photoWidth = frame.width * project.photoTransform.zoom + overscan;
+  const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 700px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : getArenaBg(palette);
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 700px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : getArenaBg(palette, ns);
 
   const logo = project.logo
-    ? `<image href="${project.logo}" x="400" y="320" width="200" height="140" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    ? `<image href="${project.logo}" x="400" y="320" width="200" height="140" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow-${ns})"/>`
     : '';
 
   const motion = project.overlay
-    ? `<g opacity="0.4" filter="url(#neonGlowTeam)">
+    ? `<g opacity="0.4" filter="url(#neonGlowTeam-${ns})">
          <path d="M-100 400 L 1100 200" stroke="${palette.accent}" stroke-width="6" />
          <path d="M-100 600 L 1100 400" stroke="${palette.primary}" stroke-width="4" />
          <path d="M-100 800 L 1100 600" stroke="#fff" stroke-width="2" />
@@ -479,21 +483,24 @@ function buildSluggerCardSvg(project: HypeCardProject) {
     ? `<text x="500" y="1310" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
 
+  const coachMessage = content.message ? `<text x="500" y="1285" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 800, 18, 0.65)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
+  const recY = content.message ? 1255 : 1275;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
     <defs>
-      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
-      ${getPremiumDefs(palette)}
+      <clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      ${getPremiumDefs(palette, ns)}
     </defs>
     
     <rect width="1000" height="1400" rx="45" fill="#000" />
     
-    <g clip-path="url(#cardClip)">
-      <rect x="30" y="30" width="940" height="1340" fill="url(#bgGradient)" />
+    <g clip-path="url(#cardClip-${ns})">
+      ${getCardBackground(project, ns)}
       
       ${photo}
       
-      <rect x="30" y="30" width="940" height="1340" fill="url(#fadeToDark)" opacity="0.5"/>
-      <rect x="30" y="700" width="940" height="670" fill="url(#fadeToDark)" opacity="0.8"/>
+      <rect x="30" y="30" width="940" height="1340" fill="url(#fadeToDark-${ns})" opacity="0.5"/>
+      <rect x="30" y="700" width="940" height="670" fill="url(#fadeToDark-${ns})" opacity="0.8"/>
       
       ${motion}
       
@@ -503,145 +510,164 @@ function buildSluggerCardSvg(project: HypeCardProject) {
 
       <g transform="translate(500, 240)">
         <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="#000" stroke="#000" stroke-width="34" transform="translate(0, 16)"></text>
-        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="none" stroke="${palette.primary}" stroke-width="26" transform="translate(0, 8)" filter="url(#neonGlowTeam)"></text>
-        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="6" filter="url(#dropShadowSmall)">HYPE</text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="none" stroke="${palette.primary}" stroke-width="26" transform="translate(0, 8)" filter="url(#neonGlowTeam-${ns})"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="6" filter="url(#dropShadowSmall-${ns})">HYPE</text>
       </g>
 
-      ${getFlare(200, 100, 3, '#fff')}
-      ${getFlare(800, 260, 2.5, palette.accent)}
+      ${getFlare(200, 100, 3, ns, '#fff')}
+      ${getFlare(800, 260, 2.5, ns, palette.accent)}
       
       <!-- Angled base -->
-      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="#000" filter="url(#dropShadow)" />
-      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="url(#chromeDark)" />
-      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="url(#carbonFiber)" opacity="0.9"/>
+      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="#000" filter="url(#dropShadow-${ns})" />
+      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="url(#chromeDark-${ns})" />
+      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="url(#carbonFiber-${ns})" opacity="0.9"/>
       
       <!-- Thick Metallic Slash -->
-      <path d="M -10 1080 L 1010 930" stroke="#000" stroke-width="28" filter="url(#dropShadow)" />
-      <path d="M -10 1080 L 1010 930" stroke="url(#metalCore)" stroke-width="18" />
-      <path d="M -10 1088 L 1010 938" stroke="${palette.accent}" stroke-width="6" filter="url(#neonGlowTeam)" />
+      <path d="M -10 1080 L 1010 930" stroke="#000" stroke-width="28" filter="url(#dropShadow-${ns})" />
+      <path d="M -10 1080 L 1010 930" stroke="url(#metalCore-${ns})" stroke-width="18" />
+      <path d="M -10 1088 L 1010 938" stroke="${palette.accent}" stroke-width="6" filter="url(#neonGlowTeam-${ns})" />
 
       <!-- Thick Chrome Nameplate -->
-      <rect x="70" y="1010" width="860" height="150" rx="24" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow)" />
-      <rect x="70" y="1010" width="860" height="150" rx="24" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="12" />
+      <rect x="70" y="1010" width="860" height="150" rx="24" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow-${ns})" />
+      <rect x="70" y="1010" width="860" height="150" rx="24" fill="url(#teamMetal-${ns})" stroke="url(#metalCore-${ns})" stroke-width="12" />
       <rect x="78" y="1018" width="844" height="134" rx="16" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" />
       
-      <text x="500" y="1115" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 800, 100, 0.75)}" font-weight="800" letter-spacing="2" fill="#000" stroke="#000" stroke-width="14" transform="translate(0,8)"></text>
-      <text x="500" y="1115" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 800, 100, 0.75)}" font-weight="800" letter-spacing="2" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="3" filter="url(#dropShadowSmall)">${content.player}</text>
+      <text x="500" y="1115" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 800, 100, 0.75, 2)}" font-weight="800" letter-spacing="2" fill="#000" stroke="#000" stroke-width="14" transform="translate(0,8)"></text>
+      <text x="500" y="1115" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 800, 100, 0.75, 2)}" font-weight="800" letter-spacing="2" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="3" filter="url(#dropShadowSmall-${ns})">${content.player}</text>
       
-      <text x="500" y="1210" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • #' + content.number, 800, 26, 0.65)}" font-weight="800" letter-spacing="4" fill="${palette.accent}" filter="url(#neonGlow)">${content.team}  •  #${content.number}</text>
-      <text x="500" y="1245" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.details, 800, 22, 0.65)}" font-weight="800" letter-spacing="4" fill="#ffffff" opacity="0.9">${content.details}</text>
-      <text x="500" y="1285" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
+      <text x="500" y="1195" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • #' + content.number, 800, 26, 0.65, 4)}" font-weight="800" letter-spacing="4" fill="${palette.accent}" filter="url(#neonGlow-${ns})">${content.team}  •  #${content.number}</text>
+      <text x="500" y="1225" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.details, 800, 22, 0.65, 4)}" font-weight="800" letter-spacing="4" fill="#ffffff" opacity="0.9">${content.details}</text>
+      <text x="500" y="${recY}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
       
+      ${coachMessage}
       ${branding}
     </g>
     
-    ${getOuterFrame(palette)}
+    ${getOuterFrame(palette, ns)}
   </svg>`;
 }
 
 function buildAllStarCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
+  const ns = Math.random().toString(36).substring(2, 9);
   
   const frame = { x: 150, y: 300, width: 700, height: 700 };
-  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
-  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const overscan = 200;
+  const photoX = frame.x - overscan / 2 + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y - overscan / 2 + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photoWidth = frame.width * project.photoTransform.zoom + overscan;
+  const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 650px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : `<g transform="translate(0, 150)">${getArenaBg(palette)}</g>`;
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 650px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<g transform="translate(0, 150)">${getArenaBg(palette, ns)}</g>`;
 
   const logo = project.logo
-    ? `<image href="${project.logo}" x="400" y="860" width="200" height="140" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
-    : `<circle cx="500" cy="930" r="70" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="8" filter="url(#dropShadow)"/><text x="500" y="955" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="70" font-weight="800" fill="#fff">#${content.number}</text>`;
+    ? `<image href="${project.logo}" x="400" y="860" width="200" height="140" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow-${ns})"/>`
+    : `<circle cx="500" cy="930" r="70" fill="url(#teamMetal-${ns})" stroke="url(#metalCore-${ns})" stroke-width="8" filter="url(#dropShadow-${ns})"/><text x="500" y="955" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="70" font-weight="800" fill="#fff">#${content.number}</text>`;
+
+  const motion = project.overlay
+    ? `<g opacity="0.5" filter="url(#neonGlowTeam-${ns})">
+         <circle cx="500" cy="700" r="450" fill="none" stroke="${palette.primary}" stroke-width="4" stroke-dasharray="20 40" />
+         <circle cx="500" cy="700" r="480" fill="none" stroke="${palette.accent}" stroke-width="2" />
+       </g>`
+    : '';
 
   const branding = project.branding
     ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
+    
+  const coachMessage = content.message ? `<text x="500" y="1295" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 3)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
+  const recY = content.message ? 1242 : 1262;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
     <defs>
-      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
-      <clipPath id="shieldClip">
+      <clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      <clipPath id="shieldClip-${ns}">
         <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" />
       </clipPath>
-      ${getPremiumDefs(palette)}
+      ${getPremiumDefs(palette, ns)}
     </defs>
     
     <rect width="1000" height="1400" rx="45" fill="#000" />
     
-    <g clip-path="url(#cardClip)">
-      <rect x="30" y="30" width="940" height="1340" fill="url(#metalDark)" />
-      <rect x="30" y="30" width="940" height="1340" fill="url(#carbonFiber)" opacity="0.8"/>
+    <g clip-path="url(#cardClip-${ns})">
+      ${getCardBackground(project, ns)}
       
-      <circle cx="500" cy="700" r="450" fill="${palette.primary}" opacity="0.65" filter="url(#blur10)" />
+      <circle cx="500" cy="700" r="450" fill="${palette.primary}" opacity="0.65" filter="url(#blur10-${ns})" />
+      
+      ${motion}
       
       <g transform="translate(500, 180)">
         <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="#000" stroke="#000" stroke-width="28" transform="translate(0, 14)"></text>
-        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="none" stroke="${palette.accent}" stroke-width="22" transform="translate(0, 7)" filter="url(#neonGlowTeam)"></text>
-        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="5" filter="url(#dropShadowSmall)">ALL STAR</text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="none" stroke="${palette.accent}" stroke-width="22" transform="translate(0, 7)" filter="url(#neonGlowTeam-${ns})"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="5" filter="url(#dropShadowSmall-${ns})">ALL STAR</text>
       </g>
 
-      <path d="M 500 230 C 760 230, 900 420, 900 720 C 900 990, 500 1180, 500 1180 C 500 1180, 100 990, 100 720 C 100 420, 240 230, 500 230 Z" fill="#000" filter="url(#dropShadow)" />
-      <path d="M 500 230 C 760 230, 900 420, 900 720 C 900 990, 500 1180, 500 1180 C 500 1180, 100 990, 100 720 C 100 420, 240 230, 500 230 Z" fill="url(#teamMetal)" />
+      <path d="M 500 230 C 760 230, 900 420, 900 720 C 900 990, 500 1180, 500 1180 C 500 1180, 100 990, 100 720 C 100 420, 240 230, 500 230 Z" fill="#000" filter="url(#dropShadow-${ns})" />
+      <path d="M 500 230 C 760 230, 900 420, 900 720 C 900 990, 500 1180, 500 1180 C 500 1180, 100 990, 100 720 C 100 420, 240 230, 500 230 Z" fill="url(#teamMetal-${ns})" />
       <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" fill="#000" />
       
-      <g clip-path="url(#shieldClip)">
+      <g clip-path="url(#shieldClip-${ns})">
         ${photo}
-        <rect x="120" y="250" width="760" height="900" fill="url(#fadeToDark)" />
+        <rect x="120" y="250" width="760" height="900" fill="url(#fadeToDark-${ns})" />
       </g>
       
-      <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" fill="none" stroke="url(#metalCore)" stroke-width="14" filter="url(#dropShadowSmall)" />
-      <path d="M 500 256 C 734 256, 874 433, 874 720 C 874 964, 500 1144, 500 1144 C 500 1144, 126 964, 126 720 C 126 433, 266 256, 500 256 Z" fill="none" stroke="${palette.accent}" stroke-width="5" filter="url(#neonGlowTeam)" />
+      <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" fill="none" stroke="url(#metalCore-${ns})" stroke-width="14" filter="url(#dropShadowSmall-${ns})" />
+      <path d="M 500 256 C 734 256, 874 433, 874 720 C 874 964, 500 1144, 500 1144 C 500 1144, 126 964, 126 720 C 126 433, 266 256, 500 256 Z" fill="none" stroke="${palette.accent}" stroke-width="5" filter="url(#neonGlowTeam-${ns})" />
       
       ${logo}
       
-      ${getFlare(150, 450, 2.5, '#fff')}
-      ${getFlare(850, 450, 2.5, '#fff')}
+      ${getFlare(150, 450, 2.5, ns, '#fff')}
+      ${getFlare(850, 450, 2.5, ns, '#fff')}
 
-      <rect x="150" y="1030" width="700" height="150" rx="30" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow)" />
-      <rect x="150" y="1030" width="700" height="150" rx="30" fill="url(#chromeDark)" stroke="url(#metalCore)" stroke-width="12" />
+      <rect x="150" y="1030" width="700" height="150" rx="30" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow-${ns})" />
+      <rect x="150" y="1030" width="700" height="150" rx="30" fill="url(#chromeDark-${ns})" stroke="url(#metalCore-${ns})" stroke-width="12" />
       <rect x="158" y="1038" width="684" height="134" rx="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" />
       
       <text x="500" y="1120" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 620, 80, 0.75)}" font-weight="800" fill="#fff" stroke="#000" stroke-width="10" transform="translate(0,6)"></text>
-      <text x="500" y="1120" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 620, 80, 0.75)}" font-weight="800" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="2" filter="url(#dropShadowSmall)">${content.player}</text>
+      <text x="500" y="1120" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 620, 80, 0.75)}" font-weight="800" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="2" filter="url(#dropShadowSmall-${ns})">${content.player}</text>
       
-      <text x="500" y="1165" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 640, 22, 0.65)}" font-weight="800" letter-spacing="4" fill="${palette.accent}">${content.team}  •  ${content.details}</text>
+      <text x="500" y="1165" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 640, 22, 0.65, 4)}" font-weight="800" letter-spacing="4" fill="${palette.accent}">${content.team}  •  ${content.details}</text>
       
-      <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="#000" stroke="#000" stroke-width="12" filter="url(#dropShadowSmall)" />
-      <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="6" />
-      <text x="500" y="1242" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 420, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
+      <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="#000" stroke="#000" stroke-width="12" filter="url(#dropShadowSmall-${ns})" />
+      <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="url(#teamMetal-${ns})" stroke="url(#metalCore-${ns})" stroke-width="6" />
+      <text x="500" y="${recY}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 420, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
       
-      <text x="500" y="1295" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>
-      
+      ${coachMessage}
       ${branding}
     </g>
     
-    ${getOuterFrame(palette)}
+    ${getOuterFrame(palette, ns)}
   </svg>`;
 }
 
 function buildRookieCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
+  const ns = Math.random().toString(36).substring(2, 9);
   
   const frame = { x: 33, y: 33, width: 934, height: 1334 };
-  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
-  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const overscan = 200;
+  const photoX = frame.x - overscan / 2 + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y - overscan / 2 + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photoWidth = frame.width * project.photoTransform.zoom + overscan;
+  const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 500px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : getArenaBg(palette);
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 500px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : getArenaBg(palette, ns);
 
   const logo = project.logo
-    ? `<image href="${project.logo}" x="760" y="60" width="160" height="110" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    ? `<image href="${project.logo}" x="760" y="60" width="160" height="110" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow-${ns})"/>`
     : '';
 
   const motion = project.overlay
     ? `<g opacity="0.85">
-         <path d="M -100 200 L 1100 900" stroke="${palette.accent}" stroke-width="10" filter="url(#neonGlowTeam)"/>
-         <path d="M -100 260 L 1100 960" stroke="#fff" stroke-width="4" filter="url(#neonGlowTeam)"/>
-         <path d="M -100 320 L 1100 1020" stroke="${palette.primary}" stroke-width="8" filter="url(#neonGlowTeam)"/>
+         <path d="M -100 200 L 1100 900" stroke="${palette.accent}" stroke-width="10" filter="url(#neonGlowTeam-${ns})"/>
+         <path d="M -100 260 L 1100 960" stroke="#fff" stroke-width="4" filter="url(#neonGlowTeam-${ns})"/>
+         <path d="M -100 320 L 1100 1020" stroke="${palette.primary}" stroke-width="8" filter="url(#neonGlowTeam-${ns})"/>
        </g>`
     : '';
 
@@ -649,139 +675,154 @@ function buildRookieCardSvg(project: HypeCardProject) {
     ? `<text x="940" y="1335" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX</text>`
     : '';
 
+  const coachMessage = content.message ? `<text x="70" y="1335" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
     <defs>
-      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
-      <clipPath id="rookiePhoto">
+      <clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      <clipPath id="rookiePhoto-${ns}">
         <path d="M 30 30 L 970 30 L 970 850 L 30 1100 Z" />
       </clipPath>
-      ${getPremiumDefs(palette)}
+      ${getPremiumDefs(palette, ns)}
     </defs>
     
     <rect width="1000" height="1400" rx="45" fill="#000" />
     
-    <g clip-path="url(#cardClip)">
-      <rect x="30" y="30" width="940" height="1340" fill="url(#metalDark)" />
-      <rect x="30" y="30" width="940" height="1340" fill="url(#carbonFiber)" opacity="0.9"/>
+    <g clip-path="url(#cardClip-${ns})">
+      ${getCardBackground(project, ns)}
       
-      <text x="60" y="1050" font-family="Space Grotesk,sans-serif" font-size="550" font-weight="800" letter-spacing="-30" fill="url(#teamMetal)" opacity="0.4" filter="url(#dropShadow)">#${content.number}</text>
+      <text x="60" y="1050" font-family="Space Grotesk,sans-serif" font-size="550" font-weight="800" letter-spacing="-30" fill="url(#teamMetal-${ns})" opacity="0.4" filter="url(#dropShadow-${ns})">#${content.number}</text>
       
-      <g clip-path="url(#rookiePhoto)">
+      <g clip-path="url(#rookiePhoto-${ns})">
         ${photo}
-        <rect x="30" y="550" width="940" height="550" fill="url(#fadeToDark)" opacity="0.8"/>
+        <rect x="30" y="550" width="940" height="550" fill="url(#fadeToDark-${ns})" opacity="0.8"/>
       </g>
       
       ${motion}
       
-      <path d="M -10 1110 L 1010 840" stroke="#000" stroke-width="34" filter="url(#dropShadow)" />
-      <path d="M -10 1110 L 1010 840" stroke="url(#metalCore)" stroke-width="24" />
-      <path d="M -10 1118 L 1010 848" stroke="${palette.accent}" stroke-width="8" filter="url(#neonGlowTeam)" />
+      <path d="M -10 1110 L 1010 840" stroke="#000" stroke-width="34" filter="url(#dropShadow-${ns})" />
+      <path d="M -10 1110 L 1010 840" stroke="url(#metalCore-${ns})" stroke-width="24" />
+      <path d="M -10 1118 L 1010 848" stroke="${palette.accent}" stroke-width="8" filter="url(#neonGlowTeam-${ns})" />
       
       <g transform="translate(110, 420) rotate(-90)">
         <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="#000" stroke="#000" stroke-width="20" transform="translate(0,10)"></text>
-        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="none" stroke="${palette.accent}" stroke-width="16" transform="translate(0,5)" filter="url(#neonGlowTeam)"></text>
-        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="4" filter="url(#dropShadowSmall)">ROOKIE</text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="none" stroke="${palette.accent}" stroke-width="16" transform="translate(0,5)" filter="url(#neonGlowTeam-${ns})"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="4" filter="url(#dropShadowSmall-${ns})">ROOKIE</text>
       </g>
       
       ${logo}
       
       <g transform="translate(70, 1140)">
-        <text x="0" y="0" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 860, 120, 0.75)}" font-weight="800" letter-spacing="-2" fill="#000" stroke="#000" stroke-width="16" transform="translate(0,8)"></text>
-        <text x="0" y="0" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 860, 120, 0.75)}" font-weight="800" letter-spacing="-2" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="3" filter="url(#dropShadowSmall)">${content.player}</text>
+        <text x="0" y="0" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 860, 120, 0.75, -2)}" font-weight="800" letter-spacing="-2" fill="#000" stroke="#000" stroke-width="16" transform="translate(0,8)"></text>
+        <text x="0" y="0" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 860, 120, 0.75, -2)}" font-weight="800" letter-spacing="-2" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="3" filter="url(#dropShadowSmall-${ns})">${content.player}</text>
         
-        <text x="5" y="50" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 800, 26, 0.65)}" font-weight="800" letter-spacing="4" fill="${palette.accent}" filter="url(#neonGlow)">${content.team}  •  ${content.details}</text>
+        <text x="5" y="50" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 800, 26, 0.65, 4)}" font-weight="800" letter-spacing="4" fill="${palette.accent}" filter="url(#neonGlow-${ns})">${content.team}  •  ${content.details}</text>
         
-        <rect x="0" y="70" width="860" height="110" rx="20" fill="#000" stroke="#000" stroke-width="16" filter="url(#dropShadow)" />
-        <rect x="0" y="70" width="860" height="110" rx="20" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="8" />
+        <rect x="0" y="70" width="860" height="110" rx="20" fill="#000" stroke="#000" stroke-width="16" filter="url(#dropShadow-${ns})" />
+        <rect x="0" y="70" width="860" height="110" rx="20" fill="url(#teamMetal-${ns})" stroke="url(#metalCore-${ns})" stroke-width="8" />
         <text x="30" y="110" font-family="DM Sans,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="#fff" opacity="0.9">SEASON HIGHLIGHT</text>
-        <text x="30" y="150" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 42, 0.75)}" font-weight="800" fill="#fff" filter="url(#dropShadowSmall)">${content.recognition}</text>
+        <text x="30" y="150" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 42, 0.75)}" font-weight="800" fill="#fff" filter="url(#dropShadowSmall-${ns})">${content.recognition}</text>
       </g>
       
-      <text x="70" y="1335" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>
-      
+      ${coachMessage}
       ${branding}
     </g>
     
-    ${getOuterFrame(palette)}
+    ${getOuterFrame(palette, ns)}
   </svg>`;
 }
 
 function buildDugoutCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
+  const ns = Math.random().toString(36).substring(2, 9);
   
   const frame = { x: 70, y: 240, width: 860, height: 660 };
-  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
-  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const overscan = 200;
+  const photoX = frame.x - overscan / 2 + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y - overscan / 2 + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photoWidth = frame.width * project.photoTransform.zoom + overscan;
+  const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 560px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : `<g transform="translate(0, 60)">${getArenaBg(palette)}</g>`;
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 560px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<g transform="translate(0, 60)">${getArenaBg(palette, ns)}</g>`;
 
   const logo = project.logo
-    ? `<image href="${project.logo}" x="70" y="75" width="140" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    ? `<image href="${project.logo}" x="70" y="75" width="140" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow-${ns})"/>`
+    : '';
+
+  const motion = project.overlay
+    ? `<g opacity="0.4" filter="url(#neonGlowTeam-${ns})">
+         <path d="M 0 180 L 1000 180" stroke="${palette.accent}" stroke-width="4" stroke-dasharray="10 20" />
+         <path d="M 0 920 L 1000 920" stroke="${palette.accent}" stroke-width="4" stroke-dasharray="10 20" />
+       </g>`
     : '';
 
   const branding = project.branding
     ? `<text x="500" y="1330" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
 
+  const coachMessage = content.message ? `<text x="930" y="1255" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 400, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
+  const recWidth = content.message ? 380 : 800;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
     <defs>
-      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
-      <clipPath id="dugoutPhoto"><rect x="70" y="240" width="860" height="660" rx="25" /></clipPath>
-      ${getPremiumDefs(palette)}
+      <clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      <clipPath id="dugoutPhoto-${ns}"><rect x="70" y="240" width="860" height="660" rx="25" /></clipPath>
+      ${getPremiumDefs(palette, ns)}
     </defs>
     
     <rect width="1000" height="1400" rx="45" fill="#000" />
     
-    <g clip-path="url(#cardClip)">
-      <rect x="30" y="30" width="940" height="1340" fill="url(#metalDark)" />
+    <g clip-path="url(#cardClip-${ns})">
+      ${getCardBackground(project, ns)}
       
       <!-- Top Block -->
-      <path d="M 30 30 L 970 30 L 970 200 L 780 200 L 720 120 L 30 120 Z" fill="url(#teamMetal)" />
+      <path d="M 30 30 L 970 30 L 970 200 L 780 200 L 720 120 L 30 120 Z" fill="url(#teamMetal-${ns})" />
       ${logo}
-      <text x="940" y="90" text-anchor="end" font-family="Space Grotesk,sans-serif" font-size="46" font-weight="800" letter-spacing="4" fill="#fff" filter="url(#dropShadowSmall)">#${content.number}</text>
+      <text x="940" y="90" text-anchor="end" font-family="Space Grotesk,sans-serif" font-size="46" font-weight="800" letter-spacing="4" fill="#fff" filter="url(#dropShadowSmall-${ns})">#${content.number}</text>
       
       <!-- GAME DAY Badge -->
       <g transform="translate(500, 160)">
-        <rect x="-260" y="-65" width="520" height="130" fill="#000" rx="25" stroke="#000" stroke-width="20" filter="url(#dropShadow)"/>
-        <rect x="-260" y="-65" width="520" height="130" fill="url(#chromeDark)" stroke="url(#metalCore)" stroke-width="10" rx="25" />
-        <rect x="-252" y="-57" width="504" height="114" fill="url(#carbonFiber)" rx="19" />
-        <text x="0" y="22" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="8" fill="none" stroke="${palette.accent}" stroke-width="12" filter="url(#neonGlowTeam)">GAME DAY</text>
-        <text x="0" y="22" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="8" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="2">GAME DAY</text>
+        <rect x="-260" y="-65" width="520" height="130" fill="#000" rx="25" stroke="#000" stroke-width="20" filter="url(#dropShadow-${ns})"/>
+        <rect x="-260" y="-65" width="520" height="130" fill="url(#chromeDark-${ns})" stroke="url(#metalCore-${ns})" stroke-width="10" rx="25" />
+        <rect x="-252" y="-57" width="504" height="114" fill="url(#carbonFiber-${ns})" rx="19" />
+        <text x="0" y="22" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="8" fill="none" stroke="${palette.accent}" stroke-width="12" filter="url(#neonGlowTeam-${ns})">GAME DAY</text>
+        <text x="0" y="22" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="8" fill="url(#chromeText-${ns})" stroke="url(#metalCore-${ns})" stroke-width="2">GAME DAY</text>
       </g>
 
-      <path d="M 720 120 L 970 120" stroke="${palette.accent}" stroke-width="8" filter="url(#neonGlowTeam)" />
+      <path d="M 720 120 L 970 120" stroke="${palette.accent}" stroke-width="8" filter="url(#neonGlowTeam-${ns})" />
       
-      <rect x="50" y="220" width="900" height="700" rx="35" fill="#0a0a0a" stroke="url(#metalCore)" stroke-width="16" filter="url(#dropShadow)" />
-      <g clip-path="url(#dugoutPhoto)">
+      ${motion}
+      
+      <rect x="50" y="220" width="900" height="700" rx="35" fill="#0a0a0a" stroke="url(#metalCore-${ns})" stroke-width="16" filter="url(#dropShadow-${ns})" />
+      <g clip-path="url(#dugoutPhoto-${ns})">
         ${photo}
-        <rect x="70" y="650" width="860" height="250" fill="url(#fadeToDark)" />
+        <rect x="70" y="650" width="860" height="250" fill="url(#fadeToDark-${ns})" />
       </g>
       <rect x="70" y="240" width="860" height="660" rx="25" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="6" />
       
-      <rect x="70" y="940" width="860" height="350" rx="25" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow)" />
-      <rect x="70" y="940" width="860" height="350" rx="25" fill="#080c14" stroke="url(#metalCore)" stroke-width="14" />
-      <rect x="70" y="940" width="860" height="350" rx="25" fill="url(#stadiumGrid)" opacity="0.7" />
+      <rect x="70" y="940" width="860" height="350" rx="25" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow-${ns})" />
+      <rect x="70" y="940" width="860" height="350" rx="25" fill="#080c14" stroke="url(#metalCore-${ns})" stroke-width="14" />
+      <rect x="70" y="940" width="860" height="350" rx="25" fill="url(#stadiumGrid-${ns})" opacity="0.7" />
       <rect x="78" y="948" width="844" height="334" rx="19" fill="none" stroke="rgba(0,0,0,0.8)" stroke-width="8" />
       
-      <text x="110" y="1010" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="8" fill="${palette.accent}" filter="url(#neonGlowTeam)">PLAYER SPOTLIGHT // DATA</text>
+      <text x="110" y="1010" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="8" fill="${palette.accent}" filter="url(#neonGlowTeam-${ns})">PLAYER SPOTLIGHT // DATA</text>
       
-      <text x="110" y="1110" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 780, 110, 0.75)}" font-weight="800" letter-spacing="1" fill="#fff" filter="url(#dropShadowSmall)">${content.player}</text>
+      <text x="110" y="1110" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 780, 110, 0.75, 1)}" font-weight="800" letter-spacing="1" fill="#fff" filter="url(#dropShadowSmall-${ns})">${content.player}</text>
       
-      <text x="110" y="1165" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 780, 26, 0.65)}" font-weight="800" letter-spacing="4" fill="rgba(255,255,255,0.8)">${content.team}  •  ${content.details}</text>
+      <text x="110" y="1165" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 780, 26, 0.65, 4)}" font-weight="800" letter-spacing="4" fill="rgba(255,255,255,0.8)">${content.team}  •  ${content.details}</text>
       
       <path d="M 110 1200 L 890 1200" stroke="rgba(255,255,255,0.15)" stroke-width="6" stroke-dasharray="8 8" />
       
-      <text x="110" y="1255" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 780, 36, 0.75)}" font-weight="800" fill="${palette.accent}" filter="url(#neonGlowTeam)">${content.recognition}</text>
+      <text x="110" y="1255" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, recWidth, 36, 0.75)}" font-weight="800" fill="${palette.accent}" filter="url(#neonGlowTeam-${ns})">${content.recognition}</text>
       
-      <text x="890" y="1255" text-anchor="end" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>
-      
+      ${coachMessage}
       ${branding}
     </g>
     
-    ${getOuterFrame(palette)}
+    ${getOuterFrame(palette, ns)}
   </svg>`;
 }
 
