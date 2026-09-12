@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { HypeCardEditor } from '@/features/hype-card';
 
 const queryClient = new QueryClient();
 
@@ -54,7 +55,7 @@ const toolData: Record<ToolKind, {
     icon: Zap,
     accent: 'coral',
     soft: 'bg-[#fff0e9]',
-    templateNames: ['Baseline Buzz', 'Under The Lights', 'Road Game'],
+    templateNames: ['Spotlight', 'Impact', 'Clean Game Day'],
   },
   schedule: {
     slug: 'schedule',
@@ -405,7 +406,7 @@ function NotFound() {
 }
 
 function Router() {
-  return <ErrorBoundary resetKey={useLocation()[0]}><Switch><Route path="/" component={Home} /><Route path="/studio" component={Studio} /><Route path="/studio/hype-card"><EditorPage kind="hype" /></Route><Route path="/studio/schedule"><EditorPage kind="schedule" /></Route><Route path="/studio/awards"><EditorPage kind="awards" /></Route><Route path="/privacy" component={Privacy} /><Route path="/help" component={Help} /><Route component={NotFound} /></Switch></ErrorBoundary>;
+  return <ErrorBoundary resetKey={useLocation()[0]}><Switch><Route path="/" component={Home} /><Route path="/studio" component={Studio} /><Route path="/studio/hype-card"><HypeCardEditor /></Route><Route path="/studio/schedule"><EditorPage kind="schedule" /></Route><Route path="/studio/awards"><EditorPage kind="awards" /></Route><Route path="/privacy" component={Privacy} /><Route path="/help" component={Help} /><Route component={NotFound} /></Switch></ErrorBoundary>;
 }
 
 function App() {

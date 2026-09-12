@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -47,6 +47,12 @@ type HypeCardProject = {
   stat: string;
   achievement: string;
   coachMessage: string;
+  visibility: {
+    grade: boolean;
+    stat: boolean;
+    achievement: boolean;
+    coachMessage: boolean;
+  };
   photo: string | null;
   logo: string | null;
   photoTransform: {
@@ -133,6 +139,7 @@ const defaultProject = (): HypeCardProject => ({
   stat: '12 points',
   achievement: 'Player of the week',
   coachMessage: 'Keep showing up.',
+  visibility: { grade: true, stat: true, achievement: true, coachMessage: true },
   photo: null,
   logo: null,
   photoTransform: { zoom: 1, x: 0, y: 0, rotation: 0, flip: false },
@@ -174,8 +181,19 @@ function isProject(value: unknown): value is { tool: string; project: HypeCardPr
   return candidate.tool === 'hype-card' && Boolean(candidate.project) && typeof candidate.project === 'object';
 }
 
+function normalizeProject(project: HypeCardProject): HypeCardProject {
+  const defaults = defaultProject();
+  return {
+    ...defaults,
+    ...project,
+    photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
+    adjustments: { ...defaults.adjustments, ...project.adjustments },
+    visibility: { ...defaults.visibility, ...project.visibility },
+  };
+}
+
 function assetUpload(
-  event: React.ChangeEvent<HTMLInputElement>,
+  event: ChangeEvent<HTMLInputElement>,
   onLoad: (dataUrl: string) => void,
   onError: (message: string) => void,
 ) {
@@ -222,14 +240,17 @@ function buildHypeCardSvg(project: HypeCardProject) {
   const headlineSize = isLandscape ? width * .085 : isStory ? width * .12 : width * .13;
   const textX = isLandscape ? width * .57 : isStory || isCard ? width * .09 : width * .09;
   const textY = isLandscape ? height * .35 : isStory ? height * .59 : isCard ? height * .58 : height * .62;
-  const playerLine = [project.position, project.grade].filter(Boolean).join(' · ');
-  const achievementLine = [project.achievement, project.stat].filter(Boolean).join('  •  ');
+  const playerLine = [project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join(' · ');
+  const achievementLine = [
+    project.visibility.achievement ? project.achievement : '',
+    project.visibility.stat ? project.stat : '',
+  ].filter(Boolean).join('  •  ');
   const headline = escapeXml(project.playerName || 'YOUR PLAYER');
   const jersey = escapeXml(project.jerseyNumber || '00');
   const team = escapeXml(project.teamName || 'YOUR TEAM');
   const position = escapeXml(playerLine || 'GAME DAY');
   const achievement = escapeXml(achievementLine || 'MAKE THE MOMENT COUNT');
-  const message = escapeXml(project.coachMessage || 'Bring the energy.');
+  const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
   const accentText = palette.primary === palette.ink ? palette.paper : palette.ink;
   const geometric = project.template === 'impact'
     ? `<path d="M0 ${height * .1} L${width * .18} 0 L${width * .28} 0 L${width * .1} ${height * .3}Z" fill="${palette.accent}" opacity=".92"/><path d="M${width * .76} ${height} L${width} ${height * .68} L${width} ${height * .83} L${width * .88} ${height}Z" fill="${palette.secondary}" opacity=".8"/>`
@@ -323,7 +344,7 @@ function AssetButton({
 }: {
   label: string;
   hasAsset: boolean;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
 }) {
   return (
@@ -348,7 +369,7 @@ function HypeCardEditor() {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (!stored) return defaultProject();
       const parsed = JSON.parse(stored) as { tool?: string; project?: HypeCardProject };
-      return parsed.tool === 'hype-card' && parsed.project ? parsed.project : defaultProject();
+      return parsed.tool === 'hype-card' && parsed.project ? normalizeProject(parsed.project) : defaultProject();
     } catch {
       return defaultProject();
     }
@@ -378,6 +399,10 @@ function HypeCardEditor() {
 
   const updateAdjustment = (key: keyof HypeCardProject['adjustments'], value: number) => {
     setProject((current) => ({ ...current, adjustments: { ...current.adjustments, [key]: value } }));
+  };
+
+  const updateVisibility = (key: keyof HypeCardProject['visibility'], value: boolean) => {
+    setProject((current) => ({ ...current, visibility: { ...current.visibility, [key]: value } }));
   };
 
   const flash = (message: string) => {
@@ -410,7 +435,7 @@ function HypeCardEditor() {
     flash('Editable project downloaded');
   };
 
-  const openProjectFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const openProjectFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -420,7 +445,7 @@ function HypeCardEditor() {
         flash('That is not a supported LeagueMatrix project file.');
         return;
       }
-      setProject(parsed.project);
+      setProject(normalizeProject(parsed.project));
       setValidation('');
       flash('Project opened on this device');
     } catch {
@@ -447,7 +472,12 @@ function HypeCardEditor() {
         canvas.width = width;
         canvas.height = height;
         const context = canvas.getContext('2d');
-        if (!context) throw new Error('Canvas is not available in this browser.');
+        if (!context) {
+          URL.revokeObjectURL(url);
+          setNotice('Image export is not available in this browser.');
+          setExporting(false);
+          return;
+        }
         context.drawImage(image, 0, 0, width, height);
         canvas.toBlob((output) => {
           URL.revokeObjectURL(url);
@@ -478,15 +508,14 @@ function HypeCardEditor() {
     }
   };
 
-  const palette = palettes[project.palette];
   const template = templates.find((item) => item.id === project.template) ?? templates[0];
-  const photoUpload = (event: React.ChangeEvent<HTMLInputElement>) =>
+  const photoUpload = (event: ChangeEvent<HTMLInputElement>) =>
     assetUpload(
       event,
       (dataUrl) => updateProject('photo', dataUrl),
       (message) => flash(message),
     );
-  const logoUpload = (event: React.ChangeEvent<HTMLInputElement>) =>
+  const logoUpload = (event: ChangeEvent<HTMLInputElement>) =>
     assetUpload(
       event,
       (dataUrl) => updateProject('logo', dataUrl),
@@ -579,6 +608,22 @@ function HypeCardEditor() {
                   <span className="mb-2 block text-xs font-bold text-foreground">Coach message</span>
                   <textarea value={project.coachMessage} onChange={(event) => updateProject('coachMessage', event.target.value)} placeholder="Keep showing up." rows={2} className="w-full resize-none rounded-xl border border-input bg-background px-3.5 py-3 text-sm font-medium outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15" />
                 </label>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-foreground">Show on card</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ['grade', 'Grade / age'],
+                      ['stat', 'Short stat'],
+                      ['achievement', 'Achievement'],
+                      ['coachMessage', 'Coach message'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="flex cursor-pointer items-center justify-between gap-2 rounded-xl bg-background px-3 py-2.5 text-[11px] font-bold">
+                        {label}
+                        <Switch checked={project.visibility[key]} onCheckedChange={(checked) => updateVisibility(key, checked)} aria-label={`Show ${label}`} />
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             </Section>
 
