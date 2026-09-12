@@ -193,6 +193,11 @@ function isProject(value: unknown): value is { tool: string; project: HypeCardPr
   return candidate.tool === 'hype-card' && Boolean(candidate.project) && typeof candidate.project === 'object';
 }
 
+function isSafeRasterDataUrl(url: string | null): boolean {
+  if (!url) return false;
+  return /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
+}
+
 function normalizeProject(project: HypeCardProject): HypeCardProject {
   const defaults = defaultProject();
   return {
@@ -202,6 +207,8 @@ function normalizeProject(project: HypeCardProject): HypeCardProject {
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
     visibility: { ...defaults.visibility, ...project.visibility },
+    photo: isSafeRasterDataUrl(project.photo) ? project.photo : null,
+    logo: isSafeRasterDataUrl(project.logo) ? project.logo : null,
   };
 }
 
@@ -218,7 +225,14 @@ function assetUpload(
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => onLoad(String(reader.result));
+  reader.onload = () => {
+    const res = String(reader.result);
+    if (!isSafeRasterDataUrl(res)) {
+      onError('Please choose a valid PNG, JPG, WEBP, or GIF.');
+      return;
+    }
+    onLoad(res);
+  };
   reader.onerror = () => onError('That image could not be loaded. Try another file.');
   reader.readAsDataURL(file);
 }
@@ -231,152 +245,543 @@ function getPhotoFrame(format: HypeFormat) {
   return { x: 60, y: 90, width: width - 120, height: height * 0.47, radius: 38 };
 }
 
-function buildSluggerCardSvg(project: HypeCardProject) {
-  const palette = palettes[project.palette];
-  const frame = { x: 82, y: 172, width: 836, height: 665, radius: 42 };
-  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
-  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
-  const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 504px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : `<rect x="82" y="172" width="836" height="665" fill="#0e1b31"/><circle cx="500" cy="405" r="105" fill="${palette.paper}" opacity=".16"/><path d="M250 788 Q500 500 750 788Z" fill="${palette.paper}" opacity=".16"/><text x="500" y="710" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="22" font-weight="800" letter-spacing="6" fill="${palette.paper}" opacity=".62">ADD PLAYER PHOTO</text>`;
-  const player = escapeXml(project.playerName || 'YOUR PLAYER');
-  const number = escapeXml(project.jerseyNumber || '00');
-  const team = escapeXml(project.teamName || 'YOUR TEAM');
-  const details = escapeXml([project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join('  •  ') || 'GAME DAY');
-  const recognition = escapeXml([
-    project.visibility.achievement ? project.achievement : '',
-    project.visibility.stat ? project.stat : '',
-  ].filter(Boolean).join('  •  ') || 'MAKE THE MOMENT COUNT');
-  const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
-  const logo = project.logo
-    ? `<image href="${project.logo}" x="422" y="94" width="156" height="104" preserveAspectRatio="xMidYMid meet"/>`
-    : `<g transform="translate(500 144)"><path d="M0-52 16-17 54-17 24 6 34 43 0 21-34 43-24 6-54-17-16-17Z" fill="${palette.accent}"/><circle r="65" fill="none" stroke="${palette.paper}" stroke-opacity=".35" stroke-width="3"/></g>`;
-  const motion = project.overlay
-    ? `<g opacity=".14" stroke="${palette.paper}" stroke-width="4"><path d="M92 250 720 92"/><path d="M168 355 918 167"/><path d="M82 677 818 492"/></g>`
-    : '';
-  const branding = project.branding
-    ? `<text x="500" y="1350" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="${palette.paper}" opacity=".66">LEAGUEMATRIX CREATIVE STUDIO</text>`
-    : '';
-  const paperBackground = project.background === 'paper';
-  const base = paperBackground ? palette.paper : palette.ink;
-  const contrastInk = paperBackground ? palette.ink : palette.paper;
+function fitText(text: string, maxWidth: number, baseSize: number, charWidthRatio = 0.65, letterSpacing = 0) {
+  if (!text) return baseSize;
+  const len = text.length;
+  const estimated = len * baseSize * charWidthRatio + (len > 1 ? (len - 1) * letterSpacing : 0);
+  if (estimated <= maxWidth) return baseSize;
+  const fitted = (maxWidth - (len > 1 ? (len - 1) * letterSpacing : 0)) / (len * charWidthRatio);
+  return Math.floor(Math.max(12, Math.min(baseSize, fitted)));
+}
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
-    <defs>
-      <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${base}"/><stop offset=".62" stop-color="${paperBackground ? palette.paper : '#111d33'}"/><stop offset="1" stop-color="${palette.primary}"/></linearGradient>
-      <linearGradient id="photoWash" x1="0" y1="0" x2="0" y2="1"><stop offset=".48" stop-color="${palette.ink}" stop-opacity="0"/><stop offset="1" stop-color="${palette.ink}" stop-opacity=".94"/></linearGradient>
-      <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="24" stdDeviation="20" flood-color="#0a1424" flood-opacity=".38"/></filter>
-      <clipPath id="cardClip"><rect x="30" y="24" width="940" height="1346" rx="72"/></clipPath>
-      <clipPath id="verticalPhotoClip"><rect x="82" y="172" width="836" height="665" rx="42"/></clipPath>
-    </defs>
-    <g filter="url(#cardShadow)"><rect x="30" y="24" width="940" height="1346" rx="72" fill="url(#cardBg)"/></g>
-    <g clip-path="url(#cardClip)">
-      <path d="M-40 190 565-20H1050V115L120 382Z" fill="${palette.primary}" opacity=".2"/><path d="M-80 284 720-20H1050V42L-20 410Z" fill="${palette.accent}" opacity=".12"/>
-      ${motion}
-      <text x="92" y="150" font-family="Space Grotesk,sans-serif" font-size="122" font-weight="800" letter-spacing="-10" fill="${palette.accent}" opacity=".18">#${number}</text>
-      <rect x="365" y="50" width="270" height="60" rx="30" fill="#08101d" opacity=".52"/><rect x="381" y="64" width="238" height="30" rx="15" fill="${palette.paper}" opacity=".2"/>
-      ${logo}
-      <g clip-path="url(#verticalPhotoClip)">${photo}</g>
-      <rect x="82" y="172" width="836" height="665" rx="42" fill="none" stroke="${palette.paper}" stroke-opacity=".42" stroke-width="6"/>
-      <rect x="82" y="172" width="836" height="665" rx="42" fill="url(#photoWash)"/>
-      <path d="M0 930Q210 790 435 930T1000 905V1400H0Z" fill="${palette.paper}"/><path d="M0 1010Q220 865 455 1015T1000 980V1400H0Z" fill="${palette.secondary}"/><path d="M0 1095Q230 960 470 1100T1000 1060V1400H0Z" fill="${palette.primary}"/><path d="M0 1180Q240 1050 485 1185T1000 1140V1400H0Z" fill="${palette.ink}"/>
-      <rect x="108" y="782" width="784" height="180" rx="32" fill="${palette.primary}" stroke="${palette.paper}" stroke-width="5"/>
-      <text x="500" y="875" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="88" font-weight="800" letter-spacing="-5" fill="${palette.paper}">${player}</text>
-      <text x="500" y="924" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="21" font-weight="800" letter-spacing="6" fill="${palette.paper}" opacity=".86">${team.toUpperCase()}  •  #${number}</text>
-      <text x="500" y="1038" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="21" font-weight="800" letter-spacing="5" fill="${palette.ink}">${details.toUpperCase()}</text>
-      <line x1="405" y1="1070" x2="595" y2="1070" stroke="${palette.accent}" stroke-width="8" stroke-linecap="round"/>
-      <text x="500" y="1162" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="31" font-weight="800" fill="${palette.paper}">${recognition.toUpperCase()}</text>
-      <text x="500" y="1248" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="700" letter-spacing="2" fill="${palette.paper}" opacity=".82">${message}</text>
-      ${branding}
+type PaletteValue = { name: string; primary: string; secondary: string; accent: string; ink: string; paper: string };
+
+function getPremiumDefs(palette: PaletteValue, ns: string) {
+  const teamPrimary = palette.primary;
+  const teamSecondary = palette.secondary;
+  const teamAccent = palette.accent;
+  
+  return `
+    <linearGradient id="metalCore-${ns}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="25%" stop-color="#a0a5ad"/>
+      <stop offset="50%" stop-color="#d1d6dc"/>
+      <stop offset="75%" stop-color="#7a828e"/>
+      <stop offset="100%" stop-color="#f1f4f8"/>
+    </linearGradient>
+    <linearGradient id="chromeText-${ns}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#8892a0"/>
+      <stop offset="50%" stop-color="#11151c"/>
+      <stop offset="55%" stop-color="#5a6270"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="chromeDark-${ns}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a4250"/>
+      <stop offset="50%" stop-color="#0a0f18"/>
+      <stop offset="55%" stop-color="#1a2230"/>
+      <stop offset="100%" stop-color="#4a5260"/>
+    </linearGradient>
+    <linearGradient id="metalDark-${ns}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a323e"/>
+      <stop offset="50%" stop-color="#11151c"/>
+      <stop offset="100%" stop-color="#2a323e"/>
+    </linearGradient>
+    <linearGradient id="teamMetal-${ns}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${teamPrimary}"/>
+      <stop offset="50%" stop-color="${teamSecondary}"/>
+      <stop offset="100%" stop-color="${teamPrimary}"/>
+    </linearGradient>
+    <linearGradient id="teamAccentMetal-${ns}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="${teamAccent}"/>
+      <stop offset="100%" stop-color="${teamAccent}"/>
+    </linearGradient>
+    <linearGradient id="fadeToDark-${ns}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#080c14" stop-opacity="0"/>
+      <stop offset="60%" stop-color="#080c14" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#080c14" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="bgGradient-${ns}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${teamSecondary}"/>
+      <stop offset="100%" stop-color="#080c14"/>
+    </linearGradient>
+    <linearGradient id="lightRay-${ns}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="arenaGlow-${ns}" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="${teamPrimary}" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="${teamPrimary}" stop-opacity="0"/>
+    </radialGradient>
+    
+    <filter id="blur3-${ns}"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="blur6-${ns}"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="blur10-${ns}"><feGaussianBlur stdDeviation="10"/></filter>
+    
+    <filter id="neonGlow-${ns}" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur1" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="neonGlowTeam-${ns}" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur1" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur2" />
+      <feComponentTransfer in="blur2" result="glow2">
+        <feFuncA type="linear" slope="0.6"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="glow2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    
+    <filter id="dropShadow-${ns}" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000" flood-opacity="0.9"/>
+    </filter>
+    <filter id="dropShadowSmall-${ns}" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.9"/>
+    </filter>
+
+    <pattern id="carbonFiber-${ns}" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#111" />
+      <path d="M0 6h6v6H0zm6-6h6v6H6z" fill="#181818" />
+      <path d="M0 0h6v6H0zm6 6h6v6H6z" fill="#080808" />
+    </pattern>
+
+    <pattern id="stadiumGrid-${ns}" width="80" height="80" patternUnits="userSpaceOnUse">
+      <rect width="80" height="80" fill="none" />
+      <circle cx="40" cy="40" r="1.5" fill="rgba(255,255,255,0.15)" />
+      <path d="M40 0v80M0 40h80" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+    </pattern>
+  `;
+}
+
+function getFlare(x: number, y: number, scale: number, ns: string, color = 'white') {
+  return `<path d="M ${x},${y - 20 * scale} Q ${x},${y} ${x + 20 * scale},${y} Q ${x},${y} ${x},${y + 20 * scale} Q ${x},${y} ${x - 20 * scale},${y} Q ${x},${y} ${x},${y - 20 * scale}" fill="${color}" filter="url(#neonGlow-${ns})"/><circle cx="${x}" cy="${y}" r="${3 * scale}" fill="#ffffff" filter="url(#dropShadowSmall-${ns})"/>`;
+}
+
+function getCardBackground(project: HypeCardProject, ns: string) {
+  if (project.background === 'solid') {
+    return `<rect x="0" y="0" width="1000" height="1400" fill="#080c14" />`;
+  }
+  if (project.background === 'paper') {
+    return `<rect x="0" y="0" width="1000" height="1400" fill="#0c121e" /><rect x="0" y="0" width="1000" height="1400" fill="url(#stadiumGrid-${ns})" opacity="0.6" />`;
+  }
+  return `<rect x="0" y="0" width="1000" height="1400" fill="url(#bgGradient-${ns})" />`;
+}
+
+function getArenaBg(palette: PaletteValue, ns: string) {
+  return `
+    <rect x="0" y="0" width="1000" height="1400" fill="#080c14" />
+    <circle cx="500" cy="500" r="700" fill="url(#arenaGlow-${ns})" opacity="0.45" />
+    
+    <!-- Crowd bokeh -->
+    <g opacity="0.55">
+      <circle cx="200" cy="700" r="10" fill="#fff" filter="url(#blur3-${ns})"/>
+      <circle cx="250" cy="720" r="15" fill="${palette.accent}" filter="url(#blur6-${ns})"/>
+      <circle cx="800" cy="650" r="12" fill="#fff" filter="url(#blur3-${ns})"/>
+      <circle cx="750" cy="680" r="8" fill="${palette.primary}" filter="url(#blur3-${ns})"/>
+      <circle cx="300" cy="600" r="20" fill="${palette.secondary}" filter="url(#blur6-${ns})"/>
+      <circle cx="700" cy="620" r="18" fill="#fff" filter="url(#blur6-${ns})"/>
+      <circle cx="100" cy="550" r="14" fill="${palette.accent}" filter="url(#blur6-${ns})"/>
+      <circle cx="900" cy="580" r="22" fill="${palette.primary}" filter="url(#blur10-${ns})"/>
+      <circle cx="400" cy="650" r="12" fill="#fff" filter="url(#blur3-${ns})"/>
+      <circle cx="600" cy="660" r="15" fill="${palette.secondary}" filter="url(#blur6-${ns})"/>
     </g>
-    <rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.primary}" stroke-width="9"/><rect x="48" y="42" width="904" height="1310" rx="56" fill="none" stroke="${contrastInk}" stroke-opacity=".22" stroke-width="3"/>
-  </svg>`;
+
+    <!-- Stadium Lights -->
+    <g filter="url(#neonGlow-${ns})">
+      <ellipse cx="120" cy="200" rx="80" ry="25" fill="#ffffff" transform="rotate(25 120 200)" />
+      <circle cx="90" cy="180" r="8" fill="${palette.primary}" />
+      <circle cx="120" cy="200" r="12" fill="#ffffff" />
+      <circle cx="150" cy="220" r="8" fill="${palette.primary}" />
+      
+      <ellipse cx="880" cy="200" rx="80" ry="25" fill="#ffffff" transform="rotate(-25 880 200)" />
+      <circle cx="850" cy="220" r="8" fill="${palette.primary}" />
+      <circle cx="880" cy="200" r="12" fill="#ffffff" />
+      <circle cx="910" cy="180" r="8" fill="${palette.primary}" />
+    </g>
+    <polygon points="120,200 400,1000 -100,1000" fill="url(#lightRay-${ns})" opacity="0.25" />
+    <polygon points="880,200 1100,1000 600,1000" fill="url(#lightRay-${ns})" opacity="0.25" />
+
+    <!-- Player Silhouette Outline -->
+    <path d="M 380 900 C 380 650, 430 500, 500 500 C 570 500, 620 650, 620 900 L 670 1400 L 330 1400 Z" fill="#000" opacity="0.75" filter="url(#dropShadow-${ns})"/>
+    <path d="M 380 900 C 380 650, 430 500, 500 500 C 570 500, 620 650, 620 900 L 670 1400 L 330 1400 Z" fill="none" stroke="url(#metalCore-${ns})" stroke-width="3" opacity="0.6" />
+    
+    <rect x="200" y="600" width="600" height="120" rx="20" fill="#000" opacity="0.6" filter="url(#dropShadow-${ns})" />
+    <text x="500" y="665" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="34" font-weight="800" letter-spacing="10" fill="#ffffff">ADD PLAYER PHOTO</text>
+  `;
+}
+
+function getOuterFrame(palette: PaletteValue, ns: string) {
+  return `
+    <rect x="15" y="15" width="970" height="1370" rx="45" fill="none" stroke="#000" stroke-width="24" filter="url(#dropShadow-${ns})"/>
+    <rect x="25" y="25" width="950" height="1350" rx="35" fill="none" stroke="url(#metalCore-${ns})" stroke-width="16" filter="url(#dropShadow-${ns})"/>
+    <rect x="33" y="33" width="934" height="1334" rx="27" fill="none" stroke="#0a0f18" stroke-width="12" />
+    
+    <rect x="39" y="39" width="922" height="1322" rx="21" fill="none" stroke="${palette.primary}" stroke-width="4" filter="url(#neonGlowTeam-${ns})" />
+    <rect x="39" y="39" width="922" height="1322" rx="21" fill="none" stroke="#ffffff" stroke-width="1.5" />
+    
+    <path d="M 25 120 L 120 25 M 975 120 L 880 25 M 25 1280 L 120 1375 M 975 1280 L 880 1375" stroke="url(#metalCore-${ns})" stroke-width="16" filter="url(#dropShadowSmall-${ns})"/>
+    <path d="M 25 120 L 120 25 M 975 120 L 880 25 M 25 1280 L 120 1375 M 975 1280 L 880 1375" stroke="#000" stroke-width="4" stroke-dasharray="8 8" />
+
+    <circle cx="80" cy="80" r="12" fill="url(#chromeDark-${ns})" stroke="url(#metalCore-${ns})" stroke-width="3" filter="url(#dropShadowSmall-${ns})" />
+    <circle cx="920" cy="80" r="12" fill="url(#chromeDark-${ns})" stroke="url(#metalCore-${ns})" stroke-width="3" filter="url(#dropShadowSmall-${ns})" />
+    <circle cx="80" cy="1320" r="12" fill="url(#chromeDark-${ns})" stroke="url(#metalCore-${ns})" stroke-width="3" filter="url(#dropShadowSmall-${ns})" />
+    <circle cx="920" cy="1320" r="12" fill="url(#chromeDark-${ns})" stroke="url(#metalCore-${ns})" stroke-width="3" filter="url(#dropShadowSmall-${ns})" />
+  `;
 }
 
 function cardContent(project: HypeCardProject) {
-  const player = escapeXml(project.playerName || 'YOUR PLAYER');
+  const player = escapeXml((project.playerName || 'YOUR PLAYER').toUpperCase());
   const number = escapeXml(project.jerseyNumber || '00');
-  const team = escapeXml(project.teamName || 'YOUR TEAM');
-  const details = escapeXml([project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join('  •  ') || 'GAME DAY');
+  const team = escapeXml((project.teamName || 'YOUR TEAM').toUpperCase());
+  const details = escapeXml([project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join('  •  ') || 'GAME DAY').toUpperCase();
   const recognition = escapeXml([
     project.visibility.achievement ? project.achievement : '',
     project.visibility.stat ? project.stat : '',
-  ].filter(Boolean).join('  •  ') || 'MAKE THE MOMENT COUNT');
+  ].filter(Boolean).join('  •  ') || 'MAKE THE MOMENT COUNT').toUpperCase();
   const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
   return { player, number, team, details, recognition, message };
+}
+
+function buildSluggerCardSvg(project: HypeCardProject) {
+  const palette = palettes[project.palette];
+  const content = cardContent(project);
+  
+  const frame = { x: 33, y: 33, width: 934, height: 1334 };
+  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  
+  const photo = project.photo
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 700px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : getArenaBg(palette);
+
+  const logo = project.logo
+    ? `<image href="${project.logo}" x="400" y="320" width="200" height="140" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    : '';
+
+  const motion = project.overlay
+    ? `<g opacity="0.4" filter="url(#neonGlowTeam)">
+         <path d="M-100 400 L 1100 200" stroke="${palette.accent}" stroke-width="6" />
+         <path d="M-100 600 L 1100 400" stroke="${palette.primary}" stroke-width="4" />
+         <path d="M-100 800 L 1100 600" stroke="#fff" stroke-width="2" />
+       </g>`
+    : '';
+
+  const branding = project.branding
+    ? `<text x="500" y="1310" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    : '';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
+    <defs>
+      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      ${getPremiumDefs(palette)}
+    </defs>
+    
+    <rect width="1000" height="1400" rx="45" fill="#000" />
+    
+    <g clip-path="url(#cardClip)">
+      <rect x="30" y="30" width="940" height="1340" fill="url(#bgGradient)" />
+      
+      ${photo}
+      
+      <rect x="30" y="30" width="940" height="1340" fill="url(#fadeToDark)" opacity="0.5"/>
+      <rect x="30" y="700" width="940" height="670" fill="url(#fadeToDark)" opacity="0.8"/>
+      
+      ${motion}
+      
+      <text x="500" y="900" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="700" font-weight="800" letter-spacing="-20" fill="#fff" opacity="0.05">#${content.number}</text>
+      
+      ${logo}
+
+      <g transform="translate(500, 240)">
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="#000" stroke="#000" stroke-width="34" transform="translate(0, 16)"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="none" stroke="${palette.primary}" stroke-width="26" transform="translate(0, 8)" filter="url(#neonGlowTeam)"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="280" font-weight="800" letter-spacing="-10" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="6" filter="url(#dropShadowSmall)">HYPE</text>
+      </g>
+
+      ${getFlare(200, 100, 3, '#fff')}
+      ${getFlare(800, 260, 2.5, palette.accent)}
+      
+      <!-- Angled base -->
+      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="#000" filter="url(#dropShadow)" />
+      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="url(#chromeDark)" />
+      <path d="M 10 1080 L 990 930 L 990 1400 L 10 1400 Z" fill="url(#carbonFiber)" opacity="0.9"/>
+      
+      <!-- Thick Metallic Slash -->
+      <path d="M -10 1080 L 1010 930" stroke="#000" stroke-width="28" filter="url(#dropShadow)" />
+      <path d="M -10 1080 L 1010 930" stroke="url(#metalCore)" stroke-width="18" />
+      <path d="M -10 1088 L 1010 938" stroke="${palette.accent}" stroke-width="6" filter="url(#neonGlowTeam)" />
+
+      <!-- Thick Chrome Nameplate -->
+      <rect x="70" y="1010" width="860" height="150" rx="24" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow)" />
+      <rect x="70" y="1010" width="860" height="150" rx="24" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="12" />
+      <rect x="78" y="1018" width="844" height="134" rx="16" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="3" />
+      
+      <text x="500" y="1115" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 800, 100, 0.75)}" font-weight="800" letter-spacing="2" fill="#000" stroke="#000" stroke-width="14" transform="translate(0,8)"></text>
+      <text x="500" y="1115" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 800, 100, 0.75)}" font-weight="800" letter-spacing="2" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="3" filter="url(#dropShadowSmall)">${content.player}</text>
+      
+      <text x="500" y="1210" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • #' + content.number, 800, 26, 0.65)}" font-weight="800" letter-spacing="4" fill="${palette.accent}" filter="url(#neonGlow)">${content.team}  •  #${content.number}</text>
+      <text x="500" y="1245" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.details, 800, 22, 0.65)}" font-weight="800" letter-spacing="4" fill="#ffffff" opacity="0.9">${content.details}</text>
+      <text x="500" y="1285" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
+      
+      ${branding}
+    </g>
+    
+    ${getOuterFrame(palette)}
+  </svg>`;
 }
 
 function buildAllStarCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
-  const frame = { x: 170, y: 190, width: 660, height: 660 };
+  
+  const frame = { x: 150, y: 300, width: 700, height: 700 };
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 520px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : `<circle cx="500" cy="520" r="330" fill="${palette.ink}" opacity=".12"/><circle cx="500" cy="445" r="88" fill="${palette.ink}" opacity=".2"/><path d="M300 820 Q500 530 700 820Z" fill="${palette.ink}" opacity=".2"/><text x="500" y="760" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.ink}" opacity=".65">ADD PLAYER PHOTO</text>`;
-  const logo = project.logo ? `<image href="${project.logo}" x="428" y="72" width="144" height="92" preserveAspectRatio="xMidYMid meet"/>` : `<circle cx="500" cy="118" r="46" fill="${palette.primary}"/><text x="500" y="133" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="44" font-weight="800" fill="${palette.paper}">${content.number}</text>`;
-  const message = content.message ? `<text x="500" y="1278" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="19" font-weight="700" letter-spacing="2" fill="${palette.paper}" opacity=".78">${content.message}</text>` : '';
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 650px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<g transform="translate(0, 150)">${getArenaBg(palette)}</g>`;
+
+  const logo = project.logo
+    ? `<image href="${project.logo}" x="400" y="860" width="200" height="140" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    : `<circle cx="500" cy="930" r="70" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="8" filter="url(#dropShadow)"/><text x="500" y="955" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="70" font-weight="800" fill="#fff">#${content.number}</text>`;
+
+  const branding = project.branding
+    ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    : '';
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
-    <defs><clipPath id="allStarCircle"><circle cx="500" cy="520" r="330"/></clipPath><linearGradient id="allStarBg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${palette.paper}"/><stop offset="1" stop-color="${palette.secondary}"/></linearGradient></defs>
-    <rect width="1000" height="1400" rx="72" fill="url(#allStarBg)"/>
-    <path d="M0 0H1000V250Q760 330 500 250T0 250Z" fill="${palette.ink}"/>
-    <path d="M0 1115Q220 1030 420 1100T1000 1040V1400H0Z" fill="${palette.ink}"/>
-    <path d="M0 1120Q250 1010 510 1118T1000 1060" fill="none" stroke="${palette.accent}" stroke-width="22" opacity=".9"/>
-    <text x="500" y="62" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="${palette.paper}" opacity=".7">ALL-STAR PROFILE</text>
-    ${logo}
-    <circle cx="500" cy="520" r="354" fill="${palette.accent}" opacity=".95"/><circle cx="500" cy="520" r="340" fill="${palette.paper}"/>
-    <g clip-path="url(#allStarCircle)">${photo}</g>
-    <circle cx="500" cy="520" r="330" fill="none" stroke="${palette.paper}" stroke-width="16"/>
-    <text x="500" y="930" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="-4" fill="${palette.ink}">${content.player}</text>
-    <text x="500" y="983" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.primary}">${content.team.toUpperCase()}  •  #${content.number}</text>
-    <text x="500" y="1040" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="19" font-weight="800" letter-spacing="3" fill="${palette.ink}" opacity=".78">${content.details.toUpperCase()}</text>
-    <rect x="140" y="1135" width="720" height="94" rx="26" fill="${palette.primary}"/><text x="500" y="1195" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" fill="${palette.paper}">${content.recognition.toUpperCase()}</text>
-    ${message}<rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.primary}" stroke-width="9"/>
+    <defs>
+      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      <clipPath id="shieldClip">
+        <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" />
+      </clipPath>
+      ${getPremiumDefs(palette)}
+    </defs>
+    
+    <rect width="1000" height="1400" rx="45" fill="#000" />
+    
+    <g clip-path="url(#cardClip)">
+      <rect x="30" y="30" width="940" height="1340" fill="url(#metalDark)" />
+      <rect x="30" y="30" width="940" height="1340" fill="url(#carbonFiber)" opacity="0.8"/>
+      
+      <circle cx="500" cy="700" r="450" fill="${palette.primary}" opacity="0.65" filter="url(#blur10)" />
+      
+      <g transform="translate(500, 180)">
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="#000" stroke="#000" stroke-width="28" transform="translate(0, 14)"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="none" stroke="${palette.accent}" stroke-width="22" transform="translate(0, 7)" filter="url(#neonGlowTeam)"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="180" font-weight="800" letter-spacing="4" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="5" filter="url(#dropShadowSmall)">ALL STAR</text>
+      </g>
+
+      <path d="M 500 230 C 760 230, 900 420, 900 720 C 900 990, 500 1180, 500 1180 C 500 1180, 100 990, 100 720 C 100 420, 240 230, 500 230 Z" fill="#000" filter="url(#dropShadow)" />
+      <path d="M 500 230 C 760 230, 900 420, 900 720 C 900 990, 500 1180, 500 1180 C 500 1180, 100 990, 100 720 C 100 420, 240 230, 500 230 Z" fill="url(#teamMetal)" />
+      <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" fill="#000" />
+      
+      <g clip-path="url(#shieldClip)">
+        ${photo}
+        <rect x="120" y="250" width="760" height="900" fill="url(#fadeToDark)" />
+      </g>
+      
+      <path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" fill="none" stroke="url(#metalCore)" stroke-width="14" filter="url(#dropShadowSmall)" />
+      <path d="M 500 256 C 734 256, 874 433, 874 720 C 874 964, 500 1144, 500 1144 C 500 1144, 126 964, 126 720 C 126 433, 266 256, 500 256 Z" fill="none" stroke="${palette.accent}" stroke-width="5" filter="url(#neonGlowTeam)" />
+      
+      ${logo}
+      
+      ${getFlare(150, 450, 2.5, '#fff')}
+      ${getFlare(850, 450, 2.5, '#fff')}
+
+      <rect x="150" y="1030" width="700" height="150" rx="30" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow)" />
+      <rect x="150" y="1030" width="700" height="150" rx="30" fill="url(#chromeDark)" stroke="url(#metalCore)" stroke-width="12" />
+      <rect x="158" y="1038" width="684" height="134" rx="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" />
+      
+      <text x="500" y="1120" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 620, 80, 0.75)}" font-weight="800" fill="#fff" stroke="#000" stroke-width="10" transform="translate(0,6)"></text>
+      <text x="500" y="1120" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 620, 80, 0.75)}" font-weight="800" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="2" filter="url(#dropShadowSmall)">${content.player}</text>
+      
+      <text x="500" y="1165" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 640, 22, 0.65)}" font-weight="800" letter-spacing="4" fill="${palette.accent}">${content.team}  •  ${content.details}</text>
+      
+      <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="#000" stroke="#000" stroke-width="12" filter="url(#dropShadowSmall)" />
+      <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="6" />
+      <text x="500" y="1242" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 420, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
+      
+      <text x="500" y="1295" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>
+      
+      ${branding}
+    </g>
+    
+    ${getOuterFrame(palette)}
   </svg>`;
 }
 
 function buildRookieCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
-  const frame = { x: 96, y: 190, width: 808, height: 650 };
+  
+  const frame = { x: 33, y: 33, width: 934, height: 1334 };
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 515px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : `<rect x="96" y="190" width="808" height="650" fill="#12243b"/><circle cx="500" cy="420" r="96" fill="${palette.paper}" opacity=".18"/><path d="M260 805Q500 520 740 805Z" fill="${palette.paper}" opacity=".18"/><text x="500" y="730" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.paper}" opacity=".65">ADD PLAYER PHOTO</text>`;
-  const logo = project.logo ? `<image href="${project.logo}" x="770" y="76" width="125" height="82" preserveAspectRatio="xMidYMid meet"/>` : '';
-  const message = content.message ? `<text x="95" y="1290" font-family="DM Sans,sans-serif" font-size="19" font-weight="700" fill="${palette.paper}" opacity=".74">${content.message}</text>` : '';
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 500px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : getArenaBg(palette);
+
+  const logo = project.logo
+    ? `<image href="${project.logo}" x="760" y="60" width="160" height="110" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    : '';
+
+  const motion = project.overlay
+    ? `<g opacity="0.85">
+         <path d="M -100 200 L 1100 900" stroke="${palette.accent}" stroke-width="10" filter="url(#neonGlowTeam)"/>
+         <path d="M -100 260 L 1100 960" stroke="#fff" stroke-width="4" filter="url(#neonGlowTeam)"/>
+         <path d="M -100 320 L 1100 1020" stroke="${palette.primary}" stroke-width="8" filter="url(#neonGlowTeam)"/>
+       </g>`
+    : '';
+
+  const branding = project.branding
+    ? `<text x="940" y="1335" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX</text>`
+    : '';
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
-    <defs><clipPath id="rookiePhoto"><path d="M96 190H904V770L96 840Z"/></clipPath><linearGradient id="rookieBg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${palette.ink}"/><stop offset="1" stop-color="${palette.secondary}"/></linearGradient></defs>
-    <rect width="1000" height="1400" rx="72" fill="url(#rookieBg)"/><path d="M0 0H1000V330L0 650Z" fill="${palette.primary}" opacity=".18"/><rect x="66" y="24" width="24" height="1346" rx="12" fill="${palette.accent}"/>
-    <text x="96" y="132" font-family="Space Grotesk,sans-serif" font-size="25" font-weight="800" letter-spacing="6" fill="${palette.paper}" opacity=".78">ROOKIE CARD</text>${logo}
-    <text x="62" y="1000" font-family="Space Grotesk,sans-serif" font-size="290" font-weight="800" letter-spacing="-20" fill="${palette.accent}" opacity=".2">#${content.number}</text>
-    <g clip-path="url(#rookiePhoto)">${photo}</g><path d="M96 190H904V770L96 840Z" fill="none" stroke="${palette.accent}" stroke-width="8"/>
-    <rect x="96" y="815" width="808" height="140" fill="${palette.paper}"/><text x="130" y="895" font-family="Space Grotesk,sans-serif" font-size="72" font-weight="800" letter-spacing="-4" fill="${palette.ink}">${content.player}</text>
-    <text x="130" y="1005" font-family="DM Sans,sans-serif" font-size="22" font-weight="800" letter-spacing="4" fill="${palette.paper}">${content.team.toUpperCase()}  •  ${content.details.toUpperCase()}</text>
-    <rect x="96" y="1045" width="808" height="134" rx="18" fill="${palette.primary}"/><text x="130" y="1105" font-family="DM Sans,sans-serif" font-size="18" font-weight="800" letter-spacing="3" fill="${palette.paper}" opacity=".75">SEASON HIGHLIGHT</text><text x="130" y="1152" font-family="Space Grotesk,sans-serif" font-size="29" font-weight="800" fill="${palette.paper}">${content.recognition.toUpperCase()}</text>
-    ${message}<text x="904" y="1348" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="4" fill="${palette.paper}" opacity=".56">LEAGUEMATRIX</text><rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.accent}" stroke-width="9"/>
+    <defs>
+      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      <clipPath id="rookiePhoto">
+        <path d="M 30 30 L 970 30 L 970 850 L 30 1100 Z" />
+      </clipPath>
+      ${getPremiumDefs(palette)}
+    </defs>
+    
+    <rect width="1000" height="1400" rx="45" fill="#000" />
+    
+    <g clip-path="url(#cardClip)">
+      <rect x="30" y="30" width="940" height="1340" fill="url(#metalDark)" />
+      <rect x="30" y="30" width="940" height="1340" fill="url(#carbonFiber)" opacity="0.9"/>
+      
+      <text x="60" y="1050" font-family="Space Grotesk,sans-serif" font-size="550" font-weight="800" letter-spacing="-30" fill="url(#teamMetal)" opacity="0.4" filter="url(#dropShadow)">#${content.number}</text>
+      
+      <g clip-path="url(#rookiePhoto)">
+        ${photo}
+        <rect x="30" y="550" width="940" height="550" fill="url(#fadeToDark)" opacity="0.8"/>
+      </g>
+      
+      ${motion}
+      
+      <path d="M -10 1110 L 1010 840" stroke="#000" stroke-width="34" filter="url(#dropShadow)" />
+      <path d="M -10 1110 L 1010 840" stroke="url(#metalCore)" stroke-width="24" />
+      <path d="M -10 1118 L 1010 848" stroke="${palette.accent}" stroke-width="8" filter="url(#neonGlowTeam)" />
+      
+      <g transform="translate(110, 420) rotate(-90)">
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="#000" stroke="#000" stroke-width="20" transform="translate(0,10)"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="none" stroke="${palette.accent}" stroke-width="16" transform="translate(0,5)" filter="url(#neonGlowTeam)"></text>
+        <text x="0" y="0" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="140" font-weight="800" letter-spacing="16" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="4" filter="url(#dropShadowSmall)">ROOKIE</text>
+      </g>
+      
+      ${logo}
+      
+      <g transform="translate(70, 1140)">
+        <text x="0" y="0" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 860, 120, 0.75)}" font-weight="800" letter-spacing="-2" fill="#000" stroke="#000" stroke-width="16" transform="translate(0,8)"></text>
+        <text x="0" y="0" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 860, 120, 0.75)}" font-weight="800" letter-spacing="-2" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="3" filter="url(#dropShadowSmall)">${content.player}</text>
+        
+        <text x="5" y="50" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 800, 26, 0.65)}" font-weight="800" letter-spacing="4" fill="${palette.accent}" filter="url(#neonGlow)">${content.team}  •  ${content.details}</text>
+        
+        <rect x="0" y="70" width="860" height="110" rx="20" fill="#000" stroke="#000" stroke-width="16" filter="url(#dropShadow)" />
+        <rect x="0" y="70" width="860" height="110" rx="20" fill="url(#teamMetal)" stroke="url(#metalCore)" stroke-width="8" />
+        <text x="30" y="110" font-family="DM Sans,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="#fff" opacity="0.9">SEASON HIGHLIGHT</text>
+        <text x="30" y="150" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 42, 0.75)}" font-weight="800" fill="#fff" filter="url(#dropShadowSmall)">${content.recognition}</text>
+      </g>
+      
+      <text x="70" y="1335" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>
+      
+      ${branding}
+    </g>
+    
+    ${getOuterFrame(palette)}
   </svg>`;
 }
 
 function buildDugoutCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const content = cardContent(project);
-  const frame = { x: 106, y: 190, width: 788, height: 610 };
+  
+  const frame = { x: 70, y: 240, width: 860, height: 660 };
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 495px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
-    : `<rect x="106" y="190" width="788" height="610" fill="${palette.ink}" opacity=".14"/><circle cx="500" cy="410" r="92" fill="${palette.ink}" opacity=".18"/><path d="M275 770Q500 510 725 770Z" fill="${palette.ink}" opacity=".18"/><text x="500" y="690" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.ink}" opacity=".62">ADD PLAYER PHOTO</text>`;
-  const logo = project.logo ? `<image href="${project.logo}" x="108" y="66" width="112" height="80" preserveAspectRatio="xMidYMid meet"/>` : '';
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 560px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<g transform="translate(0, 60)">${getArenaBg(palette)}</g>`;
+
+  const logo = project.logo
+    ? `<image href="${project.logo}" x="70" y="75" width="140" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#dropShadow)"/>`
+    : '';
+
+  const branding = project.branding
+    ? `<text x="500" y="1330" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    : '';
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
-    <defs><clipPath id="dugoutPhoto"><rect x="106" y="190" width="788" height="610" rx="28"/></clipPath></defs>
-    <rect width="1000" height="1400" rx="72" fill="${palette.paper}"/><rect y="0" width="1000" height="168" fill="${palette.ink}"/><path d="M0 168H1000L880 230H120Z" fill="${palette.primary}"/>
-    ${logo}<text x="880" y="92" text-anchor="end" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="4" fill="${palette.paper}" opacity=".76">GAME DAY / ${content.number}</text>
-    <rect x="76" y="160" width="848" height="678" rx="36" fill="${palette.paper}" stroke="${palette.primary}" stroke-width="8"/><g clip-path="url(#dugoutPhoto)">${photo}</g><rect x="106" y="190" width="788" height="610" rx="28" fill="none" stroke="${palette.paper}" stroke-width="5"/>
-    <rect x="76" y="875" width="848" height="258" rx="28" fill="${palette.ink}"/><text x="118" y="958" font-family="DM Sans,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="${palette.accent}">PLAYER SPOTLIGHT</text><text x="118" y="1035" font-family="Space Grotesk,sans-serif" font-size="70" font-weight="800" letter-spacing="-4" fill="${palette.paper}">${content.player}</text><text x="118" y="1088" font-family="DM Sans,sans-serif" font-size="19" font-weight="800" letter-spacing="3" fill="${palette.paper}" opacity=".75">${content.team.toUpperCase()}  •  ${content.details.toUpperCase()}</text>
-    <rect x="76" y="1170" width="848" height="100" rx="24" fill="${palette.primary}"/><text x="500" y="1232" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" fill="${palette.paper}">${content.recognition.toUpperCase()}</text><text x="500" y="1318" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" fill="${palette.ink}" opacity=".7">${escapeXml(content.message || 'BRING THE ENERGY.')}</text><rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.ink}" stroke-width="9"/>
+    <defs>
+      <clipPath id="cardClip"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>
+      <clipPath id="dugoutPhoto"><rect x="70" y="240" width="860" height="660" rx="25" /></clipPath>
+      ${getPremiumDefs(palette)}
+    </defs>
+    
+    <rect width="1000" height="1400" rx="45" fill="#000" />
+    
+    <g clip-path="url(#cardClip)">
+      <rect x="30" y="30" width="940" height="1340" fill="url(#metalDark)" />
+      
+      <!-- Top Block -->
+      <path d="M 30 30 L 970 30 L 970 200 L 780 200 L 720 120 L 30 120 Z" fill="url(#teamMetal)" />
+      ${logo}
+      <text x="940" y="90" text-anchor="end" font-family="Space Grotesk,sans-serif" font-size="46" font-weight="800" letter-spacing="4" fill="#fff" filter="url(#dropShadowSmall)">#${content.number}</text>
+      
+      <!-- GAME DAY Badge -->
+      <g transform="translate(500, 160)">
+        <rect x="-260" y="-65" width="520" height="130" fill="#000" rx="25" stroke="#000" stroke-width="20" filter="url(#dropShadow)"/>
+        <rect x="-260" y="-65" width="520" height="130" fill="url(#chromeDark)" stroke="url(#metalCore)" stroke-width="10" rx="25" />
+        <rect x="-252" y="-57" width="504" height="114" fill="url(#carbonFiber)" rx="19" />
+        <text x="0" y="22" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="8" fill="none" stroke="${palette.accent}" stroke-width="12" filter="url(#neonGlowTeam)">GAME DAY</text>
+        <text x="0" y="22" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="8" fill="url(#chromeText)" stroke="url(#metalCore)" stroke-width="2">GAME DAY</text>
+      </g>
+
+      <path d="M 720 120 L 970 120" stroke="${palette.accent}" stroke-width="8" filter="url(#neonGlowTeam)" />
+      
+      <rect x="50" y="220" width="900" height="700" rx="35" fill="#0a0a0a" stroke="url(#metalCore)" stroke-width="16" filter="url(#dropShadow)" />
+      <g clip-path="url(#dugoutPhoto)">
+        ${photo}
+        <rect x="70" y="650" width="860" height="250" fill="url(#fadeToDark)" />
+      </g>
+      <rect x="70" y="240" width="860" height="660" rx="25" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="6" />
+      
+      <rect x="70" y="940" width="860" height="350" rx="25" fill="#000" stroke="#000" stroke-width="20" filter="url(#dropShadow)" />
+      <rect x="70" y="940" width="860" height="350" rx="25" fill="#080c14" stroke="url(#metalCore)" stroke-width="14" />
+      <rect x="70" y="940" width="860" height="350" rx="25" fill="url(#stadiumGrid)" opacity="0.7" />
+      <rect x="78" y="948" width="844" height="334" rx="19" fill="none" stroke="rgba(0,0,0,0.8)" stroke-width="8" />
+      
+      <text x="110" y="1010" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="8" fill="${palette.accent}" filter="url(#neonGlowTeam)">PLAYER SPOTLIGHT // DATA</text>
+      
+      <text x="110" y="1110" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.player, 780, 110, 0.75)}" font-weight="800" letter-spacing="1" fill="#fff" filter="url(#dropShadowSmall)">${content.player}</text>
+      
+      <text x="110" y="1165" font-family="DM Sans,sans-serif" font-size="${fitText(content.team + ' • ' + content.details, 780, 26, 0.65)}" font-weight="800" letter-spacing="4" fill="rgba(255,255,255,0.8)">${content.team}  •  ${content.details}</text>
+      
+      <path d="M 110 1200 L 890 1200" stroke="rgba(255,255,255,0.15)" stroke-width="6" stroke-dasharray="8 8" />
+      
+      <text x="110" y="1255" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 780, 36, 0.75)}" font-weight="800" fill="${palette.accent}" filter="url(#neonGlowTeam)">${content.recognition}</text>
+      
+      <text x="890" y="1255" text-anchor="end" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>
+      
+      ${branding}
+    </g>
+    
+    ${getOuterFrame(palette)}
   </svg>`;
 }
 
