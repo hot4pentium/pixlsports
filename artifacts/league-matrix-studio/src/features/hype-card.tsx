@@ -197,6 +197,7 @@ function normalizeProject(project: HypeCardProject): HypeCardProject {
   return {
     ...defaults,
     ...project,
+    layout: project.layout ?? defaults.layout,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
     visibility: { ...defaults.visibility, ...project.visibility },
@@ -452,6 +453,39 @@ function PreviewCanvas({ project }: { project: HypeCardProject }) {
   );
 }
 
+function LayoutOption({
+  layout,
+  project,
+  selected,
+  onSelect,
+}: {
+  layout: (typeof cardLayouts)[number];
+  project: HypeCardProject;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const svg = useMemo(() => buildHypeCardSvg({ ...project, format: 'card', layout: layout.id }), [layout.id, project]);
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`group overflow-hidden rounded-2xl border p-2 text-left transition-all ${selected ? 'border-primary bg-[#fff0e9] ring-2 ring-primary/40' : 'border-border bg-background hover:border-primary/60'}`}
+      aria-pressed={selected}
+      data-testid={`button-card-layout-${layout.id}`}
+    >
+      <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-[#ddd3c4]">
+        <div className="absolute inset-0" dangerouslySetInnerHTML={{ __html: svg }} />
+        {selected && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"><Check className="h-3.5 w-3.5" /></span>}
+      </div>
+      <span className="mt-2.5 flex items-center justify-between gap-2">
+        <span className="text-xs font-bold">{layout.name}</span>
+        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: layout.tone }} />
+      </span>
+      <span className="mt-1 block text-[10px] leading-relaxed text-muted-foreground">{layout.summary}</span>
+    </button>
+  );
+}
+
 function Section({
   title,
   icon: Icon,
@@ -674,6 +708,7 @@ function HypeCardEditor() {
   };
 
   const template = templates.find((item) => item.id === project.template) ?? templates[0];
+  const activeLayout = cardLayouts.find((item) => item.id === project.layout) ?? cardLayouts[0];
   const photoUpload = (event: ChangeEvent<HTMLInputElement>) =>
     assetUpload(
       event,
@@ -728,21 +763,38 @@ function HypeCardEditor() {
 
         <div className="grid gap-6 lg:grid-cols-[minmax(290px,360px)_1fr]">
           <aside className="order-2 space-y-6 rounded-[22px] border border-border bg-card p-5 lg:order-1 lg:p-6">
-            <Section title="Starting point" icon={Sparkles}>
-              <div className="space-y-2">
-                {templates.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => updateProject('template', item.id)}
-                    className={`w-full rounded-xl border p-3 text-left transition-all ${project.template === item.id ? 'border-primary bg-[#fff0e9] ring-1 ring-primary' : 'border-border bg-background hover:border-primary/60'}`}
-                    aria-pressed={project.template === item.id}
-                  >
-                    <span className="block text-sm font-bold">{item.name}</span>
-                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.summary}</span>
-                  </button>
-                ))}
-              </div>
+            <Section title={project.format === 'card' ? 'Compare card layouts' : 'Starting point'} icon={project.format === 'card' ? LayoutGrid : Sparkles}>
+              {project.format === 'card' ? (
+                <>
+                  <p className="mb-3 text-xs leading-relaxed text-muted-foreground">Your information stays in place while you compare each look.</p>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {cardLayouts.map((layout) => (
+                      <LayoutOption
+                        key={layout.id}
+                        layout={layout}
+                        project={project}
+                        selected={project.layout === layout.id}
+                        onSelect={() => updateProject('layout', layout.id)}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  {templates.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => updateProject('template', item.id)}
+                      className={`w-full rounded-xl border p-3 text-left transition-all ${project.template === item.id ? 'border-primary bg-[#fff0e9] ring-1 ring-primary' : 'border-border bg-background hover:border-primary/60'}`}
+                      aria-pressed={project.template === item.id}
+                    >
+                      <span className="block text-sm font-bold">{item.name}</span>
+                      <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.summary}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </Section>
 
             <Section title="Output format" icon={FileImage}>
@@ -860,7 +912,7 @@ function HypeCardEditor() {
             {showAdvanced && (
               <div className="rounded-2xl border border-[#f5c94d] bg-[#fff8dc] p-4">
                 <p className="text-xs font-bold text-[#243248]">Ready to share?</p>
-                <p className="mt-1 text-xs leading-relaxed text-[#243248]/70">Export uses the same template and settings shown in the live canvas.</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#243248]/70">Export uses the selected layout and the same settings shown in the live canvas.</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Button type="button" variant="secondary" size="sm" disabled={exporting} onClick={() => void exportImage('png')} className="rounded-full"><Download className="h-3.5 w-3.5" /> PNG</Button>
                   <Button type="button" variant="secondary" size="sm" disabled={exporting} onClick={() => void exportImage('jpeg')} className="rounded-full"><Download className="h-3.5 w-3.5" /> JPEG</Button>
@@ -872,7 +924,7 @@ function HypeCardEditor() {
 
           <section className="order-1 min-w-0 lg:order-2">
             <div className="mb-4 flex items-center justify-between">
-              <div><p className="text-xs font-bold uppercase tracking-[.16em] text-muted-foreground">Live canvas</p><p className="mt-1 text-sm text-muted-foreground">{template.name} · {formats.find((item) => item.id === project.format)?.dimensions}</p></div>
+              <div><p className="text-xs font-bold uppercase tracking-[.16em] text-muted-foreground">Live canvas</p><p className="mt-1 text-sm text-muted-foreground">{project.format === 'card' ? activeLayout.name : template.name} · {formats.find((item) => item.id === project.format)?.dimensions}</p></div>
               <span className="hidden items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-[#177d76]" /> Local preview</span>
             </div>
             <PreviewCanvas project={project} />
