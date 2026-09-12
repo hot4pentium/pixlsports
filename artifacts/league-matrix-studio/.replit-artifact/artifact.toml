@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "LeagueMatrix Creative Studio"
+description = "A mobile-first creative studio that helps youth-sports coaches, parents, and organizers create polished hype cards, schedule graphics, and recognition materials without an account."
+version = "1.0.0"
+id = "artifacts/league-matrix-studio"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23652
+
+[services.development]
+run = "pnpm --filter @workspace/league-matrix-studio run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/league-matrix-studio", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/league-matrix-studio/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23652"
+BASE_PATH = "/"
