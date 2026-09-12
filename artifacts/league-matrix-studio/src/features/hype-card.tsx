@@ -69,7 +69,7 @@ type HypeCardProject = {
   };
 };
 
-const STORAGE_KEY = 'leaguematrix-hype-card-project';
+const STORAGE_KEY = 'leaguematrix-hype-card-project-v2';
 const PROJECT_FILE_TYPE = 'application/json';
 
 const templates: Array<{ id: TemplateId; name: string; summary: string }> = [
@@ -79,10 +79,10 @@ const templates: Array<{ id: TemplateId; name: string; summary: string }> = [
 ];
 
 const formats: Array<{ id: HypeFormat; label: string; dimensions: string }> = [
+  { id: 'card', label: 'Vertical card', dimensions: '1000 × 1400' },
   { id: 'square', label: 'Square post', dimensions: '1080 × 1080' },
   { id: 'story', label: 'Vertical story', dimensions: '1080 × 1920' },
   { id: 'landscape', label: 'Landscape', dimensions: '1920 × 1080' },
-  { id: 'card', label: 'Printable 5 × 7', dimensions: '1000 × 1400' },
 ];
 
 const palettes: Record<
@@ -126,7 +126,7 @@ const palettes: Record<
 const defaultProject = (): HypeCardProject => ({
   version: 1,
   template: 'spotlight',
-  format: 'square',
+  format: 'card',
   palette: 'coral',
   background: 'gradient',
   overlay: true,
@@ -218,13 +218,75 @@ function getPhotoFrame(format: HypeFormat) {
   return { x: 60, y: 90, width: width - 120, height: height * 0.47, radius: 38 };
 }
 
+function buildVerticalCardSvg(project: HypeCardProject) {
+  const palette = palettes[project.palette];
+  const frame = { x: 82, y: 172, width: 836, height: 665, radius: 42 };
+  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photo = project.photo
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 504px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<rect x="82" y="172" width="836" height="665" fill="#0e1b31"/><circle cx="500" cy="405" r="105" fill="${palette.paper}" opacity=".16"/><path d="M250 788 Q500 500 750 788Z" fill="${palette.paper}" opacity=".16"/><text x="500" y="710" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="22" font-weight="800" letter-spacing="6" fill="${palette.paper}" opacity=".62">ADD PLAYER PHOTO</text>`;
+  const player = escapeXml(project.playerName || 'YOUR PLAYER');
+  const number = escapeXml(project.jerseyNumber || '00');
+  const team = escapeXml(project.teamName || 'YOUR TEAM');
+  const details = escapeXml([project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join('  •  ') || 'GAME DAY');
+  const recognition = escapeXml([
+    project.visibility.achievement ? project.achievement : '',
+    project.visibility.stat ? project.stat : '',
+  ].filter(Boolean).join('  •  ') || 'MAKE THE MOMENT COUNT');
+  const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
+  const logo = project.logo
+    ? `<image href="${project.logo}" x="422" y="94" width="156" height="104" preserveAspectRatio="xMidYMid meet"/>`
+    : `<g transform="translate(500 144)"><path d="M0-52 16-17 54-17 24 6 34 43 0 21-34 43-24 6-54-17-16-17Z" fill="${palette.accent}"/><circle r="65" fill="none" stroke="${palette.paper}" stroke-opacity=".35" stroke-width="3"/></g>`;
+  const motion = project.overlay
+    ? `<g opacity=".14" stroke="${palette.paper}" stroke-width="4"><path d="M92 250 720 92"/><path d="M168 355 918 167"/><path d="M82 677 818 492"/></g>`
+    : '';
+  const branding = project.branding
+    ? `<text x="500" y="1350" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="${palette.paper}" opacity=".66">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    : '';
+  const paperBackground = project.background === 'paper';
+  const base = paperBackground ? palette.paper : palette.ink;
+  const contrastInk = paperBackground ? palette.ink : palette.paper;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
+    <defs>
+      <linearGradient id="cardBg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${base}"/><stop offset=".62" stop-color="${paperBackground ? palette.paper : '#111d33'}"/><stop offset="1" stop-color="${palette.primary}"/></linearGradient>
+      <linearGradient id="photoWash" x1="0" y1="0" x2="0" y2="1"><stop offset=".48" stop-color="${palette.ink}" stop-opacity="0"/><stop offset="1" stop-color="${palette.ink}" stop-opacity=".94"/></linearGradient>
+      <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="24" stdDeviation="20" flood-color="#0a1424" flood-opacity=".38"/></filter>
+      <clipPath id="cardClip"><rect x="30" y="24" width="940" height="1346" rx="72"/></clipPath>
+      <clipPath id="verticalPhotoClip"><rect x="82" y="172" width="836" height="665" rx="42"/></clipPath>
+    </defs>
+    <g filter="url(#cardShadow)"><rect x="30" y="24" width="940" height="1346" rx="72" fill="url(#cardBg)"/></g>
+    <g clip-path="url(#cardClip)">
+      <path d="M-40 190 565-20H1050V115L120 382Z" fill="${palette.primary}" opacity=".2"/><path d="M-80 284 720-20H1050V42L-20 410Z" fill="${palette.accent}" opacity=".12"/>
+      ${motion}
+      <text x="92" y="150" font-family="Space Grotesk,sans-serif" font-size="122" font-weight="800" letter-spacing="-10" fill="${palette.accent}" opacity=".18">#${number}</text>
+      <rect x="365" y="50" width="270" height="60" rx="30" fill="#08101d" opacity=".52"/><rect x="381" y="64" width="238" height="30" rx="15" fill="${palette.paper}" opacity=".2"/>
+      ${logo}
+      <g clip-path="url(#verticalPhotoClip)">${photo}</g>
+      <rect x="82" y="172" width="836" height="665" rx="42" fill="none" stroke="${palette.paper}" stroke-opacity=".42" stroke-width="6"/>
+      <rect x="82" y="172" width="836" height="665" rx="42" fill="url(#photoWash)"/>
+      <path d="M0 930Q210 790 435 930T1000 905V1400H0Z" fill="${palette.paper}"/><path d="M0 1010Q220 865 455 1015T1000 980V1400H0Z" fill="${palette.secondary}"/><path d="M0 1095Q230 960 470 1100T1000 1060V1400H0Z" fill="${palette.primary}"/><path d="M0 1180Q240 1050 485 1185T1000 1140V1400H0Z" fill="${palette.ink}"/>
+      <rect x="108" y="782" width="784" height="180" rx="32" fill="${palette.primary}" stroke="${palette.paper}" stroke-width="5"/>
+      <text x="500" y="875" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="88" font-weight="800" letter-spacing="-5" fill="${palette.paper}">${player}</text>
+      <text x="500" y="924" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="21" font-weight="800" letter-spacing="6" fill="${palette.paper}" opacity=".86">${team.toUpperCase()}  •  #${number}</text>
+      <text x="500" y="1038" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="21" font-weight="800" letter-spacing="5" fill="${palette.ink}">${details.toUpperCase()}</text>
+      <line x1="405" y1="1070" x2="595" y2="1070" stroke="${palette.accent}" stroke-width="8" stroke-linecap="round"/>
+      <text x="500" y="1162" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="31" font-weight="800" fill="${palette.paper}">${recognition.toUpperCase()}</text>
+      <text x="500" y="1248" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="700" letter-spacing="2" fill="${palette.paper}" opacity=".82">${message}</text>
+      ${branding}
+    </g>
+    <rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.primary}" stroke-width="9"/><rect x="48" y="42" width="904" height="1310" rx="56" fill="none" stroke="${contrastInk}" stroke-opacity=".22" stroke-width="3"/>
+  </svg>`;
+}
+
 function buildHypeCardSvg(project: HypeCardProject) {
+  if (project.format === 'card') return buildVerticalCardSvg(project);
   const { width, height } = getDimensions(project.format);
   const palette = palettes[project.palette];
   const frame = getPhotoFrame(project.format);
   const isLandscape = project.format === 'landscape';
   const isStory = project.format === 'story';
-  const isCard = project.format === 'card';
   const template = templates.find((item) => item.id === project.template) ?? templates[0];
   const photo = project.photo
     ? `<image href="${project.photo}" x="${frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x}" y="${frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter: brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation}); transform-origin: ${frame.x + frame.width / 2}px ${frame.y + frame.height / 2}px; transform: rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})" />`
@@ -238,8 +300,8 @@ function buildHypeCardSvg(project: HypeCardProject) {
       ? `<rect width="${width}" height="${height}" fill="${palette.paper}"/><path d="M0 ${height * .72} Q ${width * .28} ${height * .61} ${width * .56} ${height * .77} T ${width} ${height * .65} V ${height} H0Z" fill="${palette.primary}" opacity=".18"/>`
       : `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${palette.ink}"/><stop offset="100%" stop-color="${palette.primary}"/></linearGradient></defs><rect width="${width}" height="${height}" fill="url(#bg)"/>`;
   const headlineSize = isLandscape ? width * .085 : isStory ? width * .12 : width * .13;
-  const textX = isLandscape ? width * .57 : isStory || isCard ? width * .09 : width * .09;
-  const textY = isLandscape ? height * .35 : isStory ? height * .59 : isCard ? height * .58 : height * .62;
+  const textX = isLandscape ? width * .57 : width * .09;
+  const textY = isLandscape ? height * .35 : isStory ? height * .59 : height * .62;
   const playerLine = [project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join(' · ');
   const achievementLine = [
     project.visibility.achievement ? project.achievement : '',
@@ -269,7 +331,7 @@ function buildHypeCardSvg(project: HypeCardProject) {
   const branding = project.branding
     ? `<text x="${width - 55}" y="${height - 36}" text-anchor="end" font-size="${Math.max(12, width * .012)}" letter-spacing="${Math.max(1, width * .004)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".55">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs>${photoClip}</defs>${background}${geometric}${overlay}${photoMarkup}${textMarkup}${logo}${branding}<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="${isCard ? 26 : 34}" fill="none" stroke="${palette.paper}" stroke-opacity=".18" stroke-width="${Math.max(2, width * .003)}"/><text x="${isLandscape ? width * .57 : width * .09}" y="${isLandscape ? 76 : 64}" font-size="${Math.max(15, width * .014)}" letter-spacing="${Math.max(2, width * .007)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".7">${escapeXml(template.name.toUpperCase())}</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs>${photoClip}</defs>${background}${geometric}${overlay}${photoMarkup}${textMarkup}${logo}${branding}<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="34" fill="none" stroke="${palette.paper}" stroke-opacity=".18" stroke-width="${Math.max(2, width * .003)}"/><text x="${isLandscape ? width * .57 : width * .09}" y="${isLandscape ? 76 : 64}" font-size="${Math.max(15, width * .014)}" letter-spacing="${Math.max(2, width * .007)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".7">${escapeXml(template.name.toUpperCase())}</text></svg>`;
 }
 
 function PreviewCanvas({ project }: { project: HypeCardProject }) {
