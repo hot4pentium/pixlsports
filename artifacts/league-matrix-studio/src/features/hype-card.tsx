@@ -8,6 +8,7 @@ import {
   FlipHorizontal2,
   FolderOpen,
   ImagePlus,
+  LayoutGrid,
   Lightbulb,
   Move,
   Palette,
@@ -29,11 +30,13 @@ import { Switch } from '@/components/ui/switch';
 
 type HypeFormat = 'square' | 'story' | 'landscape' | 'card';
 type TemplateId = 'spotlight' | 'impact' | 'clean';
+type CardLayoutId = 'slugger' | 'all-star' | 'rookie' | 'dugout';
 type PaletteId = 'coral' | 'teal' | 'gold' | 'midnight';
 
 type HypeCardProject = {
   version: 1;
   template: TemplateId;
+  layout: CardLayoutId;
   format: HypeFormat;
   palette: PaletteId;
   background: 'solid' | 'gradient' | 'paper';
@@ -76,6 +79,13 @@ const templates: Array<{ id: TemplateId; name: string; summary: string }> = [
   { id: 'spotlight', name: 'Spotlight', summary: 'Dramatic lights and a player-first frame.' },
   { id: 'impact', name: 'Impact', summary: 'A bold number with motion and team color.' },
   { id: 'clean', name: 'Clean Game Day', summary: 'Modern, clear, and ready for any sport.' },
+];
+
+const cardLayouts: Array<{ id: CardLayoutId; name: string; summary: string; tone: string }> = [
+  { id: 'slugger', name: 'Slugger', summary: 'Wave base and bold nameplate.', tone: '#f36f4c' },
+  { id: 'all-star', name: 'All-Star', summary: 'Centered portrait with a badge feel.', tone: '#f5c94d' },
+  { id: 'rookie', name: 'Rookie', summary: 'Big number, angled crop, hard edge.', tone: '#177d76' },
+  { id: 'dugout', name: 'Dugout', summary: 'Clean frame with a scoreboard finish.', tone: '#243248' },
 ];
 
 const formats: Array<{ id: HypeFormat; label: string; dimensions: string }> = [
@@ -126,6 +136,7 @@ const palettes: Record<
 const defaultProject = (): HypeCardProject => ({
   version: 1,
   template: 'spotlight',
+  layout: 'slugger',
   format: 'card',
   palette: 'coral',
   background: 'gradient',
@@ -218,7 +229,7 @@ function getPhotoFrame(format: HypeFormat) {
   return { x: 60, y: 90, width: width - 120, height: height * 0.47, radius: 38 };
 }
 
-function buildVerticalCardSvg(project: HypeCardProject) {
+function buildSluggerCardSvg(project: HypeCardProject) {
   const palette = palettes[project.palette];
   const frame = { x: 82, y: 172, width: 836, height: 665, radius: 42 };
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
@@ -280,8 +291,100 @@ function buildVerticalCardSvg(project: HypeCardProject) {
   </svg>`;
 }
 
+function cardContent(project: HypeCardProject) {
+  const player = escapeXml(project.playerName || 'YOUR PLAYER');
+  const number = escapeXml(project.jerseyNumber || '00');
+  const team = escapeXml(project.teamName || 'YOUR TEAM');
+  const details = escapeXml([project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join('  •  ') || 'GAME DAY');
+  const recognition = escapeXml([
+    project.visibility.achievement ? project.achievement : '',
+    project.visibility.stat ? project.stat : '',
+  ].filter(Boolean).join('  •  ') || 'MAKE THE MOMENT COUNT');
+  const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
+  return { player, number, team, details, recognition, message };
+}
+
+function buildAllStarCardSvg(project: HypeCardProject) {
+  const palette = palettes[project.palette];
+  const content = cardContent(project);
+  const frame = { x: 170, y: 190, width: 660, height: 660 };
+  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photo = project.photo
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 520px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<circle cx="500" cy="520" r="330" fill="${palette.ink}" opacity=".12"/><circle cx="500" cy="445" r="88" fill="${palette.ink}" opacity=".2"/><path d="M300 820 Q500 530 700 820Z" fill="${palette.ink}" opacity=".2"/><text x="500" y="760" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.ink}" opacity=".65">ADD PLAYER PHOTO</text>`;
+  const logo = project.logo ? `<image href="${project.logo}" x="428" y="72" width="144" height="92" preserveAspectRatio="xMidYMid meet"/>` : `<circle cx="500" cy="118" r="46" fill="${palette.primary}"/><text x="500" y="133" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="44" font-weight="800" fill="${palette.paper}">${content.number}</text>`;
+  const message = content.message ? `<text x="500" y="1278" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="19" font-weight="700" letter-spacing="2" fill="${palette.paper}" opacity=".78">${content.message}</text>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
+    <defs><clipPath id="allStarCircle"><circle cx="500" cy="520" r="330"/></clipPath><linearGradient id="allStarBg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${palette.paper}"/><stop offset="1" stop-color="${palette.secondary}"/></linearGradient></defs>
+    <rect width="1000" height="1400" rx="72" fill="url(#allStarBg)"/>
+    <path d="M0 0H1000V250Q760 330 500 250T0 250Z" fill="${palette.ink}"/>
+    <path d="M0 1115Q220 1030 420 1100T1000 1040V1400H0Z" fill="${palette.ink}"/>
+    <path d="M0 1120Q250 1010 510 1118T1000 1060" fill="none" stroke="${palette.accent}" stroke-width="22" opacity=".9"/>
+    <text x="500" y="62" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="${palette.paper}" opacity=".7">ALL-STAR PROFILE</text>
+    ${logo}
+    <circle cx="500" cy="520" r="354" fill="${palette.accent}" opacity=".95"/><circle cx="500" cy="520" r="340" fill="${palette.paper}"/>
+    <g clip-path="url(#allStarCircle)">${photo}</g>
+    <circle cx="500" cy="520" r="330" fill="none" stroke="${palette.paper}" stroke-width="16"/>
+    <text x="500" y="930" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="82" font-weight="800" letter-spacing="-4" fill="${palette.ink}">${content.player}</text>
+    <text x="500" y="983" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.primary}">${content.team.toUpperCase()}  •  #${content.number}</text>
+    <text x="500" y="1040" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="19" font-weight="800" letter-spacing="3" fill="${palette.ink}" opacity=".78">${content.details.toUpperCase()}</text>
+    <rect x="140" y="1135" width="720" height="94" rx="26" fill="${palette.primary}"/><text x="500" y="1195" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" fill="${palette.paper}">${content.recognition.toUpperCase()}</text>
+    ${message}<rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.primary}" stroke-width="9"/>
+  </svg>`;
+}
+
+function buildRookieCardSvg(project: HypeCardProject) {
+  const palette = palettes[project.palette];
+  const content = cardContent(project);
+  const frame = { x: 96, y: 190, width: 808, height: 650 };
+  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photo = project.photo
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 515px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<rect x="96" y="190" width="808" height="650" fill="#12243b"/><circle cx="500" cy="420" r="96" fill="${palette.paper}" opacity=".18"/><path d="M260 805Q500 520 740 805Z" fill="${palette.paper}" opacity=".18"/><text x="500" y="730" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.paper}" opacity=".65">ADD PLAYER PHOTO</text>`;
+  const logo = project.logo ? `<image href="${project.logo}" x="770" y="76" width="125" height="82" preserveAspectRatio="xMidYMid meet"/>` : '';
+  const message = content.message ? `<text x="95" y="1290" font-family="DM Sans,sans-serif" font-size="19" font-weight="700" fill="${palette.paper}" opacity=".74">${content.message}</text>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
+    <defs><clipPath id="rookiePhoto"><path d="M96 190H904V770L96 840Z"/></clipPath><linearGradient id="rookieBg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${palette.ink}"/><stop offset="1" stop-color="${palette.secondary}"/></linearGradient></defs>
+    <rect width="1000" height="1400" rx="72" fill="url(#rookieBg)"/><path d="M0 0H1000V330L0 650Z" fill="${palette.primary}" opacity=".18"/><rect x="66" y="24" width="24" height="1346" rx="12" fill="${palette.accent}"/>
+    <text x="96" y="132" font-family="Space Grotesk,sans-serif" font-size="25" font-weight="800" letter-spacing="6" fill="${palette.paper}" opacity=".78">ROOKIE CARD</text>${logo}
+    <text x="62" y="1000" font-family="Space Grotesk,sans-serif" font-size="290" font-weight="800" letter-spacing="-20" fill="${palette.accent}" opacity=".2">#${content.number}</text>
+    <g clip-path="url(#rookiePhoto)">${photo}</g><path d="M96 190H904V770L96 840Z" fill="none" stroke="${palette.accent}" stroke-width="8"/>
+    <rect x="96" y="815" width="808" height="140" fill="${palette.paper}"/><text x="130" y="895" font-family="Space Grotesk,sans-serif" font-size="72" font-weight="800" letter-spacing="-4" fill="${palette.ink}">${content.player}</text>
+    <text x="130" y="1005" font-family="DM Sans,sans-serif" font-size="22" font-weight="800" letter-spacing="4" fill="${palette.paper}">${content.team.toUpperCase()}  •  ${content.details.toUpperCase()}</text>
+    <rect x="96" y="1045" width="808" height="134" rx="18" fill="${palette.primary}"/><text x="130" y="1105" font-family="DM Sans,sans-serif" font-size="18" font-weight="800" letter-spacing="3" fill="${palette.paper}" opacity=".75">SEASON HIGHLIGHT</text><text x="130" y="1152" font-family="Space Grotesk,sans-serif" font-size="29" font-weight="800" fill="${palette.paper}">${content.recognition.toUpperCase()}</text>
+    ${message}<text x="904" y="1348" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="4" fill="${palette.paper}" opacity=".56">LEAGUEMATRIX</text><rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.accent}" stroke-width="9"/>
+  </svg>`;
+}
+
+function buildDugoutCardSvg(project: HypeCardProject) {
+  const palette = palettes[project.palette];
+  const content = cardContent(project);
+  const frame = { x: 106, y: 190, width: 788, height: 610 };
+  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photo = project.photo
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${frame.width * project.photoTransform.zoom}" height="${frame.height * project.photoTransform.zoom}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:500px 495px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : `<rect x="106" y="190" width="788" height="610" fill="${palette.ink}" opacity=".14"/><circle cx="500" cy="410" r="92" fill="${palette.ink}" opacity=".18"/><path d="M275 770Q500 510 725 770Z" fill="${palette.ink}" opacity=".18"/><text x="500" y="690" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="20" font-weight="800" letter-spacing="5" fill="${palette.ink}" opacity=".62">ADD PLAYER PHOTO</text>`;
+  const logo = project.logo ? `<image href="${project.logo}" x="108" y="66" width="112" height="80" preserveAspectRatio="xMidYMid meet"/>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400">
+    <defs><clipPath id="dugoutPhoto"><rect x="106" y="190" width="788" height="610" rx="28"/></clipPath></defs>
+    <rect width="1000" height="1400" rx="72" fill="${palette.paper}"/><rect y="0" width="1000" height="168" fill="${palette.ink}"/><path d="M0 168H1000L880 230H120Z" fill="${palette.primary}"/>
+    ${logo}<text x="880" y="92" text-anchor="end" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="4" fill="${palette.paper}" opacity=".76">GAME DAY / ${content.number}</text>
+    <rect x="76" y="160" width="848" height="678" rx="36" fill="${palette.paper}" stroke="${palette.primary}" stroke-width="8"/><g clip-path="url(#dugoutPhoto)">${photo}</g><rect x="106" y="190" width="788" height="610" rx="28" fill="none" stroke="${palette.paper}" stroke-width="5"/>
+    <rect x="76" y="875" width="848" height="258" rx="28" fill="${palette.ink}"/><text x="118" y="958" font-family="DM Sans,sans-serif" font-size="18" font-weight="800" letter-spacing="4" fill="${palette.accent}">PLAYER SPOTLIGHT</text><text x="118" y="1035" font-family="Space Grotesk,sans-serif" font-size="70" font-weight="800" letter-spacing="-4" fill="${palette.paper}">${content.player}</text><text x="118" y="1088" font-family="DM Sans,sans-serif" font-size="19" font-weight="800" letter-spacing="3" fill="${palette.paper}" opacity=".75">${content.team.toUpperCase()}  •  ${content.details.toUpperCase()}</text>
+    <rect x="76" y="1170" width="848" height="100" rx="24" fill="${palette.primary}"/><text x="500" y="1232" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" fill="${palette.paper}">${content.recognition.toUpperCase()}</text><text x="500" y="1318" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="18" font-weight="700" fill="${palette.ink}" opacity=".7">${escapeXml(content.message || 'BRING THE ENERGY.')}</text><rect x="30" y="24" width="940" height="1346" rx="72" fill="none" stroke="${palette.ink}" stroke-width="9"/>
+  </svg>`;
+}
+
 function buildHypeCardSvg(project: HypeCardProject) {
-  if (project.format === 'card') return buildVerticalCardSvg(project);
+  if (project.format === 'card') {
+    if (project.layout === 'all-star') return buildAllStarCardSvg(project);
+    if (project.layout === 'rookie') return buildRookieCardSvg(project);
+    if (project.layout === 'dugout') return buildDugoutCardSvg(project);
+    return buildSluggerCardSvg(project);
+  }
   const { width, height } = getDimensions(project.format);
   const palette = palettes[project.palette];
   const frame = getPhotoFrame(project.format);
