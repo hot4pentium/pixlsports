@@ -1,0 +1,1 @@
+- [Radix dialog runtime conflict](radix-dialog-runtime-conflict.md) — this Vite artifact hit a duplicate-React hook failure when Radix Dialog was newly optimized.

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft,
   Check,
   Download,
+  Eye,
   FileImage,
   FlipHorizontal2,
   FolderOpen,
@@ -444,11 +445,78 @@ function PreviewCanvas({ project }: { project: HypeCardProject }) {
   return (
     <div className="paper-grid flex min-h-[450px] items-center justify-center overflow-hidden rounded-[24px] border border-border bg-[#e8dfd0] p-4 sm:min-h-[650px] sm:p-8">
       <div
-        className="max-h-[76vh] w-full max-w-[760px] overflow-hidden rounded-[18px] shadow-[14px_18px_0_rgba(36,50,72,.14)]"
+        className="hype-svg-preview max-h-[76vh] w-full max-w-[760px] overflow-hidden rounded-[18px] shadow-[14px_18px_0_rgba(36,50,72,.14)]"
         style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
         data-testid="hype-preview-canvas"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
+    </div>
+  );
+}
+
+function MobilePreviewDialog({
+  project,
+  open,
+  onOpenChange,
+  title,
+}: {
+  project: HypeCardProject;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+}) {
+  const svg = useMemo(() => buildHypeCardSvg(project), [project]);
+  const dimensions = getDimensions(project.format);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onOpenChange(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+      previousFocus?.focus();
+    };
+  }, [open, onOpenChange]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4">
+      <button type="button" className="absolute inset-0 bg-[#101827]/85" onClick={() => onOpenChange(false)} aria-label="Close card preview" />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mobile-preview-title"
+        aria-describedby="mobile-preview-description"
+        className="relative z-10 max-h-[96dvh] w-full max-w-xl overflow-y-auto rounded-[26px] border border-border bg-[#e8dfd0] p-4 shadow-2xl sm:p-6"
+      >
+        <button ref={closeButtonRef} type="button" onClick={() => onOpenChange(false)} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm" aria-label="Close card preview">
+          <X className="h-4 w-4" />
+        </button>
+        <div className="pr-12 text-left">
+          <h2 id="mobile-preview-title" className="font-display text-xl font-bold">Your live card</h2>
+          <p id="mobile-preview-description" className="mt-1 text-sm text-muted-foreground">{title} · {dimensions.width} × {dimensions.height}. This preview updates as you edit.</p>
+        </div>
+        <div className="paper-grid flex min-h-0 items-center justify-center rounded-[20px] border border-border p-3">
+          <div
+            className="hype-svg-preview w-full overflow-hidden rounded-[16px] shadow-[10px_12px_0_rgba(36,50,72,.14)]"
+            style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
+            data-testid="mobile-hype-preview-canvas"
+            dangerouslySetInnerHTML={{ __html: svg }}
+          />
+        </div>
+        <Button type="button" onClick={() => onOpenChange(false)} className="w-full rounded-full">
+          Back to editing
+        </Button>
+      </section>
     </div>
   );
 }
@@ -474,7 +542,7 @@ function LayoutOption({
       data-testid={`button-card-layout-${layout.id}`}
     >
       <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-[#ddd3c4]">
-        <div className="absolute inset-0" dangerouslySetInnerHTML={{ __html: svg }} />
+        <div className="hype-svg-preview absolute inset-0" dangerouslySetInnerHTML={{ __html: svg }} />
         {selected && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"><Check className="h-3.5 w-3.5" /></span>}
       </div>
       <span className="mt-2.5 flex items-center justify-between gap-2">
@@ -575,6 +643,7 @@ function HypeCardEditor() {
   });
   const [notice, setNotice] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [validation, setValidation] = useState('');
 
@@ -724,7 +793,7 @@ function HypeCardEditor() {
 
   return (
     <div className="noise min-h-dvh bg-background">
-      <div className="border-b border-border bg-background">
+      <div className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-8 lg:px-12">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/studio" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground" aria-label="Back to studio">
@@ -739,6 +808,15 @@ function HypeCardEditor() {
           </div>
           <div className="flex items-center gap-2">
             {notice && <span className="hidden items-center gap-1.5 text-xs font-semibold text-secondary sm:flex" role="status"><Check className="h-3.5 w-3.5" /> {notice}</span>}
+            <button
+              type="button"
+              onClick={() => setMobilePreviewOpen(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-[#243248] px-2.5 text-xs font-bold text-[#f9f3e8] shadow-sm lg:hidden"
+              aria-label={`Open full preview of ${project.format === 'card' ? activeLayout.name : template.name} card`}
+              data-testid="button-open-mobile-preview"
+            >
+              <Eye className="h-4 w-4 text-[#f5c94d]" /> <span className="hidden min-[360px]:inline">Preview</span>
+            </button>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-bold transition-colors hover:bg-muted">
               <FolderOpen className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Open</span>
               <input type="file" accept=".lmx,.json,application/json" className="sr-only" onChange={openProjectFile} />
@@ -750,7 +828,7 @@ function HypeCardEditor() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 lg:px-12 lg:py-10">
+      <main className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-8 lg:px-12 lg:py-10">
         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[.18em] text-secondary">Build your graphic</p>
@@ -922,7 +1000,7 @@ function HypeCardEditor() {
             )}
           </aside>
 
-          <section className="order-1 min-w-0 lg:order-2">
+          <section className="order-1 min-w-0 lg:order-2 lg:sticky lg:top-24 lg:self-start">
             <div className="mb-4 flex items-center justify-between">
               <div><p className="text-xs font-bold uppercase tracking-[.16em] text-muted-foreground">Live canvas</p><p className="mt-1 text-sm text-muted-foreground">{project.format === 'card' ? activeLayout.name : template.name} · {formats.find((item) => item.id === project.format)?.dimensions}</p></div>
               <span className="hidden items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-[#177d76]" /> Local preview</span>
@@ -936,6 +1014,12 @@ function HypeCardEditor() {
           </section>
         </div>
       </main>
+      <MobilePreviewDialog
+        project={project}
+        open={mobilePreviewOpen}
+        onOpenChange={setMobilePreviewOpen}
+        title={project.format === 'card' ? activeLayout.name : template.name}
+      />
     </div>
   );
 }
