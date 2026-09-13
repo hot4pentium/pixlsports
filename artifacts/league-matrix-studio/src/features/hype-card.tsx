@@ -160,7 +160,31 @@ function LayoutOption({
   onSelect: () => void;
 }) {
   const ns = 'preview-' + layout.id;
-  const svg = useMemo(() => buildHypeCardSvg({ ...project, format: 'card', layout: layout.id }, 'all', ns), [layout.id, project]);
+  const svg = useMemo(
+    () => buildHypeCardSvg({ ...project, format: 'card', layout: layout.id }, 'all', ns),
+    [
+      layout.id,
+      project.headline,
+      project.mediaType,
+      project.photo,
+      project.palette,
+      project.overlay,
+      project.branding,
+      project.playerName,
+      project.jerseyNumber,
+      project.teamName,
+      project.position,
+      project.grade,
+      project.stat,
+      project.achievement,
+      project.coachMessage,
+      project.logo,
+      project.visibility.grade,
+      project.visibility.stat,
+      project.visibility.achievement,
+      project.visibility.coachMessage,
+    ],
+  );
   return (
     <button
       type="button"
@@ -278,8 +302,10 @@ function PreviewArtwork({
   const dimensions = getDimensions(project.format);
   const clipInfo = getPhotoClipInfo(project, ns);
   const frame = project.format === 'card' ? STADIUM_MEDIA_FRAME : getPhotoFrame(project.format);
+  const hasVideo = project.mediaType === 'video' && Boolean(videoUrl);
+  const hasImage = project.mediaType !== 'video' && Boolean(project.photo);
 
-  if (project.mediaType !== 'video' || !videoUrl) {
+  if (!hasVideo && !hasImage) {
     return (
       <div
         className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
@@ -312,16 +338,26 @@ function PreviewArtwork({
           borderRadius: `${frame.radius / frame.width * 100}%`,
         }}
       >
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          className="absolute max-w-none object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={mediaStyle}
-        />
+        {hasVideo ? (
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            className="absolute max-w-none object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={mediaStyle}
+          />
+        ) : (
+          <img
+            src={project.photo ?? ''}
+            alt=""
+            className="absolute max-w-none object-cover"
+            draggable={false}
+            style={mediaStyle}
+          />
+        )}
       </div>
       <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
     </div>
@@ -352,7 +388,9 @@ export function PreviewCanvas({
     if (!stage) return;
     const measure = () => {
       const { width, height } = stage.getBoundingClientRect();
-      setStageBounds({ width, height });
+      setStageBounds((current) => (
+        current.width === width && current.height === height ? current : { width, height }
+      ));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -485,10 +523,11 @@ export function MobilePreviewDialog({
       const styles = window.getComputedStyle(stage);
       const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
       const verticalPadding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
-      setPreviewBounds({
-        width: Math.max(0, stage.clientWidth - horizontalPadding),
-        height: Math.max(0, stage.clientHeight - verticalPadding),
-      });
+      const width = Math.max(0, stage.clientWidth - horizontalPadding);
+      const height = Math.max(0, stage.clientHeight - verticalPadding);
+      setPreviewBounds((current) => (
+        current.width === width && current.height === height ? current : { width, height }
+      ));
     };
 
     measure();
@@ -639,12 +678,15 @@ export function HypeCardEditor() {
   }, [videoUrl]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project }));
-      window.localStorage.setItem('leaguematrix-project', 'true');
-    } catch {
-      setNotice('Your browser could not autosave this project. You can still download a project file.');
-    }
+    const timeout = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project }));
+        window.localStorage.setItem('leaguematrix-project', 'true');
+      } catch {
+        setNotice('Your browser could not autosave this project. You can still download a project file.');
+      }
+    }, 400);
+    return () => window.clearTimeout(timeout);
   }, [project]);
 
   const updateProject = <K extends keyof HypeCardProject>(key: K, value: HypeCardProject[K]) => {
