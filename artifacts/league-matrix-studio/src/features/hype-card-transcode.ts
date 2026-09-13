@@ -96,7 +96,10 @@ export async function transcodeVideoToMp4(
 
       const draw = () => {
         if (settled) return;
-        if (video.ended) {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        if (video.ended || (duration > 0 && video.currentTime >= duration - 0.03)) {
+          onProgress(1);
+          video.pause();
           if (recorder.state !== 'inactive') recorder.stop();
           return;
         }
