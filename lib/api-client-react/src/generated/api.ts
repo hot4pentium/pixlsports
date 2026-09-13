@@ -553,7 +553,8 @@ export const getRequestProjectMediaUploadUrlUrl = () => {
 }
 
 /**
- * @summary Request a direct project media upload URL
+ * New cloud projects contain design settings only. This endpoint always returns 410.
+ * @summary Legacy media upload endpoint (disabled)
  */
 export const requestProjectMediaUploadUrl = async (mediaUploadInput: MediaUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<MediaUpload> => {
 
@@ -619,7 +620,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RequestProjectMediaUploadUrlMutationVariables = {data: BodyType<MediaUploadInput>}
 
     /**
- * @summary Request a direct project media upload URL
+ * @summary Legacy media upload endpoint (disabled)
  */
 export const useRequestProjectMediaUploadUrl = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestProjectMediaUploadUrl>>, TError,RequestProjectMediaUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

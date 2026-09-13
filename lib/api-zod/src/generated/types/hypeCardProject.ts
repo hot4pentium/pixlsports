@@ -19,7 +19,7 @@ import type { ProjectVisibility } from './projectVisibility';
 import type { VideoMeta } from './videoMeta';
 
 /**
- * HypeCardProject document. Version 2 is currently supported.
+ * HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
  */
 export interface HypeCardProject {
   version: HypeCardProjectVersion;

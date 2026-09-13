@@ -74,7 +74,7 @@ export const ListProjectsResponseItem = zod.object({
   "contrast": zod.number(),
   "saturation": zod.number()
 })
-}).describe('HypeCardProject document. Version 2 is currently supported.'),
+}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -147,7 +147,7 @@ export const CreateProjectBody = zod.object({
   "contrast": zod.number(),
   "saturation": zod.number()
 })
-}).describe('HypeCardProject document. Version 2 is currently supported.')
+}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.')
 })
 
 
@@ -204,7 +204,7 @@ export const CreateProjectResponse = zod.object({
   "contrast": zod.number(),
   "saturation": zod.number()
 })
-}).describe('HypeCardProject document. Version 2 is currently supported.'),
+}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -281,7 +281,7 @@ export const GetProjectResponse = zod.object({
   "contrast": zod.number(),
   "saturation": zod.number()
 })
-}).describe('HypeCardProject document. Version 2 is currently supported.'),
+}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -358,7 +358,7 @@ export const UpdateProjectBody = zod.object({
   "contrast": zod.number(),
   "saturation": zod.number()
 })
-}).optional().describe('HypeCardProject document. Version 2 is currently supported.'),
+}).optional().describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
   "expectedRevision": zod.number().int().min(1)
 })
 
@@ -416,7 +416,7 @@ export const UpdateProjectResponse = zod.object({
   "contrast": zod.number(),
   "saturation": zod.number()
 })
-}).describe('HypeCardProject document. Version 2 is currently supported.'),
+}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -443,7 +443,8 @@ export const DeleteProjectResponse = zod.void()
 
 
 /**
- * @summary Request a direct project media upload URL
+ * New cloud projects contain design settings only. This endpoint always returns 410.
+ * @summary Legacy media upload endpoint (disabled)
  */
 export const requestProjectMediaUploadUrlBodyNameMax = 255;
 

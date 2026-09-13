@@ -250,7 +250,7 @@ function HomePage() {
             {[
               ['01', 'CHOOSE YOUR PLAY', 'Templates with enough technical personality to get you moving fast.'],
               ['02', 'RUN THE DRILL', 'Names, colors, stats — customize the details instantly in the browser.'],
-              ['03', 'SECURE THE WIN', 'Local editing is the default. Only projects explicitly saved to an account upload data.'],
+              ['03', 'SECURE THE WIN', 'Local editing is the default. Account saves sync design settings only — never photos or videos.'],
             ].map(([number, title, body], index) => (
               <div key={number} className={`flex gap-5 ${index > 0 ? 'border-t border-border pt-8 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0' : ''}`} data-testid={`feature-step-${number}`}>
                 <span className="font-display text-4xl text-muted-foreground/30 leading-none">{number}</span>
@@ -299,7 +299,7 @@ function HomePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 [Palette, 'No blank canvas', 'Start with a sharp point of view, then make the details yours.'],
-                [ShieldCheck, 'Local by default', 'Projects live in your browser by default. Sign in only if you want cloud syncing.'],
+                [ShieldCheck, 'Media stays local', 'Sign in to sync reusable designs. Your attached photos and videos stay on your device.'],
                 [SquarePen, 'Made for real life', 'Fast enough between practice and pickup, polished enough to post.'],
                 [Heart, 'Celebrate more', 'The good stuff deserves more than a group-chat text.'],
               ].map(([Icon, title, body]) => {
@@ -482,7 +482,7 @@ function Studio() {
                           <div className="min-w-0 overflow-hidden">
                             <p className="font-display text-xl uppercase tracking-wide truncate">{project.name}</p>
                             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1 truncate">
-                              Cloud • Rev {project.revision} • {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
+                              Design • Rev {project.revision} • {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
                             </p>
                           </div>
                         </div>
@@ -509,7 +509,7 @@ function Studio() {
                       <FolderOpen className="h-6 w-6" />
                     </div>
                     <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO CLOUD PROJECTS</p>
-                    <p className="mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Save your local draft to the cloud to access it from anywhere.</p>
+                    <p className="mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Save a reusable design to your account and open it from anywhere. Add media again when you are ready to export.</p>
                   </div>
                 )}
               </div>
@@ -520,7 +520,7 @@ function Studio() {
                   <Activity className="h-6 w-6" />
                 </div>
                 <p className="relative z-10 mt-5 font-display text-2xl uppercase tracking-wide text-foreground">CLOUD SYNC</p>
-                <p className="relative z-10 mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Sign in to save your drafts and media to the cloud securely.</p>
+                <p className="relative z-10 mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Sign in to sync reusable designs. Photos, videos, and uploaded logos remain on your device.</p>
                 <Link href="/sign-in" className="relative z-10 mt-6 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform">
                   Sign In
                 </Link>
@@ -737,7 +737,7 @@ function Help() {
         <div className="mt-12 space-y-10">
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where are my graphics saved?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings are saved in this browser, and attached video clips are kept in local browser storage. If you choose to sign in and save a draft to your account, your project settings and media are uploaded to our secure cloud. Clearing browser data can remove all locally stored work.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings and attached media are saved in this browser. If you sign in and choose Save design, only reusable design settings sync to your account; photos, videos, and uploaded logos stay on this device. Reopen a saved design, add media, then export the finished file to share it. Clearing browser data can remove locally stored work.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>
@@ -772,13 +772,15 @@ function Privacy() {
         </div>
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Privacy Policy</h1>
         <div className="prose prose-lg mt-12 max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-a:text-primary hover:prose-a:text-foreground">
-          <p className="lead font-medium text-xl">The short version: We don't want your data, and we don't track your team. Your photos remain on your device unless you choose to save them to a cloud account.</p>
+          <p className="lead font-medium text-xl">The short version: We don't track your team, and LeagueMatrix does not upload newly attached photos, videos, or logos. Account saves contain reusable design settings only.</p>
           <h3>1. Local Execution</h3>
-          <p>LeagueMatrix is built as a local-first application. When you upload a photo or video to create a graphic, that media is processed entirely on your device using browser APIs. It never touches a server unless you log in and explicitly save a project to your cloud account.</p>
+          <p>LeagueMatrix is built as a local-first application. When you attach a photo, video, or logo to create a graphic, that media is processed on your device using browser APIs. Saving a design to your account sends the layout, text, colors, crop settings, and output configuration, but not the attached media. Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
           <h3>2. Analytics</h3>
           <p>We do not use tracking pixels, session recording tools, or advertising analytics in this release.</p>
           <h3>3. Cookies</h3>
-          <p>Project settings are stored in your browser, and attached video clips are kept locally in browser storage so they can survive a reload. If you choose to create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
+          <p>Project settings and attached media may be kept in local browser storage so they can survive a reload. If you create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
+          <h3>4. Your Media</h3>
+          <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. To share a finished card, export the image or video and share that file; LeagueMatrix does not host new finished media for public sharing.</p>
         </div>
       </main>
     </StudioLayout>

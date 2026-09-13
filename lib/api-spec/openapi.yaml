@@ -131,7 +131,8 @@ paths:
     post:
       operationId: requestProjectMediaUploadUrl
       tags: [storage]
-      summary: Request a direct project media upload URL
+      summary: Legacy media upload endpoint (disabled)
+      description: New cloud projects contain design settings only. This endpoint always returns 410.
       requestBody:
         required: true
         content:
@@ -153,6 +154,12 @@ paths:
           $ref: "#/components/responses/NotFound"
         "413":
           description: Upload is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Cloud media uploads are disabled
           content:
             application/json:
               schema:
@@ -225,7 +232,7 @@ components:
       required: [error]
     HypeCardProject:
       type: object
-      description: HypeCardProject document. Version 2 is currently supported.
+      description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
       required: [version, headline, mediaType, mediaId, videoMeta, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, coachMessage, visibility, photo, logo, photoTransform, adjustments]
       properties:
         version:

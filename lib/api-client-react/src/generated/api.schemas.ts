@@ -119,7 +119,7 @@ export interface ProjectAdjustments {
 }
 
 /**
- * HypeCardProject document. Version 2 is currently supported.
+ * HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
  */
 export interface HypeCardProject {
   version: HypeCardProjectVersion;

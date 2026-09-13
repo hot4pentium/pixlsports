@@ -1,2 +1,3 @@
 - [Radix dialog runtime conflict](radix-dialog-runtime-conflict.md) — this Vite artifact hit a duplicate-React hook failure when Radix Dialog was newly optimized.
 - [Preview aspect fitting](preview-aspect-fitting.md) — expanded card previews must choose their limiting axis from measured stage bounds.
+- [Design-only cloud projects](design-only-cloud-projects.md) — account saves never include user media; legacy cloud media remains readable only during migration.

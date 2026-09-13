@@ -15,7 +15,6 @@ import {
   useGetProject, 
   getGetProjectQueryKey,
   getListProjectsQueryKey,
-  useRequestProjectMediaUploadUrl,
   serveProjectMedia,
   type Project
 } from '@workspace/api-client-react';
@@ -730,7 +729,6 @@ export function HypeCardEditor() {
     }
   });
   
-  const requestMediaUrl = useRequestProjectMediaUploadUrl();
   const createProject = useCreateProject();
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
@@ -947,12 +945,12 @@ export function HypeCardEditor() {
          currentRevision.current = conflictData.revision;
          lastSaved.current = normalizeProject(conflictData.project);
          setConflictData(null);
-         setSaveStatus('Saved to account');
+         setSaveStatus('Saved design');
        } else if (cloudProjectData) {
          setProject(normalizeProject(cloudProjectData.project));
          currentRevision.current = cloudProjectData.revision;
          lastSaved.current = normalizeProject(cloudProjectData.project);
-         setSaveStatus('Saved to account');
+         setSaveStatus('Saved design');
        }
     } else {
        setSaveStatus('Saving');

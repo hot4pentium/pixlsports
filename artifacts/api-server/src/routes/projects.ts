@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, sql, type SQL } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateProjectBody,
@@ -10,16 +10,27 @@ import {
 import { cloudProjectsTable, db, projectMediaTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
-import {
-  ProjectMediaValidationError,
-  validateProjectMediaClaim,
-} from "../lib/projectMediaValidation";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 const MAX_PROJECTS_PER_USER = 100;
 
 type ProjectRow = typeof cloudProjectsTable.$inferSelect;
+
+function withoutMedia(project: unknown): unknown {
+  if (!project || typeof project !== "object" || Array.isArray(project)) {
+    return project;
+  }
+
+  return {
+    ...project,
+    mediaType: null,
+    mediaId: null,
+    videoMeta: null,
+    photo: null,
+    logo: null,
+  };
+}
 
 async function mediaForProject(projectId: string, ownerClerkUserId: string) {
   return db
@@ -86,63 +97,17 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const mediaId = parsed.data.project.mediaId;
-  if (mediaId !== null) {
-    try {
-      await validateProjectMediaClaim({
-        mediaId,
-        ownerClerkUserId,
-        objectStorageService,
-      });
-    } catch (error) {
-      if (error instanceof ProjectMediaValidationError) {
-        res.status(error.status).json({ error: error.message });
-        return;
-      }
-      req.log.error({ err: error }, "Unable to validate project media");
-      res.status(500).json({ error: "Unable to validate project media" });
-      return;
-    }
-  }
-
   try {
-    const created = await db.transaction(async (tx) => {
-      const [inserted] = await tx
-        .insert(cloudProjectsTable)
-        .values({
-          ownerClerkUserId,
-          name: parsed.data.name,
-          project: parsed.data.project,
-        })
-        .returning();
-
-      if (mediaId !== null) {
-        const [claimed] = await tx
-          .update(projectMediaTable)
-          .set({ projectId: inserted.id })
-          .where(
-            and(
-              eq(projectMediaTable.id, mediaId),
-              eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
-              isNull(projectMediaTable.projectId),
-            ),
-          )
-          .returning({ id: projectMediaTable.id });
-        if (!claimed) {
-          throw new ProjectMediaValidationError(
-            "Project media was claimed by another project",
-            409,
-          );
-        }
-      }
-      return inserted;
-    });
+    const [created] = await db
+      .insert(cloudProjectsTable)
+      .values({
+        ownerClerkUserId,
+        name: parsed.data.name,
+        project: withoutMedia(parsed.data.project),
+      })
+      .returning();
     res.status(201).json(await projectResponse(created, ownerClerkUserId));
   } catch (error) {
-    if (error instanceof ProjectMediaValidationError) {
-      res.status(error.status).json({ error: error.message });
-      return;
-    }
     req.log.error({ err: error }, "Unable to create cloud project");
     res.status(500).json({ error: "Unable to create cloud project" });
   }
@@ -211,26 +176,6 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
     return;
   }
 
-  const mediaId = parsed.data.project?.mediaId;
-  if (mediaId !== undefined && mediaId !== null) {
-    try {
-      await validateProjectMediaClaim({
-        mediaId,
-        ownerClerkUserId,
-        projectId: current.id,
-        objectStorageService,
-      });
-    } catch (error) {
-      if (error instanceof ProjectMediaValidationError) {
-        res.status(error.status).json({ error: error.message });
-        return;
-      }
-      req.log.error({ err: error }, "Unable to validate project media");
-      res.status(500).json({ error: "Unable to validate project media" });
-      return;
-    }
-  }
-
   const updates: {
     name?: string;
     project?: unknown;
@@ -241,47 +186,22 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
     revision: sql`${cloudProjectsTable.revision} + 1`,
   };
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
-  if (parsed.data.project !== undefined) updates.project = parsed.data.project;
+  if (parsed.data.project !== undefined) {
+    updates.project = withoutMedia(parsed.data.project);
+  }
 
   try {
-    const updated = await db.transaction(async (tx) => {
-      const [changed] = await tx
-        .update(cloudProjectsTable)
-        .set(updates)
-        .where(
-          and(
-            eq(cloudProjectsTable.id, params.data.projectId),
-            eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
-            eq(cloudProjectsTable.revision, parsed.data.expectedRevision),
-          ),
-        )
-        .returning();
-      if (!changed) return undefined;
-
-      if (mediaId !== undefined && mediaId !== null) {
-        const [claimed] = await tx
-          .update(projectMediaTable)
-          .set({ projectId: changed.id })
-          .where(
-            and(
-              eq(projectMediaTable.id, mediaId),
-              eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
-              or(
-                isNull(projectMediaTable.projectId),
-                eq(projectMediaTable.projectId, changed.id),
-              ),
-            ),
-          )
-          .returning({ id: projectMediaTable.id });
-        if (!claimed) {
-          throw new ProjectMediaValidationError(
-            "Project media was claimed by another project",
-            409,
-          );
-        }
-      }
-      return changed;
-    });
+    const [updated] = await db
+      .update(cloudProjectsTable)
+      .set(updates)
+      .where(
+        and(
+          eq(cloudProjectsTable.id, params.data.projectId),
+          eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+          eq(cloudProjectsTable.revision, parsed.data.expectedRevision),
+        ),
+      )
+      .returning();
 
     if (!updated) {
       const [latest] = await db
@@ -306,10 +226,6 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
 
     res.json(await projectResponse(updated, ownerClerkUserId));
   } catch (error) {
-    if (error instanceof ProjectMediaValidationError) {
-      res.status(error.status).json({ error: error.message });
-      return;
-    }
     req.log.error({ err: error }, "Unable to update cloud project");
     res.status(500).json({ error: "Unable to update cloud project" });
   }
