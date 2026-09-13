@@ -296,6 +296,9 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const palette = palettes[project.palette];
   const backgroundImage = stadiumCardBackgrounds[project.layout];
   const frame = STADIUM_MEDIA_FRAME;
+  const hypeRailWidth = 58;
+  const hypeRailCenterX = (frame.x + frame.width + 1000) / 2;
+  const hypeRailX = hypeRailCenterX - hypeRailWidth / 2;
   const stadiumHeadline = `${content.headline.replace(/!+$/, '')}!`;
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
@@ -342,8 +345,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
       <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>
       <g aria-label="Hype Card">
-        <rect x="914" y="500" width="58" height="380" rx="26" fill="#02070e" fill-opacity=".78" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".9"/>
-        <text x="943" y="690" text-anchor="middle" transform="rotate(90 943 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
+        <rect x="${hypeRailX}" y="500" width="${hypeRailWidth}" height="380" rx="26" fill="#02070e" fill-opacity=".78" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".9"/>
+        <text x="${hypeRailCenterX}" y="690" text-anchor="middle" transform="rotate(90 ${hypeRailCenterX} 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
       </g>
       ${nameplate}
       <text x="500" y="1138" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
