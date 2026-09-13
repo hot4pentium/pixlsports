@@ -2505,7 +2505,10 @@ function RoleSelectionPage() {
                   <Star className="h-7 w-7" />
                 </span>
                 <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
-                <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">Make hype cards and keep up with the team schedule.</span>
+                <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">
+                  Celebrate your athlete.<br />
+                  Keep friends and family in the loop.
+                </span>
                 <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Hype Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </button>
             </div>
