@@ -175,6 +175,15 @@ export function addScheduleEvent(events: ScheduleEvent[], type: ScheduleEventTyp
   return [...events, createBlankScheduleEvent(type)];
 }
 
+export function saveScheduleEvent(events: ScheduleEvent[], event: ScheduleEvent) {
+  const existingIndex = events.findIndex((candidate) => candidate.id === event.id);
+  if (existingIndex < 0) return [...events, event];
+
+  return events.map((candidate, index) => (
+    index === existingIndex ? event : candidate
+  ));
+}
+
 export function removeScheduleEvent(events: ScheduleEvent[], id: string) {
   return events.filter((event) => event.id !== id);
 }

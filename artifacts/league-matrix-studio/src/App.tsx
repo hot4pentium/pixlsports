@@ -36,6 +36,7 @@ import {
   getDefaultScheduleEvents,
   moveScheduleEvent,
   readScheduleDraft,
+  saveScheduleEvent,
   removeScheduleEvent,
   saveScheduleDraft,
   scheduleStorageKey,
@@ -789,9 +790,7 @@ function ScheduleEditor() {
     if (!eventForm) return;
 
     const isNewEvent = !events.some((event) => event.id === eventForm.id);
-    const nextEvents = isNewEvent
-      ? [...events, eventForm]
-      : updateScheduleEvent(events, eventForm.id, eventForm);
+    const nextEvents = saveScheduleEvent(events, eventForm);
     setEvents(nextEvents);
     setSelectedEventId(eventForm.id);
     setSelectedWeekKey(getScheduleWeekKey(eventForm.date));

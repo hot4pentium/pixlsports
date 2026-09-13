@@ -9,8 +9,10 @@ import {
   normalizeScheduleDraft,
   readScheduleDraft,
   removeScheduleEvent,
+  saveScheduleEvent,
   saveScheduleDraft,
   updateScheduleEvent,
+  createBlankScheduleEvent,
   type ScheduleEvent,
   type ScheduleDraft,
 } from './schedule-draft';
@@ -167,6 +169,50 @@ test('event controls add, reorder, remove, and reset without losing event data',
   assert.equal(removed.some((event) => event.id === second.id), false);
   assert.equal(removed.find((event) => event.id === first.id)?.opponent, first.opponent);
   assert.deepEqual(reset, defaultScheduleEvents);
+});
+
+test('a new event stays out of the schedule until saved with all entered details', () => {
+  const originalEvents = completeEvents.map((event) => ({ ...event }));
+  const blankEvent = createBlankScheduleEvent('game');
+  const enteredEvent: ScheduleEvent = {
+    ...blankEvent,
+    date: '2026-09-25',
+    time: '17:30',
+    location: 'Northside Field',
+    opponent: 'Lakeside',
+    snacks: 'Taylor family',
+    drinks: 'Morgan family',
+    notes: 'Bring pinnies and arrive early.',
+  };
+
+  assert.equal(originalEvents.some((event) => event.id === blankEvent.id), false);
+  assert.deepEqual(originalEvents, completeEvents);
+
+  const savedEvents = saveScheduleEvent(originalEvents, enteredEvent);
+
+  assert.deepEqual(savedEvents, [...completeEvents, enteredEvent]);
+  assert.equal(savedEvents.at(-1)?.date, '2026-09-25');
+  assert.equal(savedEvents.at(-1)?.opponent, 'Lakeside');
+  assert.equal(savedEvents.at(-1)?.notes, 'Bring pinnies and arrive early.');
+});
+
+test('discarding a new draft leaves saved events unchanged, while saving an existing event replaces it in place', () => {
+  const originalEvents = completeEvents.map((event) => ({ ...event }));
+  const blankEvent = createBlankScheduleEvent('practice');
+
+  assert.deepEqual(originalEvents, completeEvents);
+  assert.equal(originalEvents.some((event) => event.id === blankEvent.id), false);
+
+  const updatedFirstEvent: ScheduleEvent = {
+    ...originalEvents[0],
+    date: '2026-09-26',
+    location: 'Updated Stadium',
+    notes: 'Updated arrival instructions.',
+  };
+  const updatedEvents = saveScheduleEvent(originalEvents, updatedFirstEvent);
+
+  assert.deepEqual(updatedEvents, [updatedFirstEvent, originalEvents[1]]);
+  assert.deepEqual(originalEvents, completeEvents);
 });
 
 test('a saved draft with no events stays empty after reload', () => {
