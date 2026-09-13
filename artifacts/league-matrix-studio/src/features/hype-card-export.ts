@@ -55,7 +55,7 @@ export async function exportVideoCanvas(
         audioElement?.addEventListener('error', () => reject(new Error('Audio could not be decoded.')), { once: true });
       });
       audioElement.currentTime = startTime;
-      if (Math.abs(audioElement.currentTime - startTime) > 0.01) {
+      if (startTime > 0.01) {
         await new Promise<void>((resolve) => audioElement?.addEventListener('seeked', () => resolve(), { once: true }));
       }
       audioContext = new AudioContextConstructor();
