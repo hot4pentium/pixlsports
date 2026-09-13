@@ -29,7 +29,7 @@ const toolData: Record<ToolKind, {
 }> = {
   hype: {
     slug: 'hype-card',
-    label: 'Moment Card Creator',
+    label: 'Hype Card Creator',
     kicker: 'Make the moment bigger.',
     description: 'Turn a photo or short video into a share-ready celebration of the play.',
     icon: Zap,
@@ -351,7 +351,7 @@ function Studio() {
               SELECT YOUR<br /><span className="text-primary">STARTING PLAY.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
-              Moment Cards export finished images and videos. Schedule and Award tools are currently preview-only.
+              Hype Cards export finished images and videos. Schedule and Award tools are currently preview-only.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
@@ -381,7 +381,7 @@ function Studio() {
                     <FileImage className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-display text-xl uppercase tracking-wide">Moment Card Project</p>
+                    <p className="font-display text-xl uppercase tracking-wide">Hype Card Project</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1">Saved in local storage</p>
                   </div>
                 </div>
@@ -395,7 +395,7 @@ function Studio() {
                   <Plus className="h-6 w-6" />
                 </div>
                 <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO ACTIVE DRAFTS</p>
-                <p className="mx-auto mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Start a Moment Card above. Its project settings save automatically on this device.</p>
+                <p className="mx-auto mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Start a Hype Card above. Its project settings save automatically on this device.</p>
               </div>
             )}
           </div>
@@ -627,7 +627,7 @@ function Help() {
         <div className="mt-12 space-y-10">
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where are my graphics saved?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Moment Card settings are saved in this browser, and attached video clips are kept in local browser storage. Schedule and Award tools are currently preview-only; their Mark Session action stores only a small local marker, not the field values or template choice. Clearing browser data can remove all locally stored work.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Hype Card settings are saved in this browser, and attached video clips are kept in local browser storage. Schedule and Award tools are currently preview-only; their Mark Session action stores only a small local marker, not the field values or template choice. Clearing browser data can remove all locally stored work.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>

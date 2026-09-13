@@ -908,7 +908,7 @@ export function HypeCardEditor() {
         const a = document.createElement('a');
         const downloadUrl = URL.createObjectURL(blob);
         a.href = downloadUrl;
-        a.download = `moment_card_${Date.now()}.${ext}`;
+        a.download = `hype_card_${Date.now()}.${ext}`;
         a.click();
         window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
         if (ext === 'webm') {
@@ -943,7 +943,7 @@ export function HypeCardEditor() {
         const mimeType = imageFormat === 'png' ? 'image/png' : 'image/jpeg';
         const extension = imageFormat === 'png' ? 'png' : 'jpg';
         a.href = canvas.toDataURL(mimeType, imageFormat === 'jpeg' ? 0.95 : undefined);
-        a.download = `moment_card_${Date.now()}.${extension}`;
+        a.download = `hype_card_${Date.now()}.${extension}`;
         a.click();
       } catch {
         setNotice('Could not generate the card for download.');
@@ -965,7 +965,7 @@ export function HypeCardEditor() {
           <Link href="/studio" className="grid h-9 w-9 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-           <h1 className="font-display text-xl tracking-wide text-foreground">Moment Cards</h1>
+           <h1 className="font-display text-xl tracking-wide text-foreground">Hype Cards</h1>
         </div>
         <div className="flex items-center gap-2">
           {validation && <span className="hidden text-xs font-bold text-destructive sm:inline-block">{validation}</span>}
