@@ -122,6 +122,18 @@ function getUserRole(user: { unsafeMetadata?: unknown } | null | undefined): Use
   return role === 'coach' || role === 'fan' ? role : null;
 }
 
+function getUserProfile(user: { firstName?: string | null; lastName?: string | null; unsafeMetadata?: unknown } | null | undefined) {
+  const metadata = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
+    ? user.unsafeMetadata as { role?: unknown; displayName?: unknown; teamName?: unknown }
+    : {};
+  const clerkName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+  return {
+    role: metadata.role === 'coach' || metadata.role === 'fan' ? metadata.role : null,
+    displayName: typeof metadata.displayName === 'string' && metadata.displayName.trim() ? metadata.displayName.trim() : clerkName,
+    teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
+  } as { role: UserRole | null; displayName: string; teamName: string };
+}
+
 const toolData: Record<ToolKind, {
   slug: string;
   label: string;
@@ -472,6 +484,7 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
 function Studio({ role }: { role: UserRole }) {
   const [hasProject, setHasProject] = useState(false);
   const { user, isSignedIn } = useUser();
+  const profile = getUserProfile(user);
   const queryClient = useQueryClient();
 
   useEffect(() => setHasProject(Boolean(window.localStorage.getItem('leaguematrix-hype-card-project-v2'))), []);
@@ -512,6 +525,14 @@ function Studio({ role }: { role: UserRole }) {
 
         <div className="mt-16 grid gap-6 lg:grid-cols-3">
           {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 border-l-4 border-primary bg-foreground px-5 py-4 text-background clip-angled-sm sm:flex-row sm:items-center sm:justify-between" data-testid="banner-user-team">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">{role === 'coach' ? 'Coaching' : 'Supporting'}</p>
+            <p className="mt-1 font-display text-2xl uppercase tracking-wide">{profile.teamName}</p>
+          </div>
+          <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
         </div>
 
         <div className="mt-16 relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
@@ -2431,7 +2452,11 @@ function SignUpPage() {
 function RoleSelectionPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded } = useUser();
-  const [savingRole, setSavingRole] = useState<UserRole | null>(null);
+  const existingProfile = getUserProfile(user);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(existingProfile.role);
+  const [displayName, setDisplayName] = useState(existingProfile.displayName);
+  const [teamName, setTeamName] = useState(existingProfile.teamName);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState('');
 
   if (!isLoaded) {
@@ -2442,20 +2467,33 @@ function RoleSelectionPage() {
     return <Redirect to="/sign-in" />;
   }
 
-  const chooseRole = async (role: UserRole) => {
-    setSavingRole(role);
+  const saveProfile = async () => {
+    const cleanName = displayName.trim();
+    const cleanTeam = teamName.trim();
+    if (!selectedRole) {
+      setError('Choose Coach or Fan to continue.');
+      return;
+    }
+    if (!cleanName || !cleanTeam) {
+      setError('Add your name and team to continue.');
+      return;
+    }
+
+    setSavingProfile(true);
     setError('');
     try {
       await user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata ?? {}),
-          role,
+          role: selectedRole,
+          displayName: cleanName,
+          teamName: cleanTeam,
         },
       });
       setLocation('/studio');
     } catch {
-      setSavingRole(null);
-      setError('We could not save your role. Please try again.');
+      setSavingProfile(false);
+      setError('We could not save your profile. Please try again.');
     }
   };
 
@@ -2472,19 +2510,45 @@ function RoleSelectionPage() {
               PICK YOUR<br /><span className="text-primary">PLAYBOOK.</span>
             </h1>
             <p className="mt-6 max-w-lg text-lg font-medium leading-relaxed text-muted-foreground">
-              Choose how you use LeagueMatrix so your Command Center starts with the tools that fit you.
+              Tell us who you are and which team matters to you so your Command Center starts with the right tools.
             </p>
           </div>
 
           <section className="border border-border bg-card p-6 shadow-sm clip-angled-sm sm:p-8" aria-labelledby="role-heading">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Account setup</p>
-            <h2 id="role-heading" className="mt-2 font-display text-4xl uppercase tracking-wide">I AM A…</h2>
+            <h2 id="role-heading" className="mt-2 font-display text-4xl uppercase tracking-wide">YOUR PLAYBOOK</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Your name
+                <input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="e.g. Jordan Smith"
+                  autoComplete="name"
+                  className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                  data-testid="input-profile-name"
+                />
+              </label>
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                Team
+                <input
+                  value={teamName}
+                  onChange={(event) => setTeamName(event.target.value)}
+                  placeholder="e.g. Eastside Falcons"
+                  autoComplete="organization"
+                  className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                  data-testid="input-profile-team"
+                />
+              </label>
+            </div>
+            <p className="mt-7 text-xs font-bold uppercase tracking-widest text-muted-foreground">I am a…</p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => void chooseRole('coach')}
-                disabled={Boolean(savingRole)}
-                className="group border border-border bg-background p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm"
+                onClick={() => setSelectedRole('coach')}
+                disabled={savingProfile}
+                aria-pressed={selectedRole === 'coach'}
+                className={`group border p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'coach' ? 'border-primary bg-primary/10 ring-2 ring-primary' : 'border-border bg-background'}`}
                 data-testid="button-role-coach"
               >
                 <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
@@ -2496,9 +2560,10 @@ function RoleSelectionPage() {
               </button>
               <button
                 type="button"
-                onClick={() => void chooseRole('fan')}
-                disabled={Boolean(savingRole)}
-                className="group border border-border bg-foreground p-6 text-left text-background transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm"
+                onClick={() => setSelectedRole('fan')}
+                disabled={savingProfile}
+                aria-pressed={selectedRole === 'fan'}
+                className={`group border p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background ring-2 ring-primary' : 'border-border bg-foreground text-background'}`}
                 data-testid="button-role-fan"
               >
                 <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
@@ -2513,7 +2578,9 @@ function RoleSelectionPage() {
                 <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Hype Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </button>
             </div>
-            {savingRole && <p className="mt-5 text-sm font-bold uppercase tracking-widest text-primary">Saving your playbook…</p>}
+            <button type="button" onClick={() => void saveProfile()} disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
+              {savingProfile ? 'Saving your playbook…' : 'Enter my Command Center'}
+            </button>
             {error && <p className="mt-5 text-sm font-bold text-destructive" role="alert">{error}</p>}
           </section>
         </div>
