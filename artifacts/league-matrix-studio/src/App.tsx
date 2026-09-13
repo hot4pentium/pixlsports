@@ -523,16 +523,16 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
-        <div className="mt-16 grid gap-6 lg:grid-cols-3">
-          {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
-        </div>
-
         <div className="mt-8 flex flex-col gap-3 border-l-4 border-primary bg-foreground px-5 py-4 text-background clip-angled-sm sm:flex-row sm:items-center sm:justify-between" data-testid="banner-user-team">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-primary">{role === 'coach' ? 'Coaching' : 'Supporting'}</p>
             <p className="mt-1 font-display text-2xl uppercase tracking-wide">{profile.teamName}</p>
           </div>
           <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
 
         <div className="mt-16 relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
