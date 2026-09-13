@@ -1,20 +1,49 @@
-// Export your models here. Add one export per file
-// export * from "./posts";
-//
-// Each model/table should ideally be split into different files.
-// Each model/table should define a Drizzle table, insert schema, and types:
-//
-//   import { pgTable, text, serial } from "drizzle-orm/pg-core";
-//   import { createInsertSchema } from "drizzle-zod";
-//   import { z } from "zod/v4";
-//
-//   export const postsTable = pgTable("posts", {
-//     id: serial("id").primaryKey(),
-//     title: text("title").notNull(),
-//   });
-//
-//   export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
-//   export type InsertPost = z.infer<typeof insertPostSchema>;
-//   export type Post = typeof postsTable.$inferSelect;
+import { createInsertSchema } from "drizzle-zod";
+import {
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { z } from "zod/v4";
 
-export {}
+export const cloudProjectsTable = pgTable("cloud_projects", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  name: text("name").notNull(),
+  project: jsonb("project").notNull(),
+  revision: integer("revision").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const projectMediaTable = pgTable("project_media", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  projectId: uuid("project_id").references(() => cloudProjectsTable.id, {
+    onDelete: "cascade",
+  }),
+  objectPath: text("object_path").notNull().unique(),
+  name: text("name").notNull(),
+  contentType: text("content_type").notNull(),
+  mediaType: text("media_type").notNull(),
+  size: integer("size").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCloudProject = z.infer<typeof insertCloudProjectSchema>;
+export type CloudProject = typeof cloudProjectsTable.$inferSelect;
+
+export const insertProjectMediaSchema = createInsertSchema(projectMediaTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
+export type ProjectMedia = typeof projectMediaTable.$inferSelect;

@@ -1,4 +1,8 @@
+import { useListProjects, useDeleteProject, getListProjectsQueryKey } from '@workspace/api-client-react';
+import { formatDistanceToNow } from 'date-fns';
+import { Trash2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
+
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -10,10 +14,32 @@ import {
   SquarePen, Trophy, X, Zap, Maximize, Activity
 } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Link, Route, Switch, useLocation, Router as WouterRouter, Redirect } from 'wouter';
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
+import { useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { HypeCardEditor } from '@/features/hype-card';
 
 const queryClient = new QueryClient();
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+
+if (!clerkPubKey) {
+  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
+}
+
+function stripBase(path: string): string {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || "/"
+    : path;
+}
 
 type ToolKind = 'hype' | 'schedule' | 'awards';
 
@@ -72,9 +98,12 @@ function BrandMark({ inverse = false }: { inverse?: boolean }) {
   );
 }
 
+
 function SiteNav({ dark = false }: { dark?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navText = dark ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground';
+  const { isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
   
   return (
     <header className={`relative z-30 border-b ${dark ? 'bg-foreground border-white/10' : 'bg-background border-border'}`}>
@@ -86,9 +115,19 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
           <Link href="/studio" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-studio">Studio</Link>
           <Link href="/help" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-help">Help</Link>
           <Link href="/privacy" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-privacy">Privacy</Link>
-          <Link href="/studio" className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-primary/90 ${dark ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}`} data-testid="link-nav-start">
-            Enter Studio <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </Link>
+          
+          {isSignedIn ? (
+            <div className="flex items-center gap-4">
+              <span className={`text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</span>
+              <button onClick={() => signOut({ redirectUrl: basePath || "/" })} className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-destructive hover:text-destructive-foreground ${dark ? 'bg-white/10 text-white' : 'bg-muted text-foreground'}`} data-testid="btn-sign-out">
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link href="/sign-in" className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-primary/90 ${dark ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}`} data-testid="link-nav-sign-in">
+              Sign In <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </Link>
+          )}
         </nav>
         <button type="button" className={`grid h-10 w-10 place-items-center md:hidden ${dark ? 'text-white' : 'text-foreground'}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} data-testid="button-mobile-menu">
           {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -101,6 +140,14 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
             <Link href="/studio" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
             <Link href="/help" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-help">HELP <ArrowRight className="h-5 w-5 text-primary" /></Link>
             <Link href="/privacy" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-privacy">PRIVACY <ArrowRight className="h-5 w-5 text-primary" /></Link>
+            {isSignedIn ? (
+              <>
+                <div className={`p-4 text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</div>
+                <button onClick={() => { setMenuOpen(false); signOut({ redirectUrl: basePath || "/" }); }} className={`flex w-full items-center justify-between p-4 text-lg font-display tracking-wide text-destructive ${dark ? 'bg-white/5' : 'bg-muted'}`} data-testid="btn-mobile-sign-out">SIGN OUT <ArrowRight className="h-5 w-5" /></button>
+              </>
+            ) : (
+              <Link href="/sign-in" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide text-primary ${dark ? 'bg-white/5' : 'bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-sign-in">SIGN IN <ArrowRight className="h-5 w-5" /></Link>
+            )}
           </nav>
         </div>
       )}
@@ -125,7 +172,7 @@ function Footer() {
   );
 }
 
-function Home() {
+function HomePage() {
   return (
     <div className="noise min-h-dvh overflow-hidden bg-background">
       <SiteNav dark />
@@ -151,7 +198,7 @@ function Home() {
                   Enter The Studio <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <span className="inline-flex items-center gap-2 px-2 text-sm font-medium text-white/60">
-                  <ShieldCheck className="h-5 w-5 text-primary" /> Works completely offline
+                  <ShieldCheck className="h-5 w-5 text-primary" /> Guest offline mode available
                 </span>
               </div>
             </div>
@@ -203,7 +250,7 @@ function Home() {
             {[
               ['01', 'CHOOSE YOUR PLAY', 'Templates with enough technical personality to get you moving fast.'],
               ['02', 'RUN THE DRILL', 'Names, colors, stats — customize the details instantly in the browser.'],
-              ['03', 'SECURE THE WIN', 'Your project stays completely local. No logins, no cloud uploads.'],
+              ['03', 'SECURE THE WIN', 'Local editing is the default. Only projects explicitly saved to an account upload data.'],
             ].map(([number, title, body], index) => (
               <div key={number} className={`flex gap-5 ${index > 0 ? 'border-t border-border pt-8 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0' : ''}`} data-testid={`feature-step-${number}`}>
                 <span className="font-display text-4xl text-muted-foreground/30 leading-none">{number}</span>
@@ -252,7 +299,7 @@ function Home() {
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 [Palette, 'No blank canvas', 'Start with a sharp point of view, then make the details yours.'],
-                [ShieldCheck, 'Local by default', 'Projects live in your browser. No login, upload, or surprise inbox.'],
+                [ShieldCheck, 'Local by default', 'Projects live in your browser by default. Sign in only if you want cloud syncing.'],
                 [SquarePen, 'Made for real life', 'Fast enough between practice and pickup, polished enough to post.'],
                 [Heart, 'Celebrate more', 'The good stuff deserves more than a group-chat text.'],
               ].map(([Icon, title, body]) => {
@@ -335,10 +382,27 @@ function StudioLayout({ children }: { children: ReactNode }) {
   );
 }
 
+
+
 function Studio() {
   const [hasProject, setHasProject] = useState(false);
-  useEffect(() => setHasProject(Boolean(window.localStorage.getItem('leaguematrix-hype-card-project-v2'))), []);
+  const { user, isSignedIn } = useUser();
+  const queryClient = useQueryClient();
   
+  useEffect(() => setHasProject(Boolean(window.localStorage.getItem('leaguematrix-hype-card-project-v2'))), []);
+
+  const { data: cloudProjects, isLoading } = useListProjects({
+    query: { enabled: !!isSignedIn, queryKey: getListProjectsQueryKey() }
+  });
+
+  const deleteProject = useDeleteProject({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      }
+    }
+  });
+
   return (
     <StudioLayout>
       <main className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 lg:py-20 flex-1">
@@ -355,7 +419,7 @@ function Studio() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
-            <span className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" /> Local Environment Active
+            <span className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" /> {isSignedIn ? 'Cloud Sync Active' : 'Local Environment Active'}
           </div>
         </div>
         
@@ -363,61 +427,107 @@ function Studio() {
           {(Object.keys(toolData) as ToolKind[]).map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
         
-        <section className="mt-16 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
-          <div className="relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
-            <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-            <div className="relative z-10 flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">Active Sessions</p>
-                <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">RESUME DRAFT.</h2>
-              </div>
-              <FolderOpen className="h-6 w-6 text-muted-foreground" />
+        <div className="mt-16 relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
+          <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">Active Sessions</p>
+              <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">RESUME DRAFT.</h2>
             </div>
-            
+            <FolderOpen className="h-6 w-6 text-muted-foreground" />
+          </div>
+          
+          <div className="relative z-10 mt-8 grid gap-4 lg:grid-cols-2">
+            {/* Local Draft */}
             {hasProject ? (
-              <div className="relative z-10 mt-8 flex items-center justify-between border-l-4 border-primary bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80">
+              <div className="flex items-center justify-between border-l-4 border-primary bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80">
                 <div className="flex items-center gap-4">
                   <span className="grid h-12 w-12 place-items-center bg-foreground text-background clip-angled-sm">
                     <FileImage className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-display text-xl uppercase tracking-wide">Hype Card Project</p>
+                    <p className="font-display text-xl uppercase tracking-wide">Hype Card Local Draft</p>
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1">Saved in local storage</p>
                   </div>
                 </div>
-                <Link href="/studio/hype-card" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform" data-testid="link-resume-project">
+                <Link href="/studio/hype-card" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform shrink-0" data-testid="link-resume-local-project">
                   Open
                 </Link>
               </div>
             ) : (
-              <div className="relative z-10 mt-8 border-2 border-dashed border-border bg-background p-10 text-center clip-angled-sm">
-                <div className="mx-auto grid h-12 w-12 place-items-center bg-muted text-muted-foreground clip-angled-sm">
+              <div className="border-2 border-dashed border-border bg-background p-10 text-center clip-angled-sm h-full flex flex-col items-center justify-center">
+                <div className="grid h-12 w-12 place-items-center bg-muted text-muted-foreground clip-angled-sm">
                   <Plus className="h-6 w-6" />
                 </div>
-                <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO ACTIVE DRAFTS</p>
-                <p className="mx-auto mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Start a Hype Card above. Its project settings save automatically on this device.</p>
+                <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO LOCAL DRAFT</p>
+                <p className="mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Start a Hype Card above.</p>
+              </div>
+            )}
+
+            {/* Cloud Projects */}
+            {isSignedIn ? (
+              <div className="flex flex-col gap-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full p-10 border border-border bg-muted/50 clip-angled-sm">
+                    <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Loading Cloud Projects...</p>
+                  </div>
+                ) : cloudProjects && cloudProjects.length > 0 ? (
+                  <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {cloudProjects.map(project => (
+                      <div key={project.id} className="flex items-center justify-between border-l-4 border-foreground bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80 group/project">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <span className="grid h-12 w-12 shrink-0 place-items-center bg-background text-foreground clip-angled-sm border border-border">
+                            <Layers3 className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0 overflow-hidden">
+                            <p className="font-display text-xl uppercase tracking-wide truncate">{project.name}</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1 truncate">
+                              Cloud • Rev {project.revision} • {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                          <button 
+                            type="button" 
+                            disabled={deleteProject.isPending}
+                            onClick={() => { if(confirm('Delete this project?')) deleteProject.mutate({ projectId: project.id }) }}
+                            className="grid h-10 w-10 place-items-center bg-background text-muted-foreground hover:bg-destructive hover:text-destructive-foreground clip-angled-sm transition-colors"
+                            data-testid={`btn-delete-project-${project.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <Link href={`/studio/hype-card/${project.id}`} className="bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background clip-angled-sm hover:scale-105 transition-transform" data-testid={`link-resume-cloud-project-${project.id}`}>
+                            Open
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-border bg-background p-10 text-center clip-angled-sm h-full flex flex-col items-center justify-center">
+                    <div className="grid h-12 w-12 place-items-center bg-muted text-muted-foreground clip-angled-sm">
+                      <FolderOpen className="h-6 w-6" />
+                    </div>
+                    <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO CLOUD PROJECTS</p>
+                    <p className="mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Save your local draft to the cloud to access it from anywhere.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="border border-border bg-background p-10 text-center clip-angled-sm h-full flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-primary/5" />
+                <div className="relative z-10 grid h-12 w-12 place-items-center bg-primary text-primary-foreground clip-angled-sm">
+                  <Activity className="h-6 w-6" />
+                </div>
+                <p className="relative z-10 mt-5 font-display text-2xl uppercase tracking-wide text-foreground">CLOUD SYNC</p>
+                <p className="relative z-10 mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Sign in to save your drafts and media to the cloud securely.</p>
+                <Link href="/sign-in" className="relative z-10 mt-6 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform">
+                  Sign In
+                </Link>
               </div>
             )}
           </div>
-          
-          <div className="bg-foreground p-6 sm:p-10 clip-angled-sm text-background relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex h-14 w-14 items-center justify-center bg-primary text-primary-foreground clip-angled-sm">
-                <Lightbulb className="h-6 w-6" />
-              </div>
-              <h2 className="mt-8 max-w-sm font-display text-4xl leading-[0.95] tracking-wide uppercase">
-                A STRONG GRAPHIC STARTS WITH ONE CLEAR PLAY.
-              </h2>
-              <p className="mt-4 max-w-sm text-base font-medium leading-relaxed text-white/70">
-                Keep the text punchy. Make the energy obvious. Let the structured templates do the heavy lifting.
-              </p>
-            </div>
-            <div className="relative z-10 mt-12 flex items-center gap-3 text-sm font-bold uppercase tracking-widest text-primary">
-              Pro Tip Active <Activity className="h-4 w-4" />
-            </div>
-          </div>
-        </section>
+        </div>
       </main>
     </StudioLayout>
   );
@@ -627,7 +737,7 @@ function Help() {
         <div className="mt-12 space-y-10">
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where are my graphics saved?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Hype Card settings are saved in this browser, and attached video clips are kept in local browser storage. Schedule and Award tools are currently preview-only; their Mark Session action stores only a small local marker, not the field values or template choice. Clearing browser data can remove all locally stored work.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings are saved in this browser, and attached video clips are kept in local browser storage. If you choose to sign in and save a draft to your account, your project settings and media are uploaded to our secure cloud. Clearing browser data can remove all locally stored work.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>
@@ -662,13 +772,13 @@ function Privacy() {
         </div>
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Privacy Policy</h1>
         <div className="prose prose-lg mt-12 max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-a:text-primary hover:prose-a:text-foreground">
-          <p className="lead font-medium text-xl">The short version: We don't want your data, we don't store your photos, and we don't track your team.</p>
+          <p className="lead font-medium text-xl">The short version: We don't want your data, and we don't track your team. Your photos remain on your device unless you choose to save them to a cloud account.</p>
           <h3>1. Local Execution</h3>
-          <p>LeagueMatrix is built as a local-first application. When you upload a photo or video to create a graphic, that media is processed entirely on your device using browser APIs. It never touches a server.</p>
+          <p>LeagueMatrix is built as a local-first application. When you upload a photo or video to create a graphic, that media is processed entirely on your device using browser APIs. It never touches a server unless you log in and explicitly save a project to your cloud account.</p>
           <h3>2. Analytics</h3>
           <p>We do not use tracking pixels, session recording tools, or advertising analytics in this release.</p>
           <h3>3. Cookies</h3>
-          <p>Project settings are stored in your browser, and attached video clips are kept locally in browser storage so they can survive a reload. We do not use advertising cookies.</p>
+          <p>Project settings are stored in your browser, and attached video clips are kept locally in browser storage so they can survive a reload. If you choose to create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
         </div>
       </main>
     </StudioLayout>
@@ -691,32 +801,163 @@ function NotFound() {
   );
 }
 
-function Router() {
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: "clerk",
+  options: {
+    logoPlacement: "inside" as const,
+    logoLinkUrl: basePath || "/",
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: "hsl(145 100% 45%)",
+    colorForeground: "hsl(222 15% 10%)",
+    colorMutedForeground: "hsl(215 14% 45%)",
+    colorDanger: "hsl(0 84% 60%)",
+    colorBackground: "hsl(0 0% 100%)",
+    colorInput: "hsl(214 15% 90%)",
+    colorInputForeground: "hsl(222 15% 10%)",
+    colorNeutral: "hsl(214 15% 90%)",
+    fontFamily: "var(--app-font-sans)",
+    borderRadius: "0.125rem",
+  },
+  elements: {
+    rootBox: "w-full flex justify-center",
+    cardBox: "bg-background rounded-sm w-[440px] max-w-full overflow-hidden clip-angled-sm border border-border shadow-2xl",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    headerTitle: "font-display text-3xl uppercase tracking-wide text-foreground",
+    headerSubtitle: "text-sm font-medium text-muted-foreground",
+    socialButtonsBlockButtonText: "text-sm font-bold uppercase tracking-wider",
+    formFieldLabel: "text-xs font-bold uppercase tracking-widest text-foreground",
+    footerActionLink: "text-primary font-bold hover:underline",
+    footerActionText: "text-sm font-medium text-muted-foreground",
+    dividerText: "text-xs font-bold uppercase tracking-widest text-muted-foreground",
+    identityPreviewEditButton: "text-primary",
+    formFieldSuccessText: "text-primary text-xs",
+    alertText: "text-sm font-medium",
+    logoBox: "mb-4",
+    logoImage: "h-12 object-contain",
+    socialButtonsBlockButton: "rounded-none border border-border clip-angled-sm h-12 bg-background hover:bg-muted transition-colors text-foreground",
+    formButtonPrimary: "rounded-none h-12 clip-angled-sm font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground transition-colors",
+    formFieldInput: "rounded-none h-12 border-border bg-background text-foreground font-medium focus:border-primary clip-angled-sm",
+    footerAction: "mt-6",
+    dividerLine: "bg-border",
+    alert: "rounded-none border border-destructive/20 bg-destructive/10 clip-angled-sm",
+    otpCodeFieldInput: "rounded-none border-border focus:border-primary clip-angled-sm",
+    formFieldRow: "mb-4",
+    main: "p-8",
+  },
+};
+
+function SignInPage() {
   return (
-    <ErrorBoundary resetKey={useLocation()[0]}>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/studio" component={Studio} />
-        <Route path="/studio/hype-card" component={HypeCardEditor} />
-        <Route path="/studio/schedule"><EditorPage kind="schedule" /></Route>
-        <Route path="/studio/awards"><EditorPage kind="awards" /></Route>
-        <Route path="/help" component={Help} />
-        <Route path="/privacy" component={Privacy} />
-        <Route component={NotFound} />
-      </Switch>
-    </ErrorBoundary>
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background bg-tech-grid px-4 py-12">
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+    </div>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background bg-tech-grid px-4 py-12">
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+    </div>
+  );
+}
+
+function HomeRedirect() {
+  return (
+    <>
+      <Show when="signed-in">
+        <Redirect to="/studio" />
+      </Show>
+      <Show when="signed-out">
+        <HomePage />
+      </Show>
+    </>
+  );
+}
+
+function ClerkQueryClientCacheInvalidator() {
+  const { addListener } = useClerk();
+  const queryClient = useQueryClient();
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      const userId = user?.id ?? null;
+      if (
+        prevUserIdRef.current !== undefined &&
+        prevUserIdRef.current !== userId
+      ) {
+        queryClient.clear();
+      }
+      prevUserIdRef.current = userId;
+    });
+    return unsubscribe;
+  }, [addListener, queryClient]);
+
+  return null;
+}
+
+function ClerkProviderWithRoutes() {
+  const [, setLocation] = useLocation();
+
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: {
+          start: {
+            title: "ENTER THE ARENA",
+            subtitle: "Sign in to access your cloud drafts",
+          },
+        },
+        signUp: {
+          start: {
+            title: "JOIN THE ROSTER",
+            subtitle: "Create an account to save drafts in the cloud",
+          },
+        },
+      }}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ClerkQueryClientCacheInvalidator />
+        <TooltipProvider>
+          <ErrorBoundary resetKey={useLocation()[0]}>
+            <Switch>
+              <Route path="/" component={HomeRedirect} />
+              <Route path="/sign-in/*?" component={SignInPage} />
+              <Route path="/sign-up/*?" component={SignUpPage} />
+              <Route path="/studio" component={Studio} />
+              <Route path="/studio/hype-card" component={HypeCardEditor} />
+              <Route path="/studio/hype-card/:id" component={HypeCardEditor} />
+              <Route path="/studio/schedule"><EditorPage kind="schedule" /></Route>
+              <Route path="/studio/awards"><EditorPage kind="awards" /></Route>
+              <Route path="/help" component={Help} />
+              <Route path="/privacy" component={Privacy} />
+              <Route component={NotFound} />
+            </Switch>
+          </ErrorBoundary>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 }
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <WouterRouter base={basePath}>
+      <ClerkProviderWithRoutes />
+      <Toaster />
+    </WouterRouter>
   );
 }

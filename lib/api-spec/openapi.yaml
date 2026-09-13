@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Cloud project operations
+  - name: storage
+    description: Project media storage operations
 paths:
   /healthz:
     get:
@@ -24,7 +28,187 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List the authenticated user's projects
+      responses:
+        "200":
+          description: Projects owned by the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a cloud project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Project limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /projects/{projectId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get one owned cloud project
+      responses:
+        "200":
+          description: Owned project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update an owned cloud project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectConflict"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete an owned cloud project and its media metadata
+      responses:
+        "204":
+          description: Project deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestProjectMediaUploadUrl
+      tags: [storage]
+      summary: Request a direct project media upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaUploadInput"
+      responses:
+        "200":
+          description: Presigned direct upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: Upload is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/media/{mediaId}:
+    parameters:
+      - $ref: "#/components/parameters/MediaId"
+    get:
+      operationId: serveProjectMedia
+      tags: [storage]
+      summary: Serve owned project media
+      responses:
+        "200":
+          description: Media bytes
+          content:
+            image/*: {}
+            video/*: {}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MediaId:
+      name: mediaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +217,195 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    HypeCardProject:
+      type: object
+      description: HypeCardProject document. Version 2 is currently supported.
+      required: [version, headline, mediaType, mediaId, videoMeta, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, coachMessage, visibility, photo, logo, photoTransform, adjustments]
+      properties:
+        version:
+          type: integer
+          enum: [2]
+        headline: { type: string }
+        mediaType: { type: ["string", "null"], enum: [image, video, null] }
+        mediaId: { type: ["string", "null"] }
+        videoMeta:
+          oneOf:
+            - $ref: "#/components/schemas/VideoMeta"
+            - type: "null"
+        template: { type: string, enum: [spotlight, impact, clean] }
+        layout: { type: string, enum: [slugger, all-star, rookie, dugout] }
+        format: { type: string, enum: [square, story, landscape, card] }
+        palette: { type: string, enum: [coral, teal, gold, midnight] }
+        finish: { type: string, enum: [classic, cosmic-clash, gold-spotlight, neon-prism, paint-impact] }
+        background: { type: string, enum: [solid, gradient, paper] }
+        overlay: { type: boolean }
+        branding: { type: boolean }
+        playerName: { type: string }
+        jerseyNumber: { type: string }
+        teamName: { type: string }
+        position: { type: string }
+        grade: { type: string }
+        stat: { type: string }
+        achievement: { type: string }
+        coachMessage: { type: string }
+        visibility:
+          $ref: "#/components/schemas/ProjectVisibility"
+        photo: { type: ["string", "null"] }
+        logo: { type: ["string", "null"] }
+        photoTransform:
+          $ref: "#/components/schemas/PhotoTransform"
+        adjustments:
+          $ref: "#/components/schemas/ProjectAdjustments"
+    VideoMeta:
+      type: object
+      required: [name, type, size, duration]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        size: { type: number }
+        duration: { type: number }
+    ProjectVisibility:
+      type: object
+      required: [grade, stat, achievement, coachMessage]
+      properties:
+        grade: { type: boolean }
+        stat: { type: boolean }
+        achievement: { type: boolean }
+        coachMessage: { type: boolean }
+    PhotoTransform:
+      type: object
+      required: [zoom, x, y, rotation, flip]
+      properties:
+        zoom: { type: number }
+        x: { type: number }
+        y: { type: number }
+        rotation: { type: number }
+        flip: { type: boolean }
+    ProjectAdjustments:
+      type: object
+      required: [brightness, contrast, saturation]
+      properties:
+        brightness: { type: number }
+        contrast: { type: number }
+        saturation: { type: number }
+    Project:
+      type: object
+      required: [id, name, project, revision, createdAt, updatedAt, media]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        project:
+          $ref: "#/components/schemas/HypeCardProject"
+        revision:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+    ProjectList:
+      type: array
+      items:
+        $ref: "#/components/schemas/Project"
+    ProjectInput:
+      type: object
+      required: [name, project]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        project:
+          $ref: "#/components/schemas/HypeCardProject"
+    ProjectUpdate:
+      type: object
+      required: [expectedRevision]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        project:
+          $ref: "#/components/schemas/HypeCardProject"
+        expectedRevision:
+          type: integer
+          minimum: 1
+    ProjectConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error:
+          type: string
+        current:
+          $ref: "#/components/schemas/Project"
+    Media:
+      type: object
+      required: [id, objectPath, name, contentType, size, mediaType, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        objectPath:
+          type: string
+        name:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+        mediaType:
+          type: string
+          enum: [image, video]
+        createdAt:
+          type: string
+          format: date-time
+    MediaUploadInput:
+      type: object
+      required: [name, size, contentType, mediaType]
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+        mediaType:
+          type: string
+          enum: [image, video]
+    MediaUpload:
+      type: object
+      required: [id, uploadURL, objectPath, media]
+      properties:
+        id:
+          type: string
+          format: uuid
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        media:
+          $ref: "#/components/schemas/Media"
 

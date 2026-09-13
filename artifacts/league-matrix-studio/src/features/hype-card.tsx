@@ -1,3 +1,4 @@
+type SaveStatus = 'Saved locally' | 'Saving' | 'Saved to account' | 'Offline' | 'Save failed' | 'Conflict';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
@@ -5,6 +6,20 @@ import {
   LayoutGrid, Lightbulb, Maximize2, Move, Palette, RotateCw, Save, ShieldCheck, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
 } from 'lucide-react';
 import { Link } from 'wouter';
+import { useParams, useLocation } from 'wouter';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/react';
+import { 
+  useCreateProject, 
+  useUpdateProject, 
+  useGetProject, 
+  getGetProjectQueryKey,
+  getListProjectsQueryKey,
+  useRequestProjectMediaUploadUrl,
+  serveProjectMedia,
+  type Project
+} from '@workspace/api-client-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +28,7 @@ import { Switch } from '@/components/ui/switch';
 
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
-  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions
+  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
@@ -128,7 +143,7 @@ function normalizeProject(project: any): HypeCardProject {
         }
       : null,
     layout: project.layout ?? defaults.layout,
-    finish: defaults.finish,
+    finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
     visibility: { ...defaults.visibility, ...project.visibility },
@@ -620,9 +635,18 @@ export function MobilePreviewDialog({
     </div>
   );
 }
+
+
 export function HypeCardEditor() {
+  const params = useParams();
+  const [, setLocation] = useLocation();
+  const cloudProjectId = params.id;
+  const { user, isSignedIn, isLoaded } = useUser();
+  const queryClient = useQueryClient();
+
   const [project, setProject] = useState<HypeCardProject>(() => {
     try {
+      if (cloudProjectId) return defaultProject(); 
       const stored = window.localStorage.getItem('leaguematrix-hype-card-project-v2');
       if (!stored) return defaultProject();
       const parsed = JSON.parse(stored) as { tool?: string; project?: any };
@@ -633,6 +657,9 @@ export function HypeCardEditor() {
   });
 
   const [notice, setNotice] = useState('');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(cloudProjectId ? 'Saving' : 'Saved locally');
+  const [conflictData, setConflictData] = useState<Project | null>(null);
+  
   const [autosaveWarning, setAutosaveWarning] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
@@ -646,12 +673,72 @@ export function HypeCardEditor() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
 
+  const initializedForId = useRef<string | null>(null);
+  const lastSaved = useRef<HypeCardProject>(project);
+  const currentRevision = useRef<number>(1);
+  const mutateFnRef = useRef<any>(null);
+  const isSavingRef = useRef(false);
+  const nextSaveDataRef = useRef<HypeCardProject | null>(null);
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn && cloudProjectId) {
+      setLocation('/sign-in');
+    }
+  }, [isLoaded, isSignedIn, cloudProjectId, setLocation]);
+
+  if (isLoaded && !isSignedIn && cloudProjectId) {
+    return (
+      <div className="flex h-[100dvh] items-center justify-center bg-muted">
+        <p className="font-bold uppercase tracking-wider text-muted-foreground">Redirecting to sign in...</p>
+      </div>
+    );
+  }
+
+  const { data: cloudProjectData } = useGetProject(cloudProjectId || '', {
+    query: { enabled: !!cloudProjectId && !!isSignedIn, queryKey: getGetProjectQueryKey(cloudProjectId || '') }
+  });
+
+  const updateProjectMutation = useUpdateProject({
+    mutation: {
+      onSuccess: (data) => {
+        currentRevision.current = data.revision;
+        setSaveStatus('Saved to account');
+        queryClient.setQueryData(getGetProjectQueryKey(cloudProjectId || ''), data);
+      },
+      onError: (err: any) => {
+        if (err?.status === 409 || err?.message?.includes('409') || err?.error?.includes('conflict')) {
+          setSaveStatus('Conflict');
+          if (err?.data?.current) {
+            setConflictData(err.data.current);
+          }
+          setNotice('Conflict detected! Review changes before saving.');
+        } else {
+          setSaveStatus('Save failed');
+        }
+      }
+    }
+  });
+  
+  const requestMediaUrl = useRequestProjectMediaUploadUrl();
+  const createProject = useCreateProject();
+  mutateFnRef.current = updateProjectMutation.mutateAsync;
+
+  useEffect(() => {
+    if (cloudProjectId && cloudProjectData && initializedForId.current !== cloudProjectId) {
+      initializedForId.current = cloudProjectId;
+      const p = normalizeProject(cloudProjectData.project);
+      setProject(p);
+      lastSaved.current = p;
+      currentRevision.current = cloudProjectData.revision;
+      setSaveStatus('Saved to account');
+    }
+  }, [cloudProjectData, cloudProjectId]);
+
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
     const previousRootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
-
     return () => {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousRootOverflow;
@@ -660,66 +747,66 @@ export function HypeCardEditor() {
 
   useEffect(() => {
     let cancelled = false;
-    if (project.mediaType !== 'video' || !project.mediaId) {
-      setVideoUrl(undefined);
-      return () => {
-        cancelled = true;
-      };
-    }
+    
+    const loadMedia = async () => {
+      if (!project.mediaId || !project.mediaType) {
+        if (project.mediaType !== 'image') setVideoUrl(undefined);
+        return;
+      }
 
-    loadMediaBlob(project.mediaId).then((blob) => {
+      let blob = await loadMediaBlob(project.mediaId);
+      
+      if (!blob && cloudProjectId) {
+        try {
+          blob = await serveProjectMedia(project.mediaId);
+          if (blob) {
+            await saveMediaBlob(project.mediaId, blob);
+          }
+        } catch (e) {
+          console.error("Failed to load cloud media", e);
+        }
+      }
+
       if (!blob) {
         if (!cancelled) {
-          setVideoUrl(undefined);
-          setNotice('Could not find the attached video for this project. Please re-attach it.');
+          if (project.mediaType === 'video') setVideoUrl(undefined);
+          setNotice('The attached media is no longer available on this device. Please add it again.');
         }
         return;
       }
-      const url = URL.createObjectURL(blob);
-      if (cancelled) {
-        URL.revokeObjectURL(url);
-      } else {
-        setVideoUrl(url);
+
+      if (project.mediaType === 'video') {
+        const url = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+        } else {
+          setVideoUrl(url);
+        }
+      } else if (project.mediaType === 'image') {
+        if (project.photo) return;
+        const photo = await blobToDataUrl(blob);
+        if (!cancelled) {
+          setProject((current) => (
+            current.mediaType === 'image' && current.mediaId === project.mediaId
+              ? { ...current, photo }
+              : current
+          ));
+        }
       }
-    }).catch((err) => {
-      if (!cancelled) {
-        console.error('Failed to load video blob', err);
-        setNotice('Failed to load video from local storage.');
-      }
-    });
-    return () => {
-      cancelled = true;
     };
-  }, [project.mediaId, project.mediaType]);
+
+    loadMedia();
+
+    return () => { cancelled = true; };
+  }, [project.mediaId, project.mediaType, cloudProjectId, project.photo]);
 
   useEffect(() => {
-    if (project.mediaType !== 'image') return;
+    if (project.mediaType !== 'image' || !project.photo || project.mediaId) return;
     let cancelled = false;
 
-    const restoreOrMigrateImage = async () => {
+    const migrateImage = async () => {
       try {
-        if (project.mediaId) {
-          if (project.photo) return;
-          const blob = await loadMediaBlob(project.mediaId);
-          if (!blob) {
-            if (!cancelled) {
-              setNotice('The attached image is no longer available on this device. Please add it again.');
-            }
-            return;
-          }
-          const photo = await blobToDataUrl(blob);
-          if (!cancelled) {
-            setProject((current) => (
-              current.mediaType === 'image' && current.mediaId === project.mediaId
-                ? { ...current, photo }
-                : current
-            ));
-          }
-          return;
-        }
-
-        if (!project.photo) return;
-        const blob = await fetch(project.photo).then((response) => response.blob());
+        const blob = await fetch(project.photo!).then((response) => response.blob());
         const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
         await saveMediaBlob(id, blob);
         if (!cancelled) {
@@ -729,49 +816,237 @@ export function HypeCardEditor() {
               : current
           ));
         }
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to restore image media', error);
-          setAutosaveWarning('This browser could not store the attached image for your next visit. Download the project file to keep a backup.');
-        }
+      } catch (err) {
+        console.error('Failed to migrate image to DB', err);
       }
     };
 
-    void restoreOrMigrateImage();
-    return () => {
-      cancelled = true;
-    };
+    void migrateImage();
+    return () => { cancelled = true; };
   }, [project.mediaId, project.mediaType, project.photo]);
 
   useEffect(() => {
     setExportSupport(checkExportSupport());
   }, [project.mediaType]);
 
-  // Cleanup videoUrl on unmount or URL change
   useEffect(() => {
     return () => {
       if (videoUrl) URL.revokeObjectURL(videoUrl);
     };
   }, [videoUrl]);
 
-  useEffect(() => {
-    if (project.mediaType === 'image' && project.photo && !project.mediaId) {
-      return;
+  const processNextSave = async () => {
+    if (isSavingRef.current || !nextSaveDataRef.current || !cloudProjectId || saveStatus === 'Conflict') return;
+
+    const dataToSave = nextSaveDataRef.current;
+    nextSaveDataRef.current = null;
+    isSavingRef.current = true;
+    setSaveStatus('Saving');
+
+    try {
+      let currentMediaId = dataToSave.mediaId;
+      if (currentMediaId && (currentMediaId.startsWith('image-') || currentMediaId.startsWith('video-'))) {
+        const blob = await loadMediaBlob(currentMediaId);
+        if (blob) {
+          const uploadRes = await requestMediaUrl.mutateAsync({
+            data: {
+              name: currentMediaId,
+              size: blob.size,
+              contentType: blob.type,
+              mediaType: dataToSave.mediaType as 'image' | 'video',
+              projectId: cloudProjectId
+            }
+          });
+          const putRes = await fetch(uploadRes.uploadURL, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
+          if (!putRes.ok) throw new Error('Upload failed');
+          currentMediaId = uploadRes.media.id;
+          await saveMediaBlob(currentMediaId, blob);
+          
+          setProject(p => p.mediaId === dataToSave.mediaId ? { ...p, mediaId: currentMediaId } : p);
+        } else {
+          setNotice('Attached media could not be recovered and was removed.');
+          currentMediaId = null;
+        }
+      }
+
+      const savedProject = dataToSave.mediaType === 'image' && currentMediaId
+        ? { ...dataToSave, mediaId: currentMediaId, photo: null }
+        : { ...dataToSave, mediaId: currentMediaId };
+
+      await mutateFnRef.current({
+        projectId: cloudProjectId,
+        data: {
+          project: savedProject,
+          expectedRevision: currentRevision.current
+        }
+      });
+      lastSaved.current = currentMediaId !== dataToSave.mediaId ? { ...dataToSave, mediaId: currentMediaId } : dataToSave;
+    } catch (e: any) {
+      if (e?.status !== 409 && !e?.message?.includes('409') && !e?.error?.includes('conflict')) {
+         setSaveStatus('Save failed');
+      }
+    } finally {
+      isSavingRef.current = false;
+      if (nextSaveDataRef.current) {
+        processNextSave();
+      }
     }
-    const timeout = window.setTimeout(() => {
-      try {
-        const savedProject = project.mediaType === 'image' && project.mediaId
-          ? { ...project, photo: null }
-          : project;
-        window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project: savedProject }));
-        window.localStorage.setItem('leaguematrix-project', 'true');
-        setAutosaveWarning('');
-      } catch {
-        setAutosaveWarning('Autosave is unavailable in this browser. Download the project file to keep a backup.');
+  };
+
+  const processNextSaveRef = useRef(processNextSave);
+  processNextSaveRef.current = processNextSave;
+
+  useEffect(() => {
+    if (cloudProjectId && initializedForId.current !== cloudProjectId) return;
+    if (saveStatus === 'Conflict') return;
+
+    const isSameAsLastSaved = JSON.stringify(project) === JSON.stringify(lastSaved.current);
+    if (isSameAsLastSaved) return;
+
+    const timeout = window.setTimeout(async () => {
+      if (!cloudProjectId) {
+        try {
+          const savedProject = project.mediaType === 'image' && project.mediaId
+            ? { ...project, photo: null }
+            : project;
+          window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project: savedProject }));
+          window.localStorage.setItem('leaguematrix-project', 'true');
+          setAutosaveWarning('');
+          setSaveStatus('Saved locally');
+          lastSaved.current = project;
+        } catch {
+          setAutosaveWarning('Autosave is unavailable in this browser. Download the project file to keep a backup.');
+        }
+      } else {
+        nextSaveDataRef.current = project;
+        processNextSaveRef.current();
       }
     }, 400);
+
     return () => window.clearTimeout(timeout);
-  }, [project]);
+  }, [project, cloudProjectId, saveStatus]);
+
+  const saveToCloud = async () => {
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    setSaveStatus('Saving');
+    try {
+      let currentMediaId = project.mediaId;
+      let finalMediaId = currentMediaId;
+      
+      if (currentMediaId) {
+        const blob = await loadMediaBlob(currentMediaId);
+        if (blob) {
+          const uploadRes = await requestMediaUrl.mutateAsync({
+            data: {
+              name: currentMediaId,
+              size: blob.size,
+              contentType: blob.type,
+              mediaType: project.mediaType as 'image' | 'video'
+            }
+          });
+          const putRes = await fetch(uploadRes.uploadURL, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
+          if (!putRes.ok) throw new Error('Upload failed');
+          finalMediaId = uploadRes.media.id;
+          await saveMediaBlob(finalMediaId, blob);
+        } else {
+          setNotice('Attached media could not be recovered and was removed.');
+          finalMediaId = null;
+        }
+      }
+
+      const created = await createProject.mutateAsync({
+        data: {
+          name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
+          project: { ...project, mediaId: finalMediaId, photo: null } 
+        }
+      });
+      
+      if (finalMediaId !== project.mediaId) {
+        setProject(p => {
+           const updated = { ...p, mediaId: finalMediaId };
+           lastSaved.current = updated;
+           return updated;
+        });
+      }
+      
+      setLocation(`/studio/hype-card/${created.id}`);
+    } catch (e) {
+      setSaveStatus('Save failed');
+      setNotice('Failed to migrate project to cloud.');
+    }
+  };
+
+  const resolveConflict = async (action: 'server' | 'new') => {
+    if (action === 'server') {
+       if (conflictData) {
+         setProject(normalizeProject(conflictData.project));
+         currentRevision.current = conflictData.revision;
+         lastSaved.current = normalizeProject(conflictData.project);
+         setConflictData(null);
+         setSaveStatus('Saved to account');
+       } else if (cloudProjectData) {
+         setProject(normalizeProject(cloudProjectData.project));
+         currentRevision.current = cloudProjectData.revision;
+         lastSaved.current = normalizeProject(cloudProjectData.project);
+         setSaveStatus('Saved to account');
+       }
+    } else {
+       setSaveStatus('Saving');
+       try {
+         const p = { ...project };
+         let currentMediaId = p.mediaId;
+         let finalMediaId = currentMediaId;
+         
+         if (currentMediaId) {
+           const blob = await loadMediaBlob(currentMediaId);
+           if (blob) {
+             const uploadRes = await requestMediaUrl.mutateAsync({
+               data: {
+                 name: currentMediaId,
+                 size: blob.size,
+                 contentType: blob.type,
+                 mediaType: p.mediaType as 'image' | 'video'
+               }
+             });
+             const putRes = await fetch(uploadRes.uploadURL, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
+             if (!putRes.ok) throw new Error('Upload failed');
+             finalMediaId = uploadRes.media.id;
+             await saveMediaBlob(finalMediaId, blob);
+           } else {
+             setNotice('Attached media could not be recovered and was removed.');
+             finalMediaId = null;
+           }
+         }
+
+         const created = await createProject.mutateAsync({
+           data: {
+             name: `${p.teamName || 'Untitled'} - ${p.headline || 'Project'} (Copy)`,
+             project: { ...p, mediaId: finalMediaId, photo: null }
+           }
+         });
+         
+         if (finalMediaId !== p.mediaId) {
+           setProject(curr => {
+              const updated = { ...curr, mediaId: finalMediaId };
+              lastSaved.current = updated;
+              return updated;
+           });
+         } else {
+           lastSaved.current = p;
+         }
+         
+         setConflictData(null);
+         queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+         setLocation(`/studio/hype-card/${created.id}`);
+       } catch (e) {
+         setSaveStatus('Conflict');
+         setNotice('Failed to save as new project. Please try again.');
+       }
+    }
+  };
 
   const updateProject = <K extends keyof HypeCardProject>(key: K, value: HypeCardProject[K]) => {
     setProject((current) => ({ ...current, [key]: value }));
@@ -1054,6 +1329,7 @@ export function HypeCardEditor() {
   };
 
 
+
   return (
     <div className="moment-studio flex h-[100dvh] flex-col overflow-hidden bg-muted sm:fixed sm:inset-0 sm:h-auto">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
@@ -1062,10 +1338,21 @@ export function HypeCardEditor() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
            <h1 className="font-display text-xl tracking-wide text-foreground">Hype Cards</h1>
+           <div className="flex ml-4 items-center gap-2">
+             <div className={`hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 clip-angled-sm border ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
+               {saveStatus === 'Saving' ? <RotateCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+               {saveStatus}
+             </div>
+             {!cloudProjectId && (
+               <button type="button" onClick={saveToCloud} disabled={createProject.isPending} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 clip-angled-sm bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-colors border border-transparent">
+                 <Save className="h-3 w-3" /> <span className="hidden sm:inline">Save to account</span>
+               </button>
+             )}
+           </div>
         </div>
         <div className="flex items-center gap-2">
           {validation && <span className="hidden text-xs font-bold text-destructive sm:inline-block">{validation}</span>}
-          <div className="flex gap-2">
+<div className="flex gap-2">
             <Button variant="outline" className="hidden gap-2 rounded-none clip-angled-sm sm:flex" onClick={async () => {
               try {
                 const portableProject = await getPortableProject();
@@ -1346,6 +1633,26 @@ export function HypeCardEditor() {
       </div>
 
       <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
-    </div>
+    
+      {saveStatus === 'Conflict' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-card border border-destructive p-6 shadow-2xl clip-angled-sm text-center">
+            <div className="mx-auto grid h-12 w-12 place-items-center bg-destructive/10 text-destructive rounded-full mb-4">
+              <RotateCw className="h-6 w-6" />
+            </div>
+            <h2 className="font-display text-2xl uppercase tracking-wide text-foreground">Sync Conflict</h2>
+            <p className="mt-2 text-sm font-medium text-muted-foreground">This project was modified from another device or session. Do you want to load the newest server version and lose local changes, or keep your local changes and save them as a new project?</p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={() => resolveConflict('server')} className="flex-1 bg-muted text-foreground py-3 text-sm font-bold uppercase tracking-wider clip-angled-sm hover:bg-destructive hover:text-destructive-foreground transition-colors">
+                Load Server Version
+              </button>
+              <button type="button" onClick={() => resolveConflict('new')} className="flex-1 bg-primary text-primary-foreground py-3 text-sm font-bold uppercase tracking-wider clip-angled-sm hover:opacity-90 transition-opacity">
+                Save as New
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 }
