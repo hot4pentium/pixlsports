@@ -42,3 +42,17 @@ mtime_ms = 1789343542949
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/d3968f06-e032-4cdf-9231-9e76bf0af692/ae42b74f-448a-4f73-8361-c3c370b239b9"
 storage_version_token = "1789343591742786"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "U0EJ5VIXkdsvOdA3NG5TB"
+uri = "file://screenshots/hype-card-number-position-corners.jpg"
+type = "image"
+title = "Hype Card with Corner Details"
+description = "Final Hype Card render with jersey number top-left, position top-right, and recognition/message removed."
+logical_id = "4b24a7ce-b93f-43dd-ba1d-98d36d6f7ecc"
+content_hash = "sha256:db82dad0237c17f297b5a5e67c2ec6bb6dc0bfced57819ccfb65a1e326fe9f07"
+size = 156663
+mtime_ms = 1789343894072
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/4b24a7ce-b93f-43dd-ba1d-98d36d6f7ecc/cc8861e2-12c2-48b3-ba3b-750dce44cfd1"
+storage_version_token = "1789343900408013"
+content_type = "image/jpeg"

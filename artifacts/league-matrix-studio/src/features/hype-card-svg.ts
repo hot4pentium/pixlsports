@@ -272,12 +272,7 @@ function cardContent(project: HypeCardProject) {
   const number = escapeXml(project.jerseyNumber || '00');
   const team = escapeXml((project.teamName || 'YOUR TEAM').toUpperCase());
   const details = escapeXml(project.position || 'GAME DAY').toUpperCase();
-  const recognition = escapeXml([
-    project.visibility.achievement ? project.achievement : '',
-    project.visibility.stat ? project.stat : '',
-  ].filter(Boolean).join('  •  ') || 'MAKE THE MOMENT COUNT').toUpperCase();
-  const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
-  return { headline: headlineStr, player, number, team, details, recognition, message };
+  return { headline: headlineStr, player, number, team, details, recognition: '', message: '' };
 }
 
 export type SvgLayer = 'all' | 'bg' | 'fg';
@@ -306,9 +301,9 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const photoHeight = frame.height * project.photoTransform.zoom;
   const headlineSize = fitText(stadiumHeadline, 840, 132, 0.56, 1);
   const playerSize = fitText(content.player, 760, 76, 0.7, 2);
-  const detailsLine = `${content.team}  •  #${content.number}  •  ${content.details}`;
-  const detailsSize = fitText(detailsLine, 820, 23, 0.63, 3);
-  const recognitionSize = fitText(content.recognition, 820, 31, 0.7, 1);
+  const detailsLine = content.team;
+  const detailsSize = fitText(detailsLine, 620, 23, 0.63, 3);
+  const positionBadgeSize = fitText(content.details, 176, 19, 0.58, 1);
   const photo = project.photo
     ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : '';
@@ -383,7 +378,13 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       <rect y="900" width="1000" height="500" fill="url(#stadiumBottom-${ns})"/>
       ${mediaGlow}
       ${placeholder}
-      <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
+       <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
+       <g aria-label="Player number and position">
+         <path d="M62 140 H196 L214 158 V208 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
+         <text x="78" y="188" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
+         <path d="M786 140 H938 V208 H804 L786 190 Z" fill="#020811" stroke="${palette.secondary}" stroke-width="3"/>
+         <text x="920" y="188" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${positionBadgeSize}" font-weight="800" letter-spacing="2" fill="${palette.accent}">${content.details}</text>
+       </g>
       <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>
       <g aria-label="Hype Card">
         <rect x="${hypeRailX}" y="500" width="${hypeRailWidth}" height="380" rx="26" fill="#02070e" fill-opacity=".78" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".9"/>
@@ -392,7 +393,6 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${nameplate}
        <text x="500" y="1212" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
        <text x="500" y="1252" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
-       <text x="500" y="1294" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${recognitionSize}" font-weight="800" fill="#fff">${content.recognition}</text>
       ${coachMessage}
       ${logo}
       ${branding}
@@ -793,18 +793,15 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   const textX = isLandscape ? width * .57 : width * .09;
   const textY = isLandscape ? height * .35 : isStory ? height * .59 : height * .62;
   const playerLine = project.position;
-  const achievementLine = [
-    project.visibility.achievement ? project.achievement : '',
-    project.visibility.stat ? project.stat : '',
-  ].filter(Boolean).join('  •  ');
+  const achievementLine = '';
   
   const headlineStr = escapeXml(project.headline || 'BIG PLAY');
   const playerText = escapeXml((project.playerName || 'YOUR PLAYER').toUpperCase());
   const jersey = escapeXml(project.jerseyNumber || '00');
   const team = escapeXml(project.teamName || 'YOUR TEAM');
   const position = escapeXml(playerLine || 'GAME DAY');
-  const achievement = escapeXml(achievementLine || 'MAKE THE MOMENT COUNT');
-  const message = escapeXml(project.visibility.coachMessage ? project.coachMessage : '');
+  const achievement = escapeXml(achievementLine);
+  const message = '';
   const geometric = project.template === 'impact'
     ? `<path d="M0 ${height * .1} L${width * .18} 0 L${width * .28} 0 L${width * .1} ${height * .3}Z" fill="${palette.accent}" opacity=".92"/><path d="M${width * .76} ${height} L${width} ${height * .68} L${width} ${height * .83} L${width * .88} ${height}Z" fill="${palette.secondary}" opacity=".8"/>`
     : project.template === 'clean'

@@ -1577,21 +1577,6 @@ export function HypeCardEditor() {
                 </div>
                 <HypeField label="Team name" value={project.teamName} onChange={(v) => updateProject('teamName', v)} placeholder="e.g. Eastside Falcons" />
                 
-                <div className="space-y-3 rounded-xl border border-border p-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-muted-foreground">Recognition</Label>
-                    <Switch checked={project.visibility.achievement} onCheckedChange={(c) => updateProject('visibility', { ...project.visibility, achievement: c })} />
-                  </div>
-                  {project.visibility.achievement && <HypeField label="" value={project.achievement} onChange={(v) => updateProject('achievement', v)} placeholder="e.g. Player of the week" />}
-                </div>
-
-                <div className="space-y-3 rounded-xl border border-border p-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-muted-foreground">Message</Label>
-                    <Switch checked={project.visibility.coachMessage} onCheckedChange={(c) => updateProject('visibility', { ...project.visibility, coachMessage: c })} />
-                  </div>
-                  {project.visibility.coachMessage && <HypeField label="" value={project.coachMessage} onChange={(v) => updateProject('coachMessage', v)} placeholder="e.g. Keep showing up." />}
-                </div>
               </div>
             </Section>
 
