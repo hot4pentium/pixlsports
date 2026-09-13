@@ -703,8 +703,8 @@ function ScheduleEditor() {
   const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [notice, setNotice] = useState('');
-  const [title, setTitle] = useState(storedDraft?.title ?? 'WEEKEND RUN');
-  const [teamSeason, setTeamSeason] = useState(storedDraft?.teamSeason ?? 'Eastside Falcons · Fall 2024');
+  const [teamName, setTeamName] = useState(storedDraft?.teamName ?? 'Eastside Falcons');
+  const [season, setSeason] = useState(storedDraft?.season ?? 'Fall 2024');
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
     storedDraft ? storedDraft.events : defaultScheduleEvents
   ));
@@ -739,22 +739,22 @@ function ScheduleEditor() {
 
   const saveProject = () => {
     window.localStorage.setItem('leaguematrix-project', 'true');
-    saveScheduleDraft(window.localStorage, { title, teamSeason, events, template: selectedTemplate });
+    saveScheduleDraft(window.localStorage, { teamName, season, events, template: selectedTemplate });
     setSaved(true);
     setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
   };
 
   const shareSchedule = async () => {
-    if (!title.trim() || events.length === 0) {
-      setNoticeFor('ADD A TITLE AND EVENT BEFORE SHARING');
+    if (!teamName.trim() || events.length === 0) {
+      setNoticeFor('ADD A TEAM NAME AND EVENT BEFORE SHARING');
       return;
     }
 
     try {
       const share = await createShare.mutateAsync({
         data: {
-          title: title.trim(),
-          teamSeason,
+          title: teamName.trim(),
+          teamSeason: season.trim(),
           events,
         },
       });
@@ -764,8 +764,8 @@ function ScheduleEditor() {
       if (typeof navigator.share === 'function') {
         try {
           await navigator.share({
-            title: title.trim(),
-            text: `${title.trim()} · ${teamSeason}`,
+              title: teamName.trim(),
+              text: `${teamName.trim()}${season.trim() ? ` · ${season.trim()}` : ''}`,
             url,
           });
           setNoticeFor('SCHEDULE SHARED WITH PARENTS');
@@ -783,12 +783,12 @@ function ScheduleEditor() {
   };
 
   const downloadGraphic = () => {
-    const svg = buildScheduleGraphicSvg({ title, teamSeason, events, template: selectedTemplate });
+    const svg = buildScheduleGraphicSvg({ teamName, season, events, template: selectedTemplate });
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
     const downloadUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = downloadUrl;
-    anchor.download = `${title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'team-schedule'}.svg`;
+    anchor.download = `${teamName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'team-schedule'}.svg`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -800,8 +800,8 @@ function ScheduleEditor() {
     window.localStorage.removeItem(scheduleStorageKey);
     setSelectedTemplate(0);
     setSaved(false);
-    setTitle('WEEKEND RUN');
-    setTeamSeason('Eastside Falcons · Fall 2024');
+    setTeamName('Eastside Falcons');
+    setSeason('Fall 2024');
     setEvents(getDefaultScheduleEvents());
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
@@ -842,8 +842,8 @@ function ScheduleEditor() {
             </div>
 
             <div className="relative z-10 space-y-4">
-              <ScheduleField label="Schedule headline" value={title} onChange={(value) => { setSaved(false); setTitle(value); }} testId="input-schedule-headline" />
-              <ScheduleField label="Team & season" value={teamSeason} onChange={(value) => { setSaved(false); setTeamSeason(value); }} testId="input-team-season" />
+              <ScheduleField label="Team name" value={teamName} onChange={(value) => { setSaved(false); setTeamName(value); }} placeholder="Eastside Falcons" testId="input-team-name" />
+              <ScheduleField label="Season" value={season} onChange={(value) => { setSaved(false); setSeason(value); }} placeholder="Fall 2024" testId="input-season" />
             </div>
 
             <div className="relative z-10 my-7 h-px bg-border" />
@@ -936,7 +936,7 @@ function ScheduleEditor() {
           </aside>
 
           <section className="order-1 min-w-0 lg:order-2">
-            <SchedulePreview title={title} teamSeason={teamSeason} events={events} selectedTemplate={selectedTemplate} />
+            <SchedulePreview teamName={teamName} season={season} events={events} selectedTemplate={selectedTemplate} />
           </section>
         </div>
       </main>
@@ -1065,13 +1065,13 @@ function graphicLine(value: string, maxLength = 86) {
 }
 
 function buildScheduleGraphicSvg({
-  title,
-  teamSeason,
+  teamName,
+  season,
   events,
   template,
 }: {
-  title: string;
-  teamSeason: string;
+  teamName: string;
+  season: string;
   events: ScheduleEvent[];
   template: number;
 }) {
@@ -1103,15 +1103,15 @@ function buildScheduleGraphicSvg({
     <circle cx="1010" cy="40" r="190" fill="none" stroke="#f5c94d" stroke-opacity=".35" stroke-width="28"/>
     <circle cx="70" cy="${height - 10}" r="190" fill="#177d76" fill-opacity=".9"/>
     <text x="56" y="72" fill="${foreground}" opacity=".78" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3">LEAGUEMATRIX · TEAM SCHEDULE</text>
-    <text x="56" y="152" fill="${foreground}" font-family="Arial, sans-serif" font-size="62" font-weight="800">${graphicLine(title || 'TEAM SCHEDULE', 27)}</text>
-    <text x="56" y="198" fill="${foreground}" opacity=".86" font-family="Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="2">${graphicLine(teamSeason || 'TEAM · SEASON', 60)}</text>
+    <text x="56" y="152" fill="${foreground}" font-family="Arial, sans-serif" font-size="62" font-weight="800">${graphicLine(teamName || 'TEAM NAME', 27)}</text>
+    <text x="56" y="198" fill="${foreground}" opacity=".86" font-family="Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="2">${graphicLine(season || 'SEASON', 60)}</text>
     <text x="1024" y="72" text-anchor="end" fill="${foreground}" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">${events.length} ${events.length === 1 ? 'EVENT' : 'EVENTS'}</text>
     ${eventMarkup}
     <text x="56" y="${height - 34}" fill="${foreground}" opacity=".74" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3">BRING THE ENERGY</text>
   </svg>`;
 }
 
-function SchedulePreview({ title, teamSeason, events, selectedTemplate }: { title: string; teamSeason: string; events: ScheduleEvent[]; selectedTemplate: number }) {
+function SchedulePreview({ teamName, season, events, selectedTemplate }: { teamName: string; season: string; events: ScheduleEvent[]; selectedTemplate: number }) {
   const templateClass = selectedTemplate === 1
     ? 'bg-[#177d76] text-[#f9f3e8]'
     : selectedTemplate === 2
@@ -1133,11 +1133,11 @@ function SchedulePreview({ title, teamSeason, events, selectedTemplate }: { titl
           <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.16em]">
             <div className="min-w-0">
               <p className="truncate opacity-80">LeagueMatrix · Team schedule</p>
-              <p className="mt-2 max-w-[90%] font-display text-4xl leading-[.88] tracking-[-.04em] sm:text-6xl">{title || 'TEAM SCHEDULE'}</p>
+              <p className="mt-2 max-w-[90%] font-display text-4xl leading-[.88] tracking-[-.04em] sm:text-6xl">{teamName || 'TEAM NAME'}</p>
             </div>
             <span className="shrink-0 rounded-full border border-current px-2.5 py-1">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
           </div>
-          <p className="mt-5 text-sm font-bold uppercase tracking-[.12em] opacity-85 sm:text-base">{teamSeason || 'TEAM · SEASON'}</p>
+          <p className="mt-5 text-sm font-bold uppercase tracking-[.12em] opacity-85 sm:text-base">{season || 'SEASON'}</p>
 
           <div className="mt-8 space-y-3">
             {events.length === 0 ? (

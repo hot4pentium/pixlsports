@@ -52,11 +52,11 @@ const completeEvents: ScheduleEvent[] = [
   },
 ];
 
-test('local draft round trips title, team, template, and every event field', () => {
+test('local draft round trips team name, season, template, and every event field', () => {
   const storage = new MemoryStorage();
   const draft: ScheduleDraft = {
-    title: 'TOURNAMENT WEEKEND',
-    teamSeason: 'Westside Wolves · Spring 2026',
+    teamName: 'Westside Wolves',
+    season: 'Spring 2026',
     events: completeEvents,
     template: 2,
   };
@@ -95,6 +95,23 @@ test('empty and partially filled saved events normalize into safe preview data',
   assert.equal(draft.events[2].type, 'game');
   assert.equal(draft.events[2].date, '');
   assert.equal(draft.events[2].location, '');
+  assert.equal(draft.teamName, 'Wolves');
+  assert.equal(draft.season, '2026');
+});
+
+test('new identity fields take precedence over legacy combined schedule text', () => {
+  const draft = normalizeScheduleDraft({
+    teamName: 'Westside Wolves',
+    season: 'Spring 2026',
+    title: 'OLD TITLE',
+    teamSeason: 'Old Team · Old Season',
+    events: [],
+    template: 0,
+  });
+
+  assert.ok(draft);
+  assert.equal(draft.teamName, 'Westside Wolves');
+  assert.equal(draft.season, 'Spring 2026');
 });
 
 test('opponent is only retained for game events when changing event type', () => {
@@ -126,8 +143,8 @@ test('event controls add, reorder, remove, and reset without losing event data',
 test('a saved draft with no events stays empty after reload', () => {
   const storage = new MemoryStorage();
   const draft: ScheduleDraft = {
-    title: 'REST DAY',
-    teamSeason: 'Wolves · Fall 2026',
+    teamName: 'Wolves',
+    season: 'Fall 2026',
     events: [],
     template: 0,
   };
