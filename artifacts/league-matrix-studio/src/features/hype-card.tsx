@@ -16,7 +16,7 @@ import {
   HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
-import { saveVideoBlob, loadVideoBlob, deleteVideoBlob, checkExportSupport } from './hype-card-media';
+import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
 import { exportVideoCanvas } from './hype-card-export';
 
 
@@ -80,6 +80,15 @@ function readProjectFile(file: File): Promise<string> {
   });
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('Could not read the attached image.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 function isProject(value: unknown): value is { tool: string; project: HypeCardProject } {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as { tool?: unknown; project?: unknown };
@@ -105,7 +114,11 @@ function normalizeProject(project: any): HypeCardProject {
     version: 2,
     headline: HEADLINES.includes(project.headline) ? project.headline : defaults.headline,
     mediaType,
-    mediaId: mediaType === 'video' && typeof project.mediaId === 'string' ? project.mediaId : null,
+    mediaId: mediaType === 'image' && safePhoto
+      ? null
+      : mediaType && typeof project.mediaId === 'string'
+        ? project.mediaId
+        : null,
     videoMeta: mediaType === 'video' && project.videoMeta && typeof project.videoMeta === 'object'
       ? {
           name: String(project.videoMeta.name || 'Attached video'),
@@ -620,6 +633,7 @@ export function HypeCardEditor() {
   });
 
   const [notice, setNotice] = useState('');
+  const [autosaveWarning, setAutosaveWarning] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -653,7 +667,7 @@ export function HypeCardEditor() {
       };
     }
 
-    loadVideoBlob(project.mediaId).then((blob) => {
+    loadMediaBlob(project.mediaId).then((blob) => {
       if (!blob) {
         if (!cancelled) {
           setVideoUrl(undefined);
@@ -679,6 +693,57 @@ export function HypeCardEditor() {
   }, [project.mediaId, project.mediaType]);
 
   useEffect(() => {
+    if (project.mediaType !== 'image') return;
+    let cancelled = false;
+
+    const restoreOrMigrateImage = async () => {
+      try {
+        if (project.mediaId) {
+          if (project.photo) return;
+          const blob = await loadMediaBlob(project.mediaId);
+          if (!blob) {
+            if (!cancelled) {
+              setNotice('The attached image is no longer available on this device. Please add it again.');
+            }
+            return;
+          }
+          const photo = await blobToDataUrl(blob);
+          if (!cancelled) {
+            setProject((current) => (
+              current.mediaType === 'image' && current.mediaId === project.mediaId
+                ? { ...current, photo }
+                : current
+            ));
+          }
+          return;
+        }
+
+        if (!project.photo) return;
+        const blob = await fetch(project.photo).then((response) => response.blob());
+        const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        await saveMediaBlob(id, blob);
+        if (!cancelled) {
+          setProject((current) => (
+            current.mediaType === 'image' && current.photo === project.photo && !current.mediaId
+              ? { ...current, mediaId: id }
+              : current
+          ));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to restore image media', error);
+          setAutosaveWarning('This browser could not store the attached image for your next visit. Download the project file to keep a backup.');
+        }
+      }
+    };
+
+    void restoreOrMigrateImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.mediaId, project.mediaType, project.photo]);
+
+  useEffect(() => {
     setExportSupport(checkExportSupport());
   }, [project.mediaType]);
 
@@ -690,12 +755,19 @@ export function HypeCardEditor() {
   }, [videoUrl]);
 
   useEffect(() => {
+    if (project.mediaType === 'image' && project.photo && !project.mediaId) {
+      return;
+    }
     const timeout = window.setTimeout(() => {
       try {
-        window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project }));
+        const savedProject = project.mediaType === 'image' && project.mediaId
+          ? { ...project, photo: null }
+          : project;
+        window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project: savedProject }));
         window.localStorage.setItem('leaguematrix-project', 'true');
+        setAutosaveWarning('');
       } catch {
-        setNotice('Your browser could not autosave this project. You can still download a project file.');
+        setAutosaveWarning('Autosave is unavailable in this browser. Download the project file to keep a backup.');
       }
     }, 400);
     return () => window.clearTimeout(timeout);
@@ -712,6 +784,23 @@ export function HypeCardEditor() {
 
   const updateAdjustment = (key: keyof HypeCardProject['adjustments'], value: number) => {
     setProject((current) => ({ ...current, adjustments: { ...current.adjustments, [key]: value } }));
+  };
+
+  const getPortableProject = async (): Promise<HypeCardProject> => {
+    if (project.mediaType !== 'image') {
+      return project;
+    }
+    if (project.photo) {
+      return { ...project, mediaId: null };
+    }
+    if (project.mediaId) {
+      const blob = await loadMediaBlob(project.mediaId);
+      if (!blob) {
+        throw new Error('The attached image is no longer available on this device.');
+      }
+      return { ...project, mediaId: null, photo: await blobToDataUrl(blob) };
+    }
+    return project;
   };
 
   const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -744,9 +833,9 @@ export function HypeCardEditor() {
           throw new Error('Video is longer than 15 seconds. Please trim it and try again.');
         }
 
-        await saveVideoBlob(id, file);
-        if (project.mediaId && project.mediaType === 'video') {
-          await deleteVideoBlob(project.mediaId).catch(console.warn);
+        await saveMediaBlob(id, file);
+        if (project.mediaId) {
+          await deleteMediaBlob(project.mediaId).catch(console.warn);
         }
         setVideoUrl(url);
         
@@ -780,38 +869,41 @@ export function HypeCardEditor() {
         setNotice(err instanceof Error ? err.message : 'Could not save video to local storage.');
       }
     } else if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const res = String(reader.result);
+      try {
+        const res = await blobToDataUrl(file);
         if (!isSafeRasterDataUrl(res)) {
           setNotice('Please choose a valid PNG, JPG, WEBP, or GIF.');
           return;
         }
-        if (project.mediaId && project.mediaType === 'video') {
-          await deleteVideoBlob(project.mediaId).catch(console.warn);
+        const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        await saveMediaBlob(id, file);
+        if (project.mediaId) {
+          await deleteMediaBlob(project.mediaId).catch(console.warn);
         }
         setVideoUrl(undefined);
         setProject(curr => ({
           ...curr,
           mediaType: 'image',
-          mediaId: null,
+          mediaId: id,
           videoMeta: null,
           photo: res,
           photoTransform: defaultProject().photoTransform,
           adjustments: defaultProject().adjustments
         }));
         setValidation('');
-      };
-      reader.onerror = () => setNotice('That image could not be loaded. Try another file.');
-      reader.readAsDataURL(file);
+        setAutosaveWarning('');
+      } catch (error) {
+        console.error('Failed to save image media', error);
+        setNotice('That image could not be saved in this browser. Try another image or browser.');
+      }
     } else {
       setNotice('Please choose a PNG, JPG, WEBP, GIF, MP4, MOV, or WebM file.');
     }
   };
 
   const handleMediaRemove = async () => {
-    if (project.mediaId && project.mediaType === 'video') {
-      await deleteVideoBlob(project.mediaId).catch(console.warn);
+    if (project.mediaId) {
+      await deleteMediaBlob(project.mediaId).catch(console.warn);
     }
     setVideoUrl(undefined);
     setProject(curr => ({
@@ -830,6 +922,10 @@ export function HypeCardEditor() {
     setNotice('');
     if (!project.photo && !project.mediaType) {
       setValidation('Please add a photo or video first.');
+      return;
+    }
+    if (project.mediaType === 'image' && !project.photo) {
+      setValidation('The attached image is still loading. Please try again in a moment.');
       return;
     }
     
@@ -970,15 +1066,20 @@ export function HypeCardEditor() {
         <div className="flex items-center gap-2">
           {validation && <span className="hidden text-xs font-bold text-destructive sm:inline-block">{validation}</span>}
           <div className="flex gap-2">
-            <Button variant="outline" className="hidden gap-2 rounded-none clip-angled-sm sm:flex" onClick={() => {
-              const str = JSON.stringify({ tool: 'hype-card', project }, null, 2);
-              const blob = new Blob([str], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${slugify(project.playerName || 'project')}.lmx`;
-              a.click();
-               window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            <Button variant="outline" className="hidden gap-2 rounded-none clip-angled-sm sm:flex" onClick={async () => {
+              try {
+                const portableProject = await getPortableProject();
+                const str = JSON.stringify({ tool: 'hype-card', project: portableProject }, null, 2);
+                const blob = new Blob([str], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${slugify(project.playerName || 'project')}.lmx`;
+                a.click();
+                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+              } catch (error) {
+                setNotice(error instanceof Error ? error.message : 'Could not prepare the project file.');
+              }
             }}>
               <Save className="h-4 w-4" /> Save project
             </Button>
@@ -1020,6 +1121,13 @@ export function HypeCardEditor() {
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground">
           {notice}
           <button type="button" onClick={() => setNotice('')}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {autosaveWarning && (
+        <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-950">
+          {autosaveWarning}
+          <button type="button" onClick={() => setAutosaveWarning('')} aria-label="Dismiss autosave warning"><X className="h-4 w-4" /></button>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 export const MEDIA_DB_NAME = 'leaguematrix-hype-media';
 export const MEDIA_STORE_NAME = 'videos';
 
-export async function saveVideoBlob(id: string, blob: Blob): Promise<void> {
+export async function saveMediaBlob(id: string, blob: Blob): Promise<void> {
   const db = await openMediaDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(MEDIA_STORE_NAME, 'readwrite');
@@ -17,12 +17,12 @@ export async function saveVideoBlob(id: string, blob: Blob): Promise<void> {
     };
     tx.onabort = () => {
       db.close();
-      reject(tx.error ?? new Error('Video save was aborted.'));
+      reject(tx.error ?? new Error('Media save was aborted.'));
     };
   });
 }
 
-export async function loadVideoBlob(id: string): Promise<Blob | undefined> {
+export async function loadMediaBlob(id: string): Promise<Blob | undefined> {
   const db = await openMediaDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(MEDIA_STORE_NAME, 'readonly');
@@ -40,7 +40,7 @@ export async function loadVideoBlob(id: string): Promise<Blob | undefined> {
   });
 }
 
-export async function deleteVideoBlob(id: string): Promise<void> {
+export async function deleteMediaBlob(id: string): Promise<void> {
   const db = await openMediaDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(MEDIA_STORE_NAME, 'readwrite');
@@ -56,7 +56,7 @@ export async function deleteVideoBlob(id: string): Promise<void> {
     };
     tx.onabort = () => {
       db.close();
-      reject(tx.error ?? new Error('Video deletion was aborted.'));
+      reject(tx.error ?? new Error('Media deletion was aborted.'));
     };
   });
 }
