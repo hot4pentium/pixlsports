@@ -19,7 +19,8 @@ import {
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, ShieldCheck, Sparkles,
-  SquarePen, Trophy, X, Zap, Maximize, Activity, Link2Off
+  SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
+  UserRound, Download, Star
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -44,6 +45,18 @@ import {
   type ScheduleEvent,
   type ScheduleEventType,
 } from '@/features/schedule-draft';
+import {
+  createBlankRosterPlayer,
+  filterRosterPlayers,
+  getDefaultRoster,
+  moveRosterPlayer,
+  readRosterDraft,
+  removeRosterPlayer,
+  saveRosterDraft,
+  updateRosterPlayer,
+  type RosterDraft,
+  type RosterPlayer,
+} from '@/features/roster-draft';
 
 const queryClient = new QueryClient();
 
@@ -64,7 +77,7 @@ function stripBase(path: string): string {
     : path;
 }
 
-type ToolKind = 'hype' | 'schedule' | 'awards';
+type ToolKind = 'hype' | 'schedule' | 'roster';
 
 const toolData: Record<ToolKind, {
   slug: string;
@@ -96,15 +109,15 @@ const toolData: Record<ToolKind, {
     soft: 'bg-[#22252a] text-white',
     templateNames: ['Clean Slate', 'Full Court', 'Weekend Run'],
   },
-  awards: {
-    slug: 'awards',
-    label: 'Awards Creator',
-    kicker: 'Give the good stuff a spotlight.',
-    description: 'Celebrate effort, progress, and the players who show up for each other.',
-    icon: Trophy,
-    accent: 'bg-muted text-foreground',
-    soft: 'bg-[#2a2d35] text-white',
-    templateNames: ['Player Spotlight', 'Big Heart', 'Season Standout'],
+  roster: {
+    slug: 'roster',
+    label: 'Roster & Lineup Creator',
+    kicker: 'Know who is ready to play.',
+    description: 'Build a clear team board, mark the starters, and share game-day lineups with families.',
+    icon: UsersRound,
+    accent: 'bg-primary text-primary-foreground',
+    soft: 'bg-[#253a39] text-white',
+    templateNames: ['Full Roster', 'Game Day', 'Numbers Up'],
   },
 };
 
@@ -301,7 +314,7 @@ function HomePage() {
             <ToolFeatureCard kind="hype" large />
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
               <ToolFeatureCard kind="schedule" />
-              <ToolFeatureCard kind="awards" />
+              <ToolFeatureCard kind="roster" />
             </div>
           </div>
         </section>
@@ -438,7 +451,7 @@ function Studio() {
               SELECT YOUR<br /><span className="text-primary">STARTING PLAY.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
-              Hype Cards export finished images and videos. Schedule and Award tools are currently preview-only.
+              Hype Cards export finished images and videos. Schedule is preview-only; roster boards save locally and export as SVG.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
@@ -581,13 +594,14 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
 
 function EditorPage({ kind }: { kind: ToolKind }) {
   if (kind === 'schedule') return <ScheduleEditor />;
+  if (kind === 'roster') return <RosterEditor />;
 
   const tool = toolData[kind];
   const Icon = tool.icon;
   const [selectedTemplate, setSelectedTemplate] = useState(0);
   const [saved, setSaved] = useState(false);
   const [notice, setNotice] = useState('');
-  const [values, setValues] = useState({ headline: kind === 'hype' ? 'GAME ON.' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: '' });
+  const [values, setValues] = useState({ headline: 'GAME ON.', subline: 'Falcons vs. Northside', name: '', detail: '' });
   const setValue = (key: keyof typeof values, value: string) => setValues((current) => ({ ...current, [key]: value }));
 
   const saveProject = () => {
@@ -600,7 +614,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
   const resetProject = () => {
     setSelectedTemplate(0);
     setSaved(false);
-    setValues({ headline: kind === 'hype' ? 'GAME ON.' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: '' });
+    setValues({ headline: 'GAME ON.', subline: 'Falcons vs. Northside', name: '', detail: '' });
     setNotice('DRAFT RESET');
     window.setTimeout(() => setNotice(''), 2400);
   };
@@ -639,9 +653,8 @@ function EditorPage({ kind }: { kind: ToolKind }) {
             </div>
 
             <div className="relative z-10 space-y-5">
-              <Field label={kind === 'awards' ? 'Award title' : 'Main message'} value={values.headline} onChange={(value) => setValue('headline', value)} testId="input-main-message" />
-              <Field label={kind === 'awards' ? 'The why' : 'Supporting line'} value={values.subline} onChange={(value) => setValue('subline', value)} testId="input-supporting-line" />
-              {kind === 'awards' && <Field label="Player name" value={values.name} onChange={(value) => setValue('name', value)} testId="input-player-name" />}
+              <Field label="Main message" value={values.headline} onChange={(value) => setValue('headline', value)} testId="input-main-message" />
+              <Field label="Supporting line" value={values.subline} onChange={(value) => setValue('subline', value)} testId="input-supporting-line" />
             </div>
 
             <div className="relative z-10 my-8 h-px bg-border" />
@@ -698,6 +711,292 @@ function EditorPage({ kind }: { kind: ToolKind }) {
         </div>
       </main>
     </StudioLayout>
+  );
+}
+
+function rosterText(value: string, fallback: string, maxLength = 28) {
+  const clean = value.trim();
+  if (!clean) return fallback;
+  return clean.length > maxLength ? `${clean.slice(0, maxLength - 1).trimEnd()}…` : clean;
+}
+
+function escapeRosterSvgText(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function createRosterSvg(draft: RosterDraft) {
+  const players = filterRosterPlayers(draft);
+  const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
+  const rows = players.length === 0
+    ? `<text x="540" y="690" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">ADD PLAYERS TO BUILD THIS BOARD</text>`
+    : players.map((player, index) => {
+      const x = index % 2 === 0 ? 72 : 556;
+      const y = 380 + Math.floor(index / 2) * 142;
+      const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
+      const name = escapeRosterSvgText(rosterText(player.name, 'NAME TBD', 24));
+      const position = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 15));
+      return `
+        <rect x="${x}" y="${y}" width="452" height="112" fill="#f4f6f0" stroke="#c8d2c9" stroke-width="2"/>
+        <rect x="${x}" y="${y}" width="92" height="112" fill="#b9f34a"/>
+        <text x="${x + 46}" y="${y + 58}" text-anchor="middle" fill="#17221d" font-family="Oswald, sans-serif" font-size="44" font-weight="700">${number}</text>
+        <text x="${x + 116}" y="${y + 46}" fill="#17221d" font-family="Outfit, sans-serif" font-size="25" font-weight="800">${name}</text>
+        <text x="${x + 116}" y="${y + 78}" fill="#6a766f" font-family="Outfit, sans-serif" font-size="17" font-weight="700" letter-spacing="2">${position}${player.isCaptain ? '  ·  CAPTAIN' : ''}</text>
+      `;
+    }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+    <rect width="1080" height="1350" fill="#17221d"/>
+    <path d="M0 0h1080v1350H0z" fill="url(#grid)" opacity=".25"/>
+    <defs><pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#b9f34a" stroke-opacity=".16"/></pattern></defs>
+    <circle cx="930" cy="150" r="240" fill="#b9f34a" opacity=".12"/>
+    <text x="72" y="95" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="19" font-weight="800" letter-spacing="4">LEAGUEMATRIX  /  COACH BOARD</text>
+    <text x="72" y="218" fill="#f4f6f0" font-family="Oswald, sans-serif" font-size="96" font-weight="700">${escapeSvgText(title)}</text>
+    <text x="76" y="270" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="26" font-weight="600">${escapeRosterSvgText(rosterText(draft.teamName, 'YOUR TEAM', 34))}  ·  ${escapeRosterSvgText(rosterText(draft.season, 'SEASON', 22))}</text>
+    <rect x="72" y="316" width="936" height="3" fill="#b9f34a"/>
+    ${rows}
+    <text x="72" y="1284" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${players.length} ${draft.layout === 'lineup' ? 'STARTERS' : 'PLAYERS'}  /  LOCAL DRAFT</text>
+    <text x="1008" y="1284" text-anchor="end" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="18" font-weight="600">SHARE READY</text>
+  </svg>`;
+}
+
+function RosterEditor() {
+  const [storedDraft] = useState(() => readRosterDraft());
+  const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster());
+  const [notice, setNotice] = useState('');
+  const [saved, setSaved] = useState(Boolean(storedDraft));
+
+  const visiblePlayers = filterRosterPlayers(draft);
+  const starterCount = draft.players.filter((player) => player.isStarter).length;
+  const updateDraft = (patch: Partial<RosterDraft>) => {
+    setDraft((current) => ({ ...current, ...patch }));
+    setSaved(false);
+  };
+  const updatePlayer = (id: string, patch: Partial<RosterPlayer>) => {
+    setDraft((current) => ({ ...current, players: updateRosterPlayer(current.players, id, patch) }));
+    setSaved(false);
+  };
+  const announce = (message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice(''), 2600);
+  };
+  const saveDraft = () => {
+    saveRosterDraft(window.localStorage, draft);
+    setSaved(true);
+    announce('ROSTER SAVED ON THIS DEVICE');
+  };
+  const resetDraft = () => {
+    const nextDraft = getDefaultRoster();
+    setDraft(nextDraft);
+    saveRosterDraft(window.localStorage, nextDraft);
+    setSaved(true);
+    announce('ROSTER RESET TO THE STARTER BOARD');
+  };
+  const addPlayer = () => {
+    setDraft((current) => ({ ...current, players: [...current.players, createBlankRosterPlayer()] }));
+    setSaved(false);
+    announce('PLAYER SLOT ADDED');
+  };
+  const exportRoster = () => {
+    const blob = new Blob([createRosterSvg(draft)], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${rosterText(draft.teamName, 'team-roster', 32).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${draft.layout}.svg`;
+    link.click();
+    URL.revokeObjectURL(url);
+    announce('SVG READY TO SHARE');
+  };
+
+  return (
+    <StudioLayout>
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-8 lg:py-10">
+        <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-4 inline-flex items-center gap-2 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
+              <UsersRound className="h-4 w-4" /> Team Operations Board
+            </div>
+            <h1 className="font-display text-5xl leading-[.88] tracking-tight sm:text-7xl">ROSTER <span className="text-primary">&amp; LINEUP.</span></h1>
+            <p className="mt-5 max-w-2xl text-base font-medium leading-relaxed text-muted-foreground sm:text-lg">
+              Keep the whole squad clear, then switch to a game-day board when it is time to share the call.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 border border-border bg-card px-4 py-3 clip-angled-sm">
+            <span className={`h-2.5 w-2.5 rounded-full ${saved ? 'bg-primary' : 'bg-amber-500'}`} />
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{saved ? 'Saved locally' : 'Unsaved changes'}</span>
+          </div>
+        </div>
+
+        <div className="mt-10 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(400px,530px)]">
+          <section className="order-2 min-w-0 xl:order-1">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Live board</p>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">{visiblePlayers.length} shown · {starterCount} starters marked</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => updateDraft({ layout: 'roster' })} className={`px-3 py-2 text-xs font-bold uppercase tracking-widest clip-angled-sm ${draft.layout === 'roster' ? 'bg-foreground text-background' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-layout-roster">
+                  Full roster
+                </button>
+                <button type="button" onClick={() => updateDraft({ layout: 'lineup' })} className={`px-3 py-2 text-xs font-bold uppercase tracking-widest clip-angled-sm ${draft.layout === 'lineup' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-layout-lineup">
+                  Game-day lineup
+                </button>
+              </div>
+            </div>
+            <RosterGraphicPreview draft={draft} players={visiblePlayers} />
+            <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Showing starters only' : 'Showing every player'}</span>
+              <span>SVG export · no photos</span>
+            </div>
+          </section>
+
+          <aside className="order-1 border border-border bg-card p-5 clip-angled-sm sm:p-7 xl:order-2">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">Control deck</p>
+                <h2 className="mt-2 font-display text-3xl tracking-wide">SET THE BOARD.</h2>
+              </div>
+              <span className="grid h-11 w-11 shrink-0 place-items-center bg-muted text-foreground clip-angled-sm"><GripVertical className="h-5 w-5" /></span>
+            </div>
+
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              <Field label="Team name" value={draft.teamName} onChange={(value) => updateDraft({ teamName: value })} testId="input-roster-team-name" />
+              <Field label="Season" value={draft.season} onChange={(value) => updateDraft({ season: value })} testId="input-roster-season" />
+            </div>
+
+            <div className="my-7 h-px bg-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-foreground">Players</p>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">Edit fast. Reorder with the arrows.</p>
+              </div>
+              <button type="button" onClick={addPlayer} className="inline-flex items-center gap-2 bg-primary px-3 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:-translate-y-0.5" data-testid="button-add-roster-player">
+                <Plus className="h-4 w-4" /> Add player
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {draft.players.length === 0 ? (
+                <div className="border-2 border-dashed border-border bg-background p-8 text-center clip-angled-sm">
+                  <UserRound className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-3 font-display text-2xl text-muted-foreground">EMPTY BOARD</p>
+                  <p className="mt-1 text-sm font-medium text-muted-foreground">Add the first player to get moving.</p>
+                </div>
+              ) : draft.players.map((player, index) => (
+                <RosterPlayerRow
+                  key={player.id}
+                  player={player}
+                  index={index}
+                  total={draft.players.length}
+                  onChange={(patch) => updatePlayer(player.id, patch)}
+                  onMove={(direction) => { setDraft((current) => ({ ...current, players: moveRosterPlayer(current.players, player.id, direction) })); setSaved(false); }}
+                  onRemove={() => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, player.id) })); setSaved(false); }}
+                />
+              ))}
+            </div>
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={resetDraft} className="inline-flex flex-1 items-center justify-center gap-2 border border-border bg-background px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground clip-angled-sm hover:bg-muted hover:text-foreground" data-testid="button-reset-roster">
+                <RotateCcw className="h-4 w-4" /> Reset
+              </button>
+              <button type="button" onClick={saveDraft} className="inline-flex flex-[1.4] items-center justify-center gap-2 bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm hover:bg-primary hover:text-primary-foreground" data-testid="button-save-roster">
+                <Save className="h-4 w-4" /> Save locally
+              </button>
+              <button type="button" onClick={exportRoster} className="inline-flex flex-1 items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:-translate-y-0.5" data-testid="button-export-roster">
+                <Download className="h-4 w-4" /> Export SVG
+              </button>
+            </div>
+            {notice && <p className="mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary" role="status" data-testid="status-roster-notice">{notice}</p>}
+          </aside>
+        </div>
+      </main>
+    </StudioLayout>
+  );
+}
+
+function RosterPlayerRow({
+  player,
+  index,
+  total,
+  onChange,
+  onMove,
+  onRemove,
+}: {
+  player: RosterPlayer;
+  index: number;
+  total: number;
+  onChange: (patch: Partial<RosterPlayer>) => void;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="border border-border bg-background p-3 clip-angled-sm" data-testid={`row-roster-player-${player.id}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex flex-col gap-1 pt-1">
+          <button type="button" disabled={index === 0} onClick={() => onMove(-1)} className="grid h-6 w-6 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label={`Move ${player.name || 'player'} up`} data-testid={`button-move-up-${player.id}`}><ChevronUp className="h-4 w-4" /></button>
+          <button type="button" disabled={index === total - 1} onClick={() => onMove(1)} className="grid h-6 w-6 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label={`Move ${player.name || 'player'} down`} data-testid={`button-move-down-${player.id}`}><ChevronDown className="h-4 w-4" /></button>
+        </div>
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_68px] gap-2 sm:grid-cols-[minmax(0,1fr)_68px_86px]">
+          <input type="text" value={player.name} onChange={(event) => onChange({ name: event.target.value })} placeholder="Player name" className="min-w-0 border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm" aria-label={`Name for player ${index + 1}`} data-testid={`input-player-name-${player.id}`} />
+          <input type="text" value={player.jerseyNumber} onChange={(event) => onChange({ jerseyNumber: event.target.value })} placeholder="#" inputMode="numeric" className="border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm" aria-label={`Jersey number for ${player.name || 'player'}`} data-testid={`input-player-number-${player.id}`} />
+          <input type="text" value={player.position} onChange={(event) => onChange({ position: event.target.value })} placeholder="Position" className="col-span-2 border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm sm:col-span-1" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-player-position-${player.id}`} />
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <button type="button" onClick={() => onChange({ isStarter: !player.isStarter })} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isStarter ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`} aria-pressed={player.isStarter} data-testid={`button-toggle-starter-${player.id}`}>
+            <Check className="h-3 w-3" /> Starter
+          </button>
+          <button type="button" onClick={() => onChange({ isCaptain: !player.isCaptain })} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isCaptain ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`} aria-pressed={player.isCaptain} data-testid={`button-toggle-captain-${player.id}`}>
+            <Star className="h-3 w-3" /> Captain
+          </button>
+          <button type="button" onClick={onRemove} className="mt-1 inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 clip-angled-sm" aria-label={`Remove ${player.name || 'player'}`} data-testid={`button-remove-player-${player.id}`}>
+            <Trash2 className="h-3 w-3" /> Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RosterGraphicPreview({ draft, players }: { draft: RosterDraft; players: RosterPlayer[] }) {
+  return (
+    <div className="relative overflow-hidden border border-border bg-[#17221d] p-4 shadow-xl clip-angled-sm sm:p-7" data-testid="preview-roster-canvas">
+      <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
+      <div className="relative aspect-[4/5] w-full overflow-hidden border border-white/10 bg-[#17221d] p-5 text-[#f4f6f0] sm:p-8">
+        <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/15" />
+        <div className="relative flex h-full flex-col">
+          <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60 sm:text-xs">
+            <span data-testid="text-preview-team">{rosterText(draft.teamName, 'YOUR TEAM', 34)}</span>
+            <span className="shrink-0 bg-primary px-2 py-1 text-primary-foreground">{rosterText(draft.season, 'SEASON', 20)}</span>
+          </div>
+          <div className="mt-10">
+            <p className="font-display text-[clamp(3rem,8vw,6rem)] leading-[.82] tracking-tight">{draft.layout === 'lineup' ? 'GAME DAY' : 'TEAM ROSTER'}</p>
+            <div className="mt-5 h-1 w-16 bg-primary" />
+          </div>
+          <div className="mt-8 grid flex-1 content-start gap-3 sm:grid-cols-2">
+            {players.length === 0 ? (
+              <div className="col-span-full flex min-h-44 items-center justify-center border border-dashed border-white/20 px-6 text-center text-sm font-bold uppercase tracking-widest text-white/50" data-testid="empty-roster-preview">
+                {draft.layout === 'lineup' ? 'Mark starters to set the lineup' : 'Add players to fill the board'}
+              </div>
+            ) : players.map((player) => (
+              <div key={player.id} className="flex min-w-0 items-center gap-3 border border-white/10 bg-white/[.07] p-3" data-testid={`card-preview-player-${player.id}`}>
+                <span className="grid h-11 w-11 shrink-0 place-items-center bg-primary font-display text-2xl text-primary-foreground">{rosterText(player.jerseyNumber, '—', 4)}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold uppercase tracking-wide" title={player.name || 'Name TBD'}>{rosterText(player.name, 'NAME TBD', 22)}</span>
+                  <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[.14em] text-white/50">{rosterText(player.position, 'POSITION TBD', 15)}{player.isCaptain ? ' · CAPTAIN' : ''}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
+            <span>{players.length} {draft.layout === 'lineup' ? 'starters' : 'players'}</span>
+            <span className="text-primary">LeagueMatrix</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1509,7 +1808,6 @@ function Field({ label, value, onChange, testId }: { label: string; value: strin
 
 function Preview({ kind, values, selectedTemplate }: { kind: ToolKind; values: { headline: string; subline: string; name: string; detail: string }; selectedTemplate: number }) {
   const isSchedule = kind === 'schedule';
-  const isAwards = kind === 'awards';
   const templateClass = selectedTemplate === 1 ? 'bg-[#177d76]' : selectedTemplate === 2 ? 'bg-[#f5c94d]' : 'bg-[#f36f4c]';
   const foreground = selectedTemplate === 2 ? 'text-[#243248]' : 'text-[#f9f3e8]';
 
@@ -1521,17 +1819,17 @@ function Preview({ kind, values, selectedTemplate }: { kind: ToolKind; values: {
         <div className={`absolute -bottom-24 -left-16 h-64 w-64 rounded-full ${selectedTemplate === 1 ? 'bg-[#f5c94d]' : 'bg-[#177d76]'}`} />
         <div className={`relative flex h-full flex-col justify-between ${foreground}`}>
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.16em]">
-            <span>{isAwards ? 'LeagueMatrix · Recognition' : 'Eastside Falcons'}</span>
-            <span className="rounded-full border border-current px-2.5 py-1">{isAwards ? '2024' : isSchedule ? 'Fall season' : 'Game day'}</span>
+            <span>Eastside Falcons</span>
+            <span className="rounded-full border border-current px-2.5 py-1">{isSchedule ? 'Fall season' : 'Game day'}</span>
           </div>
           <div className="relative max-w-[85%]">
             <p className="font-display text-[clamp(2.5rem,7vw,6.2rem)] font-bold leading-[.82] tracking-[-.08em]">{values.headline || 'YOUR MESSAGE'}</p>
-            <p className="mt-5 max-w-md text-sm font-bold leading-relaxed opacity-85 sm:text-base">{isAwards && values.name ? `${values.name} · ` : ''}{values.subline || 'Add a supporting line'}</p>
+            <p className="mt-5 max-w-md text-sm font-bold leading-relaxed opacity-85 sm:text-base">{values.subline || 'Add a supporting line'}</p>
           </div>
           <div className="relative flex items-end justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[.16em] opacity-80">{isAwards ? 'A moment worth remembering' : isSchedule ? 'Next up' : 'Bring the energy'}</p>
-              <p className="mt-1 font-display text-lg font-bold sm:text-2xl">{values.detail || (isAwards ? 'Your team sees the work.' : 'Falcons vs. Northside')}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.16em] opacity-80">{isSchedule ? 'Next up' : 'Bring the energy'}</p>
+              <p className="mt-1 font-display text-lg font-bold sm:text-2xl">{values.detail || 'Falcons vs. Northside'}</p>
             </div>
             <div className="grid h-11 w-11 place-items-center rounded-xl border border-current sm:h-14 sm:w-14"><IconForPreview kind={kind} /></div>
           </div>
@@ -1543,7 +1841,6 @@ function Preview({ kind, values, selectedTemplate }: { kind: ToolKind; values: {
 
 function IconForPreview({ kind }: { kind: ToolKind }) {
   if (kind === 'schedule') return <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />;
-  if (kind === 'awards') return <Trophy className="h-5 w-5 sm:h-6 sm:w-6" />;
   return <Zap className="h-5 w-5 fill-current sm:h-6 sm:w-6" />;
 }
 
@@ -1829,7 +2126,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id" component={HypeCardEditor} />
               <Route path="/studio/schedule"><EditorPage kind="schedule" /></Route>
-              <Route path="/studio/awards"><EditorPage kind="awards" /></Route>
+              <Route path="/studio/roster"><RosterEditor /></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
               <Route component={NotFound} />
