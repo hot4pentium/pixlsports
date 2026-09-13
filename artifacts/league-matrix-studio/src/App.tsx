@@ -17,7 +17,10 @@ import { type PointerEvent, type ReactNode, useEffect, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
@@ -516,16 +519,39 @@ function Studio({ role }: { role: UserRole }) {
             </h1>
             <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
               <span>Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <Dialog>
+                <DialogTrigger asChild>
                   <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
                     <CircleHelp className="h-5 w-5" />
                   </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs text-left leading-relaxed">
-                  Local saves stay in this browser and work without an account. Cloud saves are tied to your signed-in account so you can reopen designs across devices. Media stays on the device where it was added.
-                </TooltipContent>
-              </Tooltip>
+                </DialogTrigger>
+                <DialogContent className="border-primary bg-foreground text-background sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="font-display text-3xl tracking-wide text-white">HOW SAVES WORK</DialogTitle>
+                    <DialogDescription className="text-left text-white/70">
+                      Choose the save option that fits how you work.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 text-sm leading-relaxed text-white/80">
+                    <div className="border-l-2 border-primary pl-4">
+                      <p className="font-bold uppercase tracking-widest text-primary">Save locally</p>
+                      <p className="mt-1">Keeps your work in this browser and works without an account. It will not appear on another device.</p>
+                    </div>
+                    <div className="border-l-2 border-primary pl-4">
+                      <p className="font-bold uppercase tracking-widest text-primary">Save to cloud</p>
+                      <p className="mt-1">Stores reusable design settings with your signed-in account so you can reopen them across devices.</p>
+                    </div>
+                    <p className="text-xs text-white/55">Photos, videos, and uploaded logos remain on the device where they were added.</p>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <button type="button" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">
+                        Got it
+                      </button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
