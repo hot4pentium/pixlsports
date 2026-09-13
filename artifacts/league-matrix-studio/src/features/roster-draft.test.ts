@@ -10,8 +10,10 @@ import {
   moveRosterPlayer,
   moveRosterPlayerWithinGroup,
   normalizeFormationPosition,
+  normalizeRosterBoardStyle,
   normalizeRosterDraft,
   readRosterDraft,
+  rosterBoardStyles,
   removeRosterPlayer,
   saveRosterDraft,
   updateRosterPlayer,
@@ -47,9 +49,18 @@ test('normalizes empty, partial, and long player data safely', () => {
 
 test('roster draft round trips through local persistence', () => {
   const storage = new MemoryStorage();
-  const draft = { ...getDefaultRoster(), teamName: 'Westside Wolves', layout: 'lineup' as const, players };
+  const draft = { ...getDefaultRoster(), teamName: 'Westside Wolves', layout: 'lineup' as const, boardStyle: 'basketball' as const, players };
   saveRosterDraft(storage as Storage, draft);
   assert.deepEqual(readRosterDraft(storage as Storage), draft);
+});
+
+test('board styles normalize safely and legacy drafts use the classic treatment', () => {
+  assert.deepEqual(rosterBoardStyles.map((style) => style.id), ['classic', 'soccer', 'basketball', 'baseball']);
+  assert.equal(normalizeRosterBoardStyle('soccer'), 'soccer');
+  assert.equal(normalizeRosterBoardStyle('basketball'), 'basketball');
+  assert.equal(normalizeRosterBoardStyle('baseball'), 'baseball');
+  assert.equal(normalizeRosterBoardStyle('volleyball'), 'classic');
+  assert.equal(normalizeRosterDraft({ players: [] })?.boardStyle, 'classic');
 });
 
 test('player controls update, reorder, and remove without mutating the original list', () => {

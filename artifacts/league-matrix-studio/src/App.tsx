@@ -54,10 +54,12 @@ import {
   moveRosterPlayerWithinGroup,
   normalizeFormationPosition,
   readRosterDraft,
+  rosterBoardStyles,
   removeRosterPlayer,
   saveRosterDraft,
   updateRosterPlayer,
   type RosterDraft,
+  type RosterBoardStyle,
   type RosterFormationPosition,
   type RosterPlayer,
 } from '@/features/roster-draft';
@@ -733,6 +735,62 @@ function escapeRosterSvgText(value: string) {
     .replace(/'/g, '&apos;');
 }
 
+function rosterBoardStyleLabel(style: RosterBoardStyle): string {
+  return rosterBoardStyles.find((option) => option.id === style)?.label ?? 'Classic grid';
+}
+
+function createRosterBoardSvg(style: RosterBoardStyle, board: { x: number; y: number; width: number; height: number }) {
+  const { x, y, width, height } = board;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const line = '#f4f6f0';
+  const lineOpacity = '.58';
+
+  if (style === 'soccer') {
+    return `
+      <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#245c39" stroke="#b9f34a" stroke-width="2"/>
+      <rect x="${x + 28}" y="${y + 28}" width="${width - 56}" height="${height - 56}" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <path d="M${centerX} ${y + 28}v${height - 56}M${x + 28} ${centerY}h${width - 56}" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <circle cx="${centerX}" cy="${centerY}" r="100" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <circle cx="${centerX}" cy="${centerY}" r="6" fill="#b9f34a"/>
+      <path d="M${x + 28} ${centerY - 150}h108v300H${x + 28}M${x + width - 28} ${centerY - 150}h-108v300h108" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <path d="M${x + 28} ${centerY - 74}h46a74 74 0 0 1 0 148h-46M${x + width - 28} ${centerY - 74}h-46a74 74 0 0 0 0 148h46" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+    `;
+  }
+
+  if (style === 'basketball') {
+    return `
+      <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#8b5a36" stroke="#f4d6a6" stroke-width="2"/>
+      <rect x="${x + 28}" y="${y + 28}" width="${width - 56}" height="${height - 56}" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <path d="M${centerX} ${y + 28}v${height - 56}" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <circle cx="${centerX}" cy="${centerY}" r="76" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <path d="M${x + 28} ${centerY - 132}h144v264H${x + 28}M${x + width - 28} ${centerY - 132}h-144v264h144" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <path d="M${x + 28} ${centerY - 92}h84a92 92 0 0 1 0 184h-84M${x + width - 28} ${centerY - 92}h-84a92 92 0 0 0 0 184h84" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+      <path d="M${x + 28} ${centerY - 220}a220 220 0 0 1 0 440M${x + width - 28} ${centerY - 220}a220 220 0 0 0 0 440" fill="none" stroke="${line}" stroke-opacity="${lineOpacity}" stroke-width="3"/>
+    `;
+  }
+
+  if (style === 'baseball') {
+    const diamondSize = 250;
+    return `
+      <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#6c4b3d" stroke="#e2bd89" stroke-width="2"/>
+      <path d="M${centerX} ${centerY - diamondSize}L${centerX + diamondSize} ${centerY}L${centerX} ${centerY + diamondSize}L${centerX - diamondSize} ${centerY}Z" fill="#9a744d" stroke="#f4d6a6" stroke-width="4"/>
+      <path d="M${centerX} ${centerY - diamondSize}L${x + 46} ${y + 46}M${centerX} ${centerY - diamondSize}L${x + width - 46} ${y + 46}M${centerX} ${centerY + diamondSize}L${x + 46} ${y + height - 46}M${centerX} ${centerY + diamondSize}L${x + width - 46} ${y + height - 46}" fill="none" stroke="#f4d6a6" stroke-opacity=".55" stroke-width="3"/>
+      <circle cx="${centerX}" cy="${centerY}" r="74" fill="#7a563d" stroke="#f4d6a6" stroke-width="3"/>
+      <rect x="${centerX - 16}" y="${centerY - diamondSize - 16}" width="32" height="32" transform="rotate(45 ${centerX} ${centerY - diamondSize})" fill="#f4f6f0"/>
+      <rect x="${centerX + diamondSize - 16}" y="${centerY - 16}" width="32" height="32" transform="rotate(45 ${centerX + diamondSize} ${centerY})" fill="#f4f6f0"/>
+      <rect x="${centerX - 16}" y="${centerY + diamondSize - 16}" width="32" height="32" transform="rotate(45 ${centerX} ${centerY + diamondSize})" fill="#f4f6f0"/>
+      <rect x="${centerX - diamondSize - 16}" y="${centerY - 16}" width="32" height="32" transform="rotate(45 ${centerX - diamondSize} ${centerY})" fill="#f4f6f0"/>
+    `;
+  }
+
+  return `
+    <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#10271d" stroke="#53645b" stroke-width="2"/>
+    <path d="M${centerX} ${y}v${height}M${x} ${centerY}h${width}" stroke="#53645b" stroke-opacity=".45" stroke-width="2"/>
+    <circle cx="${centerX}" cy="${centerY}" r="104" fill="none" stroke="#53645b" stroke-opacity=".45" stroke-width="2"/>
+  `;
+}
+
 function createRosterSvg(draft: RosterDraft) {
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
@@ -777,7 +835,8 @@ function createRosterSvg(draft: RosterDraft) {
   const contentBottom = benchCardsStartY + benchRows * 86;
   const height = Math.max(1350, contentBottom + 130);
   const footerY = height - 66;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="${height}" viewBox="0 0 1080 ${height}">
+  const boardStyle = rosterBoardStyleLabel(draft.boardStyle);
+  return `<svg xmlns="http://www.w3.org/2000/svg" data-board-style="${draft.boardStyle}" width="1080" height="${height}" viewBox="0 0 1080 ${height}">
     <rect width="1080" height="${height}" fill="#17221d"/>
     <path d="M0 0h1080v${height}H0z" fill="url(#grid)" opacity=".25"/>
     <defs><pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#b9f34a" stroke-opacity=".16"/></pattern></defs>
@@ -786,10 +845,8 @@ function createRosterSvg(draft: RosterDraft) {
     <text x="72" y="218" fill="#f4f6f0" font-family="Oswald, sans-serif" font-size="96" font-weight="700">${escapeSvgText(title)}</text>
     <text x="76" y="270" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="26" font-weight="600">${escapeRosterSvgText(rosterText(draft.teamName, 'YOUR TEAM', 34))}  ·  ${escapeRosterSvgText(rosterText(draft.season, 'SEASON', 22))}</text>
     <rect x="72" y="316" width="936" height="3" fill="#b9f34a"/>
-    <rect x="${board.x}" y="${board.y}" width="${board.width}" height="${board.height}" rx="6" fill="#10271d" stroke="#53645b" stroke-width="2"/>
-    <path d="M${board.x + board.width / 2} ${board.y}v${board.height}M${board.x} ${board.y + board.height / 2}h${board.width}" stroke="#53645b" stroke-opacity=".45" stroke-width="2"/>
-    <circle cx="${board.x + board.width / 2}" cy="${board.y + board.height / 2}" r="104" fill="none" stroke="#53645b" stroke-opacity=".45" stroke-width="2"/>
-    <text x="96" y="386" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">STARTERS  /  ${starters.length}</text>
+    ${createRosterBoardSvg(draft.boardStyle, board)}
+    <text x="96" y="386" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">STARTERS  /  ${starters.length}  ·  ${escapeRosterSvgText(boardStyle)}</text>
     ${starterTokens}
     <text x="72" y="${benchLabelY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">BENCH  /  ${bench.length}</text>
     ${benchCards}
@@ -905,6 +962,31 @@ function RosterEditor() {
             <div className="mt-7 grid gap-4 sm:grid-cols-2">
               <Field label="Team name" value={draft.teamName} onChange={(value) => updateDraft({ teamName: value })} testId="input-roster-team-name" />
               <Field label="Season" value={draft.season} onChange={(value) => updateDraft({ season: value })} testId="input-roster-season" />
+            </div>
+
+            <div className="mt-7">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Board treatment</p>
+                  <p className="mt-1 text-sm font-medium text-muted-foreground">Visual context only. Player positions stay freeform.</p>
+                </div>
+                <Palette className="h-5 w-5 text-primary" />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Board treatment">
+                {rosterBoardStyles.map((style) => (
+                  <button
+                    key={style.id}
+                    type="button"
+                    onClick={() => updateDraft({ boardStyle: style.id })}
+                    className={`border px-3 py-2 text-left clip-angled-sm transition-colors ${draft.boardStyle === style.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground'}`}
+                    aria-pressed={draft.boardStyle === style.id}
+                    data-testid={`button-board-style-${style.id}`}
+                  >
+                    <span className="block text-[10px] font-bold uppercase tracking-widest">{style.label}</span>
+                    <span className="mt-1 block text-[10px] font-medium leading-tight opacity-70">{style.description}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="my-7 h-px bg-border" />
@@ -1057,9 +1139,11 @@ function RosterPlayerRow({
 
 function FormationBoard({
   starters,
+  boardStyle,
   onPositionChange,
 }: {
   starters: RosterPlayer[];
+  boardStyle: RosterBoardStyle;
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
@@ -1092,12 +1176,8 @@ function FormationBoard({
   };
 
   return (
-    <div ref={boardRef} className="relative aspect-[4/3] min-h-[350px] w-full overflow-hidden border border-white/15 bg-[#10271d] touch-none sm:min-h-[480px]" data-testid="formation-board">
-      <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
-      <div className="absolute inset-[8%] rounded border border-white/15" />
-      <div className="absolute inset-x-[8%] top-1/2 h-px bg-white/15" />
-      <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15" />
-      <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+    <div ref={boardRef} className={`relative aspect-[4/3] min-h-[350px] w-full overflow-hidden border border-white/15 touch-none sm:min-h-[480px] ${boardStyle === 'soccer' ? 'bg-[#245c39]' : boardStyle === 'basketball' ? 'bg-[#8b5a36]' : boardStyle === 'baseball' ? 'bg-[#6c4b3d]' : 'bg-[#10271d]'}`} data-testid="formation-board" data-board-style={boardStyle}>
+      <FormationBoardDecorations style={boardStyle} />
       <div className="absolute left-4 top-4 z-10 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary sm:left-6 sm:top-6">
         <span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Drag to set the shape
       </div>
@@ -1156,6 +1236,57 @@ function FormationBoard({
   );
 }
 
+function FormationBoardDecorations({ style }: { style: RosterBoardStyle }) {
+  if (style === 'soccer') {
+    return (
+      <div className="pointer-events-none absolute inset-[7%] rounded border-2 border-white/45" aria-hidden="true">
+        <div className="absolute inset-x-0 top-1/2 h-px bg-white/45" />
+        <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/45" />
+        <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+        <div className="absolute inset-y-[22%] left-0 w-[16%] border-r-2 border-white/45" />
+        <div className="absolute inset-y-[22%] right-0 w-[16%] border-l-2 border-white/45" />
+        <div className="absolute inset-y-[34%] left-0 w-[8%] border-r-2 border-white/45" />
+        <div className="absolute inset-y-[34%] right-0 w-[8%] border-l-2 border-white/45" />
+      </div>
+    );
+  }
+
+  if (style === 'basketball') {
+    return (
+      <div className="pointer-events-none absolute inset-[7%] rounded border-2 border-[#f4d6a6]/70" aria-hidden="true">
+        <div className="absolute inset-y-0 left-1/2 w-px bg-[#f4d6a6]/70" />
+        <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f4d6a6]/70" />
+        <div className="absolute inset-y-[23%] left-0 w-[17%] border-r-2 border-[#f4d6a6]/70" />
+        <div className="absolute inset-y-[23%] right-0 w-[17%] border-l-2 border-[#f4d6a6]/70" />
+        <div className="absolute inset-y-[34%] left-0 w-[9%] rounded-r-[100%] border-r-2 border-[#f4d6a6]/70" />
+        <div className="absolute inset-y-[34%] right-0 w-[9%] rounded-l-[100%] border-l-2 border-[#f4d6a6]/70" />
+      </div>
+    );
+  }
+
+  if (style === 'baseball') {
+    return (
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute left-1/2 top-1/2 aspect-square w-[48%] -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 border-[#f4d6a6]/80 bg-[#9a744d]/75" />
+        <div className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f4d6a6]/70 bg-[#7a563d]/70" />
+        <div className="absolute left-1/2 top-[26%] h-3 w-3 -translate-x-1/2 rotate-45 bg-white" />
+        <div className="absolute right-[26%] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 bg-white" />
+        <div className="absolute bottom-[26%] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-white" />
+        <div className="absolute left-[26%] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 bg-white" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-30" aria-hidden="true">
+      <div className="absolute inset-[8%] rounded border border-white/15" />
+      <div className="absolute inset-x-[8%] top-1/2 h-px bg-white/15" />
+      <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15" />
+      <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+    </div>
+  );
+}
+
 function RosterGraphicPreview({
   draft,
   starters,
@@ -1186,7 +1317,7 @@ function RosterGraphicPreview({
               <span>Starters / formation board</span>
               <span>{starters.length}</span>
             </div>
-            <FormationBoard starters={starters} onPositionChange={onPositionChange} />
+            <FormationBoard boardStyle={draft.boardStyle} starters={starters} onPositionChange={onPositionChange} />
           </div>
           <div className="mt-6 border-t border-white/10 pt-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">

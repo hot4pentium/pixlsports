@@ -1,5 +1,20 @@
 export type RosterLayout = 'roster' | 'lineup';
 
+export type RosterBoardStyle = 'classic' | 'soccer' | 'basketball' | 'baseball';
+
+export type RosterBoardStyleOption = {
+  id: RosterBoardStyle;
+  label: string;
+  description: string;
+};
+
+export const rosterBoardStyles: RosterBoardStyleOption[] = [
+  { id: 'classic', label: 'Classic grid', description: 'Clean formation grid' },
+  { id: 'soccer', label: 'Soccer pitch', description: 'Field lines and boxes' },
+  { id: 'basketball', label: 'Basketball court', description: 'Court lines and key' },
+  { id: 'baseball', label: 'Baseball diamond', description: 'Diamond and base paths' },
+];
+
 export type RosterFormationPosition = {
   x: number;
   y: number;
@@ -19,6 +34,7 @@ export type RosterDraft = {
   teamName: string;
   season: string;
   layout: RosterLayout;
+  boardStyle: RosterBoardStyle;
   players: RosterPlayer[];
 };
 
@@ -51,6 +67,7 @@ export function getDefaultRoster(): RosterDraft {
     teamName: 'Eastside Falcons',
     season: 'Fall 2024',
     layout: 'roster',
+    boardStyle: 'classic',
     players: defaultPlayers.map((player) => ({ ...player, formationPosition: { ...player.formationPosition } })),
   };
 }
@@ -115,6 +132,10 @@ function layoutValue(value: unknown): RosterLayout {
   return value === 'lineup' ? 'lineup' : 'roster';
 }
 
+export function normalizeRosterBoardStyle(value: unknown): RosterBoardStyle {
+  return value === 'soccer' || value === 'basketball' || value === 'baseball' ? value : 'classic';
+}
+
 export function normalizeRosterPlayer(
   value: unknown,
   fallbackId: string,
@@ -142,6 +163,7 @@ export function normalizeRosterDraft(value: unknown): RosterDraft | null {
     teamName: stringValue(input.teamName) || 'Eastside Falcons',
     season: stringValue(input.season) || 'Fall 2024',
     layout: layoutValue(input.layout),
+    boardStyle: normalizeRosterBoardStyle(input.boardStyle),
     players: input.players.map((player, index) => (
       normalizeRosterPlayer(
         player,
