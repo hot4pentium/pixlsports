@@ -2541,16 +2541,23 @@ function RoleSelectionPage() {
                 />
               </label>
             </div>
-            <p className="mt-7 text-xs font-bold uppercase tracking-widest text-muted-foreground">I am a…</p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-7 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose your role</p>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Select one</span>
+            </div>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Choose your role">
               <button
                 type="button"
                 onClick={() => setSelectedRole('coach')}
                 disabled={savingProfile}
-                aria-pressed={selectedRole === 'coach'}
-                className={`group border p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'coach' ? 'border-primary bg-primary/10 ring-2 ring-primary' : 'border-border bg-background'}`}
+                role="radio"
+                aria-checked={selectedRole === 'coach'}
+                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'coach' ? 'border-primary bg-primary/10 shadow-[0_0_0_4px_rgba(0,232,120,0.2)]' : 'border-border bg-background'}`}
                 data-testid="button-role-coach"
               >
+                <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'coach' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  {selectedRole === 'coach' && <Check className="h-3 w-3" />} {selectedRole === 'coach' ? 'Selected' : 'Choose'}
+                </span>
                 <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
                   <ShieldCheck className="h-7 w-7" />
                 </span>
@@ -2562,10 +2569,14 @@ function RoleSelectionPage() {
                 type="button"
                 onClick={() => setSelectedRole('fan')}
                 disabled={savingProfile}
-                aria-pressed={selectedRole === 'fan'}
-                className={`group border p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background ring-2 ring-primary' : 'border-border bg-foreground text-background'}`}
+                role="radio"
+                aria-checked={selectedRole === 'fan'}
+                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background shadow-[0_0_0_4px_rgba(0,232,120,0.2)]' : 'border-white/15 bg-foreground text-background'}`}
                 data-testid="button-role-fan"
               >
+                <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'fan' ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>
+                  {selectedRole === 'fan' && <Check className="h-3 w-3" />} {selectedRole === 'fan' ? 'Selected' : 'Choose'}
+                </span>
                 <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
                   <Star className="h-7 w-7" />
                 </span>
