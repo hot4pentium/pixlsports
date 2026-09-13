@@ -77,10 +77,10 @@ export const templates: Array<{ id: TemplateId; name: string; summary: string }>
 ];
 
 export const cardLayouts: Array<{ id: CardLayoutId; name: string; summary: string; tone: string }> = [
-  { id: 'slugger', name: 'Slugger', summary: 'Wave base and bold nameplate.', tone: '#f36f4c' },
-  { id: 'all-star', name: 'All-Star', summary: 'Centered portrait with a badge feel.', tone: '#f5c94d' },
-  { id: 'rookie', name: 'Rookie', summary: 'Big number, angled crop, hard edge.', tone: '#177d76' },
-  { id: 'dugout', name: 'Dugout', summary: 'Clean frame with a scoreboard finish.', tone: '#243248' },
+  { id: 'slugger', name: 'Stadium Entrance', summary: 'Cool blue tunnel opening onto the arena.', tone: '#4fb4ff' },
+  { id: 'all-star', name: 'Sunset Stadium', summary: 'Open-air stadium under warm evening lights.', tone: '#ff9d52' },
+  { id: 'rookie', name: 'Locker Room Walkout', summary: 'Premium dark corridor with warm gold lighting.', tone: '#efb65d' },
+  { id: 'dugout', name: 'Split-Light Arena', summary: 'Dark studio with blue and orange edge lights.', tone: '#2f9dff' },
 ];
 
 export const formats: Array<{ id: HypeFormat; label: string; dimensions: string }> = [

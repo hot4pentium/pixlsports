@@ -6,6 +6,10 @@ import {
   escapeXml,
   templates
 } from './hype-card-types';
+import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url&inline';
+import sunsetStadium from '../assets/hype-cards/sunset-stadium.webp?url&inline';
+import lockerRoomWalkout from '../assets/hype-cards/locker-room-walkout.webp?url&inline';
+import splitLightArena from '../assets/hype-cards/split-light-arena.webp?url&inline';
 
 export function getPhotoFrame(format: HypeFormat) {
   const { width, height } = getDimensions(format);
@@ -277,6 +281,73 @@ function cardContent(project: HypeCardProject) {
 }
 
 export type SvgLayer = 'all' | 'bg' | 'fg';
+
+export const STADIUM_MEDIA_FRAME = { x: 180, y: 285, width: 640, height: 755, radius: 34 } as const;
+
+const stadiumCardBackgrounds = {
+  slugger: stadiumEntrance,
+  'all-star': sunsetStadium,
+  rookie: lockerRoomWalkout,
+  dugout: splitLightArena,
+} as const;
+
+function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: string) {
+  const content = cardContent(project);
+  const palette = palettes[project.palette];
+  const backgroundImage = stadiumCardBackgrounds[project.layout];
+  const frame = STADIUM_MEDIA_FRAME;
+  const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const photoWidth = frame.width * project.photoTransform.zoom;
+  const photoHeight = frame.height * project.photoTransform.zoom;
+  const headlineSize = fitText(content.headline, 840, 118, 0.66, 2);
+  const playerSize = fitText(content.player, 760, 76, 0.7, 2);
+  const detailsLine = `${content.team}  •  #${content.number}  •  ${content.details}`;
+  const photo = project.photo
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    : '';
+  const logo = project.logo
+    ? `<image href="${project.logo}" x="825" y="82" width="90" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#stadiumShadow-${ns})"/>`
+    : '';
+  const placeholder = !project.mediaType && !project.photo
+    ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="#02070e" fill-opacity=".34" stroke="#fff" stroke-opacity=".38" stroke-width="3" stroke-dasharray="14 14"/><text x="500" y="650" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff" opacity=".82">ADD PLAYER MEDIA</text>`
+    : '';
+  const coachMessage = content.message
+    ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 780, 18, 0.62, 2)}" font-weight="600" letter-spacing="2" fill="#fff" opacity=".72">${content.message}</text>`
+    : '';
+  const branding = project.branding
+    ? `<text x="500" y="1352" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    : '';
+  const nameplate = project.overlay
+    ? `<rect x="120" y="1060" width="760" height="112" rx="24" fill="#03070d" fill-opacity=".78" stroke="${palette.primary}" stroke-width="3"/>`
+    : '';
+  const defs = `
+    <clipPath id="stadiumCardClip-${ns}"><rect x="8" y="8" width="984" height="1384" rx="46"/></clipPath>
+    <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
+    <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
+    <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
+    <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>`;
+  const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
+  const fgContent = `
+    <g clip-path="url(#stadiumCardClip-${ns})">
+      <rect width="1000" height="330" fill="url(#stadiumTop-${ns})"/>
+      <rect y="900" width="1000" height="500" fill="url(#stadiumBottom-${ns})"/>
+      ${placeholder}
+      <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
+      <text x="70" y="215" font-family="Space Grotesk,sans-serif" font-size="${headlineSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.headline}</text>
+      ${nameplate}
+      <text x="500" y="1138" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
+      <text x="500" y="1208" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(detailsLine, 820, 23, 0.63, 3)}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
+      <text x="500" y="1260" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 820, 31, 0.7, 1)}" font-weight="800" fill="#fff">${content.recognition}</text>
+      ${coachMessage}
+      ${logo}
+      ${branding}
+    </g>`;
+  const photoMarkup = `<g clip-path="url(#stadiumPhotoClip-${ns})">${photo}</g>`;
+  if (layer === 'bg') return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${bgContent}</svg>`;
+  if (layer === 'fg') return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${fgContent}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${bgContent}${photoMarkup}${fgContent}</svg>`;
+}
 
 function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: string) {
   const palette = palettes[project.palette];
@@ -639,10 +710,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
 
 export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'all', ns = 'ns') {
   if (project.format === 'card') {
-    if (project.layout === 'all-star') return buildAllStarCardSvg(project, layer, ns);
-    if (project.layout === 'rookie') return buildRookieCardSvg(project, layer, ns);
-    if (project.layout === 'dugout') return buildDugoutCardSvg(project, layer, ns);
-    return buildSluggerCardSvg(project, layer, ns);
+    return buildStadiumCardSvg(project, layer, ns);
   }
   
   const { width, height } = getDimensions(project.format);
@@ -733,31 +801,19 @@ export function getPhotoClipInfo(project: HypeCardProject, ns: string) {
     };
   }
 
-  let frame = { x: 33, y: 33, width: 934, height: 1334 };
-  if (project.layout === 'all-star') frame = { x: 150, y: 300, width: 700, height: 700 };
-  if (project.layout === 'dugout') frame = { x: 70, y: 240, width: 860, height: 660 };
-
-  const overscan = 200;
-  const x = frame.x - overscan / 2 + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
-  const y = frame.y - overscan / 2 + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
-  const w = frame.width * project.photoTransform.zoom + overscan;
-  const h = frame.height * project.photoTransform.zoom + overscan;
-
-  let clipId = `cardClip-${ns}`;
-  let clipContent = `<rect x="33" y="33" width="934" height="1334" rx="27" />`;
-  let cx = x + w / 2;
-  let cy = y + h / 2;
-
-  if (project.layout === 'all-star') {
-    clipId = `shieldClip-${ns}`;
-    clipContent = `<path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" />`;
-  } else if (project.layout === 'rookie') {
-    clipId = `rookiePhoto-${ns}`;
-    clipContent = `<path d="M 30 30 L 970 30 L 970 850 L 30 1100 Z" />`;
-  } else if (project.layout === 'dugout') {
-    clipId = `dugoutPhoto-${ns}`;
-    clipContent = `<rect x="70" y="240" width="860" height="660" rx="25" />`;
-  }
-
-  return { clipId, clipContent, x, y, w, h, cx, cy };
+  const frame = STADIUM_MEDIA_FRAME;
+  const x = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
+  const y = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
+  const w = frame.width * project.photoTransform.zoom;
+  const h = frame.height * project.photoTransform.zoom;
+  return {
+    clipId: `stadiumPhotoClip-${ns}`,
+    clipContent: `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/>`,
+    x,
+    y,
+    w,
+    h,
+    cx: x + w / 2,
+    cy: y + h / 2,
+  };
 }

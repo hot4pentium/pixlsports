@@ -12,10 +12,10 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 
 import {
-  HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId, CardFinishId,
-  HEADLINES, templates, cardLayouts, formats, palettes, cardFinishes, defaultProject, getDimensions
+  HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
+  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions
 } from './hype-card-types';
-import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame } from './hype-card-svg';
+import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveVideoBlob, loadVideoBlob, deleteVideoBlob, checkExportSupport } from './hype-card-media';
 import { exportVideoCanvas } from './hype-card-export';
 
@@ -115,7 +115,7 @@ function normalizeProject(project: any): HypeCardProject {
         }
       : null,
     layout: project.layout ?? defaults.layout,
-    finish: cardFinishes.some((finish) => finish.id === project.finish) ? project.finish : defaults.finish,
+    finish: defaults.finish,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
     visibility: { ...defaults.visibility, ...project.visibility },
@@ -165,20 +165,23 @@ function LayoutOption({
     <button
       type="button"
       onClick={onSelect}
-      className={`group overflow-hidden border p-2 text-left transition-all clip-angled-sm ${selected ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border bg-background hover:border-foreground'}`}
+      className={`group flex min-h-40 gap-4 overflow-hidden border p-3 text-left transition-all clip-angled-sm ${selected ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border bg-background hover:border-foreground'}`}
       aria-pressed={selected}
       data-testid={`button-card-layout-${layout.id}`}
     >
-      <div className="relative aspect-[5/7] overflow-hidden bg-muted clip-angled-sm">
+      <div className="relative aspect-[5/7] w-24 shrink-0 overflow-hidden bg-muted clip-angled-sm">
         <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
         <div className="hype-svg-preview absolute inset-0 [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: svg }} />
         {selected && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center bg-primary text-primary-foreground shadow-md clip-angled-sm"><Check className="h-4 w-4" /></span>}
       </div>
-      <span className="mt-3 flex items-center justify-between gap-2 px-1">
-        <span className="text-sm font-bold uppercase tracking-widest">{layout.name}</span>
-        <span className="h-3 w-3 clip-angled-sm" style={{ backgroundColor: layout.tone }} />
+      <span className="flex min-w-0 flex-1 flex-col justify-center py-2">
+        <span className="flex items-center justify-between gap-2">
+          <span className="text-sm font-bold uppercase tracking-wider">{layout.name}</span>
+          <span className="h-3 w-3 shrink-0 clip-angled-sm" style={{ backgroundColor: layout.tone }} />
+        </span>
+        <span className="mt-2 block text-xs font-medium leading-relaxed text-muted-foreground">{layout.summary}</span>
+        <span className={`mt-4 text-[10px] font-bold uppercase tracking-widest ${selected ? 'text-primary' : 'text-muted-foreground'}`}>{selected ? 'Selected' : 'Choose layout'}</span>
       </span>
-      <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground px-1">{layout.summary}</span>
     </button>
   );
 }
@@ -721,23 +724,9 @@ export function HypeCardEditor() {
             if (project.format !== 'card') {
               const frame = getPhotoFrame(project.format);
               p.roundRect(frame.x, frame.y, frame.width, frame.height, frame.radius);
-            } else if (project.layout === 'all-star') {
-              p.moveTo(500, 250);
-              p.bezierCurveTo(740, 250, 880, 430, 880, 720);
-              p.bezierCurveTo(880, 970, 500, 1150, 500, 1150);
-              p.bezierCurveTo(500, 1150, 120, 970, 120, 720);
-              p.bezierCurveTo(120, 430, 260, 250, 500, 250);
-              p.closePath();
-            } else if (project.layout === 'rookie') {
-              p.moveTo(30, 30);
-              p.lineTo(970, 30);
-              p.lineTo(970, 850);
-              p.lineTo(30, 1100);
-              p.closePath();
-            } else if (project.layout === 'dugout') {
-              p.roundRect(70, 240, 860, 660, 25);
             } else {
-              p.roundRect(33, 33, 934, 1334, 27); // slugger
+              const frame = STADIUM_MEDIA_FRAME;
+              p.roundRect(frame.x, frame.y, frame.width, frame.height, frame.radius);
             }
             ctx.clip(p);
 
@@ -1044,7 +1033,7 @@ export function HypeCardEditor() {
             </Section>
 
             <Section title="Layout" icon={LayoutGrid}>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-3">
                 {cardLayouts.map((l) => (
                   <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id && project.format === 'card'} onSelect={() => { updateProject('layout', l.id); updateProject('format', 'card'); }} />
                 ))}
@@ -1066,25 +1055,6 @@ export function HypeCardEditor() {
               </div>
             </Section>
 
-            <Section title="Card Finish" icon={SlidersHorizontal}>
-              <div className="grid grid-cols-2 gap-2">
-                {cardFinishes.map((finish) => (
-                  <button
-                    key={finish.id}
-                    type="button"
-                    onClick={() => updateProject('finish', finish.id as CardFinishId)}
-                    aria-pressed={project.finish === finish.id}
-                    data-testid={`button-card-finish-${finish.id}`}
-                    className={`min-h-24 border p-3 text-left transition-all clip-angled-sm ${project.finish === finish.id ? 'border-primary bg-primary/10 ring-2 ring-primary' : 'border-border bg-background hover:border-foreground'}`}
-                  >
-                    <span className="mb-3 block h-10 border border-white/10 bg-cover bg-center clip-angled-sm" style={{ background: finish.preview }} />
-                    <span className="block text-xs font-bold uppercase tracking-wider">{finish.name}</span>
-                    <span className="mt-1 block text-[10px] leading-snug text-muted-foreground">{finish.summary}</span>
-                  </button>
-                ))}
-              </div>
-            </Section>
-            
             <Section title="Brand Settings" icon={ShieldCheck}>
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between rounded-xl border border-border p-3">
