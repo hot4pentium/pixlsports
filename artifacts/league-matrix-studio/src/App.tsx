@@ -1117,6 +1117,9 @@ function ScheduleEventCard({
   onChange,
   onRemove,
   onMove,
+  onSave,
+  isNew,
+  onCancel,
 }: {
   event: ScheduleEvent;
   index: number;
@@ -1124,6 +1127,9 @@ function ScheduleEventCard({
   onChange: (id: string, patch: Partial<ScheduleEvent>) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
+  onSave: () => void;
+  isNew: boolean;
+  onCancel: () => void;
 }) {
   const typeLabel = event.type === 'game' ? 'Game' : event.type === 'practice' ? 'Practice' : 'Meeting';
 
@@ -1142,17 +1148,23 @@ function ScheduleEventCard({
           <option value="meeting">Meeting</option>
         </select>
         <span className="hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:block">{typeLabel} {index + 1}</span>
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => onMove(event.id, -1)} disabled={index === 0} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} up`} data-testid={`button-move-event-up-${index}`}>
-            <ChevronUp className="h-4 w-4" />
+        {isNew ? (
+          <button type="button" onClick={onCancel} className="inline-flex h-8 items-center border border-border px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground" data-testid="button-cancel-new-event">
+            Cancel
           </button>
-          <button type="button" onClick={() => onMove(event.id, 1)} disabled={index === count - 1} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} down`} data-testid={`button-move-event-down-${index}`}>
-            <ChevronDown className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={() => onRemove(event.id)} className="inline-flex h-8 items-center gap-1.5 border border-border px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive hover:text-destructive" aria-label={`Delete event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </button>
-        </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={() => onMove(event.id, -1)} disabled={index === 0} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} up`} data-testid={`button-move-event-up-${index}`}>
+              <ChevronUp className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={() => onMove(event.id, 1)} disabled={index === count - 1} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} down`} data-testid={`button-move-event-down-${index}`}>
+              <ChevronDown className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={() => onRemove(event.id)} className="inline-flex h-8 items-center gap-1.5 border border-border px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive hover:text-destructive" aria-label={`Delete event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -1164,6 +1176,11 @@ function ScheduleEventCard({
         <ScheduleField label="Drinks" value={event.drinks} onChange={(value) => onChange(event.id, { drinks: value })} placeholder="Who brings drinks?" icon={<CupSoda className="h-3.5 w-3.5" />} testId={`input-event-drinks-${index}`} />
       </div>
       <ScheduleField label="Notes" value={event.notes} onChange={(value) => onChange(event.id, { notes: value })} placeholder="Bring cleats and a water bottle." multiline icon={<NotebookPen className="h-3.5 w-3.5" />} testId={`input-event-notes-${index}`} />
+      <div className="mt-4 flex justify-end border-t border-border pt-3">
+        <button type="button" onClick={onSave} className="inline-flex items-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid={`button-save-event-${index}`}>
+          <Save className="h-4 w-4" /> {isNew ? 'Save event' : 'Save changes'}
+        </button>
+      </div>
     </div>
   );
 }
