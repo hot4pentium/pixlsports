@@ -710,6 +710,9 @@ function ScheduleEditor() {
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
     storedDraft ? storedDraft.events : defaultScheduleEvents
   ));
+  const [selectedWeekKey, setSelectedWeekKey] = useState(
+    () => getScheduleWeekKey(storedDraft?.events[0]?.date ?? defaultScheduleEvents[0]?.date ?? ''),
+  );
   const [selectedEventId, setSelectedEventId] = useState(
     () => storedDraft?.events[0]?.id ?? defaultScheduleEvents[0]?.id ?? '',
   );
@@ -725,18 +728,37 @@ function ScheduleEditor() {
   const deleteShare = useDeleteScheduleShare();
   const hasExistingShare = Boolean(shareToken);
   const sharePending = createShare.isPending || updateShare.isPending;
+  const scheduleWeeks = getScheduleWeeks(events);
+  const selectedWeek = scheduleWeeks.find((week) => week.key === selectedWeekKey) ?? scheduleWeeks[0];
+  const visibleEvents = selectedWeek
+    ? events
+      .map((event, index) => ({ event, index }))
+      .filter(({ event }) => getScheduleWeekKey(event.date) === selectedWeek.key)
+    : [];
   const selectedEventIndex = events.findIndex((event) => event.id === selectedEventId);
   const selectedEvent = selectedEventIndex >= 0 ? events[selectedEventIndex] : undefined;
 
   useEffect(() => {
     if (events.length === 0) {
+      if (selectedWeekKey) setSelectedWeekKey('');
       if (selectedEventId) setSelectedEventId('');
       return;
     }
-    if (!events.some((event) => event.id === selectedEventId)) {
-      setSelectedEventId(events[0].id);
+    const weeks = getScheduleWeeks(events);
+    const nextWeek = weeks.find((week) => week.key === selectedWeekKey) ?? weeks[0];
+    if (nextWeek && nextWeek.key !== selectedWeekKey) {
+      setSelectedWeekKey(nextWeek.key);
     }
-  }, [events, selectedEventId]);
+    if (!events.some((event) => event.id === selectedEventId)) {
+      setSelectedEventId(nextWeek?.events[0]?.id ?? events[0].id);
+      return;
+    }
+    const currentEvent = events.find((event) => event.id === selectedEventId);
+    const currentEventWeekKey = currentEvent ? getScheduleWeekKey(currentEvent.date) : '';
+    if (currentEventWeekKey && currentEventWeekKey !== selectedWeekKey) {
+      setSelectedWeekKey(currentEventWeekKey);
+    }
+  }, [events, selectedEventId, selectedWeekKey]);
 
   const setNoticeFor = (message: string) => {
     setNotice(message);
@@ -752,7 +774,9 @@ function ScheduleEditor() {
     setSaved(false);
     const nextEvents = addScheduleEvent(events, type);
     setEvents(nextEvents);
-    setSelectedEventId(nextEvents[nextEvents.length - 1]?.id ?? '');
+    const nextEvent = nextEvents[nextEvents.length - 1];
+    setSelectedEventId(nextEvent?.id ?? '');
+    setSelectedWeekKey(getScheduleWeekKey(nextEvent?.date ?? ''));
   };
 
   const removeEvent = (id: string) => {
@@ -873,6 +897,7 @@ function ScheduleEditor() {
     const resetEvents = getDefaultScheduleEvents();
     setEvents(resetEvents);
     setSelectedEventId(resetEvents[0]?.id ?? '');
+    setSelectedWeekKey(getScheduleWeekKey(resetEvents[0]?.date ?? ''));
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
 
@@ -921,30 +946,51 @@ function ScheduleEditor() {
             <div className="relative z-10">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule entries</p>
-                  <p className="mt-1 text-xs font-medium text-muted-foreground">Scroll to choose a date to edit.</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule weeks</p>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">Swipe across weeks, then choose a date to edit.</p>
                 </div>
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
               </div>
 
-              <div className="max-h-52 overflow-y-auto pr-1" data-testid="schedule-event-list">
+              <div className="overflow-x-auto pb-2 no-scrollbar" data-testid="schedule-week-list">
+                <div className="flex min-w-max gap-2">
+                  {scheduleWeeks.map((week) => (
+                    <button
+                      key={week.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedWeekKey(week.key);
+                        setSelectedEventId(week.events[0]?.id ?? '');
+                      }}
+                      aria-pressed={week.key === selectedWeek?.key}
+                      className={`min-w-[138px] border px-3 py-2.5 text-left transition-colors clip-angled-sm ${week.key === selectedWeek?.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
+                      data-testid={`button-select-schedule-week-${week.key}`}
+                    >
+                      <span className="block text-[10px] font-bold uppercase tracking-wider">{week.label}</span>
+                      <span className="mt-1 block text-[10px] font-medium uppercase tracking-wider opacity-75">{week.events.length} {week.events.length === 1 ? 'entry' : 'entries'}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 max-h-52 overflow-y-auto pr-1" data-testid="schedule-event-list">
                 <div className="space-y-2">
-                {events.map((event, index) => (
-                  <button
-                    key={event.id}
-                    type="button"
-                    onClick={() => setSelectedEventId(event.id)}
-                    aria-pressed={event.id === selectedEventId}
-                    className={`flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors clip-angled-sm ${event.id === selectedEventId ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
-                    data-testid={`button-select-schedule-event-${index}`}
-                  >
-                    <span className="min-w-[74px] text-[10px] font-bold uppercase tracking-wider">{formatScheduleDate(event.date)}</span>
-                    <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">
-                      {event.type === 'game' ? event.opponent || 'Game' : event.type === 'practice' ? 'Practice' : 'Meeting'}
-                    </span>
-                    <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider">{formatScheduleTime(event.time)}</span>
-                  </button>
-                ))}
+                  {visibleEvents.map(({ event, index }) => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => setSelectedEventId(event.id)}
+                      aria-pressed={event.id === selectedEventId}
+                      className={`flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors clip-angled-sm ${event.id === selectedEventId ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
+                      data-testid={`button-select-schedule-event-${index}`}
+                    >
+                      <span className="min-w-[74px] text-[10px] font-bold uppercase tracking-wider">{formatScheduleDate(event.date)}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">
+                        {event.type === 'game' ? event.opponent || 'Game' : event.type === 'practice' ? 'Practice' : 'Meeting'}
+                      </span>
+                      <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider">{formatScheduleTime(event.time)}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -1143,6 +1189,58 @@ function formatScheduleTime(value: string) {
   const suffix = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours % 12 || 12;
   return `${displayHours}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
+type ScheduleWeek = {
+  key: string;
+  label: string;
+  events: ScheduleEvent[];
+};
+
+function getScheduleWeekKey(value: string) {
+  if (!value) return 'unscheduled';
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return 'unscheduled';
+
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay();
+  date.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function getScheduleWeeks(events: ScheduleEvent[]): ScheduleWeek[] {
+  const groups = new Map<string, ScheduleEvent[]>();
+  events.forEach((event) => {
+    const key = getScheduleWeekKey(event.date);
+    groups.set(key, [...(groups.get(key) ?? []), event]);
+  });
+
+  return [...groups.entries()]
+    .sort(([left], [right]) => {
+      if (left === 'unscheduled') return 1;
+      if (right === 'unscheduled') return -1;
+      return left.localeCompare(right);
+    })
+    .map(([key, weekEvents]) => ({
+      key,
+      label: key === 'unscheduled' ? 'Unscheduled' : formatScheduleWeekLabel(key),
+      events: weekEvents,
+    }));
+}
+
+function formatScheduleWeekLabel(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  const start = new Date(year, month - 1, day);
+  const end = new Date(year, month - 1, day + 6);
+  const startLabel = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase();
+  const endLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase();
+  return start.getMonth() === end.getMonth()
+    ? `${startLabel}–${end.getDate()}`
+    : `${startLabel}–${endLabel}`;
 }
 
 function escapeSvgText(value: string) {
