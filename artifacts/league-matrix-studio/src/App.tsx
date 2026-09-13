@@ -933,7 +933,6 @@ function RosterEditor() {
               onChange={updatePlayer}
               onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
               onSetStarter={toggleStarter}
-              onAddPlayer={addPlayer}
             />
             <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Game-day starters with bench listed' : 'Starters on canvas · bench listed below'}</span>
@@ -1000,23 +999,19 @@ function RosterEditor() {
 }
 
 function FormationBoard({
-  players,
   starters,
   boardStyle,
   onPositionChange,
   onChange,
   onRemove,
   onSetStarter,
-  onAddPlayer,
 }: {
-  players: RosterPlayer[];
   starters: RosterPlayer[];
   boardStyle: RosterBoardStyle;
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
   onChange: (id: string, patch: Partial<RosterPlayer>) => void;
   onRemove: (id: string) => void;
   onSetStarter: (id: string, isStarter: boolean) => void;
-  onAddPlayer: () => void;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
