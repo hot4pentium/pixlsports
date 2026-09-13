@@ -164,19 +164,20 @@ function LayoutOption({
     <button
       type="button"
       onClick={onSelect}
-      className={`group overflow-hidden rounded-2xl border p-2 text-left transition-all ${selected ? 'border-primary bg-[#fff0e9] ring-2 ring-primary/40' : 'border-border bg-background hover:border-primary/60'}`}
+      className={`group overflow-hidden border p-2 text-left transition-all clip-angled-sm ${selected ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background' : 'border-border bg-background hover:border-foreground'}`}
       aria-pressed={selected}
       data-testid={`button-card-layout-${layout.id}`}
     >
-      <div className="relative aspect-[5/7] overflow-hidden rounded-xl bg-[#ddd3c4]">
+      <div className="relative aspect-[5/7] overflow-hidden bg-muted clip-angled-sm">
+        <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
         <div className="hype-svg-preview absolute inset-0 [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: svg }} />
-        {selected && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"><Check className="h-3.5 w-3.5" /></span>}
+        {selected && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center bg-primary text-primary-foreground shadow-md clip-angled-sm"><Check className="h-4 w-4" /></span>}
       </div>
-      <span className="mt-2.5 flex items-center justify-between gap-2">
-        <span className="text-xs font-bold">{layout.name}</span>
-        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: layout.tone }} />
+      <span className="mt-3 flex items-center justify-between gap-2 px-1">
+        <span className="text-sm font-bold uppercase tracking-widest">{layout.name}</span>
+        <span className="h-3 w-3 clip-angled-sm" style={{ backgroundColor: layout.tone }} />
       </span>
-      <span className="mt-1 block text-[10px] leading-relaxed text-muted-foreground">{layout.summary}</span>
+      <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground px-1">{layout.summary}</span>
     </button>
   );
 }
@@ -191,10 +192,10 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-border pt-5">
-      <div className="mb-4 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-secondary" />
-        <h2 className="text-xs font-bold uppercase tracking-[.16em] text-muted-foreground">{title}</h2>
+    <section className="border-t border-border pt-6">
+      <div className="mb-5 flex items-center gap-2">
+        <Icon className="h-5 w-5 text-primary" />
+        <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">{title}</h2>
       </div>
       {children}
     </section>
@@ -216,7 +217,7 @@ function HypeField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-center gap-1.5 text-xs font-bold text-foreground">
+      <span className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-foreground">
         {label}
         {required && <span className="text-primary">*</span>}
       </span>
@@ -224,7 +225,7 @@ function HypeField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 rounded-xl bg-background"
+        className="h-12 border-border bg-background focus:border-primary font-medium clip-angled-sm transition-colors rounded-none"
       />
     </label>
   );
@@ -242,15 +243,15 @@ function AssetButton({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <label className="flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-background px-3 text-xs font-bold transition-colors hover:border-primary hover:bg-[#fff0e9]">
-        {hasAsset ? <Check className="h-4 w-4 text-secondary" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
+    <div className="flex items-center gap-3">
+      <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-3 border-2 border-dashed border-border bg-background px-4 text-sm font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm">
+        {hasAsset ? <Check className="h-5 w-5 text-primary" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
         {hasAsset ? `${label} added` : `Add ${label}`}
         <input type="file" accept="image/*,video/*" className="sr-only" onChange={onChange} />
       </label>
       {hasAsset && (
-        <button type="button" onClick={onRemove} className="grid h-10 w-10 place-items-center rounded-xl border border-border text-muted-foreground hover:bg-muted" aria-label={`Remove ${label}`}>
-          <X className="h-4 w-4" />
+        <button type="button" onClick={onRemove} className="grid h-12 w-12 shrink-0 place-items-center bg-muted border border-border text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors clip-angled-sm" aria-label={`Remove ${label}`}>
+          <X className="h-5 w-5" />
         </button>
       )}
     </div>
@@ -279,9 +280,10 @@ export function PreviewCanvas({ project, videoUrl, videoRef }: { project: HypeCa
   }, [isMuted, videoUrl, videoRef]);
 
   return (
-    <div className="paper-grid relative flex min-h-[450px] items-center justify-center overflow-hidden rounded-[24px] border border-border bg-[#e8dfd0] p-4 sm:min-h-[650px] sm:p-8 group">
+    <div className="relative flex min-h-[450px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[650px] sm:p-8 group clip-angled-sm">
+      <div className="absolute inset-0 bg-tech-grid opacity-40 pointer-events-none" />
       <div
-        className="relative max-h-[76vh] w-full max-w-[760px] overflow-hidden rounded-[18px] shadow-[14px_18px_0_rgba(36,50,72,.14)]"
+        className="relative z-10 max-h-[76vh] w-full max-w-[760px] overflow-hidden shadow-2xl clip-angled"
         style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
         data-testid="hype-preview-canvas"
       >
@@ -312,15 +314,15 @@ export function PreviewCanvas({ project, videoUrl, videoRef }: { project: HypeCa
       </div>
       
       {project.mediaType === 'video' && videoUrl && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-md opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 sm:bottom-8">
-          <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying(!isPlaying)} className="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30" aria-label={isPlaying ? 'Pause' : 'Play'}>
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 bg-foreground/90 p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 clip-angled-sm shadow-xl border border-white/10">
+          <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying(!isPlaying)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
+            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
-          <button type="button" data-testid="button-restart" onClick={() => { if (videoRef?.current) { videoRef.current.currentTime = 0; videoRef.current.play().catch(()=>setIsPlaying(false)); setIsPlaying(true); } }} className="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30" aria-label="Restart">
-            <RotateCcw className="h-4 w-4" />
+          <button type="button" data-testid="button-restart" onClick={() => { if (videoRef?.current) { videoRef.current.currentTime = 0; videoRef.current.play().catch(()=>setIsPlaying(false)); setIsPlaying(true); } }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
+            <RotateCcw className="h-5 w-5" />
           </button>
-          <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted(!isMuted)} className="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30" aria-label={isMuted ? 'Unmute' : 'Mute'}>
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted(!isMuted)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+            {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           </button>
         </div>
       )}
@@ -379,25 +381,29 @@ export function MobilePreviewDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4">
-      <button type="button" className="absolute inset-0 bg-[#101827]/85" onClick={() => onOpenChange(false)} aria-label="Close card preview" />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <button type="button" className="absolute inset-0 bg-foreground/90 backdrop-blur-sm" onClick={() => onOpenChange(false)} aria-label="Close card preview" />
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="mobile-preview-title"
         aria-describedby="mobile-preview-description"
-        className="relative z-10 max-h-[96dvh] w-full max-w-xl overflow-y-auto rounded-[26px] border border-border bg-[#e8dfd0] p-4 shadow-2xl sm:p-6"
+        className="relative z-10 max-h-[96dvh] w-full max-w-xl overflow-y-auto bg-card border border-border p-5 sm:p-8 shadow-2xl clip-angled-sm flex flex-col"
       >
-        <button ref={closeButtonRef} type="button" onClick={() => onOpenChange(false)} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground shadow-sm" aria-label="Close card preview">
-          <X className="h-4 w-4" />
+        <button ref={closeButtonRef} type="button" onClick={() => onOpenChange(false)} className="absolute right-4 top-4 grid h-10 w-10 place-items-center bg-muted hover:bg-destructive hover:text-destructive-foreground transition-colors clip-angled-sm" aria-label="Close card preview">
+          <X className="h-5 w-5" />
         </button>
-        <div className="pr-12 text-left">
-          <h2 id="mobile-preview-title" className="font-display text-xl font-bold">Your live card</h2>
-          <p id="mobile-preview-description" className="mt-1 text-sm text-muted-foreground">{title} · {dimensions.width} × {dimensions.height}. This preview updates as you edit.</p>
+        <div className="pr-12 text-left mb-6">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 text-xs font-bold uppercase tracking-widest clip-angled-sm mb-3">
+            <span className="h-2 w-2 bg-primary animate-pulse" /> Live Monitor
+          </div>
+          <h2 id="mobile-preview-title" className="font-display text-4xl uppercase tracking-wide leading-none">{title}</h2>
+          <p id="mobile-preview-description" className="mt-2 text-sm font-medium text-muted-foreground">{dimensions.width} × {dimensions.height}. Output updates instantly.</p>
         </div>
-        <div className="paper-grid flex min-h-0 items-center justify-center rounded-[20px] border border-border p-3">
+        <div className="flex min-h-0 items-center justify-center border border-border bg-muted p-4 clip-angled-sm relative">
+          <div className="absolute inset-0 bg-tech-grid opacity-30" />
           <div
-            className="relative w-full overflow-hidden rounded-[16px] shadow-[10px_12px_0_rgba(36,50,72,.14)]"
+            className="relative z-10 w-full overflow-hidden shadow-xl clip-angled"
             style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
             data-testid="mobile-hype-preview-canvas"
           >
@@ -426,9 +432,9 @@ export function MobilePreviewDialog({
             </svg>
             <div className="absolute inset-0 pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
              {project.mediaType === 'video' && videoUrl && (
-               <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 backdrop-blur-md">
-                 <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying((playing) => !playing)} className="grid h-9 w-9 place-items-center rounded-full bg-white/20 text-white" aria-label={isPlaying ? 'Pause' : 'Play'}>
-                   {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+               <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 bg-foreground/90 p-2 clip-angled-sm border border-white/10 shadow-lg">
+                 <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying((playing) => !playing)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
+                   {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                  </button>
                  <button type="button" data-testid="button-restart" onClick={() => {
                    const video = mobileVideoRef.current;
@@ -436,17 +442,17 @@ export function MobilePreviewDialog({
                    video.currentTime = 0;
                    video.play().catch(() => setIsPlaying(false));
                    setIsPlaying(true);
-                 }} className="grid h-9 w-9 place-items-center rounded-full bg-white/20 text-white" aria-label="Restart">
-                   <RotateCcw className="h-4 w-4" />
+                 }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
+                   <RotateCcw className="h-5 w-5" />
                  </button>
-                 <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted((muted) => !muted)} className="grid h-9 w-9 place-items-center rounded-full bg-white/20 text-white" aria-label={isMuted ? 'Unmute' : 'Mute'}>
-                   {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                 <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted((muted) => !muted)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+                   {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                  </button>
                </div>
              )}
           </div>
         </div>
-        <Button type="button" onClick={() => onOpenChange(false)} className="w-full rounded-full mt-4">
+        <Button type="button" onClick={() => onOpenChange(false)} className="w-full mt-6 bg-foreground hover:bg-foreground/90 text-background font-bold uppercase tracking-widest clip-angled-sm h-12 rounded-none">
           Back to editing
         </Button>
       </section>
@@ -804,18 +810,18 @@ export function HypeCardEditor() {
 
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#e8dfd0]">
+    <div className="moment-studio flex h-[100dvh] flex-col overflow-hidden bg-muted">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
         <div className="flex items-center gap-3">
-          <Link href="/studio" className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-background hover:bg-muted" aria-label="Back to studio">
+          <Link href="/studio" className="grid h-9 w-9 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-           <h1 className="font-display text-lg font-bold tracking-tight text-foreground">Moment Cards</h1>
+           <h1 className="font-display text-xl tracking-wide text-foreground">Moment Cards</h1>
         </div>
         <div className="flex items-center gap-2">
           {validation && <span className="hidden text-xs font-bold text-destructive sm:inline-block">{validation}</span>}
           <div className="flex gap-2">
-            <Button variant="outline" className="hidden gap-2 rounded-xl sm:flex" onClick={() => {
+            <Button variant="outline" className="hidden gap-2 rounded-none clip-angled-sm sm:flex" onClick={() => {
               const str = JSON.stringify({ tool: 'hype-card', project }, null, 2);
               const blob = new Blob([str], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
@@ -828,7 +834,7 @@ export function HypeCardEditor() {
               <Save className="h-4 w-4" /> Save project
             </Button>
             <label className="hidden cursor-pointer sm:block">
-              <span className="flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium hover:bg-muted">
+              <span className="flex h-10 items-center gap-2 border border-border bg-background px-4 text-sm font-medium hover:border-primary hover:bg-muted clip-angled-sm transition-colors">
                 <FolderOpen className="h-4 w-4" /> Open...
               </span>
               <input type="file" accept=".lmx,application/json" className="sr-only" onChange={async (e) => {
@@ -845,7 +851,7 @@ export function HypeCardEditor() {
                 }
               }} />
             </label>
-            <Button onClick={handleExport} disabled={exporting} className="gap-2 rounded-xl border-t-2 border-white/20 bg-primary font-bold text-white hover:bg-primary/90">
+            <Button onClick={handleExport} disabled={exporting} className="gap-2 rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
@@ -854,7 +860,7 @@ export function HypeCardEditor() {
                 <X className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="outline" size="icon" onClick={() => setMobilePreviewOpen(true)} className="rounded-xl sm:hidden" aria-label="Preview">
+            <Button variant="outline" size="icon" onClick={() => setMobilePreviewOpen(true)} className="rounded-none clip-angled-sm sm:hidden" aria-label="Preview">
               <Eye className="h-4 w-4" />
             </Button>
           </div>
@@ -871,7 +877,7 @@ export function HypeCardEditor() {
       {validation && <div className="block border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground sm:hidden">{validation}</div>}
 
       <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-        <aside className="w-full flex-shrink-0 overflow-y-auto border-r border-border bg-background sm:w-[400px]">
+        <aside className="w-full flex-shrink-0 overflow-y-auto border-r border-border bg-background bg-tech-grid sm:w-[400px]">
           <div className="flex flex-col gap-6 p-5">
             <Section title="Moment" icon={Lightbulb}>
               <div className="flex flex-wrap gap-2">
