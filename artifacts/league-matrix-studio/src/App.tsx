@@ -1125,8 +1125,8 @@ function ScheduleEventCard({
           <button type="button" onClick={() => onMove(event.id, 1)} disabled={index === count - 1} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} down`} data-testid={`button-move-event-down-${index}`}>
             <ChevronDown className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => onRemove(event.id)} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:border-destructive hover:text-destructive" aria-label={`Remove event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
-            <X className="h-4 w-4" />
+          <button type="button" onClick={() => onRemove(event.id)} className="inline-flex h-8 items-center gap-1.5 border border-border px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive hover:text-destructive" aria-label={`Delete event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
+            <Trash2 className="h-3.5 w-3.5" /> Delete
           </button>
         </div>
       </div>
