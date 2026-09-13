@@ -14,3 +14,17 @@ mtime_ms = 1789343207764
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/fbbea940-ec2d-492e-9dec-ed7977a8bbf9/d629193c-e343-49c1-bb0f-195699372cc5"
 storage_version_token = "1789343213406847"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "M6Uk4lDoAEAP2C4sQ18JU"
+uri = "file://screenshots/hype-card-championship-lower-third-final.jpg"
+type = "image"
+title = "Championship Lower Third Preview"
+description = "The Hype Card now uses the uploaded championship-style lower third with side wings, crest, metallic frame, and lower extension."
+logical_id = "c2959c33-12ea-4b89-a3c4-6b15ca11a6d8"
+content_hash = "sha256:5ba823029915fa2b47090abd55f9cb78e8f1475c9a03cf75024c73b6086eaa74"
+size = 158081
+mtime_ms = 1789343433249
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/c2959c33-12ea-4b89-a3c4-6b15ca11a6d8/776bfeba-2f61-4d2b-845c-b7d971287ae4"
+storage_version_token = "1789343440082890"
+content_type = "image/jpeg"
