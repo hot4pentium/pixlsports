@@ -108,6 +108,19 @@ function stripBase(path: string): string {
 }
 
 type ToolKind = 'hype' | 'schedule' | 'roster';
+type UserRole = 'coach' | 'fan';
+
+const roleToolKinds: Record<UserRole, ToolKind[]> = {
+  coach: ['schedule', 'roster'],
+  fan: ['hype', 'schedule'],
+};
+
+function getUserRole(user: { unsafeMetadata?: unknown } | null | undefined): UserRole | null {
+  const role = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
+    ? (user.unsafeMetadata as { role?: unknown }).role
+    : null;
+  return role === 'coach' || role === 'fan' ? role : null;
+}
 
 const toolData: Record<ToolKind, {
   slug: string;
@@ -425,19 +438,25 @@ function ToolFeatureCard({ kind, large = false }: { kind: ToolKind; large?: bool
   );
 }
 
-function StudioLayout({ children }: { children: ReactNode }) {
+function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole }) {
   const [location] = useLocation();
+  const { user } = useUser();
+  const activeRole = role ?? getUserRole(user) ?? 'coach';
+  const visibleTools = roleToolKinds[activeRole];
   return (
     <div className="noise min-h-dvh bg-background flex flex-col">
       <SiteNav dark />
       <div className="border-b border-border bg-background bg-tech-grid">
         <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
           <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">Command Center</Link>
-          {Object.entries(toolData).map(([key, tool]) => (
+          {visibleTools.map((key) => {
+            const tool = toolData[key];
+            return (
             <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>
               {tool.label.replace(' Creator', '').replace(' Graphic Maker', '')}
             </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
       <div className="flex-1 flex flex-col">
@@ -450,7 +469,7 @@ function StudioLayout({ children }: { children: ReactNode }) {
 
 
 
-function Studio() {
+function Studio({ role }: { role: UserRole }) {
   const [hasProject, setHasProject] = useState(false);
   const { user, isSignedIn } = useUser();
   const queryClient = useQueryClient();
@@ -469,8 +488,10 @@ function Studio() {
     }
   });
 
+  const visibleTools = roleToolKinds[role];
+
   return (
-    <StudioLayout>
+    <StudioLayout role={role}>
       <main className="mx-auto w-full max-w-[1400px] px-5 py-12 sm:px-8 lg:py-20 flex-1">
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
           <div>
@@ -478,7 +499,7 @@ function Studio() {
               <Maximize className="h-4 w-4" /> Command Center
             </div>
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
-              SELECT YOUR<br /><span className="text-primary">STARTING PLAY.</span>
+               {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary">CENTER.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
               Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.
@@ -490,7 +511,7 @@ function Studio() {
         </div>
 
         <div className="mt-16 grid gap-6 lg:grid-cols-3">
-          {(Object.keys(toolData) as ToolKind[]).map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
+          {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
 
         <div className="mt-16 relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
@@ -2391,7 +2412,7 @@ function SignInPage() {
       title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
       subtitle="Access your saved templates, synced rosters, and broadcast graphics across all your devices."
     >
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={`${basePath}/studio`} />
     </AuthLayout>
   );
 }
@@ -2402,9 +2423,113 @@ function SignUpPage() {
       title={<>CREATE<br/><span className="text-primary">CALLSIGN.</span></>}
       subtitle="Join LeagueMatrix to save your custom templates and broadcast settings securely in the cloud."
     >
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/studio`} />
     </AuthLayout>
   );
+}
+
+function RoleSelectionPage() {
+  const [, setLocation] = useLocation();
+  const { user, isLoaded } = useUser();
+  const [savingRole, setSavingRole] = useState<UserRole | null>(null);
+  const [error, setError] = useState('');
+
+  if (!isLoaded) {
+    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your account…</div>;
+  }
+
+  if (!user) {
+    return <Redirect to="/sign-in" />;
+  }
+
+  const chooseRole = async (role: UserRole) => {
+    setSavingRole(role);
+    setError('');
+    try {
+      await user.update({
+        unsafeMetadata: {
+          ...(user.unsafeMetadata ?? {}),
+          role,
+        },
+      });
+      setLocation('/studio');
+    } catch {
+      setSavingRole(null);
+      setError('We could not save your role. Please try again.');
+    }
+  };
+
+  return (
+    <div className="noise min-h-dvh bg-background">
+      <SiteNav />
+      <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-6xl items-center px-5 py-12 sm:px-8">
+        <div className="grid w-full gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <div className="mb-5 inline-flex items-center gap-2 bg-muted px-3 py-1 text-xs font-bold uppercase tracking-widest clip-angled-sm">
+              <UsersRound className="h-4 w-4 text-primary" /> One quick setup
+            </div>
+            <h1 className="font-display text-6xl leading-[0.88] tracking-tight sm:text-8xl">
+              PICK YOUR<br /><span className="text-primary">PLAYBOOK.</span>
+            </h1>
+            <p className="mt-6 max-w-lg text-lg font-medium leading-relaxed text-muted-foreground">
+              Choose how you use LeagueMatrix so your Command Center starts with the tools that fit you.
+            </p>
+          </div>
+
+          <section className="border border-border bg-card p-6 shadow-sm clip-angled-sm sm:p-8" aria-labelledby="role-heading">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Account setup</p>
+            <h2 id="role-heading" className="mt-2 font-display text-4xl uppercase tracking-wide">I AM A…</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => void chooseRole('coach')}
+                disabled={Boolean(savingRole)}
+                className="group border border-border bg-background p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm"
+                data-testid="button-role-coach"
+              >
+                <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
+                  <ShieldCheck className="h-7 w-7" />
+                </span>
+                <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Coach</span>
+                <span className="mt-3 block text-sm font-medium leading-relaxed text-muted-foreground">Build schedules, manage rosters, and prepare lineups for game day.</span>
+                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Schedule + Roster <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void chooseRole('fan')}
+                disabled={Boolean(savingRole)}
+                className="group border border-border bg-foreground p-6 text-left text-background transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm"
+                data-testid="button-role-fan"
+              >
+                <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
+                  <Star className="h-7 w-7" />
+                </span>
+                <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
+                <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">Make hype cards and keep up with the team schedule.</span>
+                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Hype Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+              </button>
+            </div>
+            {savingRole && <p className="mt-5 text-sm font-bold uppercase tracking-widest text-primary">Saving your playbook…</p>}
+            {error && <p className="mt-5 text-sm font-bold text-destructive" role="alert">{error}</p>}
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function StudioPortal() {
+  const { user, isLoaded, isSignedIn } = useUser();
+
+  if (!isLoaded) {
+    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>;
+  }
+  if (!isSignedIn) {
+    return <Redirect to="/sign-in" />;
+  }
+
+  const role = getUserRole(user);
+  return role ? <Studio role={role} /> : <RoleSelectionPage />;
 }
 
 function HomeRedirect() {
@@ -2478,7 +2603,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
-              <Route path="/studio" component={Studio} />
+              <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id" component={HypeCardEditor} />
               <Route path="/studio/schedule/:id?"><EditorPage kind="schedule" /></Route>
