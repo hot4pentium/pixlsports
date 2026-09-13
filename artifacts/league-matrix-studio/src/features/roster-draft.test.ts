@@ -62,7 +62,7 @@ test('board styles normalize safely and legacy drafts use the classic treatment'
   assert.equal(normalizeRosterBoardStyle('baseball'), 'baseball');
   assert.equal(normalizeRosterBoardStyle('football'), 'football');
   assert.equal(normalizeRosterBoardStyle('volleyball'), 'volleyball');
-  assert.equal(normalizeRosterBoardStyle('volleyball'), 'classic');
+  assert.equal(normalizeRosterBoardStyle('hockey'), 'classic');
   assert.equal(normalizeRosterDraft({ players: [] })?.boardStyle, 'classic');
 });
 
