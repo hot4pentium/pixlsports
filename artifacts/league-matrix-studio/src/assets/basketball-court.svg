@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="2000" viewBox="0 0 750 1000">
+  <title>LeagueMatrix vertical basketball court</title>
+  <desc id="description">A clean top-down full basketball court in portrait orientation for practice planning and player placement.</desc>
+
+  <defs>
+    <linearGradient id="court-wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e3b56f"/>
+      <stop offset="0.5" stop-color="#d39a54"/>
+      <stop offset="1" stop-color="#bd7f40"/>
+    </linearGradient>
+    <clipPath id="court-clip">
+      <rect x="125" y="30" width="500" height="940" rx="3"/>
+    </clipPath>
+    <clipPath id="top-three-clip">
+      <rect x="125" y="136" width="500" height="321"/>
+    </clipPath>
+    <clipPath id="bottom-three-clip">
+      <rect x="125" y="543" width="500" height="321"/>
+    </clipPath>
+  </defs>
+
+  <rect id="canvas-background" width="750" height="1000" fill="#151c25"/>
+  <rect x="18" y="18" width="714" height="964" rx="24" fill="#202a36" stroke="#334354" stroke-width="2"/>
+
+  <g id="surface">
+    <rect x="125" y="30" width="500" height="940" rx="3" fill="url(#court-wood)"/>
+    <rect x="125" y="30" width="500" height="940" fill="url(#wood-planks)" clip-path="url(#court-clip)"/>
+  </g>
+
+  <g id="paint-areas" fill="#213b5b" opacity="0.2">
+    <rect x="295" y="30" width="160" height="190"/>
+    <rect x="295" y="780" width="160" height="190"/>
+    <circle cx="375" cy="220" r="60"/>
+    <circle cx="375" cy="780" r="60"/>
+  </g>
+
+  <g id="court-markings" fill="none" stroke="#fffaf0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="125" y="30" width="500" height="940" rx="2"/>
+    <line x1="125" y1="500" x2="625" y2="500"/>
+    <circle cx="375" cy="500" r="60"/>
+    <circle cx="375" cy="500" r="6" fill="#fffaf0" stroke="none"/>
+    <rect x="295" y="30" width="160" height="190"/>
+    <circle cx="375" cy="220" r="60"/>
+    <rect x="295" y="780" width="160" height="190"/>
+    <circle cx="375" cy="780" r="60"/>
+    <line x1="155" y1="30" x2="155" y2="136"/>
+    <line x1="595" y1="30" x2="595" y2="136"/>
+    <circle cx="375" cy="46" r="237.5" clip-path="url(#top-three-clip)"/>
+    <line x1="155" y1="970" x2="155" y2="864"/>
+    <line x1="595" y1="970" x2="595" y2="864"/>
+    <circle cx="375" cy="954" r="237.5" clip-path="url(#bottom-three-clip)"/>
+  </g>
+
+  <g id="lane-marks" stroke="#fffaf0" stroke-width="4" stroke-linecap="round">
+    <path d="M295 92 H282 M455 92 H468 M295 132 H282 M455 132 H468 M295 172 H282 M455 172 H468"/>
+    <path d="M295 908 H282 M455 908 H468 M295 868 H282 M455 868 H468 M295 828 H282 M455 828 H468"/>
+  </g>
+
+  <g id="hoops" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g id="top-hoop">
+      <line x1="340" y1="30" x2="410" y2="30" stroke="#fffaf0" stroke-width="6"/>
+      <line x1="375" y1="30" x2="375" y2="46" stroke="#fffaf0" stroke-width="3"/>
+      <circle cx="375" cy="46" r="10" stroke="#df5b32" stroke-width="4"/>
+    </g>
+    <g id="bottom-hoop">
+      <line x1="340" y1="970" x2="410" y2="970" stroke="#fffaf0" stroke-width="6"/>
+      <line x1="375" y1="970" x2="375" y2="954" stroke="#fffaf0" stroke-width="3"/>
+      <circle cx="375" cy="954" r="10" stroke="#df5b32" stroke-width="4"/>
+    </g>
+  </g>
+</svg>

@@ -56,10 +56,12 @@ test('roster draft round trips through local persistence', () => {
 });
 
 test('board styles normalize safely and legacy drafts use the classic treatment', () => {
-  assert.deepEqual(rosterBoardStyles.map((style) => style.id), ['classic', 'soccer', 'basketball', 'baseball']);
+  assert.deepEqual(rosterBoardStyles.map((style) => style.id), ['classic', 'soccer', 'basketball', 'baseball', 'football', 'volleyball']);
   assert.equal(normalizeRosterBoardStyle('soccer'), 'soccer');
   assert.equal(normalizeRosterBoardStyle('basketball'), 'basketball');
   assert.equal(normalizeRosterBoardStyle('baseball'), 'baseball');
+  assert.equal(normalizeRosterBoardStyle('football'), 'football');
+  assert.equal(normalizeRosterBoardStyle('volleyball'), 'volleyball');
   assert.equal(normalizeRosterBoardStyle('volleyball'), 'classic');
   assert.equal(normalizeRosterDraft({ players: [] })?.boardStyle, 'classic');
 });

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="2000" viewBox="0 0 750 1000">
+  <title>LeagueMatrix vertical volleyball court</title>
+  <desc id="description">A clean top-down indoor volleyball court in portrait orientation for practice planning and player placement.</desc>
+
+  <defs>
+    <linearGradient id="free-zone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f6c83"/>
+      <stop offset="1" stop-color="#174c66"/>
+    </linearGradient>
+
+    <linearGradient id="court-surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ed9956"/>
+      <stop offset="0.52" stop-color="#df8245"/>
+      <stop offset="1" stop-color="#ca6d39"/>
+    </linearGradient>
+
+    
+
+    
+      
+    
+
+    <clipPath id="free-zone-clip">
+      <rect x="75" y="18" width="600" height="964" rx="18"/>
+    </clipPath>
+  </defs>
+
+  
+  <rect id="canvas-background" width="750" height="1000" fill="#101a22"/>
+  <rect x="18" y="18" width="714" height="964" rx="24" fill="#172630" stroke="#29434f" stroke-width="2"/>
+
+  
+  <g id="surface">
+    <rect x="75" y="18" width="600" height="964" rx="18" fill="url(#free-zone)"/>
+    <rect x="75" y="18" width="600" height="964" fill="url(#floor-texture)" clip-path="url(#free-zone-clip)" opacity="0.45"/>
+    <rect x="150" y="50" width="450" height="900" fill="url(#court-surface)"/>
+    <rect x="150" y="50" width="450" height="900" fill="url(#floor-texture)"/>
+  </g>
+
+  
+  <g id="front-zones" fill="#ffe6c8" opacity="0.075">
+    <rect x="150" y="350" width="450" height="150"/>
+    <rect x="150" y="500" width="450" height="150"/>
+  </g>
+
+  
+  <g id="court-markings" fill="none" stroke="#fffaf0" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter">
+    <rect x="150" y="50" width="450" height="900"/>
+    <line x1="150" y1="350" x2="600" y2="350"/>
+    <line x1="150" y1="500" x2="600" y2="500"/>
+    <line x1="150" y1="650" x2="600" y2="650"/>
+  </g>
+
+  
+  <g id="service-marks" stroke="#fffaf0" stroke-width="5" stroke-linecap="square">
+    <line x1="150" y1="50" x2="150" y2="30"/>
+    <line x1="600" y1="50" x2="600" y2="30"/>
+    <line x1="150" y1="950" x2="150" y2="970"/>
+    <line x1="600" y1="950" x2="600" y2="970"/>
+  </g>
+
+  
+  <g id="net" fill="none" stroke-linecap="round">
+    <line x1="125" y1="494" x2="625" y2="494" stroke="#12232d" stroke-width="5" opacity="0.75"/>
+    <line x1="125" y1="506" x2="625" y2="506" stroke="#12232d" stroke-width="5" opacity="0.75"/>
+    <path d="M145 494 V506 M165 494 V506 M185 494 V506 M205 494 V506 M225 494 V506              M245 494 V506 M265 494 V506 M285 494 V506 M305 494 V506 M325 494 V506              M345 494 V506 M365 494 V506 M385 494 V506 M405 494 V506 M425 494 V506              M445 494 V506 M465 494 V506 M485 494 V506 M505 494 V506 M525 494 V506              M545 494 V506 M565 494 V506 M585 494 V506 M605 494 V506" stroke="#dbe6e9" stroke-width="2" opacity="0.8"/>
+    <circle cx="125" cy="500" r="10" fill="#f3f6f5" stroke="#12232d" stroke-width="4"/>
+    <circle cx="625" cy="500" r="10" fill="#f3f6f5" stroke="#12232d" stroke-width="4"/>
+  </g>
+</svg>

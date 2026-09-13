@@ -1,6 +1,6 @@
 export type RosterLayout = 'roster' | 'lineup';
 
-export type RosterBoardStyle = 'classic' | 'soccer' | 'basketball' | 'baseball';
+export type RosterBoardStyle = 'classic' | 'soccer' | 'basketball' | 'baseball' | 'football' | 'volleyball';
 
 export type RosterBoardStyleOption = {
   id: RosterBoardStyle;
@@ -11,8 +11,10 @@ export type RosterBoardStyleOption = {
 export const rosterBoardStyles: RosterBoardStyleOption[] = [
   { id: 'classic', label: 'Classic grid', description: 'Neutral center guide' },
   { id: 'soccer', label: 'Soccer pitch', description: 'Portrait pitch, boxes, arcs, goals' },
-  { id: 'basketball', label: 'Basketball court', description: 'Keys, circles, arcs, hoops' },
-  { id: 'baseball', label: 'Baseball diamond', description: 'Infield, mound, foul lines' },
+  { id: 'basketball', label: 'Basketball court', description: 'Portrait court, keys, arcs, hoops' },
+  { id: 'baseball', label: 'Baseball diamond', description: 'Portrait diamond, bases, foul lines' },
+  { id: 'football', label: 'Football field', description: 'Portrait field, yard lines, end zones' },
+  { id: 'volleyball', label: 'Volleyball court', description: 'Portrait court, net, attack lines' },
 ];
 
 export type RosterFormationPosition = {
@@ -133,7 +135,7 @@ function layoutValue(value: unknown): RosterLayout {
 }
 
 export function normalizeRosterBoardStyle(value: unknown): RosterBoardStyle {
-  return value === 'soccer' || value === 'basketball' || value === 'baseball' ? value : 'classic';
+  return value === 'soccer' || value === 'basketball' || value === 'baseball' || value === 'football' || value === 'volleyball' ? value : 'classic';
 }
 
 export function normalizeRosterPlayer(
