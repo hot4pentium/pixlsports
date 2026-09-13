@@ -2506,6 +2506,7 @@ function RoleSelectionPage() {
                 </span>
                 <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
                 <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">
+                  Make hype cards and keep up with the team schedule.<br />
                   Celebrate your athlete.<br />
                   Keep friends and family in the loop.
                 </span>
