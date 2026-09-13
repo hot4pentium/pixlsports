@@ -5,7 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { HypeCardProject } from './hypeCardProject';
+import type { ProjectUpdateProject } from './projectUpdateProject';
 
 export interface ProjectUpdate {
   /**
@@ -13,7 +13,7 @@ export interface ProjectUpdate {
      * @maxLength 200
      */
   name?: string;
-  project?: HypeCardProject;
+  project?: ProjectUpdateProject;
   /** @minimum 1 */
   expectedRevision: number;
 }

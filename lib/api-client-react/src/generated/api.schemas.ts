@@ -210,6 +210,11 @@ export interface HypeCardProject {
   adjustments: ProjectAdjustments;
 }
 
+/**
+ * Tool-specific project data. The tool field identifies the editor that owns the payload.
+ */
+export type ProjectProject = { [key: string]: unknown };
+
 export type MediaMediaType = typeof MediaMediaType[keyof typeof MediaMediaType];
 
 
@@ -232,7 +237,8 @@ export interface Media {
 export interface Project {
   id: string;
   name: string;
-  project: HypeCardProject;
+  /** Tool-specific project data. The tool field identifies the editor that owns the payload. */
+  project: ProjectProject;
   /** @minimum 1 */
   revision: number;
   createdAt: string;
@@ -242,14 +248,18 @@ export interface Project {
 
 export type ProjectList = Project[];
 
+export type ProjectInputProject = { [key: string]: unknown };
+
 export interface ProjectInput {
   /**
      * @minLength 1
      * @maxLength 200
      */
   name: string;
-  project: HypeCardProject;
+  project: ProjectInputProject;
 }
+
+export type ProjectUpdateProject = { [key: string]: unknown };
 
 export interface ProjectUpdate {
   /**
@@ -257,7 +267,7 @@ export interface ProjectUpdate {
      * @maxLength 200
      */
   name?: string;
-  project?: HypeCardProject;
+  project?: ProjectUpdateProject;
   /** @minimum 1 */
   expectedRevision: number;
 }

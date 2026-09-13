@@ -242,10 +242,6 @@ export const DeleteScheduleShareResponse = zod.void()
 /**
  * @summary List the authenticated user's projects
  */
-export const listProjectsResponseProjectTrimStartMin = 0;
-
-export const listProjectsResponseProjectTrimEndMin = 0;
-
 
 
 
@@ -253,56 +249,7 @@ export const listProjectsResponseProjectTrimEndMin = 0;
 export const ListProjectsResponseItem = zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "project": zod.object({
-  "version": zod.literal(2),
-  "headline": zod.string(),
-  "mediaType": zod.union([zod.literal('image'),zod.literal('video'),zod.literal(null)]).nullable(),
-  "mediaId": zod.string().nullable(),
-  "videoMeta": zod.union([zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "size": zod.number(),
-  "duration": zod.number()
-}),zod.null()]),
-  "trimStart": zod.number().min(listProjectsResponseProjectTrimStartMin),
-  "trimEnd": zod.number().min(listProjectsResponseProjectTrimEndMin),
-  "template": zod.enum(['spotlight', 'impact', 'clean']),
-  "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
-  "format": zod.enum(['square', 'story', 'landscape', 'card']),
-  "palette": zod.enum(['coral', 'teal', 'gold', 'midnight']),
-  "finish": zod.enum(['classic', 'cosmic-clash', 'gold-spotlight', 'neon-prism', 'paint-impact']),
-  "background": zod.enum(['solid', 'gradient', 'paper']),
-  "overlay": zod.boolean(),
-  "branding": zod.boolean(),
-  "playerName": zod.string(),
-  "jerseyNumber": zod.string(),
-  "teamName": zod.string(),
-  "position": zod.string(),
-  "grade": zod.string(),
-  "stat": zod.string(),
-  "achievement": zod.string(),
-  "coachMessage": zod.string(),
-  "visibility": zod.object({
-  "grade": zod.boolean(),
-  "stat": zod.boolean(),
-  "achievement": zod.boolean(),
-  "coachMessage": zod.boolean()
-}),
-  "photo": zod.string().nullable(),
-  "logo": zod.string().nullable(),
-  "photoTransform": zod.object({
-  "zoom": zod.number(),
-  "x": zod.number(),
-  "y": zod.number(),
-  "rotation": zod.number(),
-  "flip": zod.boolean()
-}),
-  "adjustments": zod.object({
-  "brightness": zod.number(),
-  "contrast": zod.number(),
-  "saturation": zod.number()
-})
-}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
+  "project": zod.record(zod.string(), zod.unknown()).describe('Tool-specific project data. The tool field identifies the editor that owns the payload.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -324,69 +271,12 @@ export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
  */
 export const createProjectBodyNameMax = 200;
 
-export const createProjectBodyProjectTrimStartMin = 0;
-
-export const createProjectBodyProjectTrimEndMin = 0;
-
 
 
 export const CreateProjectBody = zod.object({
   "name": zod.string().min(1).max(createProjectBodyNameMax),
-  "project": zod.object({
-  "version": zod.literal(2),
-  "headline": zod.string(),
-  "mediaType": zod.union([zod.literal('image'),zod.literal('video'),zod.literal(null)]).nullable(),
-  "mediaId": zod.string().nullable(),
-  "videoMeta": zod.union([zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "size": zod.number(),
-  "duration": zod.number()
-}),zod.null()]),
-  "trimStart": zod.number().min(createProjectBodyProjectTrimStartMin),
-  "trimEnd": zod.number().min(createProjectBodyProjectTrimEndMin),
-  "template": zod.enum(['spotlight', 'impact', 'clean']),
-  "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
-  "format": zod.enum(['square', 'story', 'landscape', 'card']),
-  "palette": zod.enum(['coral', 'teal', 'gold', 'midnight']),
-  "finish": zod.enum(['classic', 'cosmic-clash', 'gold-spotlight', 'neon-prism', 'paint-impact']),
-  "background": zod.enum(['solid', 'gradient', 'paper']),
-  "overlay": zod.boolean(),
-  "branding": zod.boolean(),
-  "playerName": zod.string(),
-  "jerseyNumber": zod.string(),
-  "teamName": zod.string(),
-  "position": zod.string(),
-  "grade": zod.string(),
-  "stat": zod.string(),
-  "achievement": zod.string(),
-  "coachMessage": zod.string(),
-  "visibility": zod.object({
-  "grade": zod.boolean(),
-  "stat": zod.boolean(),
-  "achievement": zod.boolean(),
-  "coachMessage": zod.boolean()
-}),
-  "photo": zod.string().nullable(),
-  "logo": zod.string().nullable(),
-  "photoTransform": zod.object({
-  "zoom": zod.number(),
-  "x": zod.number(),
-  "y": zod.number(),
-  "rotation": zod.number(),
-  "flip": zod.boolean()
-}),
-  "adjustments": zod.object({
-  "brightness": zod.number(),
-  "contrast": zod.number(),
-  "saturation": zod.number()
+  "project": zod.record(zod.string(), zod.unknown())
 })
-}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.')
-})
-
-export const createProjectResponseProjectTrimStartMin = 0;
-
-export const createProjectResponseProjectTrimEndMin = 0;
 
 
 
@@ -395,56 +285,7 @@ export const createProjectResponseProjectTrimEndMin = 0;
 export const CreateProjectResponse = zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "project": zod.object({
-  "version": zod.literal(2),
-  "headline": zod.string(),
-  "mediaType": zod.union([zod.literal('image'),zod.literal('video'),zod.literal(null)]).nullable(),
-  "mediaId": zod.string().nullable(),
-  "videoMeta": zod.union([zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "size": zod.number(),
-  "duration": zod.number()
-}),zod.null()]),
-  "trimStart": zod.number().min(createProjectResponseProjectTrimStartMin),
-  "trimEnd": zod.number().min(createProjectResponseProjectTrimEndMin),
-  "template": zod.enum(['spotlight', 'impact', 'clean']),
-  "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
-  "format": zod.enum(['square', 'story', 'landscape', 'card']),
-  "palette": zod.enum(['coral', 'teal', 'gold', 'midnight']),
-  "finish": zod.enum(['classic', 'cosmic-clash', 'gold-spotlight', 'neon-prism', 'paint-impact']),
-  "background": zod.enum(['solid', 'gradient', 'paper']),
-  "overlay": zod.boolean(),
-  "branding": zod.boolean(),
-  "playerName": zod.string(),
-  "jerseyNumber": zod.string(),
-  "teamName": zod.string(),
-  "position": zod.string(),
-  "grade": zod.string(),
-  "stat": zod.string(),
-  "achievement": zod.string(),
-  "coachMessage": zod.string(),
-  "visibility": zod.object({
-  "grade": zod.boolean(),
-  "stat": zod.boolean(),
-  "achievement": zod.boolean(),
-  "coachMessage": zod.boolean()
-}),
-  "photo": zod.string().nullable(),
-  "logo": zod.string().nullable(),
-  "photoTransform": zod.object({
-  "zoom": zod.number(),
-  "x": zod.number(),
-  "y": zod.number(),
-  "rotation": zod.number(),
-  "flip": zod.boolean()
-}),
-  "adjustments": zod.object({
-  "brightness": zod.number(),
-  "contrast": zod.number(),
-  "saturation": zod.number()
-})
-}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
+  "project": zod.record(zod.string(), zod.unknown()).describe('Tool-specific project data. The tool field identifies the editor that owns the payload.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -467,10 +308,6 @@ export const GetProjectParams = zod.object({
   "projectId": zod.coerce.string().uuid()
 })
 
-export const getProjectResponseProjectTrimStartMin = 0;
-
-export const getProjectResponseProjectTrimEndMin = 0;
-
 
 
 
@@ -478,56 +315,7 @@ export const getProjectResponseProjectTrimEndMin = 0;
 export const GetProjectResponse = zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "project": zod.object({
-  "version": zod.literal(2),
-  "headline": zod.string(),
-  "mediaType": zod.union([zod.literal('image'),zod.literal('video'),zod.literal(null)]).nullable(),
-  "mediaId": zod.string().nullable(),
-  "videoMeta": zod.union([zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "size": zod.number(),
-  "duration": zod.number()
-}),zod.null()]),
-  "trimStart": zod.number().min(getProjectResponseProjectTrimStartMin),
-  "trimEnd": zod.number().min(getProjectResponseProjectTrimEndMin),
-  "template": zod.enum(['spotlight', 'impact', 'clean']),
-  "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
-  "format": zod.enum(['square', 'story', 'landscape', 'card']),
-  "palette": zod.enum(['coral', 'teal', 'gold', 'midnight']),
-  "finish": zod.enum(['classic', 'cosmic-clash', 'gold-spotlight', 'neon-prism', 'paint-impact']),
-  "background": zod.enum(['solid', 'gradient', 'paper']),
-  "overlay": zod.boolean(),
-  "branding": zod.boolean(),
-  "playerName": zod.string(),
-  "jerseyNumber": zod.string(),
-  "teamName": zod.string(),
-  "position": zod.string(),
-  "grade": zod.string(),
-  "stat": zod.string(),
-  "achievement": zod.string(),
-  "coachMessage": zod.string(),
-  "visibility": zod.object({
-  "grade": zod.boolean(),
-  "stat": zod.boolean(),
-  "achievement": zod.boolean(),
-  "coachMessage": zod.boolean()
-}),
-  "photo": zod.string().nullable(),
-  "logo": zod.string().nullable(),
-  "photoTransform": zod.object({
-  "zoom": zod.number(),
-  "x": zod.number(),
-  "y": zod.number(),
-  "rotation": zod.number(),
-  "flip": zod.boolean()
-}),
-  "adjustments": zod.object({
-  "brightness": zod.number(),
-  "contrast": zod.number(),
-  "saturation": zod.number()
-})
-}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
+  "project": zod.record(zod.string(), zod.unknown()).describe('Tool-specific project data. The tool field identifies the editor that owns the payload.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),
@@ -552,71 +340,14 @@ export const UpdateProjectParams = zod.object({
 
 export const updateProjectBodyNameMax = 200;
 
-export const updateProjectBodyProjectTrimStartMin = 0;
-
-export const updateProjectBodyProjectTrimEndMin = 0;
-
 
 
 
 export const UpdateProjectBody = zod.object({
   "name": zod.string().min(1).max(updateProjectBodyNameMax).optional(),
-  "project": zod.object({
-  "version": zod.literal(2),
-  "headline": zod.string(),
-  "mediaType": zod.union([zod.literal('image'),zod.literal('video'),zod.literal(null)]).nullable(),
-  "mediaId": zod.string().nullable(),
-  "videoMeta": zod.union([zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "size": zod.number(),
-  "duration": zod.number()
-}),zod.null()]),
-  "trimStart": zod.number().min(updateProjectBodyProjectTrimStartMin),
-  "trimEnd": zod.number().min(updateProjectBodyProjectTrimEndMin),
-  "template": zod.enum(['spotlight', 'impact', 'clean']),
-  "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
-  "format": zod.enum(['square', 'story', 'landscape', 'card']),
-  "palette": zod.enum(['coral', 'teal', 'gold', 'midnight']),
-  "finish": zod.enum(['classic', 'cosmic-clash', 'gold-spotlight', 'neon-prism', 'paint-impact']),
-  "background": zod.enum(['solid', 'gradient', 'paper']),
-  "overlay": zod.boolean(),
-  "branding": zod.boolean(),
-  "playerName": zod.string(),
-  "jerseyNumber": zod.string(),
-  "teamName": zod.string(),
-  "position": zod.string(),
-  "grade": zod.string(),
-  "stat": zod.string(),
-  "achievement": zod.string(),
-  "coachMessage": zod.string(),
-  "visibility": zod.object({
-  "grade": zod.boolean(),
-  "stat": zod.boolean(),
-  "achievement": zod.boolean(),
-  "coachMessage": zod.boolean()
-}),
-  "photo": zod.string().nullable(),
-  "logo": zod.string().nullable(),
-  "photoTransform": zod.object({
-  "zoom": zod.number(),
-  "x": zod.number(),
-  "y": zod.number(),
-  "rotation": zod.number(),
-  "flip": zod.boolean()
-}),
-  "adjustments": zod.object({
-  "brightness": zod.number(),
-  "contrast": zod.number(),
-  "saturation": zod.number()
-})
-}).optional().describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
+  "project": zod.record(zod.string(), zod.unknown()).optional(),
   "expectedRevision": zod.number().int().min(1)
 })
-
-export const updateProjectResponseProjectTrimStartMin = 0;
-
-export const updateProjectResponseProjectTrimEndMin = 0;
 
 
 
@@ -625,56 +356,7 @@ export const updateProjectResponseProjectTrimEndMin = 0;
 export const UpdateProjectResponse = zod.object({
   "id": zod.string().uuid(),
   "name": zod.string(),
-  "project": zod.object({
-  "version": zod.literal(2),
-  "headline": zod.string(),
-  "mediaType": zod.union([zod.literal('image'),zod.literal('video'),zod.literal(null)]).nullable(),
-  "mediaId": zod.string().nullable(),
-  "videoMeta": zod.union([zod.object({
-  "name": zod.string(),
-  "type": zod.string(),
-  "size": zod.number(),
-  "duration": zod.number()
-}),zod.null()]),
-  "trimStart": zod.number().min(updateProjectResponseProjectTrimStartMin),
-  "trimEnd": zod.number().min(updateProjectResponseProjectTrimEndMin),
-  "template": zod.enum(['spotlight', 'impact', 'clean']),
-  "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
-  "format": zod.enum(['square', 'story', 'landscape', 'card']),
-  "palette": zod.enum(['coral', 'teal', 'gold', 'midnight']),
-  "finish": zod.enum(['classic', 'cosmic-clash', 'gold-spotlight', 'neon-prism', 'paint-impact']),
-  "background": zod.enum(['solid', 'gradient', 'paper']),
-  "overlay": zod.boolean(),
-  "branding": zod.boolean(),
-  "playerName": zod.string(),
-  "jerseyNumber": zod.string(),
-  "teamName": zod.string(),
-  "position": zod.string(),
-  "grade": zod.string(),
-  "stat": zod.string(),
-  "achievement": zod.string(),
-  "coachMessage": zod.string(),
-  "visibility": zod.object({
-  "grade": zod.boolean(),
-  "stat": zod.boolean(),
-  "achievement": zod.boolean(),
-  "coachMessage": zod.boolean()
-}),
-  "photo": zod.string().nullable(),
-  "logo": zod.string().nullable(),
-  "photoTransform": zod.object({
-  "zoom": zod.number(),
-  "x": zod.number(),
-  "y": zod.number(),
-  "rotation": zod.number(),
-  "flip": zod.boolean()
-}),
-  "adjustments": zod.object({
-  "brightness": zod.number(),
-  "contrast": zod.number(),
-  "saturation": zod.number()
-})
-}).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.'),
+  "project": zod.record(zod.string(), zod.unknown()).describe('Tool-specific project data. The tool field identifies the editor that owns the payload.'),
   "revision": zod.number().int().min(1),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date(),

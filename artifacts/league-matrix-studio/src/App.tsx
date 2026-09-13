@@ -2,8 +2,12 @@ import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
   useDeleteProject,
+  useCreateProject,
+  useGetProject,
+  getGetProjectQueryKey,
   useGetScheduleShare,
   useListProjects,
+  useUpdateProject,
   useUpdateScheduleShare,
   getListProjectsQueryKey,
 } from '@workspace/api-client-react';
@@ -24,7 +28,7 @@ import {
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Link, Route, Switch, useLocation, Router as WouterRouter, Redirect } from 'wouter';
+import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter, Redirect } from 'wouter';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -36,6 +40,7 @@ import {
   defaultScheduleEvents,
   getDefaultScheduleEvents,
   moveScheduleEvent,
+  normalizeScheduleDraft,
   readScheduleDraft,
   saveScheduleEvent,
   removeScheduleEvent,
@@ -52,6 +57,7 @@ import {
   getPlayerInitials,
   getStarterPlayers,
   normalizeFormationPosition,
+  normalizeRosterDraft,
   readRosterDraft,
   rosterBoardStyles,
   removeRosterPlayer,
@@ -75,6 +81,14 @@ import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 
 const queryClient = new QueryClient();
+
+type CloudProjectPayload = Record<string, unknown>;
+
+function isCloudToolProject(value: unknown, tool: 'schedule' | 'roster'): value is CloudProjectPayload {
+  return typeof value === 'object'
+    && value !== null
+    && (value as { tool?: unknown }).tool === tool;
+}
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const clerkPubKey = publishableKeyFromHost(
@@ -467,7 +481,7 @@ function Studio() {
               SELECT YOUR<br /><span className="text-primary">STARTING PLAY.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
-              Hype Cards export finished images and videos. Schedule is preview-only; roster boards save locally and export as SVG.
+              Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
@@ -526,6 +540,15 @@ function Studio() {
                 ) : cloudProjects && cloudProjects.length > 0 ? (
                   <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {cloudProjects.map(project => (
+                      (() => {
+                        const tool = isCloudToolProject(project.project, 'schedule')
+                          ? 'schedule'
+                          : isCloudToolProject(project.project, 'roster')
+                            ? 'roster'
+                            : 'hype-card';
+                        const toolLabel = tool === 'schedule' ? 'Schedule' : tool === 'roster' ? 'Roster lineup' : 'Hype Card';
+                        const projectHref = `/studio/${tool}/${project.id}`;
+                        return (
                       <div key={project.id} className="flex items-center justify-between border-l-4 border-foreground bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80 group/project">
                         <div className="flex items-center gap-4 min-w-0">
                           <span className="grid h-12 w-12 shrink-0 place-items-center bg-background text-foreground clip-angled-sm border border-border">
@@ -534,7 +557,7 @@ function Studio() {
                           <div className="min-w-0 overflow-hidden">
                             <p className="font-display text-xl uppercase tracking-wide truncate">{project.name}</p>
                             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1 truncate">
-                              Design • Rev {project.revision} • {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
+                              {toolLabel} • Rev {project.revision} • {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
                             </p>
                           </div>
                         </div>
@@ -548,11 +571,13 @@ function Studio() {
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
-                          <Link href={`/studio/hype-card/${project.id}`} className="bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background clip-angled-sm hover:scale-105 transition-transform" data-testid={`link-resume-cloud-project-${project.id}`}>
+                          <Link href={projectHref} className="bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background clip-angled-sm hover:scale-105 transition-transform" data-testid={`link-resume-cloud-project-${project.id}`}>
                             Open
                           </Link>
                         </div>
                       </div>
+                        );
+                      })()
                     ))}
                   </div>
                 ) : (
@@ -840,11 +865,25 @@ function createRosterSvg(draft: RosterDraft) {
 }
 
 function RosterEditor() {
+  const [, setLocation] = useLocation();
+  const params = useParams<{ id?: string }>();
+  const cloudProjectId = params.id;
+  const { isSignedIn, isLoaded } = useUser();
   const [storedDraft] = useState(() => readRosterDraft());
   const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster());
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [expandedAthleteId, setExpandedAthleteId] = useState<string | null>(null);
+  const cloudRevision = useRef(1);
+  const initializedCloudId = useRef<string | null>(null);
+  const { data: cloudProjectData } = useGetProject(cloudProjectId ?? '', {
+    query: {
+      enabled: Boolean(cloudProjectId && isSignedIn),
+      queryKey: getGetProjectQueryKey(cloudProjectId ?? ''),
+    },
+  });
+  const createCloudProject = useCreateProject();
+  const updateCloudProject = useUpdateProject();
 
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
@@ -891,6 +930,54 @@ function RosterEditor() {
     URL.revokeObjectURL(url);
     announce('SVG READY TO SHARE');
   };
+  const cloudDraft = (): CloudProjectPayload => ({
+    tool: 'roster',
+    version: 1,
+    ...draft,
+  });
+  const saveToCloud = async () => {
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    try {
+      if (cloudProjectId) {
+        await updateCloudProject.mutateAsync({
+          projectId: cloudProjectId,
+          data: { project: cloudDraft(), expectedRevision: cloudRevision.current },
+        });
+        cloudRevision.current += 1;
+        setSaved(true);
+        announce('ROSTER SAVED TO CLOUD');
+      } else {
+        const created = await createCloudProject.mutateAsync({
+          data: { name: `${draft.teamName || 'Untitled'} - Roster`, project: cloudDraft() },
+        });
+        setSaved(true);
+        setLocation(`/studio/roster/${created.id}`);
+      }
+    } catch {
+      announce('CLOUD SAVE FAILED — TRY AGAIN');
+    }
+  };
+
+  useEffect(() => {
+    if (cloudProjectId && !isLoaded) return;
+    if (cloudProjectId && isLoaded && !isSignedIn) {
+      setLocation('/sign-in');
+    }
+  }, [cloudProjectId, isLoaded, isSignedIn, setLocation]);
+
+  useEffect(() => {
+    if (!cloudProjectId || !cloudProjectData || initializedCloudId.current === cloudProjectId) return;
+    if (!isCloudToolProject(cloudProjectData.project, 'roster')) return;
+    const loadedDraft = normalizeRosterDraft(cloudProjectData.project);
+    if (!loadedDraft) return;
+    initializedCloudId.current = cloudProjectId;
+    setDraft(loadedDraft);
+    setSaved(true);
+    cloudRevision.current = cloudProjectData.revision;
+  }, [cloudProjectData, cloudProjectId]);
 
   return (
     <StudioLayout>
@@ -983,6 +1070,9 @@ function RosterEditor() {
               </button>
               <button type="button" onClick={saveDraft} className="inline-flex flex-[1.4] items-center justify-center gap-2 bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm hover:bg-primary hover:text-primary-foreground" data-testid="button-save-roster">
                 <Save className="h-4 w-4" /> Save locally
+              </button>
+              <button type="button" onClick={saveToCloud} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex flex-[1.4] items-center justify-center gap-2 border border-primary bg-primary/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm hover:bg-primary hover:text-primary-foreground" data-testid="button-save-roster-cloud">
+                <Share2 className="h-4 w-4" /> {cloudProjectId ? 'Save cloud' : 'Save to cloud'}
               </button>
               <button type="button" onClick={exportRoster} className="inline-flex flex-1 items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:-translate-y-0.5" data-testid="button-export-roster">
                 <Download className="h-4 w-4" /> Export SVG
@@ -1189,6 +1279,10 @@ function RosterGraphicPreview({
 }
 
 function ScheduleEditor() {
+  const [, setLocation] = useLocation();
+  const params = useParams<{ id?: string }>();
+  const cloudProjectId = params.id;
+  const { isSignedIn, isLoaded } = useUser();
   const [storedDraft] = useState(() => readScheduleDraft());
   const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
@@ -1211,10 +1305,20 @@ function ScheduleEditor() {
       ? `${window.location.origin}${basePath}/schedule/${storedDraft.shareToken}`
       : ''
   ));
+  const cloudRevision = useRef(1);
+  const initializedCloudId = useRef<string | null>(null);
 
   const createShare = useCreateScheduleShare();
   const updateShare = useUpdateScheduleShare();
   const deleteShare = useDeleteScheduleShare();
+  const { data: cloudProjectData } = useGetProject(cloudProjectId ?? '', {
+    query: {
+      enabled: Boolean(cloudProjectId && isSignedIn),
+      queryKey: getGetProjectQueryKey(cloudProjectId ?? ''),
+    },
+  });
+  const createCloudProject = useCreateProject();
+  const updateCloudProject = useUpdateProject();
   const hasExistingShare = Boolean(shareToken);
   const sharePending = createShare.isPending || updateShare.isPending;
   const scheduleWeeks = getScheduleWeeks(events);
@@ -1225,6 +1329,31 @@ function ScheduleEditor() {
       .filter(({ event }) => getScheduleWeekKey(event.date) === selectedWeek.key)
     : [];
   const selectedEventIndex = events.findIndex((event) => event.id === selectedEventId);
+
+  useEffect(() => {
+    if (cloudProjectId && !isLoaded) return;
+    if (cloudProjectId && isLoaded && !isSignedIn) {
+      setLocation('/sign-in');
+    }
+  }, [cloudProjectId, isLoaded, isSignedIn, setLocation]);
+
+  useEffect(() => {
+    if (!cloudProjectId || !cloudProjectData || initializedCloudId.current === cloudProjectId) return;
+    if (!isCloudToolProject(cloudProjectData.project, 'schedule')) return;
+    const loadedDraft = normalizeScheduleDraft(cloudProjectData.project);
+    if (!loadedDraft) return;
+    initializedCloudId.current = cloudProjectId;
+    setTeamName(loadedDraft.teamName);
+    setSeason(loadedDraft.season);
+    setEvents(loadedDraft.events);
+    setSelectedTemplate(loadedDraft.template);
+    setShareToken(loadedDraft.shareToken ?? '');
+    setShareUrl(loadedDraft.shareToken ? `${window.location.origin}${basePath}/schedule/${loadedDraft.shareToken}` : '');
+    setSelectedEventId(loadedDraft.events[0]?.id ?? '');
+    setSelectedWeekKey(getScheduleWeekKey(loadedDraft.events[0]?.date ?? ''));
+    setSaved(true);
+    cloudRevision.current = cloudProjectData.revision;
+  }, [cloudProjectData, cloudProjectId]);
 
   useEffect(() => {
     if (events.length === 0) {
@@ -1317,6 +1446,42 @@ function ScheduleEditor() {
     saveCurrentDraft();
     setSaved(true);
     setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
+  };
+
+  const cloudSchedule = (): CloudProjectPayload => ({
+    tool: 'schedule',
+    version: 1,
+    teamName,
+    season,
+    events,
+    template: selectedTemplate,
+    ...(shareToken ? { shareToken } : {}),
+  });
+
+  const saveToCloud = async () => {
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    try {
+      if (cloudProjectId) {
+        const updated = await updateCloudProject.mutateAsync({
+          projectId: cloudProjectId,
+          data: { project: cloudSchedule(), expectedRevision: cloudRevision.current },
+        });
+        cloudRevision.current = updated.revision;
+        setSaved(true);
+        setNoticeFor('SCHEDULE SAVED TO CLOUD');
+      } else {
+        const created = await createCloudProject.mutateAsync({
+          data: { name: `${teamName || 'Untitled'} - Schedule`, project: cloudSchedule() },
+        });
+        setSaved(true);
+        setLocation(`/studio/schedule/${created.id}`);
+      }
+    } catch {
+      setNoticeFor('CLOUD SAVE FAILED — TRY AGAIN');
+    }
   };
 
   const shareSchedule = async () => {
@@ -1431,6 +1596,9 @@ function ScheduleEditor() {
             </span>
             <button type="button" onClick={saveProject} className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background transition-transform hover:scale-105 clip-angled-sm" data-testid="button-save-project">
               <Save className="h-4 w-4" /> Save Draft
+            </button>
+            <button type="button" onClick={saveToCloud} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex items-center gap-2 border border-primary bg-primary/10 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm" data-testid="button-save-schedule-cloud">
+              <Share2 className="h-4 w-4" /> {cloudProjectId ? 'Save Cloud' : 'Save to Cloud'}
             </button>
           </div>
         </div>
@@ -2313,8 +2481,8 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio" component={Studio} />
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id" component={HypeCardEditor} />
-              <Route path="/studio/schedule"><EditorPage kind="schedule" /></Route>
-              <Route path="/studio/roster"><RosterEditor /></Route>
+              <Route path="/studio/schedule/:id?"><EditorPage kind="schedule" /></Route>
+              <Route path="/studio/roster/:id?"><RosterEditor /></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
               <Route component={NotFound} />

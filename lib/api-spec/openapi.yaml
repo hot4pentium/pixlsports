@@ -438,7 +438,9 @@ components:
         name:
           type: string
         project:
-          $ref: "#/components/schemas/HypeCardProject"
+          type: object
+          additionalProperties: true
+          description: Tool-specific project data. The tool field identifies the editor that owns the payload.
         revision:
           type: integer
           minimum: 1
@@ -465,7 +467,8 @@ components:
           minLength: 1
           maxLength: 200
         project:
-          $ref: "#/components/schemas/HypeCardProject"
+          type: object
+          additionalProperties: true
     ProjectUpdate:
       type: object
       required: [expectedRevision]
@@ -475,7 +478,8 @@ components:
           minLength: 1
           maxLength: 200
         project:
-          $ref: "#/components/schemas/HypeCardProject"
+          type: object
+          additionalProperties: true
         expectedRevision:
           type: integer
           minimum: 1

@@ -5,13 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { HypeCardProject } from './hypeCardProject';
 import type { Media } from './media';
+import type { ProjectProject } from './projectProject';
 
 export interface Project {
   id: string;
   name: string;
-  project: HypeCardProject;
+  /** Tool-specific project data. The tool field identifies the editor that owns the payload. */
+  project: ProjectProject;
   /** @minimum 1 */
   revision: number;
   createdAt: Date;
