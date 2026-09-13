@@ -18,6 +18,132 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Creates a public snapshot containing schedule details only.
+ * @summary Create a public schedule share
+ */
+export const createScheduleShareBodyTitleMax = 200;
+
+export const createScheduleShareBodyTeamSeasonMax = 200;
+
+export const createScheduleShareBodyEventsItemIdMax = 100;
+
+export const createScheduleShareBodyEventsItemDateMax = 30;
+
+export const createScheduleShareBodyEventsItemTimeMax = 30;
+
+export const createScheduleShareBodyEventsItemLocationMax = 300;
+
+export const createScheduleShareBodyEventsItemOpponentMax = 200;
+
+export const createScheduleShareBodyEventsItemSnacksMax = 300;
+
+export const createScheduleShareBodyEventsItemDrinksMax = 300;
+
+export const createScheduleShareBodyEventsItemNotesMax = 1000;
+
+export const createScheduleShareBodyEventsMax = 50;
+
+
+
+export const CreateScheduleShareBody = zod.object({
+  "title": zod.string().min(1).max(createScheduleShareBodyTitleMax),
+  "teamSeason": zod.string().max(createScheduleShareBodyTeamSeasonMax),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(createScheduleShareBodyEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(createScheduleShareBodyEventsItemDateMax),
+  "time": zod.string().max(createScheduleShareBodyEventsItemTimeMax),
+  "location": zod.string().max(createScheduleShareBodyEventsItemLocationMax),
+  "opponent": zod.string().max(createScheduleShareBodyEventsItemOpponentMax),
+  "snacks": zod.string().max(createScheduleShareBodyEventsItemSnacksMax),
+  "drinks": zod.string().max(createScheduleShareBodyEventsItemDrinksMax),
+  "notes": zod.string().max(createScheduleShareBodyEventsItemNotesMax)
+})).max(createScheduleShareBodyEventsMax)
+})
+
+export const createScheduleShareResponseEventsItemIdMax = 100;
+
+export const createScheduleShareResponseEventsItemDateMax = 30;
+
+export const createScheduleShareResponseEventsItemTimeMax = 30;
+
+export const createScheduleShareResponseEventsItemLocationMax = 300;
+
+export const createScheduleShareResponseEventsItemOpponentMax = 200;
+
+export const createScheduleShareResponseEventsItemSnacksMax = 300;
+
+export const createScheduleShareResponseEventsItemDrinksMax = 300;
+
+export const createScheduleShareResponseEventsItemNotesMax = 1000;
+
+
+
+export const CreateScheduleShareResponse = zod.object({
+  "shareToken": zod.string().uuid(),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(createScheduleShareResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(createScheduleShareResponseEventsItemDateMax),
+  "time": zod.string().max(createScheduleShareResponseEventsItemTimeMax),
+  "location": zod.string().max(createScheduleShareResponseEventsItemLocationMax),
+  "opponent": zod.string().max(createScheduleShareResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(createScheduleShareResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(createScheduleShareResponseEventsItemDrinksMax),
+  "notes": zod.string().max(createScheduleShareResponseEventsItemNotesMax)
+})),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Returns schedule details without requiring a LeagueMatrix account.
+ * @summary Get a public schedule share
+ */
+export const GetScheduleShareParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const getScheduleShareResponseEventsItemIdMax = 100;
+
+export const getScheduleShareResponseEventsItemDateMax = 30;
+
+export const getScheduleShareResponseEventsItemTimeMax = 30;
+
+export const getScheduleShareResponseEventsItemLocationMax = 300;
+
+export const getScheduleShareResponseEventsItemOpponentMax = 200;
+
+export const getScheduleShareResponseEventsItemSnacksMax = 300;
+
+export const getScheduleShareResponseEventsItemDrinksMax = 300;
+
+export const getScheduleShareResponseEventsItemNotesMax = 1000;
+
+
+
+export const GetScheduleShareResponse = zod.object({
+  "shareToken": zod.string().uuid(),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(getScheduleShareResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(getScheduleShareResponseEventsItemDateMax),
+  "time": zod.string().max(getScheduleShareResponseEventsItemTimeMax),
+  "location": zod.string().max(getScheduleShareResponseEventsItemLocationMax),
+  "opponent": zod.string().max(getScheduleShareResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(getScheduleShareResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(getScheduleShareResponseEventsItemDrinksMax),
+  "notes": zod.string().max(getScheduleShareResponseEventsItemNotesMax)
+})),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List the authenticated user's projects
  */
 export const listProjectsResponseProjectTrimStartMin = 0;

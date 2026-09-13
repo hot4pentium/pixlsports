@@ -14,6 +14,8 @@ tags:
     description: Cloud project operations
   - name: storage
     description: Project media storage operations
+  - name: schedule-shares
+    description: Public schedule sharing operations
 paths:
   /healthz:
     get:
@@ -28,6 +30,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /schedule-shares:
+    post:
+      operationId: createScheduleShare
+      tags: [schedule-shares]
+      summary: Create a public schedule share
+      description: Creates a public snapshot containing schedule details only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleShareInput"
+      responses:
+        "201":
+          description: Public schedule share created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /schedule-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    get:
+      operationId: getScheduleShare
+      tags: [schedule-shares]
+      summary: Get a public schedule share
+      description: Returns schedule details without requiring a LeagueMatrix account.
+      responses:
+        "200":
+          description: Public schedule details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /projects:
     get:
       operationId: listProjects
@@ -197,6 +239,13 @@ components:
       schema:
         type: string
         format: uuid
+    ScheduleShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   responses:
     BadRequest:
       description: Invalid request
@@ -230,6 +279,46 @@ components:
         error:
           type: string
       required: [error]
+    ScheduleEvent:
+      type: object
+      required: [id, type, date, time, location, opponent, snacks, drinks, notes]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        type: { type: string, enum: [game, practice, meeting] }
+        date: { type: string, maxLength: 30 }
+        time: { type: string, maxLength: 30 }
+        location: { type: string, maxLength: 300 }
+        opponent: { type: string, maxLength: 200 }
+        snacks: { type: string, maxLength: 300 }
+        drinks: { type: string, maxLength: 300 }
+        notes: { type: string, maxLength: 1000 }
+    ScheduleShareInput:
+      type: object
+      required: [title, teamSeason, events]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        teamSeason: { type: string, maxLength: 200 }
+        events:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/ScheduleEvent"
+    ScheduleShare:
+      type: object
+      required: [shareToken, title, teamSeason, events, createdAt]
+      properties:
+        shareToken:
+          type: string
+          format: uuid
+        title: { type: string }
+        teamSeason: { type: string }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleEvent"
+        createdAt:
+          type: string
+          format: date-time
     HypeCardProject:
       type: object
       description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.

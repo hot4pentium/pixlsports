@@ -1,4 +1,10 @@
-import { useListProjects, useDeleteProject, getListProjectsQueryKey } from '@workspace/api-client-react';
+import {
+  useCreateScheduleShare,
+  useDeleteProject,
+  useGetScheduleShare,
+  useListProjects,
+  getListProjectsQueryKey,
+} from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -7,10 +13,10 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check,
+  ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion,
-  MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, ShieldCheck, Sparkles,
+  MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, ShieldCheck, Sparkles,
   SquarePen, Trophy, X, Zap, Maximize, Activity
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
@@ -755,6 +761,9 @@ function ScheduleEditor() {
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
     storedDraft?.events?.length ? storedDraft.events : defaultScheduleEvents
   ));
+  const [shareUrl, setShareUrl] = useState('');
+
+  const createShare = useCreateScheduleShare();
 
   const setNoticeFor = (message: string) => {
     setNotice(message);
@@ -793,6 +802,58 @@ function ScheduleEditor() {
     window.localStorage.setItem(scheduleStorageKey, JSON.stringify({ title, teamSeason, events, template: selectedTemplate }));
     setSaved(true);
     setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
+  };
+
+  const shareSchedule = async () => {
+    if (!title.trim() || events.length === 0) {
+      setNoticeFor('ADD A TITLE AND EVENT BEFORE SHARING');
+      return;
+    }
+
+    try {
+      const share = await createShare.mutateAsync({
+        data: {
+          title: title.trim(),
+          teamSeason,
+          events,
+        },
+      });
+      const url = `${window.location.origin}${basePath}/schedule/${share.shareToken}`;
+      setShareUrl(url);
+
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({
+            title: title.trim(),
+            text: `${title.trim()} · ${teamSeason}`,
+            url,
+          });
+          setNoticeFor('SCHEDULE SHARED WITH PARENTS');
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+        }
+      }
+
+      await navigator.clipboard?.writeText(url);
+      setNoticeFor('PARENT LINK COPIED TO CLIPBOARD');
+    } catch {
+      setNoticeFor('SHARING FAILED — TRY AGAIN');
+    }
+  };
+
+  const downloadGraphic = () => {
+    const svg = buildScheduleGraphicSvg({ title, teamSeason, events, template: selectedTemplate });
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = `${title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'team-schedule'}.svg`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(downloadUrl);
+    setNoticeFor('PHONE-FRIENDLY GRAPHIC DOWNLOADED');
   };
 
   const resetProject = () => {
@@ -909,6 +970,27 @@ function ScheduleEditor() {
                 Preview <ArrowRight className="h-4 w-4" />
               </button>
             </div>
+
+            <div className="relative z-10 mt-3 grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={downloadGraphic} className="inline-flex items-center justify-center gap-2 border border-border bg-background px-3 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:bg-muted clip-angled-sm" data-testid="button-download-schedule">
+                <FileImage className="h-4 w-4" /> Download graphic
+              </button>
+              <button type="button" onClick={shareSchedule} disabled={createShare.isPending} className="inline-flex items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
+                <Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : 'Share with parents'}
+              </button>
+            </div>
+
+            {shareUrl && (
+              <div className="relative z-10 mt-3 border border-primary/30 bg-primary/5 p-3 clip-angled-sm" data-testid="schedule-share-link">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Public parent link</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-foreground outline-none" aria-label="Public parent schedule link" />
+                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('PARENT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-foreground hover:bg-muted" aria-label="Copy parent schedule link" data-testid="button-copy-schedule-link">
+                    <Clipboard className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
           </aside>
@@ -1027,6 +1109,68 @@ function formatScheduleTime(value: string) {
   return `${displayHours}:${String(minutes).padStart(2, '0')} ${suffix}`;
 }
 
+function escapeSvgText(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;',
+  })[character] ?? character);
+}
+
+function graphicLine(value: string, maxLength = 86) {
+  const normalized = value.trim() || '—';
+  return escapeSvgText(normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}…` : normalized);
+}
+
+function buildScheduleGraphicSvg({
+  title,
+  teamSeason,
+  events,
+  template,
+}: {
+  title: string;
+  teamSeason: string;
+  events: ScheduleEvent[];
+  template: number;
+}) {
+  const background = template === 1 ? '#177d76' : template === 2 ? '#f5c94d' : '#f36f4c';
+  const foreground = template === 2 ? '#243248' : '#f9f3e8';
+  const eventBackground = template === 2 ? '#ffffff2b' : '#0000001c';
+  const eventHeight = 238;
+  const height = Math.max(860, 330 + events.length * eventHeight);
+  const eventMarkup = events.map((event, index) => {
+    const y = 280 + index * eventHeight;
+    const eventName = event.type === 'game'
+      ? `VS ${event.opponent || 'OPPONENT TBD'}`
+      : event.type === 'practice' ? 'TEAM PRACTICE' : 'TEAM MEETING';
+    return `
+      <rect x="56" y="${y}" width="968" height="202" rx="18" fill="${eventBackground}" stroke="${foreground}" stroke-opacity=".25"/>
+      <text x="82" y="${y + 46}" fill="${foreground}" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="2">${graphicLine(formatScheduleDate(event.date), 22)}</text>
+      <text x="82" y="${y + 84}" fill="${foreground}" opacity=".78" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="2">${graphicLine(formatScheduleTime(event.time), 22)}</text>
+      <line x1="290" y1="${y + 28}" x2="290" y2="${y + 174}" stroke="${foreground}" stroke-opacity=".25"/>
+      <text x="322" y="${y + 44}" fill="${foreground}" opacity=".72" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3">${graphicLine(event.type.toUpperCase(), 18)}</text>
+      <text x="322" y="${y + 82}" fill="${foreground}" font-family="Arial, sans-serif" font-size="28" font-weight="700">${graphicLine(eventName, 40)}</text>
+      <text x="322" y="${y + 117}" fill="${foreground}" opacity=".9" font-family="Arial, sans-serif" font-size="18" font-weight="700">${graphicLine(`LOCATION · ${event.location || 'TBD'}`, 52)}</text>
+      <text x="322" y="${y + 151}" fill="${foreground}" opacity=".82" font-family="Arial, sans-serif" font-size="16" font-weight="700">${graphicLine(`SNACKS · ${event.snacks || 'TBD'}   DRINKS · ${event.drinks || 'TBD'}`, 62)}</text>
+      <text x="322" y="${y + 180}" fill="${foreground}" opacity=".78" font-family="Arial, sans-serif" font-size="15">${graphicLine(event.notes, 65)}</text>
+    `;
+  }).join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="${height}" viewBox="0 0 1080 ${height}">
+    <rect width="1080" height="${height}" fill="${background}"/>
+    <circle cx="1010" cy="40" r="190" fill="none" stroke="#f5c94d" stroke-opacity=".35" stroke-width="28"/>
+    <circle cx="70" cy="${height - 10}" r="190" fill="#177d76" fill-opacity=".9"/>
+    <text x="56" y="72" fill="${foreground}" opacity=".78" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3">LEAGUEMATRIX · TEAM SCHEDULE</text>
+    <text x="56" y="152" fill="${foreground}" font-family="Arial, sans-serif" font-size="62" font-weight="800">${graphicLine(title || 'TEAM SCHEDULE', 27)}</text>
+    <text x="56" y="198" fill="${foreground}" opacity=".86" font-family="Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="2">${graphicLine(teamSeason || 'TEAM · SEASON', 60)}</text>
+    <text x="1024" y="72" text-anchor="end" fill="${foreground}" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">${events.length} ${events.length === 1 ? 'EVENT' : 'EVENTS'}</text>
+    ${eventMarkup}
+    <text x="56" y="${height - 34}" fill="${foreground}" opacity=".74" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3">BRING THE ENERGY</text>
+  </svg>`;
+}
+
 function SchedulePreview({ title, teamSeason, events, selectedTemplate }: { title: string; teamSeason: string; events: ScheduleEvent[]; selectedTemplate: number }) {
   const templateClass = selectedTemplate === 1
     ? 'bg-[#177d76] text-[#f9f3e8]'
@@ -1096,6 +1240,86 @@ function SchedulePreview({ title, teamSeason, events, selectedTemplate }: { titl
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
+  const shareToken = params.shareToken ?? '';
+  const { data: schedule, isLoading, isError } = useGetScheduleShare(shareToken, {
+    query: { enabled: Boolean(shareToken), queryKey: ['/api/schedule-shares', shareToken] },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="noise min-h-dvh bg-background">
+        <SiteNav />
+        <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[760px] items-center justify-center px-5 py-12">
+          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading schedule…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (isError || !schedule) {
+    return (
+      <div className="noise min-h-dvh bg-background">
+        <SiteNav />
+        <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[760px] flex-col items-center justify-center px-5 py-12 text-center">
+          <CalendarDays className="h-10 w-10 text-primary" />
+          <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Schedule not found</h1>
+          <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">This parent link may have expired or been copied incorrectly.</p>
+          <Link href="/" className="mt-7 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm">Go to LeagueMatrix</Link>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="noise min-h-dvh bg-background">
+      <SiteNav />
+      <main className="mx-auto w-full max-w-[860px] px-4 py-8 sm:px-8 sm:py-14">
+        <div className="mb-8 border-l-4 border-primary pl-4">
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Shared team schedule</p>
+          <h1 className="mt-2 font-display text-5xl leading-[.9] tracking-tight text-foreground sm:text-7xl">{schedule.title}</h1>
+          <p className="mt-4 text-base font-bold uppercase tracking-[.12em] text-muted-foreground">{schedule.teamSeason}</p>
+        </div>
+
+        <div className="space-y-4" data-testid="public-schedule-events">
+          {schedule.events.length === 0 ? (
+            <div className="border border-dashed border-border bg-card p-8 text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">No events have been added yet.</div>
+          ) : schedule.events.map((event) => (
+            <article key={event.id} className="border border-border bg-card p-5 shadow-sm clip-angled-sm sm:p-6">
+              <div className="flex flex-col gap-5 sm:flex-row">
+                <div className="shrink-0 sm:w-36 sm:border-r sm:border-border sm:pr-5">
+                  <p className="font-display text-2xl leading-none text-foreground">{formatScheduleDate(event.date)}</p>
+                  <p className="mt-2 text-xs font-bold uppercase tracking-widest text-primary">{formatScheduleTime(event.time)}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[.16em] text-primary">{event.type}</span>
+                    <h2 className="font-display text-2xl leading-none text-foreground">
+                      {event.type === 'game' ? `VS ${event.opponent || 'OPPONENT TBD'}` : event.type === 'practice' ? 'TEAM PRACTICE' : 'TEAM MEETING'}
+                    </h2>
+                  </div>
+                  <p className="mt-4 flex items-start gap-2 text-sm font-bold uppercase tracking-wider text-foreground">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {event.location || 'Location TBD'}
+                  </p>
+                  {(event.snacks || event.drinks) && (
+                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {event.snacks && <span className="inline-flex items-center gap-1.5"><Utensils className="h-3.5 w-3.5 text-primary" /> Snacks: {event.snacks}</span>}
+                      {event.drinks && <span className="inline-flex items-center gap-1.5"><CupSoda className="h-3.5 w-3.5 text-primary" /> Drinks: {event.drinks}</span>}
+                    </div>
+                  )}
+                  {event.notes && <p className="mt-4 border-t border-border pt-3 text-sm font-medium leading-relaxed text-muted-foreground">{event.notes}</p>}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from LeagueMatrix · No account required</p>
+      </main>
     </div>
   );
 }
@@ -1426,6 +1650,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
+              <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
               <Route path="/studio" component={Studio} />
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id" component={HypeCardEditor} />

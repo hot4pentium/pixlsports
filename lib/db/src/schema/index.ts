@@ -33,6 +33,15 @@ export const projectMediaTable = pgTable("project_media", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const scheduleSharesTable = pgTable("schedule_shares", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  title: text("title").notNull(),
+  teamSeason: text("team_season").notNull(),
+  events: jsonb("events").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,
   createdAt: true,
@@ -47,3 +56,4 @@ export const insertProjectMediaSchema = createInsertSchema(projectMediaTable).om
 });
 export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
 export type ProjectMedia = typeof projectMediaTable.$inferSelect;
+export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;

@@ -13,6 +13,58 @@ export interface Error {
   error: string;
 }
 
+export type ScheduleEventType = typeof ScheduleEventType[keyof typeof ScheduleEventType];
+
+
+export const ScheduleEventType = {
+  game: 'game',
+  practice: 'practice',
+  meeting: 'meeting',
+} as const;
+
+export interface ScheduleEvent {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  type: ScheduleEventType;
+  /** @maxLength 30 */
+  date: string;
+  /** @maxLength 30 */
+  time: string;
+  /** @maxLength 300 */
+  location: string;
+  /** @maxLength 200 */
+  opponent: string;
+  /** @maxLength 300 */
+  snacks: string;
+  /** @maxLength 300 */
+  drinks: string;
+  /** @maxLength 1000 */
+  notes: string;
+}
+
+export interface ScheduleShareInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @maxLength 200 */
+  teamSeason: string;
+  /** @maxItems 50 */
+  events: ScheduleEvent[];
+}
+
+export interface ScheduleShare {
+  shareToken: string;
+  title: string;
+  teamSeason: string;
+  events: ScheduleEvent[];
+  createdAt: string;
+}
+
 export type HypeCardProjectVersion = typeof HypeCardProjectVersion[keyof typeof HypeCardProjectVersion];
 
 
