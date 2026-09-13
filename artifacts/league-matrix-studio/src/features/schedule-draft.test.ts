@@ -150,6 +150,20 @@ test('event controls add, reorder, remove, and reset without losing event data',
   const reset = getDefaultScheduleEvents();
 
   assert.deepEqual(reordered.map((event) => event.id), [first.id, newEvent.id, second.id]);
+  assert.deepEqual(
+    { ...newEvent, id: 'new-event' },
+    {
+      id: 'new-event',
+      type: 'practice',
+      date: '',
+      time: '',
+      location: '',
+      opponent: '',
+      snacks: '',
+      drinks: '',
+      notes: '',
+    },
+  );
   assert.equal(removed.some((event) => event.id === second.id), false);
   assert.equal(removed.find((event) => event.id === first.id)?.opponent, first.opponent);
   assert.deepEqual(reset, defaultScheduleEvents);

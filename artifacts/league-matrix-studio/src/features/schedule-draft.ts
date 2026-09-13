@@ -39,6 +39,21 @@ export function createScheduleEvent(type: ScheduleEventType = 'game'): ScheduleE
   };
 }
 
+export function createBlankScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
+  scheduleEventCounter += 1;
+  return {
+    id: `schedule-event-${scheduleEventCounter}`,
+    type,
+    date: '',
+    time: '',
+    location: '',
+    opponent: '',
+    snacks: '',
+    drinks: '',
+    notes: '',
+  };
+}
+
 export const defaultScheduleEvents: ScheduleEvent[] = [
   {
     ...createScheduleEvent('game'),
@@ -157,7 +172,7 @@ export function updateScheduleEvent(
 }
 
 export function addScheduleEvent(events: ScheduleEvent[], type: ScheduleEventType) {
-  return [...events, createScheduleEvent(type)];
+  return [...events, createBlankScheduleEvent(type)];
 }
 
 export function removeScheduleEvent(events: ScheduleEvent[], id: string) {
