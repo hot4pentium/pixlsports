@@ -29,27 +29,50 @@ export async function exportVideoCanvas(
 
   const stream = canvas.captureStream(fps);
   let audioIncluded = false;
+  const sourceDuration = videoElement.duration && isFinite(videoElement.duration) ? videoElement.duration : 15;
+  const startTime = Math.max(0, Math.min(trimStart, sourceDuration));
+  const endTime = Math.max(startTime + 0.1, Math.min(trimEnd, sourceDuration));
+  let audioElement: HTMLVideoElement | null = null;
+  let audioContext: AudioContext | null = null;
   
   // Add audio track if requested and available
   if (includeAudio) {
-    const wasMuted = videoElement.muted;
     try {
-      // The editor preview is muted by default. Safari can omit the audio
-      // track entirely when captureStream() is requested from a muted element.
-      videoElement.muted = false;
-      // @ts-ignore
-      const audioStream = videoElement.captureStream ? videoElement.captureStream() : (videoElement.mozCaptureStream ? videoElement.mozCaptureStream() : null);
-      if (audioStream) {
-        const audioTracks = audioStream.getAudioTracks();
-        if (audioTracks.length > 0) {
-          stream.addTrack(audioTracks[0]);
-          audioIncluded = true;
-        }
+      // Safari often omits audio from HTMLMediaElement.captureStream(). Use a
+      // separate local media element and Web Audio to create a capturable track.
+      const AudioContextConstructor = window.AudioContext
+        ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const sourceUrl = videoElement.currentSrc || videoElement.src;
+      if (!AudioContextConstructor || !sourceUrl) throw new Error('Web Audio is unavailable.');
+
+      audioElement = document.createElement('video');
+      audioElement.preload = 'auto';
+      audioElement.playsInline = true;
+      audioElement.muted = false;
+      audioElement.src = sourceUrl;
+      await new Promise<void>((resolve, reject) => {
+        audioElement?.addEventListener('loadedmetadata', () => resolve(), { once: true });
+        audioElement?.addEventListener('error', () => reject(new Error('Audio could not be decoded.')), { once: true });
+      });
+      audioElement.currentTime = startTime;
+      if (Math.abs(audioElement.currentTime - startTime) > 0.01) {
+        await new Promise<void>((resolve) => audioElement?.addEventListener('seeked', () => resolve(), { once: true }));
       }
+      audioContext = new AudioContextConstructor();
+      await audioContext.resume();
+      const audioSource = audioContext.createMediaElementSource(audioElement);
+      const audioDestination = audioContext.createMediaStreamDestination();
+      audioSource.connect(audioDestination);
+      const audioTrack = audioDestination.stream.getAudioTracks()[0];
+      if (!audioTrack) throw new Error('Web Audio did not create an audio track.');
+      stream.addTrack(audioTrack);
+      audioIncluded = true;
     } catch (err) {
-      console.warn('Could not capture audio stream from video element', err);
-    } finally {
-      videoElement.muted = wasMuted;
+      console.warn('Could not capture clip audio with Web Audio', err);
+      audioElement?.remove();
+      audioElement = null;
+      await audioContext?.close().catch(() => undefined);
+      audioContext = null;
     }
   }
 
@@ -64,9 +87,6 @@ export async function exportVideoCanvas(
 
   return new Promise((resolve, reject) => {
     let animationFrameId: number;
-    const sourceDuration = videoElement.duration && isFinite(videoElement.duration) ? videoElement.duration : 15;
-    const startTime = Math.max(0, Math.min(trimStart, sourceDuration));
-    const endTime = Math.max(startTime + 0.1, Math.min(trimEnd, sourceDuration));
     const duration = endTime - startTime;
     const originalLoop = videoElement.loop;
     const wasPaused = videoElement.paused;
@@ -76,6 +96,9 @@ export async function exportVideoCanvas(
       cancelAnimationFrame(animationFrameId);
       videoElement.loop = originalLoop;
       if (wasPaused) videoElement.pause();
+      audioElement?.pause();
+      audioElement?.remove();
+      void audioContext?.close().catch(() => undefined);
       stream.getTracks().forEach((track) => track.stop());
     };
     
@@ -134,6 +157,9 @@ export async function exportVideoCanvas(
           await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
         }
         recorder.start(1000);
+        if (audioIncluded && audioElement) {
+          await audioElement.play();
+        }
         await videoElement.play();
         drawLoop();
       } catch (error) {
