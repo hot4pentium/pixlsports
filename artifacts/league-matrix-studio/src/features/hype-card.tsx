@@ -341,9 +341,24 @@ export function PreviewCanvas({
 }) {
   const dimensions = getDimensions(project.format);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageBounds, setStageBounds] = useState({ width: 0, height: 0 });
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const measure = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      setStageBounds({ width, height });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (videoRef?.current) {
@@ -358,28 +373,41 @@ export function PreviewCanvas({
     }
   }, [isMuted, videoUrl, videoRef]);
 
+  const outputRatio = dimensions.width / dimensions.height;
+  const previewWidth = stageBounds.width && stageBounds.height
+    ? Math.min(stageBounds.width, 760, stageBounds.height * outputRatio)
+    : 0;
+  const previewHeight = previewWidth ? previewWidth / outputRatio : 0;
+
   return (
-    <div className="relative flex min-h-[450px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[650px] sm:p-8 group clip-angled-sm">
+    <div className="relative h-full min-h-0 overflow-hidden border border-border bg-muted group clip-angled-sm">
       <div className="absolute inset-0 bg-tech-grid opacity-40 pointer-events-none" />
-      <div
-        className="relative z-10 max-h-[76vh] w-full max-w-[760px] cursor-zoom-in overflow-hidden shadow-2xl clip-angled focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary"
-        style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
-        role="button"
-        tabIndex={0}
-        aria-label="Expand card preview"
-        onClick={onExpand}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            onExpand();
-          }
-        }}
-      >
-        <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" />
-        <span className="pointer-events-none absolute right-4 top-4 z-30 flex items-center gap-2 bg-foreground/85 px-3 py-2 text-xs font-bold uppercase tracking-widest text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 clip-angled-sm">
-          <Maximize2 className="h-4 w-4" />
-          Expand
-        </span>
+      <div ref={stageRef} className="absolute inset-4 flex items-center justify-center sm:inset-8">
+        <div
+          className="relative z-10 cursor-zoom-in overflow-hidden shadow-2xl clip-angled focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary"
+          style={{
+            aspectRatio: `${dimensions.width}/${dimensions.height}`,
+            width: previewWidth || '100%',
+            height: previewHeight || 'auto',
+            maxWidth: 760,
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="Expand card preview"
+          onClick={onExpand}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onExpand();
+            }
+          }}
+        >
+          <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" />
+          <span className="pointer-events-none absolute right-4 top-4 z-30 flex items-center gap-2 bg-foreground/85 px-3 py-2 text-xs font-bold uppercase tracking-widest text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 clip-angled-sm">
+            <Maximize2 className="h-4 w-4" />
+            Expand
+          </span>
+        </div>
       </div>
       
       {project.mediaType === 'video' && videoUrl && (
@@ -1148,8 +1176,8 @@ export function HypeCardEditor() {
           </div>
         </aside>
 
-        <main className="hidden flex-1 overflow-y-auto p-4 sm:block sm:p-8">
-          <div className="mx-auto max-w-[800px]">
+        <main className="hidden min-h-0 flex-1 overflow-hidden p-4 sm:block sm:p-8">
+          <div className="mx-auto h-full max-w-[800px]">
             <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onExpand={() => setMobilePreviewOpen(true)} />
           </div>
         </main>
