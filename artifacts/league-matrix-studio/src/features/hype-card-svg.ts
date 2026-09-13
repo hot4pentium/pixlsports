@@ -321,17 +321,22 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const nameplate = project.overlay
     ? `<rect x="120" y="1060" width="760" height="112" rx="24" fill="#03070d" fill-opacity=".78" stroke="${palette.primary}" stroke-width="3"/>`
     : '';
+  const mediaGlow = project.mediaType || project.photo
+    ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.primary}" stroke-width="8" stroke-opacity=".58" filter="url(#stadiumMediaGlow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".82"/>`
+    : '';
   const defs = `
     <clipPath id="stadiumCardClip-${ns}"><rect x="8" y="8" width="984" height="1384" rx="46"/></clipPath>
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
-    <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>`;
+    <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
+    <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
   const fgContent = `
     <g clip-path="url(#stadiumCardClip-${ns})">
       <rect width="1000" height="330" fill="url(#stadiumTop-${ns})"/>
       <rect y="900" width="1000" height="500" fill="url(#stadiumBottom-${ns})"/>
+      ${mediaGlow}
       ${placeholder}
       <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
       <text x="500" y="215" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${headlineSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.headline}</text>
