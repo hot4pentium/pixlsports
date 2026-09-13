@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="2000" viewBox="0 0 750 1000">
+  <title>LeagueMatrix vertical soccer field layout</title>
+  <desc id="description">A clean top-down soccer field in portrait orientation, designed for practice planning and player placement.</desc>
+
+  <defs>
+    <linearGradient id="turf" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#247a45"/>
+      <stop offset="0.5" stop-color="#1f7040"/>
+      <stop offset="1" stop-color="#195f37"/>
+    </linearGradient>
+
+    
+
+    
+      
+    
+
+    <clipPath id="field-clip">
+      <rect x="77" y="40" width="596" height="920" rx="2"/>
+    </clipPath>
+    <clipPath id="top-arc-clip">
+      <rect x="275" y="184" width="200" height="90"/>
+    </clipPath>
+    <clipPath id="bottom-arc-clip">
+      <rect x="275" y="726" width="200" height="90"/>
+    </clipPath>
+  </defs>
+
+  
+  <rect id="canvas-background" width="750" height="1000" fill="#123d27"/>
+  <rect x="18" y="18" width="714" height="964" rx="24" fill="#174c2e" stroke="#2d8650" stroke-width="2"/>
+
+  
+  <g id="surface">
+    <rect x="77" y="40" width="596" height="920" rx="2" fill="url(#turf)"/>
+    <rect x="77" y="40" width="596" height="920" fill="url(#mowing-stripes)" clip-path="url(#field-clip)"/>
+  </g>
+
+  
+  <g id="goals" fill="none" stroke="#f8fbf8" stroke-width="4" stroke-linejoin="round" opacity="0.98">
+    <path d="M343 40 V20 H407 V40"/>
+    <path d="M343 960 V980 H407 V960"/>
+    <path d="M343 20 L351 28 H399 L407 20" stroke-width="2" opacity="0.55"/>
+    <path d="M343 980 L351 972 H399 L407 980" stroke-width="2" opacity="0.55"/>
+  </g>
+
+  
+  <g id="field-markings" fill="none" stroke="#f8fbf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    
+    <rect x="77" y="40" width="596" height="920"/>
+
+    
+    <line x1="77" y1="500" x2="673" y2="500"/>
+    <circle cx="375" cy="500" r="80"/>
+
+    
+    <path d="M198 40 V184 H552 V40"/>
+    <path d="M198 960 V816 H552 V960"/>
+
+    
+    <path d="M294 40 V88 H456 V40"/>
+    <path d="M294 960 V912 H456 V960"/>
+
+    
+    <circle cx="375" cy="136" r="80" clip-path="url(#top-arc-clip)"/>
+    <circle cx="375" cy="864" r="80" clip-path="url(#bottom-arc-clip)"/>
+
+    
+    <path d="M89 40 A12 12 0 0 0 77 52"/>
+    <path d="M673 52 A12 12 0 0 0 661 40"/>
+    <path d="M77 948 A12 12 0 0 0 89 960"/>
+    <path d="M661 960 A12 12 0 0 0 673 948"/>
+  </g>
+
+  
+  <g id="field-spots" fill="#f8fbf8">
+    <circle cx="375" cy="500" r="5"/>
+    <circle cx="375" cy="136" r="5"/>
+    <circle cx="375" cy="864" r="5"/>
+  </g>
+</svg>
