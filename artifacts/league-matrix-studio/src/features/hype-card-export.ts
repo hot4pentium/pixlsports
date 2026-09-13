@@ -32,7 +32,11 @@ export async function exportVideoCanvas(
   
   // Add audio track if requested and available
   if (includeAudio) {
+    const wasMuted = videoElement.muted;
     try {
+      // The editor preview is muted by default. Safari can omit the audio
+      // track entirely when captureStream() is requested from a muted element.
+      videoElement.muted = false;
       // @ts-ignore
       const audioStream = videoElement.captureStream ? videoElement.captureStream() : (videoElement.mozCaptureStream ? videoElement.mozCaptureStream() : null);
       if (audioStream) {
@@ -44,6 +48,8 @@ export async function exportVideoCanvas(
       }
     } catch (err) {
       console.warn('Could not capture audio stream from video element', err);
+    } finally {
+      videoElement.muted = wasMuted;
     }
   }
 
