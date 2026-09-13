@@ -930,9 +930,6 @@ function RosterEditor() {
               draft={draft}
               starters={starters}
               onPositionChange={(id, formationPosition) => updatePlayer(id, { formationPosition })}
-              onChange={updatePlayer}
-              onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
-              onSetStarter={toggleStarter}
             />
             <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Game-day starters with bench listed' : 'Starters on canvas · bench listed below'}</span>
@@ -1029,21 +1026,13 @@ function FormationBoard({
   starters,
   boardStyle,
   onPositionChange,
-  onChange,
-  onRemove,
-  onSetStarter,
 }: {
   starters: RosterPlayer[];
   boardStyle: RosterBoardStyle;
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
-  onChange: (id: string, patch: Partial<RosterPlayer>) => void;
-  onRemove: (id: string) => void;
-  onSetStarter: (id: string, isStarter: boolean) => void;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
-  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
-  const [showPlayerControls, setShowPlayerControls] = useState(true);
 
   const updatePositionFromPointer = (event: PointerEvent<HTMLDivElement>, id: string) => {
     const board = boardRef.current;
@@ -1071,21 +1060,7 @@ function FormationBoard({
   };
 
   return (
-    <div className="overflow-hidden border border-white/15 bg-[#10271d]" data-testid="formation-board" data-board-style={boardStyle}>
-      <div className="flex items-center justify-between gap-3 border-b border-white/15 bg-[#17221d]/90 px-3 py-2.5 sm:px-4">
-        <span className="text-[9px] font-bold uppercase tracking-[.16em] text-white/45">Formation display</span>
-        <label className="inline-flex cursor-pointer items-center gap-2 text-[9px] font-bold uppercase tracking-[.12em] text-white/70">
-          <input
-            type="checkbox"
-            checked={showPlayerControls}
-            onChange={(event) => setShowPlayerControls(event.target.checked)}
-            className="h-4 w-4 accent-primary"
-            data-testid="checkbox-show-player-controls"
-          />
-          Show player controls
-        </label>
-      </div>
-      <div ref={boardRef} className={`relative ${isPortraitRosterBoardStyle(boardStyle) ? 'aspect-[3/4] min-h-[480px] sm:min-h-[560px]' : 'aspect-[4/3] min-h-[350px] sm:min-h-[480px]'} w-full touch-none bg-[#10271d]`}>
+    <div ref={boardRef} className={`relative ${isPortraitRosterBoardStyle(boardStyle) ? 'aspect-[3/4] min-h-[480px] sm:min-h-[560px]' : 'aspect-[4/3] min-h-[350px] sm:min-h-[480px]'} w-full overflow-hidden border border-white/15 touch-none bg-[#10271d]`} data-testid="formation-board" data-board-style={boardStyle}>
         <FormationBoardDecorations style={boardStyle} />
       {starters.length === 0 ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center px-8 text-center">
