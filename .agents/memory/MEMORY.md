@@ -1,1 +1,2 @@
 - [Radix dialog runtime conflict](radix-dialog-runtime-conflict.md) — this Vite artifact hit a duplicate-React hook failure when Radix Dialog was newly optimized.
+- [Preview aspect fitting](preview-aspect-fitting.md) — expanded card previews must choose their limiting axis from measured stage bounds.

@@ -414,9 +414,11 @@ export function MobilePreviewDialog({
   const dimensions = getDimensions(project.format);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
+  const previewStageRef = useRef<HTMLDivElement>(null);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
+  const [previewBounds, setPreviewBounds] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     if (!open) return;
@@ -446,7 +448,37 @@ export function MobilePreviewDialog({
     }
   }, [isMuted, isPlaying, open, videoUrl]);
 
+  useEffect(() => {
+    if (!open) return;
+    const stage = previewStageRef.current;
+    if (!stage) return;
+
+    const measure = () => {
+      const styles = window.getComputedStyle(stage);
+      const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+      const verticalPadding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+      setPreviewBounds({
+        width: Math.max(0, stage.clientWidth - horizontalPadding),
+        height: Math.max(0, stage.clientHeight - verticalPadding),
+      });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [open]);
+
   if (!open) return null;
+
+  const outputRatio = dimensions.width / dimensions.height;
+  const stageRatio = previewBounds.height > 0 ? previewBounds.width / previewBounds.height : outputRatio;
+  const fittedHeight = stageRatio > outputRatio
+    ? previewBounds.height
+    : previewBounds.width / outputRatio;
+  const fittedWidth = stageRatio > outputRatio
+    ? previewBounds.height * outputRatio
+    : previewBounds.width;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -468,13 +500,14 @@ export function MobilePreviewDialog({
           <h2 id="mobile-preview-title" className="font-display text-2xl uppercase tracking-wide leading-none sm:text-3xl">{title}</h2>
           <p id="mobile-preview-description" className="mt-2 text-sm font-medium text-muted-foreground">{dimensions.width} × {dimensions.height}. Output updates instantly.</p>
         </div>
-        <div className="relative flex min-h-0 flex-1 items-center justify-center border border-border bg-muted p-3 clip-angled-sm sm:p-5">
+        <div ref={previewStageRef} className="relative flex min-h-0 flex-1 items-center justify-center border border-border bg-muted p-3 clip-angled-sm sm:p-5">
           <div className="absolute inset-0 bg-tech-grid opacity-30" />
           <div
-            className="relative z-10 max-h-full overflow-hidden shadow-xl clip-angled"
+            className="relative z-10 overflow-hidden shadow-xl clip-angled"
             style={{
               aspectRatio: `${dimensions.width}/${dimensions.height}`,
-              width: `min(100%, calc(78dvh * ${dimensions.width / dimensions.height}))`,
+              width: `${fittedWidth}px`,
+              height: `${fittedHeight}px`,
             }}
             data-testid="mobile-hype-preview-canvas"
           >
