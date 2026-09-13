@@ -307,6 +307,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const headlineSize = fitText(stadiumHeadline, 840, 132, 0.56, 1);
   const playerSize = fitText(content.player, 760, 76, 0.7, 2);
   const detailsLine = `${content.team}  •  #${content.number}  •  ${content.details}`;
+  const detailsSize = fitText(detailsLine, 820, 23, 0.63, 3);
+  const recognitionSize = fitText(content.recognition, 820, 31, 0.7, 1);
   const photo = project.photo
     ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : '';
@@ -323,7 +325,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<text x="500" y="1352" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
   const nameplate = project.overlay
-    ? `<rect x="120" y="1060" width="760" height="112" rx="24" fill="#03070d" fill-opacity=".78" stroke="${palette.primary}" stroke-width="3"/>`
+    ? `<rect x="78" y="1008" width="844" height="354" rx="32" fill="#02070e" fill-opacity=".94" stroke="${palette.primary}" stroke-width="4"/><rect x="78" y="1008" width="14" height="354" rx="7" fill="${palette.primary}"/><rect x="98" y="1028" width="804" height="314" rx="22" fill="url(#lowerThird-${ns})" stroke="#fff" stroke-opacity=".14" stroke-width="2"/><path d="M122 1070 H878" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".72"/><text x="122" y="1058" font-family="DM Sans,sans-serif" font-size="16" font-weight="800" letter-spacing="5" fill="${palette.accent}">PLAYER SPOTLIGHT  //  DATA</text><text x="500" y="1190" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="12" font-weight="800" letter-spacing="4" fill="#fff" opacity=".5">TEAM  •  NUMBER  •  POSITION</text><path d="M122 1210 H878" stroke="#fff" stroke-opacity=".16" stroke-width="2" stroke-dasharray="8 8"/><rect x="122" y="1228" width="756" height="48" rx="16" fill="${palette.primary}" fill-opacity=".16" stroke="${palette.primary}" stroke-opacity=".55" stroke-width="2"/>`
     : '';
   const mediaGlow = project.mediaType || project.photo
     ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.primary}" stroke-width="8" stroke-opacity=".58" filter="url(#stadiumMediaGlow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".82"/>`
@@ -333,6 +335,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
+     <linearGradient id="lowerThird-${ns}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${palette.ink}" stop-opacity=".98"/><stop offset="55%" stop-color="#07111d" stop-opacity=".98"/><stop offset="100%" stop-color="${palette.secondary}" stop-opacity=".5"/></linearGradient>
     <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
     <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
@@ -350,8 +353,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       </g>
       ${nameplate}
       <text x="500" y="1138" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
-      <text x="500" y="1208" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(detailsLine, 820, 23, 0.63, 3)}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
-      <text x="500" y="1260" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 820, 31, 0.7, 1)}" font-weight="800" fill="#fff">${content.recognition}</text>
+       <text x="500" y="1208" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
+       <text x="500" y="1260" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${recognitionSize}" font-weight="800" fill="#fff">${content.recognition}</text>
       ${coachMessage}
       ${logo}
       ${branding}
