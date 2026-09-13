@@ -17,7 +17,7 @@ import { type PointerEvent, type ReactNode, useEffect, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
@@ -514,8 +514,18 @@ function Studio({ role }: { role: UserRole }) {
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
                {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary">CENTER.</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
-              Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.
+            <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
+              <span>Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
+                    <CircleHelp className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs text-left leading-relaxed">
+                  Local saves stay in this browser and work without an account. Cloud saves are tied to your signed-in account so you can reopen designs across devices. Media stays on the device where it was added.
+                </TooltipContent>
+              </Tooltip>
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
