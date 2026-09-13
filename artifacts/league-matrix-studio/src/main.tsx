@@ -15,3 +15,5 @@ createRoot(document.getElementById('root')!, {
     <App />
   </ErrorBoundary>,
 );
+
+window.dispatchEvent(new Event('leagueMatrix:booted'));

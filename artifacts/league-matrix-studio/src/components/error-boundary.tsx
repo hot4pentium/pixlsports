@@ -59,6 +59,13 @@ function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
         >
           Try again
         </button>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 ml-2 rounded bg-gray-200 px-4 py-2 text-sm text-gray-900 hover:bg-gray-300"
+        >
+          Reconnect preview
+        </button>
       </div>
     </div>
   );
