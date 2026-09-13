@@ -737,9 +737,17 @@ export function HypeCardEditor() {
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
     const previousRootOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
+    const desktopEditor = window.matchMedia('(min-width: 640px)');
+    const syncPageOverflow = () => {
+      document.body.style.overflow = desktopEditor.matches ? 'hidden' : previousBodyOverflow;
+      document.documentElement.style.overflow = desktopEditor.matches ? 'hidden' : previousRootOverflow;
+    };
+
+    syncPageOverflow();
+    desktopEditor.addEventListener('change', syncPageOverflow);
+
     return () => {
+      desktopEditor.removeEventListener('change', syncPageOverflow);
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousRootOverflow;
     };
@@ -1331,9 +1339,9 @@ export function HypeCardEditor() {
 
 
   return (
-    <div className="moment-studio flex h-[100dvh] flex-col overflow-hidden bg-muted sm:fixed sm:inset-0 sm:h-auto">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
-        <div className="flex items-center gap-3">
+    <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
+      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 sm:static">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href="/studio" className="grid h-9 w-9 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -1420,8 +1428,8 @@ export function HypeCardEditor() {
 
       {validation && <div className="block border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground sm:hidden">{validation}</div>}
 
-      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-        <aside className="min-h-0 w-full flex-shrink-0 overscroll-contain overflow-y-auto border-r border-border bg-background bg-tech-grid sm:w-[400px]">
+      <div className="flex flex-col sm:min-h-0 sm:flex-1 sm:flex-row">
+        <aside className="w-full flex-shrink-0 border-r border-border bg-background bg-tech-grid sm:min-h-0 sm:w-[400px] sm:overflow-y-auto sm:overscroll-contain">
           <div className="flex flex-col gap-6 p-5">
             <Section title="Moment" icon={Lightbulb}>
               <div className="flex flex-wrap gap-2">
