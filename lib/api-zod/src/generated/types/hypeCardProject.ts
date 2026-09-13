@@ -29,6 +29,10 @@ export interface HypeCardProject {
   /** @nullable */
   mediaId: string | null;
   videoMeta: VideoMeta | null;
+  /** @minimum 0 */
+  trimStart: number;
+  /** @minimum 0 */
+  trimEnd: number;
   template: HypeCardProjectTemplate;
   layout: HypeCardProjectLayout;
   format: HypeCardProjectFormat;

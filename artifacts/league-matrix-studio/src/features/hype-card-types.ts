@@ -15,6 +15,8 @@ export type HypeCardProject = {
     size: number;
     duration: number;
   } | null;
+  trimStart: number;
+  trimEnd: number;
   template: TemplateId;
   layout: CardLayoutId;
   format: HypeFormat;
@@ -111,6 +113,8 @@ export const defaultProject = (): HypeCardProject => ({
   mediaType: null,
   mediaId: null,
   videoMeta: null,
+  trimStart: 0,
+  trimEnd: 15,
   template: 'spotlight',
   layout: 'slugger',
   format: 'card',

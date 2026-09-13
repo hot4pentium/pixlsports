@@ -9,6 +9,8 @@ export async function exportVideoCanvas(
   onProgress: ExportProgressCallback,
   signal: AbortSignal,
   includeAudio: boolean,
+  trimStart: number,
+  trimEnd: number,
   onDrawFrame: (ctx: CanvasRenderingContext2D, videoFrame: HTMLVideoElement) => void
 ): Promise<{ blob: Blob; mimeType: string; ext: string; audioIncluded: boolean }> {
   const support = checkExportSupport();
@@ -56,7 +58,10 @@ export async function exportVideoCanvas(
 
   return new Promise((resolve, reject) => {
     let animationFrameId: number;
-    const duration = videoElement.duration && isFinite(videoElement.duration) ? videoElement.duration : 15;
+    const sourceDuration = videoElement.duration && isFinite(videoElement.duration) ? videoElement.duration : 15;
+    const startTime = Math.max(0, Math.min(trimStart, sourceDuration));
+    const endTime = Math.max(startTime + 0.1, Math.min(trimEnd, sourceDuration));
+    const duration = endTime - startTime;
     const originalLoop = videoElement.loop;
     const wasPaused = videoElement.paused;
     let cancelled = false;
@@ -97,10 +102,10 @@ export async function exportVideoCanvas(
         onDrawFrame(ctx, videoElement);
       }
 
-      const progress = Math.min(1, videoElement.currentTime / duration);
+       const progress = Math.min(1, Math.max(0, (videoElement.currentTime - startTime) / duration));
       onProgress(progress);
 
-      if (videoElement.ended || videoElement.currentTime >= duration - 0.03) {
+       if (videoElement.ended || videoElement.currentTime >= endTime - 0.03) {
         if (recorder.state !== 'inactive') {
           recorder.stop();
         }
@@ -118,12 +123,8 @@ export async function exportVideoCanvas(
             videoElement.addEventListener('error', () => rej(new Error('The video could not be decoded.')), { once: true });
           });
         }
-        if (videoElement.currentTime > 0.01) {
-          videoElement.currentTime = 0;
-          await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
-        } else {
-          videoElement.currentTime = 0;
-        }
+         videoElement.currentTime = startTime;
+         await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
         recorder.start(1000);
         await videoElement.play();
         drawLoop();

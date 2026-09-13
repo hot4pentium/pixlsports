@@ -20,6 +20,10 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List the authenticated user's projects
  */
+export const listProjectsResponseProjectTrimStartMin = 0;
+
+export const listProjectsResponseProjectTrimEndMin = 0;
+
 
 
 
@@ -38,6 +42,8 @@ export const ListProjectsResponseItem = zod.object({
   "size": zod.number(),
   "duration": zod.number()
 }),zod.null()]),
+  "trimStart": zod.number().min(listProjectsResponseProjectTrimStartMin),
+  "trimEnd": zod.number().min(listProjectsResponseProjectTrimEndMin),
   "template": zod.enum(['spotlight', 'impact', 'clean']),
   "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
   "format": zod.enum(['square', 'story', 'landscape', 'card']),
@@ -96,6 +102,10 @@ export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
  */
 export const createProjectBodyNameMax = 200;
 
+export const createProjectBodyProjectTrimStartMin = 0;
+
+export const createProjectBodyProjectTrimEndMin = 0;
+
 
 
 export const CreateProjectBody = zod.object({
@@ -111,6 +121,8 @@ export const CreateProjectBody = zod.object({
   "size": zod.number(),
   "duration": zod.number()
 }),zod.null()]),
+  "trimStart": zod.number().min(createProjectBodyProjectTrimStartMin),
+  "trimEnd": zod.number().min(createProjectBodyProjectTrimEndMin),
   "template": zod.enum(['spotlight', 'impact', 'clean']),
   "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
   "format": zod.enum(['square', 'story', 'landscape', 'card']),
@@ -150,6 +162,10 @@ export const CreateProjectBody = zod.object({
 }).describe('HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.')
 })
 
+export const createProjectResponseProjectTrimStartMin = 0;
+
+export const createProjectResponseProjectTrimEndMin = 0;
+
 
 
 
@@ -168,6 +184,8 @@ export const CreateProjectResponse = zod.object({
   "size": zod.number(),
   "duration": zod.number()
 }),zod.null()]),
+  "trimStart": zod.number().min(createProjectResponseProjectTrimStartMin),
+  "trimEnd": zod.number().min(createProjectResponseProjectTrimEndMin),
   "template": zod.enum(['spotlight', 'impact', 'clean']),
   "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
   "format": zod.enum(['square', 'story', 'landscape', 'card']),
@@ -227,6 +245,10 @@ export const GetProjectParams = zod.object({
   "projectId": zod.coerce.string().uuid()
 })
 
+export const getProjectResponseProjectTrimStartMin = 0;
+
+export const getProjectResponseProjectTrimEndMin = 0;
+
 
 
 
@@ -245,6 +267,8 @@ export const GetProjectResponse = zod.object({
   "size": zod.number(),
   "duration": zod.number()
 }),zod.null()]),
+  "trimStart": zod.number().min(getProjectResponseProjectTrimStartMin),
+  "trimEnd": zod.number().min(getProjectResponseProjectTrimEndMin),
   "template": zod.enum(['spotlight', 'impact', 'clean']),
   "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
   "format": zod.enum(['square', 'story', 'landscape', 'card']),
@@ -306,6 +330,10 @@ export const UpdateProjectParams = zod.object({
 
 export const updateProjectBodyNameMax = 200;
 
+export const updateProjectBodyProjectTrimStartMin = 0;
+
+export const updateProjectBodyProjectTrimEndMin = 0;
+
 
 
 
@@ -322,6 +350,8 @@ export const UpdateProjectBody = zod.object({
   "size": zod.number(),
   "duration": zod.number()
 }),zod.null()]),
+  "trimStart": zod.number().min(updateProjectBodyProjectTrimStartMin),
+  "trimEnd": zod.number().min(updateProjectBodyProjectTrimEndMin),
   "template": zod.enum(['spotlight', 'impact', 'clean']),
   "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
   "format": zod.enum(['square', 'story', 'landscape', 'card']),
@@ -362,6 +392,10 @@ export const UpdateProjectBody = zod.object({
   "expectedRevision": zod.number().int().min(1)
 })
 
+export const updateProjectResponseProjectTrimStartMin = 0;
+
+export const updateProjectResponseProjectTrimEndMin = 0;
+
 
 
 
@@ -380,6 +414,8 @@ export const UpdateProjectResponse = zod.object({
   "size": zod.number(),
   "duration": zod.number()
 }),zod.null()]),
+  "trimStart": zod.number().min(updateProjectResponseProjectTrimStartMin),
+  "trimEnd": zod.number().min(updateProjectResponseProjectTrimEndMin),
   "template": zod.enum(['spotlight', 'impact', 'clean']),
   "layout": zod.enum(['slugger', 'all-star', 'rookie', 'dugout']),
   "format": zod.enum(['square', 'story', 'landscape', 'card']),

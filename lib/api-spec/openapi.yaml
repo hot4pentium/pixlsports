@@ -233,7 +233,7 @@ components:
     HypeCardProject:
       type: object
       description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
-      required: [version, headline, mediaType, mediaId, videoMeta, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, coachMessage, visibility, photo, logo, photoTransform, adjustments]
+      required: [version, headline, mediaType, mediaId, videoMeta, trimStart, trimEnd, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, coachMessage, visibility, photo, logo, photoTransform, adjustments]
       properties:
         version:
           type: integer
@@ -245,6 +245,8 @@ components:
           oneOf:
             - $ref: "#/components/schemas/VideoMeta"
             - type: "null"
+        trimStart: { type: number, minimum: 0 }
+        trimEnd: { type: number, minimum: 0 }
         template: { type: string, enum: [spotlight, impact, clean] }
         layout: { type: string, enum: [slugger, all-star, rookie, dugout] }
         format: { type: string, enum: [square, story, landscape, card] }
