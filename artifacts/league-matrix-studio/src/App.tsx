@@ -768,11 +768,11 @@ function createRosterSvg(draft: RosterDraft) {
       const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
       const playerPosition = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 15));
       return `
-        <circle cx="${cx}" cy="${cy}" r="48" fill="#b9f34a" stroke="#f4f6f0" stroke-width="4"/>
-        <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="30" font-weight="900">${initials}</text>
-        ${player.isCaptain ? `<circle cx="${cx + 36}" cy="${cy - 36}" r="14" fill="#f4f6f0"/><text x="${cx + 36}" y="${cy - 30}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="14" font-weight="900">C</text>` : ''}
-        <path d="M${cx - 7} ${cy + 56}l7 8 7-8" fill="none" stroke="#b9f34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="${cx}" y="${cy + 92}" text-anchor="middle" fill="#f4f6f0" font-family="Outfit, sans-serif" font-size="16" font-weight="800">${number}  ·  ${playerPosition}</text>
+        <circle cx="${cx}" cy="${cy}" r="36" fill="#b9f34a" stroke="#f4f6f0" stroke-width="3"/>
+        <text x="${cx}" y="${cy + 9}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="22.5" font-weight="900">${initials}</text>
+        ${player.isCaptain ? `<circle cx="${cx + 27}" cy="${cy - 27}" r="10.5" fill="#f4f6f0"/><text x="${cx + 27}" y="${cy - 22.5}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="10.5" font-weight="900">C</text>` : ''}
+        <path d="M${cx - 5.25} ${cy + 42}l5.25 6 5.25-6" fill="none" stroke="#b9f34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="${cx}" y="${cy + 69}" text-anchor="middle" fill="#f4f6f0" font-family="Outfit, sans-serif" font-size="12" font-weight="800">${number}  ·  ${playerPosition}</text>
       `;
     }).join('');
   const benchLabelY = board.y + board.height + 54;
@@ -1167,9 +1167,9 @@ function FormationBoard({
             data-testid={`formation-player-${player.id}`}
           >
             <div className="flex flex-col items-center">
-              <div className={`relative grid h-16 w-16 place-items-center rounded-full border-2 bg-primary font-display text-2xl font-bold text-primary-foreground shadow-lg transition sm:h-20 sm:w-20 sm:text-3xl ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
+              <div className={`relative grid h-12 w-12 place-items-center rounded-full border-2 bg-primary font-display text-[18px] font-bold text-primary-foreground shadow-lg transition sm:h-[60px] sm:w-[60px] sm:text-[23px] ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
                 {getPlayerInitials(player.name)}
-                {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-black text-foreground">C</span>}
+                {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-white text-[8px] font-black text-foreground">C</span>}
               </div>
               <button
                 type="button"
