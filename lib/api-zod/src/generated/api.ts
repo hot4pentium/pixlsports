@@ -144,6 +144,102 @@ export const GetScheduleShareResponse = zod.object({
 
 
 /**
+ * Updates a schedule share owned by the authenticated coach while keeping its public link.
+ * @summary Update a public schedule share
+ */
+export const UpdateScheduleShareParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const updateScheduleShareBodyTitleMax = 200;
+
+export const updateScheduleShareBodyTeamSeasonMax = 200;
+
+export const updateScheduleShareBodyEventsItemIdMax = 100;
+
+export const updateScheduleShareBodyEventsItemDateMax = 30;
+
+export const updateScheduleShareBodyEventsItemTimeMax = 30;
+
+export const updateScheduleShareBodyEventsItemLocationMax = 300;
+
+export const updateScheduleShareBodyEventsItemOpponentMax = 200;
+
+export const updateScheduleShareBodyEventsItemSnacksMax = 300;
+
+export const updateScheduleShareBodyEventsItemDrinksMax = 300;
+
+export const updateScheduleShareBodyEventsItemNotesMax = 1000;
+
+export const updateScheduleShareBodyEventsMax = 50;
+
+
+
+export const UpdateScheduleShareBody = zod.object({
+  "title": zod.string().min(1).max(updateScheduleShareBodyTitleMax),
+  "teamSeason": zod.string().max(updateScheduleShareBodyTeamSeasonMax),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateScheduleShareBodyEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(updateScheduleShareBodyEventsItemDateMax),
+  "time": zod.string().max(updateScheduleShareBodyEventsItemTimeMax),
+  "location": zod.string().max(updateScheduleShareBodyEventsItemLocationMax),
+  "opponent": zod.string().max(updateScheduleShareBodyEventsItemOpponentMax),
+  "snacks": zod.string().max(updateScheduleShareBodyEventsItemSnacksMax),
+  "drinks": zod.string().max(updateScheduleShareBodyEventsItemDrinksMax),
+  "notes": zod.string().max(updateScheduleShareBodyEventsItemNotesMax)
+})).max(updateScheduleShareBodyEventsMax)
+})
+
+export const updateScheduleShareResponseEventsItemIdMax = 100;
+
+export const updateScheduleShareResponseEventsItemDateMax = 30;
+
+export const updateScheduleShareResponseEventsItemTimeMax = 30;
+
+export const updateScheduleShareResponseEventsItemLocationMax = 300;
+
+export const updateScheduleShareResponseEventsItemOpponentMax = 200;
+
+export const updateScheduleShareResponseEventsItemSnacksMax = 300;
+
+export const updateScheduleShareResponseEventsItemDrinksMax = 300;
+
+export const updateScheduleShareResponseEventsItemNotesMax = 1000;
+
+
+
+export const UpdateScheduleShareResponse = zod.object({
+  "shareToken": zod.string().uuid(),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateScheduleShareResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(updateScheduleShareResponseEventsItemDateMax),
+  "time": zod.string().max(updateScheduleShareResponseEventsItemTimeMax),
+  "location": zod.string().max(updateScheduleShareResponseEventsItemLocationMax),
+  "opponent": zod.string().max(updateScheduleShareResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(updateScheduleShareResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(updateScheduleShareResponseEventsItemDrinksMax),
+  "notes": zod.string().max(updateScheduleShareResponseEventsItemNotesMax)
+})),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * Revokes a schedule share owned by the authenticated coach.
+ * @summary Revoke a public schedule share
+ */
+export const DeleteScheduleShareParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const DeleteScheduleShareResponse = zod.void()
+
+
+/**
  * @summary List the authenticated user's projects
  */
 export const listProjectsResponseProjectTrimStartMin = 0;

@@ -114,6 +114,21 @@ test('new identity fields take precedence over legacy combined schedule text', (
   assert.equal(draft.season, 'Spring 2026');
 });
 
+test('a parent share token survives local draft round trips', () => {
+  const storage = new MemoryStorage();
+  const draft: ScheduleDraft = {
+    teamName: 'Westside Wolves',
+    season: 'Spring 2026',
+    events: [],
+    template: 0,
+    shareToken: '9f1c9e9d-4f08-4cf7-9232-4d8de4e8f4a0',
+  };
+
+  saveScheduleDraft(storage as Storage, draft);
+
+  assert.equal(readScheduleDraft(storage as Storage)?.shareToken, draft.shareToken);
+});
+
 test('opponent is only retained for game events when changing event type', () => {
   const game = completeEvents[0];
   const practice = updateScheduleEvent([game], game.id, { type: 'practice' })[0];

@@ -17,6 +17,7 @@ export type ScheduleDraft = {
   season: string;
   events: ScheduleEvent[];
   template: number;
+  shareToken?: string;
 };
 
 export const scheduleStorageKey = 'leaguematrix-schedule-draft';
@@ -105,6 +106,7 @@ export function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
   const legacySeason = separatorIndex >= 0
     ? legacyTeamSeason.slice(separatorIndex + 1).trim()
     : '';
+  const shareToken = stringValue(input.shareToken);
 
   return {
     teamName: stringValue(input.teamName) || legacyTeamName || stringValue(input.title) || 'Eastside Falcons',
@@ -115,6 +117,7 @@ export function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
     template: typeof input.template === 'number' && Number.isFinite(input.template)
       ? input.template
       : 0,
+    ...(shareToken ? { shareToken } : {}),
   };
 }
 

@@ -1,8 +1,10 @@
 import {
   useCreateScheduleShare,
+  useDeleteScheduleShare,
   useDeleteProject,
   useGetScheduleShare,
   useListProjects,
+  useUpdateScheduleShare,
   getListProjectsQueryKey,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,7 +19,7 @@ import {
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, ShieldCheck, Sparkles,
-  SquarePen, Trophy, X, Zap, Maximize, Activity
+  SquarePen, Trophy, X, Zap, Maximize, Activity, Link2Off
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -708,9 +710,33 @@ function ScheduleEditor() {
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
     storedDraft ? storedDraft.events : defaultScheduleEvents
   ));
-  const [shareUrl, setShareUrl] = useState('');
+  const [selectedEventId, setSelectedEventId] = useState(
+    () => storedDraft?.events[0]?.id ?? defaultScheduleEvents[0]?.id ?? '',
+  );
+  const [shareToken, setShareToken] = useState(storedDraft?.shareToken ?? '');
+  const [shareUrl, setShareUrl] = useState(() => (
+    storedDraft?.shareToken
+      ? `${window.location.origin}${basePath}/schedule/${storedDraft.shareToken}`
+      : ''
+  ));
 
   const createShare = useCreateScheduleShare();
+  const updateShare = useUpdateScheduleShare();
+  const deleteShare = useDeleteScheduleShare();
+  const hasExistingShare = Boolean(shareToken);
+  const sharePending = createShare.isPending || updateShare.isPending;
+  const selectedEventIndex = events.findIndex((event) => event.id === selectedEventId);
+  const selectedEvent = selectedEventIndex >= 0 ? events[selectedEventIndex] : undefined;
+
+  useEffect(() => {
+    if (events.length === 0) {
+      if (selectedEventId) setSelectedEventId('');
+      return;
+    }
+    if (!events.some((event) => event.id === selectedEventId)) {
+      setSelectedEventId(events[0].id);
+    }
+  }, [events, selectedEventId]);
 
   const setNoticeFor = (message: string) => {
     setNotice(message);
@@ -724,12 +750,19 @@ function ScheduleEditor() {
 
   const addEvent = (type: ScheduleEventType) => {
     setSaved(false);
-    setEvents((current) => addScheduleEvent(current, type));
+    const nextEvents = addScheduleEvent(events, type);
+    setEvents(nextEvents);
+    setSelectedEventId(nextEvents[nextEvents.length - 1]?.id ?? '');
   };
 
   const removeEvent = (id: string) => {
     setSaved(false);
-    setEvents((current) => removeScheduleEvent(current, id));
+    const removedIndex = events.findIndex((event) => event.id === id);
+    const nextEvents = removeScheduleEvent(events, id);
+    setEvents(nextEvents);
+    if (id === selectedEventId) {
+      setSelectedEventId(nextEvents[Math.min(removedIndex, nextEvents.length - 1)]?.id ?? '');
+    }
   };
 
   const moveEvent = (id: string, direction: -1 | 1) => {
@@ -737,9 +770,19 @@ function ScheduleEditor() {
     setEvents((current) => moveScheduleEvent(current, id, direction));
   };
 
-  const saveProject = () => {
+  const saveCurrentDraft = (nextShareToken = shareToken) => {
     window.localStorage.setItem('leaguematrix-project', 'true');
-    saveScheduleDraft(window.localStorage, { teamName, season, events, template: selectedTemplate });
+    saveScheduleDraft(window.localStorage, {
+      teamName,
+      season,
+      events,
+      template: selectedTemplate,
+      ...(nextShareToken ? { shareToken: nextShareToken } : {}),
+    });
+  };
+
+  const saveProject = () => {
+    saveCurrentDraft();
     setSaved(true);
     setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
   };
@@ -751,21 +794,25 @@ function ScheduleEditor() {
     }
 
     try {
-      const share = await createShare.mutateAsync({
-        data: {
-          title: teamName.trim(),
-          teamSeason: season.trim(),
-          events,
-        },
-      });
+      const data = {
+        title: teamName.trim(),
+        teamSeason: season.trim(),
+        events,
+      };
+      const share = hasExistingShare
+        ? await updateShare.mutateAsync({ shareToken, data })
+        : await createShare.mutateAsync({ data });
       const url = `${window.location.origin}${basePath}/schedule/${share.shareToken}`;
+      setShareToken(share.shareToken);
       setShareUrl(url);
+      saveCurrentDraft(share.shareToken);
+      setSaved(true);
 
-      if (typeof navigator.share === 'function') {
+      if (!hasExistingShare && typeof navigator.share === 'function') {
         try {
           await navigator.share({
-              title: teamName.trim(),
-              text: `${teamName.trim()}${season.trim() ? ` · ${season.trim()}` : ''}`,
+            title: teamName.trim(),
+            text: `${teamName.trim()}${season.trim() ? ` · ${season.trim()}` : ''}`,
             url,
           });
           setNoticeFor('SCHEDULE SHARED WITH PARENTS');
@@ -775,10 +822,31 @@ function ScheduleEditor() {
         }
       }
 
-      await navigator.clipboard?.writeText(url);
-      setNoticeFor('PARENT LINK COPIED TO CLIPBOARD');
+      if (!hasExistingShare) {
+        await navigator.clipboard?.writeText(url);
+        setNoticeFor('PARENT LINK COPIED TO CLIPBOARD');
+      } else {
+        setNoticeFor('PARENT LINK UPDATED');
+      }
     } catch {
-      setNoticeFor('SHARING FAILED — TRY AGAIN');
+      setNoticeFor(hasExistingShare ? 'LINK UPDATE FAILED — TRY AGAIN' : 'SHARING FAILED — TRY AGAIN');
+    }
+  };
+
+  const revokeScheduleShare = async () => {
+    if (!shareToken || !window.confirm('Revoke this parent link? Parents will no longer be able to open it.')) {
+      return;
+    }
+
+    try {
+      await deleteShare.mutateAsync({ shareToken });
+      setShareToken('');
+      setShareUrl('');
+      saveCurrentDraft('');
+      setSaved(true);
+      setNoticeFor('PARENT LINK REVOKED');
+    } catch {
+      setNoticeFor('LINK REVOKE FAILED — TRY AGAIN');
     }
   };
 
@@ -802,7 +870,9 @@ function ScheduleEditor() {
     setSaved(false);
     setTeamName('Eastside Falcons');
     setSeason('Fall 2024');
-    setEvents(getDefaultScheduleEvents());
+    const resetEvents = getDefaultScheduleEvents();
+    setEvents(resetEvents);
+    setSelectedEventId(resetEvents[0]?.id ?? '');
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
 
@@ -851,25 +921,47 @@ function ScheduleEditor() {
             <div className="relative z-10">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Upcoming events</p>
-                  <p className="mt-1 text-xs font-medium text-muted-foreground">Games, practices, and meetings.</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule entries</p>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">Scroll to choose a date to edit.</p>
                 </div>
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
               </div>
 
-              <div className="space-y-4">
+              <div className="max-h-52 overflow-y-auto pr-1" data-testid="schedule-event-list">
+                <div className="space-y-2">
                 {events.map((event, index) => (
-                  <ScheduleEventCard
+                  <button
                     key={event.id}
-                    event={event}
-                    index={index}
+                    type="button"
+                    onClick={() => setSelectedEventId(event.id)}
+                    aria-pressed={event.id === selectedEventId}
+                    className={`flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors clip-angled-sm ${event.id === selectedEventId ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
+                    data-testid={`button-select-schedule-event-${index}`}
+                  >
+                    <span className="min-w-[74px] text-[10px] font-bold uppercase tracking-wider">{formatScheduleDate(event.date)}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">
+                      {event.type === 'game' ? event.opponent || 'Game' : event.type === 'practice' ? 'Practice' : 'Meeting'}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider">{formatScheduleTime(event.time)}</span>
+                  </button>
+                ))}
+                </div>
+              </div>
+
+              {selectedEvent ? (
+                <div className="mt-4">
+                  <ScheduleEventCard
+                    event={selectedEvent}
+                    index={selectedEventIndex}
                     count={events.length}
                     onChange={updateEvent}
                     onRemove={removeEvent}
                     onMove={moveEvent}
                   />
-                ))}
-              </div>
+                </div>
+              ) : (
+                <p className="mt-4 border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground">No schedule entries yet. Add one below.</p>
+              )}
 
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {(['game', 'practice', 'meeting'] as ScheduleEventType[]).map((type) => (
@@ -915,8 +1007,8 @@ function ScheduleEditor() {
               <button type="button" onClick={downloadGraphic} className="inline-flex items-center justify-center gap-2 border border-border bg-background px-3 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:bg-muted clip-angled-sm" data-testid="button-download-schedule">
                 <FileImage className="h-4 w-4" /> Download graphic
               </button>
-              <button type="button" onClick={shareSchedule} disabled={createShare.isPending} className="inline-flex items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
-                <Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : 'Share with parents'}
+              <button type="button" onClick={shareSchedule} disabled={sharePending || deleteShare.isPending} className="inline-flex items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
+                <Share2 className="h-4 w-4" /> {sharePending ? (hasExistingShare ? 'Updating link…' : 'Creating link…') : hasExistingShare ? 'Update parent link' : 'Share with parents'}
               </button>
             </div>
 
@@ -929,6 +1021,10 @@ function ScheduleEditor() {
                     <Clipboard className="h-4 w-4" />
                   </button>
                 </div>
+                <p className="mt-2 text-[10px] font-medium leading-relaxed text-muted-foreground">Update this link after changing the schedule. Parents keep the same URL.</p>
+                <button type="button" onClick={() => { void revokeScheduleShare(); }} disabled={sharePending || deleteShare.isPending} className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-destructive disabled:cursor-wait disabled:opacity-60" data-testid="button-revoke-schedule-link">
+                  <Link2Off className="h-3.5 w-3.5" /> {deleteShare.isPending ? 'Revoking link…' : 'Revoke parent link'}
+                </button>
               </div>
             )}
 

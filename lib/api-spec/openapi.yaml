@@ -70,6 +70,42 @@ paths:
                 $ref: "#/components/schemas/ScheduleShare"
         "404":
           $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateScheduleShare
+      tags: [schedule-shares]
+      summary: Update a public schedule share
+      description: Updates a schedule share owned by the authenticated coach while keeping its public link.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleShareInput"
+      responses:
+        "200":
+          description: Public schedule share updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteScheduleShare
+      tags: [schedule-shares]
+      summary: Revoke a public schedule share
+      description: Revokes a schedule share owned by the authenticated coach.
+      responses:
+        "204":
+          description: Public schedule share revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /projects:
     get:
       operationId: listProjects
