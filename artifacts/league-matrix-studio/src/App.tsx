@@ -8,7 +8,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check,
-  ChevronDown, ChevronUp, CircleHelp, Clock3, CupSoda, FileImage, FolderOpen, Grid2X2,
+  ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, ShieldCheck, Sparkles,
   SquarePen, Trophy, X, Zap, Maximize, Activity
@@ -631,7 +631,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
   const [selectedTemplate, setSelectedTemplate] = useState(0);
   const [saved, setSaved] = useState(false);
   const [notice, setNotice] = useState('');
-  const [values, setValues] = useState({ headline: kind === 'hype' ? 'GAME ON.' : kind === 'schedule' ? 'WEEKEND RUN' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : kind === 'schedule' ? 'Eastside Falcons · Fall 2024' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: kind === 'schedule' ? 'SAT 10.12  ·  4:30 PM' : '' });
+  const [values, setValues] = useState({ headline: kind === 'hype' ? 'GAME ON.' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: '' });
   const setValue = (key: keyof typeof values, value: string) => setValues((current) => ({ ...current, [key]: value }));
 
   const saveProject = () => {
@@ -644,7 +644,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
   const resetProject = () => {
     setSelectedTemplate(0);
     setSaved(false);
-    setValues({ headline: kind === 'hype' ? 'GAME ON.' : kind === 'schedule' ? 'WEEKEND RUN' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : kind === 'schedule' ? 'Eastside Falcons · Fall 2024' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: kind === 'schedule' ? 'SAT 10.12  ·  4:30 PM' : '' });
+    setValues({ headline: kind === 'hype' ? 'GAME ON.' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: '' });
     setNotice('DRAFT RESET');
     window.setTimeout(() => setNotice(''), 2400);
   };
@@ -686,7 +686,6 @@ function EditorPage({ kind }: { kind: ToolKind }) {
               <Field label={kind === 'awards' ? 'Award title' : 'Main message'} value={values.headline} onChange={(value) => setValue('headline', value)} testId="input-main-message" />
               <Field label={kind === 'awards' ? 'The why' : 'Supporting line'} value={values.subline} onChange={(value) => setValue('subline', value)} testId="input-supporting-line" />
               {kind === 'awards' && <Field label="Player name" value={values.name} onChange={(value) => setValue('name', value)} testId="input-player-name" />}
-              {kind === 'schedule' && <Field label="Next up" value={values.detail} onChange={(value) => setValue('detail', value)} testId="input-next-up" />}
             </div>
 
             <div className="relative z-10 my-8 h-px bg-border" />
