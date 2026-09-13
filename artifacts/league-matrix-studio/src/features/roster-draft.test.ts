@@ -3,8 +3,11 @@ import test from 'node:test';
 
 import {
   filterRosterPlayers,
+  getBenchPlayers,
   getDefaultRoster,
+  getStarterPlayers,
   moveRosterPlayer,
+  moveRosterPlayerWithinGroup,
   normalizeRosterDraft,
   readRosterDraft,
   removeRosterPlayer,
@@ -54,6 +57,26 @@ test('player controls update, reorder, and remove without mutating the original 
   assert.deepEqual(moved.map((player) => player.id), ['two', 'one']);
   assert.equal(removed.length, 1);
   assert.equal(removed[0].name, 'Two Updated');
+});
+
+test('starter and bench groups preserve player records and reorder independently', () => {
+  const expandedPlayers: RosterPlayer[] = [
+    players[0],
+    { id: 'bench-two', name: 'Bench Two', jerseyNumber: '2', position: 'MID', isStarter: false, isCaptain: false },
+    { id: 'starter-three', name: 'Starter Three', jerseyNumber: '3', position: 'FWD', isStarter: true, isCaptain: false },
+    players[1],
+  ];
+
+  assert.deepEqual(getStarterPlayers(expandedPlayers).map((player) => player.id), ['one', 'starter-three']);
+  assert.deepEqual(getBenchPlayers(expandedPlayers).map((player) => player.id), ['bench-two', 'two']);
+  assert.deepEqual(
+    moveRosterPlayerWithinGroup(expandedPlayers, 'starter-three', -1).map((player) => player.id),
+    ['starter-three', 'bench-two', 'one', 'two'],
+  );
+  assert.deepEqual(
+    moveRosterPlayerWithinGroup(expandedPlayers, 'bench-two', 1).map((player) => player.id),
+    ['one', 'two', 'starter-three', 'bench-two'],
+  );
 });
 
 test('lineup layout filters to starters while roster layout keeps every player', () => {
