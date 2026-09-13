@@ -5,9 +5,11 @@ import {
   filterRosterPlayers,
   getBenchPlayers,
   getDefaultRoster,
+  getPlayerInitials,
   getStarterPlayers,
   moveRosterPlayer,
   moveRosterPlayerWithinGroup,
+  normalizeFormationPosition,
   normalizeRosterDraft,
   readRosterDraft,
   removeRosterPlayer,
@@ -23,8 +25,8 @@ class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
 }
 
 const players: RosterPlayer[] = [
-  { id: 'one', name: 'One', jerseyNumber: '1', position: 'GK', isStarter: true, isCaptain: true },
-  { id: 'two', name: 'Two', jerseyNumber: '2', position: 'MID', isStarter: false, isCaptain: false },
+  { id: 'one', name: 'One Player', jerseyNumber: '1', position: 'GK', isStarter: true, isCaptain: true, formationPosition: { x: 25, y: 60 } },
+  { id: 'two', name: 'Two Player', jerseyNumber: '2', position: 'MID', isStarter: false, isCaptain: false, formationPosition: { x: 75, y: 40 } },
 ];
 
 test('normalizes empty, partial, and long player data safely', () => {
@@ -40,6 +42,7 @@ test('normalizes empty, partial, and long player data safely', () => {
   assert.equal(draft.players[0].name, '');
   assert.equal(draft.players[1].name.length, 180);
   assert.equal(draft.players[2].isStarter, false);
+  assert.deepEqual(draft.players[0].formationPosition, { x: 28, y: 68 });
 });
 
 test('roster draft round trips through local persistence', () => {
@@ -53,7 +56,7 @@ test('player controls update, reorder, and remove without mutating the original 
   const updated = updateRosterPlayer(players, 'two', { name: 'Two Updated', isStarter: true });
   const moved = moveRosterPlayer(updated, 'two', -1);
   const removed = removeRosterPlayer(moved, 'one');
-  assert.equal(players[1].name, 'Two');
+  assert.equal(players[1].name, 'Two Player');
   assert.deepEqual(moved.map((player) => player.id), ['two', 'one']);
   assert.equal(removed.length, 1);
   assert.equal(removed[0].name, 'Two Updated');
@@ -77,6 +80,15 @@ test('starter and bench groups preserve player records and reorder independently
     moveRosterPlayerWithinGroup(expandedPlayers, 'bench-two', 1).map((player) => player.id),
     ['one', 'two', 'starter-three', 'bench-two'],
   );
+});
+
+test('formation positions clamp safely and initials use first and last names', () => {
+  assert.deepEqual(normalizeFormationPosition({ x: -20, y: 140 }), { x: 8, y: 90 });
+  assert.deepEqual(normalizeFormationPosition({ x: 'bad', y: null }, { x: 42, y: 58 }), { x: 42, y: 58 });
+  assert.equal(getPlayerInitials('Maya Chen'), 'MC');
+  assert.equal(getPlayerInitials('Maya Chen Rivera'), 'MR');
+  assert.equal(getPlayerInitials('Maya'), 'MA');
+  assert.equal(getPlayerInitials(''), '??');
 });
 
 test('both roster layouts filter the main canvas to starters', () => {

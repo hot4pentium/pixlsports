@@ -9,7 +9,7 @@ import {
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type PointerEvent, type ReactNode, useEffect, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -49,13 +49,16 @@ import {
   createBlankRosterPlayer,
   getBenchPlayers,
   getDefaultRoster,
+  getPlayerInitials,
   getStarterPlayers,
   moveRosterPlayerWithinGroup,
+  normalizeFormationPosition,
   readRosterDraft,
   removeRosterPlayer,
   saveRosterDraft,
   updateRosterPlayer,
   type RosterDraft,
+  type RosterFormationPosition,
   type RosterPlayer,
 } from '@/features/roster-draft';
 
@@ -734,24 +737,25 @@ function createRosterSvg(draft: RosterDraft) {
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
   const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
-  const starterCards = starters.length === 0
-    ? `<text x="540" y="470" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
-    : starters.map((player, index) => {
-      const x = index % 2 === 0 ? 72 : 556;
-      const y = 380 + Math.floor(index / 2) * 142;
+  const board = { x: 72, y: 350, width: 936, height: 760 };
+  const starterTokens = starters.length === 0
+    ? `<text x="${board.x + board.width / 2}" y="${board.y + board.height / 2}" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
+    : starters.map((player) => {
+      const position = normalizeFormationPosition(player.formationPosition);
+      const cx = board.x + (position.x / 100) * board.width;
+      const cy = board.y + (position.y / 100) * board.height;
+      const initials = escapeRosterSvgText(getPlayerInitials(player.name));
       const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
-      const name = escapeRosterSvgText(rosterText(player.name, 'NAME TBD', 24));
-      const position = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 15));
+      const playerPosition = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 15));
       return `
-        <rect x="${x}" y="${y}" width="452" height="112" fill="#f4f6f0" stroke="#c8d2c9" stroke-width="2"/>
-        <rect x="${x}" y="${y}" width="92" height="112" fill="#b9f34a"/>
-        <text x="${x + 46}" y="${y + 58}" text-anchor="middle" fill="#17221d" font-family="Oswald, sans-serif" font-size="44" font-weight="700">${number}</text>
-        <text x="${x + 116}" y="${y + 46}" fill="#17221d" font-family="Outfit, sans-serif" font-size="25" font-weight="800">${name}</text>
-        <text x="${x + 116}" y="${y + 78}" fill="#6a766f" font-family="Outfit, sans-serif" font-size="17" font-weight="700" letter-spacing="2">${position}${player.isCaptain ? '  ·  CAPTAIN' : ''}</text>
+        <circle cx="${cx}" cy="${cy}" r="48" fill="#b9f34a" stroke="#f4f6f0" stroke-width="4"/>
+        <text x="${cx}" y="${cy + 12}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="30" font-weight="900">${initials}</text>
+        ${player.isCaptain ? `<circle cx="${cx + 36}" cy="${cy - 36}" r="14" fill="#f4f6f0"/><text x="${cx + 36}" y="${cy - 30}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="14" font-weight="900">C</text>` : ''}
+        <path d="M${cx - 7} ${cy + 56}l7 8 7-8" fill="none" stroke="#b9f34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="${cx}" y="${cy + 92}" text-anchor="middle" fill="#f4f6f0" font-family="Outfit, sans-serif" font-size="16" font-weight="800">${number}  ·  ${playerPosition}</text>
       `;
     }).join('');
-  const starterRows = Math.max(1, Math.ceil(starters.length / 2));
-  const benchLabelY = 380 + starterRows * 142 + 28;
+  const benchLabelY = board.y + board.height + 54;
   const benchCardsStartY = benchLabelY + 34;
   const benchCards = bench.length === 0
     ? `<text x="72" y="${benchCardsStartY + 28}" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="22" font-weight="600">BENCH IS EMPTY — PROMOTE OR ADD A PLAYER</text>`
@@ -782,8 +786,11 @@ function createRosterSvg(draft: RosterDraft) {
     <text x="72" y="218" fill="#f4f6f0" font-family="Oswald, sans-serif" font-size="96" font-weight="700">${escapeSvgText(title)}</text>
     <text x="76" y="270" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="26" font-weight="600">${escapeRosterSvgText(rosterText(draft.teamName, 'YOUR TEAM', 34))}  ·  ${escapeRosterSvgText(rosterText(draft.season, 'SEASON', 22))}</text>
     <rect x="72" y="316" width="936" height="3" fill="#b9f34a"/>
-    <text x="72" y="356" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">STARTERS  /  ${starters.length}</text>
-    ${starterCards}
+    <rect x="${board.x}" y="${board.y}" width="${board.width}" height="${board.height}" rx="6" fill="#10271d" stroke="#53645b" stroke-width="2"/>
+    <path d="M${board.x + board.width / 2} ${board.y}v${board.height}M${board.x} ${board.y + board.height / 2}h${board.width}" stroke="#53645b" stroke-opacity=".45" stroke-width="2"/>
+    <circle cx="${board.x + board.width / 2}" cy="${board.y + board.height / 2}" r="104" fill="none" stroke="#53645b" stroke-opacity=".45" stroke-width="2"/>
+    <text x="96" y="386" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">STARTERS  /  ${starters.length}</text>
+    ${starterTokens}
     <text x="72" y="${benchLabelY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">BENCH  /  ${bench.length}</text>
     ${benchCards}
     <text x="72" y="${footerY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${starters.length} STARTERS  ·  ${bench.length} BENCH  /  LOCAL DRAFT</text>
@@ -859,7 +866,7 @@ function RosterEditor() {
         </div>
 
         <div className="mt-10 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(400px,530px)]">
-          <section className="order-2 min-w-0 xl:order-1">
+          <section className="order-1 min-w-0 xl:order-1">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Live board</p>
@@ -874,14 +881,19 @@ function RosterEditor() {
                 </button>
               </div>
             </div>
-            <RosterGraphicPreview draft={draft} starters={starters} bench={bench} />
+            <RosterGraphicPreview
+              draft={draft}
+              starters={starters}
+              bench={bench}
+              onPositionChange={(id, formationPosition) => updatePlayer(id, { formationPosition })}
+            />
             <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Game-day starters with bench listed' : 'Starters on canvas · bench listed below'}</span>
               <span>SVG export · no photos</span>
             </div>
           </section>
 
-          <aside className="order-1 border border-border bg-card p-5 clip-angled-sm sm:p-7 xl:order-2">
+          <aside className="order-2 border border-border bg-card p-5 clip-angled-sm sm:p-7 xl:order-2">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Control deck</p>
@@ -1043,13 +1055,124 @@ function RosterPlayerRow({
   );
 }
 
-function RosterGraphicPreview({ draft, starters, bench }: { draft: RosterDraft; starters: RosterPlayer[]; bench: RosterPlayer[] }) {
+function FormationBoard({
+  starters,
+  onPositionChange,
+}: {
+  starters: RosterPlayer[];
+  onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
+}) {
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
+  const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
+
+  const updatePositionFromPointer = (event: PointerEvent<HTMLDivElement>, id: string) => {
+    const board = boardRef.current;
+    if (!board) return;
+    const bounds = board.getBoundingClientRect();
+    onPositionChange(id, normalizeFormationPosition({
+      x: ((event.clientX - bounds.left) / bounds.width) * 100,
+      y: ((event.clientY - bounds.top) / bounds.height) * 100,
+    }));
+  };
+
+  const beginDrag = (event: PointerEvent<HTMLDivElement>, player: RosterPlayer) => {
+    if ((event.target as HTMLElement).closest('button')) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDraggingPlayerId(player.id);
+    updatePositionFromPointer(event, player.id);
+  };
+
+  const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setDraggingPlayerId(null);
+  };
+
+  return (
+    <div ref={boardRef} className="relative aspect-[4/3] min-h-[350px] w-full overflow-hidden border border-white/15 bg-[#10271d] touch-none sm:min-h-[480px]" data-testid="formation-board">
+      <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
+      <div className="absolute inset-[8%] rounded border border-white/15" />
+      <div className="absolute inset-x-[8%] top-1/2 h-px bg-white/15" />
+      <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15" />
+      <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+      <div className="absolute left-4 top-4 z-10 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary sm:left-6 sm:top-6">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Drag to set the shape
+      </div>
+      {starters.length === 0 ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center px-8 text-center">
+          <div className="border border-dashed border-white/25 px-6 py-5 text-xs font-bold uppercase tracking-widest text-white/55" data-testid="empty-formation-board">
+            Make a bench player a starter to build the formation
+          </div>
+        </div>
+      ) : starters.map((player) => {
+        const formationPosition = normalizeFormationPosition(player.formationPosition);
+        const expanded = expandedPlayerId === player.id;
+        const dragging = draggingPlayerId === player.id;
+        return (
+          <div
+            key={player.id}
+            className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 select-none ${dragging ? 'z-30 scale-105' : ''}`}
+            style={{ left: `${formationPosition.x}%`, top: `${formationPosition.y}%` }}
+            onPointerDown={(event) => beginDrag(event, player)}
+            onPointerMove={(event) => dragging && updatePositionFromPointer(event, player.id)}
+            onPointerUp={finishDrag}
+            onPointerCancel={finishDrag}
+            aria-label={`${player.name || 'Player'}, draggable starter`}
+            aria-grabbed={dragging}
+            data-testid={`formation-player-${player.id}`}
+          >
+            <div className="flex flex-col items-center">
+              <div className={`relative grid h-16 w-16 place-items-center rounded-full border-2 bg-primary font-display text-2xl font-bold text-primary-foreground shadow-lg transition sm:h-20 sm:w-20 sm:text-3xl ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
+                {getPlayerInitials(player.name)}
+                {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-black text-foreground">C</span>}
+              </div>
+              <button
+                type="button"
+                className="mt-1 grid h-6 w-8 place-items-center rounded-full border border-white/30 bg-[#17221d]/95 text-white transition hover:border-primary hover:text-primary"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExpandedPlayerId((current) => current === player.id ? null : player.id);
+                }}
+                aria-label={`${expanded ? 'Hide' : 'Show'} ${player.name || 'player'} number and position`}
+                aria-expanded={expanded}
+                data-testid={`button-toggle-formation-details-${player.id}`}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+              </button>
+              {expanded && (
+                <div className="mt-1 whitespace-nowrap border border-white/20 bg-[#17221d]/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid={`formation-details-${player.id}`}>
+                  #{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RosterGraphicPreview({
+  draft,
+  starters,
+  bench,
+  onPositionChange,
+}: {
+  draft: RosterDraft;
+  starters: RosterPlayer[];
+  bench: RosterPlayer[];
+  onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
+}) {
   return (
     <div className="relative overflow-hidden border border-border bg-[#17221d] p-4 shadow-xl clip-angled-sm sm:p-7" data-testid="preview-roster-canvas">
       <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
-      <div className="relative aspect-[4/5] w-full overflow-hidden border border-white/10 bg-[#17221d] p-5 text-[#f4f6f0] sm:p-8">
+      <div className="relative w-full overflow-hidden border border-white/10 bg-[#17221d] p-5 text-[#f4f6f0] sm:p-8">
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/15" />
-        <div className="relative flex h-full flex-col">
+        <div className="relative">
           <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60 sm:text-xs">
             <span data-testid="text-preview-team">{rosterText(draft.teamName, 'YOUR TEAM', 34)}</span>
             <span className="shrink-0 bg-primary px-2 py-1 text-primary-foreground">{rosterText(draft.season, 'SEASON', 20)}</span>
@@ -1058,49 +1181,35 @@ function RosterGraphicPreview({ draft, starters, bench }: { draft: RosterDraft; 
             <p className="font-display text-[clamp(3rem,8vw,6rem)] leading-[.82] tracking-tight">{draft.layout === 'lineup' ? 'GAME DAY' : 'TEAM ROSTER'}</p>
             <div className="mt-5 h-1 w-16 bg-primary" />
           </div>
-          <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
-              <span>Starters</span>
+          <div className="mt-6">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
+              <span>Starters / formation board</span>
               <span>{starters.length}</span>
             </div>
-            <div className="mt-3 grid content-start gap-3 sm:grid-cols-2">
-              {starters.length === 0 ? (
-                <div className="col-span-full flex min-h-32 items-center justify-center border border-dashed border-white/20 px-6 text-center text-xs font-bold uppercase tracking-widest text-white/50" data-testid="empty-roster-preview">
-                  Mark a bench player as a starter
-                </div>
-              ) : starters.map((player) => (
-                <div key={player.id} className="flex min-w-0 items-center gap-3 border border-white/10 bg-white/[.07] p-3" data-testid={`card-preview-player-${player.id}`}>
-                  <span className="grid h-11 w-11 shrink-0 place-items-center bg-primary font-display text-2xl text-primary-foreground">{rosterText(player.jerseyNumber, '—', 4)}</span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-bold uppercase tracking-wide" title={player.name || 'Name TBD'}>{rosterText(player.name, 'NAME TBD', 22)}</span>
-                    <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[.14em] text-white/50">{rosterText(player.position, 'POSITION TBD', 15)}{player.isCaptain ? ' · CAPTAIN' : ''}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 border-t border-white/10 pt-4">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
-                <span>Bench</span>
-                <span>{bench.length}</span>
-              </div>
-              {bench.length === 0 ? (
-                <p className="mt-3 text-xs font-bold uppercase tracking-widest text-white/40" data-testid="empty-bench-preview">Bench is empty</p>
-              ) : (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {bench.map((player) => (
-                    <div key={player.id} className="flex min-w-0 items-center gap-2 border border-white/10 bg-white/[.04] p-2" data-testid={`card-preview-bench-${player.id}`}>
-                      <span className="grid h-8 w-8 shrink-0 place-items-center bg-white/15 font-display text-lg text-white">{rosterText(player.jerseyNumber, '—', 4)}</span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 20)}</span>
-                        <span className="block truncate text-[9px] font-bold uppercase tracking-[.12em] text-white/40">{rosterText(player.position, 'POSITION TBD', 15)}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FormationBoard starters={starters} onPositionChange={onPositionChange} />
           </div>
-          <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
+          <div className="mt-6 border-t border-white/10 pt-4">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
+              <span>Bench</span>
+              <span>{bench.length}</span>
+            </div>
+            {bench.length === 0 ? (
+              <p className="mt-3 text-xs font-bold uppercase tracking-widest text-white/40" data-testid="empty-bench-preview">Bench is empty</p>
+            ) : (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {bench.map((player) => (
+                  <div key={player.id} className="flex min-w-0 items-center gap-2 border border-white/10 bg-white/[.04] p-2" data-testid={`card-preview-bench-${player.id}`}>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center bg-white/15 font-display text-lg text-white">{getPlayerInitials(player.name)}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 20)}</span>
+                      <span className="block truncate text-[9px] font-bold uppercase tracking-[.12em] text-white/40">#{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
             <span>{starters.length} starters · {bench.length} bench</span>
             <span className="text-primary">LeagueMatrix</span>
           </div>

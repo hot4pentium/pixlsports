@@ -77,7 +77,8 @@ function booleanValue(value: unknown): boolean {
 }
 
 function numberValue(value: unknown, fallback: number): number {
-  const number = typeof value === 'number' ? value : Number(value);
+  if (typeof value !== 'number' && (typeof value !== 'string' || value.trim() === '')) return fallback;
+  const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
 
