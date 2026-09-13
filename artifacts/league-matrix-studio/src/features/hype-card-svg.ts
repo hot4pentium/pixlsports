@@ -353,8 +353,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       </g>
       ${nameplate}
       <text x="500" y="1138" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
-       <text x="500" y="1208" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
-       <text x="500" y="1260" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${recognitionSize}" font-weight="800" fill="#fff">${content.recognition}</text>
+      <text x="500" y="1208" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
+      <text x="500" y="1260" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${recognitionSize}" font-weight="800" fill="#fff">${content.recognition}</text>
       ${coachMessage}
       ${logo}
       ${branding}
