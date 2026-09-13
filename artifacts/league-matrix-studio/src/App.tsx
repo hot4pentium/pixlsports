@@ -64,6 +64,8 @@ import {
   type RosterPlayer,
 } from '@/features/roster-draft';
 import { createRosterBoardGeometrySvg, rosterBoardViewBox } from '@/features/roster-board';
+import soccerFieldAsset from '@/assets/soccer-field.svg';
+import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
 
 const queryClient = new QueryClient();
 
@@ -742,15 +744,20 @@ function rosterBoardStyleLabel(style: RosterBoardStyle): string {
 
 function createRosterBoardSvg(style: RosterBoardStyle, board: { x: number; y: number; width: number; height: number }) {
   const { x, y, width, height } = board;
-  const geometry = createRosterBoardGeometrySvg(style);
-  return `<g transform="translate(${x} ${y}) scale(${width / rosterBoardViewBox.width} ${height / rosterBoardViewBox.height})">${geometry}</g>`;
+  const viewBox = style === 'soccer' ? { width: 750, height: 1000 } : rosterBoardViewBox;
+  const geometry = style === 'soccer'
+    ? soccerFieldSvg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
+    : createRosterBoardGeometrySvg(style);
+  return `<g transform="translate(${x} ${y}) scale(${width / viewBox.width} ${height / viewBox.height})">${geometry}</g>`;
 }
 
 function createRosterSvg(draft: RosterDraft) {
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
   const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
-  const board = { x: 72, y: 350, width: 936, height: 702 };
+  const board = draft.boardStyle === 'soccer'
+    ? { x: 72, y: 350, width: 936, height: 1248 }
+    : { x: 72, y: 350, width: 936, height: 702 };
   const starterTokens = starters.length === 0
     ? `<text x="${board.x + board.width / 2}" y="${board.y + board.height / 2}" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
     : starters.map((player) => {
@@ -1131,7 +1138,7 @@ function FormationBoard({
   };
 
   return (
-    <div ref={boardRef} className={`relative aspect-[4/3] min-h-[350px] w-full overflow-hidden border border-white/15 touch-none sm:min-h-[480px] ${boardStyle === 'soccer' ? 'bg-[#245c39]' : boardStyle === 'basketball' ? 'bg-[#8b5a36]' : boardStyle === 'baseball' ? 'bg-[#6c4b3d]' : 'bg-[#10271d]'}`} data-testid="formation-board" data-board-style={boardStyle}>
+    <div ref={boardRef} className={`relative ${boardStyle === 'soccer' ? 'aspect-[3/4] min-h-[480px] sm:min-h-[560px]' : 'aspect-[4/3] min-h-[350px] sm:min-h-[480px]'} w-full overflow-hidden border border-white/15 touch-none ${boardStyle === 'soccer' ? 'bg-[#245c39]' : boardStyle === 'basketball' ? 'bg-[#8b5a36]' : boardStyle === 'baseball' ? 'bg-[#6c4b3d]' : 'bg-[#10271d]'}`} data-testid="formation-board" data-board-style={boardStyle}>
       <FormationBoardDecorations style={boardStyle} />
       <div className="absolute left-4 top-4 z-10 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary sm:left-6 sm:top-6">
         <span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Drag to set the shape
@@ -1192,6 +1199,17 @@ function FormationBoard({
 }
 
 function FormationBoardDecorations({ style }: { style: RosterBoardStyle }) {
+  if (style === 'soccer') {
+    return (
+      <img
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        src={soccerFieldAsset}
+        alt=""
+        aria-hidden="true"
+      />
+    );
+  }
+
   return (
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"

@@ -10,7 +10,7 @@ export type RosterBoardStyleOption = {
 
 export const rosterBoardStyles: RosterBoardStyleOption[] = [
   { id: 'classic', label: 'Classic grid', description: 'Neutral center guide' },
-  { id: 'soccer', label: 'Soccer pitch', description: 'Pitch, boxes, arcs, goals' },
+  { id: 'soccer', label: 'Soccer pitch', description: 'Portrait pitch, boxes, arcs, goals' },
   { id: 'basketball', label: 'Basketball court', description: 'Keys, circles, arcs, hoops' },
   { id: 'baseball', label: 'Baseball diamond', description: 'Infield, mound, foul lines' },
 ];
