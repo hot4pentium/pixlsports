@@ -9,10 +9,10 @@ export type RosterBoardStyleOption = {
 };
 
 export const rosterBoardStyles: RosterBoardStyleOption[] = [
-  { id: 'classic', label: 'Classic grid', description: 'Clean formation grid' },
-  { id: 'soccer', label: 'Soccer pitch', description: 'Field lines and boxes' },
-  { id: 'basketball', label: 'Basketball court', description: 'Court lines and key' },
-  { id: 'baseball', label: 'Baseball diamond', description: 'Diamond and base paths' },
+  { id: 'classic', label: 'Classic grid', description: 'Neutral center guide' },
+  { id: 'soccer', label: 'Soccer pitch', description: 'Pitch, boxes, arcs, goals' },
+  { id: 'basketball', label: 'Basketball court', description: 'Keys, circles, arcs, hoops' },
+  { id: 'baseball', label: 'Baseball diamond', description: 'Infield, mound, foul lines' },
 ];
 
 export type RosterFormationPosition = {

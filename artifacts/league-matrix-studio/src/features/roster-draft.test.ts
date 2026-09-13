@@ -19,6 +19,7 @@ import {
   updateRosterPlayer,
   type RosterPlayer,
 } from './roster-draft';
+import { createRosterBoardGeometrySvg } from './roster-board';
 
 class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
   private readonly values = new Map<string, string>();
@@ -76,8 +77,8 @@ test('player controls update, reorder, and remove without mutating the original 
 test('starter and bench groups preserve player records and reorder independently', () => {
   const expandedPlayers: RosterPlayer[] = [
     players[0],
-    { id: 'bench-two', name: 'Bench Two', jerseyNumber: '2', position: 'MID', isStarter: false, isCaptain: false },
-    { id: 'starter-three', name: 'Starter Three', jerseyNumber: '3', position: 'FWD', isStarter: true, isCaptain: false },
+    { id: 'bench-two', name: 'Bench Two', jerseyNumber: '2', position: 'MID', isStarter: false, isCaptain: false, formationPosition: { x: 50, y: 50 } },
+    { id: 'starter-three', name: 'Starter Three', jerseyNumber: '3', position: 'FWD', isStarter: true, isCaptain: false, formationPosition: { x: 50, y: 50 } },
     players[1],
   ];
 
@@ -100,6 +101,25 @@ test('formation positions clamp safely and initials use first and last names', (
   assert.equal(getPlayerInitials('Maya Chen Rivera'), 'MR');
   assert.equal(getPlayerInitials('Maya'), 'MA');
   assert.equal(getPlayerInitials(''), '??');
+});
+
+test('sport board geometry contains recognizable markings', () => {
+  const soccer = createRosterBoardGeometrySvg('soccer');
+  const basketball = createRosterBoardGeometrySvg('basketball');
+  const baseball = createRosterBoardGeometrySvg('baseball');
+  const classic = createRosterBoardGeometrySvg('classic');
+
+  assert.match(soccer, /cx="500" cy="375" r="84"/);
+  assert.match(soccer, /x="42" y="190" width="154" height="370"/);
+  assert.match(soccer, /x="42" y="278" width="62" height="194"/);
+  assert.match(basketball, /x="42" y="246" width="178" height="258"/);
+  assert.match(basketball, /a270 270/);
+  assert.match(basketball, /M66 330v90M934 330v90/);
+  assert.match(baseball, /points="500,400 680,526 500,652 320,526"/);
+  assert.match(baseball, /M500 652L78 370M500 652L922 370/);
+  assert.match(baseball, /x="448" y="608" width="34" height="70"/);
+  assert.match(classic, /fill="#10271d"/);
+  assert.doesNotMatch(classic, /penalty|pitcher|basket/i);
 });
 
 test('both roster layouts filter the main canvas to starters', () => {
