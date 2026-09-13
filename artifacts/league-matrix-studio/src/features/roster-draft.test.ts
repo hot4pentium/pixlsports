@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   filterRosterPlayers,
   getBenchPlayers,
+  createBlankRosterPlayer,
   getDefaultRoster,
   getPlayerInitials,
   getStarterPlayers,
@@ -74,6 +75,13 @@ test('player controls update, reorder, and remove without mutating the original 
   assert.deepEqual(moved.map((player) => player.id), ['two', 'one']);
   assert.equal(removed.length, 1);
   assert.equal(removed[0].name, 'Two Updated');
+});
+
+test('new player slots start on the bench', () => {
+  const player = createBlankRosterPlayer();
+  assert.equal(player.isStarter, false);
+  assert.equal(getBenchPlayers([player]).length, 1);
+  assert.equal(getStarterPlayers([player]).length, 0);
 });
 
 test('starter and bench groups preserve player records and reorder independently', () => {

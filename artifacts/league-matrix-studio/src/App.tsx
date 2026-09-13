@@ -20,7 +20,7 @@ import {
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
-  UserRound, Download, Star
+  Download, Star
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -51,7 +51,6 @@ import {
   getDefaultRoster,
   getPlayerInitials,
   getStarterPlayers,
-  moveRosterPlayerWithinGroup,
   normalizeFormationPosition,
   readRosterDraft,
   rosterBoardStyles,
@@ -982,40 +981,6 @@ function RosterEditor() {
               </div>
             </div>
 
-            <div className="my-7 h-px bg-border" />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-foreground">Players</p>
-                <p className="mt-1 text-sm font-medium text-muted-foreground">Edit fast. Reorder with the arrows.</p>
-              </div>
-              <button type="button" onClick={addPlayer} className="inline-flex items-center gap-2 bg-primary px-3 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:-translate-y-0.5" data-testid="button-add-roster-player">
-                <Plus className="h-4 w-4" /> Add player
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-6">
-              <RosterPlayerGroup
-                label="Starters"
-                description="Players shown on the main canvas."
-                emptyMessage="No starters yet. Promote a bench player to build the board."
-                players={starters}
-                onChange={updatePlayer}
-                onMove={(id, direction) => { setDraft((current) => ({ ...current, players: moveRosterPlayerWithinGroup(current.players, id, direction) })); setSaved(false); }}
-                onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
-                onSetStarter={(id) => updatePlayer(id, { isStarter: false })}
-              />
-              <RosterPlayerGroup
-                label="Bench"
-                description="Non-starters stay ready here."
-                emptyMessage="Bench is empty. Add a player or move a starter here."
-                players={bench}
-                onChange={updatePlayer}
-                onMove={(id, direction) => { setDraft((current) => ({ ...current, players: moveRosterPlayerWithinGroup(current.players, id, direction) })); setSaved(false); }}
-                onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
-                onSetStarter={(id) => updatePlayer(id, { isStarter: true })}
-              />
-            </div>
-
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <button type="button" onClick={resetDraft} className="inline-flex flex-1 items-center justify-center gap-2 border border-border bg-background px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground clip-angled-sm hover:bg-muted hover:text-foreground" data-testid="button-reset-roster">
                 <RotateCcw className="h-4 w-4" /> Reset
@@ -1035,109 +1000,20 @@ function RosterEditor() {
   );
 }
 
-function RosterPlayerGroup({
-  label,
-  description,
-  emptyMessage,
-  players,
-  onChange,
-  onMove,
-  onRemove,
-  onSetStarter,
-}: {
-  label: string;
-  description: string;
-  emptyMessage: string;
-  players: RosterPlayer[];
-  onChange: (id: string, patch: Partial<RosterPlayer>) => void;
-  onMove: (id: string, direction: -1 | 1) => void;
-  onRemove: (id: string) => void;
-  onSetStarter: (id: string) => void;
-}) {
-  return (
-    <section className="border-t border-border pt-5 first:border-t-0 first:pt-0" data-testid={`roster-group-${label.toLowerCase()}`}>
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-foreground">{label} <span className="text-primary">/ {players.length}</span></p>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <div className="mt-3 space-y-3">
-        {players.length === 0 ? (
-          <div className="border-2 border-dashed border-border bg-background p-5 text-center clip-angled-sm">
-            <UserRound className="mx-auto h-7 w-7 text-muted-foreground" />
-            <p className="mt-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">{emptyMessage}</p>
-          </div>
-        ) : players.map((player, index) => (
-          <RosterPlayerRow
-            key={player.id}
-            player={player}
-            index={index}
-            total={players.length}
-            onChange={(patch) => onChange(player.id, patch)}
-            onMove={(direction) => onMove(player.id, direction)}
-            onRemove={() => onRemove(player.id)}
-            onSetStarter={() => onSetStarter(player.id)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function RosterPlayerRow({
-  player,
-  index,
-  total,
-  onChange,
-  onMove,
-  onRemove,
-  onSetStarter,
-}: {
-  player: RosterPlayer;
-  index: number;
-  total: number;
-  onChange: (patch: Partial<RosterPlayer>) => void;
-  onMove: (direction: -1 | 1) => void;
-  onRemove: () => void;
-  onSetStarter: () => void;
-}) {
-  return (
-    <div className="border border-border bg-background p-3 clip-angled-sm" data-testid={`row-roster-player-${player.id}`}>
-      <div className="flex items-start gap-3">
-        <div className="flex flex-col gap-1 pt-1">
-          <button type="button" disabled={index === 0} onClick={() => onMove(-1)} className="grid h-6 w-6 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label={`Move ${player.name || 'player'} up`} data-testid={`button-move-up-${player.id}`}><ChevronUp className="h-4 w-4" /></button>
-          <button type="button" disabled={index === total - 1} onClick={() => onMove(1)} className="grid h-6 w-6 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-20" aria-label={`Move ${player.name || 'player'} down`} data-testid={`button-move-down-${player.id}`}><ChevronDown className="h-4 w-4" /></button>
-        </div>
-        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_68px] gap-2 sm:grid-cols-[minmax(0,1fr)_68px_86px]">
-          <input type="text" value={player.name} onChange={(event) => onChange({ name: event.target.value })} placeholder="Player name" className="min-w-0 border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm" aria-label={`Name for player ${index + 1}`} data-testid={`input-player-name-${player.id}`} />
-          <input type="text" value={player.jerseyNumber} onChange={(event) => onChange({ jerseyNumber: event.target.value })} placeholder="#" inputMode="numeric" className="border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm" aria-label={`Jersey number for ${player.name || 'player'}`} data-testid={`input-player-number-${player.id}`} />
-          <input type="text" value={player.position} onChange={(event) => onChange({ position: event.target.value })} placeholder="Position" className="col-span-2 border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm sm:col-span-1" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-player-position-${player.id}`} />
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <button type="button" onClick={onSetStarter} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isStarter ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground'}`} data-testid={`${player.isStarter ? 'button-move-to-bench' : 'button-make-starter'}-${player.id}`}>
-            {player.isStarter ? <ChevronDown className="h-3 w-3" /> : <Check className="h-3 w-3" />} {player.isStarter ? 'Move to bench' : 'Make starter'}
-          </button>
-          <button type="button" onClick={() => onChange({ isCaptain: !player.isCaptain })} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isCaptain ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`} aria-pressed={player.isCaptain} data-testid={`button-toggle-captain-${player.id}`}>
-            <Star className="h-3 w-3" /> Captain
-          </button>
-          <button type="button" onClick={onRemove} className="mt-1 inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 clip-angled-sm" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-remove-player-${player.id}`}>
-            <Trash2 className="h-3 w-3" /> Remove
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function FormationBoard({
   starters,
   boardStyle,
   onPositionChange,
+  onChange,
+  onRemove,
+  onSetStarter,
 }: {
   starters: RosterPlayer[];
   boardStyle: RosterBoardStyle;
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
+  onChange: (id: string, patch: Partial<RosterPlayer>) => void;
+  onRemove: (id: string) => void;
+  onSetStarter: (id: string, isStarter: boolean) => void;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
@@ -1154,7 +1030,7 @@ function FormationBoard({
   };
 
   const beginDrag = (event: PointerEvent<HTMLDivElement>, player: RosterPlayer) => {
-    if ((event.target as HTMLElement).closest('button')) return;
+    if ((event.target as HTMLElement).closest('button, input')) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDraggingPlayerId(player.id);
@@ -1198,9 +1074,25 @@ function FormationBoard({
             data-testid={`formation-player-${player.id}`}
           >
             <div className="flex flex-col items-center">
-              <div className={`relative grid h-8 w-8 place-items-center rounded-full border-2 bg-primary font-display text-[12px] font-bold text-primary-foreground shadow-lg transition sm:h-10 sm:w-10 sm:text-[15px] ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
+              <div className="relative">
+                <div className={`relative grid h-8 w-8 place-items-center rounded-full border-2 bg-primary font-display text-[12px] font-bold text-primary-foreground shadow-lg transition sm:h-10 sm:w-10 sm:text-[15px] ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
                 {getPlayerInitials(player.name)}
                 {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-3 w-3 place-items-center rounded-full bg-white text-[6px] font-black text-foreground">C</span>}
+                </div>
+                <button
+                  type="button"
+                  className="absolute -right-7 top-0 grid h-6 w-6 place-items-center rounded-full border border-white/30 bg-[#17221d]/95 text-white transition hover:border-primary hover:text-primary"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSetStarter(player.id, false);
+                    setExpandedPlayerId(null);
+                  }}
+                  aria-label={`Move ${player.name || 'player'} to bench`}
+                  data-testid={`button-bench-player-${player.id}`}
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
               </div>
               <button
                 type="button"
@@ -1217,8 +1109,22 @@ function FormationBoard({
                 <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
               </button>
               {expanded && (
-                <div className="mt-1 whitespace-nowrap border border-white/20 bg-[#17221d]/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid={`formation-details-${player.id}`}>
-                  #{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}
+                <div className="mt-1 w-56 border border-white/20 bg-[#17221d]/95 p-2 text-left text-[10px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid={`formation-details-${player.id}`}>
+                  <div className="grid gap-1.5">
+                    <input value={player.name} onChange={(event) => onChange(player.id, { name: event.target.value })} placeholder="Player name" className="w-full border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Name for ${player.name || 'player'}`} data-testid={`input-board-player-name-${player.id}`} />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input value={player.jerseyNumber} onChange={(event) => onChange(player.id, { jerseyNumber: event.target.value })} placeholder="#" inputMode="numeric" className="min-w-0 border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Jersey number for ${player.name || 'player'}`} data-testid={`input-board-player-number-${player.id}`} />
+                      <input value={player.position} onChange={(event) => onChange(player.id, { position: event.target.value })} placeholder="Position" className="min-w-0 border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-board-player-position-${player.id}`} />
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <button type="button" onClick={() => onChange(player.id, { isCaptain: !player.isCaptain })} className={`flex-1 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider ${player.isCaptain ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/70 hover:bg-white/20'}`} aria-pressed={player.isCaptain} data-testid={`button-board-captain-${player.id}`}>
+                      {player.isCaptain ? 'Captain' : 'Make captain'}
+                    </button>
+                    <button type="button" onClick={() => onRemove(player.id)} className="px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-red-300 hover:bg-red-400/10" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-board-remove-${player.id}`}>
+                      Remove
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1258,11 +1164,19 @@ function RosterGraphicPreview({
   starters,
   bench,
   onPositionChange,
+  onChange,
+  onRemove,
+  onSetStarter,
+  onAddPlayer,
 }: {
   draft: RosterDraft;
   starters: RosterPlayer[];
   bench: RosterPlayer[];
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
+  onChange: (id: string, patch: Partial<RosterPlayer>) => void;
+  onRemove: (id: string) => void;
+  onSetStarter: (id: string, isStarter: boolean) => void;
+  onAddPlayer: () => void;
 }) {
   return (
     <div className="relative overflow-hidden border border-border bg-[#17221d] p-4 shadow-xl clip-angled-sm sm:p-7" data-testid="preview-roster-canvas">
@@ -1283,24 +1197,55 @@ function RosterGraphicPreview({
               <span>Starters / formation board</span>
               <span>{starters.length}</span>
             </div>
-            <FormationBoard boardStyle={draft.boardStyle} starters={starters} onPositionChange={onPositionChange} />
+              <FormationBoard
+                boardStyle={draft.boardStyle}
+                starters={starters}
+                onPositionChange={onPositionChange}
+                onChange={onChange}
+                onRemove={onRemove}
+                onSetStarter={onSetStarter}
+              />
           </div>
           <div className="mt-6 border-t border-white/10 pt-4">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
-              <span>Bench</span>
-              <span>{bench.length}</span>
+            <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[.18em] text-primary">
+              <div>
+                <span>Bench</span>
+                <span className="ml-2 text-white/50">{bench.length}</span>
+              </div>
+              <button type="button" onClick={onAddPlayer} className="inline-flex items-center gap-1.5 bg-primary px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground transition hover:-translate-y-0.5" data-testid="button-add-roster-player">
+                <Plus className="h-3.5 w-3.5" /> Add player
+              </button>
             </div>
             {bench.length === 0 ? (
-              <p className="mt-3 text-xs font-bold uppercase tracking-widest text-white/40" data-testid="empty-bench-preview">Bench is empty</p>
+              <div className="mt-3 border border-dashed border-white/20 px-3 py-4 text-center" data-testid="empty-bench-preview">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/40">Bench is empty</p>
+                <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-white/30">Add a player here, then promote them with +</p>
+              </div>
             ) : (
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {bench.map((player) => (
-                  <div key={player.id} className="flex min-w-0 items-center gap-2 border border-white/10 bg-white/[.04] p-2" data-testid={`card-preview-bench-${player.id}`}>
-                    <span className="grid h-8 w-8 shrink-0 place-items-center bg-white/15 font-display text-lg text-white">{getPlayerInitials(player.name)}</span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 20)}</span>
-                      <span className="block truncate text-[9px] font-bold uppercase tracking-[.12em] text-white/40">#{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}</span>
-                    </span>
+                  <div key={player.id} className="border border-white/10 bg-white/[.04] p-2" data-testid={`card-preview-bench-${player.id}`}>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center bg-white/15 font-display text-lg text-white">{getPlayerInitials(player.name)}</span>
+                      <div className="grid min-w-0 flex-1 gap-1.5">
+                        <input value={player.name} onChange={(event) => onChange(player.id, { name: event.target.value })} placeholder="Player name" className="min-w-0 w-full border border-white/10 bg-white/10 px-2 py-1.5 text-xs font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Name for ${player.name || 'bench player'}`} data-testid={`input-board-bench-name-${player.id}`} />
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <input value={player.jerseyNumber} onChange={(event) => onChange(player.id, { jerseyNumber: event.target.value })} placeholder="#" inputMode="numeric" className="min-w-0 w-full border border-white/10 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Jersey number for ${player.name || 'bench player'}`} data-testid={`input-board-bench-number-${player.id}`} />
+                          <input value={player.position} onChange={(event) => onChange(player.id, { position: event.target.value })} placeholder="Position" className="min-w-0 w-full border border-white/10 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Position for ${player.name || 'bench player'}`} data-testid={`input-board-bench-position-${player.id}`} />
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => onSetStarter(player.id, true)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-primary hover:bg-primary hover:text-primary-foreground" aria-label={`Move ${player.name || 'player'} to the field`} data-testid={`button-start-player-${player.id}`}>
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <button type="button" onClick={() => onChange(player.id, { isCaptain: !player.isCaptain })} className={`px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${player.isCaptain ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60 hover:bg-white/20'}`} aria-pressed={player.isCaptain} data-testid={`button-board-bench-captain-${player.id}`}>
+                        {player.isCaptain ? 'Captain' : 'Make captain'}
+                      </button>
+                      <button type="button" onClick={() => onRemove(player.id)} className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300 hover:bg-red-400/10" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-board-bench-remove-${player.id}`}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
