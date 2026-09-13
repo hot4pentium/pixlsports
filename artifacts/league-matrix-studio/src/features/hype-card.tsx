@@ -633,6 +633,18 @@ export function HypeCardEditor() {
   const exportAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousRootOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousRootOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     if (project.mediaType !== 'video' || !project.mediaId) {
       setVideoUrl(undefined);
@@ -947,7 +959,7 @@ export function HypeCardEditor() {
 
 
   return (
-    <div className="moment-studio flex h-[100dvh] flex-col overflow-hidden bg-muted">
+    <div className="moment-studio flex h-[100dvh] flex-col overflow-hidden bg-muted sm:fixed sm:inset-0 sm:h-auto">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
         <div className="flex items-center gap-3">
           <Link href="/studio" className="grid h-9 w-9 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
@@ -1014,7 +1026,7 @@ export function HypeCardEditor() {
       {validation && <div className="block border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground sm:hidden">{validation}</div>}
 
       <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-        <aside className="w-full flex-shrink-0 overflow-y-auto border-r border-border bg-background bg-tech-grid sm:w-[400px]">
+        <aside className="min-h-0 w-full flex-shrink-0 overscroll-contain overflow-y-auto border-r border-border bg-background bg-tech-grid sm:w-[400px]">
           <div className="flex flex-col gap-6 p-5">
             <Section title="Moment" icon={Lightbulb}>
               <div className="flex flex-wrap gap-2">
