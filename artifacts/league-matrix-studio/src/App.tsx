@@ -1001,6 +1001,7 @@ function RosterEditor() {
 }
 
 function FormationBoard({
+  players,
   starters,
   boardStyle,
   onPositionChange,
@@ -1008,6 +1009,7 @@ function FormationBoard({
   onRemove,
   onSetStarter,
 }: {
+  players: RosterPlayer[];
   starters: RosterPlayer[];
   boardStyle: RosterBoardStyle;
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
@@ -1045,10 +1047,42 @@ function FormationBoard({
   };
 
   return (
-    <div ref={boardRef} className={`relative ${isPortraitRosterBoardStyle(boardStyle) ? 'aspect-[3/4] min-h-[480px] sm:min-h-[560px]' : 'aspect-[4/3] min-h-[350px] sm:min-h-[480px]'} w-full overflow-hidden border border-white/15 touch-none bg-[#10271d]`} data-testid="formation-board" data-board-style={boardStyle}>
-      <FormationBoardDecorations style={boardStyle} />
-      <div className="absolute left-4 top-4 z-10 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary sm:left-6 sm:top-6">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Drag to set the shape
+    <div className="grid grid-cols-[minmax(128px,.38fr)_minmax(0,1fr)] overflow-hidden border border-white/15 bg-[#10271d]" data-testid="formation-board" data-board-style={boardStyle}>
+      <div className="min-w-0 border-r border-white/15 bg-[#17221d]/90 p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[.16em] text-primary">
+          <span>Athletes</span>
+          <span className="text-white/45">{players.length}</span>
+        </div>
+        <div className="mt-3 space-y-1.5">
+          {players.length === 0 ? (
+            <p className="border border-dashed border-white/20 px-2 py-3 text-center text-[9px] font-bold uppercase tracking-wider text-white/40">No athletes</p>
+          ) : players.map((player) => (
+            <div key={player.id} className="flex min-w-0 items-center gap-1.5 border border-white/10 bg-white/[.04] px-1.5 py-1.5" data-testid={`card-board-athlete-${player.id}`}>
+              <span className="grid h-7 w-7 shrink-0 place-items-center bg-white/15 font-display text-xs text-white">{getPlayerInitials(player.name)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[10px] font-bold uppercase tracking-wide text-white">{rosterText(player.name, 'NAME TBD', 16)}</span>
+                <span className={`block truncate text-[8px] font-bold uppercase tracking-[.08em] ${player.isStarter ? 'text-primary' : 'text-white/40'}`}>
+                  {player.isStarter ? 'Starter' : 'Bench'} · #{rosterText(player.jerseyNumber, '—', 4)}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onSetStarter(player.id, !player.isStarter)}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+                aria-label={`${player.isStarter ? 'Move' : 'Add'} ${player.name || 'player'} ${player.isStarter ? 'to bench' : 'to the field'}`}
+                data-testid={`${player.isStarter ? 'button-board-athlete-minus' : 'button-board-athlete-plus'}-${player.id}`}
+              >
+                {player.isStarter ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+              </button>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={onAddPlayer} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 bg-primary px-2 py-2 text-[9px] font-bold uppercase tracking-wider text-primary-foreground transition hover:-translate-y-0.5" data-testid="button-add-roster-player">
+          <Plus className="h-3.5 w-3.5" /> Add player
+        </button>
+      </div>
+      <div ref={boardRef} className={`relative min-w-0 ${isPortraitRosterBoardStyle(boardStyle) ? 'aspect-[3/4] min-h-[480px] sm:min-h-[560px]' : 'aspect-[4/3] min-h-[350px] sm:min-h-[480px]'} w-full touch-none bg-[#10271d]`}>
+        <FormationBoardDecorations style={boardStyle} />
       </div>
       {starters.length === 0 ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center px-8 text-center">
