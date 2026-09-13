@@ -17,7 +17,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
-  Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion,
+  Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
   UserRound, Download, Star
@@ -877,6 +877,10 @@ function RosterEditor() {
     setSaved(false);
     announce('PLAYER SLOT ADDED');
   };
+  const toggleStarter = (id: string, isStarter: boolean) => {
+    updatePlayer(id, { isStarter });
+    announce(isStarter ? 'PLAYER ADDED TO THE FIELD' : 'PLAYER MOVED TO THE BENCH');
+  };
   const exportRoster = () => {
     const blob = new Blob([createRosterSvg(draft)], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -928,6 +932,10 @@ function RosterEditor() {
               starters={starters}
               bench={bench}
               onPositionChange={(id, formationPosition) => updatePlayer(id, { formationPosition })}
+              onChange={updatePlayer}
+              onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
+              onSetStarter={toggleStarter}
+              onAddPlayer={addPlayer}
             />
             <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
               <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Game-day starters with bench listed' : 'Starters on canvas · bench listed below'}</span>
