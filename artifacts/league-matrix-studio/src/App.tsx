@@ -104,7 +104,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
   const navText = dark ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground';
   const { isSignedIn, user } = useUser();
   const { signOut } = useClerk();
-  
+
   return (
     <header className={`relative z-30 border-b ${dark ? 'bg-foreground border-white/10' : 'bg-background border-border'}`}>
       <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
@@ -115,7 +115,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
           <Link href="/studio" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-studio">Studio</Link>
           <Link href="/help" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-help">Help</Link>
           <Link href="/privacy" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-privacy">Privacy</Link>
-          
+
           {isSignedIn ? (
             <div className="flex items-center gap-4">
               <span className={`text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</span>
@@ -133,7 +133,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
           {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
-      
+
       {menuOpen && (
         <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#1a1c23]' : 'border-border bg-card'}`} data-testid="menu-mobile">
           <nav className="flex flex-col gap-2">
@@ -181,7 +181,7 @@ function HomePage() {
         <section className="relative overflow-hidden bg-foreground text-background clip-angled pb-24 pt-16 sm:pb-32 sm:pt-24">
           <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
           <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/15 rounded-full blur-[120px] mix-blend-screen pointer-events-none animate-stadium-flash" />
-          
+
           <div className="relative z-10 mx-auto grid max-w-[1400px] items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.1fr_.9fr] lg:gap-20">
             <div>
               <div className="animate-slide-up mb-6 inline-flex items-center gap-2 bg-primary/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
@@ -202,7 +202,7 @@ function HomePage() {
                 </span>
               </div>
             </div>
-            
+
             <div className="relative mx-auto w-full max-w-[500px] animate-slide-up delay-200">
               <div className="absolute -left-6 -top-6 z-20 hidden bg-white text-foreground p-4 shadow-2xl clip-angled-sm sm:block border-l-4 border-primary">
                 <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
@@ -210,17 +210,17 @@ function HomePage() {
                 </div>
                 <p className="font-display text-xl">NO RENDERING DELAY.</p>
               </div>
-              
+
               <div className="relative -rotate-2 bg-primary p-1 shadow-2xl transition-transform duration-500 hover:rotate-0 clip-angled">
                 <div className="relative flex aspect-[0.8] flex-col justify-between overflow-hidden bg-[#181a1f] p-6 text-white sm:p-8 clip-angled">
                   <div className="absolute inset-0 bg-tech-grid-dark opacity-10" />
                   <div className="absolute -right-20 -top-20 h-64 w-64 bg-primary/20 blur-3xl rounded-full" />
-                  
+
                   <div className="relative flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/60">
                     <span>Eastside Falcons</span>
                     <span className="bg-white text-foreground px-3 py-1 clip-angled-sm">Sat / 10.12</span>
                   </div>
-                  
+
                   <div className="relative mt-auto mb-10">
                     <p className="font-display text-7xl leading-[0.8] tracking-tight sm:text-8xl">
                       GAME<br /><span className="text-primary">DAY.</span>
@@ -230,7 +230,7 @@ function HomePage() {
                       <span className="text-sm font-bold uppercase tracking-widest text-white/80">Home court energy</span>
                     </div>
                   </div>
-                  
+
                   <div className="relative flex items-end justify-between border-t border-white/10 pt-4">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-widest text-primary">Falcons vs. Northside</p>
@@ -273,7 +273,7 @@ function HomePage() {
               Pro tools.<br />Local <span className="text-primary">Execution.</span>
             </h2>
           </div>
-          
+
           <div className="mt-16 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
             <ToolFeatureCard kind="hype" large />
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
@@ -295,7 +295,7 @@ function HomePage() {
                 Zero Friction.<br />Max <span className="text-primary">Impact.</span>
               </h2>
             </div>
-            
+
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 [Palette, 'No blank canvas', 'Start with a sharp point of view, then make the details yours.'],
@@ -340,16 +340,16 @@ function ToolFeatureCard({ kind, large = false }: { kind: ToolKind; large?: bool
     <Link href={`/studio/${tool.slug}`} className={`group relative overflow-hidden border border-border transition-all hover:border-foreground clip-angled-sm ${large ? 'min-h-[420px] bg-foreground text-background' : 'min-h-[200px] bg-card text-foreground'} p-6 sm:p-8 flex flex-col justify-between`} data-testid={`link-tool-${kind}`}>
       {large && <div className="absolute inset-0 bg-tech-grid-dark opacity-10" />}
       {!large && <div className="absolute inset-0 bg-tech-grid opacity-30" />}
-      
+
       <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-2xl transition-transform duration-700 group-hover:scale-150 group-hover:bg-primary/30" />
-      
+
       <div className="relative flex items-start justify-between">
         <span className={`grid h-14 w-14 place-items-center clip-angled-sm ${large ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}`}>
           <Icon className="h-6 w-6" />
         </span>
         <ArrowUpRight className="h-6 w-6 opacity-40 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:opacity-100 group-hover:text-primary" />
       </div>
-      
+
       <div className="relative mt-12 sm:mt-16">
         <p className={`text-xs font-bold uppercase tracking-widest ${large ? 'text-primary' : 'text-muted-foreground'}`}>{tool.kicker}</p>
         <h3 className={`mt-3 font-display uppercase tracking-wide ${large ? 'text-5xl sm:text-6xl' : 'text-3xl'}`}>{tool.label}</h3>
@@ -388,7 +388,7 @@ function Studio() {
   const [hasProject, setHasProject] = useState(false);
   const { user, isSignedIn } = useUser();
   const queryClient = useQueryClient();
-  
+
   useEffect(() => setHasProject(Boolean(window.localStorage.getItem('leaguematrix-hype-card-project-v2'))), []);
 
   const { data: cloudProjects, isLoading } = useListProjects({
@@ -422,11 +422,11 @@ function Studio() {
             <span className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" /> {isSignedIn ? 'Cloud Sync Active' : 'Local Environment Active'}
           </div>
         </div>
-        
+
         <div className="mt-16 grid gap-6 lg:grid-cols-3">
           {(Object.keys(toolData) as ToolKind[]).map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
-        
+
         <div className="mt-16 relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
           <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
           <div className="relative z-10 flex items-start justify-between">
@@ -436,7 +436,7 @@ function Studio() {
             </div>
             <FolderOpen className="h-6 w-6 text-muted-foreground" />
           </div>
-          
+
           <div className="relative z-10 mt-8 grid gap-4 lg:grid-cols-2">
             {/* Local Draft */}
             {hasProject ? (
@@ -487,8 +487,8 @@ function Studio() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             disabled={deleteProject.isPending}
                             onClick={() => { if(confirm('Delete this project?')) deleteProject.mutate({ projectId: project.id }) }}
                             className="grid h-10 w-10 place-items-center bg-background text-muted-foreground hover:bg-destructive hover:text-destructive-foreground clip-angled-sm transition-colors"
@@ -564,14 +564,14 @@ function EditorPage({ kind }: { kind: ToolKind }) {
   const [notice, setNotice] = useState('');
   const [values, setValues] = useState({ headline: kind === 'hype' ? 'GAME ON.' : kind === 'schedule' ? 'WEEKEND RUN' : 'PLAYER SPOTLIGHT', subline: kind === 'hype' ? 'Falcons vs. Northside' : kind === 'schedule' ? 'Eastside Falcons · Fall 2024' : 'For showing up and shining bright', name: kind === 'awards' ? 'Maya Chen' : '', detail: kind === 'schedule' ? 'SAT 10.12  ·  4:30 PM' : '' });
   const setValue = (key: keyof typeof values, value: string) => setValues((current) => ({ ...current, [key]: value }));
-  
+
   const saveProject = () => {
     window.localStorage.setItem('leaguematrix-project', 'true');
     setSaved(true);
     setNotice('SESSION MARKED ON THIS DEVICE — PROJECT DETAILS ARE PREVIEW-ONLY');
     window.setTimeout(() => setNotice(''), 2400);
   };
-  
+
   const resetProject = () => {
     setSelectedTemplate(0);
     setSaved(false);
@@ -579,7 +579,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
     setNotice('DRAFT RESET');
     window.setTimeout(() => setNotice(''), 2400);
   };
-  
+
   return (
     <StudioLayout>
       <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-8 lg:py-10 flex-1 flex flex-col">
@@ -604,7 +604,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
             </button>
           </div>
         </div>
-        
+
         <div className="grid gap-6 lg:grid-cols-[340px_1fr] flex-1">
           <aside className="order-2 border border-border bg-card p-6 clip-angled-sm lg:order-1 flex flex-col relative overflow-hidden">
             <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
@@ -612,16 +612,16 @@ function EditorPage({ kind }: { kind: ToolKind }) {
               <p className="text-xs font-bold uppercase tracking-widest text-foreground">Controls</p>
               <span className="bg-primary/10 text-primary px-3 py-1 text-xs font-bold tracking-widest uppercase clip-angled-sm">1 / 3</span>
             </div>
-            
+
             <div className="relative z-10 space-y-5">
               <Field label={kind === 'awards' ? 'Award title' : 'Main message'} value={values.headline} onChange={(value) => setValue('headline', value)} testId="input-main-message" />
               <Field label={kind === 'awards' ? 'The why' : 'Supporting line'} value={values.subline} onChange={(value) => setValue('subline', value)} testId="input-supporting-line" />
               {kind === 'awards' && <Field label="Player name" value={values.name} onChange={(value) => setValue('name', value)} testId="input-player-name" />}
               {kind === 'schedule' && <Field label="Next up" value={values.detail} onChange={(value) => setValue('detail', value)} testId="input-next-up" />}
             </div>
-            
+
             <div className="relative z-10 my-8 h-px bg-border" />
-            
+
             <div className="relative z-10">
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-widest text-foreground">Playbook Template</p>
@@ -635,9 +635,9 @@ function EditorPage({ kind }: { kind: ToolKind }) {
                 ))}
               </div>
             </div>
-            
+
             <div className="relative z-10 my-8 h-px bg-border" />
-            
+
             <div className="relative z-10">
               <p className="mb-4 text-xs font-bold uppercase tracking-widest text-foreground">Team Colors</p>
               <div className="flex gap-3">
@@ -646,7 +646,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
                 ))}
               </div>
             </div>
-            
+
             <div className="relative z-10 mt-auto pt-10 flex gap-3">
               <button type="button" onClick={resetProject} className="inline-flex flex-1 items-center justify-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-muted hover:text-foreground clip-angled-sm" data-testid="button-reset-project">
                 <RotateCcw className="h-4 w-4" /> Reset
@@ -655,10 +655,10 @@ function EditorPage({ kind }: { kind: ToolKind }) {
                 Preview <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-            
+
             {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
           </aside>
-          
+
           <section className="order-1 min-w-0 lg:order-2 flex flex-col h-full">
             <div className="flex items-center justify-between pb-4">
               <div>
@@ -812,58 +812,122 @@ const clerkAppearance = {
   },
   variables: {
     colorPrimary: "hsl(145 100% 45%)",
-    colorForeground: "hsl(222 15% 10%)",
-    colorMutedForeground: "hsl(215 14% 45%)",
+    colorForeground: "hsl(210 20% 98%)",
+    colorMutedForeground: "hsl(215 14% 65%)",
     colorDanger: "hsl(0 84% 60%)",
-    colorBackground: "hsl(0 0% 100%)",
-    colorInput: "hsl(214 15% 90%)",
-    colorInputForeground: "hsl(222 15% 10%)",
-    colorNeutral: "hsl(214 15% 90%)",
+    colorBackground: "#181a1f",
+    colorInput: "#121316",
+    colorInputForeground: "hsl(210 20% 98%)",
+    colorNeutral: "rgba(255,255,255,0.1)",
     fontFamily: "var(--app-font-sans)",
     borderRadius: "0.125rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-background rounded-sm w-[440px] max-w-full overflow-hidden clip-angled-sm border border-border shadow-2xl",
+    cardBox: "bg-[#181a1f] w-[440px] max-w-full overflow-hidden clip-angled-sm border border-white/10 shadow-2xl",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "font-display text-3xl uppercase tracking-wide text-foreground",
-    headerSubtitle: "text-sm font-medium text-muted-foreground",
-    socialButtonsBlockButtonText: "text-sm font-bold uppercase tracking-wider",
-    formFieldLabel: "text-xs font-bold uppercase tracking-widest text-foreground",
+    headerTitle: "font-display text-4xl uppercase tracking-wide text-white",
+    headerSubtitle: "text-sm font-medium text-white/60",
+    socialButtonsBlockButtonText: "text-sm font-bold uppercase tracking-wider !text-white",
+    formFieldLabel: "text-xs font-bold uppercase tracking-widest text-white/80",
     footerActionLink: "text-primary font-bold hover:underline",
-    footerActionText: "text-sm font-medium text-muted-foreground",
-    dividerText: "text-xs font-bold uppercase tracking-widest text-muted-foreground",
+    footerActionText: "text-sm font-medium text-white/60",
+    dividerText: "text-xs font-bold uppercase tracking-widest text-white/40",
     identityPreviewEditButton: "text-primary",
     formFieldSuccessText: "text-primary text-xs",
     alertText: "text-sm font-medium",
-    logoBox: "mb-4",
-    logoImage: "h-12 object-contain",
-    socialButtonsBlockButton: "rounded-none border border-border clip-angled-sm h-12 bg-background hover:bg-muted transition-colors text-foreground",
-    formButtonPrimary: "rounded-none h-12 clip-angled-sm font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground transition-colors",
-    formFieldInput: "rounded-none h-12 border-border bg-background text-foreground font-medium focus:border-primary clip-angled-sm",
-    footerAction: "mt-6",
-    dividerLine: "bg-border",
-    alert: "rounded-none border border-destructive/20 bg-destructive/10 clip-angled-sm",
-    otpCodeFieldInput: "rounded-none border-border focus:border-primary clip-angled-sm",
-    formFieldRow: "mb-4",
-    main: "p-8",
+    logoBox: "mb-6",
+    logoImage: "h-16 object-contain",
+    socialButtonsBlockButton: "rounded-none border border-white/10 clip-angled-sm h-12 bg-white/5 hover:bg-white/10 transition-colors text-white",
+    formButtonPrimary: "rounded-none h-12 clip-angled-sm font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground transition-transform hover:scale-[1.02]",
+    formFieldInput: "rounded-none h-12 border-white/10 bg-[#121316] text-white font-medium focus:border-primary focus:ring-1 focus:ring-primary clip-angled-sm transition-all",
+    footerAction: "mt-8",
+    dividerLine: "bg-white/10",
+    alert: "rounded-none border border-destructive/20 bg-destructive/10 text-destructive clip-angled-sm",
+    otpCodeFieldInput: "rounded-none border-white/10 bg-[#121316] text-white focus:border-primary clip-angled-sm",
+    formFieldRow: "mb-5",
+    main: "p-8 sm:p-10",
   },
 };
 
+function AuthLayout({ children, title, subtitle }: { children: ReactNode, title: ReactNode, subtitle: string }) {
+  return (
+    <div className="flex min-h-[100dvh] flex-col lg:flex-row bg-[#090a0c] noise">
+      {/* Brand & Context Panel */}
+      <div className="relative flex w-full flex-col justify-between overflow-hidden bg-foreground text-background lg:w-[45%] xl:w-[40%] px-5 py-6 sm:px-10 sm:py-12 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 shadow-2xl z-20">
+        <div className="absolute inset-0 bg-tech-grid-dark opacity-[0.05]" />
+        <div className="absolute -left-20 -top-20 h-[500px] w-[500px] rounded-full bg-primary/20 blur-[120px] pointer-events-none animate-stadium-flash" />
+
+        <div className="relative z-10 flex items-center justify-between">
+          <Link href="/" className="inline-block transition-opacity hover:opacity-80 scale-[0.85] origin-left sm:scale-100" data-testid="link-auth-home">
+            <BrandMark inverse />
+          </Link>
+          <div className="hidden lg:inline-flex items-center gap-2 bg-primary/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
+            <Activity className="h-4 w-4" /> Secure Auth
+          </div>
+          <Link href="/studio" className="group lg:hidden inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:text-white bg-white/5 px-3 py-1.5 clip-angled-sm" data-testid="link-auth-guest-access-mobile">
+            Guest Studio <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+
+        <div className="relative z-10 mt-8 mb-4 lg:my-0">
+          <h1 className="font-display text-4xl leading-[0.85] tracking-tight uppercase sm:text-5xl lg:text-6xl xl:text-7xl">
+            {title}
+          </h1>
+          <p className="mt-4 hidden lg:block max-w-md text-lg font-medium leading-relaxed text-white/70">
+            {subtitle}
+          </p>
+        </div>
+
+        <div className="relative z-10 hidden lg:block mt-8 border-t border-white/10 pt-8">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center bg-white/5 text-primary clip-angled-sm">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wider text-white" data-testid="status-cloud-optional">Cloud sync is optional.</p>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
+                You don't need an account to create graphics. Local editing remains fully available for guest users.
+              </p>
+              <Link href="/studio" className="group mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:text-white" data-testid="link-auth-guest-access">
+                Return to Guest Studio <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Auth Form Panel */}
+      <div className="relative flex flex-1 p-5 py-8 sm:p-10 bg-[#090a0c]">
+        <div className="absolute inset-0 bg-tech-grid-dark opacity-[0.02]" />
+        <div className="relative z-10 w-full max-w-[440px] animate-slide-up m-auto">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background bg-tech-grid px-4 py-12">
+    <AuthLayout
+      title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
+      subtitle="Access your saved templates, synced rosters, and broadcast graphics across all your devices."
+    >
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
-    </div>
+    </AuthLayout>
   );
 }
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background bg-tech-grid px-4 py-12">
+    <AuthLayout
+      title={<>CREATE<br/><span className="text-primary">CALLSIGN.</span></>}
+      subtitle="Join LeagueMatrix to save your custom templates and broadcast settings securely in the cloud."
+    >
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
-    </div>
+    </AuthLayout>
   );
 }
 
