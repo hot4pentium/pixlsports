@@ -954,6 +954,16 @@ function ScheduleEditor() {
 
               <div className="overflow-x-auto pb-2 no-scrollbar" data-testid="schedule-week-list">
                 <div className="flex min-w-max gap-2">
+                  <button
+                    type="button"
+                    onClick={() => addEvent('game')}
+                    className="grid min-h-[62px] min-w-[58px] place-items-center border border-dashed border-primary bg-primary/5 text-primary transition-colors hover:bg-primary/10 clip-angled-sm"
+                    aria-label="Add new schedule event"
+                    title="Add new schedule event"
+                    data-testid="button-add-event-week"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
                   {scheduleWeeks.map((week) => (
                     <button
                       key={week.key}
