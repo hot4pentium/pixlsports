@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, Move, Palette, RotateCw, Save, ShieldCheck, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
+  LayoutGrid, Lightbulb, Maximize2, Move, Palette, RotateCw, Save, ShieldCheck, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -262,10 +262,85 @@ function AssetButton({
   );
 }
 
-export function PreviewCanvas({ project, videoUrl, videoRef }: { project: HypeCardProject, videoUrl?: string, videoRef?: React.RefObject<HTMLVideoElement | null> }) {
+function PreviewArtwork({
+  project,
+  videoUrl,
+  videoRef,
+  ns,
+  testId,
+}: {
+  project: HypeCardProject;
+  videoUrl?: string;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  ns: string;
+  testId: string;
+}) {
+  const dimensions = getDimensions(project.format);
+  const clipInfo = getPhotoClipInfo(project, ns);
+  const frame = project.format === 'card' ? STADIUM_MEDIA_FRAME : getPhotoFrame(project.format);
+
+  if (project.mediaType !== 'video' || !videoUrl) {
+    return (
+      <div
+        className="h-full w-full [&>svg]:h-full [&>svg]:w-full"
+        data-testid={testId}
+        dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'all', ns) }}
+      />
+    );
+  }
+
+  const mediaStyle = {
+    left: `${(clipInfo.x - frame.x) / frame.width * 100}%`,
+    top: `${(clipInfo.y - frame.y) / frame.height * 100}%`,
+    width: `${clipInfo.w / frame.width * 100}%`,
+    height: `${clipInfo.h / frame.height * 100}%`,
+    filter: `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`,
+    transformOrigin: 'center',
+    transform: `rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})`,
+  };
+
+  return (
+    <div className="relative h-full w-full overflow-hidden" data-testid={testId}>
+      <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'bg', ns) }} />
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          left: `${frame.x / dimensions.width * 100}%`,
+          top: `${frame.y / dimensions.height * 100}%`,
+          width: `${frame.width / dimensions.width * 100}%`,
+          height: `${frame.height / dimensions.height * 100}%`,
+          borderRadius: `${frame.radius / frame.width * 100}%`,
+        }}
+      >
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="absolute max-w-none object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={mediaStyle}
+        />
+      </div>
+      <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
+    </div>
+  );
+}
+
+export function PreviewCanvas({
+  project,
+  videoUrl,
+  videoRef,
+  onExpand,
+}: {
+  project: HypeCardProject;
+  videoUrl?: string;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  onExpand: () => void;
+}) {
   const dimensions = getDimensions(project.format);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
-  const clipInfo = getPhotoClipInfo(project, ns);
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
@@ -287,34 +362,24 @@ export function PreviewCanvas({ project, videoUrl, videoRef }: { project: HypeCa
     <div className="relative flex min-h-[450px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[650px] sm:p-8 group clip-angled-sm">
       <div className="absolute inset-0 bg-tech-grid opacity-40 pointer-events-none" />
       <div
-        className="relative z-10 max-h-[76vh] w-full max-w-[760px] overflow-hidden shadow-2xl clip-angled"
+        className="relative z-10 max-h-[76vh] w-full max-w-[760px] cursor-zoom-in overflow-hidden shadow-2xl clip-angled focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary"
         style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
-        data-testid="hype-preview-canvas"
+        role="button"
+        tabIndex={0}
+        aria-label="Expand card preview"
+        onClick={onExpand}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onExpand();
+          }
+        }}
       >
-        <div className="absolute inset-0 pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'bg', ns) }} />
-        <svg viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} className="absolute inset-0 w-full h-full pointer-events-none">
-          <defs dangerouslySetInnerHTML={{ __html: `<clipPath id="${clipInfo.clipId}">${clipInfo.clipContent}</clipPath>` }} />
-          <g clipPath={`url(#${clipInfo.clipId})`}>
-             <foreignObject x={clipInfo.x} y={clipInfo.y} width={clipInfo.w} height={clipInfo.h}>
-                {project.mediaType === 'video' && videoUrl ? (
-                  <video 
-                    ref={videoRef}
-                    src={videoUrl}
-                    className="w-full h-full object-cover"
-                    autoPlay loop muted playsInline
-                    style={{ filter: `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`, transformOrigin: 'center', transform: `rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})` }}
-                  />
-                ) : project.photo ? (
-                  <img 
-                    src={project.photo} 
-                    className="w-full h-full object-cover" 
-                    style={{ filter: `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`, transformOrigin: 'center', transform: `rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})` }} 
-                  />
-                ) : null}
-             </foreignObject>
-          </g>
-        </svg>
-        <div className="absolute inset-0 pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
+        <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" />
+        <span className="pointer-events-none absolute right-4 top-4 z-30 flex items-center gap-2 bg-foreground/85 px-3 py-2 text-xs font-bold uppercase tracking-widest text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 clip-angled-sm">
+          <Maximize2 className="h-4 w-4" />
+          Expand
+        </span>
       </div>
       
       {project.mediaType === 'video' && videoUrl && (
@@ -350,7 +415,6 @@ export function MobilePreviewDialog({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const mobileVideoRef = useRef<HTMLVideoElement>(null);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
-  const clipInfo = getPhotoClipInfo(project, ns);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
 
@@ -392,49 +456,29 @@ export function MobilePreviewDialog({
         aria-modal="true"
         aria-labelledby="mobile-preview-title"
         aria-describedby="mobile-preview-description"
-        className="relative z-10 max-h-[96dvh] w-full max-w-xl overflow-y-auto bg-card border border-border p-5 sm:p-8 shadow-2xl clip-angled-sm flex flex-col"
+        className="relative z-10 flex h-[96dvh] w-full max-w-6xl flex-col overflow-hidden border border-border bg-card p-4 shadow-2xl clip-angled-sm sm:p-6"
       >
         <button ref={closeButtonRef} type="button" onClick={() => onOpenChange(false)} className="absolute right-4 top-4 grid h-10 w-10 place-items-center bg-muted hover:bg-destructive hover:text-destructive-foreground transition-colors clip-angled-sm" aria-label="Close card preview">
           <X className="h-5 w-5" />
         </button>
-        <div className="pr-12 text-left mb-6">
+        <div className="mb-3 pr-12 text-left">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 text-xs font-bold uppercase tracking-widest clip-angled-sm mb-3">
             <span className="h-2 w-2 bg-primary animate-pulse" /> Live Monitor
           </div>
-          <h2 id="mobile-preview-title" className="font-display text-4xl uppercase tracking-wide leading-none">{title}</h2>
+          <h2 id="mobile-preview-title" className="font-display text-2xl uppercase tracking-wide leading-none sm:text-3xl">{title}</h2>
           <p id="mobile-preview-description" className="mt-2 text-sm font-medium text-muted-foreground">{dimensions.width} × {dimensions.height}. Output updates instantly.</p>
         </div>
-        <div className="flex min-h-0 items-center justify-center border border-border bg-muted p-4 clip-angled-sm relative">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center border border-border bg-muted p-3 clip-angled-sm sm:p-5">
           <div className="absolute inset-0 bg-tech-grid opacity-30" />
           <div
-            className="relative z-10 w-full overflow-hidden shadow-xl clip-angled"
-            style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}
+            className="relative z-10 max-h-full overflow-hidden shadow-xl clip-angled"
+            style={{
+              aspectRatio: `${dimensions.width}/${dimensions.height}`,
+              width: `min(100%, calc(78dvh * ${dimensions.width / dimensions.height}))`,
+            }}
             data-testid="mobile-hype-preview-canvas"
           >
-            <div className="absolute inset-0 pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'bg', ns) }} />
-            <svg viewBox={`0 0 ${dimensions.width} ${dimensions.height}`} className="absolute inset-0 w-full h-full pointer-events-none">
-              <defs dangerouslySetInnerHTML={{ __html: `<clipPath id="${clipInfo.clipId}">${clipInfo.clipContent}</clipPath>` }} />
-              <g clipPath={`url(#${clipInfo.clipId})`}>
-                 <foreignObject x={clipInfo.x} y={clipInfo.y} width={clipInfo.w} height={clipInfo.h}>
-                    {project.mediaType === 'video' && videoUrl ? (
-                      <video 
-                        ref={mobileVideoRef}
-                        src={videoUrl}
-                        className="w-full h-full object-cover"
-                        autoPlay loop muted playsInline
-                        style={{ filter: `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`, transformOrigin: 'center', transform: `rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})` }}
-                      />
-                    ) : project.photo ? (
-                      <img 
-                        src={project.photo} 
-                        className="w-full h-full object-cover" 
-                        style={{ filter: `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`, transformOrigin: 'center', transform: `rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})` }} 
-                      />
-                    ) : null}
-                 </foreignObject>
-              </g>
-            </svg>
-            <div className="absolute inset-0 pointer-events-none [&>svg]:w-full [&>svg]:h-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
+            <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={mobileVideoRef} ns={ns} testId="mobile-hype-preview-canvas" />
              {project.mediaType === 'video' && videoUrl && (
                <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 bg-foreground/90 p-2 clip-angled-sm border border-white/10 shadow-lg">
                  <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying((playing) => !playing)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
@@ -1073,7 +1117,7 @@ export function HypeCardEditor() {
 
         <main className="hidden flex-1 overflow-y-auto p-4 sm:block sm:p-8">
           <div className="mx-auto max-w-[800px]">
-            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} />
+            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onExpand={() => setMobilePreviewOpen(true)} />
           </div>
         </main>
       </div>
