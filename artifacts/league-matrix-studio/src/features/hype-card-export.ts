@@ -102,10 +102,10 @@ export async function exportVideoCanvas(
         onDrawFrame(ctx, videoElement);
       }
 
-       const progress = Math.min(1, Math.max(0, (videoElement.currentTime - startTime) / duration));
+      const progress = Math.min(1, Math.max(0, (videoElement.currentTime - startTime) / duration));
       onProgress(progress);
 
-       if (videoElement.ended || videoElement.currentTime >= endTime - 0.03) {
+      if (videoElement.ended || videoElement.currentTime >= endTime - 0.03) {
         if (recorder.state !== 'inactive') {
           recorder.stop();
         }
@@ -123,8 +123,10 @@ export async function exportVideoCanvas(
             videoElement.addEventListener('error', () => rej(new Error('The video could not be decoded.')), { once: true });
           });
         }
-         videoElement.currentTime = startTime;
-         await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
+        if (Math.abs(videoElement.currentTime - startTime) > 0.01) {
+          videoElement.currentTime = startTime;
+          await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
+        }
         recorder.start(1000);
         await videoElement.play();
         drawLoop();

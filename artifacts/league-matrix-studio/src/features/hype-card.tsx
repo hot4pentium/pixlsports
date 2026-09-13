@@ -32,6 +32,7 @@ import {
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
 import { exportVideoCanvas } from './hype-card-export';
+import { transcodeVideoToMp4 } from './hype-card-transcode';
 
 
 function svgToImage(svg: string, width: number, height: number): Promise<HTMLImageElement> {
@@ -83,6 +84,12 @@ function drawVideoCover(
 
 function slugify(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'hype-card';
+}
+
+function formatVideoTime(seconds: number) {
+  const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  return `${minutes}:${String(Math.floor(safeSeconds % 60)).padStart(2, '0')}`;
 }
 
 function readProjectFile(file: File): Promise<string> {
@@ -141,6 +148,12 @@ function normalizeProject(project: any): HypeCardProject {
           duration: Number(project.videoMeta.duration) || 0,
         }
       : null,
+    trimStart: Number.isFinite(Number(project.trimStart))
+      ? Math.max(0, Number(project.trimStart))
+      : defaults.trimStart,
+    trimEnd: Number.isFinite(Number(project.trimEnd))
+      ? Math.max(0.1, Number(project.trimEnd))
+      : defaults.trimEnd,
     layout: project.layout ?? defaults.layout,
     finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
@@ -382,7 +395,6 @@ function PreviewArtwork({
             src={videoUrl}
             className="absolute max-w-none object-cover"
             autoPlay
-            loop
             muted
             playsInline
             style={mediaStyle}
@@ -438,10 +450,28 @@ export function PreviewCanvas({
 
   useEffect(() => {
     if (videoRef?.current) {
+      videoRef.current.loop = false;
       if (isPlaying) videoRef.current.play().catch(() => setIsPlaying(false));
       else videoRef.current.pause();
     }
   }, [isPlaying, videoUrl, videoRef]);
+
+  useEffect(() => {
+    const video = videoRef?.current;
+    if (!video || !videoUrl || project.mediaType !== 'video') return;
+    const start = Math.max(0, project.trimStart);
+    const keepInRange = () => {
+      const sourceEnd = Number.isFinite(video.duration) ? video.duration : project.trimEnd;
+      const end = Math.min(project.trimEnd, sourceEnd);
+      if (video.currentTime >= end - 0.05 || video.currentTime < start - 0.05) {
+        video.currentTime = start;
+        if (isPlaying) video.play().catch(() => setIsPlaying(false));
+      }
+    };
+    video.currentTime = start;
+    video.addEventListener('timeupdate', keepInRange);
+    return () => video.removeEventListener('timeupdate', keepInRange);
+  }, [isPlaying, project.mediaType, project.trimEnd, project.trimStart, videoRef, videoUrl]);
 
   useEffect(() => {
     if (videoRef?.current) {
@@ -491,7 +521,7 @@ export function PreviewCanvas({
           <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying(!isPlaying)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
-          <button type="button" data-testid="button-restart" onClick={() => { if (videoRef?.current) { videoRef.current.currentTime = 0; videoRef.current.play().catch(()=>setIsPlaying(false)); setIsPlaying(true); } }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
+          <button type="button" data-testid="button-restart" onClick={() => { if (videoRef?.current) { videoRef.current.currentTime = project.trimStart; videoRef.current.play().catch(()=>setIsPlaying(false)); setIsPlaying(true); } }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
             <RotateCcw className="h-5 w-5" />
           </button>
           <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted(!isMuted)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Unmute' : 'Mute'}>
@@ -544,6 +574,7 @@ export function MobilePreviewDialog({
   useEffect(() => {
     const video = mobileVideoRef.current;
     if (!open || !video) return;
+    video.loop = false;
     video.muted = isMuted;
     if (isPlaying) {
       video.play().catch(() => setIsPlaying(false));
@@ -551,6 +582,23 @@ export function MobilePreviewDialog({
       video.pause();
     }
   }, [isMuted, isPlaying, open, videoUrl]);
+
+  useEffect(() => {
+    const video = mobileVideoRef.current;
+    if (!open || !video || !videoUrl || project.mediaType !== 'video') return;
+    const start = Math.max(0, project.trimStart);
+    const keepInRange = () => {
+      const sourceEnd = Number.isFinite(video.duration) ? video.duration : project.trimEnd;
+      const end = Math.min(project.trimEnd, sourceEnd);
+      if (video.currentTime >= end - 0.05 || video.currentTime < start - 0.05) {
+        video.currentTime = start;
+        if (isPlaying) video.play().catch(() => setIsPlaying(false));
+      }
+    };
+    video.currentTime = start;
+    video.addEventListener('timeupdate', keepInRange);
+    return () => video.removeEventListener('timeupdate', keepInRange);
+  }, [isPlaying, open, project.mediaType, project.trimEnd, project.trimStart, videoUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -625,7 +673,7 @@ export function MobilePreviewDialog({
                  <button type="button" data-testid="button-restart" onClick={() => {
                    const video = mobileVideoRef.current;
                    if (!video) return;
-                   video.currentTime = 0;
+                    video.currentTime = project.trimStart;
                    video.play().catch(() => setIsPlaying(false));
                    setIsPlaying(true);
                  }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
@@ -987,6 +1035,21 @@ export function HypeCardEditor() {
     setProject((current) => ({ ...current, adjustments: { ...current.adjustments, [key]: value } }));
   };
 
+  const updateTrim = (edge: 'start' | 'end', value: number) => {
+    setProject((current) => {
+      const duration = current.videoMeta?.duration ?? 15;
+      if (edge === 'start') {
+        const start = Math.max(0, Math.min(value, duration - 0.1));
+        const end = start >= current.trimEnd || current.trimEnd - start > 15
+          ? Math.min(duration, start + 15)
+          : current.trimEnd;
+        return { ...current, trimStart: start, trimEnd: end };
+      }
+      const end = Math.max(current.trimStart + 0.1, Math.min(value, duration, current.trimStart + 15));
+      return { ...current, trimEnd: end };
+    });
+  };
+
   const getPortableProject = async (): Promise<HypeCardProject> => {
     return designOnlyProject(project);
   };
@@ -997,8 +1060,8 @@ export function HypeCardEditor() {
     if (!file) return;
 
     if (file.type.startsWith('video/')) {
-      if (file.size > 75 * 1024 * 1024) {
-        setNotice('Video is too large. Please choose a video under 75MB.');
+      if (file.size > 120 * 1024 * 1024) {
+        setNotice('Video is too large. Please choose a video under 120MB.');
         return;
       }
       
@@ -1017,15 +1080,29 @@ export function HypeCardEditor() {
         if (!Number.isFinite(v.duration) || v.duration <= 0) {
           throw new Error('This video has an invalid duration.');
         }
-        if (v.duration > 15.05) {
-          throw new Error('Video is longer than 15 seconds. Please trim it and try again.');
+        let preparedVideo: Blob = file;
+        let playbackUrl = url;
+        let conversionWarning = '';
+        try {
+          setNotice('');
+          setAutosaveWarning('Preparing a smaller MP4 locally… 0%');
+          preparedVideo = await transcodeVideoToMp4(file, (progress) => {
+            setAutosaveWarning(`Preparing a smaller MP4 locally… ${Math.round(progress * 100)}%`);
+          });
+          if (preparedVideo.size >= file.size && file.type.includes('mp4')) {
+            preparedVideo = file;
+          }
+          playbackUrl = URL.createObjectURL(preparedVideo);
+        } catch (conversionError) {
+          console.warn('Video conversion unavailable; keeping original locally.', conversionError);
+          conversionWarning = 'This browser could not create a smaller MP4, so the original video will stay local.';
         }
 
-        await saveMediaBlob(id, file);
+        await saveMediaBlob(id, preparedVideo);
         if (project.mediaId) {
           await deleteMediaBlob(project.mediaId).catch(console.warn);
         }
-        setVideoUrl(url);
+        setVideoUrl(playbackUrl);
         
         // Generate poster for project.photo as fallback
         v.currentTime = Math.min(0.05, v.duration / 2);
@@ -1046,14 +1123,27 @@ export function HypeCardEditor() {
           ...curr,
           mediaType: 'video',
           mediaId: id,
-          videoMeta: { name: file.name, type: file.type, size: file.size, duration: v.duration },
+          videoMeta: {
+            name: preparedVideo.type.includes('mp4')
+              ? file.name.replace(/\.[^.]+$/, '') + '.mp4'
+              : file.name,
+            type: preparedVideo.type || file.type,
+            size: preparedVideo.size,
+            duration: v.duration,
+          },
+          trimStart: 0,
+          trimEnd: Math.min(15, v.duration),
           photo: poster,
           photoTransform: defaultProject().photoTransform,
           adjustments: defaultProject().adjustments
         }));
         setValidation('');
+        setAutosaveWarning('');
+        setNotice(conversionWarning);
+        if (playbackUrl !== url) URL.revokeObjectURL(url);
       } catch (err) {
         URL.revokeObjectURL(url);
+        setAutosaveWarning('');
         setNotice(err instanceof Error ? err.message : 'Could not save video to local storage.');
       }
     } else if (file.type.startsWith('image/')) {
@@ -1156,6 +1246,8 @@ export function HypeCardEditor() {
           (progress) => setExportProgress(progress),
           exportAbortRef.current.signal,
           includeAudio,
+          project.trimStart,
+          project.trimEnd,
           (ctx, v) => {
             // Draw BG
             ctx.drawImage(bgImg, 0, 0, width, height);
@@ -1353,7 +1445,7 @@ export function HypeCardEditor() {
             </Section>
 
             <Section title="Media" icon={ImagePlus}>
-              <p className="mb-4 text-xs text-muted-foreground">Add a photo or a short video (up to 15 seconds, max 75MB). Media stays on this device and is never included in saved designs.</p>
+              <p className="mb-4 text-xs text-muted-foreground">Add a photo or a video up to 120MB. Videos are prepared locally as a smaller MP4 when supported, and exports are limited to a 15-second selection. Media never leaves this device.</p>
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
                   This saved design does not include media. Add a photo or video before exporting.
@@ -1410,6 +1502,37 @@ export function HypeCardEditor() {
               )}
               {project.mediaType === 'video' && (
                 <div className="mt-3 space-y-3 rounded-lg bg-muted px-3 py-3">
+                  <div className="space-y-3 border-b border-border pb-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label className="text-xs font-medium">Trim video</Label>
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        {formatVideoTime(project.trimStart)}–{formatVideoTime(project.trimEnd)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-[3rem_1fr] items-center gap-3">
+                      <Label className="text-[10px] uppercase tracking-wide">Start</Label>
+                      <Slider
+                        value={[project.trimStart]}
+                        min={0}
+                        max={Math.max(0.1, (project.videoMeta?.duration ?? 15) - 0.1)}
+                        step={0.1}
+                        onValueChange={([value]) => updateTrim('start', value)}
+                        aria-label="Video trim start"
+                      />
+                      <Label className="text-[10px] uppercase tracking-wide">End</Label>
+                      <Slider
+                        value={[project.trimEnd]}
+                        min={0.1}
+                        max={Math.max(0.1, project.videoMeta?.duration ?? 15)}
+                        step={0.1}
+                        onValueChange={([value]) => updateTrim('end', value)}
+                        aria-label="Video trim end"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Selected length: {(project.trimEnd - project.trimStart).toFixed(1)}s. Exports can be up to 15 seconds.
+                    </p>
+                  </div>
                   <p className="text-[11px] font-medium text-muted-foreground" data-testid="text-video-export-support">
                     {exportSupport.mp4Mime
                       ? 'This browser will export a phone-ready MP4.'

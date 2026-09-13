@@ -1,3 +1,4 @@
 - [Radix dialog runtime conflict](radix-dialog-runtime-conflict.md) — this Vite artifact hit a duplicate-React hook failure when Radix Dialog was newly optimized.
 - [Preview aspect fitting](preview-aspect-fitting.md) — expanded card previews must choose their limiting axis from measured stage bounds.
 - [Design-only cloud projects](design-only-cloud-projects.md) — account saves never include user media; legacy cloud media remains readable only during migration.
+- [Local video preparation](local-video-preparation.md) — accept source clips up to 120MB, prepare smaller MP4s locally, and limit exports to a selected 15-second segment.

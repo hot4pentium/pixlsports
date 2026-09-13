@@ -745,7 +745,7 @@ function Help() {
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Video export is failing.</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Video export pushes your device's hardware. If it fails, make sure your source video is under 15 seconds, you are not using power-saving mode, and you have sufficient free memory on your device.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Video processing pushes your device's hardware. Source files can be up to 120MB, are prepared locally as a smaller MP4 when supported, and can be trimmed to a 15-second export. If processing fails, turn off power-saving mode and make sure the device has sufficient free memory.</p>
           </section>
         </div>
         <div className="mt-16 rounded-none bg-primary p-8 clip-angled text-primary-foreground sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6">

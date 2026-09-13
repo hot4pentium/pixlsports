@@ -81,7 +81,11 @@ export async function transcodeVideoToMp4(
         settled = true;
         cleanup();
         if (error) reject(error);
-        else resolve(new Blob(chunks, { type: support.mp4Mime ?? 'video/mp4' }));
+        else {
+          const output = new Blob(chunks, { type: support.mp4Mime ?? 'video/mp4' });
+          if (output.size === 0) reject(new Error('The browser created an empty MP4.'));
+          else resolve(output);
+        }
       };
 
       recorder.ondataavailable = (event) => {
@@ -103,8 +107,10 @@ export async function transcodeVideoToMp4(
 
       void (async () => {
         try {
-          video.currentTime = 0;
-          await waitForSeek(video);
+          if (video.currentTime > 0.01) {
+            video.currentTime = 0;
+            await waitForSeek(video);
+          }
           recorder.start(1000);
           await video.play();
           draw();
