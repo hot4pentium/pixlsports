@@ -844,6 +844,7 @@ function RosterEditor() {
   const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster());
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(Boolean(storedDraft));
+  const [expandedAthleteId, setExpandedAthleteId] = useState<string | null>(null);
 
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
@@ -999,17 +1000,39 @@ function RosterEditor() {
               </div>
               <div className="mt-3 space-y-2">
                 {draft.players.map((player) => (
-                  <div key={player.id} className="flex min-w-0 items-center gap-2 border border-border bg-background px-2.5 py-2" data-testid={`card-control-athlete-${player.id}`}>
-                    <span className="grid h-8 w-8 shrink-0 place-items-center bg-muted font-display text-sm text-foreground">{getPlayerInitials(player.name)}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 24)}</span>
-                      <span className={`block truncate text-[9px] font-bold uppercase tracking-[.12em] ${player.isStarter ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {player.isStarter ? 'Starter' : 'Bench'} · #{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}
+                  <div key={player.id} className="border border-border bg-background" data-testid={`card-control-athlete-${player.id}`}>
+                    <div className="flex min-w-0 items-center gap-2 px-2.5 py-2">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center bg-muted font-display text-sm text-foreground">{getPlayerInitials(player.name)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 24)}</span>
+                        <span className={`block truncate text-[9px] font-bold uppercase tracking-[.12em] ${player.isStarter ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {player.isStarter ? 'Starter' : 'Bench'} · #{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}
+                        </span>
                       </span>
-                    </span>
-                    <button type="button" onClick={() => toggleStarter(player.id, !player.isStarter)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground" aria-label={`${player.isStarter ? 'Move' : 'Add'} ${player.name || 'player'} ${player.isStarter ? 'to bench' : 'to the field'}`} data-testid={`${player.isStarter ? 'button-control-athlete-minus' : 'button-control-athlete-plus'}-${player.id}`}>
-                      {player.isStarter ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    </button>
+                      <button type="button" onClick={() => toggleStarter(player.id, !player.isStarter)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground" aria-label={`${player.isStarter ? 'Move' : 'Add'} ${player.name || 'player'} ${player.isStarter ? 'to bench' : 'to the field'}`} data-testid={`${player.isStarter ? 'button-control-athlete-minus' : 'button-control-athlete-plus'}-${player.id}`}>
+                        {player.isStarter ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </button>
+                      <button type="button" onClick={() => setExpandedAthleteId((current) => current === player.id ? null : player.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground" aria-label={`${expandedAthleteId === player.id ? 'Hide' : 'Edit'} ${player.name || 'player'}`} aria-expanded={expandedAthleteId === player.id} data-testid={`button-toggle-athlete-editor-${player.id}`}>
+                        <ChevronDown className={`h-4 w-4 transition-transform ${expandedAthleteId === player.id ? 'rotate-180' : ''}`} />
+                      </button>
+                    </div>
+                    {expandedAthleteId === player.id && (
+                      <div className="grid gap-2 border-t border-border bg-card px-2.5 py-3" data-testid={`control-athlete-editor-${player.id}`}>
+                        <input value={player.name} onChange={(event) => updatePlayer(player.id, { name: event.target.value })} placeholder="Player name" className="w-full border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none" aria-label={`Name for ${player.name || 'player'}`} data-testid={`input-control-athlete-name-${player.id}`} />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input value={player.jerseyNumber} onChange={(event) => updatePlayer(player.id, { jerseyNumber: event.target.value })} placeholder="Jersey #" inputMode="numeric" className="min-w-0 border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none" aria-label={`Jersey number for ${player.name || 'player'}`} data-testid={`input-control-athlete-number-${player.id}`} />
+                          <input value={player.position} onChange={(event) => updatePlayer(player.id, { position: event.target.value })} placeholder="Position" className="min-w-0 border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-control-athlete-position-${player.id}`} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => updatePlayer(player.id, { isCaptain: !player.isCaptain })} className={`flex-1 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider ${player.isCaptain ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`} aria-pressed={player.isCaptain} data-testid={`button-control-athlete-captain-${player.id}`}>
+                            {player.isCaptain ? 'Captain' : 'Make captain'}
+                          </button>
+                          <button type="button" onClick={() => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, player.id) })); setExpandedAthleteId(null); setSaved(false); }} className="px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:bg-red-500/10" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-control-athlete-remove-${player.id}`}>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1070,7 +1093,6 @@ function FormationBoard({
         </div>
       ) : starters.map((player) => {
         const formationPosition = normalizeFormationPosition(player.formationPosition);
-        const expanded = expandedPlayerId === player.id;
         const dragging = draggingPlayerId === player.id;
         return (
           <div
@@ -1086,64 +1108,14 @@ function FormationBoard({
             data-testid={`formation-player-${player.id}`}
           >
             <div className="flex flex-col items-center">
-              <div className="relative">
-                <div className={`relative grid h-8 w-8 place-items-center rounded-full border-2 bg-primary font-display text-[12px] font-bold text-primary-foreground shadow-lg transition sm:h-10 sm:w-10 sm:text-[15px] ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
+              <div className={`relative grid h-8 w-8 place-items-center rounded-full border-2 bg-primary font-display text-[12px] font-bold text-primary-foreground shadow-lg transition sm:h-10 sm:w-10 sm:text-[15px] ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
                 {getPlayerInitials(player.name)}
                 {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-3 w-3 place-items-center rounded-full bg-white text-[6px] font-black text-foreground">C</span>}
-                </div>
-                {showPlayerControls && <button
-                  type="button"
-                  className="absolute -right-7 top-0 grid h-6 w-6 place-items-center rounded-full border border-white/30 bg-[#17221d]/95 text-white transition hover:border-primary hover:text-primary"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSetStarter(player.id, false);
-                    setExpandedPlayerId(null);
-                  }}
-                  aria-label={`Move ${player.name || 'player'} to bench`}
-                  data-testid={`button-bench-player-${player.id}`}
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>}
               </div>
-              {showPlayerControls && <button
-                type="button"
-                className="mt-1 grid h-6 w-8 place-items-center rounded-full border border-white/30 bg-[#17221d]/95 text-white transition hover:border-primary hover:text-primary"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setExpandedPlayerId((current) => current === player.id ? null : player.id);
-                }}
-                aria-label={`${expanded ? 'Hide' : 'Show'} ${player.name || 'player'} number and position`}
-                aria-expanded={expanded}
-                data-testid={`button-toggle-formation-details-${player.id}`}
-              >
-                <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-              </button>}
-              {showPlayerControls && expanded && (
-                <div className="mt-1 w-56 border border-white/20 bg-[#17221d]/95 p-2 text-left text-[10px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid={`formation-details-${player.id}`}>
-                  <div className="grid gap-1.5">
-                    <input value={player.name} onChange={(event) => onChange(player.id, { name: event.target.value })} placeholder="Player name" className="w-full border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Name for ${player.name || 'player'}`} data-testid={`input-board-player-name-${player.id}`} />
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <input value={player.jerseyNumber} onChange={(event) => onChange(player.id, { jerseyNumber: event.target.value })} placeholder="#" inputMode="numeric" className="min-w-0 border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Jersey number for ${player.name || 'player'}`} data-testid={`input-board-player-number-${player.id}`} />
-                      <input value={player.position} onChange={(event) => onChange(player.id, { position: event.target.value })} placeholder="Position" className="min-w-0 border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-board-player-position-${player.id}`} />
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <button type="button" onClick={() => onChange(player.id, { isCaptain: !player.isCaptain })} className={`flex-1 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider ${player.isCaptain ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/70 hover:bg-white/20'}`} aria-pressed={player.isCaptain} data-testid={`button-board-captain-${player.id}`}>
-                      {player.isCaptain ? 'Captain' : 'Make captain'}
-                    </button>
-                    <button type="button" onClick={() => onRemove(player.id)} className="px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider text-red-300 hover:bg-red-400/10" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-board-remove-${player.id}`}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         );
       })}
-      </div>
     </div>
   );
 }
@@ -1176,16 +1148,10 @@ function RosterGraphicPreview({
   draft,
   starters,
   onPositionChange,
-  onChange,
-  onRemove,
-  onSetStarter,
 }: {
   draft: RosterDraft;
   starters: RosterPlayer[];
   onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
-  onChange: (id: string, patch: Partial<RosterPlayer>) => void;
-  onRemove: (id: string) => void;
-  onSetStarter: (id: string, isStarter: boolean) => void;
 }) {
   return (
     <div className="relative overflow-hidden border border-border bg-[#17221d] p-4 shadow-xl clip-angled-sm sm:p-7" data-testid="preview-roster-canvas">
@@ -1210,9 +1176,6 @@ function RosterGraphicPreview({
                 boardStyle={draft.boardStyle}
                 starters={starters}
                 onPositionChange={onPositionChange}
-                onChange={onChange}
-                onRemove={onRemove}
-                onSetStarter={onSetStarter}
               />
           </div>
           <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
