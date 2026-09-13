@@ -28,3 +28,17 @@ mtime_ms = 1789343433249
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/c2959c33-12ea-4b89-a3c4-6b15ca11a6d8/776bfeba-2f61-4d2b-845c-b7d971287ae4"
 storage_version_token = "1789343440082890"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "bvqnaJYB6q7pI4uWWnB8V"
+uri = "file://screenshots/hype-card-lower-third-shifted.jpg"
+type = "image"
+title = "Lower Third Shifted Down"
+description = "Updated Hype Card render with the championship lower third moved lower toward the card bottom."
+logical_id = "d3968f06-e032-4cdf-9231-9e76bf0af692"
+content_hash = "sha256:08b1b9342aaceb02f8b01452af45aaa6b3c5b0813881be0bdb4ded852d3686f0"
+size = 158868
+mtime_ms = 1789343542949
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/d3968f06-e032-4cdf-9231-9e76bf0af692/a5bbf721-f88a-4df2-bec5-c6560d9a386d"
+storage_version_token = "1789343548437276"
+content_type = "image/jpeg"

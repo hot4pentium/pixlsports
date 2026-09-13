@@ -319,13 +319,13 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="#02070e" fill-opacity=".34" stroke="#fff" stroke-opacity=".38" stroke-width="3" stroke-dasharray="14 14"/><text x="500" y="650" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff" opacity=".82">ADD PLAYER MEDIA</text>`
     : '';
   const coachMessage = content.message
-    ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 780, 18, 0.62, 2)}" font-weight="600" letter-spacing="2" fill="#fff" opacity=".72">${content.message}</text>`
+     ? `<text x="500" y="1344" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 780, 18, 0.62, 2)}" font-weight="600" letter-spacing="2" fill="#fff" opacity=".72">${content.message}</text>`
     : '';
   const branding = project.branding
-    ? `<text x="500" y="1352" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
+     ? `<text x="500" y="1376" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
   const nameplate = project.overlay
-    ? `<g transform="translate(0 1000) scale(1 .84)" filter="url(#championshipShadow-${ns})">
+    ? `<g transform="translate(0 1024) scale(1 .84)" filter="url(#championshipShadow-${ns})">
         <g aria-label="Championship lower third wings">
           <path d="M0 112 L70 45 L245 56 L318 129 L278 182 H84 L0 247 Z" fill="url(#championshipDeep-${ns})" stroke="url(#championshipSilver-${ns})" stroke-width="8"/>
           <path d="M1000 112 L930 45 L755 56 L682 129 L722 182 H916 L1000 247 Z" fill="url(#championshipDeep-${ns})" stroke="url(#championshipSilver-${ns})" stroke-width="8"/>
@@ -390,9 +390,9 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
         <text x="${hypeRailCenterX}" y="690" text-anchor="middle" transform="rotate(90 ${hypeRailCenterX} 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
       </g>
       ${nameplate}
-       <text x="500" y="1188" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
-       <text x="500" y="1228" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
-       <text x="500" y="1270" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${recognitionSize}" font-weight="800" fill="#fff">${content.recognition}</text>
+       <text x="500" y="1212" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
+       <text x="500" y="1252" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
+       <text x="500" y="1294" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${recognitionSize}" font-weight="800" fill="#fff">${content.recognition}</text>
       ${coachMessage}
       ${logo}
       ${branding}
