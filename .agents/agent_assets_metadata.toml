@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "qVG7PlvSodTDRk94wNtH4"
+uri = "file://screenshots/hype-card-current.jpg"
+type = "image"
+title = "Current Hype Card Preview"
+description = "A current rendered screenshot from the running app, provided because the embedded Replit Preview panel is disconnected."
+logical_id = "fbbea940-ec2d-492e-9dec-ed7977a8bbf9"
+content_hash = "sha256:1d5d9d78978aac40de1287ed1de0c710b4ada1f7506f09b72f4a2c907490ed83"
+size = 159020
+mtime_ms = 1789343207764
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/fbbea940-ec2d-492e-9dec-ed7977a8bbf9/d629193c-e343-49c1-bb0f-195699372cc5"
+storage_version_token = "1789343213406847"
+content_type = "image/jpeg"
