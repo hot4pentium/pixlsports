@@ -1,5 +1,10 @@
 export type RosterLayout = 'roster' | 'lineup';
 
+export type RosterFormationPosition = {
+  x: number;
+  y: number;
+};
+
 export type RosterPlayer = {
   id: string;
   name: string;
@@ -7,6 +12,7 @@ export type RosterPlayer = {
   position: string;
   isStarter: boolean;
   isCaptain: boolean;
+  formationPosition: RosterFormationPosition;
 };
 
 export type RosterDraft = {
@@ -19,22 +25,33 @@ export type RosterDraft = {
 export const rosterStorageKey = 'leaguematrix-roster-draft';
 
 const defaultPlayers: RosterPlayer[] = [
-  { id: 'roster-player-1', name: 'Maya Chen', jerseyNumber: '07', position: 'MID', isStarter: true, isCaptain: true },
-  { id: 'roster-player-2', name: 'Jordan Ellis', jerseyNumber: '12', position: 'FWD', isStarter: true, isCaptain: false },
-  { id: 'roster-player-3', name: 'Avery Brooks', jerseyNumber: '04', position: 'DEF', isStarter: true, isCaptain: false },
-  { id: 'roster-player-4', name: 'Sam Rivera', jerseyNumber: '01', position: 'GK', isStarter: true, isCaptain: false },
-  { id: 'roster-player-5', name: 'Noah Patel', jerseyNumber: '18', position: 'MID', isStarter: false, isCaptain: false },
-  { id: 'roster-player-6', name: 'Riley Morgan', jerseyNumber: '23', position: 'DEF', isStarter: false, isCaptain: false },
+  { id: 'roster-player-1', name: 'Maya Chen', jerseyNumber: '07', position: 'MID', isStarter: true, isCaptain: true, formationPosition: { x: 28, y: 68 } },
+  { id: 'roster-player-2', name: 'Jordan Ellis', jerseyNumber: '12', position: 'FWD', isStarter: true, isCaptain: false, formationPosition: { x: 72, y: 68 } },
+  { id: 'roster-player-3', name: 'Avery Brooks', jerseyNumber: '04', position: 'DEF', isStarter: true, isCaptain: false, formationPosition: { x: 28, y: 38 } },
+  { id: 'roster-player-4', name: 'Sam Rivera', jerseyNumber: '01', position: 'GK', isStarter: true, isCaptain: false, formationPosition: { x: 72, y: 38 } },
+  { id: 'roster-player-5', name: 'Noah Patel', jerseyNumber: '18', position: 'MID', isStarter: false, isCaptain: false, formationPosition: { x: 32, y: 22 } },
+  { id: 'roster-player-6', name: 'Riley Morgan', jerseyNumber: '23', position: 'DEF', isStarter: false, isCaptain: false, formationPosition: { x: 68, y: 22 } },
 ];
 
 let playerCounter = defaultPlayers.length;
+
+const formationXBounds = { min: 8, max: 92 };
+const formationYBounds = { min: 10, max: 90 };
+const defaultFormationPositions: RosterFormationPosition[] = [
+  { x: 28, y: 68 },
+  { x: 72, y: 68 },
+  { x: 28, y: 38 },
+  { x: 72, y: 38 },
+  { x: 38, y: 22 },
+  { x: 62, y: 22 },
+];
 
 export function getDefaultRoster(): RosterDraft {
   return {
     teamName: 'Eastside Falcons',
     season: 'Fall 2024',
     layout: 'roster',
-    players: defaultPlayers.map((player) => ({ ...player })),
+    players: defaultPlayers.map((player) => ({ ...player, formationPosition: { ...player.formationPosition } })),
   };
 }
 
@@ -47,6 +64,7 @@ export function createBlankRosterPlayer(): RosterPlayer {
     position: '',
     isStarter: false,
     isCaptain: false,
+    formationPosition: { x: 50, y: 50 },
   };
 }
 
@@ -58,11 +76,49 @@ function booleanValue(value: unknown): boolean {
   return value === true;
 }
 
+function numberValue(value: unknown, fallback: number): number {
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function getDefaultFormationPosition(index: number): RosterFormationPosition {
+  const fallback = defaultFormationPositions[index % defaultFormationPositions.length];
+  return { ...fallback };
+}
+
+export function normalizeFormationPosition(
+  value: unknown,
+  fallback: RosterFormationPosition = { x: 50, y: 50 },
+): RosterFormationPosition {
+  const input = typeof value === 'object' && value !== null
+    ? value as Partial<RosterFormationPosition>
+    : {};
+  return {
+    x: clamp(numberValue(input.x, fallback.x), formationXBounds.min, formationXBounds.max),
+    y: clamp(numberValue(input.y, fallback.y), formationYBounds.min, formationYBounds.max),
+  };
+}
+
+export function getPlayerInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '??';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+}
+
 function layoutValue(value: unknown): RosterLayout {
   return value === 'lineup' ? 'lineup' : 'roster';
 }
 
-export function normalizeRosterPlayer(value: unknown, fallbackId: string): RosterPlayer {
+export function normalizeRosterPlayer(
+  value: unknown,
+  fallbackId: string,
+  fallbackPosition: RosterFormationPosition = { x: 50, y: 50 },
+): RosterPlayer {
   const input = typeof value === 'object' && value !== null
     ? value as Partial<RosterPlayer>
     : {};
@@ -73,6 +129,7 @@ export function normalizeRosterPlayer(value: unknown, fallbackId: string): Roste
     position: stringValue(input.position),
     isStarter: booleanValue(input.isStarter),
     isCaptain: booleanValue(input.isCaptain),
+    formationPosition: normalizeFormationPosition(input.formationPosition, fallbackPosition),
   };
 }
 
@@ -85,7 +142,11 @@ export function normalizeRosterDraft(value: unknown): RosterDraft | null {
     season: stringValue(input.season) || 'Fall 2024',
     layout: layoutValue(input.layout),
     players: input.players.map((player, index) => (
-      normalizeRosterPlayer(player, `roster-player-restored-${index + 1}`)
+      normalizeRosterPlayer(
+        player,
+        `roster-player-restored-${index + 1}`,
+        getDefaultFormationPosition(index),
+      )
     )),
   };
 }
