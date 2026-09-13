@@ -1021,6 +1021,7 @@ function FormationBoard({
   const boardRef = useRef<HTMLDivElement>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
+  const [showPlayerControls, setShowPlayerControls] = useState(true);
 
   const updatePositionFromPointer = (event: PointerEvent<HTMLDivElement>, id: string) => {
     const board = boardRef.current;
@@ -1049,6 +1050,19 @@ function FormationBoard({
 
   return (
     <div className="grid grid-cols-[minmax(128px,.38fr)_minmax(0,1fr)] overflow-hidden border border-white/15 bg-[#10271d]" data-testid="formation-board" data-board-style={boardStyle}>
+      <div className="col-span-2 flex items-center justify-between gap-3 border-b border-white/15 bg-[#17221d]/90 px-3 py-2.5 sm:px-4">
+        <span className="text-[9px] font-bold uppercase tracking-[.16em] text-white/45">Formation display</span>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-[9px] font-bold uppercase tracking-[.12em] text-white/70">
+          <input
+            type="checkbox"
+            checked={showPlayerControls}
+            onChange={(event) => setShowPlayerControls(event.target.checked)}
+            className="h-4 w-4 accent-primary"
+            data-testid="checkbox-show-player-controls"
+          />
+          Show player controls
+        </label>
+      </div>
       <div className="min-w-0 border-r border-white/15 bg-[#17221d]/90 p-3 sm:p-4">
         <div className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[.16em] text-primary">
           <span>Athletes</span>
@@ -1113,7 +1127,7 @@ function FormationBoard({
                 {getPlayerInitials(player.name)}
                 {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-3 w-3 place-items-center rounded-full bg-white text-[6px] font-black text-foreground">C</span>}
                 </div>
-                <button
+                {showPlayerControls && <button
                   type="button"
                   className="absolute -right-7 top-0 grid h-6 w-6 place-items-center rounded-full border border-white/30 bg-[#17221d]/95 text-white transition hover:border-primary hover:text-primary"
                   onPointerDown={(event) => event.stopPropagation()}
@@ -1126,9 +1140,9 @@ function FormationBoard({
                   data-testid={`button-bench-player-${player.id}`}
                 >
                   <Minus className="h-3.5 w-3.5" />
-                </button>
+                </button>}
               </div>
-              <button
+              {showPlayerControls && <button
                 type="button"
                 className="mt-1 grid h-6 w-8 place-items-center rounded-full border border-white/30 bg-[#17221d]/95 text-white transition hover:border-primary hover:text-primary"
                 onPointerDown={(event) => event.stopPropagation()}
@@ -1141,8 +1155,8 @@ function FormationBoard({
                 data-testid={`button-toggle-formation-details-${player.id}`}
               >
                 <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-              </button>
-              {expanded && (
+              </button>}
+              {showPlayerControls && expanded && (
                 <div className="mt-1 w-56 border border-white/20 bg-[#17221d]/95 p-2 text-left text-[10px] font-bold uppercase tracking-wider text-white shadow-lg" data-testid={`formation-details-${player.id}`}>
                   <div className="grid gap-1.5">
                     <input value={player.name} onChange={(event) => onChange(player.id, { name: event.target.value })} placeholder="Player name" className="w-full border border-white/15 bg-white/10 px-2 py-1.5 text-[10px] font-semibold text-white placeholder:text-white/40 focus:border-primary focus:outline-none" aria-label={`Name for ${player.name || 'player'}`} data-testid={`input-board-player-name-${player.id}`} />
