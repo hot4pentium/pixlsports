@@ -28,6 +28,19 @@ import { shadcn } from '@clerk/themes';
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { HypeCardEditor } from '@/features/hype-card';
+import {
+  addScheduleEvent,
+  defaultScheduleEvents,
+  getDefaultScheduleEvents,
+  moveScheduleEvent,
+  readScheduleDraft,
+  removeScheduleEvent,
+  saveScheduleDraft,
+  scheduleStorageKey,
+  updateScheduleEvent,
+  type ScheduleEvent,
+  type ScheduleEventType,
+} from '@/features/schedule-draft';
 
 const queryClient = new QueryClient();
 
@@ -91,72 +104,6 @@ const toolData: Record<ToolKind, {
     templateNames: ['Player Spotlight', 'Big Heart', 'Season Standout'],
   },
 };
-
-type ScheduleEventType = 'game' | 'practice' | 'meeting';
-
-type ScheduleEvent = {
-  id: string;
-  type: ScheduleEventType;
-  date: string;
-  time: string;
-  location: string;
-  opponent: string;
-  snacks: string;
-  drinks: string;
-  notes: string;
-};
-
-const scheduleStorageKey = 'leaguematrix-schedule-draft';
-let scheduleEventCounter = 0;
-
-function createScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
-  scheduleEventCounter += 1;
-  return {
-    id: `schedule-event-${scheduleEventCounter}`,
-    type,
-    date: type === 'game' ? '2024-10-12' : '',
-    time: type === 'game' ? '16:30' : '',
-    location: type === 'game' ? 'Central Field' : '',
-    opponent: type === 'game' ? 'Northside' : '',
-    snacks: '',
-    drinks: '',
-    notes: '',
-  };
-}
-
-const defaultScheduleEvents: ScheduleEvent[] = [
-  {
-    ...createScheduleEvent('game'),
-    id: 'schedule-event-default-1',
-    snacks: 'Maya family',
-    drinks: 'Jordan family',
-  },
-  {
-    ...createScheduleEvent('practice'),
-    id: 'schedule-event-default-2',
-    date: '2024-10-13',
-    time: '10:00',
-    location: 'Eastside Field',
-    notes: 'Bring cleats and a water bottle.',
-  },
-];
-
-function readScheduleDraft(): { title: string; teamSeason: string; events: ScheduleEvent[]; template: number } | null {
-  try {
-    const stored = window.localStorage.getItem(scheduleStorageKey);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as Partial<{ title: string; teamSeason: string; events: ScheduleEvent[]; template: number }>;
-    if (!Array.isArray(parsed.events)) return null;
-    return {
-      title: typeof parsed.title === 'string' ? parsed.title : 'WEEKEND RUN',
-      teamSeason: typeof parsed.teamSeason === 'string' ? parsed.teamSeason : 'Eastside Falcons · Fall 2024',
-      events: parsed.events,
-      template: typeof parsed.template === 'number' ? parsed.template : 0,
-    };
-  } catch {
-    return null;
-  }
-}
 
 function BrandMark({ inverse = false }: { inverse?: boolean }) {
   return (
@@ -759,7 +706,7 @@ function ScheduleEditor() {
   const [title, setTitle] = useState(storedDraft?.title ?? 'WEEKEND RUN');
   const [teamSeason, setTeamSeason] = useState(storedDraft?.teamSeason ?? 'Eastside Falcons · Fall 2024');
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
-    storedDraft?.events?.length ? storedDraft.events : defaultScheduleEvents
+    storedDraft ? storedDraft.events : defaultScheduleEvents
   ));
   const [shareUrl, setShareUrl] = useState('');
 
@@ -772,34 +719,27 @@ function ScheduleEditor() {
 
   const updateEvent = (id: string, patch: Partial<ScheduleEvent>) => {
     setSaved(false);
-    setEvents((current) => current.map((event) => event.id === id ? { ...event, ...patch } : event));
+    setEvents((current) => updateScheduleEvent(current, id, patch));
   };
 
   const addEvent = (type: ScheduleEventType) => {
     setSaved(false);
-    setEvents((current) => [...current, createScheduleEvent(type)]);
+    setEvents((current) => addScheduleEvent(current, type));
   };
 
   const removeEvent = (id: string) => {
     setSaved(false);
-    setEvents((current) => current.filter((event) => event.id !== id));
+    setEvents((current) => removeScheduleEvent(current, id));
   };
 
   const moveEvent = (id: string, direction: -1 | 1) => {
     setSaved(false);
-    setEvents((current) => {
-      const index = current.findIndex((event) => event.id === id);
-      const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const reordered = [...current];
-      [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
-      return reordered;
-    });
+    setEvents((current) => moveScheduleEvent(current, id, direction));
   };
 
   const saveProject = () => {
     window.localStorage.setItem('leaguematrix-project', 'true');
-    window.localStorage.setItem(scheduleStorageKey, JSON.stringify({ title, teamSeason, events, template: selectedTemplate }));
+    saveScheduleDraft(window.localStorage, { title, teamSeason, events, template: selectedTemplate });
     setSaved(true);
     setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
   };
@@ -862,7 +802,7 @@ function ScheduleEditor() {
     setSaved(false);
     setTitle('WEEKEND RUN');
     setTeamSeason('Eastside Falcons · Fall 2024');
-    setEvents(defaultScheduleEvents.map((event) => ({ ...event })));
+    setEvents(getDefaultScheduleEvents());
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
 
