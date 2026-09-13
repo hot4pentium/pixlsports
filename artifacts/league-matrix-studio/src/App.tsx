@@ -31,7 +31,7 @@ import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { HypeCardEditor } from '@/features/hype-card';
 import {
-  addScheduleEvent,
+  createBlankScheduleEvent,
   defaultScheduleEvents,
   getDefaultScheduleEvents,
   moveScheduleEvent,
@@ -716,6 +716,7 @@ function ScheduleEditor() {
   const [selectedEventId, setSelectedEventId] = useState(
     () => storedDraft?.events[0]?.id ?? defaultScheduleEvents[0]?.id ?? '',
   );
+  const [eventForm, setEventForm] = useState<ScheduleEvent | null>(null);
   const [shareToken, setShareToken] = useState(storedDraft?.shareToken ?? '');
   const [shareUrl, setShareUrl] = useState(() => (
     storedDraft?.shareToken
@@ -736,7 +737,6 @@ function ScheduleEditor() {
       .filter(({ event }) => getScheduleWeekKey(event.date) === selectedWeek.key)
     : [];
   const selectedEventIndex = events.findIndex((event) => event.id === selectedEventId);
-  const selectedEvent = selectedEventIndex >= 0 ? events[selectedEventIndex] : undefined;
 
   useEffect(() => {
     if (events.length === 0) {
@@ -767,16 +767,37 @@ function ScheduleEditor() {
 
   const updateEvent = (id: string, patch: Partial<ScheduleEvent>) => {
     setSaved(false);
-    setEvents((current) => updateScheduleEvent(current, id, patch));
+    setEventForm((current) => (
+      current?.id === id
+        ? updateScheduleEvent([current], id, patch)[0]
+        : current
+    ));
   };
 
-  const addEvent = (type: ScheduleEventType) => {
+  const openNewEventForm = () => {
     setSaved(false);
-    const nextEvents = addScheduleEvent(events, type);
+    setSelectedEventId('');
+    setEventForm(createBlankScheduleEvent('game'));
+  };
+
+  const openEventForm = (event: ScheduleEvent) => {
+    setSelectedEventId(event.id);
+    setEventForm({ ...event });
+  };
+
+  const saveEventForm = () => {
+    if (!eventForm) return;
+
+    const isNewEvent = !events.some((event) => event.id === eventForm.id);
+    const nextEvents = isNewEvent
+      ? [...events, eventForm]
+      : updateScheduleEvent(events, eventForm.id, eventForm);
     setEvents(nextEvents);
-    const nextEvent = nextEvents[nextEvents.length - 1];
-    setSelectedEventId(nextEvent?.id ?? '');
-    setSelectedWeekKey(getScheduleWeekKey(nextEvent?.date ?? ''));
+    setSelectedEventId(eventForm.id);
+    setSelectedWeekKey(getScheduleWeekKey(eventForm.date));
+    setEventForm(null);
+    setSaved(false);
+    setNoticeFor(isNewEvent ? 'EVENT ADDED TO SCHEDULE' : 'EVENT CHANGES SAVED');
   };
 
   const removeEvent = (id: string) => {
@@ -784,6 +805,7 @@ function ScheduleEditor() {
     const removedIndex = events.findIndex((event) => event.id === id);
     const nextEvents = removeScheduleEvent(events, id);
     setEvents(nextEvents);
+    setEventForm(null);
     if (id === selectedEventId) {
       setSelectedEventId(nextEvents[Math.min(removedIndex, nextEvents.length - 1)]?.id ?? '');
     }
@@ -898,6 +920,7 @@ function ScheduleEditor() {
     setEvents(resetEvents);
     setSelectedEventId(resetEvents[0]?.id ?? '');
     setSelectedWeekKey(getScheduleWeekKey(resetEvents[0]?.date ?? ''));
+    setEventForm(null);
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
 
@@ -956,7 +979,7 @@ function ScheduleEditor() {
                 <div className="flex min-w-max gap-2">
                   <button
                     type="button"
-                    onClick={() => addEvent('game')}
+                    onClick={openNewEventForm}
                     className="grid min-h-[62px] min-w-[58px] place-items-center border border-dashed border-primary bg-primary/5 text-primary transition-colors hover:bg-primary/10 clip-angled-sm"
                     aria-label="Add new schedule event"
                     title="Add new schedule event"
@@ -970,7 +993,9 @@ function ScheduleEditor() {
                       type="button"
                       onClick={() => {
                         setSelectedWeekKey(week.key);
-                        setSelectedEventId(week.events[0]?.id ?? '');
+                        const firstEvent = week.events[0];
+                        setSelectedEventId(firstEvent?.id ?? '');
+                        if (firstEvent) setEventForm({ ...firstEvent });
                       }}
                       aria-pressed={week.key === selectedWeek?.key}
                       className={`min-w-[138px] border px-3 py-2.5 text-left transition-colors clip-angled-sm ${week.key === selectedWeek?.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
@@ -989,7 +1014,7 @@ function ScheduleEditor() {
                     <button
                       key={event.id}
                       type="button"
-                      onClick={() => setSelectedEventId(event.id)}
+                      onClick={() => openEventForm(event)}
                       aria-pressed={event.id === selectedEventId}
                       className={`flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors clip-angled-sm ${event.id === selectedEventId ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
                       data-testid={`button-select-schedule-event-${index}`}
@@ -1004,34 +1029,23 @@ function ScheduleEditor() {
                 </div>
               </div>
 
-              {selectedEvent ? (
+              {eventForm ? (
                 <div className="mt-4">
                   <ScheduleEventCard
-                    event={selectedEvent}
-                    index={selectedEventIndex}
+                    event={eventForm}
+                    index={selectedEventIndex >= 0 ? selectedEventIndex : events.length}
                     count={events.length}
                     onChange={updateEvent}
                     onRemove={removeEvent}
                     onMove={moveEvent}
+                    onSave={saveEventForm}
+                    isNew={!events.some((event) => event.id === eventForm.id)}
+                    onCancel={() => setEventForm(null)}
                   />
                 </div>
               ) : (
-                <p className="mt-4 border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground">No schedule entries yet. Add one below.</p>
+                <p className="mt-4 border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground">Select an entry to edit it, or use + to add a new event.</p>
               )}
-
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {(['game', 'practice', 'meeting'] as ScheduleEventType[]).map((type) => (
-                  <button
-                    type="button"
-                    key={type}
-                    onClick={() => addEvent(type)}
-                    className="inline-flex min-h-12 items-center justify-center gap-1 border border-border bg-background px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm"
-                    data-testid={`button-add-${type}`}
-                  >
-                    <Plus className="h-3.5 w-3.5" /> {type}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="relative z-10 my-7 h-px bg-border" />
