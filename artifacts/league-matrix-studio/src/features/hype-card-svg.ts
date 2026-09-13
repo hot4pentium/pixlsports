@@ -325,16 +325,39 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<text x="500" y="1352" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
   const nameplate = project.overlay
-    ? `<g filter="url(#stoneShadow-${ns})">
-        <path d="M-42 1074 L46 1038 L118 1053 L882 1048 L954 1028 L1042 1065 L1020 1283 L944 1312 L868 1297 L128 1302 L48 1321 L-34 1288 Z" fill="${palette.ink}" stroke="${palette.primary}" stroke-width="5"/>
-        <path d="M-24 1092 L84 1060 L142 1072 L864 1067 L930 1048 L1024 1082 L1005 1260 L922 1289 L854 1278 L145 1284 L72 1300 L-18 1269 Z" fill="url(#stoneSurface-${ns})" stroke="url(#stoneEdge-${ns})" stroke-width="7" filter="url(#stoneTexture-${ns})"/>
-        <path d="M0 1098 L76 1074 L70 1287 L0 1266 ZM1000 1090 L932 1064 L926 1282 L1000 1258 Z" fill="#020509" opacity=".88"/>
-        <path d="M70 1080 L145 1092 L858 1087 L931 1068" fill="none" stroke="#fff" stroke-width="3" stroke-opacity=".2"/>
-        <path d="M73 1279 L145 1263 L856 1258 L927 1271" fill="none" stroke="#000" stroke-width="8" stroke-opacity=".52"/>
-        <path d="M104 1114 L164 1096 L232 1101M814 1095 L862 1114 L925 1091M91 1236 L145 1218 L184 1231M845 1228 L892 1208 L939 1224" fill="none" stroke="${palette.accent}" stroke-width="4" stroke-linecap="round" opacity=".72"/>
-        <path d="M163 1098 L182 1130 L166 1150 L188 1172M858 1110 L836 1142 L852 1167M136 1268 L154 1240 L144 1218M889 1266 L870 1245 L882 1222" fill="none" stroke="#05070a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".88"/>
-        <path d="M165 1098 L181 1129 L166 1149M858 1110 L837 1142 L851 1166M136 1268 L153 1241" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".2"/>
-        <path d="M116 1182 H884" stroke="${palette.primary}" stroke-width="3" stroke-opacity=".68"/>
+    ? `<g transform="translate(0 1000) scale(1 .84)" filter="url(#championshipShadow-${ns})">
+        <g aria-label="Championship lower third wings">
+          <path d="M0 112 L70 45 L245 56 L318 129 L278 182 H84 L0 247 Z" fill="url(#championshipDeep-${ns})" stroke="url(#championshipSilver-${ns})" stroke-width="8"/>
+          <path d="M1000 112 L930 45 L755 56 L682 129 L722 182 H916 L1000 247 Z" fill="url(#championshipDeep-${ns})" stroke="url(#championshipSilver-${ns})" stroke-width="8"/>
+          <path d="M0 126 L75 59 L238 70 L299 130 L270 166 H92 L0 226 Z" fill="url(#championshipFace-${ns})" stroke="${palette.primary}" stroke-width="5"/>
+          <path d="M1000 126 L925 59 L762 70 L701 130 L730 166 H908 L1000 226 Z" fill="url(#championshipFace-${ns})" stroke="${palette.primary}" stroke-width="5"/>
+          <path d="M0 151 L53 105 L83 132 L36 181 L83 212 L0 267 Z" fill="${palette.ink}" stroke="${palette.secondary}" stroke-width="4"/>
+          <path d="M1000 151 L947 105 L917 132 L964 181 L917 212 L1000 267 Z" fill="${palette.ink}" stroke="${palette.secondary}" stroke-width="4"/>
+        </g>
+        <g aria-label="Championship crest">
+          <circle cx="500" cy="176" r="142" fill="#050b12" stroke="url(#championshipSilver-${ns})" stroke-width="9"/>
+          <circle cx="500" cy="176" r="129" fill="none" stroke="${palette.secondary}" stroke-width="7"/>
+          <circle cx="500" cy="176" r="119" fill="url(#championshipCrest-${ns})" stroke="#768895" stroke-width="3"/>
+          <circle cx="500" cy="176" r="109" fill="url(#championshipCarbon-${ns})" opacity=".72"/>
+          <path d="M401 138 Q500 69 599 138" fill="none" stroke="#fff" stroke-width="4" opacity=".18"/>
+          <path d="M411 235 Q500 282 589 235" fill="none" stroke="#000" stroke-width="7" opacity=".45"/>
+        </g>
+        <g aria-label="Championship nameplate">
+          <path d="M73 139 H927 L962 174 V267 L928 303 H72 L38 268 V174 Z" fill="#020811" stroke="#05080d" stroke-width="12"/>
+          <path d="M79 145 H921 L950 176 V262 L921 292 H79 L50 262 V178 Z" fill="url(#championshipSilver-${ns})" stroke="#263340" stroke-width="4"/>
+          <path d="M92 158 H908 L936 184 V255 L908 279 H92 L64 254 V184 Z" fill="url(#championshipFace-${ns})" stroke="#05101c" stroke-width="6"/>
+          <path d="M104 169 H896 L923 191 V247 L896 268 H104 L77 247 V191 Z" fill="url(#championshipDeep-${ns})" stroke="#71818c" stroke-width="3"/>
+          <path d="M106 171 H894 L918 191" fill="none" stroke="#fff" stroke-width="3" opacity=".17"/>
+          <rect x="104" y="169" width="792" height="99" fill="url(#championshipCarbon-${ns})" opacity=".55"/>
+          <path d="M83 283 H917" stroke="#07101b" stroke-width="14"/>
+          <path d="M83 281 H493" stroke="${palette.primary}" stroke-width="6"/>
+          <path d="M507 281 H917" stroke="${palette.secondary}" stroke-width="6"/>
+        </g>
+        <g aria-label="Championship lower extension">
+          <path d="M203 299 L250 284 H750 L797 299 L757 338 H243 Z" fill="url(#championshipSilver-${ns})" stroke="#17212a" stroke-width="4"/>
+          <path d="M225 302 L260 292 H740 L775 302 L748 328 H252 Z" fill="url(#championshipDeep-${ns})" stroke="${palette.primary}" stroke-width="3"/>
+          <path d="M267 318 H733" stroke="#fff" stroke-width="2" opacity=".12"/>
+        </g>
       </g>`
     : '';
   const mediaGlow = project.mediaType || project.photo
@@ -345,10 +368,12 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
-     <linearGradient id="stoneSurface-${ns}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3c4248"/><stop offset="24%" stop-color="#181d22"/><stop offset="58%" stop-color="#292f34"/><stop offset="78%" stop-color="#101419"/><stop offset="100%" stop-color="#343a40"/></linearGradient>
-     <linearGradient id="stoneEdge-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8e969b"/><stop offset="30%" stop-color="#343a3f"/><stop offset="72%" stop-color="#05080a"/><stop offset="100%" stop-color="${palette.primary}"/></linearGradient>
-     <filter id="stoneTexture-${ns}" x="-8%" y="-15%" width="116%" height="130%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".018 .12" numOctaves="3" seed="17" result="rockNoise"/><feColorMatrix in="rockNoise" type="saturate" values="0" result="grayNoise"/><feBlend in="SourceGraphic" in2="grayNoise" mode="soft-light" result="texturedRock"/><feDisplacementMap in="texturedRock" in2="rockNoise" scale="3" xChannelSelector="R" yChannelSelector="G"/></filter>
-     <filter id="stoneShadow-${ns}" x="-15%" y="-20%" width="130%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity=".9"/></filter>
+     <linearGradient id="championshipFace-${ns}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.secondary}"/><stop offset=".42" stop-color="#07182b"/><stop offset=".72" stop-color="${palette.ink}"/><stop offset="1" stop-color="#04101d"/></linearGradient>
+     <linearGradient id="championshipDeep-${ns}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#04111f"/><stop offset=".5" stop-color="${palette.ink}"/><stop offset="1" stop-color="#03101c"/></linearGradient>
+     <linearGradient id="championshipSilver-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0f4f5"/><stop offset=".18" stop-color="#8798a4"/><stop offset=".5" stop-color="#d9e0e2"/><stop offset=".72" stop-color="#596976"/><stop offset="1" stop-color="#c5cfd3"/></linearGradient>
+     <radialGradient id="championshipCrest-${ns}" cx="38%" cy="30%" r="72%"><stop offset="0" stop-color="#43566a"/><stop offset=".3" stop-color="#172a40"/><stop offset=".68" stop-color="#071827"/><stop offset="1" stop-color="#020911"/></radialGradient>
+     <pattern id="championshipCarbon-${ns}" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 0 L9 9 L0 18 M9 0 L18 9 L9 18" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="2"/></pattern>
+     <filter id="championshipShadow-${ns}" x="-15%" y="-25%" width="130%" height="155%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity=".9"/></filter>
     <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
     <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
