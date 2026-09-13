@@ -124,6 +124,36 @@ export function moveRosterPlayer(players: RosterPlayer[], id: string, direction:
   return reordered;
 }
 
+export function moveRosterPlayerWithinGroup(
+  players: RosterPlayer[],
+  id: string,
+  direction: -1 | 1,
+): RosterPlayer[] {
+  const player = players.find((candidate) => candidate.id === id);
+  if (!player) return players;
+
+  const groupIndexes = players
+    .map((candidate, index) => candidate.isStarter === player.isStarter ? index : -1)
+    .filter((index) => index >= 0);
+  const groupIndex = groupIndexes.findIndex((index) => players[index].id === id);
+  const nextGroupIndex = groupIndex + direction;
+  if (groupIndex < 0 || nextGroupIndex < 0 || nextGroupIndex >= groupIndexes.length) return players;
+
+  const reordered = [...players];
+  const currentIndex = groupIndexes[groupIndex];
+  const nextIndex = groupIndexes[nextGroupIndex];
+  [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+  return reordered;
+}
+
+export function getStarterPlayers(players: RosterPlayer[]): RosterPlayer[] {
+  return players.filter((player) => player.isStarter);
+}
+
+export function getBenchPlayers(players: RosterPlayer[]): RosterPlayer[] {
+  return players.filter((player) => !player.isStarter);
+}
+
 export function filterRosterPlayers(draft: Pick<RosterDraft, 'layout' | 'players'>): RosterPlayer[] {
-  return draft.layout === 'lineup' ? draft.players.filter((player) => player.isStarter) : draft.players;
+  return getStarterPlayers(draft.players);
 }

@@ -79,7 +79,7 @@ test('starter and bench groups preserve player records and reorder independently
   );
 });
 
-test('lineup layout filters to starters while roster layout keeps every player', () => {
+test('both roster layouts filter the main canvas to starters', () => {
   assert.deepEqual(filterRosterPlayers({ layout: 'lineup', players }).map((player) => player.id), ['one']);
-  assert.deepEqual(filterRosterPlayers({ layout: 'roster', players }).map((player) => player.id), ['one', 'two']);
+  assert.deepEqual(filterRosterPlayers({ layout: 'roster', players }).map((player) => player.id), ['one']);
 });

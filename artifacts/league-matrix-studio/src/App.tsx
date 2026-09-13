@@ -47,9 +47,10 @@ import {
 } from '@/features/schedule-draft';
 import {
   createBlankRosterPlayer,
-  filterRosterPlayers,
+  getBenchPlayers,
   getDefaultRoster,
-  moveRosterPlayer,
+  getStarterPlayers,
+  moveRosterPlayerWithinGroup,
   readRosterDraft,
   removeRosterPlayer,
   saveRosterDraft,
@@ -730,11 +731,12 @@ function escapeRosterSvgText(value: string) {
 }
 
 function createRosterSvg(draft: RosterDraft) {
-  const players = filterRosterPlayers(draft);
+  const starters = getStarterPlayers(draft.players);
+  const bench = getBenchPlayers(draft.players);
   const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
-  const rows = players.length === 0
-    ? `<text x="540" y="690" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">ADD PLAYERS TO BUILD THIS BOARD</text>`
-    : players.map((player, index) => {
+  const starterCards = starters.length === 0
+    ? `<text x="540" y="470" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
+    : starters.map((player, index) => {
       const x = index % 2 === 0 ? 72 : 556;
       const y = 380 + Math.floor(index / 2) * 142;
       const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
@@ -748,18 +750,44 @@ function createRosterSvg(draft: RosterDraft) {
         <text x="${x + 116}" y="${y + 78}" fill="#6a766f" font-family="Outfit, sans-serif" font-size="17" font-weight="700" letter-spacing="2">${position}${player.isCaptain ? '  ·  CAPTAIN' : ''}</text>
       `;
     }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
-    <rect width="1080" height="1350" fill="#17221d"/>
-    <path d="M0 0h1080v1350H0z" fill="url(#grid)" opacity=".25"/>
+  const starterRows = Math.max(1, Math.ceil(starters.length / 2));
+  const benchLabelY = 380 + starterRows * 142 + 28;
+  const benchCardsStartY = benchLabelY + 34;
+  const benchCards = bench.length === 0
+    ? `<text x="72" y="${benchCardsStartY + 28}" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="22" font-weight="600">BENCH IS EMPTY — PROMOTE OR ADD A PLAYER</text>`
+    : bench.map((player, index) => {
+      const x = 72 + (index % 3) * 324;
+      const y = benchCardsStartY + Math.floor(index / 3) * 86;
+      const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
+      const name = escapeRosterSvgText(rosterText(player.name, 'NAME TBD', 18));
+      const position = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 12));
+      return `
+        <rect x="${x}" y="${y}" width="296" height="68" fill="#293832" stroke="#53645b" stroke-width="2"/>
+        <rect x="${x}" y="${y}" width="60" height="68" fill="#b9f34a"/>
+        <text x="${x + 30}" y="${y + 43}" text-anchor="middle" fill="#17221d" font-family="Oswald, sans-serif" font-size="28" font-weight="700">${number}</text>
+        <text x="${x + 76}" y="${y + 29}" fill="#f4f6f0" font-family="Outfit, sans-serif" font-size="17" font-weight="800">${name}</text>
+        <text x="${x + 76}" y="${y + 51}" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">${position}</text>
+      `;
+    }).join('');
+  const benchRows = Math.max(1, Math.ceil(bench.length / 3));
+  const contentBottom = benchCardsStartY + benchRows * 86;
+  const height = Math.max(1350, contentBottom + 130);
+  const footerY = height - 66;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="${height}" viewBox="0 0 1080 ${height}">
+    <rect width="1080" height="${height}" fill="#17221d"/>
+    <path d="M0 0h1080v${height}H0z" fill="url(#grid)" opacity=".25"/>
     <defs><pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#b9f34a" stroke-opacity=".16"/></pattern></defs>
     <circle cx="930" cy="150" r="240" fill="#b9f34a" opacity=".12"/>
     <text x="72" y="95" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="19" font-weight="800" letter-spacing="4">LEAGUEMATRIX  /  COACH BOARD</text>
     <text x="72" y="218" fill="#f4f6f0" font-family="Oswald, sans-serif" font-size="96" font-weight="700">${escapeSvgText(title)}</text>
     <text x="76" y="270" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="26" font-weight="600">${escapeRosterSvgText(rosterText(draft.teamName, 'YOUR TEAM', 34))}  ·  ${escapeRosterSvgText(rosterText(draft.season, 'SEASON', 22))}</text>
     <rect x="72" y="316" width="936" height="3" fill="#b9f34a"/>
-    ${rows}
-    <text x="72" y="1284" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${players.length} ${draft.layout === 'lineup' ? 'STARTERS' : 'PLAYERS'}  /  LOCAL DRAFT</text>
-    <text x="1008" y="1284" text-anchor="end" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="18" font-weight="600">SHARE READY</text>
+    <text x="72" y="356" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">STARTERS  /  ${starters.length}</text>
+    ${starterCards}
+    <text x="72" y="${benchLabelY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">BENCH  /  ${bench.length}</text>
+    ${benchCards}
+    <text x="72" y="${footerY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${starters.length} STARTERS  ·  ${bench.length} BENCH  /  LOCAL DRAFT</text>
+    <text x="1008" y="${footerY}" text-anchor="end" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="18" font-weight="600">SHARE READY</text>
   </svg>`;
 }
 
@@ -769,8 +797,8 @@ function RosterEditor() {
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(Boolean(storedDraft));
 
-  const visiblePlayers = filterRosterPlayers(draft);
-  const starterCount = draft.players.filter((player) => player.isStarter).length;
+  const starters = getStarterPlayers(draft.players);
+  const bench = getBenchPlayers(draft.players);
   const updateDraft = (patch: Partial<RosterDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
     setSaved(false);
@@ -835,7 +863,7 @@ function RosterEditor() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Live board</p>
-                <p className="mt-1 text-sm font-medium text-muted-foreground">{visiblePlayers.length} shown · {starterCount} starters marked</p>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">{draft.players.length} players · {starters.length} starters · {bench.length} bench</p>
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => updateDraft({ layout: 'roster' })} className={`px-3 py-2 text-xs font-bold uppercase tracking-widest clip-angled-sm ${draft.layout === 'roster' ? 'bg-foreground text-background' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-layout-roster">
@@ -846,9 +874,9 @@ function RosterEditor() {
                 </button>
               </div>
             </div>
-            <RosterGraphicPreview draft={draft} players={visiblePlayers} />
+            <RosterGraphicPreview draft={draft} starters={starters} bench={bench} />
             <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Showing starters only' : 'Showing every player'}</span>
+              <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Game-day starters with bench listed' : 'Starters on canvas · bench listed below'}</span>
               <span>SVG export · no photos</span>
             </div>
           </section>
@@ -878,24 +906,27 @@ function RosterEditor() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-3">
-              {draft.players.length === 0 ? (
-                <div className="border-2 border-dashed border-border bg-background p-8 text-center clip-angled-sm">
-                  <UserRound className="mx-auto h-8 w-8 text-muted-foreground" />
-                  <p className="mt-3 font-display text-2xl text-muted-foreground">EMPTY BOARD</p>
-                  <p className="mt-1 text-sm font-medium text-muted-foreground">Add the first player to get moving.</p>
-                </div>
-              ) : draft.players.map((player, index) => (
-                <RosterPlayerRow
-                  key={player.id}
-                  player={player}
-                  index={index}
-                  total={draft.players.length}
-                  onChange={(patch) => updatePlayer(player.id, patch)}
-                  onMove={(direction) => { setDraft((current) => ({ ...current, players: moveRosterPlayer(current.players, player.id, direction) })); setSaved(false); }}
-                  onRemove={() => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, player.id) })); setSaved(false); }}
-                />
-              ))}
+            <div className="mt-4 space-y-6">
+              <RosterPlayerGroup
+                label="Starters"
+                description="Players shown on the main canvas."
+                emptyMessage="No starters yet. Promote a bench player to build the board."
+                players={starters}
+                onChange={updatePlayer}
+                onMove={(id, direction) => { setDraft((current) => ({ ...current, players: moveRosterPlayerWithinGroup(current.players, id, direction) })); setSaved(false); }}
+                onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
+                onSetStarter={(id) => updatePlayer(id, { isStarter: false })}
+              />
+              <RosterPlayerGroup
+                label="Bench"
+                description="Non-starters stay ready here."
+                emptyMessage="Bench is empty. Add a player or move a starter here."
+                players={bench}
+                onChange={updatePlayer}
+                onMove={(id, direction) => { setDraft((current) => ({ ...current, players: moveRosterPlayerWithinGroup(current.players, id, direction) })); setSaved(false); }}
+                onRemove={(id) => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, id) })); setSaved(false); }}
+                onSetStarter={(id) => updatePlayer(id, { isStarter: true })}
+              />
             </div>
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -917,6 +948,56 @@ function RosterEditor() {
   );
 }
 
+function RosterPlayerGroup({
+  label,
+  description,
+  emptyMessage,
+  players,
+  onChange,
+  onMove,
+  onRemove,
+  onSetStarter,
+}: {
+  label: string;
+  description: string;
+  emptyMessage: string;
+  players: RosterPlayer[];
+  onChange: (id: string, patch: Partial<RosterPlayer>) => void;
+  onMove: (id: string, direction: -1 | 1) => void;
+  onRemove: (id: string) => void;
+  onSetStarter: (id: string) => void;
+}) {
+  return (
+    <section className="border-t border-border pt-5 first:border-t-0 first:pt-0" data-testid={`roster-group-${label.toLowerCase()}`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-foreground">{label} <span className="text-primary">/ {players.length}</span></p>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="mt-3 space-y-3">
+        {players.length === 0 ? (
+          <div className="border-2 border-dashed border-border bg-background p-5 text-center clip-angled-sm">
+            <UserRound className="mx-auto h-7 w-7 text-muted-foreground" />
+            <p className="mt-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">{emptyMessage}</p>
+          </div>
+        ) : players.map((player, index) => (
+          <RosterPlayerRow
+            key={player.id}
+            player={player}
+            index={index}
+            total={players.length}
+            onChange={(patch) => onChange(player.id, patch)}
+            onMove={(direction) => onMove(player.id, direction)}
+            onRemove={() => onRemove(player.id)}
+            onSetStarter={() => onSetStarter(player.id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RosterPlayerRow({
   player,
   index,
@@ -924,6 +1005,7 @@ function RosterPlayerRow({
   onChange,
   onMove,
   onRemove,
+  onSetStarter,
 }: {
   player: RosterPlayer;
   index: number;
@@ -931,6 +1013,7 @@ function RosterPlayerRow({
   onChange: (patch: Partial<RosterPlayer>) => void;
   onMove: (direction: -1 | 1) => void;
   onRemove: () => void;
+  onSetStarter: () => void;
 }) {
   return (
     <div className="border border-border bg-background p-3 clip-angled-sm" data-testid={`row-roster-player-${player.id}`}>
@@ -945,13 +1028,13 @@ function RosterPlayerRow({
           <input type="text" value={player.position} onChange={(event) => onChange({ position: event.target.value })} placeholder="Position" className="col-span-2 border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm sm:col-span-1" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-player-position-${player.id}`} />
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <button type="button" onClick={() => onChange({ isStarter: !player.isStarter })} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isStarter ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`} aria-pressed={player.isStarter} data-testid={`button-toggle-starter-${player.id}`}>
-            <Check className="h-3 w-3" /> Starter
+          <button type="button" onClick={onSetStarter} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isStarter ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground'}`} data-testid={`${player.isStarter ? 'button-move-to-bench' : 'button-make-starter'}-${player.id}`}>
+            {player.isStarter ? <ChevronDown className="h-3 w-3" /> : <Check className="h-3 w-3" />} {player.isStarter ? 'Move to bench' : 'Make starter'}
           </button>
           <button type="button" onClick={() => onChange({ isCaptain: !player.isCaptain })} className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider clip-angled-sm ${player.isCaptain ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`} aria-pressed={player.isCaptain} data-testid={`button-toggle-captain-${player.id}`}>
             <Star className="h-3 w-3" /> Captain
           </button>
-          <button type="button" onClick={onRemove} className="mt-1 inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 clip-angled-sm" aria-label={`Remove ${player.name || 'player'}`} data-testid={`button-remove-player-${player.id}`}>
+          <button type="button" onClick={onRemove} className="mt-1 inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 clip-angled-sm" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-remove-player-${player.id}`}>
             <Trash2 className="h-3 w-3" /> Remove
           </button>
         </div>
@@ -960,7 +1043,7 @@ function RosterPlayerRow({
   );
 }
 
-function RosterGraphicPreview({ draft, players }: { draft: RosterDraft; players: RosterPlayer[] }) {
+function RosterGraphicPreview({ draft, starters, bench }: { draft: RosterDraft; starters: RosterPlayer[]; bench: RosterPlayer[] }) {
   return (
     <div className="relative overflow-hidden border border-border bg-[#17221d] p-4 shadow-xl clip-angled-sm sm:p-7" data-testid="preview-roster-canvas">
       <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
@@ -975,23 +1058,50 @@ function RosterGraphicPreview({ draft, players }: { draft: RosterDraft; players:
             <p className="font-display text-[clamp(3rem,8vw,6rem)] leading-[.82] tracking-tight">{draft.layout === 'lineup' ? 'GAME DAY' : 'TEAM ROSTER'}</p>
             <div className="mt-5 h-1 w-16 bg-primary" />
           </div>
-          <div className="mt-8 grid flex-1 content-start gap-3 sm:grid-cols-2">
-            {players.length === 0 ? (
-              <div className="col-span-full flex min-h-44 items-center justify-center border border-dashed border-white/20 px-6 text-center text-sm font-bold uppercase tracking-widest text-white/50" data-testid="empty-roster-preview">
-                {draft.layout === 'lineup' ? 'Mark starters to set the lineup' : 'Add players to fill the board'}
+          <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
+              <span>Starters</span>
+              <span>{starters.length}</span>
+            </div>
+            <div className="mt-3 grid content-start gap-3 sm:grid-cols-2">
+              {starters.length === 0 ? (
+                <div className="col-span-full flex min-h-32 items-center justify-center border border-dashed border-white/20 px-6 text-center text-xs font-bold uppercase tracking-widest text-white/50" data-testid="empty-roster-preview">
+                  Mark a bench player as a starter
+                </div>
+              ) : starters.map((player) => (
+                <div key={player.id} className="flex min-w-0 items-center gap-3 border border-white/10 bg-white/[.07] p-3" data-testid={`card-preview-player-${player.id}`}>
+                  <span className="grid h-11 w-11 shrink-0 place-items-center bg-primary font-display text-2xl text-primary-foreground">{rosterText(player.jerseyNumber, '—', 4)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold uppercase tracking-wide" title={player.name || 'Name TBD'}>{rosterText(player.name, 'NAME TBD', 22)}</span>
+                    <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[.14em] text-white/50">{rosterText(player.position, 'POSITION TBD', 15)}{player.isCaptain ? ' · CAPTAIN' : ''}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 border-t border-white/10 pt-4">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
+                <span>Bench</span>
+                <span>{bench.length}</span>
               </div>
-            ) : players.map((player) => (
-              <div key={player.id} className="flex min-w-0 items-center gap-3 border border-white/10 bg-white/[.07] p-3" data-testid={`card-preview-player-${player.id}`}>
-                <span className="grid h-11 w-11 shrink-0 place-items-center bg-primary font-display text-2xl text-primary-foreground">{rosterText(player.jerseyNumber, '—', 4)}</span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold uppercase tracking-wide" title={player.name || 'Name TBD'}>{rosterText(player.name, 'NAME TBD', 22)}</span>
-                  <span className="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[.14em] text-white/50">{rosterText(player.position, 'POSITION TBD', 15)}{player.isCaptain ? ' · CAPTAIN' : ''}</span>
-                </span>
-              </div>
-            ))}
+              {bench.length === 0 ? (
+                <p className="mt-3 text-xs font-bold uppercase tracking-widest text-white/40" data-testid="empty-bench-preview">Bench is empty</p>
+              ) : (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {bench.map((player) => (
+                    <div key={player.id} className="flex min-w-0 items-center gap-2 border border-white/10 bg-white/[.04] p-2" data-testid={`card-preview-bench-${player.id}`}>
+                      <span className="grid h-8 w-8 shrink-0 place-items-center bg-white/15 font-display text-lg text-white">{rosterText(player.jerseyNumber, '—', 4)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 20)}</span>
+                        <span className="block truncate text-[9px] font-bold uppercase tracking-[.12em] text-white/40">{rosterText(player.position, 'POSITION TBD', 15)}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
-            <span>{players.length} {draft.layout === 'lineup' ? 'starters' : 'players'}</span>
+            <span>{starters.length} starters · {bench.length} bench</span>
             <span className="text-primary">LeagueMatrix</span>
           </div>
         </div>
