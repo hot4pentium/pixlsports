@@ -8,11 +8,12 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check,
-  ChevronDown, CircleHelp, FileImage, FolderOpen, Grid2X2,
+  ChevronDown, ChevronUp, CircleHelp, Clock3, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion,
-  Palette, Plus, RotateCcw, Save, ShieldCheck, Sparkles,
+  MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, ShieldCheck, Sparkles,
   SquarePen, Trophy, X, Zap, Maximize, Activity
 } from 'lucide-react';
+import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, Router as WouterRouter, Redirect } from 'wouter';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
@@ -84,6 +85,72 @@ const toolData: Record<ToolKind, {
     templateNames: ['Player Spotlight', 'Big Heart', 'Season Standout'],
   },
 };
+
+type ScheduleEventType = 'game' | 'practice' | 'meeting';
+
+type ScheduleEvent = {
+  id: string;
+  type: ScheduleEventType;
+  date: string;
+  time: string;
+  location: string;
+  opponent: string;
+  snacks: string;
+  drinks: string;
+  notes: string;
+};
+
+const scheduleStorageKey = 'leaguematrix-schedule-draft';
+let scheduleEventCounter = 0;
+
+function createScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
+  scheduleEventCounter += 1;
+  return {
+    id: `schedule-event-${scheduleEventCounter}`,
+    type,
+    date: type === 'game' ? '2024-10-12' : '',
+    time: type === 'game' ? '16:30' : '',
+    location: type === 'game' ? 'Central Field' : '',
+    opponent: type === 'game' ? 'Northside' : '',
+    snacks: '',
+    drinks: '',
+    notes: '',
+  };
+}
+
+const defaultScheduleEvents: ScheduleEvent[] = [
+  {
+    ...createScheduleEvent('game'),
+    id: 'schedule-event-default-1',
+    snacks: 'Maya family',
+    drinks: 'Jordan family',
+  },
+  {
+    ...createScheduleEvent('practice'),
+    id: 'schedule-event-default-2',
+    date: '2024-10-13',
+    time: '10:00',
+    location: 'Eastside Field',
+    notes: 'Bring cleats and a water bottle.',
+  },
+];
+
+function readScheduleDraft(): { title: string; teamSeason: string; events: ScheduleEvent[]; template: number } | null {
+  try {
+    const stored = window.localStorage.getItem(scheduleStorageKey);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<{ title: string; teamSeason: string; events: ScheduleEvent[]; template: number }>;
+    if (!Array.isArray(parsed.events)) return null;
+    return {
+      title: typeof parsed.title === 'string' ? parsed.title : 'WEEKEND RUN',
+      teamSeason: typeof parsed.teamSeason === 'string' ? parsed.teamSeason : 'Eastside Falcons · Fall 2024',
+      events: parsed.events,
+      template: typeof parsed.template === 'number' ? parsed.template : 0,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function BrandMark({ inverse = false }: { inverse?: boolean }) {
   return (
@@ -557,6 +624,8 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
 }
 
 function EditorPage({ kind }: { kind: ToolKind }) {
+  if (kind === 'schedule') return <ScheduleEditor />;
+
   const tool = toolData[kind];
   const Icon = tool.icon;
   const [selectedTemplate, setSelectedTemplate] = useState(0);
@@ -674,6 +743,361 @@ function EditorPage({ kind }: { kind: ToolKind }) {
         </div>
       </main>
     </StudioLayout>
+  );
+}
+
+function ScheduleEditor() {
+  const [storedDraft] = useState(() => readScheduleDraft());
+  const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
+  const [saved, setSaved] = useState(Boolean(storedDraft));
+  const [notice, setNotice] = useState('');
+  const [title, setTitle] = useState(storedDraft?.title ?? 'WEEKEND RUN');
+  const [teamSeason, setTeamSeason] = useState(storedDraft?.teamSeason ?? 'Eastside Falcons · Fall 2024');
+  const [events, setEvents] = useState<ScheduleEvent[]>(() => (
+    storedDraft?.events?.length ? storedDraft.events : defaultScheduleEvents
+  ));
+
+  const setNoticeFor = (message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice(''), 2400);
+  };
+
+  const updateEvent = (id: string, patch: Partial<ScheduleEvent>) => {
+    setSaved(false);
+    setEvents((current) => current.map((event) => event.id === id ? { ...event, ...patch } : event));
+  };
+
+  const addEvent = (type: ScheduleEventType) => {
+    setSaved(false);
+    setEvents((current) => [...current, createScheduleEvent(type)]);
+  };
+
+  const removeEvent = (id: string) => {
+    setSaved(false);
+    setEvents((current) => current.filter((event) => event.id !== id));
+  };
+
+  const moveEvent = (id: string, direction: -1 | 1) => {
+    setSaved(false);
+    setEvents((current) => {
+      const index = current.findIndex((event) => event.id === id);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
+      const reordered = [...current];
+      [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
+      return reordered;
+    });
+  };
+
+  const saveProject = () => {
+    window.localStorage.setItem('leaguematrix-project', 'true');
+    window.localStorage.setItem(scheduleStorageKey, JSON.stringify({ title, teamSeason, events, template: selectedTemplate }));
+    setSaved(true);
+    setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
+  };
+
+  const resetProject = () => {
+    window.localStorage.removeItem(scheduleStorageKey);
+    setSelectedTemplate(0);
+    setSaved(false);
+    setTitle('WEEKEND RUN');
+    setTeamSeason('Eastside Falcons · Fall 2024');
+    setEvents(defaultScheduleEvents.map((event) => ({ ...event })));
+    setNoticeFor('SCHEDULE DRAFT RESET');
+  };
+
+  return (
+    <StudioLayout>
+      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-4">
+            <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+                <CalendarDays className="h-4 w-4" /> Schedule Graphic Maker
+              </div>
+              <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Put the season in motion.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 self-end sm:self-auto">
+            <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
+              <Check className="h-4 w-4" /> Saved
+            </span>
+            <button type="button" onClick={saveProject} className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background transition-transform hover:scale-105 clip-angled-sm" data-testid="button-save-project">
+              <Save className="h-4 w-4" /> Save Draft
+            </button>
+          </div>
+        </div>
+
+        <div className="grid flex-1 gap-6 lg:grid-cols-[380px_1fr]">
+          <aside className="order-2 flex flex-col border border-border bg-card p-5 clip-angled-sm lg:order-1 sm:p-6">
+            <div className="relative z-10 mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule details</p>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">Build the family handoff.</p>
+              </div>
+              <span className="bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+            </div>
+
+            <div className="relative z-10 space-y-4">
+              <ScheduleField label="Schedule headline" value={title} onChange={(value) => { setSaved(false); setTitle(value); }} testId="input-schedule-headline" />
+              <ScheduleField label="Team & season" value={teamSeason} onChange={(value) => { setSaved(false); setTeamSeason(value); }} testId="input-team-season" />
+            </div>
+
+            <div className="relative z-10 my-7 h-px bg-border" />
+
+            <div className="relative z-10">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Upcoming events</p>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">Games, practices, and meetings.</p>
+                </div>
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              </div>
+
+              <div className="space-y-4">
+                {events.map((event, index) => (
+                  <ScheduleEventCard
+                    key={event.id}
+                    event={event}
+                    index={index}
+                    count={events.length}
+                    onChange={updateEvent}
+                    onRemove={removeEvent}
+                    onMove={moveEvent}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {(['game', 'practice', 'meeting'] as ScheduleEventType[]).map((type) => (
+                  <button
+                    type="button"
+                    key={type}
+                    onClick={() => addEvent(type)}
+                    className="inline-flex min-h-12 items-center justify-center gap-1 border border-border bg-background px-2 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm"
+                    data-testid={`button-add-${type}`}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative z-10 my-7 h-px bg-border" />
+
+            <div className="relative z-10">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-xs font-bold uppercase tracking-widest text-foreground">Playbook template</p>
+                <Grid2X2 className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {toolData.schedule.templateNames.map((name, index) => (
+                  <button type="button" key={name} onClick={() => { setSaved(false); setSelectedTemplate(index); }} className={`min-h-[64px] border p-2 text-left font-display text-base uppercase leading-none tracking-wide transition-all clip-angled-sm ${selectedTemplate === index ? 'border-primary bg-primary text-primary-foreground shadow-md' : 'border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground'}`} data-testid={`button-template-${index}`}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-auto flex gap-3 pt-8">
+              <button type="button" onClick={resetProject} className="inline-flex flex-1 items-center justify-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-muted hover:text-foreground clip-angled-sm" data-testid="button-reset-project">
+                <RotateCcw className="h-4 w-4" /> Reset
+              </button>
+              <button type="button" onClick={() => setNoticeFor('PREVIEW UPDATED')} className="inline-flex flex-[1.5] items-center justify-center gap-2 bg-primary px-4 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-1 clip-angled-sm shadow-md" data-testid="button-next-preview">
+                Preview <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
+          </aside>
+
+          <section className="order-1 min-w-0 lg:order-2">
+            <SchedulePreview title={title} teamSeason={teamSeason} events={events} selectedTemplate={selectedTemplate} />
+          </section>
+        </div>
+      </main>
+    </StudioLayout>
+  );
+}
+
+function ScheduleEventCard({
+  event,
+  index,
+  count,
+  onChange,
+  onRemove,
+  onMove,
+}: {
+  event: ScheduleEvent;
+  index: number;
+  count: number;
+  onChange: (id: string, patch: Partial<ScheduleEvent>) => void;
+  onRemove: (id: string) => void;
+  onMove: (id: string, direction: -1 | 1) => void;
+}) {
+  const typeLabel = event.type === 'game' ? 'Game' : event.type === 'practice' ? 'Practice' : 'Meeting';
+
+  return (
+    <div className="border border-border bg-background p-3 clip-angled-sm" data-testid={`schedule-event-${index}`}>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <select
+          value={event.type}
+          onChange={(e) => onChange(event.id, { type: e.target.value as ScheduleEventType, opponent: e.target.value === 'game' ? event.opponent : '' })}
+          className="min-w-0 flex-1 border border-border bg-card px-3 py-2 text-xs font-bold uppercase tracking-wider text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm"
+          aria-label={`Event ${index + 1} type`}
+          data-testid={`select-event-type-${index}`}
+        >
+          <option value="game">Game</option>
+          <option value="practice">Practice</option>
+          <option value="meeting">Meeting</option>
+        </select>
+        <span className="hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:block">{typeLabel} {index + 1}</span>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => onMove(event.id, -1)} disabled={index === 0} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} up`} data-testid={`button-move-event-up-${index}`}>
+            <ChevronUp className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => onMove(event.id, 1)} disabled={index === count - 1} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} down`} data-testid={`button-move-event-down-${index}`}>
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => onRemove(event.id)} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:border-destructive hover:text-destructive" aria-label={`Remove event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ScheduleField label="Date" type="date" value={event.date} onChange={(value) => onChange(event.id, { date: value })} testId={`input-event-date-${index}`} />
+        <ScheduleField label="Time" type="time" value={event.time} onChange={(value) => onChange(event.id, { time: value })} testId={`input-event-time-${index}`} />
+        {event.type === 'game' && <ScheduleField label="Opponent" value={event.opponent} onChange={(value) => onChange(event.id, { opponent: value })} placeholder="Northside" testId={`input-event-opponent-${index}`} />}
+        <ScheduleField label="Location" value={event.location} onChange={(value) => onChange(event.id, { location: value })} placeholder="Central Field" testId={`input-event-location-${index}`} />
+        <ScheduleField label="Snacks" value={event.snacks} onChange={(value) => onChange(event.id, { snacks: value })} placeholder="Who brings snacks?" icon={<Utensils className="h-3.5 w-3.5" />} testId={`input-event-snacks-${index}`} />
+        <ScheduleField label="Drinks" value={event.drinks} onChange={(value) => onChange(event.id, { drinks: value })} placeholder="Who brings drinks?" icon={<CupSoda className="h-3.5 w-3.5" />} testId={`input-event-drinks-${index}`} />
+      </div>
+      <ScheduleField label="Notes" value={event.notes} onChange={(value) => onChange(event.id, { notes: value })} placeholder="Bring cleats and a water bottle." multiline icon={<NotebookPen className="h-3.5 w-3.5" />} testId={`input-event-notes-${index}`} />
+    </div>
+  );
+}
+
+function ScheduleField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  multiline = false,
+  icon,
+  testId,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: 'text' | 'date' | 'time';
+  placeholder?: string;
+  multiline?: boolean;
+  icon?: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{icon}{label}</span>
+      {multiline ? (
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={2} className="w-full resize-y border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm" data-testid={testId} />
+      ) : (
+        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm" data-testid={testId} />
+      )}
+    </label>
+  );
+}
+
+function formatScheduleDate(value: string) {
+  if (!value) return 'DATE TBD';
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+}
+
+function formatScheduleTime(value: string) {
+  if (!value) return 'TIME TBD';
+  const [hours, minutes] = value.split(':').map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return value;
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
+
+function SchedulePreview({ title, teamSeason, events, selectedTemplate }: { title: string; teamSeason: string; events: ScheduleEvent[]; selectedTemplate: number }) {
+  const templateClass = selectedTemplate === 1
+    ? 'bg-[#177d76] text-[#f9f3e8]'
+    : selectedTemplate === 2
+      ? 'bg-[#f5c94d] text-[#243248]'
+      : 'bg-[#f36f4c] text-[#f9f3e8]';
+  const eventClass = selectedTemplate === 1
+    ? 'border-white/25 bg-black/10'
+    : selectedTemplate === 2
+      ? 'border-[#243248]/20 bg-white/20'
+      : 'border-white/25 bg-black/10';
+
+  return (
+    <div className="relative flex min-h-[520px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[680px] sm:p-8 clip-angled-sm">
+      <div className="absolute inset-0 bg-tech-grid opacity-50" />
+      <div className={`relative w-full max-w-[760px] overflow-hidden rounded-[22px] ${templateClass} p-5 shadow-2xl sm:p-8`} data-testid="preview-canvas">
+        <div className={`absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] ${selectedTemplate === 2 ? 'border-[#f36f4c]/45' : 'border-[#f5c94d]/35'}`} />
+        <div className={`absolute -bottom-28 -left-20 h-72 w-72 rounded-full ${selectedTemplate === 1 ? 'bg-[#f5c94d]' : 'bg-[#177d76]'}`} />
+        <div className="relative">
+          <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.16em]">
+            <div className="min-w-0">
+              <p className="truncate opacity-80">LeagueMatrix · Team schedule</p>
+              <p className="mt-2 max-w-[90%] font-display text-4xl leading-[.88] tracking-[-.04em] sm:text-6xl">{title || 'TEAM SCHEDULE'}</p>
+            </div>
+            <span className="shrink-0 rounded-full border border-current px-2.5 py-1">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+          </div>
+          <p className="mt-5 text-sm font-bold uppercase tracking-[.12em] opacity-85 sm:text-base">{teamSeason || 'TEAM · SEASON'}</p>
+
+          <div className="mt-8 space-y-3">
+            {events.length === 0 ? (
+              <div className={`border border-dashed p-6 text-center text-sm font-bold uppercase tracking-widest opacity-75 ${eventClass}`}>
+                Add an event to fill the schedule
+              </div>
+            ) : events.map((event, index) => (
+              <div key={event.id} className={`relative border p-3.5 ${eventClass} ${selectedTemplate === 2 ? 'rounded-2xl' : 'clip-angled-sm'} ${index === 0 && selectedTemplate === 1 ? 'border-primary/70' : ''}`}>
+                <div className="flex gap-3 sm:gap-5">
+                  <div className="w-[86px] shrink-0 border-r border-current/20 pr-3 sm:w-[110px]">
+                    <p className="font-display text-lg leading-none sm:text-2xl">{formatScheduleDate(event.date)}</p>
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest opacity-75">{formatScheduleTime(event.time)}</p>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-[.16em] opacity-75">{event.type}</span>
+                      {event.type === 'game' && <span className="font-display text-xl leading-none sm:text-2xl">VS {event.opponent || 'OPPONENT TBD'}</span>}
+                      {event.type === 'practice' && <span className="font-display text-xl leading-none sm:text-2xl">TEAM PRACTICE</span>}
+                      {event.type === 'meeting' && <span className="font-display text-xl leading-none sm:text-2xl">TEAM MEETING</span>}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold uppercase tracking-wider opacity-85">
+                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{event.location}</span>}
+                      {!event.location && <span className="opacity-60">Location TBD</span>}
+                    </div>
+                    {(event.snacks || event.drinks) && (
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider opacity-80">
+                        {event.snacks && <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3" /> Snacks: {event.snacks}</span>}
+                        {event.drinks && <span className="inline-flex items-center gap-1"><CupSoda className="h-3 w-3" /> Drinks: {event.drinks}</span>}
+                      </div>
+                    )}
+                    {event.notes && <p className="mt-2 text-xs font-medium leading-relaxed opacity-80">{event.notes}</p>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 flex items-center justify-between border-t border-current/25 pt-4 text-[10px] font-bold uppercase tracking-[.16em] opacity-75">
+            <span>Bring the energy</span>
+            <CalendarDays className="h-5 w-5" />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
