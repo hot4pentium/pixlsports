@@ -208,6 +208,60 @@ function getOuterFrame(palette: PaletteValue, ns: string) {
   `;
 }
 
+function getFinishBackground(project: HypeCardProject, ns: string) {
+  if (project.finish === 'classic') return '';
+  if (project.finish === 'cosmic-clash') return `
+    <rect width="1000" height="1400" fill="#031535" opacity=".72"/>
+    <circle cx="180" cy="300" r="430" fill="#0868ff" opacity=".38" filter="url(#blur10-${ns})"/>
+    <circle cx="850" cy="1100" r="460" fill="#ff5a00" opacity=".34" filter="url(#blur10-${ns})"/>
+    <path d="M-100 1180 Q430 900 1100 180M-80 1280 Q500 960 1080 310" fill="none" stroke="#39a6ff" stroke-width="18" opacity=".4" filter="url(#neonGlow-${ns})"/>
+    <path d="M-80 1240 Q500 1120 1080 620" fill="none" stroke="#ff7900" stroke-width="24" opacity=".45" filter="url(#neonGlow-${ns})"/>`;
+  if (project.finish === 'gold-spotlight') return `
+    <rect width="1000" height="1400" fill="#031812" opacity=".82"/>
+    <path d="M120 0 L460 1120 L-50 1120 ZM880 0 L1050 1120 L540 1120 Z" fill="url(#lightRay-${ns})" opacity=".55"/>
+    <ellipse cx="500" cy="1190" rx="390" ry="95" fill="#f4c64b" opacity=".24" filter="url(#blur10-${ns})"/>
+    <g fill="#ffd86a" opacity=".65">${Array.from({length: 18}, (_, i) => `<circle cx="${80 + (i * 137) % 850}" cy="${180 + (i * 211) % 1020}" r="${4 + (i % 7)}"/>`).join('')}</g>`;
+  if (project.finish === 'neon-prism') return `
+    <rect width="1000" height="1400" fill="#08051e" opacity=".78"/>
+    <circle cx="150" cy="760" r="420" fill="#e600c7" opacity=".25" filter="url(#blur10-${ns})"/>
+    <circle cx="860" cy="470" r="390" fill="#008cff" opacity=".28" filter="url(#blur10-${ns})"/>
+    <path d="M-100 310 L700 -30M-60 1060 L1080 520M180 1420 L1080 890" stroke="#f12ddd" stroke-width="12" opacity=".55" filter="url(#neonGlow-${ns})"/>
+    <path d="M-80 410 L820 -40M-100 1140 L1080 650" stroke="#18bfff" stroke-width="9" opacity=".65" filter="url(#neonGlow-${ns})"/>`;
+  return `
+    <rect width="1000" height="1400" fill="#071322" opacity=".72"/>
+    <g opacity=".72" filter="url(#blur6-${ns})">
+      <circle cx="80" cy="260" r="210" fill="#e62929"/><circle cx="900" cy="310" r="230" fill="#1369d5"/>
+      <circle cx="130" cy="1120" r="240" fill="#f4b51b"/><circle cx="880" cy="1110" r="250" fill="#e62929"/>
+    </g>
+    <g fill="#fff" opacity=".5">${Array.from({length: 22}, (_, i) => `<circle cx="${30 + (i * 173) % 940}" cy="${120 + (i * 239) % 1180}" r="${3 + (i % 9)}"/>`).join('')}</g>`;
+}
+
+function getFinishForeground(project: HypeCardProject, ns: string) {
+  if (project.finish === 'classic') return '';
+  const colors = project.finish === 'cosmic-clash' ? ['#3fa7ff', '#ff7200']
+    : project.finish === 'gold-spotlight' ? ['#ffe17b', '#b57b12']
+    : project.finish === 'neon-prism' ? ['#f035dd', '#29c8ff']
+    : ['#ef3030', '#176ce0'];
+  const shards = project.finish === 'neon-prism'
+    ? `<path d="M45 210 L180 80 L125 300ZM955 250 L820 95 L890 340ZM40 1110 L190 1260 L95 1040ZM960 1080 L820 1280 L900 1010" fill="${colors[1]}" opacity=".34"/>`
+    : '';
+  const motif = project.finish === 'cosmic-clash'
+    ? `<path d="M-80 1030 Q360 780 1080 260" fill="none" stroke="#168cff" stroke-width="12" opacity=".7" filter="url(#neonGlow-${ns})"/><path d="M-60 1160 Q510 1040 1070 670" fill="none" stroke="#ff6a00" stroke-width="16" opacity=".72" filter="url(#neonGlow-${ns})"/>`
+    : project.finish === 'gold-spotlight'
+      ? `<path d="M150 45 L390 610 L40 420ZM850 45 L960 420 L610 610" fill="#ffd86a" opacity=".14"/><g fill="#ffe27a">${Array.from({length: 16}, (_, i) => `<circle cx="${60 + (i * 223) % 880}" cy="${120 + (i * 307) % 1160}" r="${3 + (i % 6)}" opacity=".75"/>`).join('')}</g>`
+      : project.finish === 'paint-impact'
+        ? `<g opacity=".8"><circle cx="65" cy="320" r="70" fill="#ed2929"/><circle cx="110" cy="380" r="28" fill="#fff"/><circle cx="925" cy="330" r="82" fill="#176ce0"/><circle cx="70" cy="1080" r="88" fill="#f7b51b"/><circle cx="930" cy="1050" r="74" fill="#ed2929"/></g>`
+        : '';
+  return `
+    <g clip-path="url(#cardClip-${ns})" pointer-events="none">
+      ${shards}
+      ${motif}
+      <path d="M42 190 L42 42 L190 42M810 42 L958 42 L958 190M42 1210 L42 1358 L190 1358M810 1358 L958 1358 L958 1210" fill="none" stroke="${colors[0]}" stroke-width="16" filter="url(#neonGlow-${ns})"/>
+      <path d="M55 205 L55 55 L205 55M795 55 L945 55 L945 205M55 1195 L55 1345 L205 1345M795 1345 L945 1345 L945 1195" fill="none" stroke="${colors[1]}" stroke-width="6"/>
+      ${getFlare(500, 42, 2.2, ns, colors[0])}
+    </g>`;
+}
+
 function cardContent(project: HypeCardProject) {
   const headlineStr = escapeXml(project.headline || 'BIG PLAY').toUpperCase();
   const player = escapeXml((project.playerName || 'YOUR PLAYER').toUpperCase());
@@ -263,6 +317,7 @@ function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <rect width="1000" height="1400" rx="45" fill="#000" />
     <g clip-path="url(#cardClip-${ns})">
       ${getCardBackground(project, ns)}
+      ${getFinishBackground(project, ns)}
       ${!project.mediaType && !project.photo ? getArenaBg(palette, ns) : ''}
     </g>
   `;
@@ -307,6 +362,7 @@ function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
+    ${getFinishForeground(project, ns)}
   `;
 
   const defs = `<clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath>${getPremiumDefs(palette, ns)}`;
@@ -353,6 +409,7 @@ function buildAllStarCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <rect width="1000" height="1400" rx="45" fill="#000" />
     <g clip-path="url(#cardClip-${ns})">
       ${getCardBackground(project, ns)}
+      ${getFinishBackground(project, ns)}
       ${!project.mediaType && !project.photo ? getArenaBg(palette, ns) : ''}
       <circle cx="500" cy="700" r="450" fill="${palette.primary}" opacity="0.65" filter="url(#blur10-${ns})" />
       ${motion}
@@ -396,6 +453,7 @@ function buildAllStarCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
+    ${getFinishForeground(project, ns)}
   `;
 
   const defs = `<clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath><clipPath id="shieldClip-${ns}"><path d="M 500 250 C 740 250, 880 430, 880 720 C 880 970, 500 1150, 500 1150 C 500 1150, 120 970, 120 720 C 120 430, 260 250, 500 250 Z" /></clipPath>${getPremiumDefs(palette, ns)}`;
@@ -442,6 +500,7 @@ function buildRookieCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
     <rect width="1000" height="1400" rx="45" fill="#000" />
     <g clip-path="url(#cardClip-${ns})">
       ${getCardBackground(project, ns)}
+      ${getFinishBackground(project, ns)}
       ${!project.mediaType && !project.photo ? getArenaBg(palette, ns) : ''}
       <text x="60" y="1050" font-family="Space Grotesk,sans-serif" font-size="550" font-weight="800" letter-spacing="-30" fill="url(#teamMetal-${ns})" opacity="0.4" filter="url(#dropShadow-${ns})">#${content.number}</text>
     </g>
@@ -480,6 +539,7 @@ function buildRookieCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
+    ${getFinishForeground(project, ns)}
   `;
 
   const defs = `<clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath><clipPath id="rookiePhoto-${ns}"><path d="M 30 30 L 970 30 L 970 850 L 30 1100 Z" /></clipPath>${getPremiumDefs(palette, ns)}`;
@@ -526,6 +586,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
     <rect width="1000" height="1400" rx="45" fill="#000" />
     <g clip-path="url(#cardClip-${ns})">
       ${getCardBackground(project, ns)}
+      ${getFinishBackground(project, ns)}
       ${!project.mediaType && !project.photo ? getArenaBg(palette, ns) : ''}
       <path d="M 30 30 L 970 30 L 970 200 L 780 200 L 720 120 L 30 120 Z" fill="url(#teamMetal-${ns})" />
       ${logo}
@@ -567,6 +628,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
+    ${getFinishForeground(project, ns)}
   `;
 
   const defs = `<clipPath id="cardClip-${ns}"><rect x="33" y="33" width="934" height="1334" rx="27" /></clipPath><clipPath id="dugoutPhoto-${ns}"><rect x="70" y="240" width="860" height="660" rx="25" /></clipPath>${getPremiumDefs(palette, ns)}`;

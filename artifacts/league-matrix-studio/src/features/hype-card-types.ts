@@ -2,6 +2,7 @@ export type HypeFormat = 'square' | 'story' | 'landscape' | 'card';
 export type TemplateId = 'spotlight' | 'impact' | 'clean';
 export type CardLayoutId = 'slugger' | 'all-star' | 'rookie' | 'dugout';
 export type PaletteId = 'coral' | 'teal' | 'gold' | 'midnight';
+export type CardFinishId = 'classic' | 'cosmic-clash' | 'gold-spotlight' | 'neon-prism' | 'paint-impact';
 
 export type HypeCardProject = {
   version: 2;
@@ -18,6 +19,7 @@ export type HypeCardProject = {
   layout: CardLayoutId;
   format: HypeFormat;
   palette: PaletteId;
+  finish: CardFinishId;
   background: 'solid' | 'gradient' | 'paper';
   overlay: boolean;
   branding: boolean;
@@ -95,6 +97,14 @@ export const palettes: Record<PaletteId, { name: string; primary: string; second
   midnight: { name: 'After dark', primary: '#243248', secondary: '#177d76', accent: '#f36f4c', ink: '#f9f3e8', paper: '#35445c' },
 };
 
+export const cardFinishes: Array<{ id: CardFinishId; name: string; summary: string; preview: string }> = [
+  { id: 'classic', name: 'Classic', summary: 'The original premium team-metal finish.', preview: 'linear-gradient(135deg,#090d14 0 42%,#20e878 43% 48%,#dce3ea 49% 55%,#151c27 56%)' },
+  { id: 'cosmic-clash', name: 'Cosmic Clash', summary: 'Electric blue, orange energy, and stadium lights.', preview: 'radial-gradient(circle at 22% 28%,#33a8ff 0 4%,transparent 18%),radial-gradient(circle at 78% 75%,#ff6a00 0 5%,transparent 28%),linear-gradient(135deg,#031330,#064edb 48%,#fa5a00)' },
+  { id: 'gold-spotlight', name: 'Gold Spotlight', summary: 'Deep green atmosphere with gold light and particles.', preview: 'radial-gradient(ellipse at 50% 100%,#ffe078 0 3%,transparent 34%),linear-gradient(110deg,transparent 25%,#f8cf66 48%,transparent 61%),#041b14' },
+  { id: 'neon-prism', name: 'Neon Prism', summary: 'Magenta and cyan beams with crystalline edges.', preview: 'linear-gradient(155deg,transparent 32%,#ff24df 34% 39%,transparent 41%),linear-gradient(25deg,#060518 25%,#0078d7 50%,#d914c7 78%,#09051d)' },
+  { id: 'paint-impact', name: 'Paint Impact', summary: 'Red, blue, white, and gold paint-burst energy.', preview: 'radial-gradient(circle at 15% 20%,#ed2e2e 0 9%,transparent 24%),radial-gradient(circle at 82% 25%,#176fe0 0 12%,transparent 28%),radial-gradient(circle at 22% 85%,#f5b91f 0 8%,transparent 23%),#071421' },
+];
+
 export const defaultProject = (): HypeCardProject => ({
   version: 2,
   headline: 'BIG PLAY',
@@ -105,6 +115,7 @@ export const defaultProject = (): HypeCardProject => ({
   layout: 'slugger',
   format: 'card',
   palette: 'coral',
+  finish: 'classic',
   background: 'gradient',
   overlay: true,
   branding: true,

@@ -12,8 +12,8 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 
 import {
-  HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
-  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions
+  HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId, CardFinishId,
+  HEADLINES, templates, cardLayouts, formats, palettes, cardFinishes, defaultProject, getDimensions
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame } from './hype-card-svg';
 import { saveVideoBlob, loadVideoBlob, deleteVideoBlob, checkExportSupport } from './hype-card-media';
@@ -115,6 +115,7 @@ function normalizeProject(project: any): HypeCardProject {
         }
       : null,
     layout: project.layout ?? defaults.layout,
+    finish: cardFinishes.some((finish) => finish.id === project.finish) ? project.finish : defaults.finish,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
     visibility: { ...defaults.visibility, ...project.visibility },
@@ -1060,6 +1061,25 @@ export function HypeCardEditor() {
                         <span key={i} className="inline-block h-6 w-6 rounded-full border-2 border-background" style={{ backgroundColor: c }} />
                       ))}
                     </div>
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="Card Finish" icon={SlidersHorizontal}>
+              <div className="grid grid-cols-2 gap-2">
+                {cardFinishes.map((finish) => (
+                  <button
+                    key={finish.id}
+                    type="button"
+                    onClick={() => updateProject('finish', finish.id as CardFinishId)}
+                    aria-pressed={project.finish === finish.id}
+                    data-testid={`button-card-finish-${finish.id}`}
+                    className={`min-h-24 border p-3 text-left transition-all clip-angled-sm ${project.finish === finish.id ? 'border-primary bg-primary/10 ring-2 ring-primary' : 'border-border bg-background hover:border-foreground'}`}
+                  >
+                    <span className="mb-3 block h-10 border border-white/10 bg-cover bg-center clip-angled-sm" style={{ background: finish.preview }} />
+                    <span className="block text-xs font-bold uppercase tracking-wider">{finish.name}</span>
+                    <span className="mt-1 block text-[10px] leading-snug text-muted-foreground">{finish.summary}</span>
                   </button>
                 ))}
               </div>
