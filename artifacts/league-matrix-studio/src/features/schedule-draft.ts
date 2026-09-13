@@ -13,8 +13,8 @@ export type ScheduleEvent = {
 };
 
 export type ScheduleDraft = {
-  title: string;
-  teamSeason: string;
+  teamName: string;
+  season: string;
   events: ScheduleEvent[];
   template: number;
 };
@@ -91,14 +91,24 @@ export function normalizeScheduleEvent(
 
 export function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
   if (typeof value !== 'object' || value === null) return null;
-  const input = value as Partial<ScheduleDraft>;
+  const input = value as Partial<ScheduleDraft> & {
+    title?: unknown;
+    teamSeason?: unknown;
+  };
   if (!Array.isArray(input.events)) return null;
 
+  const legacyTeamSeason = stringValue(input.teamSeason);
+  const separatorIndex = legacyTeamSeason.indexOf('·');
+  const legacyTeamName = separatorIndex >= 0
+    ? legacyTeamSeason.slice(0, separatorIndex).trim()
+    : legacyTeamSeason.trim();
+  const legacySeason = separatorIndex >= 0
+    ? legacyTeamSeason.slice(separatorIndex + 1).trim()
+    : '';
+
   return {
-    title: typeof input.title === 'string' ? input.title : 'WEEKEND RUN',
-    teamSeason: typeof input.teamSeason === 'string'
-      ? input.teamSeason
-      : 'Eastside Falcons · Fall 2024',
+    teamName: stringValue(input.teamName) || legacyTeamName || stringValue(input.title) || 'Eastside Falcons',
+    season: stringValue(input.season) || legacySeason || (legacyTeamSeason ? '' : 'Fall 2024'),
     events: input.events.map((event, index) => (
       normalizeScheduleEvent(event, `schedule-event-restored-${index + 1}`)
     )),
