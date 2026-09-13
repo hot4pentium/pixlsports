@@ -523,12 +523,15 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3 border-l-4 border-primary bg-foreground px-5 py-4 text-background clip-angled-sm sm:flex-row sm:items-center sm:justify-between" data-testid="banner-user-team">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">{role === 'coach' ? 'Coaching' : 'Supporting'}</p>
-            <p className="mt-1 font-display text-2xl uppercase tracking-wide">{profile.teamName}</p>
+        <div className="relative mt-8 overflow-hidden border-l-4 border-primary bg-foreground bg-tech-grid-dark px-5 py-4 text-background clip-angled-sm" data-testid="banner-user-team">
+          <div className="pointer-events-none absolute inset-0 bg-tech-grid-green opacity-30" />
+          <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">{role === 'coach' ? 'Coaching' : 'Supporting'}</p>
+              <p className="mt-1 font-display text-2xl uppercase tracking-wide">{profile.teamName}</p>
+            </div>
+            <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
           </div>
-          <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
@@ -657,7 +660,8 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
   const Icon = tool.icon;
   return (
     <Link href={`/studio/${tool.slug}`} className={`group relative overflow-hidden border border-border/10 p-6 sm:p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl clip-angled-sm ${tool.soft}`} data-testid={`card-tool-${kind}`}>
-      <div className="absolute inset-0 bg-tech-grid-dark opacity-20" />
+      <div className="absolute inset-0 bg-tech-grid-dark opacity-35" />
+      <div className="absolute inset-0 bg-tech-grid-green opacity-20" />
       <div className="relative z-10 flex items-start justify-between">
         <span className="font-display text-xl text-white/40">0{index + 1}</span>
         <span className={`grid h-12 w-12 place-items-center clip-angled-sm ${tool.accent}`}>
