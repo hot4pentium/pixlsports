@@ -1,4 +1,4 @@
-type SaveStatus = 'Saved locally' | 'Saving' | 'Saved to account' | 'Offline' | 'Save failed' | 'Conflict';
+type SaveStatus = 'Saved locally' | 'Saving' | 'Saved design' | 'Offline' | 'Save failed' | 'Conflict';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
@@ -149,6 +149,17 @@ function normalizeProject(project: any): HypeCardProject {
     visibility: { ...defaults.visibility, ...project.visibility },
     photo: safePhoto,
     logo: safeLogo,
+  };
+}
+
+function designOnlyProject(project: HypeCardProject): HypeCardProject {
+  return {
+    ...project,
+    mediaType: null,
+    mediaId: null,
+    videoMeta: null,
+    photo: null,
+    logo: null,
   };
 }
 
@@ -702,7 +713,7 @@ export function HypeCardEditor() {
     mutation: {
       onSuccess: (data) => {
         currentRevision.current = data.revision;
-        setSaveStatus('Saved to account');
+        setSaveStatus('Saved design');
         queryClient.setQueryData(getGetProjectQueryKey(cloudProjectId || ''), data);
       },
       onError: (err: any) => {
@@ -730,7 +741,7 @@ export function HypeCardEditor() {
       setProject(p);
       lastSaved.current = p;
       currentRevision.current = cloudProjectData.revision;
-      setSaveStatus('Saved to account');
+      setSaveStatus('Saved design');
     }
   }, [cloudProjectData, cloudProjectId]);
 
@@ -852,34 +863,7 @@ export function HypeCardEditor() {
     setSaveStatus('Saving');
 
     try {
-      let currentMediaId = dataToSave.mediaId;
-      if (currentMediaId && (currentMediaId.startsWith('image-') || currentMediaId.startsWith('video-'))) {
-        const blob = await loadMediaBlob(currentMediaId);
-        if (blob) {
-          const uploadRes = await requestMediaUrl.mutateAsync({
-            data: {
-              name: currentMediaId,
-              size: blob.size,
-              contentType: blob.type,
-              mediaType: dataToSave.mediaType as 'image' | 'video',
-              projectId: cloudProjectId
-            }
-          });
-          const putRes = await fetch(uploadRes.uploadURL, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
-          if (!putRes.ok) throw new Error('Upload failed');
-          currentMediaId = uploadRes.media.id;
-          await saveMediaBlob(currentMediaId, blob);
-          
-          setProject(p => p.mediaId === dataToSave.mediaId ? { ...p, mediaId: currentMediaId } : p);
-        } else {
-          setNotice('Attached media could not be recovered and was removed.');
-          currentMediaId = null;
-        }
-      }
-
-      const savedProject = dataToSave.mediaType === 'image' && currentMediaId
-        ? { ...dataToSave, mediaId: currentMediaId, photo: null }
-        : { ...dataToSave, mediaId: currentMediaId };
+      const savedProject = designOnlyProject(dataToSave);
 
       await mutateFnRef.current({
         projectId: cloudProjectId,
@@ -888,7 +872,7 @@ export function HypeCardEditor() {
           expectedRevision: currentRevision.current
         }
       });
-      lastSaved.current = currentMediaId !== dataToSave.mediaId ? { ...dataToSave, mediaId: currentMediaId } : dataToSave;
+      lastSaved.current = dataToSave;
     } catch (e: any) {
       if (e?.status !== 409 && !e?.message?.includes('409') && !e?.error?.includes('conflict')) {
          setSaveStatus('Save failed');
@@ -941,45 +925,14 @@ export function HypeCardEditor() {
     }
     setSaveStatus('Saving');
     try {
-      let currentMediaId = project.mediaId;
-      let finalMediaId = currentMediaId;
-      
-      if (currentMediaId) {
-        const blob = await loadMediaBlob(currentMediaId);
-        if (blob) {
-          const uploadRes = await requestMediaUrl.mutateAsync({
-            data: {
-              name: currentMediaId,
-              size: blob.size,
-              contentType: blob.type,
-              mediaType: project.mediaType as 'image' | 'video'
-            }
-          });
-          const putRes = await fetch(uploadRes.uploadURL, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
-          if (!putRes.ok) throw new Error('Upload failed');
-          finalMediaId = uploadRes.media.id;
-          await saveMediaBlob(finalMediaId, blob);
-        } else {
-          setNotice('Attached media could not be recovered and was removed.');
-          finalMediaId = null;
-        }
-      }
-
       const created = await createProject.mutateAsync({
         data: {
           name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
-          project: { ...project, mediaId: finalMediaId, photo: null } 
+          project: designOnlyProject(project),
         }
       });
-      
-      if (finalMediaId !== project.mediaId) {
-        setProject(p => {
-           const updated = { ...p, mediaId: finalMediaId };
-           lastSaved.current = updated;
-           return updated;
-        });
-      }
-      
+      lastSaved.current = project;
+      setNotice('Design saved. Add media anytime to create a new export.');
       setLocation(`/studio/hype-card/${created.id}`);
     } catch (e) {
       setSaveStatus('Save failed');
@@ -1005,46 +958,13 @@ export function HypeCardEditor() {
        setSaveStatus('Saving');
        try {
          const p = { ...project };
-         let currentMediaId = p.mediaId;
-         let finalMediaId = currentMediaId;
-         
-         if (currentMediaId) {
-           const blob = await loadMediaBlob(currentMediaId);
-           if (blob) {
-             const uploadRes = await requestMediaUrl.mutateAsync({
-               data: {
-                 name: currentMediaId,
-                 size: blob.size,
-                 contentType: blob.type,
-                 mediaType: p.mediaType as 'image' | 'video'
-               }
-             });
-             const putRes = await fetch(uploadRes.uploadURL, { method: 'PUT', body: blob, headers: { 'Content-Type': blob.type } });
-             if (!putRes.ok) throw new Error('Upload failed');
-             finalMediaId = uploadRes.media.id;
-             await saveMediaBlob(finalMediaId, blob);
-           } else {
-             setNotice('Attached media could not be recovered and was removed.');
-             finalMediaId = null;
-           }
-         }
-
          const created = await createProject.mutateAsync({
            data: {
              name: `${p.teamName || 'Untitled'} - ${p.headline || 'Project'} (Copy)`,
-             project: { ...p, mediaId: finalMediaId, photo: null }
+              project: designOnlyProject(p),
            }
          });
-         
-         if (finalMediaId !== p.mediaId) {
-           setProject(curr => {
-              const updated = { ...curr, mediaId: finalMediaId };
-              lastSaved.current = updated;
-              return updated;
-           });
-         } else {
-           lastSaved.current = p;
-         }
+          lastSaved.current = p;
          
          setConflictData(null);
          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
@@ -1070,20 +990,7 @@ export function HypeCardEditor() {
   };
 
   const getPortableProject = async (): Promise<HypeCardProject> => {
-    if (project.mediaType !== 'image') {
-      return project;
-    }
-    if (project.photo) {
-      return { ...project, mediaId: null };
-    }
-    if (project.mediaId) {
-      const blob = await loadMediaBlob(project.mediaId);
-      if (!blob) {
-        throw new Error('The attached image is no longer available on this device.');
-      }
-      return { ...project, mediaId: null, photo: await blobToDataUrl(blob) };
-    }
-    return project;
+    return designOnlyProject(project);
   };
 
   const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1351,9 +1258,9 @@ export function HypeCardEditor() {
                {saveStatus === 'Saving' ? <RotateCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                {saveStatus}
              </div>
-             {!cloudProjectId && (
+              {!cloudProjectId && (
                <button type="button" onClick={saveToCloud} disabled={createProject.isPending} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 clip-angled-sm bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-colors border border-transparent">
-                 <Save className="h-3 w-3" /> <span className="hidden sm:inline">Save to account</span>
+                 <Save className="h-3 w-3" /> <span className="hidden sm:inline">Save design</span>
                </button>
              )}
            </div>
@@ -1376,7 +1283,7 @@ export function HypeCardEditor() {
                 setNotice(error instanceof Error ? error.message : 'Could not prepare the project file.');
               }
             }}>
-              <Save className="h-4 w-4" /> Save project
+              <Save className="h-4 w-4" /> Save template
             </Button>
             <label className="hidden cursor-pointer sm:block">
               <span className="flex h-10 items-center gap-2 border border-border bg-background px-4 text-sm font-medium hover:border-primary hover:bg-muted clip-angled-sm transition-colors">
@@ -1448,7 +1355,12 @@ export function HypeCardEditor() {
             </Section>
 
             <Section title="Media" icon={ImagePlus}>
-              <p className="mb-4 text-xs text-muted-foreground">Add a photo or a short video (up to 15 seconds, max 75MB).</p>
+              <p className="mb-4 text-xs text-muted-foreground">Add a photo or a short video (up to 15 seconds, max 75MB). Media stays on this device and is never included in saved designs.</p>
+              {cloudProjectId && !project.mediaType && (
+                <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
+                  This saved design does not include media. Add a photo or video before exporting.
+                </p>
+              )}
               <AssetButton
                 label="Media"
                 hasAsset={Boolean(project.mediaType)}
