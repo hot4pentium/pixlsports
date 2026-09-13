@@ -956,7 +956,7 @@ export function HypeCardEditor() {
                     onClick={() => updateProject('headline', h)}
                     className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all ${project.headline === h ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:border-primary/60 hover:bg-muted'}`}
                   >
-                    {h}
+                    {h}!
                   </button>
                 ))}
               </div>

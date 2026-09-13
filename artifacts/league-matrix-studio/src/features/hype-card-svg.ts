@@ -296,11 +296,12 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const palette = palettes[project.palette];
   const backgroundImage = stadiumCardBackgrounds[project.layout];
   const frame = STADIUM_MEDIA_FRAME;
+  const stadiumHeadline = `${content.headline.replace(/!+$/, '')}!`;
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
   const photoWidth = frame.width * project.photoTransform.zoom;
   const photoHeight = frame.height * project.photoTransform.zoom;
-  const headlineSize = fitText(content.headline, 840, 118, 0.66, 2);
+  const headlineSize = fitText(stadiumHeadline, 840, 132, 0.56, 1);
   const playerSize = fitText(content.player, 760, 76, 0.7, 2);
   const detailsLine = `${content.team}  •  #${content.number}  •  ${content.details}`;
   const photo = project.photo
@@ -339,7 +340,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${mediaGlow}
       ${placeholder}
       <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
-      <text x="500" y="215" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${headlineSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.headline}</text>
+      <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>
+      <text x="956" y="690" text-anchor="middle" transform="rotate(90 956 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="24" font-weight="700" letter-spacing="10" fill="${palette.accent}" fill-opacity=".34">HYPE CARD</text>
       ${nameplate}
       <text x="500" y="1138" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
       <text x="500" y="1208" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(detailsLine, 820, 23, 0.63, 3)}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
