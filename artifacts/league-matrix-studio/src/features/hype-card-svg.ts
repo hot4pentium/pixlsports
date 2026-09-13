@@ -271,7 +271,7 @@ function cardContent(project: HypeCardProject) {
   const player = escapeXml((project.playerName || 'YOUR PLAYER').toUpperCase());
   const number = escapeXml(project.jerseyNumber || '00');
   const team = escapeXml((project.teamName || 'YOUR TEAM').toUpperCase());
-  const details = escapeXml([project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join('  •  ') || 'GAME DAY').toUpperCase();
+  const details = escapeXml(project.position || 'GAME DAY').toUpperCase();
   const recognition = escapeXml([
     project.visibility.achievement ? project.achievement : '',
     project.visibility.stat ? project.stat : '',
@@ -751,7 +751,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   const headlineSize = isLandscape ? width * .085 : isStory ? width * .12 : width * .13;
   const textX = isLandscape ? width * .57 : width * .09;
   const textY = isLandscape ? height * .35 : isStory ? height * .59 : height * .62;
-  const playerLine = [project.position, project.visibility.grade ? project.grade : ''].filter(Boolean).join(' · ');
+  const playerLine = project.position;
   const achievementLine = [
     project.visibility.achievement ? project.achievement : '',
     project.visibility.stat ? project.stat : '',

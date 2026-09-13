@@ -123,6 +123,10 @@ function isSafeRasterDataUrl(url: string | null): boolean {
 
 function normalizeProject(project: any): HypeCardProject {
   const defaults = defaultProject();
+  const { grade: _legacyGrade, ...projectWithoutGrade } = project ?? {};
+  const { grade: _legacyVisibilityGrade, ...visibilityWithoutGrade } = (
+    project?.visibility && typeof project.visibility === 'object' ? project.visibility : {}
+  );
   const safePhoto = isSafeRasterDataUrl(project.photo) ? project.photo : null;
   const safeLogo = isSafeRasterDataUrl(project.logo) ? project.logo : null;
   const isLegacy = project.version === 1;
@@ -131,7 +135,7 @@ function normalizeProject(project: any): HypeCardProject {
     : (project.mediaType === 'image' || project.mediaType === 'video' ? project.mediaType : null);
   return {
     ...defaults,
-    ...project,
+    ...projectWithoutGrade,
     version: 2,
     headline: HEADLINES.includes(project.headline) ? project.headline : defaults.headline,
     mediaType,
@@ -158,7 +162,7 @@ function normalizeProject(project: any): HypeCardProject {
     finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
-    visibility: { ...defaults.visibility, ...project.visibility },
+    visibility: { ...defaults.visibility, ...visibilityWithoutGrade },
     photo: safePhoto,
     logo: safeLogo,
   };
@@ -225,12 +229,10 @@ function LayoutOption({
       project.jerseyNumber,
       project.teamName,
       project.position,
-      project.grade,
       project.stat,
       project.achievement,
       project.coachMessage,
       project.logo,
-      project.visibility.grade,
       project.visibility.stat,
       project.visibility.achievement,
       project.visibility.coachMessage,

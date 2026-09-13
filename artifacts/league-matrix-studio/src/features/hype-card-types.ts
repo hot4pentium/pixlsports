@@ -29,12 +29,10 @@ export type HypeCardProject = {
   jerseyNumber: string;
   teamName: string;
   position: string;
-  grade: string;
   stat: string;
   achievement: string;
   coachMessage: string;
   visibility: {
-    grade: boolean;
     stat: boolean;
     achievement: boolean;
     coachMessage: boolean;
@@ -127,11 +125,10 @@ export const defaultProject = (): HypeCardProject => ({
   jerseyNumber: '12',
   teamName: 'Eastside Falcons',
   position: 'Point guard',
-  grade: '8th grade',
   stat: '12 points',
   achievement: 'Player of the week',
   coachMessage: 'Keep showing up.',
-  visibility: { grade: true, stat: true, achievement: true, coachMessage: true },
+  visibility: { stat: true, achievement: true, coachMessage: true },
   photo: null,
   logo: null,
   photoTransform: { zoom: 1, x: 0, y: 0, rotation: 0, flip: false },
