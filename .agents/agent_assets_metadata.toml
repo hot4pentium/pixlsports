@@ -252,3 +252,17 @@ mtime_ms = 1789346477956
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/72cc9df9-fa91-4e27-b8d7-3b1f081be556/e65d649c-5b80-4600-aa1e-af1b91e17247"
 storage_version_token = "1789346728138043"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "Thvy7MkWzGEcFhk7VczRz"
+uri = "file://screenshots/hype-card-lower-third-fully-visible.jpg"
+type = "image"
+title = "Full Lower Third Beyond Card"
+description = "Verified Hype Card render with the complete lower third visible, half overlapping the card and half extending below its bottom edge."
+logical_id = "9c848899-9c36-45de-ad77-be71ca844536"
+content_hash = "sha256:8f15110bde5f871724709480c9cff137ecc1ba39a12306908104b8278d1181f3"
+size = 146667
+mtime_ms = 1789346906740
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/9c848899-9c36-45de-ad77-be71ca844536/8848db31-c644-46f2-a541-ce66d8ad8e2a"
+storage_version_token = "1789346938113111"
+content_type = "image/jpeg"
