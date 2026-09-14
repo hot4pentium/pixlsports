@@ -196,3 +196,17 @@ mtime_ms = 1789345848873
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/5f4dc0ab-b44c-4cf9-95a0-226c8a276d4c/4653bf83-72b8-4667-b48e-ca66f8c2e004"
 storage_version_token = "1789345868779979"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "pZNIkPe1aRV1XkDnXXj3z"
+uri = "file://screenshots/hype-card-lower-third-restored.jpg"
+type = "image"
+title = "Lower Third Restored"
+description = "Verified Hype Card render showing the uploaded lower third on an existing saved card."
+logical_id = "629e2b80-c5a4-4d63-8fa8-97780f5903f3"
+content_hash = "sha256:fe94bb1a1c9f09becd7bf98ee26b2baf6f42bcfacdb3d0f22597cd45484d0a9f"
+size = 146552
+mtime_ms = 1789346189056
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/629e2b80-c5a4-4d63-8fa8-97780f5903f3/6e92ec8e-4ec2-455e-9dd4-3321878ea8f3"
+storage_version_token = "1789346194746919"
+content_type = "image/jpeg"

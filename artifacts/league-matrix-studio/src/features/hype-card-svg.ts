@@ -320,7 +320,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const branding = project.branding
      ? `<text x="500" y="1376" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
-  const nameplate = project.overlay
+  const nameplate = project.showLowerThird
     ? `<g transform="translate(0 1100)" filter="url(#lowerBarShadow-${ns})">
         <g aria-label="Lower third wrap folds">
           <path d="M0 93 L61 53 H128 L103 89 L128 124 L103 250 L54 279 L0 240 Z" fill="#07111c" stroke="#2b4e6a" stroke-width="5"/>

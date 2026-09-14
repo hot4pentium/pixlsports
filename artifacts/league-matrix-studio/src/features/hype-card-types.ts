@@ -24,6 +24,7 @@ export type HypeCardProject = {
   finish: CardFinishId;
   background: 'solid' | 'gradient' | 'paper';
   overlay: boolean;
+  showLowerThird: boolean;
   branding: boolean;
   playerName: string;
   jerseyNumber: string;
@@ -120,6 +121,7 @@ export const defaultProject = (): HypeCardProject => ({
   finish: 'classic',
   background: 'gradient',
   overlay: true,
+  showLowerThird: true,
   branding: true,
   playerName: '',
   jerseyNumber: '12',

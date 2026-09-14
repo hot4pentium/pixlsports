@@ -1605,10 +1605,17 @@ export function HypeCardEditor() {
                   <Label htmlFor="branding" className="text-sm font-medium">Show LeagueMatrix branding</Label>
                   <Switch id="branding" checked={project.branding} onCheckedChange={(c) => updateProject('branding', c)} />
                 </div>
-                <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <Label htmlFor="overlay" className="text-sm font-medium">Show graphic overlays</Label>
-                  <Switch id="overlay" checked={project.overlay} onCheckedChange={(c) => updateProject('overlay', c)} />
-                </div>
+                {project.format === 'card' ? (
+                  <div className="flex items-center justify-between rounded-xl border border-border p-3">
+                    <Label htmlFor="lower-third" className="text-sm font-medium">Show lower third</Label>
+                    <Switch id="lower-third" checked={project.showLowerThird} onCheckedChange={(c) => updateProject('showLowerThird', c)} />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between rounded-xl border border-border p-3">
+                    <Label htmlFor="overlay" className="text-sm font-medium">Show graphic overlays</Label>
+                    <Switch id="overlay" checked={project.overlay} onCheckedChange={(c) => updateProject('overlay', c)} />
+                  </div>
+                )}
                 <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={(e) => assetUpload(e, (u) => updateProject('logo', u), setNotice)} onRemove={() => updateProject('logo', null)} />
               </div>
             </Section>}

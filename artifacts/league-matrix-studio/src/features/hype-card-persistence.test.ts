@@ -84,3 +84,9 @@ test('custom position labels survive the cloud save payload and API response nor
     assert.equal(reopened.position, position);
   }
 });
+
+test('existing cards show the lower third unless explicitly disabled', () => {
+  const { showLowerThird: _legacyLowerThird, ...legacyProject } = defaultProject();
+  assert.equal(normalizeHypeCardProject(legacyProject).showLowerThird, true);
+  assert.equal(normalizeHypeCardProject({ ...defaultProject(), showLowerThird: false }).showLowerThird, false);
+});
