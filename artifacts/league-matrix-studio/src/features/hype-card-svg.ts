@@ -347,8 +347,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
           <path d="M967 121 L941 96 V217 L918 239" stroke="${palette.secondary}" stroke-width="4" opacity=".9"/>
         </g>
         <g aria-label="Lower third divider">
-          <path d="M120 160 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
-          <path d="M315 160 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
+          <path d="M120 190 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
+          <path d="M315 190 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
         </g>
       </g>`
     : '';
@@ -388,8 +388,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
         <text x="${hypeRailCenterX}" y="690" text-anchor="middle" transform="rotate(90 ${hypeRailCenterX} 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
       </g>
       ${nameplate}
-        <text x="500" y="1240" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
-        <text x="500" y="1280" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
+        <text x="500" y="1270" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
+        <text x="500" y="1310" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
       ${coachMessage}
       ${logo}
       ${branding}

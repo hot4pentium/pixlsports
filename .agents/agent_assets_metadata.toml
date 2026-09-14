@@ -126,3 +126,17 @@ mtime_ms = 1789344613352
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/2524016d-ff60-4175-846a-dc63cfd50523/3b97e51d-0587-4d22-a452-77c6738ae41e"
 storage_version_token = "1789344621606708"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "3iQpfUHKJ366hmba4xCb9"
+uri = "file://screenshots/hype-card-vertically-centered-text.jpg"
+type = "image"
+title = "Vertically Centered Lower Third"
+description = "Final Hype Card render with the player/team text block vertically centered in the bottom lower third."
+logical_id = "6c6722da-4e15-4377-adbb-bbf17486e5cb"
+content_hash = "sha256:0610114be5c63474b329f521409f5b6bc69aee3c986ccbe3b777a91ace54af0f"
+size = 154194
+mtime_ms = 1789344705040
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/6c6722da-4e15-4377-adbb-bbf17486e5cb/3d415ae5-09fd-4186-96fc-503dfb3c4bb7"
+storage_version_token = "1789344711172212"
+content_type = "image/jpeg"
