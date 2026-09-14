@@ -137,7 +137,9 @@ function normalizeProject(project: any): HypeCardProject {
     ...defaults,
     ...projectWithoutGrade,
     version: 2,
-    headline: HEADLINES.includes(project.headline) ? project.headline : defaults.headline,
+    headline: typeof project.headline === 'string' && project.headline.trim()
+      ? project.headline.trim().slice(0, 42)
+      : defaults.headline,
     mediaType,
     mediaId: mediaType === 'image' && safePhoto
       ? null
@@ -1443,6 +1445,15 @@ export function HypeCardEditor() {
                     {h}!
                   </button>
                 ))}
+              </div>
+              <div className="mt-4">
+                <HypeField
+                  label="Custom moment"
+                  value={project.headline}
+                  onChange={(value) => updateProject('headline', value)}
+                  placeholder="e.g. GAME WINNER"
+                />
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Use your own moment text or choose a preset above.</p>
               </div>
             </Section>
 

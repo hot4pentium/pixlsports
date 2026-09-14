@@ -70,3 +70,17 @@ mtime_ms = 1789343997145
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a6d52629-f4f7-4c09-be89-68e475527a62/1a76b5dd-7c79-47d5-b862-a0c3ce2f3131"
 storage_version_token = "1789344003942299"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "rZBCxzp9RNMohOi0WV54-"
+uri = "file://screenshots/hype-card-custom-moment.jpg"
+type = "image"
+title = "Hype Card Custom Moment"
+description = "Updated card with no team name in the header and an editable custom moment field."
+logical_id = "5eb08d97-d618-45fb-9ee3-55eec68b2982"
+content_hash = "sha256:fe570522c82be704aae294832ebb09212724381865c5bc5d0ea4b1b06a144611"
+size = 156760
+mtime_ms = 1789344193252
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/5eb08d97-d618-45fb-9ee3-55eec68b2982/2f6a8a80-6ce9-4172-bb4d-41048edbefc8"
+storage_version_token = "1789344200825247"
+content_type = "image/jpeg"
