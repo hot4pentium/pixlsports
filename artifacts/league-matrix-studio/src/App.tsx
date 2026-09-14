@@ -13,6 +13,10 @@ import {
   useUpdateProject,
   useUpdateScheduleShare,
   getListProjectsQueryKey,
+  useGetAccountAccess,
+  useUpdateAccountAccess,
+  useConsumeAccountUsage,
+  getGetAccountAccessQueryKey,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
@@ -56,6 +60,7 @@ import {
   type ScheduleEvent,
   type ScheduleEventType,
 } from '@/features/schedule-draft';
+import { getGuestUsageKey } from '@/features/guest-access';
 import {
   createBlankRosterPlayer,
   getBenchPlayers,
@@ -115,6 +120,7 @@ function stripBase(path: string): string {
 
 type ToolKind = 'hype' | 'schedule' | 'roster';
 type UserRole = 'coach' | 'fan';
+type AccessMode = 'full' | 'guest';
 
 const roleToolKinds: Record<UserRole, ToolKind[]> = {
   coach: ['schedule', 'roster'],
@@ -132,14 +138,17 @@ function getUserRole(user: { unsafeMetadata?: unknown } | null | undefined): Use
 
 function getUserProfile(user: { firstName?: string | null; lastName?: string | null; unsafeMetadata?: unknown } | null | undefined) {
   const metadata = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
-    ? user.unsafeMetadata as { role?: unknown; displayName?: unknown; teamName?: unknown }
+     ? user.unsafeMetadata as { role?: unknown; displayName?: unknown; teamName?: unknown; accessMode?: unknown }
     : {};
   const clerkName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   return {
     role: metadata.role === 'coach' || metadata.role === 'fan' ? metadata.role : null,
     displayName: typeof metadata.displayName === 'string' && metadata.displayName.trim() ? metadata.displayName.trim() : clerkName,
-    teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
-  } as { role: UserRole | null; displayName: string; teamName: string };
+     teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
+     accessMode: metadata.accessMode === 'guest' || metadata.accessMode === 'full'
+       ? metadata.accessMode
+       : metadata.role === 'coach' || metadata.role === 'fan' ? 'full' : null,
+   } as { role: UserRole | null; displayName: string; teamName: string; accessMode: AccessMode | null };
 }
 
 const toolData: Record<ToolKind, {
@@ -494,11 +503,15 @@ function Studio({ role }: { role: UserRole }) {
   const { user, isSignedIn } = useUser();
   const profile = getUserProfile(user);
   const queryClient = useQueryClient();
+  const { data: accountAccess } = useGetAccountAccess({
+    query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() },
+  });
+  const isGuest = accountAccess?.accessMode === 'guest';
 
   useEffect(() => setHasProject(Boolean(window.localStorage.getItem('leaguematrix-hype-card-project-v2'))), []);
 
   const { data: cloudProjects, isLoading } = useListProjects({
-    query: { enabled: !!isSignedIn, queryKey: getListProjectsQueryKey() }
+    query: { enabled: !!isSignedIn && !!accountAccess, queryKey: getListProjectsQueryKey() }
   });
 
   const deleteProject = useDeleteProject({
@@ -522,8 +535,8 @@ function Studio({ role }: { role: UserRole }) {
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
                {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary">CENTER.</span>
             </h1>
-            <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
-              <span>Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.</span>
+             <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
+               <span>{isGuest ? 'Build locally and save a small number of reusable projects to your LeagueMatrix cloud workspace, then export finished graphics.' : 'Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.'}</span>
               <Dialog>
                 <DialogTrigger asChild>
                   <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
@@ -564,6 +577,22 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
+         {isGuest && accountAccess && (
+           <div className="relative mt-6 overflow-hidden border-l-4 border-primary bg-primary/10 px-5 py-4 clip-angled-sm" data-testid="banner-guest-limits">
+             <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+               <div>
+                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited Guest mode</p>
+                 <p className="mt-1 text-sm font-medium text-foreground">Your allowance is shared across sessions and devices.</p>
+               </div>
+               <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                 <span className="border border-border bg-background px-2.5 py-2">Hype {accountAccess.remaining.hypeCards}/{accountAccess.limits.hypeCards}</span>
+                 <span className="border border-border bg-background px-2.5 py-2">Events {accountAccess.remaining.scheduleEvents}/{accountAccess.limits.scheduleEvents}</span>
+                 <span className="border border-border bg-background px-2.5 py-2">Lineup {accountAccess.remaining.lineups}/{accountAccess.limits.lineups}</span>
+               </div>
+             </div>
+           </div>
+         )}
+
         <div className="relative mt-8 overflow-hidden border-l-4 border-primary bg-foreground bg-tech-grid-dark px-5 py-4 text-background clip-angled-sm" data-testid="banner-user-team">
           <div className="pointer-events-none absolute inset-0 bg-tech-grid-green opacity-30" />
           <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -575,7 +604,7 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
-        {role === 'coach' && <CoachCalendarCodePanel />}
+         {role === 'coach' && !isGuest && <CoachCalendarCodePanel />}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
@@ -1020,6 +1049,18 @@ function EditorPage({ kind }: { kind: ToolKind }) {
   );
 }
 
+function ProtectedEditor({ kind, children }: { kind: ToolKind; children: ReactNode }) {
+  const { user, isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) {
+    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>;
+  }
+  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  const role = getUserRole(user);
+  if (!role) return <Redirect to="/studio" />;
+  if (!roleToolKinds[role].includes(kind)) return <Redirect to="/studio" />;
+  return <>{children}</>;
+}
+
 function rosterText(value: string, fallback: string, maxLength = 28) {
   const clean = value.trim();
   if (!clean) return fallback;
@@ -1134,9 +1175,15 @@ function RosterEditor() {
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
+  const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
+  const consumeAccountUsage = useConsumeAccountUsage();
+  const queryClient = useQueryClient();
+  const lineupUsageKey = useRef(getGuestUsageKey('lineup', 'roster-editor')).current;
+  const claimedLineup = useRef(false);
   const [storedDraft] = useState(() => readRosterDraft());
   const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster());
   const [notice, setNotice] = useState('');
+  const [guestLineupBlocked, setGuestLineupBlocked] = useState(false);
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [expandedAthleteId, setExpandedAthleteId] = useState<string | null>(null);
   const cloudRevision = useRef(1);
@@ -1149,6 +1196,21 @@ function RosterEditor() {
   });
   const createCloudProject = useCreateProject();
   const updateCloudProject = useUpdateProject();
+
+  useEffect(() => {
+    if (accountAccess?.accessMode !== 'guest' || claimedLineup.current) return;
+    claimedLineup.current = true;
+    consumeAccountUsage.mutate(
+      { data: { category: 'lineup', usageKey: lineupUsageKey } },
+      {
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() }),
+        onError: () => {
+          if (!storedDraft && !cloudProjectId) setGuestLineupBlocked(true);
+          announce('GUEST LINEUP LIMIT REACHED — YOUR EXISTING LOCAL DRAFT IS STILL AVAILABLE');
+        },
+      },
+    );
+  }, [accountAccess?.accessMode, consumeAccountUsage, lineupUsageKey, queryClient, storedDraft, cloudProjectId]);
 
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
@@ -1216,13 +1278,17 @@ function RosterEditor() {
         announce('ROSTER SAVED TO CLOUD');
       } else {
         const created = await createCloudProject.mutateAsync({
-          data: { name: `${draft.teamName || 'Untitled'} - Roster`, project: cloudDraft() },
+          data: {
+            name: `${draft.teamName || 'Untitled'} - Roster`,
+            project: cloudDraft(),
+            ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey: lineupUsageKey } : {}),
+          },
         });
         setSaved(true);
         setLocation(`/studio/roster/${created.id}`);
       }
-    } catch {
-      announce('CLOUD SAVE FAILED — TRY AGAIN');
+    } catch (error: any) {
+      announce(error?.status === 409 ? 'GUEST LINEUP LIMIT REACHED — KEEP USING YOUR LOCAL DRAFT' : 'CLOUD SAVE FAILED — TRY AGAIN');
     }
   };
 
@@ -1243,6 +1309,25 @@ function RosterEditor() {
     setSaved(true);
     cloudRevision.current = cloudProjectData.revision;
   }, [cloudProjectData, cloudProjectId]);
+
+  if (guestLineupBlocked && !cloudProjectId && !storedDraft) {
+    return (
+      <StudioLayout>
+        <main className="mx-auto flex w-full max-w-3xl flex-1 items-center px-5 py-12 sm:px-8">
+          <section className="w-full border-l-4 border-primary bg-card p-7 clip-angled-sm">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited Guest mode</p>
+            <h1 className="mt-3 font-display text-4xl uppercase tracking-wide">LINEUP ALREADY USED.</h1>
+            <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">
+              This Guest account has already used its editable lineup. Your existing local draft remains safe on the device where it was created. Choose Full Account to start another lineup.
+            </p>
+            <Link href="/studio" className="mt-6 inline-flex items-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">
+              Back to Command Center <ArrowRight className="h-4 w-4" />
+            </Link>
+          </section>
+        </main>
+      </StudioLayout>
+    );
+  }
 
   return (
     <StudioLayout>
@@ -1548,6 +1633,9 @@ function ScheduleEditor() {
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
+  const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
+  const consumeAccountUsage = useConsumeAccountUsage();
+  const queryClient = useQueryClient();
   const isFan = getUserRole(user) === 'fan';
   const [connectedCoachCode, setConnectedCoachCode] = useState(() => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '');
   const [storedDraft] = useState(() => readScheduleDraft());
@@ -1669,10 +1757,21 @@ function ScheduleEditor() {
     setEventForm({ ...event });
   };
 
-  const saveEventForm = () => {
+  const saveEventForm = async () => {
     if (!eventForm) return;
 
     const isNewEvent = !events.some((event) => event.id === eventForm.id);
+    if (isNewEvent && accountAccess?.accessMode === 'guest') {
+      try {
+        await consumeAccountUsage.mutateAsync({
+          data: { category: 'schedule_event', usageKey: `schedule-event:${eventForm.id}` },
+        });
+        await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+      } catch {
+        setNoticeFor('GUEST SCHEDULE LIMIT REACHED — CHOOSE FULL ACCOUNT TO ADD MORE');
+        return;
+      }
+    }
     const nextEvents = saveScheduleEvent(events, eventForm);
     setEvents(nextEvents);
     setSelectedEventId(eventForm.id);
@@ -1746,8 +1845,8 @@ function ScheduleEditor() {
         setSaved(true);
         setLocation(`/studio/schedule/${created.id}`);
       }
-    } catch {
-      setNoticeFor('CLOUD SAVE FAILED — TRY AGAIN');
+    } catch (error: any) {
+      setNoticeFor(error?.status === 409 ? 'GUEST SCHEDULE LIMIT REACHED — CHOOSE FULL ACCOUNT TO ADD MORE' : 'CLOUD SAVE FAILED — TRY AGAIN');
     }
   };
 
@@ -1793,8 +1892,8 @@ function ScheduleEditor() {
       if (createdProjectId) {
         setLocation(`/studio/schedule/${createdProjectId}`);
       }
-    } catch {
-      setNoticeFor('PUBLISH FAILED — TRY AGAIN');
+    } catch (error: any) {
+      setNoticeFor(error?.status === 409 ? 'GUEST SCHEDULE LIMIT REACHED — CHOOSE FULL ACCOUNT TO ADD MORE' : 'PUBLISH FAILED — TRY AGAIN');
     }
   };
 
@@ -2031,7 +2130,7 @@ function ScheduleEditor() {
                     onChange={updateEvent}
                     onRemove={removeEvent}
                     onMove={moveEvent}
-                    onSave={saveEventForm}
+                     onSave={() => { void saveEventForm(); }}
                     isNew={!events.some((event) => event.id === eventForm.id)}
                     onCancel={() => setEventForm(null)}
                   />
@@ -2751,10 +2850,12 @@ function RoleSelectionPage() {
   const { user, isLoaded } = useUser();
   const existingProfile = getUserProfile(user);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(existingProfile.role);
+  const [selectedAccessMode, setSelectedAccessMode] = useState<AccessMode | null>(existingProfile.accessMode);
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
   const [teamName, setTeamName] = useState(existingProfile.teamName);
   const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState('');
+  const updateAccountAccess = useUpdateAccountAccess();
 
   if (!isLoaded) {
     return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your account…</div>;
@@ -2771,6 +2872,10 @@ function RoleSelectionPage() {
       setError('Choose Coach or Fan to continue.');
       return;
     }
+    if (!selectedAccessMode) {
+      setError('Choose Full Account or Limited Guest to continue.');
+      return;
+    }
     if (!cleanName || !cleanTeam) {
       setError('Add your name and team to continue.');
       return;
@@ -2779,10 +2884,14 @@ function RoleSelectionPage() {
     setSavingProfile(true);
     setError('');
     try {
+      await updateAccountAccess.mutateAsync({
+        data: { role: selectedRole, accessMode: selectedAccessMode },
+      });
       await user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata ?? {}),
           role: selectedRole,
+          accessMode: selectedAccessMode,
           displayName: cleanName,
           teamName: cleanTeam,
         },
@@ -2886,7 +2995,41 @@ function RoleSelectionPage() {
                 <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Hype Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </button>
             </div>
-            <button type="button" onClick={() => void saveProfile()} disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
+             {selectedRole && (
+               <div className="mt-7" role="radiogroup" aria-label="Choose account mode">
+                 <div className="flex items-center justify-between gap-3">
+                   <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose your account</p>
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Select one</span>
+                 </div>
+                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                   <button
+                     type="button"
+                     role="radio"
+                     aria-checked={selectedAccessMode === 'full'}
+                     onClick={() => setSelectedAccessMode('full')}
+                     disabled={savingProfile}
+                     className={`border-2 p-4 text-left clip-angled-sm transition-colors ${selectedAccessMode === 'full' ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/60'}`}
+                     data-testid="button-access-full"
+                   >
+                     <span className="flex items-center justify-between gap-2 text-sm font-bold uppercase tracking-wider">Full Account {selectedAccessMode === 'full' && <Check className="h-4 w-4 text-primary" />}</span>
+                     <span className="mt-2 block text-xs font-medium leading-relaxed text-muted-foreground">Unlimited cloud saves, publishing, roster tools, and connected calendars.</span>
+                   </button>
+                   <button
+                     type="button"
+                     role="radio"
+                     aria-checked={selectedAccessMode === 'guest'}
+                     onClick={() => setSelectedAccessMode('guest')}
+                     disabled={savingProfile}
+                     className={`border-2 p-4 text-left clip-angled-sm transition-colors ${selectedAccessMode === 'guest' ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/60'}`}
+                     data-testid="button-access-guest"
+                   >
+                     <span className="flex items-center justify-between gap-2 text-sm font-bold uppercase tracking-wider">Limited Guest {selectedAccessMode === 'guest' && <Check className="h-4 w-4 text-primary" />}</span>
+                     <span className="mt-2 block text-xs font-medium leading-relaxed text-muted-foreground">Try the studio with 3 Hype Cards, 3 schedule events, and 1 editable lineup.</span>
+                   </button>
+                 </div>
+               </div>
+             )}
+             <button type="button" onClick={() => void saveProfile()} disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
               {savingProfile ? 'Saving your playbook…' : 'Enter my Command Center'}
             </button>
             {error && <p className="mt-5 text-sm font-bold text-destructive" role="alert">{error}</p>}
@@ -2983,10 +3126,10 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
               <Route path="/studio" component={StudioPortal} />
-              <Route path="/studio/hype-card" component={HypeCardEditor} />
-              <Route path="/studio/hype-card/:id" component={HypeCardEditor} />
-              <Route path="/studio/schedule/:id?"><EditorPage kind="schedule" /></Route>
-              <Route path="/studio/roster/:id?"><RosterEditor /></Route>
+              <Route path="/studio/hype-card"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
+              <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
+              <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
+              <Route path="/studio/roster/:id?"><ProtectedEditor kind="roster"><RosterEditor /></ProtectedEditor></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
               <Route component={NotFound} />

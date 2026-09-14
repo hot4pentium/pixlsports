@@ -54,6 +54,31 @@ export const coachCalendarCodesTable = pgTable("coach_calendar_codes", {
   codeUnique: uniqueIndex("coach_calendar_codes_code_unique").on(table.code),
 }));
 
+export const accountAccessTable = pgTable("account_access", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  role: text("role").notNull(),
+  accessMode: text("access_mode").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => ({
+  ownerUnique: uniqueIndex("account_access_owner_unique").on(table.ownerClerkUserId),
+}));
+
+export const guestUsageEventsTable = pgTable("guest_usage_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  category: text("category").notNull(),
+  usageKey: text("usage_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  usageKeyUnique: uniqueIndex("guest_usage_events_key_unique").on(
+    table.ownerClerkUserId,
+    table.category,
+    table.usageKey,
+  ),
+}));
+
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,
   createdAt: true,
@@ -70,3 +95,5 @@ export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
 export type ProjectMedia = typeof projectMediaTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
+export type AccountAccess = typeof accountAccessTable.$inferSelect;
+export type GuestUsageEvent = typeof guestUsageEventsTable.$inferSelect;

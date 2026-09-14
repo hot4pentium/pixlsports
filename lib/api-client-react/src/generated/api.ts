@@ -20,6 +20,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountAccess,
+  AccountAccessInput,
+  AccountUsageConsumeInput,
   BadRequestResponse,
   CoachCalendar,
   CoachCalendarCode,
@@ -187,7 +190,7 @@ return customFetch<ScheduleShare>(getCreateScheduleShareUrl(),
 
 export const getCreateScheduleShareMutationKey = () => ['createScheduleShare'] as const;
 
-export const getCreateScheduleShareMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const getCreateScheduleShareMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createScheduleShare>>, TError,CreateScheduleShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createScheduleShare>>, TError,CreateScheduleShareMutationVariables, TContext> => {
 
@@ -216,13 +219,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateScheduleShareMutationResult = NonNullable<Awaited<ReturnType<typeof createScheduleShare>>>
     export type CreateScheduleShareMutationBody = BodyType<ScheduleShareInput>
-    export type CreateScheduleShareMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type CreateScheduleShareMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
     export type CreateScheduleShareMutationVariables = {data: BodyType<ScheduleShareInput>}
 
     /**
  * @summary Create a public schedule share
  */
-export const useCreateScheduleShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const useCreateScheduleShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createScheduleShare>>, TError,CreateScheduleShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createScheduleShare>>,
@@ -718,6 +721,259 @@ export function useGetConnectedCoachCalendar<TData = Awaited<ReturnType<typeof g
 
 
 
+
+export const getGetAccountAccessUrl = () => {
+
+
+
+
+  return `/api/account/access`
+}
+
+/**
+ * @summary Get the authenticated user's account access and Guest usage
+ */
+export const getAccountAccess = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountAccess> => {
+
+  return customFetch<AccountAccess>(getGetAccountAccessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountAccessQueryKey = () => {
+    return [
+    `/api/account/access`
+    ] as const;
+    }
+
+
+export const getGetAccountAccessQueryOptions = <TData = Awaited<ReturnType<typeof getAccountAccess>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountAccessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountAccess>>> = ({ signal }) => getAccountAccess({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountAccess>>>
+export type GetAccountAccessQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get the authenticated user's account access and Guest usage
+ */
+
+export function useGetAccountAccess<TData = Awaited<ReturnType<typeof getAccountAccess>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountAccessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAccountAccessUrl = () => {
+
+
+
+
+  return `/api/account/access`
+}
+
+/**
+ * @summary Save the authenticated user's role and access mode
+ */
+export const updateAccountAccess = async (accountAccessInput: AccountAccessInput, options?: Parameters<typeof customFetch>[1]): Promise<AccountAccess> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AccountAccess>(getUpdateAccountAccessUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(accountAccessInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAccountAccessMutationKey = () => ['updateAccountAccess'] as const;
+
+export const getUpdateAccountAccessMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAccountAccess>>, TError,UpdateAccountAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAccountAccess>>, TError,UpdateAccountAccessMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAccountAccessMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAccountAccess>>, UpdateAccountAccessMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAccountAccess(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAccountAccessMutationResult = NonNullable<Awaited<ReturnType<typeof updateAccountAccess>>>
+    export type UpdateAccountAccessMutationBody = BodyType<AccountAccessInput>
+    export type UpdateAccountAccessMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type UpdateAccountAccessMutationVariables = {data: BodyType<AccountAccessInput>}
+
+    /**
+ * @summary Save the authenticated user's role and access mode
+ */
+export const useUpdateAccountAccess = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAccountAccess>>, TError,UpdateAccountAccessMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAccountAccess>>,
+        TError,
+        UpdateAccountAccessMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAccountAccessMutationOptions(options));
+    }
+
+export const getConsumeAccountUsageUrl = () => {
+
+
+
+
+  return `/api/account/usage`
+}
+
+/**
+ * @summary Consume one Guest allowance
+ */
+export const consumeAccountUsage = async (accountUsageConsumeInput: AccountUsageConsumeInput, options?: Parameters<typeof customFetch>[1]): Promise<AccountAccess> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AccountAccess>(getConsumeAccountUsageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(accountUsageConsumeInput)
+  }
+);}
+
+
+
+
+
+export const getConsumeAccountUsageMutationKey = () => ['consumeAccountUsage'] as const;
+
+export const getConsumeAccountUsageMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof consumeAccountUsage>>, TError,ConsumeAccountUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof consumeAccountUsage>>, TError,ConsumeAccountUsageMutationVariables, TContext> => {
+
+const mutationKey = getConsumeAccountUsageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof consumeAccountUsage>>, ConsumeAccountUsageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  consumeAccountUsage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConsumeAccountUsageMutationResult = NonNullable<Awaited<ReturnType<typeof consumeAccountUsage>>>
+    export type ConsumeAccountUsageMutationBody = BodyType<AccountUsageConsumeInput>
+    export type ConsumeAccountUsageMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type ConsumeAccountUsageMutationVariables = {data: BodyType<AccountUsageConsumeInput>}
+
+    /**
+ * @summary Consume one Guest allowance
+ */
+export const useConsumeAccountUsage = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof consumeAccountUsage>>, TError,ConsumeAccountUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof consumeAccountUsage>>,
+        TError,
+        ConsumeAccountUsageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConsumeAccountUsageMutationOptions(options));
+    }
 
 export const getListProjectsUrl = () => {
 

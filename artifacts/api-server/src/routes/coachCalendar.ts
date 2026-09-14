@@ -139,7 +139,8 @@ async function calendarResponse(code: string, ownerClerkUserId: string) {
 
 router.get("/coach-calendar", requireAuth, async (_req, res): Promise<void> => {
   try {
-    const code = await getOrCreateCode(getRequiredClerkUserId(res));
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const code = await getOrCreateCode(ownerClerkUserId);
     res.json(GetCoachCalendarCodeResponse.parse({ code: code.code }));
   } catch (error) {
     res.status(500).json({ error: "Unable to create coach calendar code" });

@@ -4,3 +4,4 @@
 - [Local video preparation](local-video-preparation.md) — accept source clips up to 120MB, prepare smaller MP4s locally, and limit exports to a selected 15-second segment.
 - [Schedule identity compatibility](schedule-identity-compatibility.md) — new shares use separate team name and season while legacy API field names preserve existing parent links.
 - [Vite asset imports in Node tests](vite-asset-imports-in-node-tests.md) — keep Node-focused tests away from SVG modules that import Vite-only image assets.
+- [Guest access guardrails](guest-access-guardrails.md) — Guest mode stays immutable and quota claims serialize server-side.

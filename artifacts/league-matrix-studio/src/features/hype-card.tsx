@@ -15,6 +15,8 @@ import {
   useGetProject, 
   getGetProjectQueryKey,
   getListProjectsQueryKey,
+  useGetAccountAccess,
+  getGetAccountAccessQueryKey,
   serveProjectMedia,
   type Project
 } from '@workspace/api-client-react';
@@ -35,6 +37,7 @@ import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_ME
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
+import { getGuestUsageKey } from './guest-access';
 
 
 function drawVideoCover(
@@ -657,6 +660,7 @@ export function HypeCardEditor() {
   const initializedForId = useRef<string | null>(null);
   const lastSaved = useRef<HypeCardProject>(project);
   const currentRevision = useRef<number>(1);
+  const guestUsageKey = useRef(getGuestUsageKey('hype_card', 'hype-editor', false)).current;
   const mutateFnRef = useRef<any>(null);
   const isSavingRef = useRef(false);
   const nextSaveDataRef = useRef<HypeCardProject | null>(null);
@@ -677,6 +681,13 @@ export function HypeCardEditor() {
 
   const { data: cloudProjectData } = useGetProject(cloudProjectId || '', {
     query: { enabled: !!cloudProjectId && !!isSignedIn, queryKey: getGetProjectQueryKey(cloudProjectId || '') }
+  });
+  const { data: accountAccess } = useGetAccountAccess({
+    query: {
+      enabled: Boolean(isSignedIn),
+      staleTime: 15000,
+      queryKey: getGetAccountAccessQueryKey(),
+    },
   });
 
   const updateProjectMutation = useUpdateProject({
@@ -898,14 +909,16 @@ export function HypeCardEditor() {
         data: {
           name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
           project: designOnlyProject(project),
+          ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey } : {}),
         }
       });
+      queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
       lastSaved.current = project;
       setNotice('Design saved. Add media anytime to create a new export.');
       setLocation(`/studio/hype-card/${created.id}`);
-    } catch (e) {
+    } catch (e: any) {
       setSaveStatus('Save failed');
-      setNotice('Failed to migrate project to cloud.');
+      setNotice(e?.status === 409 ? 'Guest Hype Card limit reached. Choose Full Account to create more.' : 'Failed to migrate project to cloud.');
     }
   };
 
@@ -931,16 +944,18 @@ export function HypeCardEditor() {
            data: {
              name: `${p.teamName || 'Untitled'} - ${p.headline || 'Project'} (Copy)`,
               project: designOnlyProject(p),
+               ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey: `${guestUsageKey}-copy` } : {}),
            }
          });
+          queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
           lastSaved.current = p;
          
          setConflictData(null);
          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
          setLocation(`/studio/hype-card/${created.id}`);
-       } catch (e) {
+        } catch (e: any) {
          setSaveStatus('Conflict');
-         setNotice('Failed to save as new project. Please try again.');
+          setNotice(e?.status === 409 ? 'Guest Hype Card limit reached. Choose Full Account to create more.' : 'Failed to save as new project. Please try again.');
        }
     }
   };

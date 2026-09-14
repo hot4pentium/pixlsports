@@ -18,6 +18,8 @@ tags:
     description: Public schedule sharing operations
   - name: coach-calendars
     description: Authenticated coach calendar connections
+  - name: account-access
+    description: Authenticated account role and Guest usage
 paths:
   /healthz:
     get:
@@ -55,6 +57,12 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account mode is already set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /schedule-shares/{shareToken}:
     parameters:
       - $ref: "#/components/parameters/ScheduleShareToken"
@@ -165,6 +173,69 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /account/access:
+    get:
+      operationId: getAccountAccess
+      tags: [account-access]
+      summary: Get the authenticated user's account access and Guest usage
+      responses:
+        "200":
+          description: Account access and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountAccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateAccountAccess
+      tags: [account-access]
+      summary: Save the authenticated user's role and access mode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountAccessInput"
+      responses:
+        "200":
+          description: Account access and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountAccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /account/usage:
+    post:
+      operationId: consumeAccountUsage
+      tags: [account-access]
+      summary: Consume one Guest allowance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountUsageConsumeInput"
+      responses:
+        "200":
+          description: Updated account access and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountAccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Guest allowance exhausted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /projects:
     get:
       operationId: listProjects
@@ -454,6 +525,46 @@ components:
         updatedAt:
           type: ["string", "null"]
           format: date-time
+    AccountAccessInput:
+      type: object
+      required: [role, accessMode]
+      properties:
+        role: { type: string, enum: [coach, fan] }
+        accessMode: { type: string, enum: [full, guest] }
+    AccountUsageConsumeInput:
+      type: object
+      required: [category, usageKey]
+      properties:
+        category: { type: string, enum: [hype_card, schedule_event, lineup] }
+        usageKey: { type: string, minLength: 1, maxLength: 120 }
+    AccountUsage:
+      type: object
+      required: [hypeCards, scheduleEvents, lineups]
+      properties:
+        hypeCards: { type: integer, minimum: 0 }
+        scheduleEvents: { type: integer, minimum: 0 }
+        lineups: { type: integer, minimum: 0 }
+    AccountUsageRemaining:
+      type: object
+      required: [hypeCards, scheduleEvents, lineups]
+      properties:
+        hypeCards: { type: integer, minimum: 0 }
+        scheduleEvents: { type: integer, minimum: 0 }
+        lineups: { type: integer, minimum: 0 }
+    AccountAccess:
+      type: object
+      required: [accessMode, role, usage, remaining, limits]
+      properties:
+        accessMode: { type: string, enum: [full, guest] }
+        role:
+          type: ["string", "null"]
+          enum: [coach, fan, null]
+        usage:
+          $ref: "#/components/schemas/AccountUsage"
+        remaining:
+          $ref: "#/components/schemas/AccountUsageRemaining"
+        limits:
+          $ref: "#/components/schemas/AccountUsage"
     HypeCardProject:
       type: object
       description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
@@ -568,6 +679,10 @@ components:
         project:
           type: object
           additionalProperties: true
+        guestUsageKey:
+          type: string
+          minLength: 1
+          maxLength: 120
     ProjectUpdate:
       type: object
       required: [expectedRevision]

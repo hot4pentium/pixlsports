@@ -354,6 +354,152 @@ export const GetConnectedCoachCalendarResponse = zod.object({
 
 
 /**
+ * @summary Get the authenticated user's account access and Guest usage
+ */
+export const getAccountAccessResponseUsageHypeCardsMin = 0;
+
+export const getAccountAccessResponseUsageScheduleEventsMin = 0;
+
+export const getAccountAccessResponseUsageLineupsMin = 0;
+
+export const getAccountAccessResponseRemainingHypeCardsMin = 0;
+
+export const getAccountAccessResponseRemainingScheduleEventsMin = 0;
+
+export const getAccountAccessResponseRemainingLineupsMin = 0;
+
+export const getAccountAccessResponseLimitsHypeCardsMin = 0;
+
+export const getAccountAccessResponseLimitsScheduleEventsMin = 0;
+
+export const getAccountAccessResponseLimitsLineupsMin = 0;
+
+
+
+export const GetAccountAccessResponse = zod.object({
+  "accessMode": zod.enum(['full', 'guest']),
+  "role": zod.union([zod.literal('coach'),zod.literal('fan'),zod.literal(null)]).nullable(),
+  "usage": zod.object({
+  "hypeCards": zod.number().int().min(getAccountAccessResponseUsageHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(getAccountAccessResponseUsageScheduleEventsMin),
+  "lineups": zod.number().int().min(getAccountAccessResponseUsageLineupsMin)
+}),
+  "remaining": zod.object({
+  "hypeCards": zod.number().int().min(getAccountAccessResponseRemainingHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(getAccountAccessResponseRemainingScheduleEventsMin),
+  "lineups": zod.number().int().min(getAccountAccessResponseRemainingLineupsMin)
+}),
+  "limits": zod.object({
+  "hypeCards": zod.number().int().min(getAccountAccessResponseLimitsHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(getAccountAccessResponseLimitsScheduleEventsMin),
+  "lineups": zod.number().int().min(getAccountAccessResponseLimitsLineupsMin)
+})
+})
+
+
+/**
+ * @summary Save the authenticated user's role and access mode
+ */
+export const UpdateAccountAccessBody = zod.object({
+  "role": zod.enum(['coach', 'fan']),
+  "accessMode": zod.enum(['full', 'guest'])
+})
+
+export const updateAccountAccessResponseUsageHypeCardsMin = 0;
+
+export const updateAccountAccessResponseUsageScheduleEventsMin = 0;
+
+export const updateAccountAccessResponseUsageLineupsMin = 0;
+
+export const updateAccountAccessResponseRemainingHypeCardsMin = 0;
+
+export const updateAccountAccessResponseRemainingScheduleEventsMin = 0;
+
+export const updateAccountAccessResponseRemainingLineupsMin = 0;
+
+export const updateAccountAccessResponseLimitsHypeCardsMin = 0;
+
+export const updateAccountAccessResponseLimitsScheduleEventsMin = 0;
+
+export const updateAccountAccessResponseLimitsLineupsMin = 0;
+
+
+
+export const UpdateAccountAccessResponse = zod.object({
+  "accessMode": zod.enum(['full', 'guest']),
+  "role": zod.union([zod.literal('coach'),zod.literal('fan'),zod.literal(null)]).nullable(),
+  "usage": zod.object({
+  "hypeCards": zod.number().int().min(updateAccountAccessResponseUsageHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(updateAccountAccessResponseUsageScheduleEventsMin),
+  "lineups": zod.number().int().min(updateAccountAccessResponseUsageLineupsMin)
+}),
+  "remaining": zod.object({
+  "hypeCards": zod.number().int().min(updateAccountAccessResponseRemainingHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(updateAccountAccessResponseRemainingScheduleEventsMin),
+  "lineups": zod.number().int().min(updateAccountAccessResponseRemainingLineupsMin)
+}),
+  "limits": zod.object({
+  "hypeCards": zod.number().int().min(updateAccountAccessResponseLimitsHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(updateAccountAccessResponseLimitsScheduleEventsMin),
+  "lineups": zod.number().int().min(updateAccountAccessResponseLimitsLineupsMin)
+})
+})
+
+
+/**
+ * @summary Consume one Guest allowance
+ */
+export const consumeAccountUsageBodyUsageKeyMax = 120;
+
+
+
+export const ConsumeAccountUsageBody = zod.object({
+  "category": zod.enum(['hype_card', 'schedule_event', 'lineup']),
+  "usageKey": zod.string().min(1).max(consumeAccountUsageBodyUsageKeyMax)
+})
+
+export const consumeAccountUsageResponseUsageHypeCardsMin = 0;
+
+export const consumeAccountUsageResponseUsageScheduleEventsMin = 0;
+
+export const consumeAccountUsageResponseUsageLineupsMin = 0;
+
+export const consumeAccountUsageResponseRemainingHypeCardsMin = 0;
+
+export const consumeAccountUsageResponseRemainingScheduleEventsMin = 0;
+
+export const consumeAccountUsageResponseRemainingLineupsMin = 0;
+
+export const consumeAccountUsageResponseLimitsHypeCardsMin = 0;
+
+export const consumeAccountUsageResponseLimitsScheduleEventsMin = 0;
+
+export const consumeAccountUsageResponseLimitsLineupsMin = 0;
+
+
+
+export const ConsumeAccountUsageResponse = zod.object({
+  "accessMode": zod.enum(['full', 'guest']),
+  "role": zod.union([zod.literal('coach'),zod.literal('fan'),zod.literal(null)]).nullable(),
+  "usage": zod.object({
+  "hypeCards": zod.number().int().min(consumeAccountUsageResponseUsageHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(consumeAccountUsageResponseUsageScheduleEventsMin),
+  "lineups": zod.number().int().min(consumeAccountUsageResponseUsageLineupsMin)
+}),
+  "remaining": zod.object({
+  "hypeCards": zod.number().int().min(consumeAccountUsageResponseRemainingHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(consumeAccountUsageResponseRemainingScheduleEventsMin),
+  "lineups": zod.number().int().min(consumeAccountUsageResponseRemainingLineupsMin)
+}),
+  "limits": zod.object({
+  "hypeCards": zod.number().int().min(consumeAccountUsageResponseLimitsHypeCardsMin),
+  "scheduleEvents": zod.number().int().min(consumeAccountUsageResponseLimitsScheduleEventsMin),
+  "lineups": zod.number().int().min(consumeAccountUsageResponseLimitsLineupsMin)
+})
+})
+
+
+/**
  * @summary List the authenticated user's projects
  */
 
@@ -385,11 +531,14 @@ export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
  */
 export const createProjectBodyNameMax = 200;
 
+export const createProjectBodyGuestUsageKeyMax = 120;
+
 
 
 export const CreateProjectBody = zod.object({
   "name": zod.string().min(1).max(createProjectBodyNameMax),
-  "project": zod.record(zod.string(), zod.unknown())
+  "project": zod.record(zod.string(), zod.unknown()),
+  "guestUsageKey": zod.string().min(1).max(createProjectBodyGuestUsageKeyMax).optional()
 })
 
 

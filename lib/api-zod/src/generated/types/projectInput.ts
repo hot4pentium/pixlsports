@@ -14,4 +14,9 @@ export interface ProjectInput {
      */
   name: string;
   project: ProjectInputProject;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  guestUsageKey?: string;
 }

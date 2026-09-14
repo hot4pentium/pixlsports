@@ -10,6 +10,7 @@ import {
 import { cloudProjectsTable, db, projectMediaTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { consumeGuestUsageBatch, getAccountAccessSnapshot } from "./accountAccess";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -95,6 +96,43 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
   if (Number(projectCount) >= MAX_PROJECTS_PER_USER) {
     res.status(409).json({ error: "Project limit reached" });
     return;
+  }
+
+  const accountAccess = await getAccountAccessSnapshot(ownerClerkUserId);
+  if (accountAccess.accessMode === "guest") {
+    const project = parsed.data.project as { tool?: unknown; events?: unknown } | null;
+    const tool = project && typeof project === "object" && typeof project.tool === "string"
+      ? project.tool
+      : "";
+    const usageCategory = tool === "hype-card"
+      ? "hype_card"
+      : tool === "schedule"
+        ? "schedule_event"
+        : tool === "roster"
+          ? "lineup"
+          : null;
+    if (!usageCategory) {
+      res.status(400).json({ error: "Unknown project tool" });
+      return;
+    }
+    const usageKeys = usageCategory === "schedule_event" && Array.isArray(project?.events)
+      ? project.events
+        .map((event) => (
+          typeof event === "object" && event !== null && typeof (event as { id?: unknown }).id === "string"
+            ? `schedule-event:${(event as { id: string }).id}`
+            : null
+        ))
+        .filter((key): key is string => Boolean(key))
+      : parsed.data.guestUsageKey
+        ? [`${usageCategory}:${parsed.data.guestUsageKey}`]
+        : [`${usageCategory}:project:${Date.now()}`];
+    const usageResult = await consumeGuestUsageBatch(ownerClerkUserId, usageCategory, usageKeys);
+    if (!usageResult.allowed) {
+      res.status(409).json({
+        error: "Guest allowance reached. Choose Full Account to keep creating.",
+      });
+      return;
+    }
   }
 
   try {

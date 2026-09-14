@@ -90,6 +90,91 @@ export interface CoachCalendar {
   updatedAt: string | null;
 }
 
+export type AccountAccessInputRole = typeof AccountAccessInputRole[keyof typeof AccountAccessInputRole];
+
+
+export const AccountAccessInputRole = {
+  coach: 'coach',
+  fan: 'fan',
+} as const;
+
+export type AccountAccessInputAccessMode = typeof AccountAccessInputAccessMode[keyof typeof AccountAccessInputAccessMode];
+
+
+export const AccountAccessInputAccessMode = {
+  full: 'full',
+  guest: 'guest',
+} as const;
+
+export interface AccountAccessInput {
+  role: AccountAccessInputRole;
+  accessMode: AccountAccessInputAccessMode;
+}
+
+export type AccountUsageConsumeInputCategory = typeof AccountUsageConsumeInputCategory[keyof typeof AccountUsageConsumeInputCategory];
+
+
+export const AccountUsageConsumeInputCategory = {
+  hype_card: 'hype_card',
+  schedule_event: 'schedule_event',
+  lineup: 'lineup',
+} as const;
+
+export interface AccountUsageConsumeInput {
+  category: AccountUsageConsumeInputCategory;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  usageKey: string;
+}
+
+export interface AccountUsage {
+  /** @minimum 0 */
+  hypeCards: number;
+  /** @minimum 0 */
+  scheduleEvents: number;
+  /** @minimum 0 */
+  lineups: number;
+}
+
+export interface AccountUsageRemaining {
+  /** @minimum 0 */
+  hypeCards: number;
+  /** @minimum 0 */
+  scheduleEvents: number;
+  /** @minimum 0 */
+  lineups: number;
+}
+
+export type AccountAccessAccessMode = typeof AccountAccessAccessMode[keyof typeof AccountAccessAccessMode];
+
+
+export const AccountAccessAccessMode = {
+  full: 'full',
+  guest: 'guest',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AccountAccessRole = typeof AccountAccessRole[keyof typeof AccountAccessRole] | null;
+
+
+export const AccountAccessRole = {
+  coach: 'coach',
+  fan: 'fan',
+} as const;
+
+export interface AccountAccess {
+  accessMode: AccountAccessAccessMode;
+  /** @nullable */
+  role: AccountAccessRole;
+  usage: AccountUsage;
+  remaining: AccountUsageRemaining;
+  limits: AccountUsage;
+}
+
 export type HypeCardProjectVersion = typeof HypeCardProjectVersion[keyof typeof HypeCardProjectVersion];
 
 
@@ -282,6 +367,11 @@ export interface ProjectInput {
      */
   name: string;
   project: ProjectInputProject;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  guestUsageKey?: string;
 }
 
 export type ProjectUpdateProject = { [key: string]: unknown };
