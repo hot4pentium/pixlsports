@@ -1624,16 +1624,17 @@ export function HypeCardEditor() {
               </section>
             )}
 
-            <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setWalkthroughStep((step) => Math.max(0, step - 1))}
-                disabled={walkthroughStep === 0}
-                className="rounded-none clip-angled-sm"
-              >
-                Back
-              </Button>
+            <div className="mt-auto flex items-center justify-end gap-3 border-t border-border pt-5">
+              {walkthroughStep > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setWalkthroughStep((step) => Math.max(0, step - 1))}
+                  className="mr-auto rounded-none clip-angled-sm"
+                >
+                  Back
+                </Button>
+              )}
               {walkthroughStep < hypeWalkthroughSteps.length - 1 ? (
                 <Button
                   type="button"

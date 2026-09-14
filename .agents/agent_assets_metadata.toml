@@ -336,3 +336,17 @@ mtime_ms = 1789347620280
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/59dee61b-3f01-45bc-802a-ff4217d71104/2db0aa9b-9942-46ad-8fe6-ecede62125a9"
 storage_version_token = "1789347634400019"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "RM2pOfNFhg_3cNYNYMM0P"
+uri = "file://screenshots/hype-card-first-step-no-back.jpg"
+type = "image"
+title = "First Step Without Back"
+description = "Verified Hype Card walkthrough with the Back button removed from the first step and Next aligned to the right."
+logical_id = "f04e86f6-1c5b-4623-9136-879e10d5bdca"
+content_hash = "sha256:7ccb68bc31fc1d53fa0bb0de866944b4949be377e2d921f6cc1b15943ff253e7"
+size = 45674
+mtime_ms = 1789347722961
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/f04e86f6-1c5b-4623-9136-879e10d5bdca/4c014f3f-d2d6-46ae-83a3-e655271de1dd"
+storage_version_token = "1789347729231532"
+content_type = "image/jpeg"
