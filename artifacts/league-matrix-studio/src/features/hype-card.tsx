@@ -201,6 +201,17 @@ function Section({
   );
 }
 
+const hypeWalkthroughSteps = [
+  { label: 'Moment', hint: 'Choose the headline' },
+  { label: 'Media', hint: 'Add player media' },
+  { label: 'Details', hint: 'Add player info' },
+  { label: 'Format', hint: 'Choose the output' },
+  { label: 'Layout', hint: 'Choose the scene' },
+  { label: 'Palette', hint: 'Choose the colors' },
+  { label: 'Brand', hint: 'Finish the design' },
+  { label: 'Review', hint: 'Preview and export' },
+] as const;
+
 function HypeField({
   label,
   value,
@@ -645,6 +656,7 @@ export function HypeCardEditor() {
   const [exportSupport, setExportSupport] = useState(() => checkExportSupport());
   const [includeAudio, setIncludeAudio] = useState(true);
   const [imageFormat, setImageFormat] = useState<'png' | 'jpeg'>('png');
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
 
@@ -1339,7 +1351,39 @@ export function HypeCardEditor() {
       <div className="flex flex-col sm:min-h-0 sm:flex-1 sm:flex-row">
         <aside className="w-full flex-shrink-0 border-r border-border bg-background bg-tech-grid sm:min-h-0 sm:w-[400px] sm:overflow-y-auto sm:overscroll-contain">
           <div className="flex flex-col gap-6 p-5">
-            <Section title="Moment" icon={Lightbulb}>
+            <div className="border-b border-border pb-5">
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Hype Card Walkthrough</p>
+                  <p className="mt-1 text-xs font-medium text-muted-foreground">One design choice at a time.</p>
+                </div>
+                <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  {walkthroughStep + 1} / {hypeWalkthroughSteps.length}
+                </span>
+              </div>
+              <div className="mb-3 h-1 overflow-hidden bg-muted" aria-hidden="true">
+                <div className="h-full bg-primary transition-all" style={{ width: `${((walkthroughStep + 1) / hypeWalkthroughSteps.length) * 100}%` }} />
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Hype Card walkthrough steps">
+                {hypeWalkthroughSteps.map((step, index) => (
+                  <button
+                    key={step.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={walkthroughStep === index}
+                    onClick={() => setWalkthroughStep(index)}
+                    className={`shrink-0 border px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-colors ${walkthroughStep === index ? 'border-primary bg-primary text-primary-foreground' : index < walkthroughStep ? 'border-primary/40 bg-primary/5 text-primary' : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
+                  >
+                    {index + 1}. {step.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-medium text-muted-foreground">
+                {hypeWalkthroughSteps[walkthroughStep].hint}
+              </p>
+            </div>
+
+            {walkthroughStep === 0 && <Section title="Moment" icon={Lightbulb}>
               <div className="flex flex-wrap gap-2">
                 {HEADLINES.map((h) => (
                   <button
@@ -1362,9 +1406,9 @@ export function HypeCardEditor() {
                 />
                 <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Use your own moment text or choose a preset above.</p>
               </div>
-            </Section>
+            </Section>}
 
-            <Section title="Media" icon={ImagePlus}>
+            {walkthroughStep === 1 && <Section title="Media" icon={ImagePlus}>
               <p className="mb-4 text-xs text-muted-foreground">Add a photo or a video up to 120MB. Videos are prepared locally as a smaller MP4 when supported, and exports are limited to a 15-second selection. Media never leaves this device.</p>
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
@@ -1484,9 +1528,9 @@ export function HypeCardEditor() {
                   </div>
                 </div>
               )}
-            </Section>
+            </Section>}
 
-            <Section title="Details" icon={FileImage}>
+            {walkthroughStep === 2 && <Section title="Details" icon={FileImage}>
               <div className="flex flex-col gap-4">
                 <HypeField label="Player name" value={project.playerName} onChange={(v) => updateProject('playerName', v)} placeholder="e.g. Jordan Smith" />
                 <div className="grid grid-cols-2 gap-4">
@@ -1496,9 +1540,9 @@ export function HypeCardEditor() {
                 <HypeField label="Team name" value={project.teamName} onChange={(v) => updateProject('teamName', v)} placeholder="e.g. Eastside Falcons" />
                 
               </div>
-            </Section>
+            </Section>}
 
-            <Section title="Output" icon={SlidersHorizontal}>
+            {walkthroughStep === 3 && <Section title="Format" icon={SlidersHorizontal}>
               <div className="grid grid-cols-2 gap-2">
                 {formats.map((format) => (
                   <button
@@ -1530,17 +1574,17 @@ export function HypeCardEditor() {
                   ))}
                 </div>
               )}
-            </Section>
+            </Section>}
 
-            <Section title="Layout" icon={LayoutGrid}>
+            {walkthroughStep === 4 && <Section title="Layout" icon={LayoutGrid}>
               <div className="grid grid-cols-1 gap-3">
                 {cardLayouts.map((l) => (
                   <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id && project.format === 'card'} onSelect={() => { updateProject('layout', l.id); updateProject('format', 'card'); }} />
                 ))}
               </div>
-            </Section>
+            </Section>}
 
-            <Section title="Palette" icon={Palette}>
+            {walkthroughStep === 5 && <Section title="Palette" icon={Palette}>
               <div className="flex flex-col gap-2">
                 {Object.entries(palettes).map(([id, p]) => (
                   <button key={id} type="button" onClick={() => updateProject('palette', id as PaletteId)} className={`flex items-center justify-between rounded-xl border p-2 pl-3 transition-colors ${project.palette === id ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-background hover:bg-muted'}`}>
@@ -1553,9 +1597,9 @@ export function HypeCardEditor() {
                   </button>
                 ))}
               </div>
-            </Section>
+            </Section>}
 
-            <Section title="Brand Settings" icon={ShieldCheck}>
+            {walkthroughStep === 6 && <Section title="Brand Settings" icon={ShieldCheck}>
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between rounded-xl border border-border p-3">
                   <Label htmlFor="branding" className="text-sm font-medium">Show LeagueMatrix branding</Label>
@@ -1567,7 +1611,60 @@ export function HypeCardEditor() {
                 </div>
                 <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={(e) => assetUpload(e, (u) => updateProject('logo', u), setNotice)} onRemove={() => updateProject('logo', null)} />
               </div>
-            </Section>
+            </Section>}
+
+            {walkthroughStep === 7 && (
+              <section className="border-t border-border pt-6">
+                <div className="mb-5 flex items-center gap-2">
+                  <Check className="h-5 w-5 text-primary" />
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">Ready to export</h2>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    ['Moment', project.headline || 'BIG PLAY'],
+                    ['Player', project.playerName || 'Your player'],
+                    ['Team', project.teamName || 'Your team'],
+                    ['Output', formats.find((format) => format.id === project.format)?.label || 'Vertical card'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-center justify-between gap-4 border-b border-border py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+                      <span className="text-right text-sm font-bold text-foreground">{value}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-5 text-xs font-medium leading-relaxed text-muted-foreground">
+                  Your design updates instantly in the preview. You can go back to any step before exporting.
+                </p>
+                <Button type="button" onClick={handleExport} disabled={exporting} className="mt-5 w-full gap-2 rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
+                  <Download className="h-4 w-4" /> {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}
+                </Button>
+              </section>
+            )}
+
+            <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWalkthroughStep((step) => Math.max(0, step - 1))}
+                disabled={walkthroughStep === 0}
+                className="rounded-none clip-angled-sm"
+              >
+                Back
+              </Button>
+              {walkthroughStep < hypeWalkthroughSteps.length - 1 ? (
+                <Button
+                  type="button"
+                  onClick={() => setWalkthroughStep((step) => Math.min(hypeWalkthroughSteps.length - 1, step + 1))}
+                  className="rounded-none bg-foreground text-background hover:bg-primary hover:text-primary-foreground clip-angled-sm"
+                >
+                  Next: {hypeWalkthroughSteps[walkthroughStep + 1].label}
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={() => setWalkthroughStep(0)} className="rounded-none clip-angled-sm">
+                  Start over
+                </Button>
+              )}
+            </div>
           </div>
         </aside>
 

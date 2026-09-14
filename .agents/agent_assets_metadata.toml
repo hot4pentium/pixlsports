@@ -168,3 +168,31 @@ mtime_ms = 1789345139124
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a0c00fa1-392a-4dd6-be30-ed31dd36cec5/26ec6857-a6ce-4777-b9f2-3f5c71133b21"
 storage_version_token = "1789345145238734"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "p9NI3dcuu5pIumX-a0WPV"
+uri = "file://screenshots/hype-card-walkthrough-desktop.jpg"
+type = "image"
+title = "Hype Card Walkthrough Desktop"
+description = "Desktop render of the Hype Card editor walkthrough with one focused step visible at a time."
+logical_id = "412cea6a-940d-474d-ae33-a5674a1191c6"
+content_hash = "sha256:fe94bb1a1c9f09becd7bf98ee26b2baf6f42bcfacdb3d0f22597cd45484d0a9f"
+size = 146552
+mtime_ms = 1789345846876
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/412cea6a-940d-474d-ae33-a5674a1191c6/7a235d84-57de-4eb3-9fcf-6dad81a158b8"
+storage_version_token = "1789345868114012"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "lJts5QwO9c1X1Wf1imYme"
+uri = "file://screenshots/hype-card-walkthrough-mobile.jpg"
+type = "image"
+title = "Hype Card Walkthrough Mobile"
+description = "Mobile render of the Hype Card editor walkthrough with progress and Next navigation."
+logical_id = "5f4dc0ab-b44c-4cf9-95a0-226c8a276d4c"
+content_hash = "sha256:d57c6ba9d2a1a64c962b19a23b9818fc6d5741941b455cefb22c18567bed52c8"
+size = 44161
+mtime_ms = 1789345848873
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/5f4dc0ab-b44c-4cf9-95a0-226c8a276d4c/4653bf83-72b8-4667-b48e-ca66f8c2e004"
+storage_version_token = "1789345868779979"
+content_type = "image/jpeg"
