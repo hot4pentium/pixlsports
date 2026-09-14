@@ -98,3 +98,17 @@ mtime_ms = 1789344392260
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/68ad7b5b-e807-4749-9243-1bd364f428aa/bf64b778-358c-4545-95b7-11e6b1e38fe8"
 storage_version_token = "1789344399833074"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "viOjpiLYUdAaJXWEwzAyB"
+uri = "file://screenshots/hype-card-centered-lower-third.jpg"
+type = "image"
+title = "Centered Lower Third"
+description = "Hype Card render with the player name and team centered within the bottom bar."
+logical_id = "a6a0d687-1891-4ca5-9472-e5d1cdebd5ee"
+content_hash = "sha256:b7f949a99ae84d8515089133d45ee31b599497fa1103ed3c0e8fcb2b2eda21bb"
+size = 154053
+mtime_ms = 1789344499052
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a6a0d687-1891-4ca5-9472-e5d1cdebd5ee/8682fd58-808b-4ae7-a320-185ced985275"
+storage_version_token = "1789344504631305"
+content_type = "image/jpeg"
