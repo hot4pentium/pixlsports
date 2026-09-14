@@ -447,6 +447,54 @@ export const UpdateAccountAccessResponse = zod.object({
 
 
 /**
+ * @summary Get the authenticated user's account lifecycle state
+ */
+
+
+
+export const GetAccountLifecycleResponse = zod.object({
+  "status": zod.enum(['active', 'cancelled', 'deletion_pending']),
+  "cancelledAt": zod.coerce.date().nullable(),
+  "lastActivityAt": zod.coerce.date().nullable(),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
+  "retentionDays": zod.number().int().min(1),
+  "expired": zod.boolean()
+})
+
+
+/**
+ * @summary Cancel and immediately lock the authenticated account
+ */
+
+
+
+export const CancelAccountResponse = zod.object({
+  "status": zod.enum(['active', 'cancelled', 'deletion_pending']),
+  "cancelledAt": zod.coerce.date().nullable(),
+  "lastActivityAt": zod.coerce.date().nullable(),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
+  "retentionDays": zod.number().int().min(1),
+  "expired": zod.boolean()
+})
+
+
+/**
+ * @summary Reactivate an account during its recovery window
+ */
+
+
+
+export const ReactivateAccountResponse = zod.object({
+  "status": zod.enum(['active', 'cancelled', 'deletion_pending']),
+  "cancelledAt": zod.coerce.date().nullable(),
+  "lastActivityAt": zod.coerce.date().nullable(),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
+  "retentionDays": zod.number().int().min(1),
+  "expired": zod.boolean()
+})
+
+
+/**
  * @summary Consume one Guest allowance
  */
 export const consumeAccountUsageBodyUsageKeyMax = 120;

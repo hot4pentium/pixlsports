@@ -57,12 +57,6 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "409":
-          description: Account mode is already set
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /schedule-shares/{shareToken}:
     parameters:
       - $ref: "#/components/parameters/ScheduleShareToken"
@@ -208,6 +202,66 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account mode is already set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /account/lifecycle:
+    get:
+      operationId: getAccountLifecycle
+      tags: [account-access]
+      summary: Get the authenticated user's account lifecycle state
+      responses:
+        "200":
+          description: Current account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /account/cancel:
+    post:
+      operationId: cancelAccount
+      tags: [account-access]
+      summary: Cancel and immediately lock the authenticated account
+      responses:
+        "200":
+          description: Cancelled account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account setup is incomplete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /account/reactivate:
+    post:
+      operationId: reactivateAccount
+      tags: [account-access]
+      summary: Reactivate an account during its recovery window
+      responses:
+        "200":
+          description: Reactivated account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "410":
+          description: Recovery window has expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /account/usage:
     post:
       operationId: consumeAccountUsage
@@ -565,6 +619,27 @@ components:
           $ref: "#/components/schemas/AccountUsageRemaining"
         limits:
           $ref: "#/components/schemas/AccountUsage"
+    AccountLifecycle:
+      type: object
+      required: [status, cancelledAt, lastActivityAt, deletionEligibleAt, retentionDays, expired]
+      properties:
+        status:
+          type: string
+          enum: [active, cancelled, deletion_pending]
+        cancelledAt:
+          type: ["string", "null"]
+          format: date-time
+        lastActivityAt:
+          type: ["string", "null"]
+          format: date-time
+        deletionEligibleAt:
+          type: ["string", "null"]
+          format: date-time
+        retentionDays:
+          type: integer
+          minimum: 1
+        expired:
+          type: boolean
     HypeCardProject:
       type: object
       description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.

@@ -175,6 +175,28 @@ export interface AccountAccess {
   limits: AccountUsage;
 }
 
+export type AccountLifecycleStatus = typeof AccountLifecycleStatus[keyof typeof AccountLifecycleStatus];
+
+
+export const AccountLifecycleStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+  deletion_pending: 'deletion_pending',
+} as const;
+
+export interface AccountLifecycle {
+  status: AccountLifecycleStatus;
+  /** @nullable */
+  cancelledAt: string | null;
+  /** @nullable */
+  lastActivityAt: string | null;
+  /** @nullable */
+  deletionEligibleAt: string | null;
+  /** @minimum 1 */
+  retentionDays: number;
+  expired: boolean;
+}
+
 export type HypeCardProjectVersion = typeof HypeCardProjectVersion[keyof typeof HypeCardProjectVersion];
 
 

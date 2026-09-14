@@ -16,6 +16,7 @@ import {
   scheduleSharesTable,
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { isAccountActive } from "../lib/accountLifecycle";
 
 const router: IRouter = Router();
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -166,6 +167,10 @@ router.post("/coach-calendar/connect", requireAuth, async (req, res): Promise<vo
     res.status(404).json({ error: "Coach code not found" });
     return;
   }
+  if (!(await isAccountActive(code.ownerClerkUserId))) {
+    res.status(404).json({ error: "Coach code not found" });
+    return;
+  }
 
   const response = await calendarResponse(code.code, code.ownerClerkUserId);
   res.json(ConnectToCoachCalendarResponse.parse(response));
@@ -186,6 +191,10 @@ router.get("/coach-calendar/:code", requireAuth, async (req, res): Promise<void>
     .where(eq(coachCalendarCodesTable.code, parsed.data.code))
     .limit(1);
   if (!code) {
+    res.status(404).json({ error: "Coach code not found" });
+    return;
+  }
+  if (!(await isAccountActive(code.ownerClerkUserId))) {
     res.status(404).json({ error: "Coach code not found" });
     return;
   }

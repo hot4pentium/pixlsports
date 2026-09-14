@@ -17,6 +17,10 @@ import {
   useUpdateAccountAccess,
   useConsumeAccountUsage,
   getGetAccountAccessQueryKey,
+  useGetAccountLifecycle,
+  useCancelAccount,
+  useReactivateAccount,
+  getGetAccountLifecycleQueryKey,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
@@ -521,6 +525,7 @@ function Studio({ role }: { role: UserRole }) {
       }
     }
   });
+  const cancelAccount = useCancelAccount();
 
   const visibleTools = roleToolKinds[role];
 
@@ -722,6 +727,55 @@ function Studio({ role }: { role: UserRole }) {
             )}
           </div>
         </div>
+
+        <section className="mt-8 border border-destructive/30 bg-destructive/5 p-6 clip-angled-sm" data-testid="account-cancellation-panel">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
+              <h2 className="mt-2 font-display text-3xl uppercase tracking-wide">Cancel LeagueMatrix access.</h2>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">
+                Your studio locks immediately. Your account and cloud work stay recoverable for 90 days after your latest sign-in.
+              </p>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button type="button" className="shrink-0 border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground" data-testid="button-open-cancel-account">
+                  Cancel account
+                </button>
+              </DialogTrigger>
+              <DialogContent className="border-destructive sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-display text-3xl uppercase tracking-wide">Lock your studio?</DialogTitle>
+                  <DialogDescription className="text-left leading-relaxed">
+                    You will lose studio access immediately. Sign in within 90 days to extend recovery or reactivate without losing your cloud projects, role, or team settings.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <DialogClose asChild>
+                    <button type="button" className="border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest">Keep account</button>
+                  </DialogClose>
+                  <button
+                    type="button"
+                    disabled={cancelAccount.isPending}
+                    onClick={() => {
+                      cancelAccount.mutate(undefined, {
+                        onSuccess: (lifecycle) => {
+                          queryClient.setQueryData(getGetAccountLifecycleQueryKey(), lifecycle);
+                          queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
+                        },
+                      });
+                    }}
+                    className="bg-destructive px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-destructive-foreground disabled:opacity-60"
+                    data-testid="button-confirm-cancel-account"
+                  >
+                    {cancelAccount.isPending ? 'Cancelling…' : 'Cancel and lock'}
+                  </button>
+                </DialogFooter>
+                {cancelAccount.isError && <p className="text-sm font-bold text-destructive">Cancellation failed. Try again.</p>}
+              </DialogContent>
+            </Dialog>
+          </div>
+        </section>
       </main>
     </StudioLayout>
   );
@@ -3054,6 +3108,93 @@ function StudioPortal() {
   return role ? <Studio role={role} /> : <RoleSelectionPage />;
 }
 
+function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt: string | Date | null; expired: boolean }) {
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const reactivate = useReactivateAccount();
+  const recoveryDate = deletionEligibleAt ? new Date(deletionEligibleAt) : null;
+  const [upgradeNotice, setUpgradeNotice] = useState('');
+
+  return (
+    <div className="noise min-h-dvh bg-background">
+      <SiteNav dark />
+      <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-5xl items-center px-5 py-12 sm:px-8">
+        <section className="relative w-full overflow-hidden border-l-4 border-primary bg-foreground p-7 text-white clip-angled-sm sm:p-10" data-testid="locked-account-page">
+          <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
+          <div className="relative z-10 max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">{expired ? 'Recovery window ended' : 'Account locked'}</p>
+            <h1 className="mt-4 font-display text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl">
+              YOUR STUDIO IS<br /><span className="text-primary">ON HOLD.</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/70 sm:text-lg">
+              {expired
+                ? 'Your 90-day recovery window has ended. LeagueMatrix data is queued for permanent deletion and cannot be restored.'
+                : `Your projects, team settings, and account role are preserved. Reactivate before ${recoveryDate?.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) ?? 'the recovery deadline'} to return to the studio.`}
+            </p>
+            {!expired && (
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  disabled={reactivate.isPending}
+                  onClick={() => {
+                    reactivate.mutate(undefined, {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: getGetAccountLifecycleQueryKey() });
+                        queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+                        setLocation('/studio');
+                      },
+                    });
+                  }}
+                  className="inline-flex items-center justify-center gap-2 bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60 clip-angled-sm"
+                  data-testid="button-reactivate-account"
+                >
+                  {reactivate.isPending ? 'Reactivating…' : 'Reactivate account'} <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUpgradeNotice('Paid upgrades are not available yet. Reactivate now to restore your previous account access.')}
+                  className="border border-white/20 bg-white/5 px-6 py-4 text-sm font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/10 clip-angled-sm"
+                  data-testid="button-review-upgrade"
+                >
+                  Review upgrade options
+                </button>
+              </div>
+            )}
+            {(reactivate.isError || upgradeNotice) && (
+              <p className="mt-5 text-sm font-bold text-primary" role="status">
+                {reactivate.isError ? 'Reactivation failed. Refresh and try again.' : upgradeNotice}
+              </p>
+            )}
+            <p className="mt-8 text-xs font-bold uppercase tracking-widest text-white/45">Authentication remains available so you can sign out or return during recovery.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function AccountLifecycleGate({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  const { isLoaded, isSignedIn } = useUser();
+  const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
+  const { data: lifecycle, isLoading } = useGetAccountLifecycle({
+    query: {
+      enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
+      staleTime: 0,
+      refetchOnMount: 'always',
+      queryKey: getGetAccountLifecycleQueryKey(),
+    },
+  });
+
+  if (!isLoaded || (isSignedIn && !bypassLifecycle && isLoading)) {
+    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Checking account access…</div>;
+  }
+  if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
+    return <LockedAccountPage deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} />;
+  }
+  return <>{children}</>;
+}
+
 function HomeRedirect() {
   return (
     <>
@@ -3119,8 +3260,9 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
-          <ErrorBoundary resetKey={useLocation()[0]}>
-            <Switch>
+          <AccountLifecycleGate>
+            <ErrorBoundary resetKey={useLocation()[0]}>
+              <Switch>
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
@@ -3133,8 +3275,9 @@ function ClerkProviderWithRoutes() {
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
               <Route component={NotFound} />
-            </Switch>
-          </ErrorBoundary>
+              </Switch>
+            </ErrorBoundary>
+          </AccountLifecycleGate>
         </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>

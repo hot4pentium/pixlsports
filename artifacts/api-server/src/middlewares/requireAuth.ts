@@ -1,13 +1,20 @@
 import { getAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
+import { getAccountLifecycleSnapshot } from "../lib/accountLifecycle";
 
 export type AuthenticatedRequest = Parameters<RequestHandler>[0] & {
   clerkUserId: string;
 };
 
-export const requireAuth: RequestHandler = (req, res, next): void => {
+function authenticatedUserId(req: Parameters<RequestHandler>[0]) {
   const auth = getAuth(req);
-  const userId = auth?.sessionClaims?.userId || auth?.userId;
+  if (typeof auth?.userId === "string" && auth.userId.length > 0) return auth.userId;
+  const claimUserId = auth?.sessionClaims?.userId;
+  return typeof claimUserId === "string" && claimUserId.length > 0 ? claimUserId : null;
+}
+
+export const requireAuthenticatedIdentity: RequestHandler = (req, res, next): void => {
+  const userId = authenticatedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -15,6 +22,31 @@ export const requireAuth: RequestHandler = (req, res, next): void => {
 
   res.locals.clerkUserId = userId;
   next();
+};
+
+export const requireAuth: RequestHandler = async (req, res, next): Promise<void> => {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  res.locals.clerkUserId = userId;
+  try {
+    const lifecycle = await getAccountLifecycleSnapshot(userId, { touchCancelledActivity: true });
+    if (lifecycle.status !== "active") {
+      res.status(423).json({
+        error: lifecycle.expired
+          ? "Account recovery window has expired."
+          : "Account is cancelled and locked.",
+        code: lifecycle.expired ? "ACCOUNT_EXPIRED" : "ACCOUNT_LOCKED",
+      });
+      return;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 export function getRequiredClerkUserId(res: { locals: Record<string, unknown> }): string {

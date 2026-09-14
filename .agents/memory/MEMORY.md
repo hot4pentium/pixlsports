@@ -5,3 +5,4 @@
 - [Schedule identity compatibility](schedule-identity-compatibility.md) — new shares use separate team name and season while legacy API field names preserve existing parent links.
 - [Vite asset imports in Node tests](vite-asset-imports-in-node-tests.md) — keep Node-focused tests away from SVG modules that import Vite-only image assets.
 - [Guest access guardrails](guest-access-guardrails.md) — Guest mode stays immutable and quota claims serialize server-side.
+- [Cancelled account lifecycle](cancelled-account-lifecycle.md) — lifecycle changes are atomic and deletion-pending accounts never transition backward.

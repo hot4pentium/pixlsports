@@ -59,6 +59,12 @@ export const accountAccessTable = pgTable("account_access", {
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
   role: text("role").notNull(),
   accessMode: text("access_mode").notNull(),
+  lifecycleStatus: text("lifecycle_status").notNull().default("active"),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
+  deletionEligibleAt: timestamp("deletion_eligible_at", { withTimezone: true }),
+  purgeStartedAt: timestamp("purge_started_at", { withTimezone: true }),
+  purgeError: text("purge_error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

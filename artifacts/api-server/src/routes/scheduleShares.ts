@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { db, scheduleSharesTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { isAccountActive } from "../lib/accountLifecycle";
 
 const router: IRouter = Router();
 
@@ -128,6 +129,10 @@ router.get("/schedule-shares/:shareToken", async (req, res): Promise<void> => {
     .from(scheduleSharesTable)
     .where(eq(scheduleSharesTable.id, params.data.shareToken));
   if (!share) {
+    res.status(404).json({ error: "Schedule share not found" });
+    return;
+  }
+  if (!(await isAccountActive(share.ownerClerkUserId))) {
     res.status(404).json({ error: "Schedule share not found" });
     return;
   }

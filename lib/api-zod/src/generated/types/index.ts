@@ -12,6 +12,8 @@ export * from './accountAccessInput';
 export * from './accountAccessInputAccessMode';
 export * from './accountAccessInputRole';
 export * from './accountAccessRole';
+export * from './accountLifecycle';
+export * from './accountLifecycleStatus';
 export * from './accountUsage';
 export * from './accountUsageConsumeInput';
 export * from './accountUsageConsumeInputCategory';
