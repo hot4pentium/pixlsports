@@ -350,3 +350,17 @@ mtime_ms = 1789347722961
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/f04e86f6-1c5b-4623-9136-879e10d5bdca/4c014f3f-d2d6-46ae-83a3-e655271de1dd"
 storage_version_token = "1789347729231532"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "LVqYrYS4GVr7WWGmyaWhc"
+uri = "file://screenshots/hype-card-smaller-lower-third-notch.jpg"
+type = "image"
+title = "Smaller Lower Third Notch"
+description = "Verified Hype Card render with reduced chamfer sizes on the lower-third corners and side folds."
+logical_id = "a381388c-bb76-4ca7-91ef-195b2af7b5cd"
+content_hash = "sha256:f8be8df4ea0bb5f76ebbdc5a3e31b489b4b840a50269ce03d1320ccdb1fc99b9"
+size = 91724
+mtime_ms = 1789347803624
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a381388c-bb76-4ca7-91ef-195b2af7b5cd/cc7547ae-a736-4119-9527-19127e8e4e49"
+storage_version_token = "1789347821083634"
+content_type = "image/jpeg"
