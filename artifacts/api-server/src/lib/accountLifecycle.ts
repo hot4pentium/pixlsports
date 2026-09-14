@@ -1,10 +1,16 @@
 import { and, eq, gt } from "drizzle-orm";
-import { accountAccessTable, db } from "@workspace/db";
+import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
 
 export const ACCOUNT_RETENTION_DAYS = 90;
 const ACCOUNT_RETENTION_MS = ACCOUNT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 export type AccountLifecycleStatus = "active" | "cancelled" | "deletion_pending";
+
+export type PaidEntitlement = {
+  providerEventId: string;
+  ownerClerkUserId: string;
+  expiresAt: Date;
+};
 
 function asStatus(value: string | null | undefined): AccountLifecycleStatus {
   if (value === "cancelled" || value === "deletion_pending") return value;
@@ -117,12 +123,51 @@ export async function reactivateAccount(ownerClerkUserId: string) {
     .returning();
   if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
 
+  const [existing] = await db
+    .select({ id: accountAccessTable.id })
+    .from(accountAccessTable)
+    .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
+    .limit(1);
+  if (!existing) return null;
+
   const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
   return lifecycle.status === "active" ? lifecycle : null;
 }
 
-export async function reactivateAccountFromEntitlement(ownerClerkUserId: string) {
-  return reactivateAccount(ownerClerkUserId);
+export async function reactivateAccountFromEntitlement(entitlement: PaidEntitlement) {
+  if (!Number.isFinite(entitlement.expiresAt.getTime())) {
+    throw new Error("Paid entitlement expiration is invalid");
+  }
+
+  const [recordedEvent] = await db
+    .insert(accountEntitlementEventsTable)
+    .values({
+      providerEventId: entitlement.providerEventId,
+      ownerClerkUserId: entitlement.ownerClerkUserId,
+      entitlementExpiresAt: entitlement.expiresAt,
+    })
+    .onConflictDoNothing({
+      target: accountEntitlementEventsTable.providerEventId,
+    })
+    .returning({ id: accountEntitlementEventsTable.id });
+
+  if (!recordedEvent) {
+    return {
+      lifecycle: await getAccountLifecycleSnapshot(entitlement.ownerClerkUserId),
+      replayed: true,
+      restored: false,
+    };
+  }
+
+  const lifecycle = entitlement.expiresAt.getTime() > Date.now()
+    ? await reactivateAccount(entitlement.ownerClerkUserId)
+    : await getAccountLifecycleSnapshot(entitlement.ownerClerkUserId);
+
+  return {
+    lifecycle,
+    replayed: false,
+    restored: lifecycle?.status === "active",
+  };
 }
 
 export async function isAccountActive(ownerClerkUserId: string) {

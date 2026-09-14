@@ -138,6 +138,49 @@ export interface AccountUsage {
   lineups: number;
 }
 
+export type PaidEntitlementEventType = typeof PaidEntitlementEventType[keyof typeof PaidEntitlementEventType];
+
+
+export const PaidEntitlementEventType = {
+  paid_entitlement: 'paid_entitlement',
+} as const;
+
+export interface PaidEntitlementEvent {
+  type: PaidEntitlementEventType;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  ownerClerkUserId: string;
+  paid: true;
+  expiresAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type BillingWebhookResponseStatus = typeof BillingWebhookResponseStatus[keyof typeof BillingWebhookResponseStatus] | null;
+
+
+export const BillingWebhookResponseStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+  deletion_pending: 'deletion_pending',
+} as const;
+
+export interface BillingWebhookResponse {
+  ok: boolean;
+  replayed: boolean;
+  restored: boolean;
+  /** @nullable */
+  status: BillingWebhookResponseStatus;
+}
+
 export interface AccountUsageRemaining {
   /** @minimum 0 */
   hypeCards: number;

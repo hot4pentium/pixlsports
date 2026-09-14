@@ -35,7 +35,11 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, _res, buffer) => {
+    (req as RequestWithRawBody).rawBody = Buffer.from(buffer);
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
@@ -48,5 +52,7 @@ app.use(
 );
 
 app.use("/api", router);
+
+type RequestWithRawBody = express.Request & { rawBody?: Buffer };
 
 export default app;

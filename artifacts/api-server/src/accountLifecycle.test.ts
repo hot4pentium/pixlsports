@@ -4,6 +4,7 @@ import test from "node:test";
 import { count, eq } from "drizzle-orm";
 import {
   accountAccessTable,
+  accountEntitlementEventsTable,
   cloudProjectsTable,
   db,
   guestUsageEventsTable,
@@ -13,6 +14,7 @@ import {
   cancelAccount,
   getAccountLifecycleSnapshot,
   reactivateAccount,
+  reactivateAccountFromEntitlement,
 } from "./lib/accountLifecycle";
 import { runExpiredAccountPurge } from "./jobs/purgeCancelledAccounts";
 
@@ -20,6 +22,7 @@ async function deleteTestAccount(ownerClerkUserId: string) {
   await db.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, ownerClerkUserId));
+  await db.delete(accountEntitlementEventsTable).where(eq(accountEntitlementEventsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
 }
 
@@ -154,4 +157,70 @@ test("purge retries each destructive phase and allows a fresh account row", asyn
   } finally {
     await deleteTestAccount(ownerClerkUserId);
   }
+});
+
+test("a verified paid entitlement restores an eligible account once and replays safely", async () => {
+  const ownerClerkUserId = `entitlement-test-${randomUUID()}`;
+  const providerEventId = `paid-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId,
+      role: "coach",
+      accessMode: "full",
+    });
+    await cancelAccount(ownerClerkUserId);
+
+    const entitlement = {
+      providerEventId,
+      ownerClerkUserId,
+      expiresAt: new Date(Date.now() + 30 * 86_400_000),
+    };
+    const first = await reactivateAccountFromEntitlement(entitlement);
+    assert.equal(first.replayed, false);
+    assert.equal(first.restored, true);
+    assert.equal(first.lifecycle?.status, "active");
+
+    const replay = await reactivateAccountFromEntitlement(entitlement);
+    assert.equal(replay.replayed, true);
+    assert.equal(replay.restored, false);
+    assert.equal(replay.lifecycle?.status, "active");
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("an expired paid entitlement cannot restore a cancelled account", async () => {
+  const ownerClerkUserId = `expired-entitlement-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await cancelAccount(ownerClerkUserId);
+
+    const result = await reactivateAccountFromEntitlement({
+      providerEventId: `expired-${randomUUID()}`,
+      ownerClerkUserId,
+      expiresAt: new Date(Date.now() - 1_000),
+    });
+    assert.equal(result.replayed, false);
+    assert.equal(result.restored, false);
+    assert.equal(result.lifecycle?.status, "cancelled");
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("a paid entitlement cannot create or restore a missing account", async () => {
+  const ownerClerkUserId = `missing-entitlement-test-${randomUUID()}`;
+  const result = await reactivateAccountFromEntitlement({
+    providerEventId: `missing-${randomUUID()}`,
+    ownerClerkUserId,
+    expiresAt: new Date(Date.now() + 30 * 86_400_000),
+  });
+
+  assert.equal(result.replayed, false);
+  assert.equal(result.restored, false);
+  assert.equal(result.lifecycle, null);
 });

@@ -71,6 +71,16 @@ export const accountAccessTable = pgTable("account_access", {
   ownerUnique: uniqueIndex("account_access_owner_unique").on(table.ownerClerkUserId),
 }));
 
+export const accountEntitlementEventsTable = pgTable("account_entitlement_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  providerEventId: text("provider_event_id").notNull(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  entitlementExpiresAt: timestamp("entitlement_expires_at", { withTimezone: true }).notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  providerEventUnique: uniqueIndex("account_entitlement_events_provider_event_unique").on(table.providerEventId),
+}));
+
 export const guestUsageEventsTable = pgTable("guest_usage_events", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
@@ -102,4 +112,5 @@ export type ProjectMedia = typeof projectMediaTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
 export type AccountAccess = typeof accountAccessTable.$inferSelect;
+export type AccountEntitlementEvent = typeof accountEntitlementEventsTable.$inferSelect;
 export type GuestUsageEvent = typeof guestUsageEventsTable.$inferSelect;

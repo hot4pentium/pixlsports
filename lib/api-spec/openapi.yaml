@@ -262,6 +262,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /billing/webhook:
+    post:
+      operationId: receiveBillingWebhook
+      tags: [account-access]
+      summary: Apply a verified paid entitlement to an account
+      description: Receives a signed paid entitlement event and restores an eligible cancelled account. Duplicate provider event IDs are acknowledged without repeating the transition.
+      parameters:
+        - in: header
+          name: x-billing-signature
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature of the raw request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaidEntitlementEvent"
+      responses:
+        "200":
+          description: Entitlement accepted or safely replayed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /account/usage:
     post:
       operationId: consumeAccountUsage
@@ -598,6 +628,25 @@ components:
         hypeCards: { type: integer, minimum: 0 }
         scheduleEvents: { type: integer, minimum: 0 }
         lineups: { type: integer, minimum: 0 }
+    PaidEntitlementEvent:
+      type: object
+      required: [type, id, ownerClerkUserId, paid, expiresAt]
+      properties:
+        type: { type: string, enum: [paid_entitlement] }
+        id: { type: string, minLength: 1, maxLength: 200 }
+        ownerClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        paid: { type: boolean, const: true }
+        expiresAt: { type: string, format: date-time }
+    BillingWebhookResponse:
+      type: object
+      required: [ok, replayed, restored, status]
+      properties:
+        ok: { type: boolean }
+        replayed: { type: boolean }
+        restored: { type: boolean }
+        status:
+          type: ["string", "null"]
+          enum: [active, cancelled, deletion_pending, null]
     AccountUsageRemaining:
       type: object
       required: [hypeCards, scheduleEvents, lineups]

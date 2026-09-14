@@ -495,6 +495,36 @@ export const ReactivateAccountResponse = zod.object({
 
 
 /**
+ * Receives a signed paid entitlement event and restores an eligible cancelled account. Duplicate provider event IDs are acknowledged without repeating the transition.
+ * @summary Apply a verified paid entitlement to an account
+ */
+export const ReceiveBillingWebhookHeader = zod.object({
+  "x-billing-signature": zod.string().describe('HMAC-SHA256 signature of the raw request body.')
+})
+
+export const receiveBillingWebhookBodyIdMax = 200;
+
+export const receiveBillingWebhookBodyOwnerClerkUserIdMax = 200;
+
+
+
+export const ReceiveBillingWebhookBody = zod.object({
+  "type": zod.enum(['paid_entitlement']),
+  "id": zod.string().min(1).max(receiveBillingWebhookBodyIdMax),
+  "ownerClerkUserId": zod.string().min(1).max(receiveBillingWebhookBodyOwnerClerkUserIdMax),
+  "paid": zod.literal(true),
+  "expiresAt": zod.coerce.date()
+})
+
+export const ReceiveBillingWebhookResponse = zod.object({
+  "ok": zod.boolean(),
+  "replayed": zod.boolean(),
+  "restored": zod.boolean(),
+  "status": zod.union([zod.literal('active'),zod.literal('cancelled'),zod.literal('deletion_pending'),zod.literal(null)]).nullable()
+})
+
+
+/**
  * @summary Consume one Guest allowance
  */
 export const consumeAccountUsageBodyUsageKeyMax = 120;

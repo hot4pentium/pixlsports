@@ -3113,7 +3113,8 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
   const queryClient = useQueryClient();
   const reactivate = useReactivateAccount();
   const recoveryDate = deletionEligibleAt ? new Date(deletionEligibleAt) : null;
-  const [upgradeNotice, setUpgradeNotice] = useState('');
+  const upgradeUrl = import.meta.env.VITE_BILLING_UPGRADE_URL
+    ?? 'mailto:hello@leaguematrix.studio?subject=LeagueMatrix%20upgrade';
 
   return (
     <div className="noise min-h-dvh bg-background">
@@ -3150,19 +3151,20 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
                 >
                   {reactivate.isPending ? 'Reactivating…' : 'Reactivate account'} <ArrowRight className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setUpgradeNotice('Paid upgrades are not available yet. Reactivate now to restore your previous account access.')}
+                <a
+                  href={upgradeUrl}
+                  target={upgradeUrl.startsWith('http') ? '_blank' : undefined}
+                  rel={upgradeUrl.startsWith('http') ? 'noreferrer' : undefined}
                   className="border border-white/20 bg-white/5 px-6 py-4 text-sm font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/10 clip-angled-sm"
                   data-testid="button-review-upgrade"
                 >
-                  Review upgrade options
-                </button>
+                  Upgrade your account
+                </a>
               </div>
             )}
-            {(reactivate.isError || upgradeNotice) && (
+            {reactivate.isError && (
               <p className="mt-5 text-sm font-bold text-primary" role="status">
-                {reactivate.isError ? 'Reactivation failed. Refresh and try again.' : upgradeNotice}
+                Reactivation failed. Refresh and try again.
               </p>
             )}
             <p className="mt-8 text-xs font-bold uppercase tracking-widest text-white/45">Authentication remains available so you can sign out or return during recovery.</p>
