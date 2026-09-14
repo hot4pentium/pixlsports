@@ -27,7 +27,7 @@ import { Switch } from '@/components/ui/switch';
 
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
-  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes,
+  HEADLINES, templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
   normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE
 } from './hype-card-types';
@@ -1550,37 +1550,13 @@ export function HypeCardEditor() {
             </Section>}
 
             {walkthroughStep === 3 && <Section title="Format" icon={SlidersHorizontal}>
-              <div className="grid grid-cols-2 gap-2">
-                {formats.map((format) => (
-                  <button
-                    key={format.id}
-                    type="button"
-                    onClick={() => updateProject('format', format.id)}
-                    className={`rounded-xl border p-3 text-left transition-colors ${project.format === format.id ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-background hover:bg-muted'}`}
-                    data-testid={`button-format-${format.id}`}
-                  >
-                    <span className="block text-xs font-bold">{format.label}</span>
-                    <span className="mt-1 block text-[10px] text-muted-foreground">{format.dimensions}</span>
-                  </button>
-                ))}
+              <div className="rounded-xl border border-primary bg-primary/5 p-4 ring-1 ring-primary/30" data-testid="portrait-format">
+                <span className="block text-xs font-bold">Portrait card</span>
+                <span className="mt-1 block text-[10px] text-muted-foreground">1000 × 1400 · Fixed output</span>
               </div>
-              {project.format !== 'card' && (
-                <div className="mt-4 grid gap-2">
-                  <Label className="text-xs font-bold">Graphic style</Label>
-                  {templates.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => updateProject('template', template.id)}
-                      className={`rounded-xl border px-3 py-2 text-left transition-colors ${project.template === template.id ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-background hover:bg-muted'}`}
-                      data-testid={`button-template-${template.id}`}
-                    >
-                      <span className="block text-xs font-bold">{template.name}</span>
-                      <span className="mt-1 block text-[10px] text-muted-foreground">{template.summary}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className="mt-2 text-[10px] font-medium text-muted-foreground">
+                Hype Cards use the portrait layout for every export.
+              </p>
             </Section>}
 
             {walkthroughStep === 4 && <Section title="Layout" icon={LayoutGrid}>
@@ -1612,17 +1588,10 @@ export function HypeCardEditor() {
                   <Label htmlFor="branding" className="text-sm font-medium">Show LeagueMatrix branding</Label>
                   <Switch id="branding" checked={project.branding} onCheckedChange={(c) => updateProject('branding', c)} />
                 </div>
-                {project.format === 'card' ? (
-                  <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                    <Label htmlFor="lower-third" className="text-sm font-medium">Show lower third</Label>
-                    <Switch id="lower-third" checked={project.showLowerThird} onCheckedChange={(c) => updateProject('showLowerThird', c)} />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                    <Label htmlFor="overlay" className="text-sm font-medium">Show graphic overlays</Label>
-                    <Switch id="overlay" checked={project.overlay} onCheckedChange={(c) => updateProject('overlay', c)} />
-                  </div>
-                )}
+                <div className="flex items-center justify-between rounded-xl border border-border p-3">
+                  <Label htmlFor="lower-third" className="text-sm font-medium">Show lower third</Label>
+                  <Switch id="lower-third" checked={project.showLowerThird} onCheckedChange={(c) => updateProject('showLowerThird', c)} />
+                </div>
                 <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={(e) => assetUpload(e, (u) => updateProject('logo', u), setNotice)} onRemove={() => updateProject('logo', null)} />
               </div>
             </Section>}
@@ -1638,7 +1607,7 @@ export function HypeCardEditor() {
                     ['Moment', project.headline || 'BIG PLAY'],
                     ['Player', project.playerName || 'Your player'],
                     ['Team', project.teamName || 'Your team'],
-                    ['Output', formats.find((format) => format.id === project.format)?.label || 'Vertical card'],
+                    ['Output', 'Portrait card'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between gap-4 border-b border-border py-2">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>

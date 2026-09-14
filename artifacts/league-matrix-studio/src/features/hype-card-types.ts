@@ -91,13 +91,6 @@ export const cardLayouts: Array<{ id: CardLayoutId; name: string; summary: strin
   { id: 'dugout', name: 'Split-Light Arena', summary: 'Dark studio with blue and orange edge lights.', tone: '#2f9dff' },
 ];
 
-export const formats: Array<{ id: HypeFormat; label: string; dimensions: string }> = [
-  { id: 'card', label: 'Vertical card', dimensions: '1000 × 1400' },
-  { id: 'square', label: 'Square post', dimensions: '1080 × 1080' },
-  { id: 'story', label: 'Vertical story', dimensions: '1080 × 1920' },
-  { id: 'landscape', label: 'Landscape', dimensions: '1920 × 1080' },
-];
-
 export const palettes: Record<PaletteId, { name: string; primary: string; secondary: string; accent: string; ink: string; paper: string }> = {
   coral: { name: 'Home court', primary: '#f36f4c', secondary: '#177d76', accent: '#f5c94d', ink: '#243248', paper: '#f8e8d4' },
   teal: { name: 'Fresh turf', primary: '#177d76', secondary: '#f36f4c', accent: '#f5c94d', ink: '#193d43', paper: '#dcefe9' },
@@ -182,6 +175,7 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
     ...defaults,
     ...projectWithoutGrade,
     version: 2,
+    format: 'card',
     headline: typeof project.headline === 'string' && project.headline.trim()
       ? project.headline.trim().slice(0, 42)
       : defaults.headline,
