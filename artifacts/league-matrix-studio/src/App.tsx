@@ -1209,7 +1209,7 @@ function createRosterSvg(draft: RosterDraft) {
     <path d="M0 0h1080v${height}H0z" fill="url(#grid)" opacity=".25"/>
     <defs><pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#b9f34a" stroke-opacity=".16"/></pattern></defs>
     <circle cx="930" cy="150" r="240" fill="#b9f34a" opacity=".12"/>
-    <text x="72" y="95" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="19" font-weight="800" letter-spacing="4">LEAGUEMATRIX  /  COACH BOARD</text>
+    <text x="72" y="95" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="19" font-weight="800" letter-spacing="4">PIXL SPORTS  /  COACH BOARD</text>
     <text x="72" y="218" fill="#f4f6f0" font-family="Oswald, sans-serif" font-size="96" font-weight="700">${escapeSvgText(title)}</text>
     <text x="76" y="270" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="26" font-weight="600">${escapeRosterSvgText(rosterText(draft.teamName, 'YOUR TEAM', 34))}  ·  ${escapeRosterSvgText(rosterText(draft.season, 'SEASON', 22))}</text>
     <rect x="72" y="316" width="936" height="3" fill="#b9f34a"/>
