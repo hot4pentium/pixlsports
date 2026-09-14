@@ -56,3 +56,17 @@ mtime_ms = 1789343894072
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/4b24a7ce-b93f-43dd-ba1d-98d36d6f7ecc/cc8861e2-12c2-48b3-ba3b-750dce44cfd1"
 storage_version_token = "1789343900408013"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "v3tuZUOvNmI5iUH9v4bj9"
+uri = "file://screenshots/hype-card-top-corner-details.jpg"
+type = "image"
+title = "Hype Card Top-Corner Details"
+description = "Updated render with jersey number and position badges above the moment title in the card corners."
+logical_id = "a6d52629-f4f7-4c09-be89-68e475527a62"
+content_hash = "sha256:1a3d0d8a43d7718360dce6960e164278c00bab7ec073942d4886d9d254f4586f"
+size = 156324
+mtime_ms = 1789343997145
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a6d52629-f4f7-4c09-be89-68e475527a62/1a76b5dd-7c79-47d5-b862-a0c3ce2f3131"
+storage_version_token = "1789344003942299"
+content_type = "image/jpeg"

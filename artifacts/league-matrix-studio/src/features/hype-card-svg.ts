@@ -308,7 +308,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : '';
   const logo = project.logo
-    ? `<image href="${project.logo}" x="825" y="82" width="90" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#stadiumShadow-${ns})"/>`
+    ? `<image href="${project.logo}" x="825" y="128" width="90" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#stadiumShadow-${ns})"/>`
     : '';
   const placeholder = !project.mediaType && !project.photo
     ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="#02070e" fill-opacity=".34" stroke="#fff" stroke-opacity=".38" stroke-width="3" stroke-dasharray="14 14"/><text x="500" y="650" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff" opacity=".82">ADD PLAYER MEDIA</text>`
@@ -378,12 +378,12 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       <rect y="900" width="1000" height="500" fill="url(#stadiumBottom-${ns})"/>
       ${mediaGlow}
       ${placeholder}
-       <text x="70" y="112" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
+       <text x="500" y="136" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="17" font-weight="800" letter-spacing="6" fill="${palette.accent}">${content.team}</text>
        <g aria-label="Player number and position">
-         <path d="M62 140 H196 L214 158 V208 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
-         <text x="78" y="188" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
-         <path d="M786 140 H938 V208 H804 L786 190 Z" fill="#020811" stroke="${palette.secondary}" stroke-width="3"/>
-         <text x="920" y="188" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${positionBadgeSize}" font-weight="800" letter-spacing="2" fill="${palette.accent}">${content.details}</text>
+         <path d="M62 46 H196 L214 64 V114 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
+         <text x="78" y="95" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
+         <path d="M786 46 H938 V114 H804 L786 96 Z" fill="#020811" stroke="${palette.secondary}" stroke-width="3"/>
+         <text x="920" y="95" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${positionBadgeSize}" font-weight="800" letter-spacing="2" fill="${palette.accent}">${content.details}</text>
        </g>
       <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>
       <g aria-label="Hype Card">
