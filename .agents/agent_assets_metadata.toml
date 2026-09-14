@@ -224,3 +224,17 @@ mtime_ms = 1789346278820
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/6df4a767-96f2-4a3a-aec2-858f9910bbc4/a08c9222-8728-4937-9b57-efdf2a6c07f4"
 storage_version_token = "1789346285600168"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "-W6o40-afi22ufU1xuhJa"
+uri = "file://screenshots/hype-card-holder-text-centered.jpg"
+type = "image"
+title = "Centered Hype Card Holder Text"
+description = "Verified Hype Card render with the vertical HYPE CARD label centered left-to-right inside its holder."
+logical_id = "5f4a0fbc-18ae-45bd-ab40-7896cb84e640"
+content_hash = "sha256:1a64f091286c3318a7ac536daa5ba0fe6a75794e291cb12246a4d1f813166045"
+size = 146756
+mtime_ms = 1789346363172
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/5f4a0fbc-18ae-45bd-ab40-7896cb84e640/ec0493be-1913-49f9-9a74-a280e572753a"
+storage_version_token = "1789346371016102"
+content_type = "image/jpeg"
