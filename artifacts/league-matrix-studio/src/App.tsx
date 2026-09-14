@@ -771,7 +771,7 @@ function CoachCalendarCodePanel() {
   );
 }
 
-function FanCalendarConnectionPanel() {
+function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange?: (code: string) => void }) {
   const [code, setCode] = useState(() => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '');
   const [input, setInput] = useState(code);
   const connect = useConnectToCoachCalendar();
@@ -788,6 +788,10 @@ function FanCalendarConnectionPanel() {
     && (calendar.scheduleAvailable || calendar.events.length > 0 || calendar.title || calendar.teamSeason),
   );
 
+  useEffect(() => {
+    onConnectionChange?.(code);
+  }, [code, onConnectionChange]);
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextCode = input.trim().toUpperCase();
@@ -802,6 +806,12 @@ function FanCalendarConnectionPanel() {
         },
       },
     );
+  };
+
+  const disconnect = () => {
+    window.localStorage.removeItem(connectedCoachCodeStorageKey);
+    setCode('');
+    setInput('');
   };
 
   return (
@@ -839,6 +849,16 @@ function FanCalendarConnectionPanel() {
       <p id="coach-calendar-code-help" className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the five-character code shown on their dashboard.'}
       </p>
+      {code && (
+        <button
+          type="button"
+          onClick={disconnect}
+          className="mt-3 text-xs font-bold uppercase tracking-wider text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-destructive"
+          data-testid="button-disconnect-coach-calendar"
+        >
+          Disconnect from coach
+        </button>
+      )}
       {(connect.isError || isError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">That coach code could not be connected. Check the code and try again.</p>}
 
       {hasConnectedSchedule && (
