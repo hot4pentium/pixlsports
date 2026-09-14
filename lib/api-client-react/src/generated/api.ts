@@ -21,6 +21,9 @@ import type {
 
 import type {
   BadRequestResponse,
+  CoachCalendar,
+  CoachCalendarCode,
+  CoachCalendarConnectInput,
   Error,
   HealthStatus,
   MediaUpload,
@@ -472,6 +475,249 @@ export const useDeleteScheduleShare = <TError = ErrorType<UnauthorizedResponse |
       > => {
       return useMutation(getDeleteScheduleShareMutationOptions(options));
     }
+
+export const getGetCoachCalendarCodeUrl = () => {
+
+
+
+
+  return `/api/coach-calendar`
+}
+
+/**
+ * Returns the stable five-character code a coach can share with families.
+ * @summary Get or create the authenticated coach's calendar code
+ */
+export const getCoachCalendarCode = async ( options?: Parameters<typeof customFetch>[1]): Promise<CoachCalendarCode> => {
+
+  return customFetch<CoachCalendarCode>(getGetCoachCalendarCodeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCoachCalendarCodeQueryKey = () => {
+    return [
+    `/api/coach-calendar`
+    ] as const;
+    }
+
+
+export const getGetCoachCalendarCodeQueryOptions = <TData = Awaited<ReturnType<typeof getCoachCalendarCode>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCoachCalendarCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCoachCalendarCodeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCoachCalendarCode>>> = ({ signal }) => getCoachCalendarCode({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCoachCalendarCode>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCoachCalendarCodeQueryResult = NonNullable<Awaited<ReturnType<typeof getCoachCalendarCode>>>
+export type GetCoachCalendarCodeQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get or create the authenticated coach's calendar code
+ */
+
+export function useGetCoachCalendarCode<TData = Awaited<ReturnType<typeof getCoachCalendarCode>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCoachCalendarCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCoachCalendarCodeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConnectToCoachCalendarUrl = () => {
+
+
+
+
+  return `/api/coach-calendar/connect`
+}
+
+/**
+ * @summary Connect a fan to a coach calendar
+ */
+export const connectToCoachCalendar = async (coachCalendarConnectInput: CoachCalendarConnectInput, options?: Parameters<typeof customFetch>[1]): Promise<CoachCalendar> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CoachCalendar>(getConnectToCoachCalendarUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(coachCalendarConnectInput)
+  }
+);}
+
+
+
+
+
+export const getConnectToCoachCalendarMutationKey = () => ['connectToCoachCalendar'] as const;
+
+export const getConnectToCoachCalendarMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectToCoachCalendar>>, TError,ConnectToCoachCalendarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof connectToCoachCalendar>>, TError,ConnectToCoachCalendarMutationVariables, TContext> => {
+
+const mutationKey = getConnectToCoachCalendarMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectToCoachCalendar>>, ConnectToCoachCalendarMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  connectToCoachCalendar(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConnectToCoachCalendarMutationResult = NonNullable<Awaited<ReturnType<typeof connectToCoachCalendar>>>
+    export type ConnectToCoachCalendarMutationBody = BodyType<CoachCalendarConnectInput>
+    export type ConnectToCoachCalendarMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type ConnectToCoachCalendarMutationVariables = {data: BodyType<CoachCalendarConnectInput>}
+
+    /**
+ * @summary Connect a fan to a coach calendar
+ */
+export const useConnectToCoachCalendar = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectToCoachCalendar>>, TError,ConnectToCoachCalendarMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof connectToCoachCalendar>>,
+        TError,
+        ConnectToCoachCalendarMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConnectToCoachCalendarMutationOptions(options));
+    }
+
+export const getGetConnectedCoachCalendarUrl = (code: string,) => {
+
+
+
+
+  return `/api/coach-calendar/${code}`
+}
+
+/**
+ * @summary Get the current schedule for a connected coach code
+ */
+export const getConnectedCoachCalendar = async (code: string, options?: Parameters<typeof customFetch>[1]): Promise<CoachCalendar> => {
+
+  return customFetch<CoachCalendar>(getGetConnectedCoachCalendarUrl(code),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConnectedCoachCalendarQueryKey = (code: string,) => {
+    return [
+    `/api/coach-calendar/${code}`
+    ] as const;
+    }
+
+
+export const getGetConnectedCoachCalendarQueryOptions = <TData = Awaited<ReturnType<typeof getConnectedCoachCalendar>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(code: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectedCoachCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConnectedCoachCalendarQueryKey(code);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConnectedCoachCalendar>>> = ({ signal }) => getConnectedCoachCalendar(code, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: code !== null && code !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConnectedCoachCalendar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConnectedCoachCalendarQueryResult = NonNullable<Awaited<ReturnType<typeof getConnectedCoachCalendar>>>
+export type GetConnectedCoachCalendarQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the current schedule for a connected coach code
+ */
+
+export function useGetConnectedCoachCalendar<TData = Awaited<ReturnType<typeof getConnectedCoachCalendar>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ code: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectedCoachCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConnectedCoachCalendarQueryOptions(code,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListProjectsUrl = () => {
 

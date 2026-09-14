@@ -65,6 +65,31 @@ export interface ScheduleShare {
   createdAt: string;
 }
 
+export interface CoachCalendarCode {
+  /** @pattern ^[A-Z2-9]{5}$ */
+  code: string;
+}
+
+export interface CoachCalendarConnectInput {
+  /**
+     * @minLength 5
+     * @maxLength 5
+     * @pattern ^[A-Za-z2-9]{5}$
+     */
+  code: string;
+}
+
+export interface CoachCalendar {
+  /** @pattern ^[A-Z2-9]{5}$ */
+  code: string;
+  title: string;
+  teamSeason: string;
+  events: ScheduleEvent[];
+  scheduleAvailable: boolean;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
 export type HypeCardProjectVersion = typeof HypeCardProjectVersion[keyof typeof HypeCardProjectVersion];
 
 

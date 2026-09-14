@@ -240,6 +240,120 @@ export const DeleteScheduleShareResponse = zod.void()
 
 
 /**
+ * Returns the stable five-character code a coach can share with families.
+ * @summary Get or create the authenticated coach's calendar code
+ */
+export const getCoachCalendarCodeResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
+
+
+export const GetCoachCalendarCodeResponse = zod.object({
+  "code": zod.string().regex(getCoachCalendarCodeResponseCodeRegExp)
+})
+
+
+/**
+ * @summary Connect a fan to a coach calendar
+ */
+export const connectToCoachCalendarBodyCodeMin = 5;
+export const connectToCoachCalendarBodyCodeMax = 5;
+
+
+export const connectToCoachCalendarBodyCodeRegExp = new RegExp('^[A-Za-z2-9]{5}$');
+
+
+export const ConnectToCoachCalendarBody = zod.object({
+  "code": zod.string().min(connectToCoachCalendarBodyCodeMin).max(connectToCoachCalendarBodyCodeMax).regex(connectToCoachCalendarBodyCodeRegExp)
+})
+
+export const connectToCoachCalendarResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
+export const connectToCoachCalendarResponseEventsItemIdMax = 100;
+
+export const connectToCoachCalendarResponseEventsItemDateMax = 30;
+
+export const connectToCoachCalendarResponseEventsItemTimeMax = 30;
+
+export const connectToCoachCalendarResponseEventsItemLocationMax = 300;
+
+export const connectToCoachCalendarResponseEventsItemOpponentMax = 200;
+
+export const connectToCoachCalendarResponseEventsItemSnacksMax = 300;
+
+export const connectToCoachCalendarResponseEventsItemDrinksMax = 300;
+
+export const connectToCoachCalendarResponseEventsItemNotesMax = 1000;
+
+
+
+export const ConnectToCoachCalendarResponse = zod.object({
+  "code": zod.string().regex(connectToCoachCalendarResponseCodeRegExp),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(connectToCoachCalendarResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(connectToCoachCalendarResponseEventsItemDateMax),
+  "time": zod.string().max(connectToCoachCalendarResponseEventsItemTimeMax),
+  "location": zod.string().max(connectToCoachCalendarResponseEventsItemLocationMax),
+  "opponent": zod.string().max(connectToCoachCalendarResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(connectToCoachCalendarResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(connectToCoachCalendarResponseEventsItemDrinksMax),
+  "notes": zod.string().max(connectToCoachCalendarResponseEventsItemNotesMax)
+})),
+  "scheduleAvailable": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Get the current schedule for a connected coach code
+ */
+export const getConnectedCoachCalendarPathCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
+
+
+export const GetConnectedCoachCalendarParams = zod.object({
+  "code": zod.coerce.string().regex(getConnectedCoachCalendarPathCodeRegExp)
+})
+
+export const getConnectedCoachCalendarResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
+export const getConnectedCoachCalendarResponseEventsItemIdMax = 100;
+
+export const getConnectedCoachCalendarResponseEventsItemDateMax = 30;
+
+export const getConnectedCoachCalendarResponseEventsItemTimeMax = 30;
+
+export const getConnectedCoachCalendarResponseEventsItemLocationMax = 300;
+
+export const getConnectedCoachCalendarResponseEventsItemOpponentMax = 200;
+
+export const getConnectedCoachCalendarResponseEventsItemSnacksMax = 300;
+
+export const getConnectedCoachCalendarResponseEventsItemDrinksMax = 300;
+
+export const getConnectedCoachCalendarResponseEventsItemNotesMax = 1000;
+
+
+
+export const GetConnectedCoachCalendarResponse = zod.object({
+  "code": zod.string().regex(getConnectedCoachCalendarResponseCodeRegExp),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(getConnectedCoachCalendarResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(getConnectedCoachCalendarResponseEventsItemDateMax),
+  "time": zod.string().max(getConnectedCoachCalendarResponseEventsItemTimeMax),
+  "location": zod.string().max(getConnectedCoachCalendarResponseEventsItemLocationMax),
+  "opponent": zod.string().max(getConnectedCoachCalendarResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(getConnectedCoachCalendarResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(getConnectedCoachCalendarResponseEventsItemDrinksMax),
+  "notes": zod.string().max(getConnectedCoachCalendarResponseEventsItemNotesMax)
+})),
+  "scheduleAvailable": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary List the authenticated user's projects
  */
 

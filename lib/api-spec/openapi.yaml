@@ -16,6 +16,8 @@ tags:
     description: Project media storage operations
   - name: schedule-shares
     description: Public schedule sharing operations
+  - name: coach-calendars
+    description: Authenticated coach calendar connections
 paths:
   /healthz:
     get:
@@ -102,6 +104,63 @@ paths:
       responses:
         "204":
           description: Public schedule share revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /coach-calendar:
+    get:
+      operationId: getCoachCalendarCode
+      tags: [coach-calendars]
+      summary: Get or create the authenticated coach's calendar code
+      description: Returns the stable five-character code a coach can share with families.
+      responses:
+        "200":
+          description: Coach calendar code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachCalendarCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /coach-calendar/connect:
+    post:
+      operationId: connectToCoachCalendar
+      tags: [coach-calendars]
+      summary: Connect a fan to a coach calendar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachCalendarConnectInput"
+      responses:
+        "200":
+          description: Current coach calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachCalendar"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /coach-calendar/{code}:
+    get:
+      operationId: getConnectedCoachCalendar
+      tags: [coach-calendars]
+      summary: Get the current schedule for a connected coach code
+      parameters:
+        - $ref: "#/components/parameters/CoachCalendarCodeParam"
+      responses:
+        "200":
+          description: Current coach calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachCalendar"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -282,6 +341,13 @@ components:
       schema:
         type: string
         format: uuid
+    CoachCalendarCodeParam:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Z2-9]{5}$"
   responses:
     BadRequest:
       description: Invalid request
@@ -354,6 +420,39 @@ components:
             $ref: "#/components/schemas/ScheduleEvent"
         createdAt:
           type: string
+          format: date-time
+    CoachCalendarCode:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z2-9]{5}$"
+    CoachCalendarConnectInput:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          minLength: 5
+          maxLength: 5
+          pattern: "^[A-Za-z2-9]{5}$"
+    CoachCalendar:
+      type: object
+      required: [code, title, teamSeason, events, scheduleAvailable, updatedAt]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z2-9]{5}$"
+        title: { type: string }
+        teamSeason: { type: string }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleEvent"
+        scheduleAvailable: { type: boolean }
+        updatedAt:
+          type: ["string", "null"]
           format: date-time
     HypeCardProject:
       type: object

@@ -4,6 +4,9 @@ import {
   useDeleteProject,
   useCreateProject,
   useGetProject,
+  useGetCoachCalendarCode,
+  useGetConnectedCoachCalendar,
+  useConnectToCoachCalendar,
   getGetProjectQueryKey,
   useGetScheduleShare,
   useListProjects,
@@ -13,7 +16,7 @@ import {
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
-import { type PointerEvent, type ReactNode, useEffect, useState } from 'react';
+import { type FormEvent, type PointerEvent, type ReactNode, useEffect, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -117,6 +120,8 @@ const roleToolKinds: Record<UserRole, ToolKind[]> = {
   coach: ['schedule', 'roster'],
   fan: ['hype', 'schedule'],
 };
+
+const connectedCoachCodeStorageKey = 'leaguematrix-connected-coach-code';
 
 function getUserRole(user: { unsafeMetadata?: unknown } | null | undefined): UserRole | null {
   const role = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
@@ -570,6 +575,8 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
+        {role === 'coach' && <CoachCalendarCodePanel />}
+
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
@@ -712,6 +719,158 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
         Launch <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
       </div>
     </Link>
+  );
+}
+
+function CoachCalendarCodePanel() {
+  const { data, isLoading, isError } = useGetCoachCalendarCode({
+    query: {
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      queryKey: ['/api/coach-calendar'],
+    },
+  });
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    if (!data?.code) return;
+    await navigator.clipboard?.writeText(data.code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <section className="relative mt-8 overflow-hidden border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-6" data-testid="coach-calendar-code-panel">
+      <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
+      <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Family calendar connection</p>
+          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Share your coach code.</h2>
+          <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">
+            Families can enter this code above their calendar to keep their schedule current when you update it.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="border border-primary bg-background px-4 py-3 font-display text-3xl tracking-[0.28em] text-foreground" aria-label="Coach calendar code">
+            {isLoading ? '·····' : data?.code ?? '-----'}
+          </div>
+          <button
+            type="button"
+            onClick={() => { void copyCode(); }}
+            disabled={!data?.code || isError}
+            className="grid h-12 w-12 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+            aria-label="Copy coach calendar code"
+            data-testid="button-copy-coach-calendar-code"
+          >
+            {copied ? <Check className="h-5 w-5 text-primary" /> : <Clipboard className="h-5 w-5" />}
+          </button>
+        </div>
+      </div>
+      {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not create the coach code. Refresh and try again.</p>}
+    </section>
+  );
+}
+
+function FanCalendarConnectionPanel() {
+  const [code, setCode] = useState(() => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '');
+  const [input, setInput] = useState(code);
+  const connect = useConnectToCoachCalendar();
+  const { data: calendar, isLoading, isError, isFetching } = useGetConnectedCoachCalendar(code, {
+    query: {
+      enabled: Boolean(code),
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+      queryKey: ['/api/coach-calendar', code],
+    },
+  });
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextCode = input.trim().toUpperCase();
+    if (nextCode.length !== 5) return;
+    connect.mutate(
+      { data: { code: nextCode } },
+      {
+        onSuccess: (connected) => {
+          window.localStorage.setItem(connectedCoachCodeStorageKey, connected.code);
+          setCode(connected.code);
+          setInput(connected.code);
+        },
+      },
+    );
+  };
+
+  return (
+    <section className="mb-6 border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-6" data-testid="fan-calendar-connection-panel">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-xl">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Connect your family calendar</p>
+          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Enter your coach code.</h2>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">
+            Your calendar refreshes automatically when your coach updates the team schedule.
+          </p>
+        </div>
+        <form onSubmit={submit} className="flex w-full max-w-md gap-2" data-testid="form-connect-coach-calendar">
+          <label className="sr-only" htmlFor="coach-calendar-code">Coach calendar code</label>
+          <input
+            id="coach-calendar-code"
+            value={input}
+            onChange={(event) => setInput(event.target.value.replace(/[^a-zA-Z2-9]/g, '').slice(0, 5).toUpperCase())}
+            placeholder="ABCDE"
+            autoComplete="off"
+            className="min-w-0 flex-1 border border-border bg-background px-4 py-3 text-center font-display text-2xl uppercase tracking-[0.24em] text-foreground outline-none transition-colors focus:border-primary"
+            aria-describedby="coach-calendar-code-help"
+            data-testid="input-coach-calendar-code"
+          />
+          <button
+            type="submit"
+            disabled={connect.isPending || input.trim().length !== 5}
+            className="shrink-0 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+            data-testid="button-connect-coach-calendar"
+          >
+            {connect.isPending ? 'Connecting…' : 'Connect'}
+          </button>
+        </form>
+      </div>
+      <p id="coach-calendar-code-help" className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the five-character code shown on their dashboard.'}
+      </p>
+      {(connect.isError || isError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">That coach code could not be connected. Check the code and try again.</p>}
+
+      {calendar?.scheduleAvailable && (
+        <div className="mt-5 border-t border-primary/20 pt-5" data-testid="fan-connected-calendar">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-foreground">Connected schedule</p>
+              <p className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{calendar.teamSeason || 'Current season'}</p>
+            </div>
+            {calendar.updatedAt && <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Last update {formatDistanceToNow(new Date(calendar.updatedAt), { addSuffix: true })}</p>}
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {calendar.events.length === 0 ? (
+              <p className="border border-dashed border-border p-4 text-xs font-medium text-muted-foreground sm:col-span-2">Your coach has not added any events yet.</p>
+            ) : calendar.events.map((event) => (
+              <div key={event.id} className="border border-border bg-background p-3 clip-angled-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-display text-lg uppercase tracking-wide text-foreground">
+                      {event.type === 'game' ? `VS ${event.opponent || 'OPPONENT TBD'}` : event.type === 'practice' ? 'TEAM PRACTICE' : 'TEAM MEETING'}
+                    </p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary">{formatScheduleDate(event.date)} · {formatScheduleTime(event.time)}</p>
+                  </div>
+                  <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
+                </div>
+                <p className="mt-2 text-xs font-medium text-muted-foreground">{event.location || 'Location TBD'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {calendar && !calendar.scheduleAvailable && (
+        <p className="mt-5 border-t border-primary/20 pt-5 text-sm font-medium text-muted-foreground">Connected. Your coach has not published a schedule yet.</p>
+      )}
+      {isLoading && code && <p className="mt-5 border-t border-primary/20 pt-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">Loading connected schedule…</p>}
+    </section>
   );
 }
 
@@ -950,7 +1109,7 @@ function RosterEditor() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
-  const { isSignedIn, isLoaded } = useUser();
+  const { user, isSignedIn, isLoaded } = useUser();
   const [storedDraft] = useState(() => readRosterDraft());
   const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster());
   const [notice, setNotice] = useState('');
@@ -1364,7 +1523,7 @@ function ScheduleEditor() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
-  const { isSignedIn, isLoaded } = useUser();
+  const { user, isSignedIn, isLoaded } = useUser();
   const [storedDraft] = useState(() => readScheduleDraft());
   const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
@@ -1660,6 +1819,7 @@ function ScheduleEditor() {
   return (
     <StudioLayout>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
+        {getUserRole(user) === 'fan' && <FanCalendarConnectionPanel />}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">

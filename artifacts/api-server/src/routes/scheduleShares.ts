@@ -68,6 +68,7 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
         title: parsed.data.title,
         teamSeason: parsed.data.teamSeason,
         events: parsed.data.events,
+        updatedAt: new Date(),
       })
       .where(and(
         eq(scheduleSharesTable.id, params.data.shareToken),

@@ -7,6 +7,9 @@
  */
 
 export * from './badRequestResponse';
+export * from './coachCalendar';
+export * from './coachCalendarCode';
+export * from './coachCalendarConnectInput';
 export * from './error';
 export * from './healthStatus';
 export * from './hypeCardProject';
