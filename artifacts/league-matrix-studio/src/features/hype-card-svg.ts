@@ -318,7 +318,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
      ? `<text x="500" y="1344" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 780, 18, 0.62, 2)}" font-weight="600" letter-spacing="2" fill="#fff" opacity=".72">${content.message}</text>`
     : '';
   const branding = project.branding
-     ? `<text x="500" y="1398" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
+     ? `<text x="500" y="1398" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">PIXL SPORTS STUDIO</text>`
     : '';
   const lowerThirdY = 1100;
   const nameplate = project.showLowerThird
@@ -419,7 +419,7 @@ function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     : '';
 
   const branding = project.branding
-    ? `<text x="500" y="1310" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    ? `<text x="500" y="1310" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS STUDIO</text>`
     : '';
 
   const coachMessage = content.message ? `<text x="500" y="1285" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 800, 18, 0.65)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
@@ -511,7 +511,7 @@ function buildAllStarCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     : '';
 
   const branding = project.branding
-    ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS STUDIO</text>`
     : '';
     
   const coachMessage = content.message ? `<text x="500" y="1295" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 3)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
@@ -603,7 +603,7 @@ function buildRookieCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
     : '';
 
   const branding = project.branding
-    ? `<text x="940" y="1335" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX</text>`
+    ? `<text x="940" y="1335" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS</text>`
     : '';
 
   const coachMessage = content.message ? `<text x="70" y="1335" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
@@ -688,7 +688,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
     : '';
 
   const branding = project.branding
-    ? `<text x="500" y="1330" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    ? `<text x="500" y="1330" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS STUDIO</text>`
     : '';
 
   const coachMessage = content.message ? `<text x="930" y="1255" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 400, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
@@ -810,7 +810,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   const photoMarkup = `<g clip-path="url(#photoClip-${ns})">${photo}</g><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.paper}" stroke-opacity=".32" stroke-width="${Math.max(2, width * .004)}"/>`;
   const textMarkup = `<text x="${textX}" y="${textY - headlineSize * .82}" font-size="${Math.max(16, width * .018)}" letter-spacing="${Math.max(2, width * .008)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".8">${playerText || 'PLAYER SPOTLIGHT'}</text><text x="${textX}" y="${textY}" font-size="${headlineSize}" font-family="Space Grotesk, sans-serif" font-weight="700" letter-spacing="${-headlineSize * .06}" fill="${textColor}">${headlineStr}</text><text x="${textX}" y="${textY + headlineSize * .34}" font-size="${Math.max(22, width * .032)}" font-family="Space Grotesk, sans-serif" font-weight="700" fill="${palette.accent}">#${jersey}</text><text x="${textX + Math.max(72, width * .075)}" y="${textY + headlineSize * .34}" font-size="${Math.max(18, width * .022)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".9">${team}</text><text x="${textX}" y="${textY + headlineSize * .65}" font-size="${Math.max(16, width * .018)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".72">${position}</text><text x="${textX}" y="${height - (isLandscape ? 100 : 115)}" font-size="${Math.max(16, width * .018)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".82">${achievement}</text><text x="${textX}" y="${height - (isLandscape ? 64 : 72)}" font-size="${Math.max(15, width * .016)}" font-family="DM Sans, sans-serif" font-weight="500" fill="${secondaryText}" opacity=".62">${message}</text>`;
   const branding = project.branding
-    ? `<text x="${width - 55}" y="${height - 36}" text-anchor="end" font-size="${Math.max(12, width * .012)}" letter-spacing="${Math.max(1, width * .004)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".55">LEAGUEMATRIX CREATIVE STUDIO</text>`
+    ? `<text x="${width - 55}" y="${height - 36}" text-anchor="end" font-size="${Math.max(12, width * .012)}" letter-spacing="${Math.max(1, width * .004)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".55">PIXL SPORTS STUDIO</text>`
     : '';
 
   const fgContent = `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.paper}" stroke-opacity=".32" stroke-width="${Math.max(2, width * .004)}"/>${textMarkup}${logo}${branding}<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="34" fill="none" stroke="${palette.paper}" stroke-opacity=".18" stroke-width="${Math.max(2, width * .003)}"/><text x="${isLandscape ? width * .57 : width * .09}" y="${isLandscape ? 76 : 64}" font-size="${Math.max(15, width * .014)}" letter-spacing="${Math.max(2, width * .007)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".7">${escapeXml(template.name.toUpperCase())}</text>`;

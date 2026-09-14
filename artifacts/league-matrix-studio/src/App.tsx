@@ -199,13 +199,12 @@ const toolData: Record<ToolKind, {
 
 function BrandMark({ inverse = false }: { inverse?: boolean }) {
   return (
-    <span className="flex items-center gap-2" data-testid="brand-leaguematrix">
-      <span className={`grid h-8 w-8 place-items-center clip-angled-sm ${inverse ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}`}>
-        <span className="font-display text-xl leading-none mt-0.5">LM</span>
-      </span>
-      <span className={`font-display text-2xl tracking-wide mt-1 ${inverse ? 'text-white' : 'text-foreground'}`}>
-        LEAGUE<span className="text-primary">MATRIX</span>
-      </span>
+    <span className="flex items-center" data-testid="brand-pixlsports">
+      <img
+        src={`${basePath}/pixlsports-logo.png`}
+        alt="Pixl Sports"
+        className="h-11 w-auto max-w-[176px] object-contain sm:h-12 sm:max-w-[190px]"
+      />
     </span>
   );
 }
@@ -303,7 +302,7 @@ function HomePage() {
                 MAKE YOUR<br /><span className="text-primary">MOMENT</span> COUNT.
               </h1>
               <p className="animate-slide-up delay-200 mt-8 max-w-xl text-lg font-medium leading-relaxed text-white/70 sm:text-xl">
-                LeagueMatrix turns the little wins, big games, and long Saturdays into graphics worth sharing. Professional sports aesthetic. Local privacy. Zero friction.
+                Pixl Sports turns the little wins, big games, and long Saturdays into graphics worth sharing. Professional sports aesthetic. Local privacy. Zero friction.
               </p>
               <div className="animate-slide-up delay-300 mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Link href="/studio" className="group inline-flex items-center justify-center gap-3 bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm transition-transform hover:scale-105" data-testid="link-hero-open-studio">
@@ -541,7 +540,7 @@ function Studio({ role }: { role: UserRole }) {
                {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary">CENTER.</span>
             </h1>
              <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
-               <span>{isGuest ? 'Build locally and save a small number of reusable projects to your LeagueMatrix cloud workspace, then export finished graphics.' : 'Save Hype Cards, schedules, and roster lineups locally or to your LeagueMatrix cloud workspace, then export finished graphics.'}</span>
+               <span>{isGuest ? 'Build locally and save a small number of reusable projects to your Pixl Sports cloud workspace, then export finished graphics.' : 'Save Hype Cards, schedules, and roster lineups locally or to your Pixl Sports cloud workspace, then export finished graphics.'}</span>
               <Dialog>
                 <DialogTrigger asChild>
                   <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
@@ -732,7 +731,7 @@ function Studio({ role }: { role: UserRole }) {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
-              <h2 className="mt-2 font-display text-3xl uppercase tracking-wide">Cancel LeagueMatrix access.</h2>
+          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide">Cancel Pixl Sports access.</h2>
               <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">
                 Your studio locks immediately. Your account and cloud work stay recoverable for 90 days after your latest sign-in.
               </p>
@@ -1674,7 +1673,7 @@ function RosterGraphicPreview({
           </div>
           <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
             <span>{starters.length} starters · {draft.players.length - starters.length} bench</span>
-            <span className="text-primary">LeagueMatrix</span>
+             <span className="text-primary">Pixl Sports</span>
           </div>
         </div>
       </div>
@@ -2483,7 +2482,7 @@ function buildScheduleGraphicSvg({
     <rect width="1080" height="${height}" fill="${background}"/>
     <circle cx="1010" cy="40" r="190" fill="none" stroke="#f5c94d" stroke-opacity=".35" stroke-width="28"/>
     <circle cx="70" cy="${height - 10}" r="190" fill="#177d76" fill-opacity=".9"/>
-    <text x="56" y="72" fill="${foreground}" opacity=".78" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3">LEAGUEMATRIX · TEAM SCHEDULE</text>
+     <text x="56" y="72" fill="${foreground}" opacity=".78" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="3">PIXL SPORTS · TEAM SCHEDULE</text>
     <text x="56" y="152" fill="${foreground}" font-family="Arial, sans-serif" font-size="62" font-weight="800">${graphicLine(teamName || 'TEAM NAME', 27)}</text>
     <text x="56" y="198" fill="${foreground}" opacity=".86" font-family="Arial, sans-serif" font-size="21" font-weight="700" letter-spacing="2">${graphicLine(season || 'SEASON', 60)}</text>
     <text x="1024" y="72" text-anchor="end" fill="${foreground}" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="2">${events.length} ${events.length === 1 ? 'EVENT' : 'EVENTS'}</text>
@@ -2513,7 +2512,7 @@ function SchedulePreview({ teamName, season, events, selectedTemplate }: { teamN
         <div className="relative">
           <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.16em]">
             <div className="min-w-0">
-              <p className="truncate opacity-80">LeagueMatrix · Team schedule</p>
+               <p className="truncate opacity-80">Pixl Sports · Team schedule</p>
               <p className="mt-2 max-w-[90%] font-display text-4xl leading-[.88] tracking-[-.04em] sm:text-6xl">{teamName || 'TEAM NAME'}</p>
             </div>
             <span className="shrink-0 rounded-full border border-current px-2.5 py-1">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
@@ -2590,7 +2589,7 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
           <CalendarDays className="h-10 w-10 text-primary" />
           <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Schedule not found</h1>
           <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">This parent link may have expired or been copied incorrectly.</p>
-          <Link href="/" className="mt-7 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm">Go to LeagueMatrix</Link>
+           <Link href="/" className="mt-7 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm">Go to Pixl Sports</Link>
         </main>
       </div>
     );
@@ -2639,7 +2638,7 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
           ))}
         </div>
 
-        <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from LeagueMatrix · No account required</p>
+         <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from Pixl Sports · No account required</p>
       </main>
     </div>
   );
@@ -2722,7 +2721,7 @@ function Help() {
               <p className="text-sm font-bold uppercase tracking-widest opacity-80 mt-1">Reach out for tactical support</p>
             </div>
           </div>
-          <a href="mailto:hello@leaguematrix.studio" className="bg-foreground text-background font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap">Contact Team</a>
+           <a href="mailto:hello@pixlsports.com" className="bg-foreground text-background font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap">Contact Team</a>
         </div>
       </main>
     </StudioLayout>
@@ -2738,15 +2737,15 @@ function Privacy() {
         </div>
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Privacy Policy</h1>
         <div className="prose prose-lg mt-12 max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-a:text-primary hover:prose-a:text-foreground">
-          <p className="lead font-medium text-xl">The short version: We don't track your team, and LeagueMatrix does not upload newly attached photos, videos, or logos. Account saves contain reusable design settings only.</p>
+           <p className="lead font-medium text-xl">The short version: We don't track your team, and Pixl Sports does not upload newly attached photos, videos, or logos. Account saves contain reusable design settings only.</p>
           <h3>1. Local Execution</h3>
-          <p>LeagueMatrix is built as a local-first application. When you attach a photo, video, or logo to create a graphic, that media is processed on your device using browser APIs. Saving a design to your account sends the layout, text, colors, crop settings, and output configuration, but not the attached media. Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
+           <p>Pixl Sports is built as a local-first application. When you attach a photo, video, or logo to create a graphic, that media is processed on your device using browser APIs. Saving a design to your account sends the layout, text, colors, crop settings, and output configuration, but not the attached media. Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
           <h3>2. Analytics</h3>
           <p>We do not use tracking pixels, session recording tools, or advertising analytics in this release.</p>
           <h3>3. Cookies</h3>
           <p>Project settings and attached media may be kept in local browser storage so they can survive a reload. If you create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
           <h3>4. Your Media</h3>
-          <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. To share a finished card, export the image or video and share that file; LeagueMatrix does not host new finished media for public sharing.</p>
+           <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. To share a finished card, export the image or video and share that file; Pixl Sports does not host new finished media for public sharing.</p>
         </div>
       </main>
     </StudioLayout>
@@ -2892,7 +2891,7 @@ function SignUpPage() {
   return (
     <AuthLayout
       title={<>CREATE<br/><span className="text-primary">CALLSIGN.</span></>}
-      subtitle="Join LeagueMatrix to save your custom templates and broadcast settings securely in the cloud."
+       subtitle="Join Pixl Sports to save your custom templates and broadcast settings securely in the cloud."
     >
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/studio`} />
     </AuthLayout>
@@ -3113,8 +3112,8 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
   const queryClient = useQueryClient();
   const reactivate = useReactivateAccount();
   const recoveryDate = deletionEligibleAt ? new Date(deletionEligibleAt) : null;
-  const upgradeUrl = import.meta.env.VITE_BILLING_UPGRADE_URL
-    ?? 'mailto:hello@leaguematrix.studio?subject=LeagueMatrix%20upgrade';
+   const upgradeUrl = import.meta.env.VITE_BILLING_UPGRADE_URL
+     ?? 'mailto:hello@pixlsports.com?subject=Pixl%20Sports%20upgrade';
 
   return (
     <div className="noise min-h-dvh bg-background">
@@ -3129,7 +3128,7 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
             </h1>
             <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/70 sm:text-lg">
               {expired
-                ? 'Your 90-day recovery window has ended. LeagueMatrix data is queued for permanent deletion and cannot be restored.'
+                 ? 'Your 90-day recovery window has ended. Pixl Sports data is queued for permanent deletion and cannot be restored.'
                 : `Your projects, team settings, and account role are preserved. Reactivate before ${recoveryDate?.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) ?? 'the recovery deadline'} to return to the studio.`}
             </p>
             {!expired && (
