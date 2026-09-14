@@ -84,3 +84,17 @@ mtime_ms = 1789344193252
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/5eb08d97-d618-45fb-9ee3-55eec68b2982/2f6a8a80-6ce9-4172-bb4d-41048edbefc8"
 storage_version_token = "1789344200825247"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "MIsdWoT4PXbOcP0hUV9pC"
+uri = "file://screenshots/hype-card-solid-bottom-bar.jpg"
+type = "image"
+title = "Hype Card Bottom Bar"
+description = "Final Hype Card render using the uploaded continuous beveled lower-third bar anchored at the bottom edge."
+logical_id = "68ad7b5b-e807-4749-9243-1bd364f428aa"
+content_hash = "sha256:dfa918922f5fa687ef4b0c9d258b61697c44942a092258ab71effba666509743"
+size = 153781
+mtime_ms = 1789344392260
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/68ad7b5b-e807-4749-9243-1bd364f428aa/bf64b778-358c-4545-95b7-11e6b1e38fe8"
+storage_version_token = "1789344399833074"
+content_type = "image/jpeg"
