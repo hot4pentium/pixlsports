@@ -322,3 +322,17 @@ mtime_ms = 1789347463292
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/fdd4bcde-5454-4500-b392-10921262a317/5553bee0-767c-4f9b-ace5-b9dbc2140014"
 storage_version_token = "1789347468915492"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "ftSd2WACMlVRpuDoH7hVA"
+uri = "file://screenshots/hype-card-desktop-options-wider.jpg"
+type = "image"
+title = "Wider Desktop Options"
+description = "Verified full-screen Hype Card layout with a wider walkthrough options column and a slimmer preview area."
+logical_id = "59dee61b-3f01-45bc-802a-ff4217d71104"
+content_hash = "sha256:9d55f4e0cb644f59f95b1d3ebb96c06f9a497b8150cb5ca3f9002a0f4a2f2ffc"
+size = 92446
+mtime_ms = 1789347620280
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/59dee61b-3f01-45bc-802a-ff4217d71104/2db0aa9b-9942-46ad-8fe6-ecede62125a9"
+storage_version_token = "1789347634400019"
+content_type = "image/jpeg"
