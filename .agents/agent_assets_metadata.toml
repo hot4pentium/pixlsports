@@ -294,3 +294,17 @@ mtime_ms = 1789347156311
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/081217ca-3947-4e97-9afc-97dac958cbfc/1612bcda-80a5-4e44-bae8-5acac91226ab"
 storage_version_token = "1789347162422322"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "YUnGb-NNWP2Q34TqRXrp6"
+uri = "file://screenshots/hype-card-mobile-stacked.jpg"
+type = "image"
+title = "Mobile Hype Card Preview"
+description = "Verified mobile Hype Card build with the walkthrough on top and the live card preview visible below it."
+logical_id = "1500034b-0a29-4b82-99df-6f45febc6327"
+content_hash = "sha256:eef8ff164721afbc3a783b99fd3eea822628ef71e73bd7e65aec7f8ec5b710a1"
+size = 56352
+mtime_ms = 1789347381739
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/1500034b-0a29-4b82-99df-6f45febc6327/a09adf9e-4673-4a89-9771-a7c1d1ada58c"
+storage_version_token = "1789347395215403"
+content_type = "image/jpeg"

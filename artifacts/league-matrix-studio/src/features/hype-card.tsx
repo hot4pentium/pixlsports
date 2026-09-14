@@ -1651,7 +1651,7 @@ export function HypeCardEditor() {
           </div>
         </aside>
 
-        <main className="hidden min-h-0 flex-1 overflow-hidden p-4 sm:block sm:p-8">
+        <main className="block h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8">
           <div className="mx-auto h-full max-w-[800px]">
             <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onExpand={() => setMobilePreviewOpen(true)} />
           </div>
