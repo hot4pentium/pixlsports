@@ -312,7 +312,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<image href="${project.logo}" x="825" y="128" width="90" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#stadiumShadow-${ns})"/>`
     : '';
   const placeholder = !project.mediaType && !project.photo
-    ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="#02070e" fill-opacity=".34" stroke="#fff" stroke-opacity=".38" stroke-width="3" stroke-dasharray="14 14"/><text x="500" y="650" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff" opacity=".82">ADD PLAYER MEDIA</text>`
+    ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="#02070e" fill-opacity=".34" stroke="#fff" stroke-opacity=".38" stroke-width="3" stroke-dasharray="14 14"/><text x="500" y="710" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff" opacity=".82">ADD PLAYER MEDIA</text>`
     : '';
   const coachMessage = content.message
      ? `<text x="500" y="1344" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 780, 18, 0.62, 2)}" font-weight="600" letter-spacing="2" fill="#fff" opacity=".72">${content.message}</text>`
