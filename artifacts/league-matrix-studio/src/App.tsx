@@ -1548,6 +1548,8 @@ function ScheduleEditor() {
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
+  const isFan = getUserRole(user) === 'fan';
+  const [connectedCoachCode, setConnectedCoachCode] = useState(() => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '');
   const [storedDraft] = useState(() => readScheduleDraft());
   const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
@@ -1840,10 +1842,31 @@ function ScheduleEditor() {
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
 
+  if (isFan && connectedCoachCode) {
+    return (
+      <StudioLayout>
+        <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
+          <div className="mb-6 flex items-center gap-4">
+            <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+                <CalendarDays className="h-4 w-4" /> Team Calendar
+              </div>
+              <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Your coach’s latest schedule.</p>
+            </div>
+          </div>
+          <FanCalendarConnectionPanel onConnectionChange={setConnectedCoachCode} />
+        </main>
+      </StudioLayout>
+    );
+  }
+
   return (
     <StudioLayout>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
-        {getUserRole(user) === 'fan' && <FanCalendarConnectionPanel />}
+        {isFan && <FanCalendarConnectionPanel onConnectionChange={setConnectedCoachCode} />}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
