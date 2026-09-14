@@ -135,6 +135,88 @@ export const defaultProject = (): HypeCardProject => ({
   adjustments: { brightness: 1, contrast: 1, saturation: 1 },
 });
 
+export const hypeCardProjectStorageKey = 'leaguematrix-hype-card-project-v2';
+
+export function isSafeRasterDataUrl(url: unknown): url is string {
+  return typeof url === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
+}
+
+export function normalizeHypeCardProject(value: unknown): HypeCardProject {
+  const defaults = defaultProject();
+  const project = value && typeof value === 'object'
+    ? value as Record<string, any>
+    : {};
+  const { grade: _legacyGrade, ...projectWithoutGrade } = project;
+  const visibility = project.visibility && typeof project.visibility === 'object'
+    ? project.visibility as Record<string, unknown>
+    : {};
+  const { grade: _legacyVisibilityGrade, ...visibilityWithoutGrade } = visibility;
+  const safePhoto = isSafeRasterDataUrl(project.photo) ? project.photo : null;
+  const safeLogo = isSafeRasterDataUrl(project.logo) ? project.logo : null;
+  const isLegacy = project.version === 1;
+  const mediaType = isLegacy
+    ? (safePhoto ? 'image' : null)
+    : (project.mediaType === 'image' || project.mediaType === 'video' ? project.mediaType : null);
+
+  return {
+    ...defaults,
+    ...projectWithoutGrade,
+    version: 2,
+    headline: typeof project.headline === 'string' && project.headline.trim()
+      ? project.headline.trim().slice(0, 42)
+      : defaults.headline,
+    mediaType,
+    mediaId: mediaType === 'image' && safePhoto
+      ? null
+      : mediaType && typeof project.mediaId === 'string'
+        ? project.mediaId
+        : null,
+    videoMeta: mediaType === 'video' && project.videoMeta && typeof project.videoMeta === 'object'
+      ? {
+          name: String(project.videoMeta.name || 'Attached video'),
+          type: String(project.videoMeta.type || ''),
+          size: Number(project.videoMeta.size) || 0,
+          duration: Number(project.videoMeta.duration) || 0,
+        }
+      : null,
+    trimStart: Number.isFinite(Number(project.trimStart))
+      ? Math.max(0, Number(project.trimStart))
+      : defaults.trimStart,
+    trimEnd: Number.isFinite(Number(project.trimEnd))
+      ? Math.max(0.1, Number(project.trimEnd))
+      : defaults.trimEnd,
+    layout: project.layout ?? defaults.layout,
+    finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
+    photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
+    adjustments: { ...defaults.adjustments, ...project.adjustments },
+    visibility: { ...defaults.visibility, ...visibilityWithoutGrade },
+    // Position labels are user-authored text. Preserve them verbatim so a
+    // saved custom label remains the same in the editor and exported SVG.
+    position: typeof project.position === 'string' ? project.position : defaults.position,
+    photo: safePhoto,
+    logo: safeLogo,
+  };
+}
+
+export function readHypeCardProject(storage: Storage = window.localStorage): HypeCardProject | null {
+  try {
+    const stored = storage.getItem(hypeCardProjectStorageKey);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as { tool?: unknown; project?: unknown };
+    if (parsed.tool !== 'hype-card' || !parsed.project || typeof parsed.project !== 'object') return null;
+    return normalizeHypeCardProject(parsed.project);
+  } catch {
+    return null;
+  }
+}
+
+export function saveHypeCardProject(storage: Storage, project: HypeCardProject) {
+  storage.setItem(
+    hypeCardProjectStorageKey,
+    JSON.stringify({ tool: 'hype-card', project }),
+  );
+}
+
 export function getDimensions(format: HypeFormat) {
   if (format === 'story') return { width: 1080, height: 1920 };
   if (format === 'landscape') return { width: 1920, height: 1080 };

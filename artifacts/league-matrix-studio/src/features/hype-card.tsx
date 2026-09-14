@@ -27,7 +27,8 @@ import { Switch } from '@/components/ui/switch';
 
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
-  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes
+  HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes,
+  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
@@ -114,60 +115,6 @@ function isProject(value: unknown): value is { tool: string; project: HypeCardPr
   if (!value || typeof value !== 'object') return false;
   const candidate = value as { tool?: unknown; project?: unknown };
   return candidate.tool === 'hype-card' && Boolean(candidate.project) && typeof candidate.project === 'object';
-}
-
-function isSafeRasterDataUrl(url: string | null): boolean {
-  if (!url) return false;
-  return /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
-}
-
-function normalizeProject(project: any): HypeCardProject {
-  const defaults = defaultProject();
-  const { grade: _legacyGrade, ...projectWithoutGrade } = project ?? {};
-  const { grade: _legacyVisibilityGrade, ...visibilityWithoutGrade } = (
-    project?.visibility && typeof project.visibility === 'object' ? project.visibility : {}
-  );
-  const safePhoto = isSafeRasterDataUrl(project.photo) ? project.photo : null;
-  const safeLogo = isSafeRasterDataUrl(project.logo) ? project.logo : null;
-  const isLegacy = project.version === 1;
-  const mediaType = isLegacy
-    ? (safePhoto ? 'image' : null)
-    : (project.mediaType === 'image' || project.mediaType === 'video' ? project.mediaType : null);
-  return {
-    ...defaults,
-    ...projectWithoutGrade,
-    version: 2,
-    headline: typeof project.headline === 'string' && project.headline.trim()
-      ? project.headline.trim().slice(0, 42)
-      : defaults.headline,
-    mediaType,
-    mediaId: mediaType === 'image' && safePhoto
-      ? null
-      : mediaType && typeof project.mediaId === 'string'
-        ? project.mediaId
-        : null,
-    videoMeta: mediaType === 'video' && project.videoMeta && typeof project.videoMeta === 'object'
-      ? {
-          name: String(project.videoMeta.name || 'Attached video'),
-          type: String(project.videoMeta.type || ''),
-          size: Number(project.videoMeta.size) || 0,
-          duration: Number(project.videoMeta.duration) || 0,
-        }
-      : null,
-    trimStart: Number.isFinite(Number(project.trimStart))
-      ? Math.max(0, Number(project.trimStart))
-      : defaults.trimStart,
-    trimEnd: Number.isFinite(Number(project.trimEnd))
-      ? Math.max(0.1, Number(project.trimEnd))
-      : defaults.trimEnd,
-    layout: project.layout ?? defaults.layout,
-    finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
-    photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
-    adjustments: { ...defaults.adjustments, ...project.adjustments },
-    visibility: { ...defaults.visibility, ...visibilityWithoutGrade },
-    photo: safePhoto,
-    logo: safeLogo,
-  };
 }
 
 function designOnlyProject(project: HypeCardProject): HypeCardProject {
@@ -709,10 +656,7 @@ export function HypeCardEditor() {
   const [project, setProject] = useState<HypeCardProject>(() => {
     try {
       if (cloudProjectId) return defaultProject(); 
-      const stored = window.localStorage.getItem('leaguematrix-hype-card-project-v2');
-      if (!stored) return defaultProject();
-      const parsed = JSON.parse(stored) as { tool?: string; project?: any };
-      return parsed.tool === 'hype-card' && parsed.project ? normalizeProject(parsed.project) : defaultProject();
+      return readHypeCardProject() ?? defaultProject();
     } catch {
       return defaultProject();
     }
@@ -787,7 +731,7 @@ export function HypeCardEditor() {
   useEffect(() => {
     if (cloudProjectId && cloudProjectData && initializedForId.current !== cloudProjectId) {
       initializedForId.current = cloudProjectId;
-      const p = normalizeProject(cloudProjectData.project);
+      const p = normalizeHypeCardProject(cloudProjectData.project);
       setProject(p);
       lastSaved.current = p;
       currentRevision.current = cloudProjectData.revision;
@@ -951,7 +895,7 @@ export function HypeCardEditor() {
           const savedProject = project.mediaType === 'image' && project.mediaId
             ? { ...project, photo: null }
             : project;
-          window.localStorage.setItem('leaguematrix-hype-card-project-v2', JSON.stringify({ tool: 'hype-card', project: savedProject }));
+           saveHypeCardProject(window.localStorage, savedProject);
           window.localStorage.setItem('leaguematrix-project', 'true');
           setAutosaveWarning('');
           setSaveStatus('Saved locally');
@@ -993,15 +937,15 @@ export function HypeCardEditor() {
   const resolveConflict = async (action: 'server' | 'new') => {
     if (action === 'server') {
        if (conflictData) {
-         setProject(normalizeProject(conflictData.project));
+          setProject(normalizeHypeCardProject(conflictData.project));
          currentRevision.current = conflictData.revision;
-         lastSaved.current = normalizeProject(conflictData.project);
+          lastSaved.current = normalizeHypeCardProject(conflictData.project);
          setConflictData(null);
          setSaveStatus('Saved design');
        } else if (cloudProjectData) {
-         setProject(normalizeProject(cloudProjectData.project));
+          setProject(normalizeHypeCardProject(cloudProjectData.project));
          currentRevision.current = cloudProjectData.revision;
-         lastSaved.current = normalizeProject(cloudProjectData.project);
+          lastSaved.current = normalizeHypeCardProject(cloudProjectData.project);
          setSaveStatus('Saved design');
        }
     } else {
@@ -1390,7 +1334,7 @@ export function HypeCardEditor() {
                 try {
                   const text = await readProjectFile(file);
                   const parsed = JSON.parse(text);
-                  if (isProject(parsed)) setProject(normalizeProject(parsed.project));
+                   if (isProject(parsed)) setProject(normalizeHypeCardProject(parsed.project));
                   else setNotice('That file is not a valid Hype Card project.');
                 } catch {
                   setNotice('Could not open that file.');
