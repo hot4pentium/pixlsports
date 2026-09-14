@@ -106,6 +106,9 @@ function isCloudToolProject(value: unknown, tool: 'schedule' | 'roster'): value 
 }
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const appOrigin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
+  ? 'https://pixlsports.com'
+  : window.location.origin;
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
@@ -1710,7 +1713,7 @@ function ScheduleEditor() {
   const [shareToken, setShareToken] = useState(storedDraft?.shareToken ?? '');
   const [shareUrl, setShareUrl] = useState(() => (
     storedDraft?.shareToken
-      ? `${window.location.origin}${basePath}/schedule/${storedDraft.shareToken}`
+      ? `${appOrigin}${basePath}/schedule/${storedDraft.shareToken}`
       : ''
   ));
   const cloudRevision = useRef(1);
@@ -1756,7 +1759,7 @@ function ScheduleEditor() {
     setEvents(loadedDraft.events);
     setSelectedTemplate(loadedDraft.template);
     setShareToken(loadedDraft.shareToken ?? '');
-    setShareUrl(loadedDraft.shareToken ? `${window.location.origin}${basePath}/schedule/${loadedDraft.shareToken}` : '');
+    setShareUrl(loadedDraft.shareToken ? `${appOrigin}${basePath}/schedule/${loadedDraft.shareToken}` : '');
     setSelectedEventId(loadedDraft.events[0]?.id ?? '');
     setSelectedWeekKey(getScheduleWeekKey(loadedDraft.events[0]?.date ?? ''));
     setSaved(true);
@@ -1965,7 +1968,7 @@ function ScheduleEditor() {
       const share = hasExistingShare
         ? await updateShare.mutateAsync({ shareToken, data })
         : await createShare.mutateAsync({ data });
-      const url = `${window.location.origin}${basePath}/schedule/${share.shareToken}`;
+      const url = `${appOrigin}${basePath}/schedule/${share.shareToken}`;
       setShareToken(share.shareToken);
       setShareUrl(url);
       saveCurrentDraft(share.shareToken);
@@ -2775,7 +2778,7 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoImageUrl: `${appOrigin}${basePath}/logo.svg`,
   },
   variables: {
     colorPrimary: "hsl(145 100% 45%)",

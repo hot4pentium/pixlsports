@@ -6,3 +6,4 @@
 - [Vite asset imports in Node tests](vite-asset-imports-in-node-tests.md) — keep Node-focused tests away from SVG modules that import Vite-only image assets.
 - [Guest access guardrails](guest-access-guardrails.md) — Guest mode stays immutable and quota claims serialize server-side.
 - [Cancelled account lifecycle](cancelled-account-lifecycle.md) — lifecycle changes are atomic and deletion-pending accounts never transition backward.
+- [Custom domain routing](custom-domain-routing.md) — Replit requires apex and www domains to be added separately; registrar or app logic must handle the redirect.
