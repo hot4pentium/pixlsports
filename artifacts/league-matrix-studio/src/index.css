@@ -157,6 +157,22 @@
       linear-gradient(to bottom, hsl(145 100% 45% / 0.15) 1px, transparent 1px);
     background-size: 32px 32px;
   }
+
+  .hype-walkthrough-panel {
+    --background: 222 22% 4%;
+    --foreground: 210 20% 96%;
+    --card: 222 20% 7%;
+    --card-foreground: 210 20% 96%;
+    --card-border: 215 18% 25%;
+    --border: 215 18% 25%;
+    --input: 215 18% 25%;
+    --muted: 216 16% 13%;
+    --muted-foreground: 215 15% 72%;
+    --popover: 222 20% 7%;
+    --popover-foreground: 210 20% 96%;
+    --popover-border: 215 18% 25%;
+    color: hsl(var(--foreground));
+  }
   
   .clip-angled {
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 2rem), calc(100% - 2rem) 100%, 0 100%);

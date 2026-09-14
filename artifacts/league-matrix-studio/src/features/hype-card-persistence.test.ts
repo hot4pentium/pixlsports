@@ -133,3 +133,14 @@ test('existing cards show the lower third unless explicitly disabled', () => {
   assert.equal(normalizeHypeCardProject(legacyProject).showLowerThird, true);
   assert.equal(normalizeHypeCardProject({ ...defaultProject(), showLowerThird: false }).showLowerThird, false);
 });
+
+test('saved projects always reopen in the portrait card format', () => {
+  for (const legacyFormat of ['square', 'story', 'landscape']) {
+    const reopened = normalizeHypeCardProject({
+      ...defaultProject(),
+      format: legacyFormat,
+    });
+
+    assert.equal(reopened.format, 'card');
+  }
+});

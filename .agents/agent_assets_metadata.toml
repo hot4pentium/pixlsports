@@ -266,3 +266,31 @@ mtime_ms = 1789346906740
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/9c848899-9c36-45de-ad77-be71ca844536/8848db31-c644-46f2-a541-ce66d8ad8e2a"
 storage_version_token = "1789346938113111"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "GxITzA9qUJ1ne44gmufCE"
+uri = "file://screenshots/hype-card-portrait-only.jpg"
+type = "image"
+title = "Portrait-Only Hype Card"
+description = "Verified Hype Card preview after removing orientation choices and standardizing the output to the portrait card format."
+logical_id = "c4969454-1cbf-4148-a6d4-1ae1d2abe42f"
+content_hash = "sha256:8f15110bde5f871724709480c9cff137ecc1ba39a12306908104b8278d1181f3"
+size = 146667
+mtime_ms = 1789347086440
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/c4969454-1cbf-4148-a6d4-1ae1d2abe42f/2ac75f24-0be8-4e7b-954f-10f679a42c39"
+storage_version_token = "1789347092348949"
+content_type = "image/jpeg"
+
+[[outputs]]
+id = "fpqupBIp_r8YNrFCGVEDd"
+uri = "file://screenshots/hype-card-walkthrough-dark-grid.jpg"
+type = "image"
+title = "Dark Grid Walkthrough"
+description = "Verified Hype Card walkthrough with a black options panel, grey gridlines, and adjusted high-contrast text and controls."
+logical_id = "081217ca-3947-4e97-9afc-97dac958cbfc"
+content_hash = "sha256:ffadcda4b517362b115f12e71c4fa3605af9b495254fe82c817fb7fe86b7ed3c"
+size = 155312
+mtime_ms = 1789347156311
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/081217ca-3947-4e97-9afc-97dac958cbfc/1612bcda-80a5-4e44-bae8-5acac91226ab"
+storage_version_token = "1789347162422322"
+content_type = "image/jpeg"
