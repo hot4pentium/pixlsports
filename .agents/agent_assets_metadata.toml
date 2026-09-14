@@ -210,3 +210,17 @@ mtime_ms = 1789346189056
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/629e2b80-c5a4-4d63-8fa8-97780f5903f3/6e92ec8e-4ec2-455e-9dd4-3321878ea8f3"
 storage_version_token = "1789346194746919"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "5uFztZRAjEDy5glWGET3m"
+uri = "file://screenshots/hype-card-media-area-centered.jpg"
+type = "image"
+title = "Centered Media Area"
+description = "Verified Hype Card render with the media placeholder area centered between the moment title and bottom lower third."
+logical_id = "6df4a767-96f2-4a3a-aec2-858f9910bbc4"
+content_hash = "sha256:f079d7559d979b68e8683019b5fb1345399e6db0730f05acdb01efdba6eb138d"
+size = 146917
+mtime_ms = 1789346278820
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/6df4a767-96f2-4a3a-aec2-858f9910bbc4/a08c9222-8728-4937-9b57-efdf2a6c07f4"
+storage_version_token = "1789346285600168"
+content_type = "image/jpeg"

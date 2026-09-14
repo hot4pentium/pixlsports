@@ -278,7 +278,7 @@ function cardContent(project: HypeCardProject) {
 
 export type SvgLayer = 'all' | 'bg' | 'fg';
 
-export const STADIUM_MEDIA_FRAME = { x: 180, y: 285, width: 640, height: 755, radius: 34 } as const;
+export const STADIUM_MEDIA_FRAME = { x: 180, y: 330, width: 640, height: 755, radius: 34 } as const;
 
 const stadiumCardBackgrounds = {
   slugger: stadiumEntrance,
