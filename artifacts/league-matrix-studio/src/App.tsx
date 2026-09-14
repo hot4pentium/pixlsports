@@ -28,7 +28,7 @@ import {
   ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
-  MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, ShieldCheck, Sparkles,
+  MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
   Download, Star
 } from 'lucide-react';
@@ -861,7 +861,7 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
       )}
       {(connect.isError || isError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">That coach code could not be connected. Check the code and try again.</p>}
 
-      {hasConnectedSchedule && (
+      {calendar && hasConnectedSchedule && (
         <div className="mt-5 border-t border-primary/20 pt-5" data-testid="fan-connected-calendar">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
@@ -1751,6 +1751,53 @@ function ScheduleEditor() {
     }
   };
 
+  const publishSchedule = async () => {
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    if (!teamName.trim() || events.length === 0) {
+      setNoticeFor('ADD A TEAM NAME AND EVENT BEFORE PUBLISHING');
+      return;
+    }
+
+    try {
+      const data = { project: cloudSchedule(), expectedRevision: cloudRevision.current };
+      let createdProjectId = '';
+      if (cloudProjectId) {
+        const updated = await updateCloudProject.mutateAsync({
+          projectId: cloudProjectId,
+          data,
+        });
+        cloudRevision.current = updated.revision;
+      } else {
+        const created = await createCloudProject.mutateAsync({
+          data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
+        });
+        createdProjectId = created.id;
+      }
+
+      if (hasExistingShare) {
+        await updateShare.mutateAsync({
+          shareToken,
+          data: {
+            title: teamName.trim(),
+            teamSeason: season.trim(),
+            events,
+          },
+        });
+      }
+
+      setSaved(true);
+      setNoticeFor('CALENDAR PUBLISHED — FANS WILL SEE THIS UPDATE');
+      if (createdProjectId) {
+        setLocation(`/studio/schedule/${createdProjectId}`);
+      }
+    } catch {
+      setNoticeFor('PUBLISH FAILED — TRY AGAIN');
+    }
+  };
+
   const shareSchedule = async () => {
     if (!teamName.trim() || events.length === 0) {
       setNoticeFor('ADD A TEAM NAME AND EVENT BEFORE SHARING');
@@ -1879,7 +1926,7 @@ function ScheduleEditor() {
               <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Put the season in motion.</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 self-end sm:self-auto">
+          <div className="flex flex-wrap items-center justify-end gap-2 self-end sm:gap-4 sm:self-auto">
             <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
               <Check className="h-4 w-4" /> Saved
             </span>
@@ -1888,6 +1935,9 @@ function ScheduleEditor() {
             </button>
             <button type="button" onClick={saveToCloud} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex items-center gap-2 border border-primary bg-primary/10 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm" data-testid="button-save-schedule-cloud">
               <Share2 className="h-4 w-4" /> {cloudProjectId ? 'Save Cloud' : 'Save to Cloud'}
+            </button>
+            <button type="button" onClick={publishSchedule} disabled={createCloudProject.isPending || updateCloudProject.isPending || sharePending} className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-publish-schedule">
+              <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish Calendar'}
             </button>
           </div>
         </div>
