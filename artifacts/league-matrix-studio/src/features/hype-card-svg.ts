@@ -323,30 +323,20 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const lowerThirdY = 1100;
   const nameplate = project.showLowerThird
     ? `<g transform="translate(0 ${lowerThirdY})" filter="url(#lowerBarShadow-${ns})">
-        <g aria-label="Lower third wrap folds">
-           <path d="M0 78 L35 53 H105 L88 89 L105 124 L88 250 L48 279 L0 258 Z" fill="#07111c" stroke="#2b4e6a" stroke-width="5"/>
-           <path d="M1000 78 L965 53 H895 L912 89 L895 124 L912 250 L952 279 L1000 258 Z" fill="#07171d" stroke="#2d5f69" stroke-width="5"/>
-           <path d="M0 96 L34 72 H86 L68 105 L92 134 L74 229 L43 252 L0 238 Z" fill="url(#lowerBarWarm-${ns})" opacity=".92"/>
-           <path d="M1000 96 L966 72 H914 L932 105 L908 134 L926 229 L957 252 L1000 238 Z" fill="url(#lowerBarCool-${ns})" opacity=".88"/>
-           <path d="M76 242 L105 222 L129 248 L96 281 Z" fill="#02070c" opacity=".9"/>
-           <path d="M924 242 L895 222 L871 248 L904 281 Z" fill="#02080b" opacity=".9"/>
-        </g>
         <g aria-label="Lower third bar">
-           <path d="M34 49 H966 L990 73 V257 L966 281 H34 L10 257 V73 Z" fill="#02070d" stroke="#07101a" stroke-width="10"/>
-           <path d="M38 54 H962 L983 75 V255 L962 276 H38 L17 255 V75 Z" fill="url(#lowerBarMetal-${ns})" stroke="#263846" stroke-width="4"/>
-           <path d="M52 69 H948 L968 89 V242 L948 261 H52 L32 242 V89 Z" fill="url(#lowerBarFace-${ns})" stroke="#030a12" stroke-width="7"/>
-           <path d="M66 82 H934 L953 101 V230 L934 248 H66 L47 230 V101 Z" fill="url(#lowerBarInner-${ns})" stroke="#546878" stroke-width="3"/>
-           <path d="M66 82 H934 L953 101" fill="none" stroke="#fff" stroke-width="3" opacity=".16"/>
-           <path d="M47 230 L66 248 H934 L953 230" fill="none" stroke="#000" stroke-width="8" opacity=".46"/>
-           <path d="M66 82 H934 L953 101 V230 L934 248 H66 L47 230 V101 Z" fill="url(#lowerBarTexture-${ns})" opacity=".85"/>
+           <rect x="20" y="49" width="960" height="232" rx="34" fill="#02070d" stroke="#07101a" stroke-width="10"/>
+           <rect x="25" y="54" width="950" height="222" rx="30" fill="url(#lowerBarMetal-${ns})" stroke="#263846" stroke-width="4"/>
+           <rect x="40" y="69" width="920" height="192" rx="24" fill="url(#lowerBarFace-${ns})" stroke="#030a12" stroke-width="7"/>
+           <rect x="54" y="82" width="892" height="166" rx="18" fill="url(#lowerBarInner-${ns})" stroke="#546878" stroke-width="3"/>
+           <path d="M72 82 H928" fill="none" stroke="#fff" stroke-width="3" opacity=".16"/>
+           <path d="M72 248 H928" fill="none" stroke="#000" stroke-width="8" opacity=".46"/>
+           <rect x="54" y="82" width="892" height="166" rx="18" fill="url(#lowerBarTexture-${ns})" opacity=".85"/>
         </g>
         <g aria-label="Lower third accent rails" fill="none" stroke-linecap="round">
           <path d="M62 61 H478" stroke="url(#lowerBarWarm-${ns})" stroke-width="7"/>
           <path d="M522 61 H938" stroke="url(#lowerBarCool-${ns})" stroke-width="7"/>
           <path d="M58 266 H490" stroke="url(#lowerBarWarm-${ns})" stroke-width="5"/>
           <path d="M510 266 H942" stroke="url(#lowerBarCool-${ns})" stroke-width="5"/>
-           <path d="M33 104 L52 82 V224 L69 242" stroke="${palette.primary}" stroke-width="4" opacity=".9"/>
-           <path d="M967 104 L948 82 V224 L931 242" stroke="${palette.secondary}" stroke-width="4" opacity=".9"/>
         </g>
         <g aria-label="Lower third divider">
           <path d="M120 190 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>

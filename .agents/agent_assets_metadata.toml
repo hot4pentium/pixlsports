@@ -364,3 +364,17 @@ mtime_ms = 1789347803624
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a381388c-bb76-4ca7-91ef-195b2af7b5cd/cc7547ae-a736-4119-9527-19127e8e4e49"
 storage_version_token = "1789347821083634"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "P_0LTRBjj3KE55qBfLhdP"
+uri = "file://screenshots/hype-card-rounded-lower-third-no-branding.jpg"
+type = "image"
+title = "Rounded Lower Third Without Brand Options"
+description = "Verified Hype Card render with the Brand walkthrough removed and the lower third rebuilt with rounded corners."
+logical_id = "bdf63d9c-b061-4371-9cac-2d5e8d9f7352"
+content_hash = "sha256:a7b51e549354e179574d1a9db8e450a84d5f82c821f75fd2727ab8b1c5175ceb"
+size = 91480
+mtime_ms = 1789348138607
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/bdf63d9c-b061-4371-9cac-2d5e8d9f7352/943406d1-21e1-4dae-bbc9-ac2ab694f2c8"
+storage_version_token = "1789348148597607"
+content_type = "image/jpeg"

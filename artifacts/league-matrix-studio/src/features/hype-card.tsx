@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, Maximize2, Move, Palette, RotateCw, Save, ShieldCheck, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
+  LayoutGrid, Lightbulb, Maximize2, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -202,7 +202,6 @@ const hypeWalkthroughSteps = [
   { label: 'Format', hint: 'Choose the output' },
   { label: 'Layout', hint: 'Choose the scene' },
   { label: 'Palette', hint: 'Choose the colors' },
-  { label: 'Brand', hint: 'Finish the design' },
   { label: 'Review', hint: 'Preview and export' },
 ] as const;
 
@@ -1582,21 +1581,7 @@ export function HypeCardEditor() {
               </div>
             </Section>}
 
-            {walkthroughStep === 6 && <Section title="Brand Settings" icon={ShieldCheck}>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <Label htmlFor="branding" className="text-sm font-medium">Show LeagueMatrix branding</Label>
-                  <Switch id="branding" checked={project.branding} onCheckedChange={(c) => updateProject('branding', c)} />
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-border p-3">
-                  <Label htmlFor="lower-third" className="text-sm font-medium">Show lower third</Label>
-                  <Switch id="lower-third" checked={project.showLowerThird} onCheckedChange={(c) => updateProject('showLowerThird', c)} />
-                </div>
-                <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={(e) => assetUpload(e, (u) => updateProject('logo', u), setNotice)} onRemove={() => updateProject('logo', null)} />
-              </div>
-            </Section>}
-
-            {walkthroughStep === 7 && (
+            {walkthroughStep === 6 && (
               <section className="border-t border-border pt-6">
                 <div className="mb-5 flex items-center gap-2">
                   <Check className="h-5 w-5 text-primary" />
