@@ -320,8 +320,9 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const branding = project.branding
      ? `<text x="500" y="1398" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
+  const lowerThirdY = 1080;
   const nameplate = project.showLowerThird
-    ? `<g transform="translate(0 1242)" filter="url(#lowerBarShadow-${ns})">
+    ? `<g transform="translate(0 ${lowerThirdY})" filter="url(#lowerBarShadow-${ns})">
         <g aria-label="Lower third wrap folds">
           <path d="M0 93 L61 53 H128 L103 89 L128 124 L103 250 L54 279 L0 240 Z" fill="#07111c" stroke="#2b4e6a" stroke-width="5"/>
           <path d="M1000 93 L939 53 H872 L897 89 L872 124 L897 250 L946 279 L1000 240 Z" fill="#07171d" stroke="#2d5f69" stroke-width="5"/>
@@ -351,6 +352,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
           <path d="M120 124 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
           <path d="M315 124 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
         </g>
+       <text x="500" y="108" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
+       <text x="500" y="140" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
       </g>`
     : '';
   const mediaGlow = project.mediaType || project.photo
@@ -388,8 +391,6 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
          <text x="${hypeRailCenterX}" y="690" text-anchor="middle" dominant-baseline="middle" transform="rotate(90 ${hypeRailCenterX} 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
       </g>
       ${nameplate}
-        <text x="500" y="1350" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
-        <text x="500" y="1382" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
       ${coachMessage}
       ${logo}
       ${branding}

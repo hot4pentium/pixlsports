@@ -28,7 +28,8 @@ import { Switch } from '@/components/ui/switch';
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
   HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes,
-  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject
+  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject,
+  serializeHypeCardTemplate, parseHypeCardTemplate
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
@@ -90,13 +91,6 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
-
-function isProject(value: unknown): value is { tool: string; project: HypeCardProject } {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as { tool?: unknown; project?: unknown };
-  return candidate.tool === 'hype-card' && Boolean(candidate.project) && typeof candidate.project === 'object';
-}
-
 function assetUpload(
   event: ChangeEvent<HTMLInputElement>,
   onLoad: (dataUrl: string) => void,
@@ -1257,7 +1251,6 @@ export function HypeCardEditor() {
   };
 
 
-
   return (
     <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
       <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 sm:static">
@@ -1284,7 +1277,7 @@ export function HypeCardEditor() {
             <Button variant="outline" className="hidden gap-2 rounded-none clip-angled-sm sm:flex" onClick={async () => {
               try {
                 const portableProject = await getPortableProject();
-                const str = JSON.stringify({ tool: 'hype-card', project: portableProject }, null, 2);
+                const str = serializeHypeCardTemplate(portableProject);
                 const blob = new Blob([str], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1308,9 +1301,9 @@ export function HypeCardEditor() {
                 if (!file) return;
                 try {
                   const text = await readProjectFile(file);
-                  const parsed = JSON.parse(text);
-                   if (isProject(parsed)) setProject(normalizeHypeCardProject(parsed.project));
-                  else setNotice('That file is not a valid Hype Card project.');
+                   const reopened = parseHypeCardTemplate(text);
+                   if (reopened) setProject(reopened);
+                   else setNotice('That file is not a valid Hype Card project.');
                 } catch {
                   setNotice('Could not open that file.');
                 }

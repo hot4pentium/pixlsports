@@ -54,6 +54,10 @@ export type HypeCardProject = {
   };
 };
 
+export type HypeCardTemplateFile = {
+  tool: 'hype-card';
+  project: HypeCardProject;
+};
 export const HEADLINES = [
   'BIG PLAY',
   'CLUTCH',
@@ -211,6 +215,9 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
   };
 }
 
+export function serializeHypeCardTemplate(project: HypeCardProject): string {
+  return JSON.stringify({ tool: 'hype-card', project }, null, 2);
+}
 export function readHypeCardProject(storage: Storage = window.localStorage): HypeCardProject | null {
   try {
     const stored = storage.getItem(hypeCardProjectStorageKey);
@@ -244,4 +251,22 @@ export function escapeXml(value: string) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
+}
+
+export function parseHypeCardTemplate(text: string): HypeCardProject | null {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (!isHypeCardTemplateFile(parsed)) return null;
+    return normalizeHypeCardProject(parsed.project);
+  } catch {
+    return null;
+  }
+}
+
+export function isHypeCardTemplateFile(value: unknown): value is HypeCardTemplateFile {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as { tool?: unknown; project?: unknown };
+  return candidate.tool === 'hype-card'
+    && Boolean(candidate.project)
+    && typeof candidate.project === 'object';
 }

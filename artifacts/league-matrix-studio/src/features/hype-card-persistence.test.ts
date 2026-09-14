@@ -5,8 +5,10 @@ import {
   defaultProject,
   designOnlyProject,
   normalizeHypeCardProject,
+  parseHypeCardTemplate,
   readHypeCardProject,
   saveHypeCardProject,
+  serializeHypeCardTemplate,
   type HypeCardProject,
 } from './hype-card-types';
 import { buildPositionBadgeMarkup } from './position-badge';
@@ -32,7 +34,16 @@ test('custom position labels survive local save, reload, and exported badge mark
 
   for (const position of labels) {
     const storage = new MemoryStorage();
-    const project: HypeCardProject = { ...defaultProject(), position };
+    const project: HypeCardProject = {
+      ...defaultProject(),
+      position,
+      mediaType: 'image',
+      mediaId: 'local-image',
+      photo: 'data:image/png;base64,local-photo',
+      logo: 'data:image/png;base64,local-logo',
+    };
+
+    const downloadedTemplate = serializeHypeCardTemplate(designOnlyProject(project));
 
     saveHypeCardProject(storage as Storage, project);
 
@@ -46,8 +57,7 @@ test('custom position labels survive local save, reload, and exported badge mark
   }
 });
 
-
-test('custom position labels survive the cloud save payload and API response normalization', () => {
+test('custom position labels survive a downloaded template and file import', () => {
   const labels = [
     'GK',
     'GOALKEEPER',
@@ -63,6 +73,8 @@ test('custom position labels survive the cloud save payload and API response nor
       photo: 'data:image/png;base64,local-photo',
       logo: 'data:image/png;base64,local-logo',
     };
+
+    const downloadedTemplate = serializeHypeCardTemplate(designOnlyProject(project));
     const savedProject = designOnlyProject(project);
     const cloudResponse = {
       id: 'cloud-project',
