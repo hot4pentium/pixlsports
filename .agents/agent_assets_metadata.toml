@@ -238,3 +238,17 @@ mtime_ms = 1789346363172
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/5f4a0fbc-18ae-45bd-ab40-7896cb84e640/ec0493be-1913-49f9-9a74-a280e572753a"
 storage_version_token = "1789346371016102"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "qcrvkq1ZxV0rQ3dWrVQDc"
+uri = "file://screenshots/hype-card-lower-third-half-off-card.jpg"
+type = "image"
+title = "Lower Third Half Off Card"
+description = "Hype Card render with the lower third positioned 50% inside the card and 50% below the card edge."
+logical_id = "72cc9df9-fa91-4e27-b8d7-3b1f081be556"
+content_hash = "sha256:b90fa102484bcb5c1a8577087468edd98f648a9d63692433533392171bb0fbaf"
+size = 141941
+mtime_ms = 1789346477956
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/72cc9df9-fa91-4e27-b8d7-3b1f081be556/e65d649c-5b80-4600-aa1e-af1b91e17247"
+storage_version_token = "1789346728138043"
+content_type = "image/jpeg"
