@@ -303,7 +303,9 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const playerSize = fitText(content.player, 760, 76, 0.7, 2);
   const detailsLine = content.team;
   const detailsSize = fitText(detailsLine, 620, 23, 0.63, 3);
-  const positionBadgeSize = fitText(content.details, 176, 19, 0.58, 1);
+  const positionBadgeWidth = Math.max(152, Math.min(310, content.details.length * 10 + 42));
+  const positionBadgeX = 938 - positionBadgeWidth;
+  const positionBadgeSize = fitText(content.details, positionBadgeWidth - 40, 19, 0.58, 1);
   const photo = project.photo
     ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : '';
@@ -379,7 +381,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
        <g aria-label="Player number and position">
          <path d="M62 46 H196 L214 64 V114 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
          <text x="78" y="95" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
-         <path d="M786 46 H938 V114 H804 L786 96 Z" fill="#020811" stroke="${palette.secondary}" stroke-width="3"/>
+          <path d="M${positionBadgeX} 46 H938 V114 H${positionBadgeX + 18} L${positionBadgeX} 96 Z" fill="#020811" stroke="${palette.secondary}" stroke-width="3"/>
          <text x="920" y="95" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${positionBadgeSize}" font-weight="800" letter-spacing="2" fill="${palette.accent}">${content.details}</text>
        </g>
       <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>

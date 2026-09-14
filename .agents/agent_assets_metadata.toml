@@ -140,3 +140,17 @@ mtime_ms = 1789344705040
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/6c6722da-4e15-4377-adbb-bbf17486e5cb/3d415ae5-09fd-4186-96fc-503dfb3c4bb7"
 storage_version_token = "1789344711172212"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "MejyR1o9aHT7ZqHVJ6H_1"
+uri = "file://screenshots/hype-card-adaptive-position-badge.jpg"
+type = "image"
+title = "Adaptive Position Badge"
+description = "Hype Card render with a right-anchored position badge sized to fit the position text."
+logical_id = "da889cf1-5f23-4fba-a1e6-2e335d46fd56"
+content_hash = "sha256:fcc017143f7b22e763a55a2edd0c1fca7cd7de4c9ac5b5a573453594149a69a9"
+size = 154132
+mtime_ms = 1789344808420
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/da889cf1-5f23-4fba-a1e6-2e335d46fd56/624f9f40-5d5d-41ba-8192-e2dcbfaa272c"
+storage_version_token = "1789344817926497"
+content_type = "image/jpeg"
