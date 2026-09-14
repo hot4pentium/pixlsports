@@ -1934,10 +1934,10 @@ function ScheduleEditor() {
               <Save className="h-4 w-4" /> Save Draft
             </button>
             <button type="button" onClick={saveToCloud} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex items-center gap-2 border border-primary bg-primary/10 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm" data-testid="button-save-schedule-cloud">
-              <Share2 className="h-4 w-4" /> {cloudProjectId ? 'Save Cloud' : 'Save to Cloud'}
+              <Share2 className="h-4 w-4" /> Save Progress to Cloud
             </button>
             <button type="button" onClick={publishSchedule} disabled={createCloudProject.isPending || updateCloudProject.isPending || sharePending} className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-publish-schedule">
-              <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish Calendar'}
+              <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish to Team'}
             </button>
           </div>
         </div>
