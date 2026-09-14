@@ -58,6 +58,9 @@ export type HypeCardTemplateFile = {
   tool: 'hype-card';
   project: HypeCardProject;
 };
+
+export const PORTABLE_TEMPLATE_MEDIA_NOTE =
+  'Portable templates include design settings and text only. Uploaded photos, logos, and videos are not included.';
 export const HEADLINES = [
   'BIG PLAY',
   'CLUTCH',
@@ -216,7 +219,7 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
 }
 
 export function serializeHypeCardTemplate(project: HypeCardProject): string {
-  return JSON.stringify({ tool: 'hype-card', project }, null, 2);
+  return JSON.stringify({ tool: 'hype-card', project: designOnlyProject(project) }, null, 2);
 }
 export function readHypeCardProject(storage: Storage = window.localStorage): HypeCardProject | null {
   try {

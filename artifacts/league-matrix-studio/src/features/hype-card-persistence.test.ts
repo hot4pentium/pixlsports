@@ -97,6 +97,37 @@ test('custom position labels survive a downloaded template and file import', () 
   }
 });
 
+test('portable templates keep design text while omitting uploaded media', () => {
+  const project: HypeCardProject = {
+    ...defaultProject(),
+    headline: 'CHAMPIONSHIP MOMENT',
+    playerName: 'Jordan Lee',
+    mediaType: 'video',
+    mediaId: 'local-video',
+    videoMeta: {
+      name: 'highlight.mp4',
+      type: 'video/mp4',
+      size: 2048,
+      duration: 12,
+    },
+    photo: 'data:image/png;base64,video-poster',
+    logo: 'data:image/png;base64,team-logo',
+  };
+
+  const reopened = parseHypeCardTemplate(serializeHypeCardTemplate(project));
+
+  assert.ok(reopened);
+  assert.equal(reopened.headline, project.headline);
+  assert.equal(reopened.playerName, project.playerName);
+  assert.equal(reopened.template, project.template);
+  assert.equal(reopened.layout, project.layout);
+  assert.equal(reopened.mediaType, null);
+  assert.equal(reopened.mediaId, null);
+  assert.equal(reopened.videoMeta, null);
+  assert.equal(reopened.photo, null);
+  assert.equal(reopened.logo, null);
+});
+
 test('existing cards show the lower third unless explicitly disabled', () => {
   const { showLowerThird: _legacyLowerThird, ...legacyProject } = defaultProject();
   assert.equal(normalizeHypeCardProject(legacyProject).showLowerThird, true);

@@ -29,7 +29,7 @@ import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
   HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes,
   normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject,
-  serializeHypeCardTemplate, parseHypeCardTemplate
+  serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
@@ -637,6 +637,7 @@ export function HypeCardEditor() {
   });
 
   const [notice, setNotice] = useState('');
+  const [templateMediaNotice, setTemplateMediaNotice] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(cloudProjectId ? 'Saving' : 'Saved locally');
   const [conflictData, setConflictData] = useState<Project | null>(null);
   
@@ -1060,6 +1061,7 @@ export function HypeCardEditor() {
           photoTransform: defaultProject().photoTransform,
           adjustments: defaultProject().adjustments
         }));
+         setTemplateMediaNotice(false);
         setValidation('');
         setAutosaveWarning('');
         setNotice(conversionWarning);
@@ -1091,6 +1093,7 @@ export function HypeCardEditor() {
           photoTransform: defaultProject().photoTransform,
           adjustments: defaultProject().adjustments
         }));
+         setTemplateMediaNotice(false);
         setValidation('');
         setAutosaveWarning('');
       } catch (error) {
@@ -1107,6 +1110,7 @@ export function HypeCardEditor() {
       await deleteMediaBlob(project.mediaId).catch(console.warn);
     }
     setVideoUrl(undefined);
+    setTemplateMediaNotice(false);
     setProject(curr => ({
       ...curr,
       mediaType: null,
@@ -1285,6 +1289,7 @@ export function HypeCardEditor() {
                 a.download = `${slugify(project.playerName || 'project')}.lmx`;
                 a.click();
                 window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                 setNotice(`${PORTABLE_TEMPLATE_MEDIA_NOTE} Re-add media after opening.`);
               } catch (error) {
                 setNotice(error instanceof Error ? error.message : 'Could not prepare the project file.');
               }
@@ -1302,7 +1307,11 @@ export function HypeCardEditor() {
                 try {
                   const text = await readProjectFile(file);
                    const reopened = parseHypeCardTemplate(text);
-                   if (reopened) setProject(reopened);
+                    if (reopened) {
+                      setProject(reopened);
+                      setTemplateMediaNotice(true);
+                      setNotice(`Template opened. Your design text and layout were restored. ${PORTABLE_TEMPLATE_MEDIA_NOTE} Add media again before exporting.`);
+                    }
                    else setNotice('That file is not a valid Hype Card project.');
                 } catch {
                   setNotice('Could not open that file.');
@@ -1406,6 +1415,11 @@ export function HypeCardEditor() {
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
                   This saved design does not include media. Add a photo or video before exporting.
+                </p>
+              )}
+              {templateMediaNotice && !project.mediaType && (
+                <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-portable-template-media-notice">
+                  {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo or video before exporting.
                 </p>
               )}
               <AssetButton
