@@ -164,7 +164,7 @@ const toolData: Record<ToolKind, {
   },
   schedule: {
     slug: 'schedule',
-    label: 'Schedule Graphic Maker',
+    label: 'Schedule Maker',
     kicker: 'Put the season in motion.',
     description: 'Turn a messy fixture list into a clean graphic families can follow.',
     icon: CalendarDays,
@@ -1921,7 +1921,7 @@ function ScheduleEditor() {
             </Link>
             <div>
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
-                <CalendarDays className="h-4 w-4" /> Schedule Graphic Maker
+                <CalendarDays className="h-4 w-4" /> Schedule Maker
               </div>
               <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Put the season in motion.</p>
             </div>
