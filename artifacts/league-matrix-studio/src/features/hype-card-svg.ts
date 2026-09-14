@@ -320,38 +320,35 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
      ? `<text x="500" y="1376" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">LEAGUEMATRIX CREATIVE STUDIO</text>`
     : '';
   const nameplate = project.overlay
-    ? `<g transform="translate(0 1024) scale(1 .84)" filter="url(#championshipShadow-${ns})">
-        <g aria-label="Championship lower third wings">
-          <path d="M0 112 L70 45 L245 56 L318 129 L278 182 H84 L0 247 Z" fill="url(#championshipDeep-${ns})" stroke="url(#championshipSilver-${ns})" stroke-width="8"/>
-          <path d="M1000 112 L930 45 L755 56 L682 129 L722 182 H916 L1000 247 Z" fill="url(#championshipDeep-${ns})" stroke="url(#championshipSilver-${ns})" stroke-width="8"/>
-          <path d="M0 126 L75 59 L238 70 L299 130 L270 166 H92 L0 226 Z" fill="url(#championshipFace-${ns})" stroke="${palette.primary}" stroke-width="5"/>
-          <path d="M1000 126 L925 59 L762 70 L701 130 L730 166 H908 L1000 226 Z" fill="url(#championshipFace-${ns})" stroke="${palette.primary}" stroke-width="5"/>
-          <path d="M0 151 L53 105 L83 132 L36 181 L83 212 L0 267 Z" fill="${palette.ink}" stroke="${palette.secondary}" stroke-width="4"/>
-          <path d="M1000 151 L947 105 L917 132 L964 181 L917 212 L1000 267 Z" fill="${palette.ink}" stroke="${palette.secondary}" stroke-width="4"/>
+    ? `<g transform="translate(0 1100)" filter="url(#lowerBarShadow-${ns})">
+        <g aria-label="Lower third wrap folds">
+          <path d="M0 93 L61 53 H128 L103 89 L128 124 L103 250 L54 279 L0 240 Z" fill="#07111c" stroke="#2b4e6a" stroke-width="5"/>
+          <path d="M1000 93 L939 53 H872 L897 89 L872 124 L897 250 L946 279 L1000 240 Z" fill="#07171d" stroke="#2d5f69" stroke-width="5"/>
+          <path d="M0 110 L54 72 H95 L73 105 L99 134 L78 229 L43 252 L0 224 Z" fill="url(#lowerBarWarm-${ns})" opacity=".92"/>
+          <path d="M1000 110 L946 72 H905 L927 105 L901 134 L922 229 L957 252 L1000 224 Z" fill="url(#lowerBarCool-${ns})" opacity=".88"/>
+          <path d="M76 242 L119 216 L145 247 L103 281 Z" fill="#02070c" opacity=".9"/>
+          <path d="M924 242 L881 216 L855 247 L897 281 Z" fill="#02080b" opacity=".9"/>
         </g>
-        <g aria-label="Championship crest">
-          <circle cx="500" cy="176" r="142" fill="#050b12" stroke="url(#championshipSilver-${ns})" stroke-width="9"/>
-          <circle cx="500" cy="176" r="129" fill="none" stroke="${palette.secondary}" stroke-width="7"/>
-          <circle cx="500" cy="176" r="119" fill="url(#championshipCrest-${ns})" stroke="#768895" stroke-width="3"/>
-          <circle cx="500" cy="176" r="109" fill="url(#championshipCarbon-${ns})" opacity=".72"/>
-          <path d="M401 138 Q500 69 599 138" fill="none" stroke="#fff" stroke-width="4" opacity=".18"/>
-          <path d="M411 235 Q500 282 589 235" fill="none" stroke="#000" stroke-width="7" opacity=".45"/>
+        <g aria-label="Lower third bar">
+          <path d="M52 49 H948 L990 91 V239 L949 281 H51 L10 239 V91 Z" fill="#02070d" stroke="#07101a" stroke-width="10"/>
+          <path d="M58 54 H942 L983 95 V235 L944 276 H56 L17 237 V95 Z" fill="url(#lowerBarMetal-${ns})" stroke="#263846" stroke-width="4"/>
+          <path d="M72 69 H928 L968 106 V225 L930 261 H70 L32 225 V106 Z" fill="url(#lowerBarFace-${ns})" stroke="#030a12" stroke-width="7"/>
+          <path d="M86 82 H914 L953 116 V215 L916 248 H84 L47 215 V116 Z" fill="url(#lowerBarInner-${ns})" stroke="#546878" stroke-width="3"/>
+          <path d="M86 82 H914 L953 116" fill="none" stroke="#fff" stroke-width="3" opacity=".16"/>
+          <path d="M47 215 L84 248 H916 L953 215" fill="none" stroke="#000" stroke-width="8" opacity=".46"/>
+          <path d="M86 82 H914 L953 116 V215 L916 248 H84 L47 215 V116 Z" fill="url(#lowerBarTexture-${ns})" opacity=".85"/>
         </g>
-        <g aria-label="Championship nameplate">
-          <path d="M73 139 H927 L962 174 V267 L928 303 H72 L38 268 V174 Z" fill="#020811" stroke="#05080d" stroke-width="12"/>
-          <path d="M79 145 H921 L950 176 V262 L921 292 H79 L50 262 V178 Z" fill="url(#championshipSilver-${ns})" stroke="#263340" stroke-width="4"/>
-          <path d="M92 158 H908 L936 184 V255 L908 279 H92 L64 254 V184 Z" fill="url(#championshipFace-${ns})" stroke="#05101c" stroke-width="6"/>
-          <path d="M104 169 H896 L923 191 V247 L896 268 H104 L77 247 V191 Z" fill="url(#championshipDeep-${ns})" stroke="#71818c" stroke-width="3"/>
-          <path d="M106 171 H894 L918 191" fill="none" stroke="#fff" stroke-width="3" opacity=".17"/>
-          <rect x="104" y="169" width="792" height="99" fill="url(#championshipCarbon-${ns})" opacity=".55"/>
-          <path d="M83 283 H917" stroke="#07101b" stroke-width="14"/>
-          <path d="M83 281 H493" stroke="${palette.primary}" stroke-width="6"/>
-          <path d="M507 281 H917" stroke="${palette.secondary}" stroke-width="6"/>
+        <g aria-label="Lower third accent rails" fill="none" stroke-linecap="round">
+          <path d="M62 61 H478" stroke="url(#lowerBarWarm-${ns})" stroke-width="7"/>
+          <path d="M522 61 H938" stroke="url(#lowerBarCool-${ns})" stroke-width="7"/>
+          <path d="M58 266 H490" stroke="url(#lowerBarWarm-${ns})" stroke-width="5"/>
+          <path d="M510 266 H942" stroke="url(#lowerBarCool-${ns})" stroke-width="5"/>
+          <path d="M33 121 L59 96 V217 L82 239" stroke="${palette.primary}" stroke-width="4" opacity=".9"/>
+          <path d="M967 121 L941 96 V217 L918 239" stroke="${palette.secondary}" stroke-width="4" opacity=".9"/>
         </g>
-        <g aria-label="Championship lower extension">
-          <path d="M203 299 L250 284 H750 L797 299 L757 338 H243 Z" fill="url(#championshipSilver-${ns})" stroke="#17212a" stroke-width="4"/>
-          <path d="M225 302 L260 292 H740 L775 302 L748 328 H252 Z" fill="url(#championshipDeep-${ns})" stroke="${palette.primary}" stroke-width="3"/>
-          <path d="M267 318 H733" stroke="#fff" stroke-width="2" opacity=".12"/>
+        <g aria-label="Lower third divider">
+          <path d="M120 198 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
+          <path d="M315 198 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
         </g>
       </g>`
     : '';
@@ -363,12 +360,13 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
-     <linearGradient id="championshipFace-${ns}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.secondary}"/><stop offset=".42" stop-color="#07182b"/><stop offset=".72" stop-color="${palette.ink}"/><stop offset="1" stop-color="#04101d"/></linearGradient>
-     <linearGradient id="championshipDeep-${ns}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#04111f"/><stop offset=".5" stop-color="${palette.ink}"/><stop offset="1" stop-color="#03101c"/></linearGradient>
-     <linearGradient id="championshipSilver-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0f4f5"/><stop offset=".18" stop-color="#8798a4"/><stop offset=".5" stop-color="#d9e0e2"/><stop offset=".72" stop-color="#596976"/><stop offset="1" stop-color="#c5cfd3"/></linearGradient>
-     <radialGradient id="championshipCrest-${ns}" cx="38%" cy="30%" r="72%"><stop offset="0" stop-color="#43566a"/><stop offset=".3" stop-color="#172a40"/><stop offset=".68" stop-color="#071827"/><stop offset="1" stop-color="#020911"/></radialGradient>
-     <pattern id="championshipCarbon-${ns}" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 0 L9 9 L0 18 M9 0 L18 9 L9 18" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="2"/></pattern>
-     <filter id="championshipShadow-${ns}" x="-15%" y="-25%" width="130%" height="155%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity=".9"/></filter>
+     <linearGradient id="lowerBarMetal-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9caab4"/><stop offset=".18" stop-color="#344553"/><stop offset=".5" stop-color="#d3dade"/><stop offset=".72" stop-color="#263641"/><stop offset="1" stop-color="#84939d"/></linearGradient>
+     <linearGradient id="lowerBarFace-${ns}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.secondary}"/><stop offset=".38" stop-color="#081523"/><stop offset=".72" stop-color="${palette.ink}"/><stop offset="1" stop-color="#04131c"/></linearGradient>
+     <linearGradient id="lowerBarInner-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#152b43"/><stop offset=".2" stop-color="#091726"/><stop offset=".8" stop-color="#06121d"/><stop offset="1" stop-color="${palette.ink}"/></linearGradient>
+     <linearGradient id="lowerBarWarm-${ns}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${palette.primary}"/><stop offset=".55" stop-color="${palette.accent}"/><stop offset="1" stop-color="#ffad40"/></linearGradient>
+     <linearGradient id="lowerBarCool-${ns}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${palette.secondary}"/><stop offset=".52" stop-color="${palette.accent}"/><stop offset="1" stop-color="#16d7c0"/></linearGradient>
+     <pattern id="lowerBarTexture-${ns}" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 0 L9 9 L0 18 M9 0 L18 9 L9 18" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="2"/></pattern>
+     <filter id="lowerBarShadow-${ns}" x="-15%" y="-25%" width="130%" height="155%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity=".9"/></filter>
     <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
     <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
