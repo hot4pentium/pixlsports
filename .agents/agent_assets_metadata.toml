@@ -308,3 +308,17 @@ mtime_ms = 1789347381739
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/1500034b-0a29-4b82-99df-6f45febc6327/a09adf9e-4673-4a89-9771-a7c1d1ada58c"
 storage_version_token = "1789347395215403"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "AdYyeMzlWX9wkONS0UakJ"
+uri = "file://screenshots/hype-card-mobile-options-clean.jpg"
+type = "image"
+title = "Cleaner Mobile Options"
+description = "Verified mobile Hype Card with the walkthrough options on a clean black background and no extra panel gridlines."
+logical_id = "fdd4bcde-5454-4500-b392-10921262a317"
+content_hash = "sha256:38c97ae95b11959ca1ac84095fd914c02945c81258a74de8892ce109ffe8437a"
+size = 46303
+mtime_ms = 1789347463292
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/fdd4bcde-5454-4500-b392-10921262a317/5553bee0-767c-4f9b-ace5-b9dbc2140014"
+storage_version_token = "1789347468915492"
+content_type = "image/jpeg"
