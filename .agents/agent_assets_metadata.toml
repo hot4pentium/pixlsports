@@ -112,3 +112,17 @@ mtime_ms = 1789344499052
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/a6a0d687-1891-4ca5-9472-e5d1cdebd5ee/8682fd58-808b-4ae7-a320-185ced985275"
 storage_version_token = "1789344504631305"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "Miu5jfxkSjcWwp-Fs2enN"
+uri = "file://screenshots/hype-card-name-team-divider.jpg"
+type = "image"
+title = "Player Above Team Divider"
+description = "Updated lower third with the player name above the horizontal divider and the team name underneath."
+logical_id = "2524016d-ff60-4175-846a-dc63cfd50523"
+content_hash = "sha256:fb8a6fec2f068ae77463fe6c675472ec09b916a640302d873ae6460b44e0c346"
+size = 153920
+mtime_ms = 1789344613352
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/2524016d-ff60-4175-846a-dc63cfd50523/3b97e51d-0587-4d22-a452-77c6738ae41e"
+storage_version_token = "1789344621606708"
+content_type = "image/jpeg"

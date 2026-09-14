@@ -347,8 +347,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
           <path d="M967 121 L941 96 V217 L918 239" stroke="${palette.secondary}" stroke-width="4" opacity=".9"/>
         </g>
         <g aria-label="Lower third divider">
-          <path d="M120 198 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
-          <path d="M315 198 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
+          <path d="M120 160 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
+          <path d="M315 160 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
         </g>
       </g>`
     : '';
