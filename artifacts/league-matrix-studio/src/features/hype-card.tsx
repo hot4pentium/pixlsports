@@ -28,7 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
   HEADLINES, templates, cardLayouts, formats, palettes, defaultProject, getDimensions, cardFinishes,
-  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl
+  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
@@ -95,17 +95,6 @@ function isProject(value: unknown): value is { tool: string; project: HypeCardPr
   if (!value || typeof value !== 'object') return false;
   const candidate = value as { tool?: unknown; project?: unknown };
   return candidate.tool === 'hype-card' && Boolean(candidate.project) && typeof candidate.project === 'object';
-}
-
-function designOnlyProject(project: HypeCardProject): HypeCardProject {
-  return {
-    ...project,
-    mediaType: null,
-    mediaId: null,
-    videoMeta: null,
-    photo: null,
-    logo: null,
-  };
 }
 
 function assetUpload(

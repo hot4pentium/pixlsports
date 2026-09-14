@@ -141,6 +141,17 @@ export function isSafeRasterDataUrl(url: unknown): url is string {
   return typeof url === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
 }
 
+export function designOnlyProject(project: HypeCardProject): HypeCardProject {
+  return {
+    ...project,
+    mediaType: null,
+    mediaId: null,
+    videoMeta: null,
+    photo: null,
+    logo: null,
+  };
+}
+
 export function normalizeHypeCardProject(value: unknown): HypeCardProject {
   const defaults = defaultProject();
   const project = value && typeof value === 'object'

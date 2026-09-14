@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import {
   defaultProject,
+  designOnlyProject,
+  normalizeHypeCardProject,
   readHypeCardProject,
   saveHypeCardProject,
   type HypeCardProject,
@@ -41,5 +43,44 @@ test('custom position labels survive local save, reload, and exported badge mark
       buildPositionBadgeMarkup(reloaded.position, '#123456', '#abcdef'),
       new RegExp(`>${position.toUpperCase()}<`),
     );
+  }
+});
+
+
+test('custom position labels survive the cloud save payload and API response normalization', () => {
+  const labels = [
+    'GK',
+    'GOALKEEPER',
+    'CENTER BACK DEFENSIVE MIDFIELDER EXTRAORDINARY',
+  ];
+
+  for (const position of labels) {
+    const project: HypeCardProject = {
+      ...defaultProject(),
+      position,
+      mediaType: 'image',
+      mediaId: 'local-image',
+      photo: 'data:image/png;base64,local-photo',
+      logo: 'data:image/png;base64,local-logo',
+    };
+    const savedProject = designOnlyProject(project);
+    const cloudResponse = {
+      id: 'cloud-project',
+      name: 'Saved design',
+      project: savedProject,
+      revision: 2,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      media: [],
+    };
+
+    assert.equal(savedProject.position, position);
+    assert.equal(savedProject.mediaType, null);
+    assert.equal(savedProject.mediaId, null);
+    assert.equal(savedProject.photo, null);
+    assert.equal(savedProject.logo, null);
+
+    const reopened = normalizeHypeCardProject(cloudResponse.project);
+    assert.equal(reopened.position, position);
   }
 });
