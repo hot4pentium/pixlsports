@@ -783,6 +783,10 @@ function FanCalendarConnectionPanel() {
       queryKey: ['/api/coach-calendar', code],
     },
   });
+  const hasConnectedSchedule = Boolean(
+    calendar
+    && (calendar.scheduleAvailable || calendar.events.length > 0 || calendar.title || calendar.teamSeason),
+  );
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -837,7 +841,7 @@ function FanCalendarConnectionPanel() {
       </p>
       {(connect.isError || isError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">That coach code could not be connected. Check the code and try again.</p>}
 
-      {calendar?.scheduleAvailable && (
+      {hasConnectedSchedule && (
         <div className="mt-5 border-t border-primary/20 pt-5" data-testid="fan-connected-calendar">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
@@ -866,8 +870,8 @@ function FanCalendarConnectionPanel() {
           </div>
         </div>
       )}
-      {calendar && !calendar.scheduleAvailable && (
-        <p className="mt-5 border-t border-primary/20 pt-5 text-sm font-medium text-muted-foreground">Connected. Your coach has not published a schedule yet.</p>
+      {calendar && !hasConnectedSchedule && (
+        <p className="mt-5 border-t border-primary/20 pt-5 text-sm font-medium text-muted-foreground">Connected. Your coach has not added a schedule yet.</p>
       )}
       {isLoading && code && <p className="mt-5 border-t border-primary/20 pt-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">Loading connected schedule…</p>}
     </section>
