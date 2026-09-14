@@ -32,29 +32,9 @@ import {
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
-import { exportVideoCanvas } from './hype-card-export';
+import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 
-
-function svgToImage(svg: string, width: number, height: number): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.width = width;
-    img.height = height;
-    img.onload = () => {
-      resolve(img);
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = () => {
-      reject(new Error('Failed to load SVG into image'));
-      URL.revokeObjectURL(url);
-    };
-    img.src = url;
-  });
-}
 
 function drawVideoCover(
   context: CanvasRenderingContext2D,
@@ -1250,23 +1230,17 @@ export function HypeCardEditor() {
       }
     } else {
       // Fallback to existing image export...
-      const canvas = document.createElement('canvas');
-      const dimensions = getDimensions(project.format);
-      canvas.width = dimensions.width;
-      canvas.height = dimensions.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        setNotice('Could not generate the card for download.');
-        return;
-      }
       try {
+        const dimensions = getDimensions(project.format);
         const svg = buildHypeCardSvg(project);
-        const img = await svgToImage(svg, dimensions.width, dimensions.height);
-        ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+        const { dataUrl, extension } = await rasterizeSvgForDownload(
+          svg,
+          dimensions.width,
+          dimensions.height,
+          imageFormat,
+        );
         const a = document.createElement('a');
-        const mimeType = imageFormat === 'png' ? 'image/png' : 'image/jpeg';
-        const extension = imageFormat === 'png' ? 'png' : 'jpg';
-        a.href = canvas.toDataURL(mimeType, imageFormat === 'jpeg' ? 0.95 : undefined);
+        a.href = dataUrl;
         a.download = `hype_card_${Date.now()}.${extension}`;
         a.click();
       } catch {

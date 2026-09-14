@@ -2,6 +2,53 @@ import { checkExportSupport } from './hype-card-media';
 
 export type ExportProgressCallback = (progress: number) => void;
 
+export type ImageExportFormat = 'png' | 'jpeg';
+
+export function svgToImage(svg: string, width: number, height: number): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.width = width;
+    img.height = height;
+    img.onload = () => {
+      resolve(img);
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      reject(new Error('Failed to load SVG into image'));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
+
+export async function rasterizeSvgForDownload(
+  svg: string,
+  width: number,
+  height: number,
+  format: ImageExportFormat,
+): Promise<{ dataUrl: string; mimeType: string; extension: string }> {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Could not create canvas context');
+  }
+
+  const image = await svgToImage(svg, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+  return {
+    dataUrl: canvas.toDataURL(mimeType, format === 'jpeg' ? 0.95 : undefined),
+    mimeType,
+    extension: format === 'png' ? 'png' : 'jpg',
+  };
+}
+
 export async function exportVideoCanvas(
   canvas: HTMLCanvasElement,
   videoElement: HTMLVideoElement,
