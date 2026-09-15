@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, Maximize2, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
+  LayoutGrid, Lightbulb, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -345,12 +345,10 @@ export function PreviewCanvas({
   project,
   videoUrl,
   videoRef,
-  onExpand,
 }: {
   project: HypeCardProject;
   videoUrl?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
-  onExpand: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
@@ -417,29 +415,15 @@ export function PreviewCanvas({
       <div className="absolute inset-0 bg-tech-grid opacity-40 pointer-events-none" />
       <div ref={stageRef} className="absolute inset-4 flex items-center justify-center sm:inset-8">
         <div
-          className="relative z-10 cursor-zoom-in overflow-hidden shadow-2xl clip-angled focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary"
+          className="relative z-10 overflow-hidden shadow-2xl clip-angled"
           style={{
             aspectRatio: `${dimensions.width}/${dimensions.height}`,
             width: previewWidth || '100%',
             height: previewHeight || 'auto',
             maxWidth: 760,
           }}
-          role="button"
-          tabIndex={0}
-          aria-label="Expand card preview"
-          onClick={onExpand}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              onExpand();
-            }
-          }}
         >
           <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" />
-          <span className="pointer-events-none absolute right-4 top-20 z-30 flex items-center gap-2 bg-foreground/85 px-3 py-2 text-xs font-bold uppercase tracking-widest text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 clip-angled-sm">
-            <Maximize2 className="h-4 w-4" />
-            Expand
-          </span>
         </div>
       </div>
       
@@ -1654,7 +1638,7 @@ export function HypeCardEditor() {
 
         <main className="block h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8">
           <div className="mx-auto h-full max-w-[800px]">
-            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onExpand={() => setMobilePreviewOpen(true)} />
+            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} />
           </div>
         </main>
       </div>
