@@ -306,7 +306,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const detailsSize = fitText(detailsLine, 620, 23, 0.63, 3);
   const positionBadgeMarkup = buildPositionBadgeMarkup(project.position, palette.secondary, palette.accent);
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : '';
   const logo = project.logo
     ? `<image href="${project.logo}" x="825" y="128" width="90" height="90" preserveAspectRatio="xMidYMid meet" filter="url(#stadiumShadow-${ns})"/>`
@@ -403,7 +403,7 @@ function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : getArenaBg(palette, ns);
 
   const logo = project.logo
@@ -496,7 +496,7 @@ function buildAllStarCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : `<g transform="translate(0, 150)">${getArenaBg(palette, ns)}</g>`;
 
   const logo = project.logo
@@ -587,7 +587,7 @@ function buildRookieCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
   const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : getArenaBg(palette, ns);
 
   const logo = project.logo
@@ -673,7 +673,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
   const photoHeight = frame.height * project.photoTransform.zoom + overscan;
   
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
     : `<g transform="translate(0, 60)">${getArenaBg(palette, ns)}</g>`;
 
   const logo = project.logo
@@ -766,7 +766,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   const isStory = project.format === 'story';
   const template = templates.find((item) => item.id === project.template) ?? templates[0];
   const photo = project.photo
-    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid slice" style="filter: brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation}); transform-origin: ${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px; transform: rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})" />`
+    ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter: brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation}); transform-origin: ${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px; transform: rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})" />`
     : `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="${palette.ink}" opacity=".16"/><circle cx="${frame.x + frame.width / 2}" cy="${frame.y + frame.height * .42}" r="${Math.min(frame.width, frame.height) * .12}" fill="${palette.paper}" opacity=".7"/><path d="M ${frame.x + frame.width * .26} ${frame.y + frame.height * .88} Q ${frame.x + frame.width / 2} ${frame.y + frame.height * .52} ${frame.x + frame.width * .74} ${frame.y + frame.height * .88}" fill="${palette.paper}" opacity=".7"/><text x="${frame.x + frame.width / 2}" y="${frame.y + frame.height * .96}" text-anchor="middle" font-size="${Math.max(18, width * .018)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${palette.paper}" opacity=".9">ADD PLAYER MEDIA</text>`;
   const logo = project.logo
     ? `<image href="${project.logo}" x="${width - (isLandscape ? 190 : 150)}" y="${isStory ? 150 : 65}" width="${isLandscape ? 110 : 90}" height="${isLandscape ? 110 : 90}" preserveAspectRatio="xMidYMid meet" />`

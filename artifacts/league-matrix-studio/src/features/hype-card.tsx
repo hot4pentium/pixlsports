@@ -40,7 +40,7 @@ import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
 
 
-function drawVideoCover(
+function drawVideoContain(
   context: CanvasRenderingContext2D,
   video: HTMLVideoElement,
   x: number,
@@ -53,18 +53,18 @@ function drawVideoCover(
   if (!sourceWidth || !sourceHeight) return;
   const sourceRatio = sourceWidth / sourceHeight;
   const targetRatio = width / height;
-  let sx = 0;
-  let sy = 0;
-  let sw = sourceWidth;
-  let sh = sourceHeight;
+  let drawX = x;
+  let drawY = y;
+  let drawWidth = width;
+  let drawHeight = height;
   if (sourceRatio > targetRatio) {
-    sw = sourceHeight * targetRatio;
-    sx = (sourceWidth - sw) / 2;
+    drawHeight = width / sourceRatio;
+    drawY += (height - drawHeight) / 2;
   } else {
-    sh = sourceWidth / targetRatio;
-    sy = (sourceHeight - sh) / 2;
+    drawWidth = height * sourceRatio;
+    drawX += (width - drawWidth) / 2;
   }
-  context.drawImage(video, sx, sy, sw, sh, x, y, width, height);
+  context.drawImage(video, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawWidth, drawHeight);
 }
 
 function slugify(value: string) {
@@ -320,7 +320,7 @@ function PreviewArtwork({
           <video
             ref={videoRef}
             src={videoUrl}
-            className="absolute max-w-none object-cover"
+            className="absolute max-w-none object-contain"
             autoPlay
             muted
             playsInline
@@ -330,7 +330,7 @@ function PreviewArtwork({
           <img
             src={project.photo ?? ''}
             alt=""
-            className="absolute max-w-none object-cover"
+            className="absolute max-w-none object-contain"
             draggable={false}
             style={mediaStyle}
           />
@@ -1196,7 +1196,7 @@ export function HypeCardEditor() {
             ctx.scale(project.photoTransform.flip ? -1 : 1, 1);
             ctx.translate(-clipInfo.cx, -clipInfo.cy);
             ctx.filter = `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`;
-            drawVideoCover(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h);
+            drawVideoContain(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h);
             ctx.restore();
             
             // Draw FG
