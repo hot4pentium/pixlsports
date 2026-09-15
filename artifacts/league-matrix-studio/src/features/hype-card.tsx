@@ -1380,28 +1380,27 @@ export function HypeCardEditor() {
 
   return (
     <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
-      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 sm:static">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/studio" className="grid h-9 w-9 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
+      <header className="sticky top-0 z-40 flex min-h-14 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-background px-3 py-2 sm:static sm:px-4">
+        <div className="flex min-w-0 basis-full items-center gap-2 sm:gap-3 xl:basis-auto xl:flex-1">
+          <Link href="/studio" className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-           <h1 className="font-display text-xl tracking-wide text-foreground">Hype Cards</h1>
-           <div className="flex ml-4 items-center gap-2">
-             <div className={`hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 clip-angled-sm border ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
+           <h1 className="min-w-0 truncate font-display text-lg tracking-wide text-foreground sm:text-xl">Hype Cards</h1>
+           <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-4">
+             <div className={`hidden items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-bold uppercase tracking-widest clip-angled-sm border sm:flex ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
                {saveStatus === 'Saving' ? <RotateCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                {saveStatus}
              </div>
               {!cloudProjectId && (
-               <button type="button" onClick={saveToCloud} disabled={createProject.isPending} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-3 py-1.5 clip-angled-sm bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-colors border border-transparent">
+                <button type="button" onClick={saveToCloud} disabled={createProject.isPending} aria-label="Save design to cloud" title="Save design to cloud" className="flex min-h-10 items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest clip-angled-sm bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-colors border border-transparent">
                  <Save className="h-3 w-3" /> <span className="hidden sm:inline">Save design</span>
                </button>
              )}
            </div>
         </div>
-        <div className="flex items-center gap-2">
-          {validation && <span className="hidden text-xs font-bold text-destructive sm:inline-block">{validation}</span>}
-<div className="flex gap-2">
-            <Button variant="outline" className="hidden gap-2 rounded-none clip-angled-sm sm:flex" onClick={async () => {
+         <div className="flex min-w-0 basis-full flex-wrap items-center justify-end gap-2 xl:basis-auto">
+ <div className="flex min-w-0 flex-wrap justify-end gap-2">
+             <Button variant="outline" className="hidden min-h-10 gap-2 whitespace-nowrap rounded-none clip-angled-sm sm:flex" onClick={async () => {
               try {
                 const portableProject = await getPortableProject();
                 const str = serializeHypeCardTemplate(portableProject);
@@ -1419,8 +1418,8 @@ export function HypeCardEditor() {
             }}>
               <Save className="h-4 w-4" /> Save template
             </Button>
-            <label className="hidden cursor-pointer sm:block">
-              <span className="flex h-10 items-center gap-2 border border-border bg-background px-4 text-sm font-medium hover:border-primary hover:bg-muted clip-angled-sm transition-colors">
+             <label className="hidden cursor-pointer sm:block">
+               <span className="flex h-10 items-center gap-2 whitespace-nowrap border border-border bg-background px-4 text-sm font-medium hover:border-primary hover:bg-muted clip-angled-sm transition-colors">
                 <FolderOpen className="h-4 w-4" /> Open...
               </span>
               <input type="file" accept=".lmx,application/json" className="sr-only" onChange={async (e) => {
@@ -1441,11 +1440,11 @@ export function HypeCardEditor() {
                 }
               }} />
             </label>
-            <Button onClick={handleExport} disabled={exporting} className="gap-2 rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
+             <Button onClick={handleExport} disabled={exporting} className="min-h-10 gap-2 whitespace-nowrap rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
-            <Button variant="outline" onClick={handleShare} disabled={sharing || exporting} className="gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Replace interactive share link' : 'Share interactive Hype Card'}>
+             <Button variant="outline" onClick={handleShare} disabled={sharing || exporting} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Replace interactive share link' : 'Share interactive Hype Card'} title={existingShare ? 'Replace interactive share link' : 'Share interactive Hype Card'}>
               <Share2 className="h-4 w-4" />
               <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Replace link' : 'Share'}</span>
             </Button>
@@ -1457,9 +1456,15 @@ export function HypeCardEditor() {
             <Button variant="outline" size="icon" onClick={() => setMobilePreviewOpen(true)} className="rounded-none clip-angled-sm sm:hidden" aria-label="Preview">
               <Eye className="h-4 w-4" />
             </Button>
-          </div>
+           </div>
         </div>
       </header>
+
+      {validation && (
+        <div className="flex shrink-0 items-start gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs font-bold leading-relaxed text-destructive" role="alert">
+          <span>{validation}</span>
+        </div>
+      )}
 
       {notice && (
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground">
