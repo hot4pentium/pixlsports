@@ -1,5 +1,5 @@
 import { eq, isNotNull, lte, or } from "drizzle-orm";
-import { db, hypeCardSharesTable } from "@workspace/db";
+import { db, hypeCardSharesTable, hypeCardShareUploadClaimsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
 
@@ -7,6 +7,19 @@ const objectStorage = new ObjectStorageService();
 const INTERVAL_MS = 60 * 60 * 1000;
 
 export async function purgeExpiredHypeCardShares() {
+  const abandonedUploads = await db.delete(hypeCardShareUploadClaimsTable)
+    .where(lte(hypeCardShareUploadClaimsTable.expiresAt, new Date()))
+    .returning();
+  for (const claim of abandonedUploads) {
+    try {
+      await objectStorage.deleteObjectEntity(claim.objectPath);
+    } catch (error) {
+      if (!(error instanceof ObjectNotFoundError)) {
+        logger.warn({ err: error, uploadClaimId: claim.id }, "Unable to purge abandoned Hype Card upload");
+        await db.insert(hypeCardShareUploadClaimsTable).values(claim).onConflictDoNothing();
+      }
+    }
+  }
   const expired = await db
     .select()
     .from(hypeCardSharesTable)

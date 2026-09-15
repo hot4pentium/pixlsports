@@ -1,6 +1,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import {
   integer,
+  index,
   jsonb,
   pgTable,
   text,
@@ -63,6 +64,18 @@ export const hypeCardSharesTable = pgTable("hype_card_shares", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
   publicTokenUnique: uniqueIndex("hype_card_shares_public_token_unique").on(table.publicToken),
+}));
+
+export const hypeCardShareUploadClaimsTable = pgTable("hype_card_share_upload_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  mediaKind: text("media_kind").notNull(),
+  objectPath: text("object_path").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  objectPathUnique: uniqueIndex("hype_card_share_upload_claims_object_path_unique").on(table.objectPath),
+  expiresAtIndex: index("hype_card_share_upload_claims_expires_at_index").on(table.expiresAt),
 }));
 
 export const coachCalendarCodesTable = pgTable("coach_calendar_codes", {
@@ -132,6 +145,7 @@ export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
 export type ProjectMedia = typeof projectMediaTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type HypeCardShare = typeof hypeCardSharesTable.$inferSelect;
+export type HypeCardShareUploadClaim = typeof hypeCardShareUploadClaimsTable.$inferSelect;
 export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
 export type AccountAccess = typeof accountAccessTable.$inferSelect;
 export type AccountEntitlementEvent = typeof accountEntitlementEventsTable.$inferSelect;

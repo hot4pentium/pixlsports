@@ -1,0 +1,39 @@
+{
+  "name": "Pixl Sports Studio",
+  "short_name": "Pixl Sports",
+  "description": "Create team graphics, schedules, rosters, and game-day lineups.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111317",
+  "theme_color": "#00e86b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hype Card Creator",
+      "short_name": "Hype Card",
+      "url": "./studio/hype-card",
+      "icons": [
+        {
+          "src": "./pwa-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

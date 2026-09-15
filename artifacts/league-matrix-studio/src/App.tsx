@@ -2709,6 +2709,10 @@ function Help() {
             <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings and attached media are saved in this browser. If you sign in and choose Save design, only reusable design settings sync to your account; photos, videos, and uploaded logos stay on this device. Reopen a saved design, add media, then export the finished file to share it. Clearing browser data can remove locally stored work.</p>
           </section>
           <section>
+            <h2 className="font-display text-3xl uppercase tracking-wide">Will my media follow me across devices?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">For Hype Cards, attached photos, videos, and logos stay on the device where you added them. Cloud saves keep the reusable design settings, so you can reopen the design elsewhere, but you will need to add the original media again before editing or exporting. When you publish a Hype Card share, a prepared video and poster are uploaded separately so the public link can display them. Schedule, roster, and lineup data saved to your cloud workspace can be reopened on other signed-in devices.</p>
+          </section>
+          <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>
             <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">The studio relies on heavily optimized, pre-selected display fonts designed specifically for sports impact. Custom font uploads are not supported to ensure immediate rendering without layout shifts.</p>
           </section>
@@ -3181,7 +3185,7 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn } = useUser();
-  const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/watch/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
+  const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/watch/') || location.startsWith('/h/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
   const { data: lifecycle, isLoading } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
@@ -3272,6 +3276,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
+               <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>

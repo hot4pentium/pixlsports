@@ -147,6 +147,12 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Prepared uploads expired, were already consumed, or belong to another account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "413":
           description: Prepared share media is too large
           content:
@@ -710,16 +716,22 @@ components:
           enum: [video/mp4, video/webm, image/jpeg, image/png]
     HypeCardShareUpload:
       type: object
-      required: [uploadUrl, objectPath]
+      required: [uploadUrl, objectPath, claimId, expiresAt]
       properties:
         uploadUrl:
           type: string
           format: uri
         objectPath:
           type: string
+        claimId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
     HypeCardShareInput:
       type: object
-      required: [title, slug, manifest, videoObjectPath, posterObjectPath]
+      required: [title, slug, manifest, videoUploadClaimId, posterUploadClaimId]
       properties:
         title:
           type: string
@@ -733,12 +745,12 @@ components:
         manifest:
           type: object
           additionalProperties: true
-        videoObjectPath:
+        videoUploadClaimId:
           type: string
-          pattern: "^/objects/uploads/[A-Za-z0-9-]+$"
-        posterObjectPath:
+          format: uuid
+        posterUploadClaimId:
           type: string
-          pattern: "^/objects/uploads/[A-Za-z0-9-]+$"
+          format: uuid
     HypeCardShare:
       type: object
       required: [shareToken, slug, title, manifest, videoUrl, posterUrl, expiresAt, createdAt]

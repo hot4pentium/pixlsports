@@ -371,8 +371,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${mediaGlow}
       ${placeholder}
        <g aria-label="Player number and position">
-         <path d="M62 46 H196 L214 64 V114 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
-         <text x="78" y="95" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
+          <path d="M62 46 H208 L226 64 V114 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
+          <text x="86" y="95" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
           ${positionBadgeMarkup}
        </g>
       <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>

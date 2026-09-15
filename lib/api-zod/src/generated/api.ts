@@ -264,16 +264,14 @@ export const createHypeCardShareBodySlugMax = 80;
 
 
 export const createHypeCardShareBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
-export const createHypeCardShareBodyVideoObjectPathRegExp = new RegExp('^/objects/uploads/[A-Za-z0-9-]+$');
-export const createHypeCardShareBodyPosterObjectPathRegExp = new RegExp('^/objects/uploads/[A-Za-z0-9-]+$');
 
 
 export const CreateHypeCardShareBody = zod.object({
   "title": zod.string().min(1).max(createHypeCardShareBodyTitleMax),
   "slug": zod.string().min(1).max(createHypeCardShareBodySlugMax).regex(createHypeCardShareBodySlugRegExp),
   "manifest": zod.record(zod.string(), zod.unknown()),
-  "videoObjectPath": zod.string().regex(createHypeCardShareBodyVideoObjectPathRegExp),
-  "posterObjectPath": zod.string().regex(createHypeCardShareBodyPosterObjectPathRegExp)
+  "videoUploadClaimId": zod.string().uuid(),
+  "posterUploadClaimId": zod.string().uuid()
 })
 
 export const CreateHypeCardShareResponse = zod.object({
@@ -298,7 +296,9 @@ export const RequestHypeCardShareUploadUrlBody = zod.object({
 
 export const RequestHypeCardShareUploadUrlResponse = zod.object({
   "uploadUrl": zod.string().url(),
-  "objectPath": zod.string()
+  "objectPath": zod.string(),
+  "claimId": zod.string().uuid(),
+  "expiresAt": zod.coerce.date()
 })
 
 

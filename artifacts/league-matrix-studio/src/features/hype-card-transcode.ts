@@ -52,12 +52,36 @@ export async function transcodeVideoToMp4(
 
     const stream = canvas.captureStream(30);
     let audioStream: MediaStream | null = null;
+    let audioElement: HTMLVideoElement | null = null;
+    let audioContext: AudioContext | null = null;
     try {
-      const captureStream = (video as HTMLVideoElement & { captureStream?: () => MediaStream }).captureStream;
-      audioStream = captureStream?.call(video) ?? null;
-      audioStream?.getAudioTracks().forEach((track) => stream.addTrack(track));
-    } catch {
+      const AudioContextConstructor = window.AudioContext
+        ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextConstructor) throw new Error('Web Audio is unavailable.');
+      audioElement = document.createElement('video');
+      audioElement.preload = 'auto';
+      audioElement.playsInline = true;
+      audioElement.muted = false;
+      audioElement.src = sourceUrl;
+      await new Promise<void>((resolve, reject) => {
+        audioElement?.addEventListener('loadedmetadata', () => resolve(), { once: true });
+        audioElement?.addEventListener('error', () => reject(new Error('Audio could not be decoded.')), { once: true });
+      });
+      audioContext = new AudioContextConstructor();
+      await audioContext.resume();
+      const audioSource = audioContext.createMediaElementSource(audioElement);
+      const audioDestination = audioContext.createMediaStreamDestination();
+      audioSource.connect(audioDestination);
+      audioStream = audioDestination.stream;
+      audioStream.getAudioTracks().forEach((track) => stream.addTrack(track));
+    } catch (error) {
+      console.warn('Could not preserve clip audio while preparing MP4', error);
       audioStream = null;
+      audioElement?.remove();
+      audioElement = null;
+      await audioContext?.close().catch(() => undefined);
+      audioContext = null;
+      throw error;
     }
 
     const recorder = new MediaRecorder(stream, {
@@ -74,6 +98,9 @@ export async function transcodeVideoToMp4(
         cancelAnimationFrame(animationFrame);
         stream.getTracks().forEach((track) => track.stop());
         audioStream?.getTracks().forEach((track) => track.stop());
+        audioElement?.pause();
+        audioElement?.remove();
+        void audioContext?.close().catch(() => undefined);
         video.pause();
       };
       const finish = (error?: Error) => {
@@ -115,7 +142,10 @@ export async function transcodeVideoToMp4(
             await waitForSeek(video);
           }
           recorder.start(1000);
-          await video.play();
+          await Promise.all([
+            video.play(),
+            audioElement?.play(),
+          ]);
           draw();
         } catch (error) {
           if (recorder.state !== 'inactive') recorder.stop();

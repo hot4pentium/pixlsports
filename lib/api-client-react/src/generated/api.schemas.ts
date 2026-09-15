@@ -91,6 +91,8 @@ export interface HypeCardShareUploadInput {
 export interface HypeCardShareUpload {
   uploadUrl: string;
   objectPath: string;
+  claimId: string;
+  expiresAt: string;
 }
 
 export type HypeCardShareInputManifest = { [key: string]: unknown };
@@ -108,10 +110,8 @@ export interface HypeCardShareInput {
      */
   slug: string;
   manifest: HypeCardShareInputManifest;
-  /** @pattern ^/objects/uploads/[A-Za-z0-9-]+$ */
-  videoObjectPath: string;
-  /** @pattern ^/objects/uploads/[A-Za-z0-9-]+$ */
-  posterObjectPath: string;
+  videoUploadClaimId: string;
+  posterUploadClaimId: string;
 }
 
 export type HypeCardShareManifest = { [key: string]: unknown };

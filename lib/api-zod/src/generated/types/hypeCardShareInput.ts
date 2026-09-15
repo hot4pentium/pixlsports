@@ -20,8 +20,6 @@ export interface HypeCardShareInput {
      */
   slug: string;
   manifest: HypeCardShareInputManifest;
-  /** @pattern ^/objects/uploads/[A-Za-z0-9-]+$ */
-  videoObjectPath: string;
-  /** @pattern ^/objects/uploads/[A-Za-z0-9-]+$ */
-  posterObjectPath: string;
+  videoUploadClaimId: string;
+  posterUploadClaimId: string;
 }

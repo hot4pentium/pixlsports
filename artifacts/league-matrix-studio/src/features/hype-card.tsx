@@ -44,7 +44,7 @@ import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } fro
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
-import { FullSizeVideoDialog, OpenFullSizeButton, prepareHypeCardShareMedia } from './hype-card-share';
+import { prepareHypeCardShareMedia } from './hype-card-share';
 
 
 function drawVideoContain(
@@ -278,7 +278,7 @@ export function PreviewArtwork({
   ns,
   testId,
   poster,
-  onOpenFullSize,
+  muted = true,
 }: {
   project: HypeCardProject;
   videoUrl?: string;
@@ -286,7 +286,7 @@ export function PreviewArtwork({
   ns: string;
   testId: string;
   poster?: string;
-  onOpenFullSize?: () => void;
+  muted?: boolean;
 }) {
   const dimensions = getDimensions(project.format);
   const clipInfo = getPhotoClipInfo(project, ns);
@@ -334,7 +334,7 @@ export function PreviewArtwork({
             poster={poster}
             className="absolute max-w-none object-contain"
             autoPlay
-            muted
+            muted={muted}
             playsInline
             style={mediaStyle}
           />
@@ -349,7 +349,6 @@ export function PreviewArtwork({
         )}
       </div>
       <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
-      {hasVideo && onOpenFullSize && <OpenFullSizeButton onClick={onOpenFullSize} />}
     </div>
   );
 }
@@ -358,12 +357,10 @@ export function PreviewCanvas({
   project,
   videoUrl,
   videoRef,
-  onOpenFullSize,
 }: {
   project: HypeCardProject;
   videoUrl?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
-  onOpenFullSize?: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
@@ -404,14 +401,15 @@ export function PreviewCanvas({
       const sourceEnd = Number.isFinite(video.duration) ? video.duration : project.trimEnd;
       const end = Math.min(project.trimEnd, sourceEnd);
       if (video.currentTime >= end - 0.05 || video.currentTime < start - 0.05) {
+        const wasPlaying = !video.paused;
         video.currentTime = start;
-        if (isPlaying) video.play().catch(() => setIsPlaying(false));
+        if (wasPlaying) video.play().catch(() => setIsPlaying(false));
       }
     };
     video.currentTime = start;
     video.addEventListener('timeupdate', keepInRange);
     return () => video.removeEventListener('timeupdate', keepInRange);
-  }, [isPlaying, project.mediaType, project.trimEnd, project.trimStart, videoRef, videoUrl]);
+  }, [project.mediaType, project.trimEnd, project.trimStart, videoRef, videoUrl]);
 
   useEffect(() => {
     if (videoRef?.current) {
@@ -438,7 +436,7 @@ export function PreviewCanvas({
             maxWidth: 760,
           }}
         >
-          <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" onOpenFullSize={onOpenFullSize} />
+          <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" muted={isMuted} />
         </div>
       </div>
       
@@ -450,7 +448,10 @@ export function PreviewCanvas({
           <button type="button" data-testid="button-restart" onClick={() => { if (videoRef?.current) { videoRef.current.currentTime = project.trimStart; videoRef.current.play().catch(()=>setIsPlaying(false)); setIsPlaying(true); } }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
             <RotateCcw className="h-5 w-5" />
           </button>
-          <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted(!isMuted)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+           <button type="button" data-testid="button-mute-unmute" onClick={() => {
+             setIsMuted((muted) => !muted);
+             if (isMuted) videoRef?.current?.play().catch(() => setIsPlaying(false));
+           }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Enable audio' : 'Mute'} title={isMuted ? 'Enable audio' : 'Mute'}>
             {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           </button>
         </div>
@@ -464,14 +465,12 @@ export function MobilePreviewDialog({
   onOpenChange,
   title,
   videoUrl,
-  onOpenFullSize,
 }: {
   project: HypeCardProject;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   videoUrl?: string;
-  onOpenFullSize?: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -519,14 +518,15 @@ export function MobilePreviewDialog({
       const sourceEnd = Number.isFinite(video.duration) ? video.duration : project.trimEnd;
       const end = Math.min(project.trimEnd, sourceEnd);
       if (video.currentTime >= end - 0.05 || video.currentTime < start - 0.05) {
+        const wasPlaying = !video.paused;
         video.currentTime = start;
-        if (isPlaying) video.play().catch(() => setIsPlaying(false));
+        if (wasPlaying) video.play().catch(() => setIsPlaying(false));
       }
     };
     video.currentTime = start;
     video.addEventListener('timeupdate', keepInRange);
     return () => video.removeEventListener('timeupdate', keepInRange);
-  }, [isPlaying, open, project.mediaType, project.trimEnd, project.trimStart, videoUrl]);
+  }, [open, project.mediaType, project.trimEnd, project.trimStart, videoUrl]);
 
   useEffect(() => {
     if (!open) return;
@@ -592,7 +592,7 @@ export function MobilePreviewDialog({
             }}
             data-testid="mobile-hype-preview-canvas"
           >
-            <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={mobileVideoRef} ns={ns} testId="mobile-hype-preview-canvas" onOpenFullSize={onOpenFullSize} />
+            <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={mobileVideoRef} ns={ns} testId="mobile-hype-preview-canvas" muted={isMuted} />
              {project.mediaType === 'video' && videoUrl && (
                <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 bg-foreground/90 p-2 clip-angled-sm border border-white/10 shadow-lg">
                  <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying((playing) => !playing)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
@@ -607,7 +607,10 @@ export function MobilePreviewDialog({
                  }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
                    <RotateCcw className="h-5 w-5" />
                  </button>
-                 <button type="button" data-testid="button-mute-unmute" onClick={() => setIsMuted((muted) => !muted)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+                  <button type="button" data-testid="button-mute-unmute" onClick={() => {
+                    setIsMuted((muted) => !muted);
+                    if (isMuted) mobileVideoRef.current?.play().catch(() => setIsPlaying(false));
+                  }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isMuted ? 'Enable audio' : 'Mute'} title={isMuted ? 'Enable audio' : 'Mute'}>
                    {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                  </button>
                </div>
@@ -647,7 +650,6 @@ export function HypeCardEditor() {
   const [autosaveWarning, setAutosaveWarning] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
-  const [fullSizeOpen, setFullSizeOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [validation, setValidation] = useState('');
@@ -1289,7 +1291,7 @@ export function HypeCardEditor() {
     const origin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
       ? 'https://pixlsports.com'
       : window.location.origin;
-    return `${origin}${cleanBase}/watch/${share.slug}/${share.shareToken}`;
+    return `${origin}${cleanBase}/h/${share.shareToken}`;
   };
 
   const handleShare = async () => {
@@ -1338,8 +1340,8 @@ export function HypeCardEditor() {
           title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline}`,
           slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80),
           manifest: { version: 1, shareKey, project: shareProject },
-          videoObjectPath: videoUpload.objectPath,
-          posterObjectPath: posterUpload.objectPath,
+          videoUploadClaimId: videoUpload.claimId,
+          posterUploadClaimId: posterUpload.claimId,
         },
       });
       if (existingShare && existingShare.shareToken !== created.shareToken) {
@@ -1774,13 +1776,12 @@ export function HypeCardEditor() {
 
         <main className="block h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8">
           <div className="mx-auto h-full max-w-[800px]">
-            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onOpenFullSize={() => setFullSizeOpen(true)} />
+            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} />
           </div>
         </main>
       </div>
 
-      <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} onOpenFullSize={() => setFullSizeOpen(true)} />
-      <FullSizeVideoDialog open={fullSizeOpen} onOpenChange={setFullSizeOpen} src={videoUrl} poster={project.photo ?? undefined} title={`${project.playerName || project.teamName || 'Hype Card'} · ${project.headline}`} trimStart={project.trimStart} trimEnd={project.trimEnd} />
+      <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
     
       {saveStatus === 'Conflict' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">

@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, PlayCircle, Zap } from 'lucide-react';
+import { ArrowUpRight, Volume2, VolumeX, Zap } from 'lucide-react';
 import { Link } from 'wouter';
 import { useGetHypeCardShare } from '@workspace/api-client-react';
 
 import { PreviewArtwork } from './hype-card';
-import { FullSizeVideoDialog, OpenFullSizeButton } from './hype-card-share';
 import { getDimensions, normalizeHypeCardProject } from './hype-card-types';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export function PublicHypeCardPage({ params }: { params: { slug?: string; shareToken?: string } }) {
   const shareToken = params.shareToken ?? '';
-  const [fullSizeOpen, setFullSizeOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const { data: share, isLoading, isError } = useGetHypeCardShare(shareToken, {
     query: { enabled: Boolean(shareToken), queryKey: ['/api/hype-card-shares', shareToken], retry: false },
   });
@@ -81,20 +80,24 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       </header>
       <main className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1280px] items-center gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="relative mx-auto w-full max-w-[660px] overflow-hidden rounded-[22px] shadow-[0_30px_100px_rgba(0,0,0,.65)]" style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}>
-          <PreviewArtwork project={project} videoUrl={share.videoUrl} poster={share.posterUrl} ns="public-share" testId="public-hype-card" />
-          <OpenFullSizeButton onClick={() => setFullSizeOpen(true)} />
-          <button type="button" className="absolute inset-0 z-10 grid place-items-center bg-black/0 text-white transition hover:bg-black/10" onClick={() => setFullSizeOpen(true)} aria-label="Play shared Hype Card video full size">
-            <span className="grid h-16 w-16 place-items-center rounded-full bg-black/65 backdrop-blur transition hover:scale-105 hover:bg-primary"><PlayCircle className="h-9 w-9" /></span>
+          <PreviewArtwork project={project} videoUrl={share.videoUrl} poster={share.posterUrl} ns="public-share" testId="public-hype-card" muted={isMuted} />
+          <button
+            type="button"
+            onClick={() => setIsMuted((muted) => !muted)}
+            className="absolute right-3 top-3 z-20 flex items-center gap-2 bg-black/75 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur hover:bg-primary hover:text-primary-foreground"
+            aria-label={isMuted ? 'Enable audio' : 'Mute audio'}
+          >
+            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {isMuted ? 'Enable audio' : 'Mute'}
           </button>
         </div>
         <aside className="border-l-4 border-primary pl-5">
           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Shared Hype Card</p>
           <h1 className="mt-3 font-display text-5xl uppercase leading-[.9] sm:text-6xl">{share.title}</h1>
-          <p className="mt-5 text-sm font-medium leading-relaxed text-white/60">Tap the card to watch the selected highlight full size. No Pixl Sports account is required.</p>
+          <p className="mt-5 text-sm font-medium leading-relaxed text-white/60">The selected highlight plays directly in the card. No Pixl Sports account is required.</p>
           <p className="mt-6 text-[10px] font-bold uppercase tracking-[.18em] text-white/40">Available until {new Date(share.expiresAt).toLocaleDateString()}</p>
         </aside>
       </main>
-      <FullSizeVideoDialog open={fullSizeOpen} onOpenChange={setFullSizeOpen} src={share.videoUrl} poster={share.posterUrl} title={share.title} />
     </div>
   );
 }

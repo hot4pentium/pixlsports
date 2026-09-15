@@ -9,4 +9,6 @@
 export interface HypeCardShareUpload {
   uploadUrl: string;
   objectPath: string;
+  claimId: string;
+  expiresAt: Date;
 }
