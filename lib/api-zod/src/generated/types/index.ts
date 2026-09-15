@@ -24,6 +24,7 @@ export * from './billingWebhookResponseStatus';
 export * from './coachCalendar';
 export * from './coachCalendarCode';
 export * from './coachCalendarConnectInput';
+export * from './coachCalendarSubscription';
 export * from './error';
 export * from './healthStatus';
 export * from './hypeCardProject';

@@ -29,6 +29,7 @@ import type {
   CoachCalendar,
   CoachCalendarCode,
   CoachCalendarConnectInput,
+  CoachCalendarSubscription,
   Error,
   HealthStatus,
   HypeCardShare,
@@ -982,7 +983,7 @@ export const getGetCoachCalendarCodeUrl = () => {
 }
 
 /**
- * Returns the stable five-character code a coach can share with families.
+ * Returns the stable five-character code and current private subscription-link state.
  * @summary Get or create the authenticated coach's calendar code
  */
 export const getCoachCalendarCode = async ( options?: Parameters<typeof customFetch>[1]): Promise<CoachCalendarCode> => {
@@ -1050,6 +1051,155 @@ export function useGetCoachCalendarCode<TData = Awaited<ReturnType<typeof getCoa
 
 
 
+
+export const getCreateCoachCalendarSubscriptionUrl = () => {
+
+
+
+
+  return `/api/coach-calendar/subscription`
+}
+
+/**
+ * Issues a private tokenized feed link. Issuing a new link revokes the previous link.
+ * @summary Create or refresh the authenticated coach's calendar subscription
+ */
+export const createCoachCalendarSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<CoachCalendarSubscription> => {
+
+  return customFetch<CoachCalendarSubscription>(getCreateCoachCalendarSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateCoachCalendarSubscriptionMutationKey = () => ['createCoachCalendarSubscription'] as const;
+
+export const getCreateCoachCalendarSubscriptionMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCoachCalendarSubscription>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCoachCalendarSubscription>>, TError,void, TContext> => {
+
+const mutationKey = getCreateCoachCalendarSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCoachCalendarSubscription>>, void> = () => {
+
+
+          return  createCoachCalendarSubscription(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCoachCalendarSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof createCoachCalendarSubscription>>>
+
+    export type CreateCoachCalendarSubscriptionMutationError = ErrorType<UnauthorizedResponse>
+
+
+    /**
+ * @summary Create or refresh the authenticated coach's calendar subscription
+ */
+export const useCreateCoachCalendarSubscription = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCoachCalendarSubscription>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCoachCalendarSubscription>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateCoachCalendarSubscriptionMutationOptions(options));
+    }
+
+export const getDeleteCoachCalendarSubscriptionUrl = () => {
+
+
+
+
+  return `/api/coach-calendar/subscription`
+}
+
+/**
+ * @summary Revoke the authenticated coach's calendar subscription
+ */
+export const deleteCoachCalendarSubscription = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteCoachCalendarSubscriptionUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCoachCalendarSubscriptionMutationKey = () => ['deleteCoachCalendarSubscription'] as const;
+
+export const getDeleteCoachCalendarSubscriptionMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCoachCalendarSubscription>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCoachCalendarSubscription>>, TError,void, TContext> => {
+
+const mutationKey = getDeleteCoachCalendarSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCoachCalendarSubscription>>, void> = () => {
+
+
+          return  deleteCoachCalendarSubscription(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCoachCalendarSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCoachCalendarSubscription>>>
+
+    export type DeleteCoachCalendarSubscriptionMutationError = ErrorType<UnauthorizedResponse>
+
+
+    /**
+ * @summary Revoke the authenticated coach's calendar subscription
+ */
+export const useDeleteCoachCalendarSubscription = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCoachCalendarSubscription>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCoachCalendarSubscription>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteCoachCalendarSubscriptionMutationOptions(options));
+    }
 
 export const getConnectToCoachCalendarUrl = () => {
 
@@ -1138,6 +1288,84 @@ export const useConnectToCoachCalendar = <TError = ErrorType<BadRequestResponse 
       > => {
       return useMutation(getConnectToCoachCalendarMutationOptions(options));
     }
+
+export const getGetCoachCalendarFeedUrl = (token: string,) => {
+
+
+
+
+  return `/api/coach-calendar/feed/${token}.ics`
+}
+
+/**
+ * Returns the current schedule without requiring a Pixl Sports account.
+ * @summary Get a private ICS calendar feed
+ */
+export const getCoachCalendarFeed = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetCoachCalendarFeedUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCoachCalendarFeedQueryKey = (token: string,) => {
+    return [
+    `/api/coach-calendar/feed/${token}.ics`
+    ] as const;
+    }
+
+
+export const getGetCoachCalendarFeedQueryOptions = <TData = Awaited<ReturnType<typeof getCoachCalendarFeed>>, TError = ErrorType<NotFoundResponse>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCoachCalendarFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCoachCalendarFeedQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCoachCalendarFeed>>> = ({ signal }) => getCoachCalendarFeed(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCoachCalendarFeed>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCoachCalendarFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getCoachCalendarFeed>>>
+export type GetCoachCalendarFeedQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a private ICS calendar feed
+ */
+
+export function useGetCoachCalendarFeed<TData = Awaited<ReturnType<typeof getCoachCalendarFeed>>, TError = ErrorType<NotFoundResponse>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCoachCalendarFeed>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCoachCalendarFeedQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetConnectedCoachCalendarUrl = (code: string,) => {
 

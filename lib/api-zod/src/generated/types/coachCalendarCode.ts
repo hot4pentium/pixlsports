@@ -9,4 +9,6 @@
 export interface CoachCalendarCode {
   /** @pattern ^[A-Z2-9]{5}$ */
   code: string;
+  /** @nullable */
+  subscriptionFeedPath: string | null;
 }

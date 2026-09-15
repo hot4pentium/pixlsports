@@ -132,6 +132,12 @@ export type HypeCardShareList = HypeCardShare[];
 export interface CoachCalendarCode {
   /** @pattern ^[A-Z2-9]{5}$ */
   code: string;
+  /** @nullable */
+  subscriptionFeedPath: string | null;
+}
+
+export interface CoachCalendarSubscription {
+  feedPath: string;
 }
 
 export interface CoachCalendarConnectInput {

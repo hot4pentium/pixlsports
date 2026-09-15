@@ -5,6 +5,8 @@ import {
   useCreateProject,
   useGetProject,
   useGetCoachCalendarCode,
+  useCreateCoachCalendarSubscription,
+  useDeleteCoachCalendarSubscription,
   useGetConnectedCoachCalendar,
   useConnectToCoachCalendar,
   getGetProjectQueryKey,
@@ -809,6 +811,7 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
 }
 
 function CoachCalendarCodePanel() {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useGetCoachCalendarCode({
     query: {
       staleTime: Infinity,
@@ -817,12 +820,49 @@ function CoachCalendarCodePanel() {
     },
   });
   const [copied, setCopied] = useState(false);
+  const [subscriptionCopied, setSubscriptionCopied] = useState(false);
+  const createSubscription = useCreateCoachCalendarSubscription();
+  const deleteSubscription = useDeleteCoachCalendarSubscription();
+  const feedUrl = data?.subscriptionFeedPath
+    ? new URL(data.subscriptionFeedPath, window.location.origin).toString()
+    : '';
+  const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:');
 
   const copyCode = async () => {
     if (!data?.code) return;
     await navigator.clipboard?.writeText(data.code);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  };
+
+  const refreshCodeData = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['/api/coach-calendar'] });
+  };
+
+  const createOrRefreshSubscription = () => {
+    if (
+      data?.subscriptionFeedPath
+      && !window.confirm('Refresh this subscription link? The current link will stop working immediately.')
+    ) {
+      return;
+    }
+    createSubscription.mutate(undefined, {
+      onSuccess: () => { void refreshCodeData(); },
+    });
+  };
+
+  const revokeSubscription = () => {
+    if (!window.confirm('Revoke this subscription link? Anyone using it will stop receiving schedule updates.')) return;
+    deleteSubscription.mutate(undefined, {
+      onSuccess: () => { void refreshCodeData(); },
+    });
+  };
+
+  const copySubscription = async () => {
+    if (!feedUrl) return;
+    await navigator.clipboard?.writeText(feedUrl);
+    setSubscriptionCopied(true);
+    window.setTimeout(() => setSubscriptionCopied(false), 1800);
   };
 
   return (
@@ -853,6 +893,81 @@ function CoachCalendarCodePanel() {
         </div>
       </div>
       {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not create the coach code. Refresh and try again.</p>}
+      <div className="relative z-10 mt-6 border-t border-primary/20 pt-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-xl">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Calendar app subscription</p>
+            <h3 className="mt-2 font-display text-2xl uppercase tracking-wide text-foreground">Keep every schedule update in sync.</h3>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">
+              Anyone with this private link can subscribe without an account. Refresh or revoke it at any time if it is shared with the wrong person.
+            </p>
+          </div>
+          {feedUrl ? (
+            <div className="w-full max-w-xl">
+              <div className="flex min-w-0 gap-2">
+                <input
+                  readOnly
+                  value={feedUrl}
+                  aria-label="Private calendar subscription link"
+                  className="min-w-0 flex-1 border border-border bg-background px-3 py-3 text-xs font-medium text-foreground outline-none"
+                  data-testid="input-coach-calendar-subscription"
+                />
+                <button
+                  type="button"
+                  onClick={() => { void copySubscription(); }}
+                  className="grid h-11 w-11 shrink-0 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm"
+                  aria-label="Copy private calendar subscription link"
+                  data-testid="button-copy-coach-calendar-subscription"
+                >
+                  {subscriptionCopied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={webcalUrl}
+                  className="inline-flex items-center gap-2 bg-foreground px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm"
+                  data-testid="link-open-coach-calendar-subscription"
+                >
+                  <CalendarDays className="h-4 w-4" /> Open calendar app
+                </a>
+                <button
+                  type="button"
+                  onClick={createOrRefreshSubscription}
+                  disabled={createSubscription.isPending || deleteSubscription.isPending}
+                  className="border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+                  data-testid="button-refresh-coach-calendar-subscription"
+                >
+                  {createSubscription.isPending ? 'Refreshing…' : 'Refresh link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={revokeSubscription}
+                  disabled={createSubscription.isPending || deleteSubscription.isPending}
+                  className="inline-flex items-center gap-2 border border-destructive/40 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+                  data-testid="button-revoke-coach-calendar-subscription"
+                >
+                  <Link2Off className="h-4 w-4" /> {deleteSubscription.isPending ? 'Revoking…' : 'Revoke'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={createOrRefreshSubscription}
+              disabled={createSubscription.isPending || isLoading || isError}
+              className="shrink-0 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+              data-testid="button-create-coach-calendar-subscription"
+            >
+              {createSubscription.isPending ? 'Creating…' : 'Create subscription link'}
+            </button>
+          )}
+        </div>
+        {(createSubscription.isError || deleteSubscription.isError) && (
+          <p className="mt-3 text-xs font-bold uppercase tracking-wider text-destructive">
+            The subscription link could not be updated. Try again.
+          </p>
+        )}
+      </div>
     </section>
   );
 }

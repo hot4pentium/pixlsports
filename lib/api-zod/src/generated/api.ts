@@ -352,15 +352,31 @@ export const ServeHypeCardShareMediaResponse = zod.unknown()
 
 
 /**
- * Returns the stable five-character code a coach can share with families.
+ * Returns the stable five-character code and current private subscription-link state.
  * @summary Get or create the authenticated coach's calendar code
  */
 export const getCoachCalendarCodeResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
 
 
 export const GetCoachCalendarCodeResponse = zod.object({
-  "code": zod.string().regex(getCoachCalendarCodeResponseCodeRegExp)
+  "code": zod.string().regex(getCoachCalendarCodeResponseCodeRegExp),
+  "subscriptionFeedPath": zod.string().nullable()
 })
+
+
+/**
+ * Issues a private tokenized feed link. Issuing a new link revokes the previous link.
+ * @summary Create or refresh the authenticated coach's calendar subscription
+ */
+export const CreateCoachCalendarSubscriptionResponse = zod.object({
+  "feedPath": zod.string()
+})
+
+
+/**
+ * @summary Revoke the authenticated coach's calendar subscription
+ */
+export const DeleteCoachCalendarSubscriptionResponse = zod.void()
 
 
 /**
@@ -414,6 +430,20 @@ export const ConnectToCoachCalendarResponse = zod.object({
   "scheduleAvailable": zod.boolean(),
   "updatedAt": zod.coerce.date().nullable()
 })
+
+
+/**
+ * Returns the current schedule without requiring a Pixl Sports account.
+ * @summary Get a private ICS calendar feed
+ */
+export const getCoachCalendarFeedPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,100}$');
+
+
+export const GetCoachCalendarFeedParams = zod.object({
+  "token": zod.coerce.string().regex(getCoachCalendarFeedPathTokenRegExp)
+})
+
+export const GetCoachCalendarFeedResponse = zod.unknown()
 
 
 /**

@@ -1,9 +1,10 @@
-import { randomInt } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   ConnectToCoachCalendarBody,
   ConnectToCoachCalendarResponse,
+  CreateCoachCalendarSubscriptionResponse,
   GetCoachCalendarCodeResponse,
   GetConnectedCoachCalendarParams,
   GetConnectedCoachCalendarResponse,
@@ -17,12 +18,61 @@ import {
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isAccountActive } from "../lib/accountLifecycle";
+import { buildCoachCalendarIcs } from "../lib/coachCalendarIcs";
 
 const router: IRouter = Router();
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const SUBSCRIPTION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,100}$/;
 
 function createCode() {
   return Array.from({ length: 5 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join("");
+}
+
+function createSubscriptionToken() {
+  return randomBytes(32).toString("base64url");
+}
+
+function subscriptionFeedPath(token: string) {
+  return `/api/coach-calendar/feed/${token}.ics`;
+}
+
+export async function createCoachCalendarSubscriptionForOwner(ownerClerkUserId: string) {
+  await getOrCreateCode(ownerClerkUserId);
+  const token = createSubscriptionToken();
+  const [subscription] = await db
+    .update(coachCalendarCodesTable)
+    .set({
+      subscriptionToken: token,
+      subscriptionRevokedAt: null,
+    })
+    .where(eq(coachCalendarCodesTable.ownerClerkUserId, ownerClerkUserId))
+    .returning();
+  if (!subscription) throw new Error("Unable to create calendar subscription");
+  return { token, feedPath: subscriptionFeedPath(token) };
+}
+
+export async function revokeCoachCalendarSubscriptionForOwner(ownerClerkUserId: string) {
+  await db
+    .update(coachCalendarCodesTable)
+    .set({ subscriptionRevokedAt: new Date() })
+    .where(eq(coachCalendarCodesTable.ownerClerkUserId, ownerClerkUserId));
+}
+
+export async function findActiveCoachCalendarSubscription(token: string) {
+  if (!SUBSCRIPTION_TOKEN_PATTERN.test(token)) return null;
+  const [subscription] = await db
+    .select()
+    .from(coachCalendarCodesTable)
+    .where(eq(coachCalendarCodesTable.subscriptionToken, token))
+    .limit(1);
+  if (
+    !subscription
+    || subscription.subscriptionRevokedAt
+    || !(await isAccountActive(subscription.ownerClerkUserId))
+  ) {
+    return null;
+  }
+  return subscription;
 }
 
 function asString(value: unknown) {
@@ -142,9 +192,36 @@ router.get("/coach-calendar", requireAuth, async (_req, res): Promise<void> => {
   try {
     const ownerClerkUserId = getRequiredClerkUserId(res);
     const code = await getOrCreateCode(ownerClerkUserId);
-    res.json(GetCoachCalendarCodeResponse.parse({ code: code.code }));
+    res.json(GetCoachCalendarCodeResponse.parse({
+      code: code.code,
+      subscriptionFeedPath: code.subscriptionToken && !code.subscriptionRevokedAt
+        ? subscriptionFeedPath(code.subscriptionToken)
+        : null,
+    }));
   } catch (error) {
     res.status(500).json({ error: "Unable to create coach calendar code" });
+  }
+});
+
+router.post("/coach-calendar/subscription", requireAuth, async (_req, res): Promise<void> => {
+  try {
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const subscription = await createCoachCalendarSubscriptionForOwner(ownerClerkUserId);
+    res.json(CreateCoachCalendarSubscriptionResponse.parse({
+      feedPath: subscription.feedPath,
+    }));
+  } catch {
+    res.status(500).json({ error: "Unable to create calendar subscription" });
+  }
+});
+
+router.delete("/coach-calendar/subscription", requireAuth, async (_req, res): Promise<void> => {
+  try {
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    await revokeCoachCalendarSubscriptionForOwner(ownerClerkUserId);
+    res.status(204).end();
+  } catch {
+    res.status(500).json({ error: "Unable to revoke calendar subscription" });
   }
 });
 
@@ -174,6 +251,30 @@ router.post("/coach-calendar/connect", requireAuth, async (req, res): Promise<vo
 
   const response = await calendarResponse(code.code, code.ownerClerkUserId);
   res.json(ConnectToCoachCalendarResponse.parse(response));
+});
+
+router.get("/coach-calendar/feed/:token", async (req, res): Promise<void> => {
+  const rawToken = typeof req.params.token === "string" ? req.params.token : "";
+  const token = rawToken.endsWith(".ics") ? rawToken.slice(0, -4) : rawToken;
+  if (!SUBSCRIPTION_TOKEN_PATTERN.test(token)) {
+    res.status(404).json({ error: "Calendar subscription not found" });
+    return;
+  }
+
+  const subscription = await findActiveCoachCalendarSubscription(token);
+  if (!subscription) {
+    res.status(404).json({ error: "Calendar subscription not found" });
+    return;
+  }
+
+  const schedule = await findSchedule(subscription.ownerClerkUserId);
+  const body = buildCoachCalendarIcs(subscription.ownerClerkUserId, schedule);
+  res.set({
+    "Cache-Control": "private, max-age=0, must-revalidate",
+    "Content-Disposition": 'inline; filename="pixl-sports-schedule.ics"',
+    "Content-Type": "text/calendar; charset=utf-8",
+  });
+  res.status(200).send(body);
 });
 
 router.get("/coach-calendar/:code", requireAuth, async (req, res): Promise<void> => {
