@@ -567,7 +567,7 @@ export function MobilePreviewDialog({
         <div ref={previewStageRef} className="relative flex min-h-0 flex-1 items-center justify-center border border-border bg-muted p-3 clip-angled-sm sm:p-5">
           <div className="absolute inset-0 bg-tech-grid opacity-30" />
           <div
-            className="relative z-10 overflow-hidden shadow-xl clip-angled"
+            className="relative z-10 overflow-hidden rounded-[22px] shadow-xl"
             style={{
               aspectRatio: `${dimensions.width}/${dimensions.height}`,
               width: `${fittedWidth}px`,
