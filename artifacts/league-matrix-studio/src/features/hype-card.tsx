@@ -436,7 +436,7 @@ export function PreviewCanvas({
           }}
         >
           <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" />
-          <span className="pointer-events-none absolute right-4 top-4 z-30 flex items-center gap-2 bg-foreground/85 px-3 py-2 text-xs font-bold uppercase tracking-widest text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 clip-angled-sm">
+          <span className="pointer-events-none absolute right-4 top-20 z-30 flex items-center gap-2 bg-foreground/85 px-3 py-2 text-xs font-bold uppercase tracking-widest text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 clip-angled-sm">
             <Maximize2 className="h-4 w-4" />
             Expand
           </span>
