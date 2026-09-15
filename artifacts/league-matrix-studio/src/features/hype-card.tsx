@@ -1489,8 +1489,6 @@ export function HypeCardEditor() {
         </div>
       )}
 
-      {validation && <div className="block border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground sm:hidden">{validation}</div>}
-
       <div className="flex flex-col sm:min-h-0 sm:flex-1 sm:flex-row">
         <aside className="hype-walkthrough-panel w-full flex-shrink-0 border-r border-border bg-background sm:min-h-0 sm:w-[460px] sm:overflow-y-auto sm:overscroll-contain lg:w-[500px] xl:w-[520px]">
           <div className="flex flex-col gap-6 p-5">
