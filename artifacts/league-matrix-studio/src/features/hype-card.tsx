@@ -415,7 +415,7 @@ export function PreviewCanvas({
       <div className="absolute inset-0 bg-tech-grid opacity-40 pointer-events-none" />
       <div ref={stageRef} className="absolute inset-4 flex items-center justify-center sm:inset-8">
         <div
-          className="relative z-10 overflow-hidden shadow-2xl clip-angled"
+          className="relative z-10 overflow-hidden rounded-[22px] shadow-2xl"
           style={{
             aspectRatio: `${dimensions.width}/${dimensions.height}`,
             width: previewWidth || '100%',
