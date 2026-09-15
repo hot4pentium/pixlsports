@@ -3,8 +3,8 @@ import { escapeXml } from './hype-card-types';
 const POSITION_BADGE_RIGHT = 938;
 const POSITION_BADGE_MIN_WIDTH = 152;
 const POSITION_BADGE_MAX_WIDTH = 310;
-const POSITION_BADGE_TEXT_X = 920;
-const POSITION_BADGE_TEXT_PADDING = 40;
+const POSITION_BADGE_TEXT_X = 902;
+const POSITION_BADGE_TEXT_PADDING = 64;
 
 function estimateTextWidth(text: string, fontSize: number, charWidthRatio: number, letterSpacing: number) {
   return text.length * fontSize * charWidthRatio + (text.length > 1 ? (text.length - 1) * letterSpacing : 0);

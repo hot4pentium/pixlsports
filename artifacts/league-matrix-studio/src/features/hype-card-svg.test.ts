@@ -13,7 +13,7 @@ test('keeps short position labels in the compact top-right badge', () => {
   assert.equal(layout.fontSize, 19);
   assert.equal(layout.textLength, null);
   assert.match(markup, /<path d="M786 46 H938 V114 H804 L786 96 Z"/);
-  assert.match(markup, /<text x="920" y="95"[^>]*font-size="19"[^>]*>GK<\/text>/);
+  assert.match(markup, /<text x="902" y="95"[^>]*font-size="19"[^>]*>GK<\/text>/);
 });
 
 test('expands longer position labels to the left while keeping the right edge fixed', () => {
