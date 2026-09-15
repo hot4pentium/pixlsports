@@ -49,6 +49,7 @@ import { shadcn } from '@clerk/themes';
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { HypeCardEditor } from '@/features/hype-card';
+import { PublicHypeCardPage } from '@/features/public-hype-card';
 import {
   createBlankScheduleEvent,
   defaultScheduleEvents,
@@ -3180,7 +3181,7 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn } = useUser();
-  const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
+  const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/watch/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
   const { data: lifecycle, isLoading } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
@@ -3271,6 +3272,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
+               <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>

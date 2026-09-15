@@ -31,6 +31,11 @@ import type {
   CoachCalendarConnectInput,
   Error,
   HealthStatus,
+  HypeCardShare,
+  HypeCardShareInput,
+  HypeCardShareList,
+  HypeCardShareUpload,
+  HypeCardShareUploadInput,
   MediaUpload,
   MediaUploadInput,
   NotFoundResponse,
@@ -481,6 +486,492 @@ export const useDeleteScheduleShare = <TError = ErrorType<UnauthorizedResponse |
       > => {
       return useMutation(getDeleteScheduleShareMutationOptions(options));
     }
+
+export const getListHypeCardSharesUrl = () => {
+
+
+
+
+  return `/api/hype-card-shares`
+}
+
+/**
+ * @summary List owned Hype Card shares
+ */
+export const listHypeCardShares = async ( options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShareList> => {
+
+  return customFetch<HypeCardShareList>(getListHypeCardSharesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHypeCardSharesQueryKey = () => {
+    return [
+    `/api/hype-card-shares`
+    ] as const;
+    }
+
+
+export const getListHypeCardSharesQueryOptions = <TData = Awaited<ReturnType<typeof listHypeCardShares>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHypeCardSharesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHypeCardShares>>> = ({ signal }) => listHypeCardShares({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHypeCardSharesQueryResult = NonNullable<Awaited<ReturnType<typeof listHypeCardShares>>>
+export type ListHypeCardSharesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List owned Hype Card shares
+ */
+
+export function useListHypeCardShares<TData = Awaited<ReturnType<typeof listHypeCardShares>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHypeCardSharesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateHypeCardShareUrl = () => {
+
+
+
+
+  return `/api/hype-card-shares`
+}
+
+/**
+ * @summary Publish an interactive Hype Card
+ */
+export const createHypeCardShare = async (hypeCardShareInput: HypeCardShareInput, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShare> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<HypeCardShare>(getCreateHypeCardShareUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(hypeCardShareInput)
+  }
+);}
+
+
+
+
+
+export const getCreateHypeCardShareMutationKey = () => ['createHypeCardShare'] as const;
+
+export const getCreateHypeCardShareMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShare>>, TError,CreateHypeCardShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShare>>, TError,CreateHypeCardShareMutationVariables, TContext> => {
+
+const mutationKey = getCreateHypeCardShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHypeCardShare>>, CreateHypeCardShareMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createHypeCardShare(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHypeCardShareMutationResult = NonNullable<Awaited<ReturnType<typeof createHypeCardShare>>>
+    export type CreateHypeCardShareMutationBody = BodyType<HypeCardShareInput>
+    export type CreateHypeCardShareMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type CreateHypeCardShareMutationVariables = {data: BodyType<HypeCardShareInput>}
+
+    /**
+ * @summary Publish an interactive Hype Card
+ */
+export const useCreateHypeCardShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShare>>, TError,CreateHypeCardShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createHypeCardShare>>,
+        TError,
+        CreateHypeCardShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateHypeCardShareMutationOptions(options));
+    }
+
+export const getRequestHypeCardShareUploadUrlUrl = () => {
+
+
+
+
+  return `/api/hype-card-shares/upload-url`
+}
+
+/**
+ * @summary Request a private upload URL for prepared share media
+ */
+export const requestHypeCardShareUploadUrl = async (hypeCardShareUploadInput: HypeCardShareUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShareUpload> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<HypeCardShareUpload>(getRequestHypeCardShareUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(hypeCardShareUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestHypeCardShareUploadUrlMutationKey = () => ['requestHypeCardShareUploadUrl'] as const;
+
+export const getRequestHypeCardShareUploadUrlMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestHypeCardShareUploadUrl>>, TError,RequestHypeCardShareUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestHypeCardShareUploadUrl>>, TError,RequestHypeCardShareUploadUrlMutationVariables, TContext> => {
+
+const mutationKey = getRequestHypeCardShareUploadUrlMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestHypeCardShareUploadUrl>>, RequestHypeCardShareUploadUrlMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestHypeCardShareUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestHypeCardShareUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestHypeCardShareUploadUrl>>>
+    export type RequestHypeCardShareUploadUrlMutationBody = BodyType<HypeCardShareUploadInput>
+    export type RequestHypeCardShareUploadUrlMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type RequestHypeCardShareUploadUrlMutationVariables = {data: BodyType<HypeCardShareUploadInput>}
+
+    /**
+ * @summary Request a private upload URL for prepared share media
+ */
+export const useRequestHypeCardShareUploadUrl = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestHypeCardShareUploadUrl>>, TError,RequestHypeCardShareUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestHypeCardShareUploadUrl>>,
+        TError,
+        RequestHypeCardShareUploadUrlMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestHypeCardShareUploadUrlMutationOptions(options));
+    }
+
+export const getGetHypeCardShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}`
+}
+
+/**
+ * @summary Get a public interactive Hype Card
+ */
+export const getHypeCardShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShare> => {
+
+  return customFetch<HypeCardShare>(getGetHypeCardShareUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHypeCardShareQueryKey = (shareToken: string,) => {
+    return [
+    `/api/hype-card-shares/${shareToken}`
+    ] as const;
+    }
+
+
+export const getGetHypeCardShareQueryOptions = <TData = Awaited<ReturnType<typeof getHypeCardShare>>, TError = ErrorType<NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHypeCardShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHypeCardShareQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHypeCardShare>>> = ({ signal }) => getHypeCardShare(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHypeCardShare>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHypeCardShareQueryResult = NonNullable<Awaited<ReturnType<typeof getHypeCardShare>>>
+export type GetHypeCardShareQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a public interactive Hype Card
+ */
+
+export function useGetHypeCardShare<TData = Awaited<ReturnType<typeof getHypeCardShare>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHypeCardShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHypeCardShareQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteHypeCardShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}`
+}
+
+/**
+ * @summary Revoke an owned Hype Card share
+ */
+export const deleteHypeCardShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteHypeCardShareUrl(shareToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteHypeCardShareMutationKey = () => ['deleteHypeCardShare'] as const;
+
+export const getDeleteHypeCardShareMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHypeCardShare>>, TError,DeleteHypeCardShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteHypeCardShare>>, TError,DeleteHypeCardShareMutationVariables, TContext> => {
+
+const mutationKey = getDeleteHypeCardShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteHypeCardShare>>, DeleteHypeCardShareMutationVariables> = (props) => {
+          const {shareToken} = props ?? {};
+
+          return  deleteHypeCardShare(shareToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteHypeCardShareMutationResult = NonNullable<Awaited<ReturnType<typeof deleteHypeCardShare>>>
+
+    export type DeleteHypeCardShareMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteHypeCardShareMutationVariables = {shareToken: string}
+
+    /**
+ * @summary Revoke an owned Hype Card share
+ */
+export const useDeleteHypeCardShare = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHypeCardShare>>, TError,DeleteHypeCardShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteHypeCardShare>>,
+        TError,
+        DeleteHypeCardShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteHypeCardShareMutationOptions(options));
+    }
+
+export const getServeHypeCardShareMediaUrl = (shareToken: string,
+    mediaKind: 'video' | 'poster',) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}/media/${mediaKind}`
+}
+
+/**
+ * @summary Serve media for an active public Hype Card share
+ */
+export const serveHypeCardShareMedia = async (shareToken: string,
+    mediaKind: 'video' | 'poster', options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getServeHypeCardShareMediaUrl(shareToken,mediaKind),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getServeHypeCardShareMediaQueryKey = (shareToken: string,
+    mediaKind: 'video' | 'poster',) => {
+    return [
+    `/api/hype-card-shares/${shareToken}/media/${mediaKind}`
+    ] as const;
+    }
+
+
+export const getServeHypeCardShareMediaQueryOptions = <TData = Awaited<ReturnType<typeof serveHypeCardShareMedia>>, TError = ErrorType<NotFoundResponse>>(shareToken: string,
+    mediaKind: 'video' | 'poster', options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof serveHypeCardShareMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getServeHypeCardShareMediaQueryKey(shareToken,mediaKind);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof serveHypeCardShareMedia>>> = ({ signal }) => serveHypeCardShareMedia(shareToken,mediaKind, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined && mediaKind !== null && mediaKind !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof serveHypeCardShareMedia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ServeHypeCardShareMediaQueryResult = NonNullable<Awaited<ReturnType<typeof serveHypeCardShareMedia>>>
+export type ServeHypeCardShareMediaQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Serve media for an active public Hype Card share
+ */
+
+export function useServeHypeCardShareMedia<TData = Awaited<ReturnType<typeof serveHypeCardShareMedia>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string,
+    mediaKind: 'video' | 'poster', options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof serveHypeCardShareMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getServeHypeCardShareMediaQueryOptions(shareToken,mediaKind,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetCoachCalendarCodeUrl = () => {
 

@@ -240,6 +240,118 @@ export const DeleteScheduleShareResponse = zod.void()
 
 
 /**
+ * @summary List owned Hype Card shares
+ */
+export const ListHypeCardSharesResponseItem = zod.object({
+  "shareToken": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "manifest": zod.record(zod.string(), zod.unknown()),
+  "videoUrl": zod.string(),
+  "posterUrl": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListHypeCardSharesResponse = zod.array(ListHypeCardSharesResponseItem)
+
+
+/**
+ * @summary Publish an interactive Hype Card
+ */
+export const createHypeCardShareBodyTitleMax = 200;
+
+export const createHypeCardShareBodySlugMax = 80;
+
+
+export const createHypeCardShareBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const createHypeCardShareBodyVideoObjectPathRegExp = new RegExp('^/objects/uploads/[A-Za-z0-9-]+$');
+export const createHypeCardShareBodyPosterObjectPathRegExp = new RegExp('^/objects/uploads/[A-Za-z0-9-]+$');
+
+
+export const CreateHypeCardShareBody = zod.object({
+  "title": zod.string().min(1).max(createHypeCardShareBodyTitleMax),
+  "slug": zod.string().min(1).max(createHypeCardShareBodySlugMax).regex(createHypeCardShareBodySlugRegExp),
+  "manifest": zod.record(zod.string(), zod.unknown()),
+  "videoObjectPath": zod.string().regex(createHypeCardShareBodyVideoObjectPathRegExp),
+  "posterObjectPath": zod.string().regex(createHypeCardShareBodyPosterObjectPathRegExp)
+})
+
+export const CreateHypeCardShareResponse = zod.object({
+  "shareToken": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "manifest": zod.record(zod.string(), zod.unknown()),
+  "videoUrl": zod.string(),
+  "posterUrl": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Request a private upload URL for prepared share media
+ */
+export const RequestHypeCardShareUploadUrlBody = zod.object({
+  "mediaKind": zod.enum(['video', 'poster']),
+  "contentType": zod.enum(['video/mp4', 'video/webm', 'image/jpeg', 'image/png'])
+})
+
+export const RequestHypeCardShareUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Get a public interactive Hype Card
+ */
+export const getHypeCardSharePathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetHypeCardShareParams = zod.object({
+  "shareToken": zod.coerce.string().regex(getHypeCardSharePathShareTokenRegExp)
+})
+
+export const GetHypeCardShareResponse = zod.object({
+  "shareToken": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "manifest": zod.record(zod.string(), zod.unknown()),
+  "videoUrl": zod.string(),
+  "posterUrl": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Revoke an owned Hype Card share
+ */
+export const deleteHypeCardSharePathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const DeleteHypeCardShareParams = zod.object({
+  "shareToken": zod.coerce.string().regex(deleteHypeCardSharePathShareTokenRegExp)
+})
+
+export const DeleteHypeCardShareResponse = zod.void()
+
+
+/**
+ * @summary Serve media for an active public Hype Card share
+ */
+export const serveHypeCardShareMediaPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ServeHypeCardShareMediaParams = zod.object({
+  "shareToken": zod.coerce.string().regex(serveHypeCardShareMediaPathShareTokenRegExp),
+  "mediaKind": zod.enum(['video', 'poster'])
+})
+
+export const ServeHypeCardShareMediaResponse = zod.unknown()
+
+
+/**
  * Returns the stable five-character code a coach can share with families.
  * @summary Get or create the authenticated coach's calendar code
  */

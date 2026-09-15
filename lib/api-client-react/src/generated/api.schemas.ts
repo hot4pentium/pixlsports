@@ -65,6 +65,70 @@ export interface ScheduleShare {
   createdAt: string;
 }
 
+export type HypeCardShareUploadInputMediaKind = typeof HypeCardShareUploadInputMediaKind[keyof typeof HypeCardShareUploadInputMediaKind];
+
+
+export const HypeCardShareUploadInputMediaKind = {
+  video: 'video',
+  poster: 'poster',
+} as const;
+
+export type HypeCardShareUploadInputContentType = typeof HypeCardShareUploadInputContentType[keyof typeof HypeCardShareUploadInputContentType];
+
+
+export const HypeCardShareUploadInputContentType = {
+  'video/mp4': 'video/mp4',
+  'video/webm': 'video/webm',
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+} as const;
+
+export interface HypeCardShareUploadInput {
+  mediaKind: HypeCardShareUploadInputMediaKind;
+  contentType: HypeCardShareUploadInputContentType;
+}
+
+export interface HypeCardShareUpload {
+  uploadUrl: string;
+  objectPath: string;
+}
+
+export type HypeCardShareInputManifest = { [key: string]: unknown };
+
+export interface HypeCardShareInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug: string;
+  manifest: HypeCardShareInputManifest;
+  /** @pattern ^/objects/uploads/[A-Za-z0-9-]+$ */
+  videoObjectPath: string;
+  /** @pattern ^/objects/uploads/[A-Za-z0-9-]+$ */
+  posterObjectPath: string;
+}
+
+export type HypeCardShareManifest = { [key: string]: unknown };
+
+export interface HypeCardShare {
+  shareToken: string;
+  slug: string;
+  title: string;
+  manifest: HypeCardShareManifest;
+  videoUrl: string;
+  posterUrl: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export type HypeCardShareList = HypeCardShare[];
+
 export interface CoachCalendarCode {
   /** @pattern ^[A-Z2-9]{5}$ */
   code: string;

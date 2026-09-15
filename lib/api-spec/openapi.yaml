@@ -16,6 +16,8 @@ tags:
     description: Project media storage operations
   - name: schedule-shares
     description: Public schedule sharing operations
+  - name: hype-card-shares
+    description: Interactive Hype Card sharing operations
   - name: coach-calendars
     description: Authenticated coach calendar connections
   - name: account-access
@@ -108,6 +110,112 @@ paths:
           description: Public schedule share revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares:
+    get:
+      operationId: listHypeCardShares
+      tags: [hype-card-shares]
+      summary: List owned Hype Card shares
+      responses:
+        "200":
+          description: Owned shares, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createHypeCardShare
+      tags: [hype-card-shares]
+      summary: Publish an interactive Hype Card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardShareInput"
+      responses:
+        "201":
+          description: Interactive share created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Prepared share media is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /hype-card-shares/upload-url:
+    post:
+      operationId: requestHypeCardShareUploadUrl
+      tags: [hype-card-shares]
+      summary: Request a private upload URL for prepared share media
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardShareUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /hype-card-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+    get:
+      operationId: getHypeCardShare
+      tags: [hype-card-shares]
+      summary: Get a public interactive Hype Card
+      responses:
+        "200":
+          description: Public Hype Card details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteHypeCardShare
+      tags: [hype-card-shares]
+      summary: Revoke an owned Hype Card share
+      responses:
+        "204":
+          description: Share revoked and media removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/media/{mediaKind}:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+      - $ref: "#/components/parameters/HypeCardShareMediaKind"
+    get:
+      operationId: serveHypeCardShareMedia
+      tags: [hype-card-shares]
+      summary: Serve media for an active public Hype Card share
+      responses:
+        "200":
+          description: Prepared clip or poster bytes
+          content:
+            image/*: {}
+            video/*: {}
         "404":
           $ref: "#/components/responses/NotFound"
   /coach-calendar:
@@ -503,6 +611,20 @@ components:
       schema:
         type: string
         pattern: "^[A-Z2-9]{5}$"
+    HypeCardShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{24,80}$"
+    HypeCardShareMediaKind:
+      name: mediaKind
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [video, poster]
   responses:
     BadRequest:
       description: Invalid request
@@ -576,6 +698,74 @@ components:
         createdAt:
           type: string
           format: date-time
+    HypeCardShareUploadInput:
+      type: object
+      required: [mediaKind, contentType]
+      properties:
+        mediaKind:
+          type: string
+          enum: [video, poster]
+        contentType:
+          type: string
+          enum: [video/mp4, video/webm, image/jpeg, image/png]
+    HypeCardShareUpload:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+    HypeCardShareInput:
+      type: object
+      required: [title, slug, manifest, videoObjectPath, posterObjectPath]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        manifest:
+          type: object
+          additionalProperties: true
+        videoObjectPath:
+          type: string
+          pattern: "^/objects/uploads/[A-Za-z0-9-]+$"
+        posterObjectPath:
+          type: string
+          pattern: "^/objects/uploads/[A-Za-z0-9-]+$"
+    HypeCardShare:
+      type: object
+      required: [shareToken, slug, title, manifest, videoUrl, posterUrl, expiresAt, createdAt]
+      properties:
+        shareToken:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        manifest:
+          type: object
+          additionalProperties: true
+        videoUrl:
+          type: string
+        posterUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    HypeCardShareList:
+      type: array
+      items:
+        $ref: "#/components/schemas/HypeCardShare"
     CoachCalendarCode:
       type: object
       required: [code]

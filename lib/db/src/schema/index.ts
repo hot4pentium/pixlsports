@@ -44,6 +44,27 @@ export const scheduleSharesTable = pgTable("schedule_shares", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
+export const hypeCardSharesTable = pgTable("hype_card_shares", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  publicToken: text("public_token").notNull(),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  manifest: jsonb("manifest").notNull(),
+  videoObjectPath: text("video_object_path").notNull(),
+  videoContentType: text("video_content_type").notNull(),
+  videoSize: integer("video_size").notNull(),
+  posterObjectPath: text("poster_object_path").notNull(),
+  posterContentType: text("poster_content_type").notNull(),
+  posterSize: integer("poster_size").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => ({
+  publicTokenUnique: uniqueIndex("hype_card_shares_public_token_unique").on(table.publicToken),
+}));
+
 export const coachCalendarCodesTable = pgTable("coach_calendar_codes", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
@@ -110,6 +131,7 @@ export const insertProjectMediaSchema = createInsertSchema(projectMediaTable).om
 export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
 export type ProjectMedia = typeof projectMediaTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
+export type HypeCardShare = typeof hypeCardSharesTable.$inferSelect;
 export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
 export type AccountAccess = typeof accountAccessTable.$inferSelect;
 export type AccountEntitlementEvent = typeof accountEntitlementEventsTable.$inferSelect;

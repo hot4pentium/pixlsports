@@ -6,6 +6,7 @@ import {
   coachCalendarCodesTable,
   db,
   guestUsageEventsTable,
+  hypeCardSharesTable,
   projectMediaTable,
   scheduleSharesTable,
 } from "@workspace/db";
@@ -79,6 +80,13 @@ async function purgeAccount(
     .select({ objectPath: projectMediaTable.objectPath })
     .from(projectMediaTable)
     .where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
+  const hypeShares = await db
+    .select({
+      videoObjectPath: hypeCardSharesTable.videoObjectPath,
+      posterObjectPath: hypeCardSharesTable.posterObjectPath,
+    })
+    .from(hypeCardSharesTable)
+    .where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
 
   for (const item of media) {
     try {
@@ -87,11 +95,21 @@ async function purgeAccount(
       if (!(error instanceof ObjectNotFoundError)) throw error;
     }
   }
+  for (const share of hypeShares) {
+    for (const objectPath of [share.videoObjectPath, share.posterObjectPath]) {
+      try {
+        await dependencies.deleteObject(objectPath);
+      } catch (error) {
+        if (!(error instanceof ObjectNotFoundError)) throw error;
+      }
+    }
+  }
 
   await db.transaction(async (tx) => {
     await tx.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(coachCalendarCodesTable).where(eq(coachCalendarCodesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, account.ownerClerkUserId));
   });

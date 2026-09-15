@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw
+  LayoutGrid, Lightbulb, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2Off, Clipboard
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -18,6 +18,12 @@ import {
   useGetAccountAccess,
   getGetAccountAccessQueryKey,
   serveProjectMedia,
+  useCreateHypeCardShare,
+  useDeleteHypeCardShare,
+  useListHypeCardShares,
+  getListHypeCardSharesQueryKey,
+  requestHypeCardShareUploadUrl,
+  type HypeCardShare,
   type Project
 } from '@workspace/api-client-react';
 
@@ -38,6 +44,7 @@ import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } fro
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
+import { FullSizeVideoDialog, OpenFullSizeButton, prepareHypeCardShareMedia } from './hype-card-share';
 
 
 function drawVideoContain(
@@ -264,18 +271,22 @@ function AssetButton({
   );
 }
 
-function PreviewArtwork({
+export function PreviewArtwork({
   project,
   videoUrl,
   videoRef,
   ns,
   testId,
+  poster,
+  onOpenFullSize,
 }: {
   project: HypeCardProject;
   videoUrl?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
   ns: string;
   testId: string;
+  poster?: string;
+  onOpenFullSize?: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const clipInfo = getPhotoClipInfo(project, ns);
@@ -320,6 +331,7 @@ function PreviewArtwork({
           <video
             ref={videoRef}
             src={videoUrl}
+            poster={poster}
             className="absolute max-w-none object-contain"
             autoPlay
             muted
@@ -337,6 +349,7 @@ function PreviewArtwork({
         )}
       </div>
       <div className="absolute inset-0 pointer-events-none [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: buildHypeCardSvg(project, 'fg', ns) }} />
+      {hasVideo && onOpenFullSize && <OpenFullSizeButton onClick={onOpenFullSize} />}
     </div>
   );
 }
@@ -345,10 +358,12 @@ export function PreviewCanvas({
   project,
   videoUrl,
   videoRef,
+  onOpenFullSize,
 }: {
   project: HypeCardProject;
   videoUrl?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
+  onOpenFullSize?: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
@@ -423,7 +438,7 @@ export function PreviewCanvas({
             maxWidth: 760,
           }}
         >
-          <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" />
+          <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={videoRef} ns={ns} testId="hype-preview-canvas" onOpenFullSize={onOpenFullSize} />
         </div>
       </div>
       
@@ -449,12 +464,14 @@ export function MobilePreviewDialog({
   onOpenChange,
   title,
   videoUrl,
+  onOpenFullSize,
 }: {
   project: HypeCardProject;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   videoUrl?: string;
+  onOpenFullSize?: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -575,7 +592,7 @@ export function MobilePreviewDialog({
             }}
             data-testid="mobile-hype-preview-canvas"
           >
-            <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={mobileVideoRef} ns={ns} testId="mobile-hype-preview-canvas" />
+            <PreviewArtwork project={project} videoUrl={videoUrl} videoRef={mobileVideoRef} ns={ns} testId="mobile-hype-preview-canvas" onOpenFullSize={onOpenFullSize} />
              {project.mediaType === 'video' && videoUrl && (
                <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 bg-foreground/90 p-2 clip-angled-sm border border-white/10 shadow-lg">
                  <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying((playing) => !playing)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
@@ -630,6 +647,7 @@ export function HypeCardEditor() {
   const [autosaveWarning, setAutosaveWarning] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [fullSizeOpen, setFullSizeOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [validation, setValidation] = useState('');
@@ -638,6 +656,9 @@ export function HypeCardEditor() {
   const [includeAudio, setIncludeAudio] = useState(true);
   const [imageFormat, setImageFormat] = useState<'png' | 'jpeg'>('png');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [sharing, setSharing] = useState(false);
+  const [shareProgress, setShareProgress] = useState(0);
+  const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
 
@@ -645,6 +666,7 @@ export function HypeCardEditor() {
   const lastSaved = useRef<HypeCardProject>(project);
   const currentRevision = useRef<number>(1);
   const guestUsageKey = useRef(getGuestUsageKey('hype_card', 'hype-editor', false)).current;
+  const shareKey = cloudProjectId || guestUsageKey;
   const mutateFnRef = useRef<any>(null);
   const isSavingRef = useRef(false);
   const nextSaveDataRef = useRef<HypeCardProject | null>(null);
@@ -696,6 +718,16 @@ export function HypeCardEditor() {
   });
   
   const createProject = useCreateProject();
+  const createHypeShare = useCreateHypeCardShare();
+  const deleteHypeShare = useDeleteHypeCardShare();
+  const { data: hypeShares } = useListHypeCardShares({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListHypeCardSharesQueryKey(),
+      staleTime: 10_000,
+    },
+  });
+  const existingShare = publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
   useEffect(() => {
@@ -1252,6 +1284,97 @@ export function HypeCardEditor() {
     }
   };
 
+  const shareUrlFor = (share: HypeCardShare) => {
+    const cleanBase = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const origin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
+      ? 'https://pixlsports.com'
+      : window.location.origin;
+    return `${origin}${cleanBase}/watch/${share.slug}/${share.shareToken}`;
+  };
+
+  const handleShare = async () => {
+    setValidation('');
+    setNotice('');
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    if (project.mediaType !== 'video' || !videoUrl || !videoRef.current) {
+      setValidation('Interactive share links require an attached video. PNG and JPG exports remain static.');
+      return;
+    }
+    setSharing(true);
+    setShareProgress(0);
+    try {
+      const prepared = await prepareHypeCardShareMedia(videoRef.current, project, setShareProgress);
+      const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
+      const [videoUpload, posterUpload] = await Promise.all([
+        requestHypeCardShareUploadUrl({ mediaKind: 'video', contentType: videoContentType }),
+        requestHypeCardShareUploadUrl({ mediaKind: 'poster', contentType: 'image/jpeg' }),
+      ]);
+      const uploadResponses = await Promise.all([
+        fetch(videoUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': videoContentType }, body: prepared.video }),
+        fetch(posterUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: prepared.poster }),
+      ]);
+      if (uploadResponses.some((response) => !response.ok)) throw new Error('The prepared media could not be uploaded.');
+
+      const duration = Math.max(0.1, project.trimEnd - project.trimStart);
+      const shareProject: HypeCardProject = {
+        ...project,
+        mediaType: 'video',
+        mediaId: null,
+        photo: null,
+        trimStart: 0,
+        trimEnd: duration,
+        videoMeta: {
+          name: project.videoMeta?.name || 'Hype Card highlight',
+          type: videoContentType,
+          size: prepared.video.size,
+          duration,
+        },
+      };
+      const created = await createHypeShare.mutateAsync({
+        data: {
+          title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline}`,
+          slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80),
+          manifest: { version: 1, shareKey, project: shareProject },
+          videoObjectPath: videoUpload.objectPath,
+          posterObjectPath: posterUpload.objectPath,
+        },
+      });
+      if (existingShare && existingShare.shareToken !== created.shareToken) {
+        await deleteHypeShare.mutateAsync({ shareToken: existingShare.shareToken }).catch(() => undefined);
+      }
+      setPublishedShare(created);
+      await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
+      const url = shareUrlFor(created);
+      try {
+        if (navigator.share) await navigator.share({ title: created.title, text: 'Watch this Pixl Sports Hype Card', url });
+        else await navigator.clipboard.writeText(url);
+      } catch {
+        await navigator.clipboard.writeText(url).catch(() => undefined);
+      }
+      setNotice('Interactive link published for 30 days. The link is ready to share.');
+    } catch (error) {
+      console.error(error);
+      setNotice(error instanceof Error ? error.message : 'Could not publish the interactive Hype Card.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const revokeShare = async () => {
+    if (!existingShare || !window.confirm('Revoke this link and remove its shared clip and poster?')) return;
+    try {
+      await deleteHypeShare.mutateAsync({ shareToken: existingShare.shareToken });
+      setPublishedShare(null);
+      await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
+      setNotice('Interactive link revoked and shared media removed.');
+    } catch {
+      setNotice('The interactive link could not be revoked.');
+    }
+  };
+
 
   return (
     <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
@@ -1320,6 +1443,10 @@ export function HypeCardEditor() {
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
+            <Button variant="outline" onClick={handleShare} disabled={sharing || exporting} className="gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Replace interactive share link' : 'Share interactive Hype Card'}>
+              <Share2 className="h-4 w-4" />
+              <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Replace link' : 'Share'}</span>
+            </Button>
             {exporting && (
               <Button variant="outline" size="icon" onClick={handleCancelExport} className="rounded-xl border-destructive text-destructive">
                 <X className="h-4 w-4" />
@@ -1336,6 +1463,15 @@ export function HypeCardEditor() {
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground">
           {notice}
           <button type="button" onClick={() => setNotice('')}><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {existingShare && (
+        <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
+          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Interactive link</span>
+          <input readOnly value={shareUrlFor(existingShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Interactive Hype Card share link" />
+          <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingShare)).then(() => setNotice('Share link copied.')).catch(() => setNotice('Select and copy the link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
+          <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
         </div>
       )}
 
@@ -1638,12 +1774,13 @@ export function HypeCardEditor() {
 
         <main className="block h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8">
           <div className="mx-auto h-full max-w-[800px]">
-            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} />
+            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onOpenFullSize={() => setFullSizeOpen(true)} />
           </div>
         </main>
       </div>
 
-      <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
+      <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} onOpenFullSize={() => setFullSizeOpen(true)} />
+      <FullSizeVideoDialog open={fullSizeOpen} onOpenChange={setFullSizeOpen} src={videoUrl} poster={project.photo ?? undefined} title={`${project.playerName || project.teamName || 'Hype Card'} · ${project.headline}`} trimStart={project.trimStart} trimEnd={project.trimEnd} />
     
       {saveStatus === 'Conflict' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
