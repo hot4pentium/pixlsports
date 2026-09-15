@@ -138,6 +138,16 @@ export const defaultProject = (): HypeCardProject => ({
 });
 
 export const hypeCardProjectStorageKey = 'leaguematrix-hype-card-project-v2';
+export const hypeCardEditorSessionStorageKey = 'leaguematrix-hype-card-editor-session-v1';
+
+type HypeCardEditorSession = {
+  ownerId: string;
+  hasLocalDraft: true;
+};
+
+export function shouldResumeLocalHypeCard(search: string): boolean {
+  return new URLSearchParams(search).get('resume') === 'local';
+}
 
 export function isSafeRasterDataUrl(url: unknown): url is string {
   return typeof url === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
@@ -225,6 +235,33 @@ export function readHypeCardProject(storage: Storage = window.localStorage): Hyp
   } catch {
     return null;
   }
+}
+
+export function getInitialHypeCardProject(options: {
+  cloudProjectId?: string;
+  resumeLocal?: boolean;
+  storage?: Storage;
+} = {}): HypeCardProject {
+  if (options.cloudProjectId || !options.resumeLocal) return defaultProject();
+  return readHypeCardProject(options.storage) ?? defaultProject();
+}
+
+export function readHypeCardEditorSession(storage: Storage = window.sessionStorage): HypeCardEditorSession | null {
+  try {
+    const parsed = JSON.parse(storage.getItem(hypeCardEditorSessionStorageKey) ?? 'null') as Partial<HypeCardEditorSession> | null;
+    return parsed?.hasLocalDraft === true && typeof parsed.ownerId === 'string' && parsed.ownerId
+      ? { ownerId: parsed.ownerId, hasLocalDraft: true }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveHypeCardEditorSession(ownerId: string, storage: Storage = window.sessionStorage) {
+  storage.setItem(
+    hypeCardEditorSessionStorageKey,
+    JSON.stringify({ ownerId, hasLocalDraft: true } satisfies HypeCardEditorSession),
+  );
 }
 
 export function saveHypeCardProject(storage: Storage, project: HypeCardProject) {

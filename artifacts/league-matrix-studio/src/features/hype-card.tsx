@@ -36,7 +36,9 @@ import { Switch } from '@/components/ui/switch';
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
   HEADLINES, templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
-  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject,
+  getInitialHypeCardProject, normalizeHypeCardProject, readHypeCardProject, readHypeCardEditorSession,
+  saveHypeCardEditorSession, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject,
+  shouldResumeLocalHypeCard,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
@@ -101,6 +103,12 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+function isBrowserReload() {
+  const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  return navigation?.type === 'reload';
+}
+
 function assetUpload(
   event: ChangeEvent<HTMLInputElement>,
   onLoad: (dataUrl: string) => void,
@@ -630,13 +638,13 @@ export function HypeCardEditor() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const cloudProjectId = params.id;
+  const resumeLocal = shouldResumeLocalHypeCard(window.location.search);
   const { user, isSignedIn, isLoaded } = useUser();
   const queryClient = useQueryClient();
 
   const [project, setProject] = useState<HypeCardProject>(() => {
     try {
-      if (cloudProjectId) return defaultProject(); 
-      return readHypeCardProject() ?? defaultProject();
+      return getInitialHypeCardProject({ cloudProjectId, resumeLocal });
     } catch {
       return defaultProject();
     }
@@ -666,6 +674,7 @@ export function HypeCardEditor() {
 
   const initializedForId = useRef<string | null>(null);
   const lastSaved = useRef<HypeCardProject>(project);
+  const restoredReloadRef = useRef(false);
   const currentRevision = useRef<number>(1);
   const guestUsageKey = useRef(getGuestUsageKey('hype_card', 'hype-editor', false)).current;
   const shareKey = cloudProjectId || guestUsageKey;
@@ -686,6 +695,29 @@ export function HypeCardEditor() {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (
+      restoredReloadRef.current
+      || cloudProjectId
+      || resumeLocal
+      || !isLoaded
+      || !isSignedIn
+      || !user?.id
+      || !isBrowserReload()
+    ) return;
+
+    restoredReloadRef.current = true;
+    const session = readHypeCardEditorSession();
+    if (session?.ownerId !== user.id) return;
+
+    const savedProject = readHypeCardProject();
+    if (!savedProject) return;
+
+    setProject(savedProject);
+    lastSaved.current = savedProject;
+    setSaveStatus('Saved locally');
+  }, [cloudProjectId, isLoaded, isSignedIn, resumeLocal, user?.id]);
 
   const { data: cloudProjectData } = useGetProject(cloudProjectId || '', {
     query: { enabled: !!cloudProjectId && !!isSignedIn, queryKey: getGetProjectQueryKey(cloudProjectId || '') }
@@ -900,6 +932,7 @@ export function HypeCardEditor() {
             ? { ...project, photo: null }
             : project;
            saveHypeCardProject(window.localStorage, savedProject);
+           if (user?.id) saveHypeCardEditorSession(user.id);
           window.localStorage.setItem('leaguematrix-project', 'true');
           setAutosaveWarning('');
           setSaveStatus('Saved locally');

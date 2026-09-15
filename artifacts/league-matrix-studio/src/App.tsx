@@ -641,7 +641,7 @@ function Studio({ role }: { role: UserRole }) {
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1">Saved in local storage</p>
                   </div>
                 </div>
-                <Link href="/studio/hype-card" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform shrink-0" data-testid="link-resume-local-project">
+                <Link href="/studio/hype-card?resume=local" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform shrink-0" data-testid="link-resume-local-project">
                   Open
                 </Link>
               </div>
