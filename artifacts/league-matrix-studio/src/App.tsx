@@ -220,7 +220,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
   const { signOut } = useClerk();
 
   return (
-    <header className={`relative z-30 border-b ${dark ? 'bg-[#34383d] border-white/15' : 'bg-[#d9dcdf] border-black/10'}`}>
+    <header className={`relative z-30 border-b ${dark ? 'bg-[#70757b] border-white/25' : 'bg-[#d9dcdf] border-black/10'}`}>
       <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
         <Link href="/" className="shrink-0 transition-opacity hover:opacity-80 focus-visible:opacity-80" data-testid="link-logo-home">
           <BrandMark inverse={dark} />
