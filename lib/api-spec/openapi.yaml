@@ -229,7 +229,7 @@ paths:
       operationId: getCoachCalendarCode
       tags: [coach-calendars]
       summary: Get or create the authenticated coach's calendar code
-      description: Returns the stable five-character code a coach can share with families.
+      description: Returns the stable five-character code and current private subscription-link state.
       responses:
         "200":
           description: Coach calendar code
@@ -237,6 +237,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CoachCalendarCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /coach-calendar/subscription:
+    post:
+      operationId: createCoachCalendarSubscription
+      tags: [coach-calendars]
+      summary: Create or refresh the authenticated coach's calendar subscription
+      description: Issues a private tokenized feed link. Issuing a new link revokes the previous link.
+      responses:
+        "200":
+          description: Calendar subscription link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachCalendarSubscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteCoachCalendarSubscription
+      tags: [coach-calendars]
+      summary: Revoke the authenticated coach's calendar subscription
+      responses:
+        "204":
+          description: Calendar subscription revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
   /coach-calendar/connect:
@@ -261,6 +285,28 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /coach-calendar/feed/{token}.ics:
+    get:
+      operationId: getCoachCalendarFeed
+      tags: [coach-calendars]
+      summary: Get a private ICS calendar feed
+      description: Returns the current schedule without requiring a Pixl Sports account.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[A-Za-z0-9_-]{32,100}$"
+      responses:
+        "200":
+          description: ICS calendar feed
+          content:
+            text/calendar:
+              schema:
+                type: string
         "404":
           $ref: "#/components/responses/NotFound"
   /coach-calendar/{code}:
@@ -780,11 +826,19 @@ components:
         $ref: "#/components/schemas/HypeCardShare"
     CoachCalendarCode:
       type: object
-      required: [code]
+      required: [code, subscriptionFeedPath]
       properties:
         code:
           type: string
           pattern: "^[A-Z2-9]{5}$"
+        subscriptionFeedPath:
+          type: ["string", "null"]
+    CoachCalendarSubscription:
+      type: object
+      required: [feedPath]
+      properties:
+        feedPath:
+          type: string
     CoachCalendarConnectInput:
       type: object
       required: [code]

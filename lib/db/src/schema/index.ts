@@ -82,10 +82,13 @@ export const coachCalendarCodesTable = pgTable("coach_calendar_codes", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
   code: text("code").notNull(),
+  subscriptionToken: text("subscription_token"),
+  subscriptionRevokedAt: timestamp("subscription_revoked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   ownerUnique: uniqueIndex("coach_calendar_codes_owner_unique").on(table.ownerClerkUserId),
   codeUnique: uniqueIndex("coach_calendar_codes_code_unique").on(table.code),
+  subscriptionTokenUnique: uniqueIndex("coach_calendar_codes_subscription_token_unique").on(table.subscriptionToken),
 }));
 
 export const accountAccessTable = pgTable("account_access", {
