@@ -1149,34 +1149,56 @@ function CoachCalendarCodePanel() {
   };
 
   return (
-    <section className="relative mt-8 overflow-hidden border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-6" data-testid="coach-calendar-code-panel">
+    <section className="relative mt-4 overflow-hidden border border-primary/30 bg-primary/5 p-3 clip-angled-sm sm:p-4" data-testid="coach-calendar-code-panel">
       <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
-      <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-           <p className="text-xs font-bold uppercase tracking-widest text-primary">Family calendar connection</p>
-           <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Share your calendar link.</h2>
-          <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">
-             Give families this private link to connect in Pixl Sports or subscribe from their calendar app. The coach code remains available as a fallback.
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Connect your calendar</p>
+            <h2 className="mt-1 font-display text-xl uppercase tracking-wide text-foreground">Share access with your team.</h2>
+           <p className="mt-1 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground">
+              Use the code or private link to connect families.
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-            <div className="border border-primary bg-background px-4 py-3 font-display text-3xl tracking-[0.28em] text-foreground" aria-label="Fallback coach calendar code">
+         <div className="flex shrink-0 flex-wrap items-center gap-2">
+             <div className="border border-primary bg-background px-3 py-2 font-display text-xl tracking-[0.22em] text-foreground" aria-label="Fallback coach calendar code">
             {isLoading ? '·····' : data?.code ?? '-----'}
           </div>
           <button
             type="button"
             onClick={() => { void copyCode(); }}
             disabled={!data?.code || isError}
-            className="grid h-12 w-12 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+             className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
              aria-label="Copy fallback coach calendar code"
             data-testid="button-copy-coach-calendar-code"
           >
-            {copied ? <Check className="h-5 w-5 text-primary" /> : <Clipboard className="h-5 w-5" />}
+             {copied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
           </button>
+           {feedUrl ? (
+             <button
+               type="button"
+               onClick={() => { void copySubscription(); }}
+               className="inline-flex items-center gap-2 bg-foreground px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm"
+               data-testid="button-copy-coach-calendar-link-compact"
+             >
+               <Share2 className="h-3.5 w-3.5" /> {subscriptionCopied ? 'Copied' : 'Copy link'}
+             </button>
+           ) : (
+             <button
+               type="button"
+               onClick={createOrRefreshSubscription}
+               disabled={createSubscription.isPending || isLoading || isError}
+               className="inline-flex items-center gap-2 bg-foreground px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+               data-testid="button-create-coach-calendar-subscription"
+             >
+               <Link2 className="h-3.5 w-3.5" /> {createSubscription.isPending ? 'Creating…' : 'Create link'}
+             </button>
+           )}
         </div>
       </div>
        {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not load the calendar sharing options. Refresh and try again.</p>}
-      <div className="relative z-10 mt-6 border-t border-primary/20 pt-5">
+       <details className="relative z-10 mt-3 border-t border-primary/20 pt-3">
+         <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">Calendar app options</summary>
+         <div className="pt-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-xl">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Calendar app subscription</p>
@@ -2473,6 +2495,16 @@ function ScheduleEditor() {
     }
   };
 
+  const saveSchedule = async () => {
+    saveCurrentDraft();
+    if (!isSignedIn) {
+      setSaved(true);
+      setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
+      return;
+    }
+    await saveToCloud();
+  };
+
   const publishSchedule = async () => {
     if (!isSignedIn) {
       setLocation('/sign-in');
@@ -2484,7 +2516,25 @@ function ScheduleEditor() {
     }
 
     try {
-      const data = { project: cloudSchedule(), expectedRevision: cloudRevision.current };
+      const shareData = {
+        title: teamName.trim(),
+        teamSeason: season.trim(),
+        events,
+      };
+      let nextShareToken = shareToken;
+      if (nextShareToken) {
+        await updateShare.mutateAsync({ shareToken: nextShareToken, data: shareData });
+      } else {
+        const share = await createShare.mutateAsync({ data: shareData });
+        nextShareToken = share.shareToken;
+        setShareToken(nextShareToken);
+        setShareUrl(`${appOrigin}${basePath}/schedule/${nextShareToken}`);
+      }
+
+      const data = {
+        project: { ...cloudSchedule(), shareToken: nextShareToken },
+        expectedRevision: cloudRevision.current,
+      };
       let createdProjectId = '';
       if (activeCloudProjectId) {
         const updated = await updateCloudProject.mutateAsync({
@@ -2499,20 +2549,9 @@ function ScheduleEditor() {
         createdProjectId = created.id;
       }
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-
-      if (hasExistingShare) {
-        await updateShare.mutateAsync({
-          shareToken,
-          data: {
-            title: teamName.trim(),
-            teamSeason: season.trim(),
-            events,
-          },
-        });
-      }
-
+      saveCurrentDraft(nextShareToken);
       setSaved(true);
-      setNoticeFor('CALENDAR PUBLISHED — FANS WILL SEE THIS UPDATE');
+      setNoticeFor('CALENDAR PUBLISHED TO ALL');
       if (createdProjectId) {
         setLocation(`/studio/schedule/${createdProjectId}`);
       }
