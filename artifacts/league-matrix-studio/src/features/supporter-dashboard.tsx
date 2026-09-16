@@ -6,6 +6,7 @@ import {
   CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
+import { getCalendarViewState } from './supporter-dashboard-model';
 
 export interface SupporterProfile {
   displayName: string;
@@ -93,6 +94,12 @@ export function SupporterDashboardView({
   athletePhotoUrl,
 }: SupporterDashboardViewProps) {
   const hasAthlete = Boolean(profile.athleteName);
+  const calendarState = getCalendarViewState({
+    calendarCode: connected || loadingCalendar || calendarError ? 'connected-calendar' : '',
+    loading: loadingCalendar,
+    failed: calendarError,
+    calendar: connected ? { events } : undefined,
+  });
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
@@ -279,12 +286,12 @@ export function SupporterDashboardView({
           <div className="bg-card border border-border relative min-h-[300px] flex flex-col clip-angled-sm">
             <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
             <div className="relative p-6 flex-1 flex flex-col">
-              {loadingCalendar ? (
+              {calendarState === 'loading' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   <p className="text-sm font-bold uppercase tracking-widest">Loading Calendar...</p>
                 </div>
-              ) : calendarError ? (
+              ) : calendarState === 'failed' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                   <AlertCircle className="w-10 h-10 text-destructive mb-3" />
                   <p className="font-bold text-destructive uppercase tracking-widest">Calendar Sync Failed</p>
@@ -293,11 +300,11 @@ export function SupporterDashboardView({
                     Disconnect
                   </button>
                 </div>
-              ) : !connected ? (
+              ) : calendarState === 'disconnected' ? (
                 <div className="flex-1 flex flex-col justify-center py-4 relative z-10">
                   {connectionPanel}
                 </div>
-              ) : events.length === 0 ? (
+              ) : calendarState === 'empty' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">
                   <CalendarX2 className="w-10 h-10 opacity-50" />
                   <p className="font-bold uppercase tracking-widest">No Upcoming Events</p>

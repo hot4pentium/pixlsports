@@ -81,6 +81,17 @@ import {
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import {
+  cleanSupporterProfile,
+  createSupporterProfileSavePlan,
+  getStudioDestination,
+  getUserProfile,
+  getUserRole,
+  mapRecentSupporterProjects,
+  supporterProfileFromUser,
+  type AccessMode,
+  type UserRole,
+} from '@/features/supporter-dashboard-model';
+import {
   createBlankRosterPlayer,
   getBenchPlayers,
   getDefaultRoster,
@@ -141,59 +152,12 @@ function stripBase(path: string): string {
 }
 
 type ToolKind = 'hype' | 'schedule' | 'roster';
-type UserRole = 'coach' | 'fan';
-type AccessMode = 'full' | 'guest';
-
 const roleToolKinds: Record<UserRole, ToolKind[]> = {
   coach: ['schedule', 'roster'],
   fan: ['hype', 'schedule'],
 };
 
 const connectedCoachCodeStorageKey = 'leaguematrix-connected-coach-code';
-
-function getUserRole(user: { unsafeMetadata?: unknown } | null | undefined): UserRole | null {
-  const role = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
-    ? (user.unsafeMetadata as { role?: unknown }).role
-    : null;
-  return role === 'coach' || role === 'fan' ? role : null;
-}
-
-function getUserProfile(user: { firstName?: string | null; lastName?: string | null; unsafeMetadata?: unknown } | null | undefined) {
-  const metadata = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
-     ? user.unsafeMetadata as {
-       role?: unknown;
-       displayName?: unknown;
-       teamName?: unknown;
-       accessMode?: unknown;
-       athleteName?: unknown;
-       jerseyNumber?: unknown;
-       position?: unknown;
-       relationship?: unknown;
-     }
-    : {};
-  const clerkName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
-  return {
-    role: metadata.role === 'coach' || metadata.role === 'fan' ? metadata.role : null,
-    displayName: typeof metadata.displayName === 'string' && metadata.displayName.trim() ? metadata.displayName.trim() : clerkName,
-    teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
-    accessMode: metadata.accessMode === 'guest' || metadata.accessMode === 'full'
-      ? metadata.accessMode
-      : metadata.role === 'coach' || metadata.role === 'fan' ? 'full' : null,
-    athleteName: typeof metadata.athleteName === 'string' ? metadata.athleteName.trim() : '',
-    jerseyNumber: typeof metadata.jerseyNumber === 'string' ? metadata.jerseyNumber.trim() : '',
-    position: typeof metadata.position === 'string' ? metadata.position.trim() : '',
-    relationship: typeof metadata.relationship === 'string' ? metadata.relationship.trim() : '',
-  } as {
-    role: UserRole | null;
-    displayName: string;
-    teamName: string;
-    accessMode: AccessMode | null;
-    athleteName: string;
-    jerseyNumber: string;
-    position: string;
-    relationship: string;
-  };
-}
 
 const toolData: Record<ToolKind, {
   slug: string;
@@ -826,19 +790,6 @@ function Studio({ role }: { role: UserRole }) {
   );
 }
 
-function supporterProfileFromUser(user: Parameters<typeof getUserProfile>[0]): SupporterProfile {
-  const profile = getUserProfile(user);
-  return {
-    displayName: profile.displayName,
-    teamName: profile.teamName,
-    athleteName: profile.athleteName,
-    jerseyNumber: profile.jerseyNumber,
-    position: profile.position,
-    relationship: profile.relationship,
-    accessMode: profile.accessMode,
-  };
-}
-
 function SupporterStudio() {
   const [, setLocation] = useLocation();
   const { user, isSignedIn } = useUser();
@@ -886,19 +837,7 @@ function SupporterStudio() {
     .filter((event) => event.date >= todayKey)
     .sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`))
     .slice(0, 4);
-  const projects: SupporterProject[] = [...(cloudProjects ?? [])]
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
-    .slice(0, 4)
-    .map((project) => {
-      const kind = isCloudToolProject(project.project, 'schedule') ? 'schedule' : 'hype-card';
-      return {
-        id: project.id,
-        name: project.name,
-        kind,
-        updatedAt: project.updatedAt,
-        href: `/studio/${kind}/${project.id}`,
-      };
-    });
+  const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
   const connected = Boolean(calendarCode && calendar);
 
   const disconnect = () => {
@@ -960,14 +899,7 @@ function SupporterProfilePage() {
   if (getUserRole(user) !== 'fan') return <Redirect to="/studio" />;
 
   const saveProfile = async () => {
-    const cleanProfile = {
-      displayName: profile.displayName.trim(),
-      teamName: profile.teamName.trim(),
-      athleteName: profile.athleteName.trim(),
-      jerseyNumber: profile.jerseyNumber.replace(/^#/, '').trim(),
-      position: profile.position.trim(),
-      relationship: profile.relationship.trim(),
-    };
+    const cleanProfile = cleanSupporterProfile(profile);
     if (!cleanProfile.displayName || !cleanProfile.teamName) {
       setError('Add your display name and team before saving.');
       return;
@@ -976,13 +908,11 @@ function SupporterProfilePage() {
     setSaving(true);
     setError('');
     try {
+      const savePlan = createSupporterProfileSavePlan(user.unsafeMetadata, profile);
       await user.update({
-        unsafeMetadata: {
-          ...(user.unsafeMetadata ?? {}),
-          ...cleanProfile,
-        },
+        unsafeMetadata: savePlan.unsafeMetadata,
       });
-      setLocation('/studio');
+      setLocation(savePlan.redirectTo);
     } catch {
       setSaving(false);
       setError('We could not save your supporter profile. Please try again.');
@@ -3481,8 +3411,9 @@ function StudioPortal() {
   }
 
   const role = getUserRole(user);
-  if (!role) return <RoleSelectionPage />;
-  return role === 'fan' ? <SupporterStudio /> : <Studio role={role} />;
+  const destination = getStudioDestination(role);
+  if (destination === 'role-selection') return <RoleSelectionPage />;
+  return destination === 'supporter' ? <SupporterStudio /> : <Studio role="coach" />;
 }
 
 function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt: string | Date | null; expired: boolean }) {
