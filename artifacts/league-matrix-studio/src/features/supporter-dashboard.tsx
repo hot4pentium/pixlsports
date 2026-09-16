@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
+import { SupporterScheduleSelector } from './supporter-schedule-selector';
 import heroBanner from '@/assets/hero-banner.png';
 
 export interface SupporterProfile {
@@ -348,31 +349,12 @@ export function SupporterDashboardView({
             )}
           </div>
 
-          {savedCustomSchedules.length > 0 && (
-            <div className="mb-4 border border-border bg-muted/30 p-4 clip-angled-sm" data-testid="saved-custom-schedules">
-              <label htmlFor="supporter-schedule-selection" className="block text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                Saved custom schedules
-              </label>
-              <select
-                id="supporter-schedule-selection"
-                value={selectedCustomScheduleId ?? savedCustomSchedules[0].id}
-                onChange={(event) => onSelectCustomSchedule(event.target.value)}
-                className="mt-2 w-full border border-border bg-background px-3 py-2.5 text-sm font-bold text-foreground outline-none transition-colors focus:border-primary"
-                data-testid="select-saved-custom-schedule"
-              >
-                {savedCustomSchedules.map((schedule) => (
-                  <option key={schedule.id} value={schedule.id}>
-                    {schedule.label} · {schedule.eventCount} {schedule.eventCount === 1 ? 'event' : 'events'}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {connected
-                  ? 'Your connected team calendar is currently shown first.'
-                  : 'Choose which saved schedule to show on your dashboard.'}
-              </p>
-            </div>
-          )}
+          <SupporterScheduleSelector
+            schedules={savedCustomSchedules}
+            selectedScheduleId={selectedCustomScheduleId}
+            connected={connected}
+            onSelect={onSelectCustomSchedule}
+          />
 
           <div className="bg-card border border-border relative min-h-[300px] flex flex-col clip-angled-sm">
             <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
