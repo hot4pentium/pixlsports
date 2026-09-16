@@ -121,7 +121,7 @@ export const defaultProject = (): HypeCardProject => ({
   finish: 'classic',
   background: 'gradient',
   overlay: true,
-  showLowerThird: true,
+  showLowerThird: false,
   branding: true,
   playerName: '',
   jerseyNumber: '12',

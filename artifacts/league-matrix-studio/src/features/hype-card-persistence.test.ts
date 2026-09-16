@@ -128,9 +128,11 @@ test('portable templates keep design text while omitting uploaded media', () => 
   assert.equal(reopened.logo, null);
 });
 
-test('existing cards show the lower third unless explicitly disabled', () => {
-  const { showLowerThird: _legacyLowerThird, ...legacyProject } = defaultProject();
-  assert.equal(normalizeHypeCardProject(legacyProject).showLowerThird, true);
+test('new cards hide the lower third unless explicitly enabled', () => {
+  const { showLowerThird: _defaultLowerThird, ...projectWithoutPreference } = defaultProject();
+  assert.equal(defaultProject().showLowerThird, false);
+  assert.equal(normalizeHypeCardProject(projectWithoutPreference).showLowerThird, false);
+  assert.equal(normalizeHypeCardProject({ ...defaultProject(), showLowerThird: true }).showLowerThird, true);
   assert.equal(normalizeHypeCardProject({ ...defaultProject(), showLowerThird: false }).showLowerThird, false);
 });
 

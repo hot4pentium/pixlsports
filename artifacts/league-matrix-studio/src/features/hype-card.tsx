@@ -1684,7 +1684,18 @@ export function HypeCardEditor() {
                   <HypeField label="Position" value={project.position} onChange={(v) => updateProject('position', v)} placeholder="e.g. Point guard" />
                 </div>
                 <HypeField label="Team name" value={project.teamName} onChange={(v) => updateProject('teamName', v)} placeholder="e.g. Eastside Falcons" />
-                
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-3">
+                    <div>
+                      <Label htmlFor="show-lower-third" className="text-xs font-medium">Show lower third</Label>
+                      <p className="mt-1 text-[10px] text-muted-foreground">Add the player nameplate to the bottom of the card.</p>
+                    </div>
+                    <Switch
+                      id="show-lower-third"
+                      checked={project.showLowerThird}
+                      onCheckedChange={(checked) => updateProject('showLowerThird', checked)}
+                      aria-label="Show lower third"
+                    />
+                  </div>
               </div>
             </Section>}
 
