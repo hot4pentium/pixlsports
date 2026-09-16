@@ -6,7 +6,7 @@ import {
   escapeXml,
   templates
 } from './hype-card-types';
-import { buildStadiumCardClipMarkup } from './hype-card-geometry';
+import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
 import { buildPositionBadgeMarkup } from './position-badge';
 import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url&inline';
 import sunsetStadium from '../assets/hype-cards/sunset-stadium.webp?url&inline';
@@ -321,31 +321,15 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const branding = project.branding
      ? `<text x="500" y="1398" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">PIXL SPORTS STUDIO</text>`
     : '';
-  const lowerThirdY = 1100;
   const nameplate = project.showLowerThird
-    ? `<g transform="translate(0 ${lowerThirdY})" filter="url(#lowerBarShadow-${ns})">
-        <g aria-label="Lower third bar">
-           <rect x="20" y="49" width="960" height="232" rx="34" fill="#02070d" stroke="#07101a" stroke-width="10"/>
-           <rect x="25" y="54" width="950" height="222" rx="30" fill="url(#lowerBarMetal-${ns})" stroke="#263846" stroke-width="4"/>
-           <rect x="40" y="69" width="920" height="192" rx="24" fill="url(#lowerBarFace-${ns})" stroke="#030a12" stroke-width="7"/>
-           <rect x="54" y="82" width="892" height="166" rx="18" fill="url(#lowerBarInner-${ns})" stroke="#546878" stroke-width="3"/>
-           <path d="M72 82 H928" fill="none" stroke="#fff" stroke-width="3" opacity=".16"/>
-           <path d="M72 248 H928" fill="none" stroke="#000" stroke-width="8" opacity=".46"/>
-           <rect x="54" y="82" width="892" height="166" rx="18" fill="url(#lowerBarTexture-${ns})" opacity=".85"/>
-        </g>
-        <g aria-label="Lower third accent rails" fill="none" stroke-linecap="round">
-          <path d="M62 61 H478" stroke="url(#lowerBarWarm-${ns})" stroke-width="7"/>
-          <path d="M522 61 H938" stroke="url(#lowerBarCool-${ns})" stroke-width="7"/>
-          <path d="M58 266 H490" stroke="url(#lowerBarWarm-${ns})" stroke-width="5"/>
-          <path d="M510 266 H942" stroke="url(#lowerBarCool-${ns})" stroke-width="5"/>
-        </g>
-        <g aria-label="Lower third divider">
-          <path d="M120 190 H880" stroke="#7890a0" stroke-width="2" opacity=".34"/>
-          <path d="M315 190 H685" stroke="#fff" stroke-width="2" opacity=".13"/>
-        </g>
-       <text x="500" y="170" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${playerSize}" font-weight="800" letter-spacing="2" fill="#fff" filter="url(#stadiumShadow-${ns})">${content.player}</text>
-       <text x="500" y="210" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${detailsSize}" font-weight="800" letter-spacing="3" fill="${palette.accent}">${detailsLine}</text>
-      </g>`
+    ? buildStadiumLowerThirdTextMarkup({
+      player: content.player,
+      details: detailsLine,
+      playerSize,
+      detailsSize,
+      accent: palette.accent,
+      ns,
+    })
     : '';
   const mediaGlow = project.mediaType || project.photo
     ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.primary}" stroke-width="8" stroke-opacity=".58" filter="url(#stadiumMediaGlow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".82"/>`
@@ -355,13 +339,6 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
-     <linearGradient id="lowerBarMetal-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9caab4"/><stop offset=".18" stop-color="#344553"/><stop offset=".5" stop-color="#d3dade"/><stop offset=".72" stop-color="#263641"/><stop offset="1" stop-color="#84939d"/></linearGradient>
-     <linearGradient id="lowerBarFace-${ns}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.secondary}"/><stop offset=".38" stop-color="#081523"/><stop offset=".72" stop-color="${palette.ink}"/><stop offset="1" stop-color="#04131c"/></linearGradient>
-     <linearGradient id="lowerBarInner-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#152b43"/><stop offset=".2" stop-color="#091726"/><stop offset=".8" stop-color="#06121d"/><stop offset="1" stop-color="${palette.ink}"/></linearGradient>
-     <linearGradient id="lowerBarWarm-${ns}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${palette.primary}"/><stop offset=".55" stop-color="${palette.accent}"/><stop offset="1" stop-color="#ffad40"/></linearGradient>
-     <linearGradient id="lowerBarCool-${ns}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${palette.secondary}"/><stop offset=".52" stop-color="${palette.accent}"/><stop offset="1" stop-color="#16d7c0"/></linearGradient>
-     <pattern id="lowerBarTexture-${ns}" width="18" height="18" patternUnits="userSpaceOnUse"><path d="M0 0 L9 9 L0 18 M9 0 L18 9 L9 18" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="2"/></pattern>
-     <filter id="lowerBarShadow-${ns}" x="-15%" y="-25%" width="130%" height="155%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity=".9"/></filter>
     <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
     <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;

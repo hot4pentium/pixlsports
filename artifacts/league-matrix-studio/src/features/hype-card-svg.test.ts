@@ -2,13 +2,29 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
-import { buildStadiumCardClipMarkup } from './hype-card-geometry';
+import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
 
 test('portrait stadium cards fill the full output height', () => {
   assert.match(
     buildStadiumCardClipMarkup('full-height'),
     /<clipPath id="stadiumCardClip-full-height"><rect x="8" y="8" width="984" height="1384" rx="46"\/><\/clipPath>/,
   );
+});
+
+test('lower third keeps player details without the graphic panel', () => {
+  const markup = buildStadiumLowerThirdTextMarkup({
+    player: 'JORDAN SMITH',
+    details: 'EASTSIDE FALCONS',
+    playerSize: 76,
+    detailsSize: 23,
+    accent: '#f5c94d',
+    ns: 'text-only',
+  });
+
+  assert.match(markup, /aria-label="Lower third text"/);
+  assert.match(markup, />JORDAN SMITH<\/text>/);
+  assert.match(markup, />EASTSIDE FALCONS<\/text>/);
+  assert.doesNotMatch(markup, /<rect|lowerBar|accent rails|divider/);
 });
 
 test('keeps short position labels in the compact top-right badge', () => {
