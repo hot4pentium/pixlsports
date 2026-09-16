@@ -41,8 +41,10 @@ export interface SupporterProject {
 export interface SupporterScheduleOption {
   id: string;
   label: string;
+  name?: string;
   teamName: string;
   season: string;
+  revision?: number;
   updatedAt: string | Date;
   eventCount: number;
 }
@@ -60,6 +62,11 @@ export interface SupporterDashboardViewProps {
   savedCustomSchedules: SupporterScheduleOption[];
   selectedCustomScheduleId: string | null;
   onSelectCustomSchedule: (projectId: string) => void;
+  onOpenCustomSchedule?: (projectId: string) => void;
+  onRenameCustomSchedule?: (projectId: string, name: string) => void | Promise<void>;
+  onRemoveCustomSchedule?: (projectId: string) => void | Promise<void>;
+  scheduleActionPending?: boolean;
+  scheduleActionError?: string;
   scheduleSource: 'team' | 'custom' | null;
   connected: boolean;
   connectionLabel: string;
@@ -126,6 +133,11 @@ export function SupporterDashboardView({
   savedCustomSchedules,
   selectedCustomScheduleId,
   onSelectCustomSchedule,
+  onOpenCustomSchedule,
+  onRenameCustomSchedule,
+  onRemoveCustomSchedule,
+  scheduleActionPending,
+  scheduleActionError,
   scheduleSource,
   connected,
   connectionLabel,
@@ -354,6 +366,11 @@ export function SupporterDashboardView({
             selectedScheduleId={selectedCustomScheduleId}
             connected={connected}
             onSelect={onSelectCustomSchedule}
+            onOpen={onOpenCustomSchedule}
+            onRename={onRenameCustomSchedule}
+            onRemove={onRemoveCustomSchedule}
+            actionPending={scheduleActionPending}
+            actionError={scheduleActionError}
           />
 
           <div className="bg-card border border-border relative min-h-[300px] flex flex-col clip-angled-sm">

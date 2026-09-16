@@ -16,13 +16,14 @@ import {
   getCloudScheduleProjects,
   getLatestCloudScheduleProject,
   getSelectedCloudScheduleProject,
+  clearSupporterScheduleSelection,
   readSupporterScheduleSelection,
   saveSupporterScheduleSelection,
   type ScheduleEvent,
   type ScheduleDraft,
 } from './schedule-draft';
 
-class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
+class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
   private readonly values = new Map<string, string>();
 
   getItem(key: string) {
@@ -31,6 +32,10 @@ class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
 
   setItem(key: string, value: string) {
     this.values.set(key, value);
+  }
+
+  removeItem(key: string) {
+    this.values.delete(key);
   }
 }
 
@@ -300,4 +305,13 @@ test('selected supporter schedule survives local storage round trips', () => {
   saveSupporterScheduleSelection(storage as Storage, 'older');
 
   assert.equal(readSupporterScheduleSelection(storage as Storage), 'older');
+});
+
+test('removing supporter schedule selection clears stale local state', () => {
+  const storage = new MemoryStorage();
+  saveSupporterScheduleSelection(storage as Storage, 'removed-schedule');
+
+  clearSupporterScheduleSelection(storage as Storage);
+
+  assert.equal(readSupporterScheduleSelection(storage as Storage), null);
 });

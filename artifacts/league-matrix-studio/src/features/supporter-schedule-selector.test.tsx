@@ -21,6 +21,10 @@ class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
   setItem(key: string, value: string) {
     this.values.set(key, value);
   }
+
+  removeItem(key: string) {
+    this.values.delete(key);
+  }
 }
 
 const schedules = [
@@ -111,4 +115,45 @@ test('selector keeps connected team calendar guidance visible while custom choic
   assert.equal(select.props.value, 'older');
   assert.deepEqual(select.findAllByType('option').map((option) => option.props.value), ['latest', 'older']);
   assert.match(renderedText(renderer), /Your connected team calendar is currently shown first/);
+});
+
+test('schedule management exposes open and rename actions for every saved schedule', async () => {
+  let openedId = '';
+  let renamed: [string, string] | null = null;
+  let renderer!: ReactTestRenderer;
+
+  act(() => {
+    renderer = create(createElement(SupporterScheduleSelector, {
+      schedules,
+      selectedScheduleId: 'latest',
+      connected: false,
+      onSelect: () => {},
+      onOpen: (scheduleId: string) => {
+        openedId = scheduleId;
+      },
+      onRename: (scheduleId: string, name: string) => {
+        renamed = [scheduleId, name];
+      },
+      onRemove: () => {},
+    }));
+  });
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-open-saved-schedule-older' }).props.onClick();
+  });
+  assert.equal(openedId, 'older');
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-rename-saved-schedule-latest' }).props.onClick();
+  });
+  const input = renderer.root.findByProps({ 'data-testid': 'input-rename-saved-schedule-latest' });
+  act(() => {
+    input.props.onChange({ target: { value: 'Main season' } });
+  });
+  await act(async () => {
+    renderer.root.findByType('form').props.onSubmit({
+      preventDefault: () => {},
+    });
+  });
+  assert.deepEqual(renamed, ['latest', 'Main season']);
 });

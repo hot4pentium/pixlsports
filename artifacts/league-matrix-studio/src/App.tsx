@@ -67,6 +67,7 @@ import {
 } from '@/features/supporter-dashboard';
 import {
   createBlankScheduleEvent,
+  clearSupporterScheduleSelection,
   defaultScheduleEvents,
   getCloudScheduleProjects,
   getDefaultScheduleEvents,
@@ -837,11 +838,13 @@ function Studio({ role }: { role: UserRole }) {
 function SupporterStudio() {
   const [, setLocation] = useLocation();
   const { user, isSignedIn } = useUser();
+  const queryClient = useQueryClient();
   const profile = supporterProfileFromUser(user);
   const localSchedule = readScheduleDraft();
   const [selectedCustomScheduleId, setSelectedCustomScheduleId] = useState<string | null>(
     readSupporterScheduleSelection(),
   );
+  const [scheduleActionError, setScheduleActionError] = useState('');
   const { data: athletePhoto } = useGetSupporterPhoto({
     query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
   });
@@ -888,6 +891,8 @@ function SupporterStudio() {
       queryKey: getListProjectsQueryKey(),
     },
   });
+  const updateScheduleProject = useUpdateProject();
+  const deleteScheduleProject = useDeleteProject();
   const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
   const selectedCloudScheduleProject = getSelectedCloudScheduleProject(
     cloudScheduleProjects,
@@ -901,11 +906,17 @@ function SupporterStudio() {
     const draft = normalizeScheduleDraft(project.project);
     if (!draft) return [];
     const identity = [draft.teamName, draft.season].filter(Boolean).join(' · ');
+    const projectName = project.name?.trim() ?? '';
+    const generatedName = `${draft.teamName.trim()} - Schedule`;
     return [{
       id: project.id,
-      label: identity || project.name || 'Custom schedule',
+      label: projectName && projectName !== generatedName
+        ? projectName
+        : identity || projectName || 'Custom schedule',
+      name: projectName,
       teamName: draft.teamName,
       season: draft.season,
+      revision: project.revision,
       updatedAt: project.updatedAt,
       eventCount: draft.events.length,
     }];
@@ -946,9 +957,61 @@ function SupporterStudio() {
   };
 
   const selectCustomSchedule = (projectId: string) => {
+    setScheduleActionError('');
     setSelectedCustomScheduleId(projectId);
     saveSupporterScheduleSelection(window.localStorage, projectId);
   };
+
+  const openCustomSchedule = (projectId: string) => {
+    selectCustomSchedule(projectId);
+    setLocation(`/studio/schedule/${projectId}`);
+  };
+
+  const renameCustomSchedule = async (projectId: string, name: string) => {
+    const project = cloudScheduleProjects.find((candidate) => candidate.id === projectId);
+    if (!project) return;
+
+    setScheduleActionError('');
+    try {
+      await updateScheduleProject.mutateAsync({
+        projectId,
+        data: {
+          name,
+          expectedRevision: project.revision,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    } catch (error) {
+      setScheduleActionError('SCHEDULE NAME COULD NOT BE SAVED — TRY AGAIN');
+      throw error;
+    }
+  };
+
+  const removeCustomSchedule = async (projectId: string) => {
+    const remainingProjects = cloudScheduleProjects.filter((project) => project.id !== projectId);
+    const activeSelectionId = selectedCloudScheduleProject?.id ?? null;
+    const nextSelectionId = activeSelectionId && activeSelectionId !== projectId
+      && remainingProjects.some((project) => project.id === activeSelectionId)
+      ? activeSelectionId
+      : remainingProjects[0]?.id ?? null;
+
+    setScheduleActionError('');
+    try {
+      await deleteScheduleProject.mutateAsync({ projectId });
+      setSelectedCustomScheduleId(nextSelectionId);
+      if (nextSelectionId) {
+        saveSupporterScheduleSelection(window.localStorage, nextSelectionId);
+      } else {
+        clearSupporterScheduleSelection();
+      }
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    } catch (error) {
+      setScheduleActionError('SCHEDULE COULD NOT BE REMOVED — TRY AGAIN');
+      throw error;
+    }
+  };
+
+  const scheduleActionPending = updateScheduleProject.isPending || deleteScheduleProject.isPending;
 
   return (
     <StudioLayout role="fan">
@@ -961,6 +1024,11 @@ function SupporterStudio() {
           savedCustomSchedules={savedCustomSchedules}
           selectedCustomScheduleId={selectedCloudScheduleProject?.id ?? null}
           onSelectCustomSchedule={selectCustomSchedule}
+          onOpenCustomSchedule={openCustomSchedule}
+          onRenameCustomSchedule={renameCustomSchedule}
+          onRemoveCustomSchedule={removeCustomSchedule}
+          scheduleActionPending={scheduleActionPending}
+          scheduleActionError={scheduleActionError}
           scheduleSource={scheduleSource}
           connected={connected}
           connectionLabel={scheduleLabel}
