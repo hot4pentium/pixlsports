@@ -46,6 +46,7 @@ export interface SupporterDashboardViewProps {
   events: SupporterEvent[];
   nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
+  scheduleSource: 'team' | 'custom' | null;
   connected: boolean;
   connectionLabel: string;
   loadingCalendar: boolean;
@@ -105,6 +106,7 @@ export function SupporterDashboardView({
   events,
   nextGameIsUpcoming,
   projects,
+  scheduleSource,
   connected,
   connectionLabel,
   loadingCalendar,
@@ -120,6 +122,7 @@ export function SupporterDashboardView({
     loading: loadingCalendar,
     failed: calendarError,
     calendar: connected ? { events } : undefined,
+    customSchedule: scheduleSource === 'custom' ? { events } : undefined,
   });
   const nextGame = events.find((event) => event.type === 'game');
 
@@ -223,12 +226,12 @@ export function SupporterDashboardView({
               <span className="text-sm font-bold uppercase tracking-widest text-white/80 group-hover:text-white">Profile Details</span>
               <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-1" />
             </button>
-            <div className={`px-5 py-3 border flex items-center gap-3 ${connected ? 'bg-primary/10 text-primary border-primary/30' : 'bg-white/5 text-white/50 border-white/10'}`}>
-              {connected ? <ShieldCheck className="w-5 h-5" /> : <CalendarX2 className="w-5 h-5" />}
+            <div className={`px-5 py-3 border flex items-center gap-3 ${scheduleSource ? 'bg-primary/10 text-primary border-primary/30' : 'bg-white/5 text-white/50 border-white/10'}`}>
+              {scheduleSource === 'team' ? <ShieldCheck className="w-5 h-5" /> : scheduleSource === 'custom' ? <CalendarDays className="w-5 h-5" /> : <CalendarX2 className="w-5 h-5" />}
               <span className="min-w-0 text-sm font-bold uppercase tracking-widest">
-                {connected ? (
+                {scheduleSource ? (
                   <>
-                    <span className="block">Team Connected</span>
+                    <span className="block">{scheduleSource === 'team' ? 'Team Connected' : 'Custom Schedule'}</span>
                     <span className="block truncate text-[10px] text-white/55">{connectionLabel || 'Live team calendar'}</span>
                   </>
                 ) : 'No Schedule'}
@@ -290,7 +293,7 @@ export function SupporterDashboardView({
                 </p>
               ) : (
                 <p className="mt-1 text-sm font-medium text-muted-foreground">
-                  {connected ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}
+                  {scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}
                 </p>
               )}
             </div>
@@ -306,9 +309,9 @@ export function SupporterDashboardView({
         <section>
           <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
             <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Team Schedule</h3>
-            {connected && (
+            {scheduleSource && (
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <CalendarDays className="w-4 h-4" /> Team Calendar
+                <CalendarDays className="w-4 h-4" /> {scheduleSource === 'team' ? 'Team Calendar' : 'Custom Schedule'}
               </span>
             )}
           </div>

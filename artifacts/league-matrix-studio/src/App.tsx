@@ -822,6 +822,7 @@ function SupporterStudio() {
   const [, setLocation] = useLocation();
   const { user, isSignedIn } = useUser();
   const profile = supporterProfileFromUser(user);
+  const localSchedule = readScheduleDraft();
   const { data: athletePhoto } = useGetSupporterPhoto({
     query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
   });
@@ -857,6 +858,8 @@ function SupporterStudio() {
   const calendar = activeCalendarQuery.data;
   const loadingCalendar = activeCalendarQuery.isLoading;
   const calendarError = activeCalendarQuery.isError;
+  const hasCalendarConnection = Boolean(calendarConnection);
+  const useCustomSchedule = !hasCalendarConnection && Boolean(localSchedule?.events.length);
   const { data: cloudProjects } = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
@@ -870,7 +873,7 @@ function SupporterStudio() {
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
-  const events = [...(calendar?.events ?? [])]
+  const events = [...(calendar?.events ?? (useCustomSchedule ? localSchedule?.events ?? [] : []))]
     .sort((left, right) => {
       const leftKey = left.date ? `${left.date}T${left.time}` : '9999-12-31T23:59';
       const rightKey = right.date ? `${right.date}T${right.time}` : '9999-12-31T23:59';
@@ -881,6 +884,12 @@ function SupporterStudio() {
   const nextGameIsUpcoming = Boolean(nextGame?.date && nextGame.date >= todayKey);
   const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
   const connected = Boolean(calendarConnection && calendar);
+  const scheduleSource = connected ? 'team' : useCustomSchedule ? 'custom' : null;
+  const scheduleLabel = calendar?.teamSeason
+    || calendar?.title
+    || (useCustomSchedule
+      ? [localSchedule?.teamName, localSchedule?.season].filter(Boolean).join(' · ')
+      : profile.teamName);
 
   const disconnect = () => {
     clearStoredCalendarConnection();
@@ -895,8 +904,9 @@ function SupporterStudio() {
           events={events}
            nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
+           scheduleSource={scheduleSource}
           connected={connected}
-          connectionLabel={calendar?.teamSeason || calendar?.title || profile.teamName}
+           connectionLabel={scheduleLabel}
           loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
           calendarError={Boolean(calendarConnection && calendarError)}
           onOpenProfile={() => setLocation('/studio/profile')}

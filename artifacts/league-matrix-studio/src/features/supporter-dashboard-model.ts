@@ -102,17 +102,20 @@ export function createSupporterProfileSavePlan(
   };
 }
 
-export type CalendarViewState = 'loading' | 'failed' | 'disconnected' | 'empty' | 'connected';
+export type CalendarViewState = 'loading' | 'failed' | 'disconnected' | 'empty' | 'connected' | 'custom';
 
 export function getCalendarViewState(input: {
   calendarCode: string;
   loading: boolean;
   failed: boolean;
   calendar: { events: unknown[] } | null | undefined;
+  customSchedule?: { events: unknown[] } | null;
 }): CalendarViewState {
   if (input.calendarCode && input.loading) return 'loading';
   if (input.calendarCode && input.failed) return 'failed';
-  if (!input.calendarCode || !input.calendar) return 'disconnected';
+  if (!input.calendarCode || !input.calendar) {
+    return input.customSchedule && input.customSchedule.events.length > 0 ? 'custom' : 'disconnected';
+  }
   return input.calendar.events.length === 0 ? 'empty' : 'connected';
 }
 

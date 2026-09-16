@@ -61,6 +61,27 @@ test('distinguishes calendar connection, empty, failure, and disconnected states
   assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, failed: true, calendar: undefined }), 'failed');
   assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, failed: false, calendar: { events: [] } }), 'empty');
   assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, failed: false, calendar: { events: [{}] } }), 'connected');
+  assert.equal(getCalendarViewState({
+    calendarCode: '',
+    loading: false,
+    failed: false,
+    calendar: undefined,
+    customSchedule: { events: [{}] },
+  }), 'custom');
+  assert.equal(getCalendarViewState({
+    calendarCode: '',
+    loading: false,
+    failed: false,
+    calendar: undefined,
+    customSchedule: { events: [] },
+  }), 'disconnected');
+  assert.equal(getCalendarViewState({
+    calendarCode: 'TEAM',
+    loading: false,
+    failed: false,
+    calendar: { events: [{}] },
+    customSchedule: { events: [{ id: 'local-only' }] },
+  }), 'connected');
 });
 
 test('maps recent designs by kind and newest-first order, limited to four', () => {
