@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startExpiredAccountPurgeSchedule } from "./jobs/purgeCancelledAccounts";
 import { startHypeCardSharePurgeSchedule } from "./jobs/purgeHypeCardShares";
+import { startSupporterPhotoUploadPurgeSchedule } from "./jobs/purgeSupporterPhotoUploads";
 
 const rawPort = process.env["PORT"];
 
@@ -26,4 +27,5 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   startExpiredAccountPurgeSchedule();
   startHypeCardSharePurgeSchedule();
+  startSupporterPhotoUploadPurgeSchedule();
 });

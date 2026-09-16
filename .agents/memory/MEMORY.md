@@ -7,3 +7,4 @@
 - [Guest access guardrails](guest-access-guardrails.md) — Guest mode stays immutable and quota claims serialize server-side.
 - [Cancelled account lifecycle](cancelled-account-lifecycle.md) — lifecycle changes are atomic and deletion-pending accounts never transition backward.
 - [Custom domain routing](custom-domain-routing.md) — Replit requires apex and www domains to be added separately; registrar or app logic must handle the redirect.
+- [Upload claim cleanup races](upload-claim-cleanup-races.md) — confirmation must atomically renew a valid claim before cleanup can remove it.

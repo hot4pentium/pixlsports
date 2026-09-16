@@ -51,11 +51,15 @@ router.post("/supporter-photo", requireAuth, async (req, res): Promise<void> => 
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
   try {
-    const [claim] = await db.select().from(supporterPhotoUploadClaimsTable).where(and(
-      eq(supporterPhotoUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
-      eq(supporterPhotoUploadClaimsTable.objectPath, parsed.data.objectPath),
-      gt(supporterPhotoUploadClaimsTable.expiresAt, new Date()),
-    ));
+    const now = new Date();
+    const [claim] = await db.update(supporterPhotoUploadClaimsTable)
+      .set({ expiresAt: new Date(now.getTime() + 15 * 60 * 1000) })
+      .where(and(
+        eq(supporterPhotoUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
+        eq(supporterPhotoUploadClaimsTable.objectPath, parsed.data.objectPath),
+        gt(supporterPhotoUploadClaimsTable.expiresAt, now),
+      ))
+      .returning();
     if (!isUsableSupporterPhotoClaim(claim, ownerClerkUserId, parsed.data.objectPath)) {
       res.status(400).json({ error: "Photo upload expired. Choose the photo again." });
       return;
