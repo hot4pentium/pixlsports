@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  getCalendarConnectionErrorKind,
   getCoachCalendarHandoffToken,
   getCoachCalendarSubscriptionToken,
 } from './calendar-connection';
 
 const token = 'A'.repeat(32);
+
+test('distinguishes missing or revoked calendar connections from temporary failures', () => {
+  assert.equal(getCalendarConnectionErrorKind({ status: 404 }), 'invalid');
+  assert.equal(getCalendarConnectionErrorKind({ status: 503 }), 'temporary');
+  assert.equal(getCalendarConnectionErrorKind(new Error('network unavailable')), 'temporary');
+});
 
 test('accepts Pixl Sports subscription links and extracts the token', () => {
   assert.equal(

@@ -64,8 +64,10 @@ export interface SupporterDashboardViewProps {
   connectionLabel: string;
   loadingCalendar: boolean;
   calendarError: boolean;
+  calendarConnectionInvalid: boolean;
   onOpenProfile: () => void;
   onRetryCalendar: () => void;
+  onReconnectCalendar: () => void;
   onDisconnect: () => void;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
@@ -128,16 +130,19 @@ export function SupporterDashboardView({
   connectionLabel,
   loadingCalendar,
   calendarError,
+  calendarConnectionInvalid,
   onOpenProfile,
   onRetryCalendar,
+  onReconnectCalendar,
   onDisconnect,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
 }: SupporterDashboardViewProps) {
   const hasAthlete = Boolean(profile.athleteName);
   const calendarState = getCalendarViewState({
-    calendarCode: connected || loadingCalendar || calendarError ? 'connected-calendar' : '',
+    calendarCode: connected || loadingCalendar || calendarError || calendarConnectionInvalid ? 'connected-calendar' : '',
     loading: loadingCalendar,
+    invalid: calendarConnectionInvalid,
     failed: calendarError,
     calendar: connected ? { events } : undefined,
     customSchedule: scheduleSource === 'custom' ? { events } : undefined,
@@ -376,6 +381,32 @@ export function SupporterDashboardView({
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   <p className="text-sm font-bold uppercase tracking-widest">Loading Calendar...</p>
+                </div>
+              ) : calendarState === 'invalid' ? (
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <AlertTriangle className="w-10 h-10 text-destructive mb-3" />
+                  <p className="font-bold text-destructive uppercase tracking-widest">Calendar Link No Longer Valid</p>
+                  <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+                    This saved coach calendar link has expired or was revoked. Connect a new calendar to keep seeing team events.
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onReconnectCalendar}
+                      className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
+                      data-testid="button-reconnect-calendar"
+                    >
+                      Connect a new calendar <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDisconnect}
+                      className="bg-muted px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-destructive hover:text-destructive-foreground clip-angled-sm"
+                      data-testid="button-disconnect-invalid-calendar"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
                 </div>
               ) : calendarState === 'failed' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">

@@ -57,14 +57,16 @@ test('saved supporter metadata reloads as the same normalized profile', () => {
 });
 
 test('distinguishes calendar connection, empty, failure, and disconnected states', () => {
-  assert.equal(getCalendarViewState({ calendarCode: '', loading: false, failed: false, calendar: undefined }), 'disconnected');
-  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: true, failed: false, calendar: undefined }), 'loading');
-  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, failed: true, calendar: undefined }), 'failed');
-  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, failed: false, calendar: { events: [] } }), 'empty');
-  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, failed: false, calendar: { events: [{}] } }), 'connected');
+  assert.equal(getCalendarViewState({ calendarCode: '', loading: false, invalid: false, failed: false, calendar: undefined }), 'disconnected');
+  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: true, invalid: false, failed: false, calendar: undefined }), 'loading');
+  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, invalid: true, failed: true, calendar: undefined }), 'invalid');
+  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, invalid: false, failed: true, calendar: undefined }), 'failed');
+  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, invalid: false, failed: false, calendar: { events: [] } }), 'empty');
+  assert.equal(getCalendarViewState({ calendarCode: 'TEAM', loading: false, invalid: false, failed: false, calendar: { events: [{}] } }), 'connected');
   assert.equal(getCalendarViewState({
     calendarCode: '',
     loading: false,
+    invalid: false,
     failed: false,
     calendar: undefined,
     customSchedule: { events: [{}] },
@@ -72,6 +74,7 @@ test('distinguishes calendar connection, empty, failure, and disconnected states
   assert.equal(getCalendarViewState({
     calendarCode: '',
     loading: false,
+    invalid: false,
     failed: false,
     calendar: undefined,
     customSchedule: { events: [] },
@@ -79,6 +82,7 @@ test('distinguishes calendar connection, empty, failure, and disconnected states
   assert.equal(getCalendarViewState({
     calendarCode: 'TEAM',
     loading: false,
+    invalid: false,
     failed: false,
     calendar: { events: [{}] },
     customSchedule: { events: [{ id: 'local-only' }] },
@@ -130,6 +134,7 @@ test('does not fall back to custom events while a team calendar is loading or ha
   assert.equal(getCalendarViewState({
     calendarCode: 'TEAM',
     loading: true,
+    invalid: false,
     failed: false,
     calendar: undefined,
     customSchedule,
@@ -146,6 +151,7 @@ test('does not fall back to custom events while a team calendar is loading or ha
   assert.equal(getCalendarViewState({
     calendarCode: 'TEAM',
     loading: false,
+    invalid: false,
     failed: true,
     calendar: undefined,
     customSchedule,
@@ -174,6 +180,7 @@ test('an empty local draft keeps the disconnected empty state after reload', () 
   assert.equal(getCalendarViewState({
     calendarCode: '',
     loading: false,
+    invalid: false,
     failed: false,
     calendar: undefined,
     customSchedule: emptyLocalDraft,

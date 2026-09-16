@@ -3,6 +3,16 @@ const subscriptionPathPattern = /^\/api\/coach-calendar\/feed\/([A-Za-z0-9_-]{32
 const calendarHandoffPathPattern = /^\/studio\/schedule\/?$/;
 const calendarHandoffQueryKeys = ['calendarToken', 'calendar'];
 
+export type CalendarConnectionErrorKind = 'invalid' | 'temporary';
+
+export function getCalendarConnectionErrorKind(error: unknown): CalendarConnectionErrorKind {
+  const status = typeof error === 'object' && error !== null && 'status' in error
+    ? (error as { status?: unknown }).status
+    : undefined;
+
+  return status === 404 ? 'invalid' : 'temporary';
+}
+
 function isAllowedPixlSportsHost(hostname: string, currentHostname: string) {
   return new Set([
     currentHostname.toLowerCase(),

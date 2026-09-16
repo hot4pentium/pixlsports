@@ -102,7 +102,7 @@ export function createSupporterProfileSavePlan(
   };
 }
 
-export type CalendarViewState = 'loading' | 'failed' | 'disconnected' | 'empty' | 'connected' | 'custom';
+export type CalendarViewState = 'loading' | 'invalid' | 'failed' | 'disconnected' | 'empty' | 'connected' | 'custom';
 
 export type SupporterScheduleSource = 'team' | 'custom' | null;
 
@@ -137,10 +137,12 @@ export function getSupporterScheduleSelection<T>(input: {
 export function getCalendarViewState(input: {
   calendarCode: string;
   loading: boolean;
+  invalid: boolean;
   failed: boolean;
   calendar: { events: unknown[] } | null | undefined;
   customSchedule?: { events: unknown[] } | null;
 }): CalendarViewState {
+  if (input.calendarCode && input.invalid) return 'invalid';
   if (input.calendarCode && input.loading) return 'loading';
   if (input.calendarCode && input.failed) return 'failed';
   if (!input.calendarCode || !input.calendar) {

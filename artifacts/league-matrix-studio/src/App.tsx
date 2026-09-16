@@ -46,7 +46,7 @@ import {
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
-  Download, Star
+  Download, Star, Link2
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -88,6 +88,7 @@ import {
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import {
+  getCalendarConnectionErrorKind,
   getCoachCalendarHandoffToken,
   getCoachCalendarSubscriptionToken,
 } from '@/features/calendar-connection';
@@ -857,25 +858,29 @@ function SupporterStudio() {
   const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
     query: {
       enabled: Boolean(calendarCode),
-      refetchInterval: 30000,
-      refetchOnWindowFocus: true,
+      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
+      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
       queryKey: ['/api/coach-calendar', calendarCode],
     },
   });
   const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
     query: {
       enabled: Boolean(calendarSubscriptionToken),
-      refetchInterval: 30000,
-      refetchOnWindowFocus: true,
+      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
+      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
       queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
     },
   });
   const activeCalendarQuery = calendarConnection?.kind === 'subscription'
     ? subscriptionCalendarQuery
     : codeCalendarQuery;
-  const calendar = activeCalendarQuery.data;
+  const calendarConnectionErrorKind = activeCalendarQuery.isError
+    ? getCalendarConnectionErrorKind(activeCalendarQuery.error)
+    : null;
+  const calendarConnectionInvalid = calendarConnectionErrorKind === 'invalid';
+  const calendar = calendarConnectionInvalid ? undefined : activeCalendarQuery.data;
   const loadingCalendar = activeCalendarQuery.isFetching;
-  const calendarError = activeCalendarQuery.isError;
+  const calendarError = activeCalendarQuery.isError && !calendarConnectionInvalid;
   const hasCalendarConnection = Boolean(calendarConnection);
   const { data: cloudProjects } = useListProjects({
     query: {
@@ -961,8 +966,10 @@ function SupporterStudio() {
           connectionLabel={scheduleLabel}
           loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
           calendarError={Boolean(calendarConnection && calendarError)}
+           calendarConnectionInvalid={Boolean(calendarConnection && calendarConnectionInvalid)}
           onOpenProfile={() => setLocation('/studio/profile')}
           onRetryCalendar={() => void activeCalendarQuery.refetch()}
+           onReconnectCalendar={() => setLocation('/studio/schedule')}
           onDisconnect={disconnect}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
           athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
@@ -1136,8 +1143,8 @@ function CoachCalendarCodePanel() {
     ? new URL(data.subscriptionFeedPath, window.location.origin).toString()
     : '';
   const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:');
-    const subscriptionToken = getCoachCalendarSubscriptionToken(value, window.location.origin, window.location.hostname)
-      ?? getCoachCalendarHandoffToken(value, window.location.origin, window.location.hostname);
+  const subscriptionToken = getCoachCalendarSubscriptionToken(feedUrl, window.location.origin, window.location.hostname)
+    ?? getCoachCalendarHandoffToken(feedUrl, window.location.origin, window.location.hostname);
   const appCalendarUrl = subscriptionToken
     ? `${appOrigin}${basePath}/studio/schedule?calendarToken=${encodeURIComponent(subscriptionToken)}`
     : '';
@@ -1335,7 +1342,7 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
   ));
   const [handoffError] = useState(() => {
     try {
-    const url = URL.createObjectURL(blob);
+      const url = new URL(window.location.href);
       const hasHandoffParam = ['calendarToken', 'calendar'].some((key) => url.searchParams.has(key));
       const isCalendarHandoffPath = /\/studio\/schedule\/?$/.test(url.pathname);
       return hasHandoffParam && isCalendarHandoffPath && !getCoachCalendarHandoffToken(
@@ -1364,16 +1371,16 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
   const codeCalendarQuery = useGetConnectedCoachCalendar(code, {
     query: {
       enabled: Boolean(code),
-      refetchInterval: 30000,
-      refetchOnWindowFocus: true,
+      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
+      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
       queryKey: ['/api/coach-calendar', code],
     },
   });
   const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(subscriptionToken, {
     query: {
       enabled: Boolean(subscriptionToken),
-      refetchInterval: 30000,
-      refetchOnWindowFocus: true,
+      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
+      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
       queryKey: ['/api/coach-calendar/subscription', subscriptionToken],
     },
   });
@@ -1391,6 +1398,12 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
   const isLoading = activeCalendarQuery.isLoading || pendingSubscriptionQuery.isLoading;
   const isError = activeCalendarQuery.isError;
   const isFetching = activeCalendarQuery.isFetching;
+  const activeCalendarErrorKind = isError
+    ? getCalendarConnectionErrorKind(activeCalendarQuery.error)
+    : null;
+  const connectErrorKind = connect.isError
+    ? getCalendarConnectionErrorKind(connect.error)
+    : null;
   const hasConnectedSchedule = Boolean(
     calendar
     && (calendar.scheduleAvailable || calendar.events.length > 0 || calendar.title || calendar.teamSeason),
@@ -1402,7 +1415,7 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
 
   useEffect(() => {
     if (!handoffToken) return;
-    const url = URL.createObjectURL(blob);
+    const url = new URL(window.location.href);
     url.searchParams.delete('calendarToken');
     url.searchParams.delete('calendar');
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
@@ -1554,7 +1567,18 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
           Disconnect from coach
         </button>
       )}
-      {(connect.isError || isError || inputError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">{inputError || 'That calendar connection could not be connected. Check the link or code and try again.'}</p>}
+      {(connect.isError || isError || inputError) && (
+        <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">
+          {inputError
+            || (activeCalendarErrorKind === 'invalid'
+              ? connection?.kind === 'subscription'
+                ? 'This private calendar link has expired or was revoked. Paste a new link or code from your coach.'
+                : 'This coach code is no longer valid. Ask your coach for a new code.'
+              : connectErrorKind === 'invalid'
+                ? 'That coach code is no longer valid. Ask your coach for a new code.'
+                : 'That calendar connection could not be connected. Check the link or code and try again.')}
+        </p>
+      )}
 
       {calendar && hasConnectedSchedule && (
         <div className="mt-5 border-t border-primary/20 pt-5" data-testid="fan-connected-calendar">
