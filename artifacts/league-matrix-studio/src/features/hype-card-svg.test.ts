@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
+import { buildStadiumCardClipMarkup } from './hype-card-geometry';
+
+test('portrait stadium cards fill the full output height', () => {
+  assert.match(
+    buildStadiumCardClipMarkup('full-height'),
+    /<clipPath id="stadiumCardClip-full-height"><rect x="8" y="8" width="984" height="1384" rx="46"\/><\/clipPath>/,
+  );
+});
 
 test('keeps short position labels in the compact top-right badge', () => {
   const layout = getPositionBadgeLayout('GK');

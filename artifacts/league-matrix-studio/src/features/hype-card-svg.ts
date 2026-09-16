@@ -6,6 +6,7 @@ import {
   escapeXml,
   templates
 } from './hype-card-types';
+import { buildStadiumCardClipMarkup } from './hype-card-geometry';
 import { buildPositionBadgeMarkup } from './position-badge';
 import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url&inline';
 import sunsetStadium from '../assets/hype-cards/sunset-stadium.webp?url&inline';
@@ -350,7 +351,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.primary}" stroke-width="8" stroke-opacity=".58" filter="url(#stadiumMediaGlow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".82"/>`
     : '';
   const defs = `
-     <clipPath id="stadiumCardClip-${ns}"><rect x="8" y="8" width="984" height="1242" rx="46"/></clipPath>
+     ${buildStadiumCardClipMarkup(ns)}
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
