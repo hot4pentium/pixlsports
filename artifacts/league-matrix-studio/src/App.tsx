@@ -89,6 +89,7 @@ import {
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
+  getSupporterScheduleSelection,
   getUserProfile,
   getUserRole,
   mapRecentSupporterProjects,
@@ -128,7 +129,7 @@ import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
 import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 
-const queryClient = new QueryClient();
+  const queryClient = useQueryClient();
 
 type CloudProjectPayload = Record<string, unknown>;
 
@@ -879,7 +880,11 @@ function SupporterStudio() {
     ? normalizeScheduleDraft(latestCloudScheduleProject.project)
     : null;
   const customSchedule = cloudSchedule ?? localSchedule;
-  const useCustomSchedule = !hasCalendarConnection && Boolean(customSchedule?.events.length);
+  const scheduleSelection = getSupporterScheduleSelection({
+    hasTeamConnection: hasCalendarConnection,
+    teamSchedule: calendar,
+    customSchedule,
+  });
 
   const today = new Date();
   const todayKey = [
@@ -887,7 +892,7 @@ function SupporterStudio() {
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
-  const events = [...(calendar?.events ?? (useCustomSchedule ? customSchedule?.events ?? [] : []))]
+  const events = [...scheduleSelection.events]
     .sort((left, right) => {
       const leftKey = left.date ? `${left.date}T${left.time}` : '9999-12-31T23:59';
       const rightKey = right.date ? `${right.date}T${right.time}` : '9999-12-31T23:59';
@@ -897,13 +902,13 @@ function SupporterStudio() {
     ?? events.find((event) => event.type === 'game');
   const nextGameIsUpcoming = Boolean(nextGame?.date && nextGame.date >= todayKey);
   const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
-  const connected = Boolean(calendarConnection && calendar);
-  const scheduleSource = connected ? 'team' : useCustomSchedule ? 'custom' : null;
-  const scheduleLabel = calendar?.teamSeason
-    || calendar?.title
-    || (useCustomSchedule
+  const connected = scheduleSelection.source === 'team';
+  const scheduleSource = scheduleSelection.source;
+  const scheduleLabel = scheduleSelection.source === 'team'
+    ? calendar?.teamSeason || calendar?.title || profile.teamName
+    : scheduleSelection.source === 'custom'
       ? [customSchedule?.teamName, customSchedule?.season].filter(Boolean).join(' · ')
-      : profile.teamName);
+      : profile.teamName;
 
   const disconnect = () => {
     clearStoredCalendarConnection();
@@ -1097,9 +1102,8 @@ function CoachCalendarCodePanel() {
     ? new URL(data.subscriptionFeedPath, window.location.origin).toString()
     : '';
   const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:');
-  const subscriptionToken = feedUrl
-    ? getCoachCalendarSubscriptionToken(feedUrl, window.location.origin, window.location.hostname)
-    : null;
+    const subscriptionToken = getCoachCalendarSubscriptionToken(value, window.location.origin, window.location.hostname)
+      ?? getCoachCalendarHandoffToken(value, window.location.origin, window.location.hostname);
   const appCalendarUrl = subscriptionToken
     ? `${appOrigin}${basePath}/studio/schedule?calendarToken=${encodeURIComponent(subscriptionToken)}`
     : '';
@@ -1296,7 +1300,7 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
   ));
   const [handoffError] = useState(() => {
     try {
-      const url = new URL(window.location.href);
+    const url = URL.createObjectURL(blob);
       const hasHandoffParam = ['calendarToken', 'calendar'].some((key) => url.searchParams.has(key));
       const isCalendarHandoffPath = /\/studio\/schedule\/?$/.test(url.pathname);
       return hasHandoffParam && isCalendarHandoffPath && !getCoachCalendarHandoffToken(
@@ -1363,7 +1367,7 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
 
   useEffect(() => {
     if (!handoffToken) return;
-    const url = new URL(window.location.href);
+    const url = URL.createObjectURL(blob);
     url.searchParams.delete('calendarToken');
     url.searchParams.delete('calendar');
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
@@ -1738,9 +1742,7 @@ function createRosterSvg(draft: RosterDraft) {
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
   const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
-  const board = isPortraitRosterBoardStyle(draft.boardStyle)
-    ? { x: 72, y: 350, width: 936, height: 1248 }
-    : { x: 72, y: 350, width: 936, height: 702 };
+    const board = boardRef.current;
   const starterTokens = starters.length === 0
     ? `<text x="${board.x + board.width / 2}" y="${board.y + board.height / 2}" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
     : starters.map((player) => {
@@ -1908,11 +1910,7 @@ function RosterEditor() {
         announce('ROSTER SAVED TO CLOUD');
       } else {
         const created = await createCloudProject.mutateAsync({
-          data: {
-            name: `${draft.teamName || 'Untitled'} - Roster`,
-            project: cloudDraft(),
-            ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey: lineupUsageKey } : {}),
-          },
+          data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
         });
         setSaved(true);
         setLocation(`/studio/roster/${created.id}`);
@@ -1932,7 +1930,7 @@ function RosterEditor() {
   useEffect(() => {
     if (!cloudProjectId || !cloudProjectData || initializedCloudId.current === cloudProjectId) return;
     if (!isCloudToolProject(cloudProjectData.project, 'roster')) return;
-    const loadedDraft = normalizeRosterDraft(cloudProjectData.project);
+    const loadedDraft = normalizeScheduleDraft(selectedCloudProject.project);
     if (!loadedDraft) return;
     initializedCloudId.current = cloudProjectId;
     setDraft(loadedDraft);
@@ -2475,15 +2473,12 @@ function ScheduleEditor() {
       if (activeCloudProjectId) {
         const updated = await updateCloudProject.mutateAsync({
           projectId: activeCloudProjectId,
-          data: { project: cloudSchedule(), expectedRevision: cloudRevision.current },
+          data,
         });
         cloudRevision.current = updated.revision;
-        await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-        setSaved(true);
-        setNoticeFor('SCHEDULE SAVED TO CLOUD');
       } else {
         const created = await createCloudProject.mutateAsync({
-          data: { name: `${teamName || 'Untitled'} - Schedule`, project: cloudSchedule() },
+          data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
         });
         cloudRevision.current = created.revision;
         await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
@@ -3521,11 +3516,10 @@ function RoleSelectionPage() {
   const updateAccountAccess = useUpdateAccountAccess();
 
   if (!isLoaded) {
-    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your account…</div>;
+    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Checking account access…</div>;
   }
-
-  if (!user) {
-    return <Redirect to="/sign-in" />;
+  if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
+    return <LockedAccountPage deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} />;
   }
 
   const saveProfile = async () => {

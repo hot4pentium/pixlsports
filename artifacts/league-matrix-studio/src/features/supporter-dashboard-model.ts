@@ -104,6 +104,36 @@ export function createSupporterProfileSavePlan(
 
 export type CalendarViewState = 'loading' | 'failed' | 'disconnected' | 'empty' | 'connected' | 'custom';
 
+export type SupporterScheduleSource = 'team' | 'custom' | null;
+
+export function getSupporterScheduleSelection<T>(input: {
+  hasTeamConnection: boolean;
+  teamSchedule: { events: T[] } | null | undefined;
+  customSchedule?: { events: T[] } | null;
+}): {
+  events: T[];
+  source: SupporterScheduleSource;
+} {
+  if (input.hasTeamConnection && input.teamSchedule) {
+    return {
+      events: input.teamSchedule.events,
+      source: 'team',
+    };
+  }
+
+  if (!input.hasTeamConnection && input.customSchedule && input.customSchedule.events.length > 0) {
+    return {
+      events: input.customSchedule.events,
+      source: 'custom',
+    };
+  }
+
+  return {
+    events: [],
+    source: null,
+  };
+}
+
 export function getCalendarViewState(input: {
   calendarCode: string;
   loading: boolean;

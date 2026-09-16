@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createSupporterProfileSavePlan,
   getCalendarViewState,
+  getSupporterScheduleSelection,
   getStudioDestination,
   getUserRole,
   mapRecentSupporterProjects,
@@ -82,6 +83,101 @@ test('distinguishes calendar connection, empty, failure, and disconnected states
     calendar: { events: [{}] },
     customSchedule: { events: [{ id: 'local-only' }] },
   }), 'connected');
+});
+
+test('selects local custom events only when no team connection is active', () => {
+  const localSchedule = { events: [{ id: 'local-event' }] };
+
+  assert.deepEqual(getSupporterScheduleSelection({
+    hasTeamConnection: false,
+    teamSchedule: undefined,
+    customSchedule: localSchedule,
+  }), {
+    events: localSchedule.events,
+    source: 'custom',
+  });
+});
+
+test('connected team events win over custom events, including after a dashboard reload', () => {
+  const localSchedule = { events: [{ id: 'local-event' }] };
+  const teamSchedule = { events: [{ id: 'team-event' }] };
+
+  assert.deepEqual(getSupporterScheduleSelection({
+    hasTeamConnection: true,
+    teamSchedule,
+    customSchedule: localSchedule,
+  }), {
+    events: teamSchedule.events,
+    source: 'team',
+  });
+
+  const reloadedCustomSchedule = {
+    events: localSchedule.events.map((event) => ({ ...event })),
+  };
+  assert.deepEqual(getSupporterScheduleSelection({
+    hasTeamConnection: false,
+    teamSchedule,
+    customSchedule: reloadedCustomSchedule,
+  }), {
+    events: reloadedCustomSchedule.events,
+    source: 'custom',
+  });
+});
+
+test('does not fall back to custom events while a team calendar is loading or has failed', () => {
+  const customSchedule = { events: [{ id: 'local-event' }] };
+
+  assert.equal(getCalendarViewState({
+    calendarCode: 'TEAM',
+    loading: true,
+    failed: false,
+    calendar: undefined,
+    customSchedule,
+  }), 'loading');
+  assert.deepEqual(getSupporterScheduleSelection({
+    hasTeamConnection: true,
+    teamSchedule: undefined,
+    customSchedule,
+  }), {
+    events: [],
+    source: null,
+  });
+
+  assert.equal(getCalendarViewState({
+    calendarCode: 'TEAM',
+    loading: false,
+    failed: true,
+    calendar: undefined,
+    customSchedule,
+  }), 'failed');
+  assert.deepEqual(getSupporterScheduleSelection({
+    hasTeamConnection: true,
+    teamSchedule: undefined,
+    customSchedule,
+  }), {
+    events: [],
+    source: null,
+  });
+});
+
+test('an empty local draft keeps the disconnected empty state after reload', () => {
+  const emptyLocalDraft = { events: [] };
+
+  assert.deepEqual(getSupporterScheduleSelection({
+    hasTeamConnection: false,
+    teamSchedule: undefined,
+    customSchedule: emptyLocalDraft,
+  }), {
+    events: [],
+    source: null,
+  });
+  assert.equal(getCalendarViewState({
+    calendarCode: '',
+    loading: false,
+    failed: false,
+    calendar: undefined,
+    customSchedule: emptyLocalDraft,
+  }), 'disconnected');
 });
 
 test('maps recent designs by kind and newest-first order, limited to four', () => {
