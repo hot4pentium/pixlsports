@@ -228,7 +228,7 @@ router.post("/account/usage", requireAuth, async (req, res): Promise<void> => {
   );
   if (!result.allowed) {
     res.status(409).json({
-      error: "Guest allowance reached. Choose Full Account to keep creating.",
+      error: "Workspace allowance reached. Use existing work or contact support.",
     });
     return;
   }

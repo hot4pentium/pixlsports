@@ -1,4 +1,4 @@
-import { type ReactNode, type FormEvent } from 'react';
+import { type FormEvent } from 'react';
 import { Link } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Clock, Trophy, ChevronRight, User,
@@ -49,14 +49,8 @@ export interface SupporterDashboardViewProps {
   connectionLabel: string;
   loadingCalendar: boolean;
   calendarError: boolean;
-  guestRemaining?: {
-    hypeCards: number;
-    scheduleEvents: number;
-    lineups: number;
-  };
   onOpenProfile: () => void;
   onDisconnect: () => void;
-  connectionPanel: ReactNode;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
 }
@@ -113,10 +107,8 @@ export function SupporterDashboardView({
   connectionLabel,
   loadingCalendar,
   calendarError,
-  guestRemaining,
   onOpenProfile,
   onDisconnect,
-  connectionPanel,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
 }: SupporterDashboardViewProps) {
@@ -179,11 +171,6 @@ export function SupporterDashboardView({
           <div className="flex-1 text-center md:text-left w-full">
             <div className="text-primary text-xs font-bold uppercase tracking-widest mb-2 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2">
               <span className="flex items-center gap-2">My Athlete</span>
-              {profile.accessMode === 'guest' && (
-                <span className="bg-white/10 text-white px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Guest
-                </span>
-              )}
             </div>
             {hasAthlete ? (
               <>
@@ -342,8 +329,19 @@ export function SupporterDashboardView({
                   </button>
                 </div>
               ) : calendarState === 'disconnected' ? (
-                <div className="flex-1 flex flex-col justify-center py-4 relative z-10">
-                  {connectionPanel}
+                <div className="relative z-10 flex flex-1 flex-col items-center justify-center py-4 text-center">
+                  <CalendarX2 className="h-10 w-10 text-muted-foreground/60" />
+                  <p className="mt-3 font-bold uppercase tracking-widest">No Team Calendar Connected</p>
+                  <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+                    Open Team Calendar to connect your coach’s schedule.
+                  </p>
+                  <Link
+                    href="/studio/schedule"
+                    className="mt-4 inline-flex items-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
+                    data-testid="link-open-team-calendar"
+                  >
+                    Open Team Calendar <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
               ) : calendarState === 'empty' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">

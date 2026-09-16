@@ -307,7 +307,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between bg-background/80 backdrop-blur-sm">
         <div className="space-y-4">
           <BrandMark />
-          <p className="text-sm font-medium text-muted-foreground">Premium local-first sports graphics.<br/>No account required.</p>
+          <p className="text-sm font-medium text-muted-foreground">Premium local-first sports graphics.<br/>Built for your team account.</p>
         </div>
         <div className="flex gap-8 text-sm font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
@@ -343,9 +343,6 @@ function HomePage() {
                 <Link href="/studio" className="group inline-flex items-center justify-center gap-3 bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm transition-transform hover:scale-105" data-testid="link-hero-open-studio">
                   Enter The Studio <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
-                <span className="inline-flex items-center gap-2 px-2 text-sm font-medium text-white/60">
-                  <ShieldCheck className="h-5 w-5 text-primary" /> Guest offline mode available
-                </span>
               </div>
             </div>
 
@@ -581,7 +578,7 @@ function Studio({ role }: { role: UserRole }) {
                {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary">CENTER.</span>
             </h1>
              <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
-               <span>{isGuest ? 'Build locally and save a small number of reusable projects to your Pixl Sports cloud workspace, then export finished graphics.' : 'Save Hype Cards, schedules, and roster lineups locally or to your Pixl Sports cloud workspace, then export finished graphics.'}</span>
+               <span>Save Hype Cards, schedules, and roster lineups locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
               <Dialog>
                 <DialogTrigger asChild>
                   <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
@@ -623,11 +620,11 @@ function Studio({ role }: { role: UserRole }) {
         </div>
 
          {isGuest && accountAccess && (
-           <div className="relative mt-6 overflow-hidden border-l-4 border-primary bg-primary/10 px-5 py-4 clip-angled-sm" data-testid="banner-guest-limits">
+           <div className="relative mt-6 overflow-hidden border-l-4 border-primary bg-primary/10 px-5 py-4 clip-angled-sm" data-testid="banner-workspace-limits">
              <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                <div>
-                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited Guest mode</p>
-                 <p className="mt-1 text-sm font-medium text-foreground">Your allowance is shared across sessions and devices.</p>
+                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited workspace</p>
+                 <p className="mt-1 text-sm font-medium text-foreground">Your remaining allowance is shared across sessions and devices.</p>
                </div>
                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                  <span className="border border-border bg-background px-2.5 py-2">Hype {accountAccess.remaining.hypeCards}/{accountAccess.limits.hypeCards}</span>
@@ -829,7 +826,6 @@ function SupporterStudio() {
   const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
   const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
-  const [connectionPanelKey, setConnectionPanelKey] = useState(0);
   const { data: accountAccess } = useGetAccountAccess({
     query: {
       enabled: Boolean(isSignedIn),
@@ -881,7 +877,6 @@ function SupporterStudio() {
   const disconnect = () => {
     clearStoredCalendarConnection();
     setCalendarConnection(null);
-    setConnectionPanelKey((current) => current + 1);
   };
 
   return (
@@ -895,15 +890,8 @@ function SupporterStudio() {
           connectionLabel={calendar?.teamSeason || calendar?.title || profile.teamName}
           loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
           calendarError={Boolean(calendarConnection && calendarError)}
-          guestRemaining={accountAccess?.accessMode === 'guest' ? accountAccess.remaining : undefined}
           onOpenProfile={() => setLocation('/studio/profile')}
           onDisconnect={disconnect}
-          connectionPanel={(
-            <FanCalendarConnectionPanel
-              key={connectionPanelKey}
-              onConnectionChange={setCalendarConnection}
-            />
-          )}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
           athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
         />
@@ -1689,7 +1677,7 @@ function RosterEditor() {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() }),
         onError: () => {
           if (!storedDraft && !cloudProjectId) setGuestLineupBlocked(true);
-          announce('GUEST LINEUP LIMIT REACHED — YOUR EXISTING LOCAL DRAFT IS STILL AVAILABLE');
+          announce('WORKSPACE LINEUP LIMIT REACHED — YOUR EXISTING LOCAL DRAFT IS STILL AVAILABLE');
         },
       },
     );
@@ -1771,7 +1759,7 @@ function RosterEditor() {
         setLocation(`/studio/roster/${created.id}`);
       }
     } catch (error: any) {
-      announce(error?.status === 409 ? 'GUEST LINEUP LIMIT REACHED — KEEP USING YOUR LOCAL DRAFT' : 'CLOUD SAVE FAILED — TRY AGAIN');
+      announce(error?.status === 409 ? 'WORKSPACE LINEUP LIMIT REACHED — KEEP USING YOUR LOCAL DRAFT' : 'CLOUD SAVE FAILED — TRY AGAIN');
     }
   };
 
@@ -1798,10 +1786,10 @@ function RosterEditor() {
       <StudioLayout>
         <main className="mx-auto flex w-full max-w-3xl flex-1 items-center px-5 py-12 sm:px-8">
           <section className="w-full border-l-4 border-primary bg-card p-7 clip-angled-sm">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited Guest mode</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited workspace</p>
             <h1 className="mt-3 font-display text-4xl uppercase tracking-wide">LINEUP ALREADY USED.</h1>
             <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">
-              This Guest account has already used its editable lineup. Your existing local draft remains safe on the device where it was created. Choose Full Account to start another lineup.
+            This workspace has already used its editable lineup. Your existing local draft remains safe on the device where it was created.
             </p>
             <Link href="/studio" className="mt-6 inline-flex items-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">
               Back to Command Center <ArrowRight className="h-4 w-4" />
@@ -2251,7 +2239,7 @@ function ScheduleEditor() {
         });
         await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
       } catch {
-        setNoticeFor('GUEST SCHEDULE LIMIT REACHED — CHOOSE FULL ACCOUNT TO ADD MORE');
+         setNoticeFor('WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT');
         return;
       }
     }
@@ -2329,7 +2317,7 @@ function ScheduleEditor() {
         setLocation(`/studio/schedule/${created.id}`);
       }
     } catch (error: any) {
-      setNoticeFor(error?.status === 409 ? 'GUEST SCHEDULE LIMIT REACHED — CHOOSE FULL ACCOUNT TO ADD MORE' : 'CLOUD SAVE FAILED — TRY AGAIN');
+       setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT' : 'CLOUD SAVE FAILED — TRY AGAIN');
     }
   };
 
@@ -2376,7 +2364,7 @@ function ScheduleEditor() {
         setLocation(`/studio/schedule/${createdProjectId}`);
       }
     } catch (error: any) {
-      setNoticeFor(error?.status === 409 ? 'GUEST SCHEDULE LIMIT REACHED — CHOOSE FULL ACCOUNT TO ADD MORE' : 'PUBLISH FAILED — TRY AGAIN');
+       setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT' : 'PUBLISH FAILED — TRY AGAIN');
     }
   };
 
@@ -3069,7 +3057,7 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
           ))}
         </div>
 
-         <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from Pixl Sports · No account required</p>
+        <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from Pixl Sports</p>
       </main>
     </div>
   );
@@ -3268,9 +3256,6 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
           <div className="hidden lg:inline-flex items-center gap-2 bg-primary/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
             <Activity className="h-4 w-4" /> Secure Auth
           </div>
-          <Link href="/studio" className="group lg:hidden inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:text-white bg-white/5 px-3 py-1.5 clip-angled-sm" data-testid="link-auth-guest-access-mobile">
-            Guest Studio <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
         </div>
 
         <div className="relative z-10 mt-8 mb-4 lg:my-0">
@@ -3288,13 +3273,10 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-bold uppercase tracking-wider text-white" data-testid="status-cloud-optional">Cloud sync is optional.</p>
+               <p className="text-sm font-bold uppercase tracking-wider text-white" data-testid="status-cloud-sync">Cloud sync is included.</p>
               <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
-                You don't need an account to create graphics. Local editing remains fully available for guest users.
+                 Sign in to create graphics, save reusable projects, and keep your team settings across devices.
               </p>
-              <Link href="/studio" className="group mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:text-white" data-testid="link-auth-guest-access">
-                Return to Guest Studio <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
             </div>
           </div>
         </div>
@@ -3338,7 +3320,7 @@ function RoleSelectionPage() {
   const { user, isLoaded } = useUser();
   const existingProfile = getUserProfile(user);
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(existingProfile.role);
-  const [selectedAccessMode, setSelectedAccessMode] = useState<AccessMode | null>(existingProfile.accessMode);
+  const selectedAccessMode: AccessMode = existingProfile.accessMode ?? 'full';
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
   const [teamName, setTeamName] = useState(existingProfile.teamName);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -3358,10 +3340,6 @@ function RoleSelectionPage() {
     const cleanTeam = teamName.trim();
     if (!selectedRole) {
       setError('Choose Coach or Fan to continue.');
-      return;
-    }
-    if (!selectedAccessMode) {
-      setError('Choose Full Account or Limited Guest to continue.');
       return;
     }
     if (!cleanName || !cleanTeam) {
@@ -3484,37 +3462,11 @@ function RoleSelectionPage() {
               </button>
             </div>
              {selectedRole && (
-               <div className="mt-7" role="radiogroup" aria-label="Choose account mode">
-                 <div className="flex items-center justify-between gap-3">
-                   <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose your account</p>
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Select one</span>
-                 </div>
-                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                   <button
-                     type="button"
-                     role="radio"
-                     aria-checked={selectedAccessMode === 'full'}
-                     onClick={() => setSelectedAccessMode('full')}
-                     disabled={savingProfile}
-                     className={`border-2 p-4 text-left clip-angled-sm transition-colors ${selectedAccessMode === 'full' ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/60'}`}
-                     data-testid="button-access-full"
-                   >
-                     <span className="flex items-center justify-between gap-2 text-sm font-bold uppercase tracking-wider">Full Account {selectedAccessMode === 'full' && <Check className="h-4 w-4 text-primary" />}</span>
-                     <span className="mt-2 block text-xs font-medium leading-relaxed text-muted-foreground">Unlimited cloud saves, publishing, roster tools, and connected calendars.</span>
-                   </button>
-                   <button
-                     type="button"
-                     role="radio"
-                     aria-checked={selectedAccessMode === 'guest'}
-                     onClick={() => setSelectedAccessMode('guest')}
-                     disabled={savingProfile}
-                     className={`border-2 p-4 text-left clip-angled-sm transition-colors ${selectedAccessMode === 'guest' ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/60'}`}
-                     data-testid="button-access-guest"
-                   >
-                     <span className="flex items-center justify-between gap-2 text-sm font-bold uppercase tracking-wider">Limited Guest {selectedAccessMode === 'guest' && <Check className="h-4 w-4 text-primary" />}</span>
-                     <span className="mt-2 block text-xs font-medium leading-relaxed text-muted-foreground">Try the studio with 3 Hype Cards, 3 schedule events, and 1 editable lineup.</span>
-                   </button>
-                 </div>
+               <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">
+                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Full team account</p>
+                 <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
+                   Your account includes cloud saves, publishing, roster tools, and connected calendars.
+                 </p>
                </div>
              )}
              <button type="button" onClick={() => void saveProfile()} disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">

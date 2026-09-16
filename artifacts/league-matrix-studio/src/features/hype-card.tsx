@@ -936,7 +936,7 @@ export function HypeCardEditor() {
       setLocation(`/studio/hype-card/${created.id}`);
     } catch (e: any) {
       setSaveStatus('Save failed');
-      setNotice(e?.status === 409 ? 'Guest Hype Card limit reached. Choose Full Account to create more.' : 'Failed to migrate project to cloud.');
+      setNotice(e?.status === 409 ? 'Workspace Hype Card limit reached. Use your existing drafts or contact support.' : 'Failed to migrate project to cloud.');
     }
   };
 
@@ -973,7 +973,7 @@ export function HypeCardEditor() {
          setLocation(`/studio/hype-card/${created.id}`);
         } catch (e: any) {
          setSaveStatus('Conflict');
-          setNotice(e?.status === 409 ? 'Guest Hype Card limit reached. Choose Full Account to create more.' : 'Failed to save as new project. Please try again.');
+          setNotice(e?.status === 409 ? 'Workspace Hype Card limit reached. Use your existing drafts or contact support.' : 'Failed to save as new project. Please try again.');
        }
     }
   };
