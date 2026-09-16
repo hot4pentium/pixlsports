@@ -129,9 +129,9 @@ import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
 import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 
-  const queryClient = useQueryClient();
+ const queryClient = new QueryClient();
 
-type CloudProjectPayload = Record<string, unknown>;
+ type CloudProjectPayload = Record<string, unknown>;
 
 function isCloudToolProject(value: unknown, tool: 'schedule' | 'roster'): value is CloudProjectPayload {
   return typeof value === 'object'
@@ -866,7 +866,7 @@ function SupporterStudio() {
     ? subscriptionCalendarQuery
     : codeCalendarQuery;
   const calendar = activeCalendarQuery.data;
-  const loadingCalendar = activeCalendarQuery.isLoading;
+  const loadingCalendar = activeCalendarQuery.isFetching;
   const calendarError = activeCalendarQuery.isError;
   const hasCalendarConnection = Boolean(calendarConnection);
   const { data: cloudProjects } = useListProjects({
@@ -929,6 +929,7 @@ function SupporterStudio() {
           loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
           calendarError={Boolean(calendarConnection && calendarError)}
           onOpenProfile={() => setLocation('/studio/profile')}
+          onRetryCalendar={() => void activeCalendarQuery.refetch()}
           onDisconnect={disconnect}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
           athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
@@ -1287,6 +1288,7 @@ function CoachCalendarCodePanel() {
           </p>
         )}
       </div>
+       </details>
     </section>
   );
 }

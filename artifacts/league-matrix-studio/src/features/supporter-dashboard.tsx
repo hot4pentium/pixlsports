@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Clock, Trophy, ChevronRight, User,
   Users, Activity, Image as ImageIcon, Unlink, ShieldCheck,
-  CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2
+  CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
@@ -53,6 +53,7 @@ export interface SupporterDashboardViewProps {
   loadingCalendar: boolean;
   calendarError: boolean;
   onOpenProfile: () => void;
+  onRetryCalendar: () => void;
   onDisconnect: () => void;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
@@ -113,6 +114,7 @@ export function SupporterDashboardView({
   loadingCalendar,
   calendarError,
   onOpenProfile,
+  onRetryCalendar,
   onDisconnect,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
@@ -338,10 +340,25 @@ export function SupporterDashboardView({
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                   <AlertCircle className="w-10 h-10 text-destructive mb-3" />
                   <p className="font-bold text-destructive uppercase tracking-widest">Calendar Sync Failed</p>
-                  <p className="text-sm text-muted-foreground mt-2 max-w-xs">There was a problem reaching the team schedule. Please try again later or disconnect.</p>
-                  <button onClick={onDisconnect} className="mt-4 text-xs font-bold uppercase tracking-widest bg-muted px-4 py-2 hover:bg-destructive hover:text-destructive-foreground transition-colors clip-angled-sm">
-                    Disconnect
-                  </button>
+                  <p className="text-sm text-muted-foreground mt-2 max-w-xs">There was a problem reaching the team schedule. Your saved connection is still here. Try again or disconnect.</p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onRetryCalendar}
+                      className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
+                      data-testid="button-retry-calendar"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Try again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDisconnect}
+                      className="bg-muted px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-destructive hover:text-destructive-foreground clip-angled-sm"
+                      data-testid="button-disconnect-calendar-error"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
                 </div>
               ) : calendarState === 'disconnected' ? (
                 <div className="relative z-10 flex flex-1 flex-col items-center justify-center py-4 text-center">
