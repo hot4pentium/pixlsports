@@ -35,6 +35,29 @@ export const projectMediaTable = pgTable("project_media", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const supporterPhotosTable = pgTable("supporter_photos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  objectPath: text("object_path").notNull().unique(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => ({
+  ownerUnique: uniqueIndex("supporter_photos_owner_unique").on(table.ownerClerkUserId),
+}));
+
+export const supporterPhotoUploadClaimsTable = pgTable("supporter_photo_upload_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  objectPath: text("object_path").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  objectPathUnique: uniqueIndex("supporter_photo_upload_claims_object_path_unique").on(table.objectPath),
+  expiresAtIndex: index("supporter_photo_upload_claims_expires_at_index").on(table.expiresAt),
+}));
+
 export const scheduleSharesTable = pgTable("schedule_shares", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
@@ -146,6 +169,7 @@ export const insertProjectMediaSchema = createInsertSchema(projectMediaTable).om
 });
 export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
 export type ProjectMedia = typeof projectMediaTable.$inferSelect;
+export type SupporterPhoto = typeof supporterPhotosTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type HypeCardShare = typeof hypeCardSharesTable.$inferSelect;
 export type HypeCardShareUploadClaim = typeof hypeCardShareUploadClaimsTable.$inferSelect;

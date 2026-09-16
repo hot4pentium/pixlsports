@@ -23,6 +23,11 @@ import {
   useCancelAccount,
   useReactivateAccount,
   getGetAccountLifecycleQueryKey,
+  useGetSupporterPhoto,
+  useRequestSupporterPhotoUploadUrl,
+  useSaveSupporterPhoto,
+  useDeleteSupporterPhoto,
+  getGetSupporterPhotoQueryKey,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
@@ -74,6 +79,7 @@ import {
   type ScheduleEventType,
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
+import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import {
   createBlankRosterPlayer,
   getBenchPlayers,
@@ -837,6 +843,9 @@ function SupporterStudio() {
   const [, setLocation] = useLocation();
   const { user, isSignedIn } = useUser();
   const profile = supporterProfileFromUser(user);
+  const { data: athletePhoto } = useGetSupporterPhoto({
+    query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
+  });
   const [calendarCode, setCalendarCode] = useState(
     () => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '',
   );
@@ -918,6 +927,7 @@ function SupporterStudio() {
               onConnectionChange={setCalendarCode}
             />
           )}
+          athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
         />
       </main>
     </StudioLayout>
@@ -930,6 +940,14 @@ function SupporterProfilePage() {
   const [profile, setProfile] = useState<SupporterProfile>(() => supporterProfileFromUser(user));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [photoError, setPhotoError] = useState('');
+  const requestPhotoUpload = useRequestSupporterPhotoUploadUrl();
+  const savePhoto = useSaveSupporterPhoto();
+  const deletePhoto = useDeleteSupporterPhoto();
+  const { data: athletePhoto } = useGetSupporterPhoto({
+    query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
+  });
+  const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending || deletePhoto.isPending;
 
   useEffect(() => {
     if (user) setProfile(supporterProfileFromUser(user));
@@ -971,6 +989,27 @@ function SupporterProfilePage() {
     }
   };
 
+  const uploadPhoto = async (file: File) => {
+    setPhotoError('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setPhotoError('Choose a JPG, PNG, or WebP photo.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Photo must be 5 MB or smaller.');
+      return;
+    }
+    try {
+      const prepared = await requestPhotoUpload.mutateAsync({ data: { contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp', size: file.size } });
+      const uploaded = await fetch(prepared.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+      if (!uploaded.ok) throw new Error('upload failed');
+      await savePhoto.mutateAsync({ data: { objectPath: prepared.objectPath } });
+      await queryClient.invalidateQueries({ queryKey: getGetSupporterPhotoQueryKey() });
+    } catch {
+      setPhotoError('We could not upload that photo. Check your connection and try again.');
+    }
+  };
+
   return (
     <StudioLayout role="fan">
       <main className="flex-1">
@@ -984,6 +1023,17 @@ function SupporterProfilePage() {
           }}
           onSave={() => void saveProfile()}
           onCancel={() => setLocation('/studio')}
+          athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
+          photoBusy={photoBusy}
+          photoError={photoError}
+          onPhotoChange={(file) => void uploadPhoto(file)}
+          onPhotoRemove={() => {
+            setPhotoError('');
+            deletePhoto.mutate(undefined, {
+              onSuccess: () => clearSupporterPhotoCache(queryClient),
+              onError: () => setPhotoError('We could not remove the photo. Please try again.'),
+            });
+          }}
         />
       </main>
     </StudioLayout>

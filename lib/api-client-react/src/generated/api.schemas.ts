@@ -5,6 +5,42 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface SupporterPhoto {
+  url: string;
+  contentType: string;
+  /** @minimum 1 */
+  size: number;
+  updatedAt: string;
+}
+
+export type SupporterPhotoUploadInputContentType = typeof SupporterPhotoUploadInputContentType[keyof typeof SupporterPhotoUploadInputContentType];
+
+
+export const SupporterPhotoUploadInputContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface SupporterPhotoUploadInput {
+  contentType: SupporterPhotoUploadInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 5242880
+     */
+  size: number;
+}
+
+export interface SupporterPhotoUpload {
+  uploadUrl: string;
+  objectPath: string;
+}
+
+export interface SupporterPhotoSave {
+  /** @minLength 10 */
+  objectPath: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

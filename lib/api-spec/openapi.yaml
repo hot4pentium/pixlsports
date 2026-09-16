@@ -22,6 +22,8 @@ tags:
     description: Authenticated coach calendar connections
   - name: account-access
     description: Authenticated account role and Guest usage
+  - name: supporter-photos
+    description: Private supporter athlete photos
 paths:
   /healthz:
     get:
@@ -633,6 +635,74 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /supporter-photo:
+    get:
+      operationId: getSupporterPhoto
+      tags: [supporter-photos]
+      summary: Get the signed-in supporter's athlete photo
+      responses:
+        "200":
+          description: Current private athlete photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterPhoto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: saveSupporterPhoto
+      tags: [supporter-photos]
+      summary: Validate and save an uploaded athlete photo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupporterPhotoSave"
+      responses:
+        "200":
+          description: Saved private athlete photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterPhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          description: Photo is too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteSupporterPhoto
+      tags: [supporter-photos]
+      summary: Remove the signed-in supporter's athlete photo
+      responses:
+        "204":
+          description: Photo removed
+  /supporter-photo/upload-url:
+    post:
+      operationId: requestSupporterPhotoUploadUrl
+      tags: [supporter-photos]
+      summary: Request a private athlete photo upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupporterPhotoUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterPhotoUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 components:
   parameters:
     ProjectId:
@@ -697,6 +767,31 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
   schemas:
+    SupporterPhoto:
+      type: object
+      required: [url, contentType, size, updatedAt]
+      properties:
+        url: { type: string }
+        contentType: { type: string }
+        size: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+    SupporterPhotoUploadInput:
+      type: object
+      required: [contentType, size]
+      properties:
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+    SupporterPhotoUpload:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath: { type: string }
+    SupporterPhotoSave:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 10 }
     HealthStatus:
       type: object
       properties:

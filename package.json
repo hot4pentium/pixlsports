@@ -7,6 +7,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "test:account-lifecycle": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/accountLifecycle.test.ts",
     "test:coach-calendar-subscription": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/coachCalendarSubscription.test.ts",
+    "test:supporter-photo-policy": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/supporterPhotoPolicy.test.ts",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },

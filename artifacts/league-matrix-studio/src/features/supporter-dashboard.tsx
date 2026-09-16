@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Clock, Trophy, ChevronRight, User,
   Users, Activity, Image as ImageIcon, Unlink, ShieldCheck,
-  CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle
+  CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -51,6 +51,7 @@ export interface SupporterDashboardViewProps {
   onOpenProfile: () => void;
   onDisconnect: () => void;
   connectionPanel: ReactNode;
+  athletePhotoUrl?: string;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -89,6 +90,7 @@ export function SupporterDashboardView({
   onOpenProfile,
   onDisconnect,
   connectionPanel,
+  athletePhotoUrl,
 }: SupporterDashboardViewProps) {
   const hasAthlete = Boolean(profile.athleteName);
 
@@ -117,7 +119,9 @@ export function SupporterDashboardView({
           {/* Avatar Circle */}
           <div className="shrink-0 relative">
             <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-primary bg-background text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(22,163,74,0.3)]">
-              {hasAthlete ? (
+              {athletePhotoUrl ? (
+                <img src={athletePhotoUrl} alt={`${profile.athleteName || 'Athlete'} profile`} className="h-full w-full rounded-full object-cover" />
+              ) : hasAthlete ? (
                 <User className="w-16 h-16 opacity-20" />
               ) : (
                 <Users className="w-16 h-16 opacity-20" />
@@ -397,6 +401,11 @@ export interface SupporterProfileViewProps {
   onChange: (field: keyof SupporterProfile, value: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  athletePhotoUrl?: string;
+  photoBusy: boolean;
+  photoError: string;
+  onPhotoChange: (file: File) => void;
+  onPhotoRemove: () => void;
 }
 
 export function SupporterProfileView({
@@ -405,7 +414,12 @@ export function SupporterProfileView({
   error,
   onChange,
   onSave,
-  onCancel
+  onCancel,
+  athletePhotoUrl,
+  photoBusy,
+  photoError,
+  onPhotoChange,
+  onPhotoRemove,
 }: SupporterProfileViewProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -436,6 +450,31 @@ export function SupporterProfileView({
               <p>{error}</p>
             </div>
           )}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border/50 pb-2">
+              <Camera className="w-4 h-4" /> Athlete Photo
+            </h3>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-primary bg-background grid place-items-center">
+                {athletePhotoUrl ? <img src={athletePhotoUrl} alt="Athlete profile" className="h-full w-full object-cover" /> : <User className="h-12 w-12 text-muted-foreground/40" />}
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Private to your signed-in account. JPG, PNG, or WebP, up to 5 MB.</p>
+                {photoError && <p className="text-sm font-bold text-destructive" role="alert">{photoError}</p>}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <label className="cursor-pointer bg-foreground text-background px-5 py-3 text-center text-xs font-bold uppercase tracking-widest disabled:opacity-50">
+                    {photoBusy ? 'Uploading…' : athletePhotoUrl ? 'Replace Photo' : 'Add Photo'}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoBusy} onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onPhotoChange(file);
+                      event.currentTarget.value = '';
+                    }} data-testid="input-athlete-photo" />
+                  </label>
+                  {athletePhotoUrl && <button type="button" disabled={photoBusy} onClick={onPhotoRemove} className="border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="btn-remove-athlete-photo"><Trash2 className="mr-2 inline h-4 w-4" />Remove</button>}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-6">
             <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border/50 pb-2">

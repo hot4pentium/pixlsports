@@ -8,6 +8,7 @@ import accountAccessRouter from "./accountAccess";
 import accountLifecycleRouter from "./accountLifecycle";
 import billingRouter from "./billing";
 import hypeCardSharesRouter from "./hypeCardShares";
+import supporterPhotoRouter from "./supporterPhoto";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(hypeCardSharesRouter);
 router.use(coachCalendarRouter);
 router.use(storageRouter);
 router.use(accountAccessRouter);
+router.use(supporterPhotoRouter);
 
 export default router;

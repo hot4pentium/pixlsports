@@ -911,3 +911,63 @@ export const ServeProjectMediaParams = zod.object({
 export const ServeProjectMediaResponse = zod.unknown()
 
 
+/**
+ * @summary Get the signed-in supporter's athlete photo
+ */
+
+
+
+export const GetSupporterPhotoResponse = zod.object({
+  "url": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Validate and save an uploaded athlete photo
+ */
+export const saveSupporterPhotoBodyObjectPathMin = 10;
+
+
+
+export const SaveSupporterPhotoBody = zod.object({
+  "objectPath": zod.string().min(saveSupporterPhotoBodyObjectPathMin)
+})
+
+
+
+
+export const SaveSupporterPhotoResponse = zod.object({
+  "url": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove the signed-in supporter's athlete photo
+ */
+export const DeleteSupporterPhotoResponse = zod.void()
+
+
+/**
+ * @summary Request a private athlete photo upload URL
+ */
+export const requestSupporterPhotoUploadUrlBodySizeMax = 5242880;
+
+
+
+export const RequestSupporterPhotoUploadUrlBody = zod.object({
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp']),
+  "size": zod.number().int().min(1).max(requestSupporterPhotoUploadUrlBodySizeMax)
+})
+
+export const RequestSupporterPhotoUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+

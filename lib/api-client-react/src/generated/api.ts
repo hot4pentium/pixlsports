@@ -48,6 +48,10 @@ import type {
   ProjectUpdate,
   ScheduleShare,
   ScheduleShareInput,
+  SupporterPhoto,
+  SupporterPhotoSave,
+  SupporterPhotoUpload,
+  SupporterPhotoUploadInput,
   UnauthorizedResponse
 } from './api.schemas';
 
@@ -2581,4 +2585,331 @@ export function useServeProjectMedia<TData = Awaited<ReturnType<typeof serveProj
 
 
 
+
+export const getGetSupporterPhotoUrl = () => {
+
+
+
+
+  return `/api/supporter-photo`
+}
+
+/**
+ * @summary Get the signed-in supporter's athlete photo
+ */
+export const getSupporterPhoto = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupporterPhoto> => {
+
+  return customFetch<SupporterPhoto>(getGetSupporterPhotoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupporterPhotoQueryKey = () => {
+    return [
+    `/api/supporter-photo`
+    ] as const;
+    }
+
+
+export const getGetSupporterPhotoQueryOptions = <TData = Awaited<ReturnType<typeof getSupporterPhoto>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupporterPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupporterPhotoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupporterPhoto>>> = ({ signal }) => getSupporterPhoto({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupporterPhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupporterPhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getSupporterPhoto>>>
+export type GetSupporterPhotoQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the signed-in supporter's athlete photo
+ */
+
+export function useGetSupporterPhoto<TData = Awaited<ReturnType<typeof getSupporterPhoto>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupporterPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupporterPhotoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveSupporterPhotoUrl = () => {
+
+
+
+
+  return `/api/supporter-photo`
+}
+
+/**
+ * @summary Validate and save an uploaded athlete photo
+ */
+export const saveSupporterPhoto = async (supporterPhotoSave: SupporterPhotoSave, options?: Parameters<typeof customFetch>[1]): Promise<SupporterPhoto> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupporterPhoto>(getSaveSupporterPhotoUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supporterPhotoSave)
+  }
+);}
+
+
+
+
+
+export const getSaveSupporterPhotoMutationKey = () => ['saveSupporterPhoto'] as const;
+
+export const getSaveSupporterPhotoMutationOptions = <TError = ErrorType<BadRequestResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSupporterPhoto>>, TError,SaveSupporterPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveSupporterPhoto>>, TError,SaveSupporterPhotoMutationVariables, TContext> => {
+
+const mutationKey = getSaveSupporterPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveSupporterPhoto>>, SaveSupporterPhotoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveSupporterPhoto(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveSupporterPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof saveSupporterPhoto>>>
+    export type SaveSupporterPhotoMutationBody = BodyType<SupporterPhotoSave>
+    export type SaveSupporterPhotoMutationError = ErrorType<BadRequestResponse | Error>
+    export type SaveSupporterPhotoMutationVariables = {data: BodyType<SupporterPhotoSave>}
+
+    /**
+ * @summary Validate and save an uploaded athlete photo
+ */
+export const useSaveSupporterPhoto = <TError = ErrorType<BadRequestResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSupporterPhoto>>, TError,SaveSupporterPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveSupporterPhoto>>,
+        TError,
+        SaveSupporterPhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveSupporterPhotoMutationOptions(options));
+    }
+
+export const getDeleteSupporterPhotoUrl = () => {
+
+
+
+
+  return `/api/supporter-photo`
+}
+
+/**
+ * @summary Remove the signed-in supporter's athlete photo
+ */
+export const deleteSupporterPhoto = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteSupporterPhotoUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSupporterPhotoMutationKey = () => ['deleteSupporterPhoto'] as const;
+
+export const getDeleteSupporterPhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSupporterPhoto>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSupporterPhoto>>, TError,void, TContext> => {
+
+const mutationKey = getDeleteSupporterPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSupporterPhoto>>, void> = () => {
+
+
+          return  deleteSupporterPhoto(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSupporterPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSupporterPhoto>>>
+
+    export type DeleteSupporterPhotoMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Remove the signed-in supporter's athlete photo
+ */
+export const useDeleteSupporterPhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSupporterPhoto>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSupporterPhoto>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteSupporterPhotoMutationOptions(options));
+    }
+
+export const getRequestSupporterPhotoUploadUrlUrl = () => {
+
+
+
+
+  return `/api/supporter-photo/upload-url`
+}
+
+/**
+ * @summary Request a private athlete photo upload URL
+ */
+export const requestSupporterPhotoUploadUrl = async (supporterPhotoUploadInput: SupporterPhotoUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<SupporterPhotoUpload> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupporterPhotoUpload>(getRequestSupporterPhotoUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supporterPhotoUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestSupporterPhotoUploadUrlMutationKey = () => ['requestSupporterPhotoUploadUrl'] as const;
+
+export const getRequestSupporterPhotoUploadUrlMutationOptions = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSupporterPhotoUploadUrl>>, TError,RequestSupporterPhotoUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestSupporterPhotoUploadUrl>>, TError,RequestSupporterPhotoUploadUrlMutationVariables, TContext> => {
+
+const mutationKey = getRequestSupporterPhotoUploadUrlMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestSupporterPhotoUploadUrl>>, RequestSupporterPhotoUploadUrlMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestSupporterPhotoUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestSupporterPhotoUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestSupporterPhotoUploadUrl>>>
+    export type RequestSupporterPhotoUploadUrlMutationBody = BodyType<SupporterPhotoUploadInput>
+    export type RequestSupporterPhotoUploadUrlMutationError = ErrorType<BadRequestResponse>
+    export type RequestSupporterPhotoUploadUrlMutationVariables = {data: BodyType<SupporterPhotoUploadInput>}
+
+    /**
+ * @summary Request a private athlete photo upload URL
+ */
+export const useRequestSupporterPhotoUploadUrl = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestSupporterPhotoUploadUrl>>, TError,RequestSupporterPhotoUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestSupporterPhotoUploadUrl>>,
+        TError,
+        RequestSupporterPhotoUploadUrlMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestSupporterPhotoUploadUrlMutationOptions(options));
+    }
 

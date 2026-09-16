@@ -9,6 +9,8 @@ import {
   hypeCardSharesTable,
   projectMediaTable,
   scheduleSharesTable,
+  supporterPhotosTable,
+  supporterPhotoUploadClaimsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
@@ -87,6 +89,10 @@ async function purgeAccount(
     })
     .from(hypeCardSharesTable)
     .where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+  const supporterPhotos = await db
+    .select({ objectPath: supporterPhotosTable.objectPath })
+    .from(supporterPhotosTable)
+    .where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
 
   for (const item of media) {
     try {
@@ -104,6 +110,13 @@ async function purgeAccount(
       }
     }
   }
+  for (const photo of supporterPhotos) {
+    try {
+      await dependencies.deleteObject(photo.objectPath);
+    } catch (error) {
+      if (!(error instanceof ObjectNotFoundError)) throw error;
+    }
+  }
 
   await db.transaction(async (tx) => {
     await tx.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
@@ -112,6 +125,8 @@ async function purgeAccount(
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(coachCalendarCodesTable).where(eq(coachCalendarCodesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(supporterPhotosTable).where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(supporterPhotoUploadClaimsTable).where(eq(supporterPhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
   });
 
   try {
