@@ -82,12 +82,18 @@ router.post("/supporter-photo", requireAuth, async (req, res): Promise<void> => 
       objectPath: parsed.data.objectPath,
       contentType: metadata.contentType,
       size: metadata.size,
+      cropX: parsed.data.cropX,
+      cropY: parsed.data.cropY,
+      cropZoom: parsed.data.cropZoom,
     }).onConflictDoUpdate({
       target: supporterPhotosTable.ownerClerkUserId,
       set: {
         objectPath: parsed.data.objectPath,
         contentType: metadata.contentType,
         size: metadata.size,
+        cropX: parsed.data.cropX,
+        cropY: parsed.data.cropY,
+        cropZoom: parsed.data.cropZoom,
         updatedAt: new Date(),
       },
     }).returning();
@@ -102,6 +108,9 @@ router.post("/supporter-photo", requireAuth, async (req, res): Promise<void> => 
       url: "/api/supporter-photo/image",
       contentType: photo.contentType,
       size: photo.size,
+      cropX: photo.cropX,
+      cropY: photo.cropY,
+      cropZoom: photo.cropZoom,
       updatedAt: photo.updatedAt,
     }));
   } catch (error) {
@@ -114,7 +123,15 @@ router.get("/supporter-photo", requireAuth, async (_req, res): Promise<void> => 
   const [photo] = await db.select().from(supporterPhotosTable)
     .where(eq(supporterPhotosTable.ownerClerkUserId, getRequiredClerkUserId(res)));
   if (!photo) { res.status(404).json({ error: "Photo not found" }); return; }
-  res.json({ url: "/api/supporter-photo/image", contentType: photo.contentType, size: photo.size, updatedAt: photo.updatedAt });
+  res.json({
+    url: "/api/supporter-photo/image",
+    contentType: photo.contentType,
+    size: photo.size,
+    cropX: photo.cropX,
+    cropY: photo.cropY,
+    cropZoom: photo.cropZoom,
+    updatedAt: photo.updatedAt,
+  });
 });
 
 router.get("/supporter-photo/image", requireAuth, async (req, res): Promise<void> => {

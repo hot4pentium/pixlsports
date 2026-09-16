@@ -915,12 +915,24 @@ export const ServeProjectMediaResponse = zod.unknown()
  * @summary Get the signed-in supporter's athlete photo
  */
 
+export const getSupporterPhotoResponseCropXMin = 0;
+export const getSupporterPhotoResponseCropXMax = 100;
+
+export const getSupporterPhotoResponseCropYMin = 0;
+export const getSupporterPhotoResponseCropYMax = 100;
+
+export const getSupporterPhotoResponseCropZoomMin = 100;
+export const getSupporterPhotoResponseCropZoomMax = 250;
+
 
 
 export const GetSupporterPhotoResponse = zod.object({
   "url": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
+  "cropX": zod.number().int().min(getSupporterPhotoResponseCropXMin).max(getSupporterPhotoResponseCropXMax),
+  "cropY": zod.number().int().min(getSupporterPhotoResponseCropYMin).max(getSupporterPhotoResponseCropYMax),
+  "cropZoom": zod.number().int().min(getSupporterPhotoResponseCropZoomMin).max(getSupporterPhotoResponseCropZoomMax),
   "updatedAt": zod.coerce.date()
 })
 
@@ -930,12 +942,33 @@ export const GetSupporterPhotoResponse = zod.object({
  */
 export const saveSupporterPhotoBodyObjectPathMin = 10;
 
+export const saveSupporterPhotoBodyCropXMin = 0;
+export const saveSupporterPhotoBodyCropXMax = 100;
+
+export const saveSupporterPhotoBodyCropYMin = 0;
+export const saveSupporterPhotoBodyCropYMax = 100;
+
+export const saveSupporterPhotoBodyCropZoomMin = 100;
+export const saveSupporterPhotoBodyCropZoomMax = 250;
+
 
 
 export const SaveSupporterPhotoBody = zod.object({
-  "objectPath": zod.string().min(saveSupporterPhotoBodyObjectPathMin)
+  "objectPath": zod.string().min(saveSupporterPhotoBodyObjectPathMin),
+  "cropX": zod.number().int().min(saveSupporterPhotoBodyCropXMin).max(saveSupporterPhotoBodyCropXMax),
+  "cropY": zod.number().int().min(saveSupporterPhotoBodyCropYMin).max(saveSupporterPhotoBodyCropYMax),
+  "cropZoom": zod.number().int().min(saveSupporterPhotoBodyCropZoomMin).max(saveSupporterPhotoBodyCropZoomMax)
 })
 
+
+export const saveSupporterPhotoResponseCropXMin = 0;
+export const saveSupporterPhotoResponseCropXMax = 100;
+
+export const saveSupporterPhotoResponseCropYMin = 0;
+export const saveSupporterPhotoResponseCropYMax = 100;
+
+export const saveSupporterPhotoResponseCropZoomMin = 100;
+export const saveSupporterPhotoResponseCropZoomMax = 250;
 
 
 
@@ -943,6 +976,9 @@ export const SaveSupporterPhotoResponse = zod.object({
   "url": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
+  "cropX": zod.number().int().min(saveSupporterPhotoResponseCropXMin).max(saveSupporterPhotoResponseCropXMax),
+  "cropY": zod.number().int().min(saveSupporterPhotoResponseCropYMin).max(saveSupporterPhotoResponseCropYMax),
+  "cropZoom": zod.number().int().min(saveSupporterPhotoResponseCropZoomMin).max(saveSupporterPhotoResponseCropZoomMax),
   "updatedAt": zod.coerce.date()
 })
 

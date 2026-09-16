@@ -866,6 +866,7 @@ function SupporterStudio() {
             />
           )}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
+          athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
         />
       </main>
     </StudioLayout>
@@ -879,6 +880,8 @@ function SupporterProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [photoError, setPhotoError] = useState('');
+  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; url: string } | null>(null);
+  const [pendingPhotoCrop, setPendingPhotoCrop] = useState({ x: 50, y: 50, zoom: 100 });
   const requestPhotoUpload = useRequestSupporterPhotoUploadUrl();
   const savePhoto = useSaveSupporterPhoto();
   const deletePhoto = useDeleteSupporterPhoto();
@@ -918,7 +921,11 @@ function SupporterProfilePage() {
     }
   };
 
-  const uploadPhoto = async (file: File) => {
+  useEffect(() => () => {
+    if (pendingPhoto) URL.revokeObjectURL(pendingPhoto.url);
+  }, [pendingPhoto]);
+
+  const choosePhoto = (file: File) => {
     setPhotoError('');
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       setPhotoError('Choose a JPG, PNG, or WebP photo.');
@@ -928,12 +935,25 @@ function SupporterProfilePage() {
       setPhotoError('Photo must be 5 MB or smaller.');
       return;
     }
+    setPendingPhotoCrop({ x: 50, y: 50, zoom: 100 });
+    setPendingPhoto({ file, url: URL.createObjectURL(file) });
+  };
+
+  const uploadPhoto = async () => {
+    if (!pendingPhoto) return;
+    const { file } = pendingPhoto;
     try {
       const prepared = await requestPhotoUpload.mutateAsync({ data: { contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp', size: file.size } });
       const uploaded = await fetch(prepared.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
       if (!uploaded.ok) throw new Error('upload failed');
-      await savePhoto.mutateAsync({ data: { objectPath: prepared.objectPath } });
+      await savePhoto.mutateAsync({ data: {
+        objectPath: prepared.objectPath,
+        cropX: pendingPhotoCrop.x,
+        cropY: pendingPhotoCrop.y,
+        cropZoom: pendingPhotoCrop.zoom,
+      } });
       await queryClient.invalidateQueries({ queryKey: getGetSupporterPhotoQueryKey() });
+      setPendingPhoto(null);
     } catch {
       setPhotoError('We could not upload that photo. Check your connection and try again.');
     }
@@ -953,9 +973,15 @@ function SupporterProfilePage() {
           onSave={() => void saveProfile()}
           onCancel={() => setLocation('/studio')}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
+          athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
+          pendingPhotoUrl={pendingPhoto?.url}
+          pendingPhotoCrop={pendingPhotoCrop}
           photoBusy={photoBusy}
           photoError={photoError}
-          onPhotoChange={(file) => void uploadPhoto(file)}
+          onPhotoChange={choosePhoto}
+          onPhotoCropChange={setPendingPhotoCrop}
+          onPhotoUpload={() => void uploadPhoto()}
+          onPhotoCancel={() => setPendingPhoto(null)}
           onPhotoRemove={() => {
             setPhotoError('');
             deletePhoto.mutate(undefined, {

@@ -36,6 +36,11 @@ export interface SupporterProject {
   href: string;
 }
 
+export interface AthletePhotoCrop {
+  x: number;
+  y: number;
+  zoom: number;
+}
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   events: SupporterEvent[];
@@ -53,6 +58,7 @@ export interface SupporterDashboardViewProps {
   onDisconnect: () => void;
   connectionPanel: ReactNode;
   athletePhotoUrl?: string;
+  athletePhotoCrop?: AthletePhotoCrop;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -112,6 +118,7 @@ export function SupporterDashboardView({
   onDisconnect,
   connectionPanel,
   athletePhotoUrl,
+  athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
 }: SupporterDashboardViewProps) {
   const hasAthlete = Boolean(profile.athleteName);
   const calendarState = getCalendarViewState({
@@ -148,7 +155,9 @@ export function SupporterDashboardView({
           <div className="shrink-0 relative">
             <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-primary bg-background text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(22,163,74,0.3)]">
               {athletePhotoUrl ? (
-                <img src={athletePhotoUrl} alt={`${profile.athleteName || 'Athlete'} profile`} className="h-full w-full rounded-full object-cover" />
+                <div className="h-full w-full overflow-hidden rounded-full">
+                  <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
+                </div>
               ) : hasAthlete ? (
                 <User className="w-16 h-16 opacity-20" />
               ) : (
@@ -443,9 +452,15 @@ export interface SupporterProfileViewProps {
   onSave: () => void;
   onCancel: () => void;
   athletePhotoUrl?: string;
+  athletePhotoCrop?: AthletePhotoCrop;
+  pendingPhotoUrl?: string;
+  pendingPhotoCrop: AthletePhotoCrop;
   photoBusy: boolean;
   photoError: string;
   onPhotoChange: (file: File) => void;
+  onPhotoCropChange: (crop: AthletePhotoCrop) => void;
+  onPhotoUpload: () => void;
+  onPhotoCancel: () => void;
   onPhotoRemove: () => void;
 }
 
@@ -457,9 +472,15 @@ export function SupporterProfileView({
   onSave,
   onCancel,
   athletePhotoUrl,
+  athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
+  pendingPhotoUrl,
+  pendingPhotoCrop,
   photoBusy,
   photoError,
   onPhotoChange,
+  onPhotoCropChange,
+  onPhotoUpload,
+  onPhotoCancel,
   onPhotoRemove,
 }: SupporterProfileViewProps) {
   const handleSubmit = (e: FormEvent) => {
@@ -497,7 +518,7 @@ export function SupporterProfileView({
             </h3>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-primary bg-background grid place-items-center">
-                {athletePhotoUrl ? <img src={athletePhotoUrl} alt="Athlete profile" className="h-full w-full object-cover" /> : <User className="h-12 w-12 text-muted-foreground/40" />}
+                {athletePhotoUrl ? <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt="Athlete profile" /> : <User className="h-12 w-12 text-muted-foreground/40" />}
               </div>
               <div className="min-w-0 flex-1 space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Private to your signed-in account. JPG, PNG, or WebP, up to 5 MB.</p>
@@ -511,10 +532,47 @@ export function SupporterProfileView({
                       event.currentTarget.value = '';
                     }} data-testid="input-athlete-photo" />
                   </label>
-                  {athletePhotoUrl && <button type="button" disabled={photoBusy} onClick={onPhotoRemove} className="border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="btn-remove-athlete-photo"><Trash2 className="mr-2 inline h-4 w-4" />Remove</button>}
+                  {athletePhotoUrl && !pendingPhotoUrl && <button type="button" disabled={photoBusy} onClick={onPhotoRemove} className="border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="btn-remove-athlete-photo"><Trash2 className="mr-2 inline h-4 w-4" />Remove</button>}
                 </div>
               </div>
             </div>
+            {pendingPhotoUrl && (
+              <div className="rounded-sm border border-border bg-background p-4 sm:p-5" data-testid="athlete-photo-crop-editor">
+                <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
+                  <div className="mx-auto h-44 w-44 overflow-hidden rounded-full border-4 border-primary bg-muted touch-none">
+                    <AthletePhoto url={pendingPhotoUrl} crop={pendingPhotoCrop} alt="New athlete photo crop preview" />
+                  </div>
+                  <div className="space-y-4">
+                    {([
+                      ['Horizontal position', 'x', 0, 100],
+                      ['Vertical position', 'y', 0, 100],
+                      ['Zoom', 'zoom', 100, 250],
+                    ] as const).map(([label, key, min, max]) => (
+                      <label key={key} className="block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        <span className="flex justify-between"><span>{label}</span><span>{pendingPhotoCrop[key]}{key === 'zoom' ? '%' : ''}</span></span>
+                        <input
+                          type="range"
+                          min={min}
+                          max={max}
+                          value={pendingPhotoCrop[key]}
+                          disabled={photoBusy}
+                          onChange={(event) => onPhotoCropChange({ ...pendingPhotoCrop, [key]: Number(event.target.value) })}
+                          className="mt-2 h-10 w-full accent-primary disabled:opacity-50"
+                          aria-label={label}
+                        />
+                      </label>
+                    ))}
+                    <p className="text-xs text-muted-foreground">Your replacement starts centered. Adjust it here before uploading.</p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button type="button" disabled={photoBusy} onClick={onPhotoUpload} className="bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="btn-upload-cropped-photo">
+                        {photoBusy ? 'Uploading…' : 'Upload Photo'}
+                      </button>
+                      <button type="button" disabled={photoBusy} onClick={onPhotoCancel} className="border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest disabled:opacity-50">Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -643,5 +701,28 @@ export function SupporterProfileView({
         </form>
       </div>
     </div>
+  );
+}
+
+function AthletePhoto({
+  url,
+  crop,
+  alt,
+}: {
+  url: string;
+  crop: AthletePhotoCrop;
+  alt: string;
+}) {
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="h-full w-full object-cover"
+      style={{
+        objectPosition: `${crop.x}% ${crop.y}%`,
+        transform: `scale(${crop.zoom / 100})`,
+        transformOrigin: `${crop.x}% ${crop.y}%`,
+      }}
+    />
   );
 }

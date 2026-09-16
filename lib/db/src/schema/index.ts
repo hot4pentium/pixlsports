@@ -41,6 +41,9 @@ export const supporterPhotosTable = pgTable("supporter_photos", {
   objectPath: text("object_path").notNull().unique(),
   contentType: text("content_type").notNull(),
   size: integer("size").notNull(),
+  cropX: integer("crop_x").notNull().default(50),
+  cropY: integer("crop_y").notNull().default(50),
+  cropZoom: integer("crop_zoom").notNull().default(100),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

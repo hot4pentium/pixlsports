@@ -11,5 +11,20 @@ export interface SupporterPhoto {
   contentType: string;
   /** @minimum 1 */
   size: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  cropX: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  cropY: number;
+  /**
+     * @minimum 100
+     * @maximum 250
+     */
+  cropZoom: number;
   updatedAt: Date;
 }

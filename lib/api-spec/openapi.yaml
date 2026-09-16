@@ -769,11 +769,14 @@ components:
   schemas:
     SupporterPhoto:
       type: object
-      required: [url, contentType, size, updatedAt]
+      required: [url, contentType, size, cropX, cropY, cropZoom, updatedAt]
       properties:
         url: { type: string }
         contentType: { type: string }
         size: { type: integer, minimum: 1 }
+        cropX: { type: integer, minimum: 0, maximum: 100 }
+        cropY: { type: integer, minimum: 0, maximum: 100 }
+        cropZoom: { type: integer, minimum: 100, maximum: 250 }
         updatedAt: { type: string, format: date-time }
     SupporterPhotoUploadInput:
       type: object
@@ -789,9 +792,12 @@ components:
         objectPath: { type: string }
     SupporterPhotoSave:
       type: object
-      required: [objectPath]
+      required: [objectPath, cropX, cropY, cropZoom]
       properties:
         objectPath: { type: string, minLength: 10 }
+        cropX: { type: integer, minimum: 0, maximum: 100 }
+        cropY: { type: integer, minimum: 0, maximum: 100 }
+        cropZoom: { type: integer, minimum: 100, maximum: 250 }
     HealthStatus:
       type: object
       properties:
