@@ -44,6 +44,7 @@ export interface AthletePhotoCrop {
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   events: SupporterEvent[];
+  nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
   connected: boolean;
   connectionLabel: string;
@@ -102,6 +103,7 @@ function formatRelativeTime(date: string | Date) {
 export function SupporterDashboardView({
   profile,
   events,
+  nextGameIsUpcoming,
   projects,
   connected,
   connectionLabel,
@@ -279,7 +281,7 @@ export function SupporterDashboardView({
           <Link href="/studio/schedule" className="group bg-card hover:bg-muted border border-border p-6 clip-angled-sm flex items-center justify-between transition-all hover:border-foreground" data-testid="link-quick-schedule">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-                {nextGame ? formatDaysUntil(nextGame.date) : 'Game Day'}
+                {nextGame ? (nextGameIsUpcoming ? formatDaysUntil(nextGame.date) : 'Scheduled') : 'Game Day'}
               </p>
               <h4 className="mt-1 font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">Game Day</h4>
               {nextGame ? (
@@ -300,10 +302,10 @@ export function SupporterDashboardView({
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-8 animate-slide-up delay-300">
         
-        {/* UPCOMING */}
+        {/* TEAM SCHEDULE */}
         <section>
           <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-            <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
+            <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Team Schedule</h3>
             {connected && (
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                 <CalendarDays className="w-4 h-4" /> Team Calendar
@@ -346,20 +348,20 @@ export function SupporterDashboardView({
               ) : calendarState === 'empty' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">
                   <CalendarX2 className="w-10 h-10 opacity-50" />
-                  <p className="font-bold uppercase tracking-widest">No Upcoming Events</p>
-                  <p className="text-sm max-w-xs text-balance">The coach hasn't scheduled any upcoming events right now.</p>
+                  <p className="font-bold uppercase tracking-widest">No Scheduled Events</p>
+                  <p className="text-sm max-w-xs text-balance">The coach hasn’t added any events to the team schedule right now.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {events.slice(0, 4).map((event, idx) => (
+                  {events.map((event, idx) => (
                     <div key={event.id} className={`flex items-stretch gap-4 p-4 border transition-colors ${idx === 0 ? 'bg-primary/5 border-primary/30' : 'bg-background border-border hover:border-foreground/30'}`}>
                       {/* Date block */}
                       <div className="flex flex-col items-center justify-center text-center shrink-0 w-16 border-r border-border/50 pr-4">
                         <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                          {formatDateDisplay(event.date).split(' ')[0]}
+                          {formatDateDisplay(event.date) ? formatDateDisplay(event.date).split(' ')[0] : 'DATE'}
                         </span>
                         <span className="font-display text-2xl leading-none">
-                          {formatDateDisplay(event.date).split(' ')[1]?.replace(',', '') || '--'}
+                          {formatDateDisplay(event.date).split(' ')[1]?.replace(',', '') || 'TBD'}
                         </span>
                       </div>
                       

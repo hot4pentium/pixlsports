@@ -868,8 +868,14 @@ function SupporterStudio() {
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
   const events = [...(calendar?.events ?? [])]
-    .filter((event) => event.date >= todayKey)
-    .sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`));
+    .sort((left, right) => {
+      const leftKey = left.date ? `${left.date}T${left.time}` : '9999-12-31T23:59';
+      const rightKey = right.date ? `${right.date}T${right.time}` : '9999-12-31T23:59';
+      return leftKey.localeCompare(rightKey);
+    });
+  const nextGame = events.find((event) => event.type === 'game' && event.date >= todayKey)
+    ?? events.find((event) => event.type === 'game');
+  const nextGameIsUpcoming = Boolean(nextGame?.date && nextGame.date >= todayKey);
   const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
   const connected = Boolean(calendarConnection && calendar);
 
@@ -884,6 +890,7 @@ function SupporterStudio() {
         <SupporterDashboardView
           profile={profile}
           events={events}
+           nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
           connected={connected}
           connectionLabel={calendar?.teamSeason || calendar?.title || profile.teamName}
