@@ -304,7 +304,10 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const headlineSize = fitText(stadiumHeadline, 840, 132, 0.56, 1);
   const playerSize = fitText(content.player, 760, 76, 0.7, 2);
   const detailsLine = content.team;
-  const detailsSize = fitText(detailsLine, 620, 23, 0.63, 3);
+  const lowerThirdPlayer = project.playerName.trim() ? content.player : '';
+  const lowerThirdDetails = project.teamName.trim() ? detailsLine : '';
+  const lowerThirdPlayerSize = lowerThirdPlayer ? fitText(lowerThirdPlayer, 760, 76, 0.7, 2) : 0;
+  const lowerThirdDetailsSize = lowerThirdDetails ? fitText(lowerThirdDetails, 620, 23, 0.63, 3) : 0;
   const positionBadgeMarkup = buildPositionBadgeMarkup(project.position, palette.secondary, palette.accent);
   const photo = project.photo
     ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
@@ -321,12 +324,12 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const branding = project.branding
      ? `<text x="500" y="1398" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="13" font-weight="800" letter-spacing="5" fill="#fff" opacity=".5">PIXL SPORTS STUDIO</text>`
     : '';
-  const nameplate = project.showLowerThird
+  const nameplate = lowerThirdPlayer || lowerThirdDetails
     ? buildStadiumLowerThirdTextMarkup({
-      player: content.player,
-      details: detailsLine,
-      playerSize,
-      detailsSize,
+      player: lowerThirdPlayer,
+      details: lowerThirdDetails,
+      playerSize: lowerThirdPlayerSize,
+      detailsSize: lowerThirdDetailsSize,
       accent: palette.accent,
       ns,
     })

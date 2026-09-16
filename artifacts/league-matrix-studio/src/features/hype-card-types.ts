@@ -24,7 +24,6 @@ export type HypeCardProject = {
   finish: CardFinishId;
   background: 'solid' | 'gradient' | 'paper';
   overlay: boolean;
-  showLowerThird: boolean;
   branding: boolean;
   playerName: string;
   jerseyNumber: string;
@@ -121,7 +120,6 @@ export const defaultProject = (): HypeCardProject => ({
   finish: 'classic',
   background: 'gradient',
   overlay: true,
-  showLowerThird: false,
   branding: true,
   playerName: '',
   jerseyNumber: '12',
@@ -159,7 +157,11 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
   const project = value && typeof value === 'object'
     ? value as Record<string, any>
     : {};
-  const { grade: _legacyGrade, ...projectWithoutGrade } = project;
+  const {
+    grade: _legacyGrade,
+    showLowerThird: _legacyShowLowerThird,
+    ...projectWithoutGrade
+  } = project;
   const visibility = project.visibility && typeof project.visibility === 'object'
     ? project.visibility as Record<string, unknown>
     : {};

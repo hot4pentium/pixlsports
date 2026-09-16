@@ -128,12 +128,10 @@ test('portable templates keep design text while omitting uploaded media', () => 
   assert.equal(reopened.logo, null);
 });
 
-test('new cards hide the lower third unless explicitly enabled', () => {
-  const { showLowerThird: _defaultLowerThird, ...projectWithoutPreference } = defaultProject();
-  assert.equal(defaultProject().showLowerThird, false);
-  assert.equal(normalizeHypeCardProject(projectWithoutPreference).showLowerThird, false);
-  assert.equal(normalizeHypeCardProject({ ...defaultProject(), showLowerThird: true }).showLowerThird, true);
-  assert.equal(normalizeHypeCardProject({ ...defaultProject(), showLowerThird: false }).showLowerThird, false);
+test('legacy lower third visibility preferences are ignored during normalization', () => {
+  const normalized = normalizeHypeCardProject({ ...defaultProject(), showLowerThird: true });
+
+  assert.equal('showLowerThird' in normalized, false);
 });
 
 test('saved projects always reopen in the portrait card format', () => {

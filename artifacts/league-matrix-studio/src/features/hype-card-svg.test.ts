@@ -27,6 +27,19 @@ test('lower third keeps player details without the graphic panel', () => {
   assert.doesNotMatch(markup, /<rect|lowerBar|accent rails|divider/);
 });
 
+test('lower third text can be omitted when no details were entered', () => {
+  const markup = buildStadiumLowerThirdTextMarkup({
+    player: '',
+    details: '',
+    playerSize: 0,
+    detailsSize: 0,
+    accent: '#f5c94d',
+    ns: 'empty-text',
+  });
+
+  assert.doesNotMatch(markup, />[^<]+<\/text>/);
+});
+
 test('keeps short position labels in the compact top-right badge', () => {
   const layout = getPositionBadgeLayout('GK');
   const markup = buildPositionBadgeMarkup('GK', '#123456', '#abcdef');
