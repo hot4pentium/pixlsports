@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
+import heroBanner from '@/assets/hero-banner.png';
 
 export interface SupporterProfile {
   displayName: string;
@@ -148,8 +149,17 @@ export function SupporterDashboardView({
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] mix-blend-screen pointer-events-none" />
         
         <div className="relative bg-[#111316] clip-angled p-6 sm:p-10 flex flex-col md:flex-row items-center md:items-start gap-8">
+          <img
+            src={heroBanner}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-35"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b0d0f]/95 via-[#0b0d0f]/75 to-[#0b0d0f]/55" />
+          <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
+
           {/* Avatar Circle */}
-          <div className="shrink-0 relative">
+          <div className="relative z-10 shrink-0">
             <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-primary bg-background text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(22,163,74,0.3)]">
               {athletePhotoUrl ? (
                 <div className="h-full w-full overflow-hidden rounded-full">
@@ -173,7 +183,7 @@ export function SupporterDashboardView({
           </div>
 
           {/* Info */}
-          <div className="flex-1 text-center md:text-left w-full">
+          <div className="relative z-10 flex-1 text-center md:text-left w-full">
             <div className="text-primary text-xs font-bold uppercase tracking-widest mb-2 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2">
               <span className="flex items-center gap-2">My Athlete</span>
             </div>
@@ -221,7 +231,7 @@ export function SupporterDashboardView({
           </div>
 
           {/* Quick Actions (Desktop only) */}
-          <div className="hidden lg:flex flex-col gap-3 min-w-[240px]">
+          <div className="relative z-10 hidden lg:flex flex-col gap-3 min-w-[240px]">
             <button onClick={onOpenProfile} className="flex items-center justify-between px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors group" data-testid="btn-edit-profile-side">
               <span className="text-sm font-bold uppercase tracking-widest text-white/80 group-hover:text-white">Profile Details</span>
               <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-1" />
