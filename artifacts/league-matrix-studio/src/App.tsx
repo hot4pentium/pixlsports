@@ -63,18 +63,23 @@ import {
   SupporterProfileView,
   type SupporterProfile,
   type SupporterProject,
+  type SupporterScheduleOption,
 } from '@/features/supporter-dashboard';
 import {
   createBlankScheduleEvent,
   defaultScheduleEvents,
+  getCloudScheduleProjects,
   getDefaultScheduleEvents,
   getLatestCloudScheduleProject,
+  getSelectedCloudScheduleProject,
   moveScheduleEvent,
   normalizeScheduleDraft,
   readScheduleDraft,
+  readSupporterScheduleSelection,
   saveScheduleEvent,
   removeScheduleEvent,
   saveScheduleDraft,
+  saveSupporterScheduleSelection,
   scheduleStorageKey,
   updateScheduleEvent,
   type ScheduleEvent,
@@ -833,6 +838,9 @@ function SupporterStudio() {
   const { user, isSignedIn } = useUser();
   const profile = supporterProfileFromUser(user);
   const localSchedule = readScheduleDraft();
+  const [selectedCustomScheduleId, setSelectedCustomScheduleId] = useState<string | null>(
+    readSupporterScheduleSelection(),
+  );
   const { data: athletePhoto } = useGetSupporterPhoto({
     query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
   });
@@ -875,11 +883,28 @@ function SupporterStudio() {
       queryKey: getListProjectsQueryKey(),
     },
   });
-  const latestCloudScheduleProject = getLatestCloudScheduleProject(cloudProjects ?? []);
-  const cloudSchedule = latestCloudScheduleProject
-    ? normalizeScheduleDraft(latestCloudScheduleProject.project)
+  const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
+  const selectedCloudScheduleProject = getSelectedCloudScheduleProject(
+    cloudScheduleProjects,
+    selectedCustomScheduleId,
+  );
+  const cloudSchedule = selectedCloudScheduleProject
+    ? normalizeScheduleDraft(selectedCloudScheduleProject.project)
     : null;
   const customSchedule = cloudSchedule ?? localSchedule;
+  const savedCustomSchedules: SupporterScheduleOption[] = cloudScheduleProjects.flatMap((project) => {
+    const draft = normalizeScheduleDraft(project.project);
+    if (!draft) return [];
+    const identity = [draft.teamName, draft.season].filter(Boolean).join(' · ');
+    return [{
+      id: project.id,
+      label: identity || project.name || 'Custom schedule',
+      teamName: draft.teamName,
+      season: draft.season,
+      updatedAt: project.updatedAt,
+      eventCount: draft.events.length,
+    }];
+  });
   const scheduleSelection = getSupporterScheduleSelection({
     hasTeamConnection: hasCalendarConnection,
     teamSchedule: calendar,
@@ -915,17 +940,25 @@ function SupporterStudio() {
     setCalendarConnection(null);
   };
 
+  const selectCustomSchedule = (projectId: string) => {
+    setSelectedCustomScheduleId(projectId);
+    saveSupporterScheduleSelection(window.localStorage, projectId);
+  };
+
   return (
     <StudioLayout role="fan">
       <main className="flex-1 bg-background">
         <SupporterDashboardView
           profile={profile}
           events={events}
-           nextGameIsUpcoming={nextGameIsUpcoming}
+          nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
-           scheduleSource={scheduleSource}
+          savedCustomSchedules={savedCustomSchedules}
+          selectedCustomScheduleId={selectedCloudScheduleProject?.id ?? null}
+          onSelectCustomSchedule={selectCustomSchedule}
+          scheduleSource={scheduleSource}
           connected={connected}
-           connectionLabel={scheduleLabel}
+          connectionLabel={scheduleLabel}
           loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
           calendarError={Boolean(calendarConnection && calendarError)}
           onOpenProfile={() => setLocation('/studio/profile')}

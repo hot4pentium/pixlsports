@@ -22,12 +22,14 @@ export type ScheduleDraft = {
 
 export type CloudScheduleProject = {
   id: string;
+  name?: string;
   project: unknown;
   revision: number;
   updatedAt: string | Date;
 };
 
 export const scheduleStorageKey = 'leaguematrix-schedule-draft';
+export const supporterScheduleSelectionStorageKey = 'leaguematrix-supporter-schedule-selection';
 
 let scheduleEventCounter = 0;
 
@@ -146,6 +148,12 @@ export function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
 export function getLatestCloudScheduleProject(
   projects: readonly CloudScheduleProject[],
 ): CloudScheduleProject | null {
+  return getCloudScheduleProjects(projects)[0] ?? null;
+}
+
+export function getCloudScheduleProjects(
+  projects: readonly CloudScheduleProject[],
+): CloudScheduleProject[] {
   return projects
     .filter((project) => (
       typeof project.project === 'object'
@@ -154,12 +162,34 @@ export function getLatestCloudScheduleProject(
       && (project.project as { tool?: unknown }).tool === 'schedule'
       && Boolean(normalizeScheduleDraft(project.project))
     ))
-    .reduce<CloudScheduleProject | null>((latest, project) => {
-      if (!latest) return project;
-      return new Date(project.updatedAt).getTime() > new Date(latest.updatedAt).getTime()
-        ? project
-        : latest;
-    }, null);
+    .sort((left, right) => (
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+    ));
+}
+
+export function getSelectedCloudScheduleProject(
+  projects: readonly CloudScheduleProject[],
+  selectedId?: string | null,
+): CloudScheduleProject | null {
+  const schedules = getCloudScheduleProjects(projects);
+  return schedules.find((project) => project.id === selectedId) ?? schedules[0] ?? null;
+}
+
+export function readSupporterScheduleSelection(
+  storage: Storage = window.localStorage,
+): string | null {
+  try {
+    return storage.getItem(supporterScheduleSelectionStorageKey);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSupporterScheduleSelection(
+  storage: Storage,
+  projectId: string,
+) {
+  storage.setItem(supporterScheduleSelectionStorageKey, projectId);
 }
 
 export function readScheduleDraft(storage: Storage = window.localStorage): ScheduleDraft | null {

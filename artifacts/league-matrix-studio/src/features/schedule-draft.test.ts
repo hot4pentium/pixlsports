@@ -13,7 +13,11 @@ import {
   saveScheduleDraft,
   updateScheduleEvent,
   createBlankScheduleEvent,
+  getCloudScheduleProjects,
   getLatestCloudScheduleProject,
+  getSelectedCloudScheduleProject,
+  readSupporterScheduleSelection,
+  saveSupporterScheduleSelection,
   type ScheduleEvent,
   type ScheduleDraft,
 } from './schedule-draft';
@@ -258,4 +262,42 @@ test('the latest valid cloud schedule is shared by dashboard and schedule maker'
   ];
 
   assert.equal(getLatestCloudScheduleProject(projects)?.id, 'latest');
+});
+
+test('supporters can select an older valid cloud schedule instead of the newest one', () => {
+  const projects = [
+    {
+      id: 'older',
+      name: 'Older schedule',
+      revision: 2,
+      updatedAt: '2026-09-10T12:00:00Z',
+      project: { tool: 'schedule', events: completeEvents, teamName: 'Older Team' },
+    },
+    {
+      id: 'latest',
+      name: 'Latest schedule',
+      revision: 3,
+      updatedAt: '2026-09-15T12:00:00Z',
+      project: { tool: 'schedule', events: completeEvents, teamName: 'Latest Team' },
+    },
+    {
+      id: 'roster',
+      name: 'Roster',
+      revision: 4,
+      updatedAt: '2026-09-20T12:00:00Z',
+      project: { tool: 'roster', events: completeEvents },
+    },
+  ];
+
+  assert.deepEqual(getCloudScheduleProjects(projects).map(({ id }) => id), ['latest', 'older']);
+  assert.equal(getSelectedCloudScheduleProject(projects, 'older')?.id, 'older');
+  assert.equal(getSelectedCloudScheduleProject(projects, 'missing')?.id, 'latest');
+});
+
+test('selected supporter schedule survives local storage round trips', () => {
+  const storage = new MemoryStorage();
+
+  saveSupporterScheduleSelection(storage as Storage, 'older');
+
+  assert.equal(readSupporterScheduleSelection(storage as Storage), 'older');
 });
