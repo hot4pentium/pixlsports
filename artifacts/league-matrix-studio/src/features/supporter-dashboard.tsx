@@ -224,12 +224,33 @@ export function SupporterDashboardView({
           <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Turn moments into lasting memories.</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Link href="/studio/hype-card" className="group bg-card hover:bg-muted border border-border p-6 clip-angled-sm flex items-center justify-between transition-all hover:border-foreground" data-testid="link-quick-hype">
-            <div>
-              <h4 className="font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">Hype Card</h4>
-              <p className="text-sm font-medium text-muted-foreground mt-1">Celebrate a big moment.</p>
+          <Link href="/studio/hype-card" className="group grid min-h-[148px] grid-cols-[42%_1fr] overflow-hidden border border-border bg-card transition-all hover:border-foreground hover:bg-muted clip-angled-sm" data-testid="link-quick-hype">
+            <div className="relative flex min-h-[148px] items-center justify-center overflow-hidden bg-[#0b0d0e] p-3">
+              <div className="absolute inset-0 bg-tech-grid-dark opacity-40" />
+              <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+              {profile.teamName ? (
+                <span className="relative z-10 max-w-full text-center font-display text-2xl leading-[0.9] tracking-wide text-white uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] sm:text-3xl">
+                  {profile.teamName}
+                </span>
+              ) : (
+                <img
+                  src={`${import.meta.env.BASE_URL}pixlsports-logo.png`}
+                  alt="Pixl Sports"
+                  className="relative z-10 max-h-16 w-full object-contain opacity-90 transition-transform duration-500 group-hover:scale-105"
+                  data-testid="img-quick-hype-placeholder"
+                />
+              )}
+              <span className="absolute bottom-2 left-3 z-10 text-[9px] font-bold uppercase tracking-[0.18em] text-primary">
+                {profile.teamName ? 'Team card' : 'Start with Pixl Sports'}
+              </span>
             </div>
-            <ArrowRight className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            <div className="flex min-w-0 items-center justify-between gap-3 p-5">
+              <div className="min-w-0">
+                <h4 className="font-display text-2xl uppercase tracking-wide transition-colors group-hover:text-primary">Hype Card</h4>
+                <p className="mt-1 text-sm font-medium text-muted-foreground">Celebrate a big moment.</p>
+              </div>
+              <ArrowRight className="h-6 w-6 shrink-0 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+            </div>
           </Link>
           <Link href="/studio/schedule" className="group bg-card hover:bg-muted border border-border p-6 clip-angled-sm flex items-center justify-between transition-all hover:border-foreground" data-testid="link-quick-schedule">
             <div>
