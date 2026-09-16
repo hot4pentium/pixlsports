@@ -81,7 +81,10 @@ import {
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
-import { getCoachCalendarSubscriptionToken } from '@/features/calendar-connection';
+import {
+  getCoachCalendarHandoffToken,
+  getCoachCalendarSubscriptionToken,
+} from '@/features/calendar-connection';
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
@@ -1063,12 +1066,19 @@ function CoachCalendarCodePanel() {
   });
   const [copied, setCopied] = useState(false);
   const [subscriptionCopied, setSubscriptionCopied] = useState(false);
+  const [appLinkCopied, setAppLinkCopied] = useState(false);
   const createSubscription = useCreateCoachCalendarSubscription();
   const deleteSubscription = useDeleteCoachCalendarSubscription();
   const feedUrl = data?.subscriptionFeedPath
     ? new URL(data.subscriptionFeedPath, window.location.origin).toString()
     : '';
   const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:');
+  const subscriptionToken = feedUrl
+    ? getCoachCalendarSubscriptionToken(feedUrl, window.location.origin, window.location.hostname)
+    : null;
+  const appCalendarUrl = subscriptionToken
+    ? `${appOrigin}${basePath}/studio/schedule?calendarToken=${encodeURIComponent(subscriptionToken)}`
+    : '';
 
   const copyCode = async () => {
     if (!data?.code) return;
@@ -1105,6 +1115,13 @@ function CoachCalendarCodePanel() {
     await navigator.clipboard?.writeText(feedUrl);
     setSubscriptionCopied(true);
     window.setTimeout(() => setSubscriptionCopied(false), 1800);
+  };
+
+  const copyAppCalendarLink = async () => {
+    if (!appCalendarUrl) return;
+    await navigator.clipboard?.writeText(appCalendarUrl);
+    setAppLinkCopied(true);
+    window.setTimeout(() => setAppLinkCopied(false), 1800);
   };
 
   return (
@@ -1174,6 +1191,16 @@ function CoachCalendarCodePanel() {
                 </a>
                 <button
                   type="button"
+                  onClick={() => { void copyAppCalendarLink(); }}
+                  disabled={!appCalendarUrl}
+                  className="inline-flex items-center gap-2 border border-primary bg-background px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+                  data-testid="button-copy-coach-calendar-app-link"
+                >
+                  {appLinkCopied ? <Check className="h-4 w-4 text-primary" /> : <Share2 className="h-4 w-4" />}
+                  {appLinkCopied ? 'Pixl Sports link copied' : 'Copy Pixl Sports link'}
+                </button>
+                <button
+                  type="button"
                   onClick={createOrRefreshSubscription}
                   disabled={createSubscription.isPending || deleteSubscription.isPending}
                   className="border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
@@ -1216,13 +1243,36 @@ function CoachCalendarCodePanel() {
 
 function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange?: (connection: CalendarConnection | null) => void }) {
   const [connection, setConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
+  const [handoffToken] = useState(() => getCoachCalendarHandoffToken(
+    window.location.href,
+    window.location.origin,
+    window.location.hostname,
+  ));
+  const [handoffError] = useState(() => {
+    try {
+      const url = new URL(window.location.href);
+      const hasHandoffParam = ['calendarToken', 'calendar'].some((key) => url.searchParams.has(key));
+      const isCalendarHandoffPath = /\/studio\/schedule\/?$/.test(url.pathname);
+      return hasHandoffParam && isCalendarHandoffPath && !getCoachCalendarHandoffToken(
+        window.location.href,
+        window.location.origin,
+        window.location.hostname,
+      )
+        ? 'That calendar link is invalid, expired, or revoked.'
+        : '';
+    } catch {
+      return '';
+    }
+  });
   const [input, setInput] = useState(() => (
-    connection?.kind === 'subscription'
+    handoffToken
+      ? `${window.location.origin}/api/coach-calendar/feed/${handoffToken}.ics`
+      : connection?.kind === 'subscription'
       ? `${window.location.origin}/api/coach-calendar/feed/${connection.value}.ics`
       : connection?.value ?? ''
   ));
-  const [pendingSubscriptionToken, setPendingSubscriptionToken] = useState('');
-  const [inputError, setInputError] = useState('');
+  const [pendingSubscriptionToken, setPendingSubscriptionToken] = useState(handoffToken ?? '');
+  const [inputError, setInputError] = useState(handoffError);
   const connect = useConnectToCoachCalendar();
   const code = connection?.kind === 'code' ? connection.value : '';
   const subscriptionToken = connection?.kind === 'subscription' ? connection.value : '';
@@ -1266,25 +1316,41 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
   }, [connection, onConnectionChange]);
 
   useEffect(() => {
+    if (!handoffToken) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('calendarToken');
+    url.searchParams.delete('calendar');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [handoffToken]);
+
+  useEffect(() => {
     if (!pendingSubscriptionToken) return;
-    if (pendingSubscriptionQuery.data) {
-      const nextConnection = { kind: 'subscription' as const, value: pendingSubscriptionToken };
-      storeCalendarConnection(nextConnection);
-      setConnection(nextConnection);
-      setPendingSubscriptionToken('');
-      setInputError('');
-      return;
-    }
     if (pendingSubscriptionQuery.isError) {
       setPendingSubscriptionToken('');
       setInputError('That calendar link is invalid, expired, or revoked.');
     }
   }, [pendingSubscriptionQuery.data, pendingSubscriptionQuery.isError, pendingSubscriptionToken]);
 
+  const confirmPendingSubscription = () => {
+    if (!pendingSubscriptionToken || !pendingSubscriptionQuery.data) return;
+    const nextConnection = { kind: 'subscription' as const, value: pendingSubscriptionToken };
+    storeCalendarConnection(nextConnection);
+    setConnection(nextConnection);
+    setPendingSubscriptionToken('');
+    setInput(`${window.location.origin}/api/coach-calendar/feed/${nextConnection.value}.ics`);
+    setInputError('');
+  };
+
+  const cancelPendingSubscription = () => {
+    setPendingSubscriptionToken('');
+    setInputError('');
+  };
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = input.trim();
-    const subscriptionToken = getCoachCalendarSubscriptionToken(value, window.location.origin, window.location.hostname);
+    const subscriptionToken = getCoachCalendarSubscriptionToken(value, window.location.origin, window.location.hostname)
+      ?? getCoachCalendarHandoffToken(value, window.location.origin, window.location.hostname);
     if (subscriptionToken) {
       setInputError('');
       setPendingSubscriptionToken(subscriptionToken);
@@ -1355,6 +1421,44 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
       <p id="coach-calendar-code-help" className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the private calendar link or five-character code from the Calendar section.'}
       </p>
+      {pendingSubscriptionToken && (
+        <div className="mt-5 border border-primary/40 bg-background p-4 clip-angled-sm" data-testid="calendar-handoff-confirmation">
+          {pendingSubscriptionQuery.isLoading ? (
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking the private calendar link…</p>
+          ) : pendingSubscriptionQuery.data ? (
+            <>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">Calendar link found</p>
+              <h3 className="mt-2 font-display text-2xl uppercase tracking-wide text-foreground">
+                {pendingSubscriptionQuery.data.title || 'Your coach’s calendar'}
+              </h3>
+              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                {pendingSubscriptionQuery.data.teamSeason || 'Current team schedule'}
+              </p>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-muted-foreground">
+                Connect this coach calendar to your family account? Your existing connection will stay unchanged until you confirm.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={confirmPendingSubscription}
+                  className="bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/80 clip-angled-sm"
+                  data-testid="button-confirm-coach-calendar"
+                >
+                  Connect this calendar
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelPendingSubscription}
+                  className="border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-muted clip-angled-sm"
+                  data-testid="button-cancel-coach-calendar-handoff"
+                >
+                  Not this one
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
       {connection && (
         <button
           type="button"
@@ -1531,9 +1635,12 @@ function ProtectedEditor({ kind, children }: { kind: ToolKind; children: ReactNo
   if (!isLoaded) {
     return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>;
   }
-  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  if (!isSignedIn) {
+    const redirectUrl = `${window.location.pathname}${window.location.search}`;
+    return <Redirect to={`/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`} />;
+  }
   const role = getUserRole(user);
-  if (!role) return <Redirect to="/studio" />;
+  if (!role) return <Redirect to={`/studio${kind === 'schedule' ? window.location.search : ''}`} />;
   if (!roleToolKinds[role].includes(kind)) return <Redirect to="/studio" />;
   return <>{children}</>;
 }
@@ -3300,12 +3407,13 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
 }
 
 function SignInPage() {
+  const redirectUrl = new URLSearchParams(window.location.search).get('redirect_url');
   return (
     <AuthLayout
       title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
       subtitle="Access your saved templates, synced rosters, and broadcast graphics across all your devices."
     >
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={`${basePath}/studio`} />
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
     </AuthLayout>
   );
 }
@@ -3368,7 +3476,11 @@ function RoleSelectionPage() {
           teamName: cleanTeam,
         },
       });
-      setLocation('/studio');
+      const search = new URLSearchParams(window.location.search);
+      const calendarHandoffSearch = search.has('calendarToken') || search.has('calendar')
+        ? window.location.search
+        : '';
+      setLocation(calendarHandoffSearch ? `/studio/schedule${calendarHandoffSearch}` : '/studio');
     } catch {
       setSavingProfile(false);
       setError('We could not save your profile. Please try again.');

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getCoachCalendarSubscriptionToken } from './calendar-connection';
+import {
+  getCoachCalendarHandoffToken,
+  getCoachCalendarSubscriptionToken,
+} from './calendar-connection';
 
 const token = 'A'.repeat(32);
 
@@ -51,6 +54,33 @@ test('rejects unrelated, malformed, and unsupported calendar links', () => {
   assert.equal(
     getCoachCalendarSubscriptionToken(
       `ftp://pixlsports.com/api/coach-calendar/feed/${token}.ics`,
+      'https://studio.example.test',
+      'studio.example.test',
+    ),
+    null,
+  );
+});
+
+test('accepts Pixl Sports app handoff links without accepting arbitrary query tokens', () => {
+  assert.equal(
+    getCoachCalendarHandoffToken(
+      `https://pixlsports.com/studio/schedule?calendarToken=${token}`,
+      'https://studio.example.test',
+      'studio.example.test',
+    ),
+    token,
+  );
+  assert.equal(
+    getCoachCalendarSubscriptionToken(
+      `https://www.pixlsports.com/studio/schedule?calendar=${token}`,
+      'https://studio.example.test',
+      'studio.example.test',
+    ),
+    null,
+  );
+  assert.equal(
+    getCoachCalendarHandoffToken(
+      `https://calendar.example.com/studio/schedule?calendarToken=${token}`,
       'https://studio.example.test',
       'studio.example.test',
     ),
