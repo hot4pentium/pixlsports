@@ -20,6 +20,13 @@ export type ScheduleDraft = {
   shareToken?: string;
 };
 
+export type CloudScheduleProject = {
+  id: string;
+  project: unknown;
+  revision: number;
+  updatedAt: string | Date;
+};
+
 export const scheduleStorageKey = 'leaguematrix-schedule-draft';
 
 let scheduleEventCounter = 0;
@@ -134,6 +141,25 @@ export function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
       : 0,
     ...(shareToken ? { shareToken } : {}),
   };
+}
+
+export function getLatestCloudScheduleProject(
+  projects: readonly CloudScheduleProject[],
+): CloudScheduleProject | null {
+  return projects
+    .filter((project) => (
+      typeof project.project === 'object'
+      && project.project !== null
+      && !Array.isArray(project.project)
+      && (project.project as { tool?: unknown }).tool === 'schedule'
+      && Boolean(normalizeScheduleDraft(project.project))
+    ))
+    .reduce<CloudScheduleProject | null>((latest, project) => {
+      if (!latest) return project;
+      return new Date(project.updatedAt).getTime() > new Date(latest.updatedAt).getTime()
+        ? project
+        : latest;
+    }, null);
 }
 
 export function readScheduleDraft(storage: Storage = window.localStorage): ScheduleDraft | null {

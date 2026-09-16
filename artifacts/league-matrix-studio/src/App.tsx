@@ -68,6 +68,7 @@ import {
   createBlankScheduleEvent,
   defaultScheduleEvents,
   getDefaultScheduleEvents,
+  getLatestCloudScheduleProject,
   moveScheduleEvent,
   normalizeScheduleDraft,
   readScheduleDraft,
@@ -867,13 +868,18 @@ function SupporterStudio() {
   const loadingCalendar = activeCalendarQuery.isLoading;
   const calendarError = activeCalendarQuery.isError;
   const hasCalendarConnection = Boolean(calendarConnection);
-  const useCustomSchedule = !hasCalendarConnection && Boolean(localSchedule?.events.length);
   const { data: cloudProjects } = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
       queryKey: getListProjectsQueryKey(),
     },
   });
+  const latestCloudScheduleProject = getLatestCloudScheduleProject(cloudProjects ?? []);
+  const cloudSchedule = latestCloudScheduleProject
+    ? normalizeScheduleDraft(latestCloudScheduleProject.project)
+    : null;
+  const customSchedule = cloudSchedule ?? localSchedule;
+  const useCustomSchedule = !hasCalendarConnection && Boolean(customSchedule?.events.length);
 
   const today = new Date();
   const todayKey = [
@@ -881,7 +887,7 @@ function SupporterStudio() {
     String(today.getMonth() + 1).padStart(2, '0'),
     String(today.getDate()).padStart(2, '0'),
   ].join('-');
-  const events = [...(calendar?.events ?? (useCustomSchedule ? localSchedule?.events ?? [] : []))]
+  const events = [...(calendar?.events ?? (useCustomSchedule ? customSchedule?.events ?? [] : []))]
     .sort((left, right) => {
       const leftKey = left.date ? `${left.date}T${left.time}` : '9999-12-31T23:59';
       const rightKey = right.date ? `${right.date}T${right.time}` : '9999-12-31T23:59';
@@ -896,7 +902,7 @@ function SupporterStudio() {
   const scheduleLabel = calendar?.teamSeason
     || calendar?.title
     || (useCustomSchedule
-      ? [localSchedule?.teamName, localSchedule?.season].filter(Boolean).join(' · ')
+      ? [customSchedule?.teamName, customSchedule?.season].filter(Boolean).join(' · ')
       : profile.teamName);
 
   const disconnect = () => {
@@ -2274,8 +2280,21 @@ function ScheduleEditor() {
       queryKey: getGetProjectQueryKey(cloudProjectId ?? ''),
     },
   });
+  const { data: cloudProjects } = useListProjects({
+    query: {
+      enabled: Boolean(isSignedIn && accountAccess),
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
   const createCloudProject = useCreateProject();
   const updateCloudProject = useUpdateProject();
+  const latestCloudScheduleProject = getLatestCloudScheduleProject(cloudProjects ?? []);
+  const selectedCloudProject = cloudProjectId
+    ? (cloudProjectData && isCloudToolProject(cloudProjectData.project, 'schedule')
+      ? cloudProjectData
+      : null)
+    : latestCloudScheduleProject;
+  const activeCloudProjectId = cloudProjectId ?? selectedCloudProject?.id;
   const hasExistingShare = Boolean(shareToken);
   const sharePending = createShare.isPending || updateShare.isPending;
   const scheduleWeeks = getScheduleWeeks(events);
@@ -2295,11 +2314,10 @@ function ScheduleEditor() {
   }, [cloudProjectId, isLoaded, isSignedIn, setLocation]);
 
   useEffect(() => {
-    if (!cloudProjectId || !cloudProjectData || initializedCloudId.current === cloudProjectId) return;
-    if (!isCloudToolProject(cloudProjectData.project, 'schedule')) return;
-    const loadedDraft = normalizeScheduleDraft(cloudProjectData.project);
+    if (!selectedCloudProject || initializedCloudId.current === selectedCloudProject.id) return;
+    const loadedDraft = normalizeScheduleDraft(selectedCloudProject.project);
     if (!loadedDraft) return;
-    initializedCloudId.current = cloudProjectId;
+    initializedCloudId.current = selectedCloudProject.id;
     setTeamName(loadedDraft.teamName);
     setSeason(loadedDraft.season);
     setEvents(loadedDraft.events);
@@ -2309,8 +2327,8 @@ function ScheduleEditor() {
     setSelectedEventId(loadedDraft.events[0]?.id ?? '');
     setSelectedWeekKey(getScheduleWeekKey(loadedDraft.events[0]?.date ?? ''));
     setSaved(true);
-    cloudRevision.current = cloudProjectData.revision;
-  }, [cloudProjectData, cloudProjectId]);
+    cloudRevision.current = selectedCloudProject.revision;
+  }, [selectedCloudProject]);
 
   useEffect(() => {
     if (events.length === 0) {
@@ -2432,18 +2450,21 @@ function ScheduleEditor() {
       return;
     }
     try {
-      if (cloudProjectId) {
+      if (activeCloudProjectId) {
         const updated = await updateCloudProject.mutateAsync({
-          projectId: cloudProjectId,
+          projectId: activeCloudProjectId,
           data: { project: cloudSchedule(), expectedRevision: cloudRevision.current },
         });
         cloudRevision.current = updated.revision;
+        await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
         setSaved(true);
         setNoticeFor('SCHEDULE SAVED TO CLOUD');
       } else {
         const created = await createCloudProject.mutateAsync({
           data: { name: `${teamName || 'Untitled'} - Schedule`, project: cloudSchedule() },
         });
+        cloudRevision.current = created.revision;
+        await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
         setSaved(true);
         setLocation(`/studio/schedule/${created.id}`);
       }
@@ -2465,9 +2486,9 @@ function ScheduleEditor() {
     try {
       const data = { project: cloudSchedule(), expectedRevision: cloudRevision.current };
       let createdProjectId = '';
-      if (cloudProjectId) {
+      if (activeCloudProjectId) {
         const updated = await updateCloudProject.mutateAsync({
-          projectId: cloudProjectId,
+          projectId: activeCloudProjectId,
           data,
         });
         cloudRevision.current = updated.revision;
@@ -2477,6 +2498,7 @@ function ScheduleEditor() {
         });
         createdProjectId = created.id;
       }
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
 
       if (hasExistingShare) {
         await updateShare.mutateAsync({

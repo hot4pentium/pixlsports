@@ -13,6 +13,7 @@ import {
   saveScheduleDraft,
   updateScheduleEvent,
   createBlankScheduleEvent,
+  getLatestCloudScheduleProject,
   type ScheduleEvent,
   type ScheduleDraft,
 } from './schedule-draft';
@@ -227,4 +228,34 @@ test('a saved draft with no events stays empty after reload', () => {
   saveScheduleDraft(storage as Storage, draft);
 
   assert.deepEqual(readScheduleDraft(storage as Storage)?.events, []);
+});
+
+test('the latest valid cloud schedule is shared by dashboard and schedule maker', () => {
+  const projects = [
+    {
+      id: 'older',
+      revision: 2,
+      updatedAt: '2026-09-10T12:00:00Z',
+      project: { tool: 'schedule', events: [], teamName: 'Older Team' },
+    },
+    {
+      id: 'not-a-schedule',
+      revision: 4,
+      updatedAt: '2026-09-20T12:00:00Z',
+      project: { tool: 'roster', players: [] },
+    },
+    {
+      id: 'latest',
+      revision: 3,
+      updatedAt: '2026-09-15T12:00:00Z',
+      project: {
+        tool: 'schedule',
+        teamName: 'Westside Wolves',
+        season: 'Fall 2026',
+        events: completeEvents,
+      },
+    },
+  ];
+
+  assert.equal(getLatestCloudScheduleProject(projects)?.id, 'latest');
 });
