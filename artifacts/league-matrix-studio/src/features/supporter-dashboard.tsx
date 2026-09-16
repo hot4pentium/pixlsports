@@ -232,11 +232,11 @@ export function SupporterDashboardView({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <Link href="/studio/hype-card" className="group grid min-h-[148px] grid-cols-[42%_1fr] overflow-hidden border border-border bg-card transition-all hover:border-foreground hover:bg-muted clip-angled-sm" data-testid="link-quick-hype">
-            <div className="relative flex min-h-[148px] items-center justify-center overflow-hidden bg-[#0b0d0e] p-3">
+            <div className="relative flex min-h-[148px] min-w-0 items-center justify-center overflow-hidden bg-[#0b0d0e] p-3">
               <div className="absolute inset-0 bg-tech-grid-dark opacity-40" />
               <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
               {profile.teamName ? (
-                <span className="relative z-10 max-w-full text-center font-display text-2xl leading-[0.9] tracking-wide text-white uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] sm:text-3xl">
+                <span className="relative z-10 min-w-0 max-w-full break-all text-center font-display text-[clamp(1rem,2.7vw,1.875rem)] leading-[0.9] tracking-wide text-white uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                   {profile.teamName}
                 </span>
               ) : (
