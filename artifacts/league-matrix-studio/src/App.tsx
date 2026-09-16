@@ -53,6 +53,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { HypeCardEditor } from '@/features/hype-card';
 import { PublicHypeCardPage } from '@/features/public-hype-card';
 import {
+  SupporterDashboardView,
+  SupporterProfileView,
+  type SupporterProfile,
+  type SupporterProject,
+} from '@/features/supporter-dashboard';
+import {
   createBlankScheduleEvent,
   defaultScheduleEvents,
   getDefaultScheduleEvents,
@@ -148,17 +154,39 @@ function getUserRole(user: { unsafeMetadata?: unknown } | null | undefined): Use
 
 function getUserProfile(user: { firstName?: string | null; lastName?: string | null; unsafeMetadata?: unknown } | null | undefined) {
   const metadata = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
-     ? user.unsafeMetadata as { role?: unknown; displayName?: unknown; teamName?: unknown; accessMode?: unknown }
+     ? user.unsafeMetadata as {
+       role?: unknown;
+       displayName?: unknown;
+       teamName?: unknown;
+       accessMode?: unknown;
+       athleteName?: unknown;
+       jerseyNumber?: unknown;
+       position?: unknown;
+       relationship?: unknown;
+     }
     : {};
   const clerkName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   return {
     role: metadata.role === 'coach' || metadata.role === 'fan' ? metadata.role : null,
     displayName: typeof metadata.displayName === 'string' && metadata.displayName.trim() ? metadata.displayName.trim() : clerkName,
-     teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
-     accessMode: metadata.accessMode === 'guest' || metadata.accessMode === 'full'
-       ? metadata.accessMode
-       : metadata.role === 'coach' || metadata.role === 'fan' ? 'full' : null,
-   } as { role: UserRole | null; displayName: string; teamName: string; accessMode: AccessMode | null };
+    teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
+    accessMode: metadata.accessMode === 'guest' || metadata.accessMode === 'full'
+      ? metadata.accessMode
+      : metadata.role === 'coach' || metadata.role === 'fan' ? 'full' : null,
+    athleteName: typeof metadata.athleteName === 'string' ? metadata.athleteName.trim() : '',
+    jerseyNumber: typeof metadata.jerseyNumber === 'string' ? metadata.jerseyNumber.trim() : '',
+    position: typeof metadata.position === 'string' ? metadata.position.trim() : '',
+    relationship: typeof metadata.relationship === 'string' ? metadata.relationship.trim() : '',
+  } as {
+    role: UserRole | null;
+    displayName: string;
+    teamName: string;
+    accessMode: AccessMode | null;
+    athleteName: string;
+    jerseyNumber: string;
+    position: string;
+    relationship: string;
+  };
 }
 
 const toolData: Record<ToolKind, {
@@ -481,12 +509,13 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
   const { user } = useUser();
   const activeRole = role ?? getUserRole(user) ?? 'coach';
   const visibleTools = roleToolKinds[activeRole];
+  const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
   return (
     <div className="noise min-h-dvh bg-background flex flex-col">
       <SiteNav dark />
       <div className="border-b border-border bg-background bg-tech-grid">
         <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
-          <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">Command Center</Link>
+          <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
           {visibleTools.map((key) => {
             const tool = toolData[key];
             return (
@@ -495,6 +524,11 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
             </Link>
             );
           })}
+          {activeRole === 'fan' && (
+            <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
+              My Athlete
+            </Link>
+          )}
         </div>
       </div>
       <div className="flex-1 flex flex-col">
@@ -781,6 +815,176 @@ function Studio({ role }: { role: UserRole }) {
             </Dialog>
           </div>
         </section>
+      </main>
+    </StudioLayout>
+  );
+}
+
+function supporterProfileFromUser(user: Parameters<typeof getUserProfile>[0]): SupporterProfile {
+  const profile = getUserProfile(user);
+  return {
+    displayName: profile.displayName,
+    teamName: profile.teamName,
+    athleteName: profile.athleteName,
+    jerseyNumber: profile.jerseyNumber,
+    position: profile.position,
+    relationship: profile.relationship,
+    accessMode: profile.accessMode,
+  };
+}
+
+function SupporterStudio() {
+  const [, setLocation] = useLocation();
+  const { user, isSignedIn } = useUser();
+  const profile = supporterProfileFromUser(user);
+  const [calendarCode, setCalendarCode] = useState(
+    () => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '',
+  );
+  const [connectionPanelKey, setConnectionPanelKey] = useState(0);
+  const { data: accountAccess } = useGetAccountAccess({
+    query: {
+      enabled: Boolean(isSignedIn),
+      staleTime: 15000,
+      queryKey: getGetAccountAccessQueryKey(),
+    },
+  });
+  const {
+    data: calendar,
+    isLoading: loadingCalendar,
+    isError: calendarError,
+  } = useGetConnectedCoachCalendar(calendarCode, {
+    query: {
+      enabled: Boolean(calendarCode),
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+      queryKey: ['/api/coach-calendar', calendarCode],
+    },
+  });
+  const { data: cloudProjects } = useListProjects({
+    query: {
+      enabled: Boolean(isSignedIn && accountAccess),
+      queryKey: getListProjectsQueryKey(),
+    },
+  });
+
+  const today = new Date();
+  const todayKey = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('-');
+  const events = [...(calendar?.events ?? [])]
+    .filter((event) => event.date >= todayKey)
+    .sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`))
+    .slice(0, 4);
+  const projects: SupporterProject[] = [...(cloudProjects ?? [])]
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 4)
+    .map((project) => {
+      const kind = isCloudToolProject(project.project, 'schedule') ? 'schedule' : 'hype-card';
+      return {
+        id: project.id,
+        name: project.name,
+        kind,
+        updatedAt: project.updatedAt,
+        href: `/studio/${kind}/${project.id}`,
+      };
+    });
+  const connected = Boolean(calendarCode && calendar);
+
+  const disconnect = () => {
+    window.localStorage.removeItem(connectedCoachCodeStorageKey);
+    setCalendarCode('');
+    setConnectionPanelKey((current) => current + 1);
+  };
+
+  return (
+    <StudioLayout role="fan">
+      <main className="flex-1 bg-background">
+        <SupporterDashboardView
+          profile={profile}
+          events={events}
+          projects={projects}
+          connected={connected}
+          connectionLabel={calendar?.teamSeason || calendar?.title || profile.teamName}
+          loadingCalendar={Boolean(calendarCode && loadingCalendar)}
+          calendarError={Boolean(calendarCode && calendarError)}
+          guestRemaining={accountAccess?.accessMode === 'guest' ? accountAccess.remaining : undefined}
+          onOpenProfile={() => setLocation('/studio/profile')}
+          onDisconnect={disconnect}
+          connectionPanel={(
+            <FanCalendarConnectionPanel
+              key={connectionPanelKey}
+              onConnectionChange={setCalendarCode}
+            />
+          )}
+        />
+      </main>
+    </StudioLayout>
+  );
+}
+
+function SupporterProfilePage() {
+  const [, setLocation] = useLocation();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const [profile, setProfile] = useState<SupporterProfile>(() => supporterProfileFromUser(user));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) setProfile(supporterProfileFromUser(user));
+  }, [user?.id]);
+
+  if (!isLoaded) {
+    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your profile…</div>;
+  }
+  if (!isSignedIn || !user) return <Redirect to="/sign-in" />;
+  if (getUserRole(user) !== 'fan') return <Redirect to="/studio" />;
+
+  const saveProfile = async () => {
+    const cleanProfile = {
+      displayName: profile.displayName.trim(),
+      teamName: profile.teamName.trim(),
+      athleteName: profile.athleteName.trim(),
+      jerseyNumber: profile.jerseyNumber.replace(/^#/, '').trim(),
+      position: profile.position.trim(),
+      relationship: profile.relationship.trim(),
+    };
+    if (!cleanProfile.displayName || !cleanProfile.teamName) {
+      setError('Add your display name and team before saving.');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      await user.update({
+        unsafeMetadata: {
+          ...(user.unsafeMetadata ?? {}),
+          ...cleanProfile,
+        },
+      });
+      setLocation('/studio');
+    } catch {
+      setSaving(false);
+      setError('We could not save your supporter profile. Please try again.');
+    }
+  };
+
+  return (
+    <StudioLayout role="fan">
+      <main className="flex-1">
+        <SupporterProfileView
+          profile={profile}
+          saving={saving}
+          error={error}
+          onChange={(field, value) => {
+            setError('');
+            setProfile((current) => ({ ...current, [field]: value }));
+          }}
+          onSave={() => void saveProfile()}
+          onCancel={() => setLocation('/studio')}
+        />
       </main>
     </StudioLayout>
   );
@@ -3227,7 +3431,8 @@ function StudioPortal() {
   }
 
   const role = getUserRole(user);
-  return role ? <Studio role={role} /> : <RoleSelectionPage />;
+  if (!role) return <RoleSelectionPage />;
+  return role === 'fan' ? <SupporterStudio /> : <Studio role={role} />;
 }
 
 function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt: string | Date | null; expired: boolean }) {
@@ -3393,6 +3598,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
+              <Route path="/studio/profile" component={SupporterProfilePage} />
               <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
