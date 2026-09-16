@@ -189,7 +189,7 @@ const toolData: Record<ToolKind, {
     icon: CalendarDays,
     accent: 'bg-white text-foreground',
     soft: 'bg-[#22252a] text-white',
-    templateNames: ['Clean Slate', 'Full Court', 'Weekend Run'],
+    templateNames: ['Clean Slate', 'Warm-Up', 'Fall Classic'],
   },
   roster: {
     slug: 'roster',
