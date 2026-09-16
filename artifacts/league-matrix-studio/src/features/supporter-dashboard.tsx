@@ -153,9 +153,9 @@ export function SupporterDashboardView({
             src={heroBanner}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-35"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-70"
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b0d0f]/95 via-[#0b0d0f]/75 to-[#0b0d0f]/55" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b0d0f]/85 via-[#0b0d0f]/45 to-[#0b0d0f]/25" />
           <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
 
           {/* Avatar Circle */}
