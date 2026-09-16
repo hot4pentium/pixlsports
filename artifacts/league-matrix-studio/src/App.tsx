@@ -8,6 +8,7 @@ import {
   useCreateCoachCalendarSubscription,
   useDeleteCoachCalendarSubscription,
   useGetConnectedCoachCalendar,
+  useGetConnectedCoachCalendarBySubscription,
   useConnectToCoachCalendar,
   getGetProjectQueryKey,
   useGetScheduleShare,
@@ -80,6 +81,7 @@ import {
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
+import { getCoachCalendarSubscriptionToken } from '@/features/calendar-connection';
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
@@ -158,6 +160,35 @@ const roleToolKinds: Record<UserRole, ToolKind[]> = {
 };
 
 const connectedCoachCodeStorageKey = 'leaguematrix-connected-coach-code';
+const connectedCoachSubscriptionStorageKey = 'leaguematrix-connected-coach-subscription-token';
+
+type CalendarConnection =
+  | { kind: 'code'; value: string }
+  | { kind: 'subscription'; value: string };
+
+function getStoredCalendarConnection(): CalendarConnection | null {
+  const subscriptionToken = window.localStorage.getItem(connectedCoachSubscriptionStorageKey) ?? '';
+  if (/^[A-Za-z0-9_-]{32,100}$/.test(subscriptionToken)) {
+    return { kind: 'subscription', value: subscriptionToken };
+  }
+  const code = window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '';
+  return code ? { kind: 'code', value: code } : null;
+}
+
+function storeCalendarConnection(connection: CalendarConnection) {
+  if (connection.kind === 'subscription') {
+    window.localStorage.setItem(connectedCoachSubscriptionStorageKey, connection.value);
+    window.localStorage.removeItem(connectedCoachCodeStorageKey);
+  } else {
+    window.localStorage.setItem(connectedCoachCodeStorageKey, connection.value);
+    window.localStorage.removeItem(connectedCoachSubscriptionStorageKey);
+  }
+}
+
+function clearStoredCalendarConnection() {
+  window.localStorage.removeItem(connectedCoachCodeStorageKey);
+  window.localStorage.removeItem(connectedCoachSubscriptionStorageKey);
+}
 
 const toolData: Record<ToolKind, {
   slug: string;
@@ -618,8 +649,6 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
-         {role === 'coach' && !isGuest && <CoachCalendarCodePanel />}
-
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
@@ -797,9 +826,9 @@ function SupporterStudio() {
   const { data: athletePhoto } = useGetSupporterPhoto({
     query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
   });
-  const [calendarCode, setCalendarCode] = useState(
-    () => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '',
-  );
+  const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
+  const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
+  const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
   const [connectionPanelKey, setConnectionPanelKey] = useState(0);
   const { data: accountAccess } = useGetAccountAccess({
     query: {
@@ -808,11 +837,7 @@ function SupporterStudio() {
       queryKey: getGetAccountAccessQueryKey(),
     },
   });
-  const {
-    data: calendar,
-    isLoading: loadingCalendar,
-    isError: calendarError,
-  } = useGetConnectedCoachCalendar(calendarCode, {
+  const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
     query: {
       enabled: Boolean(calendarCode),
       refetchInterval: 30000,
@@ -820,6 +845,20 @@ function SupporterStudio() {
       queryKey: ['/api/coach-calendar', calendarCode],
     },
   });
+  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
+    query: {
+      enabled: Boolean(calendarSubscriptionToken),
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+      queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
+    },
+  });
+  const activeCalendarQuery = calendarConnection?.kind === 'subscription'
+    ? subscriptionCalendarQuery
+    : codeCalendarQuery;
+  const calendar = activeCalendarQuery.data;
+  const loadingCalendar = activeCalendarQuery.isLoading;
+  const calendarError = activeCalendarQuery.isError;
   const { data: cloudProjects } = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
@@ -837,11 +876,11 @@ function SupporterStudio() {
     .filter((event) => event.date >= todayKey)
     .sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`));
   const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
-  const connected = Boolean(calendarCode && calendar);
+  const connected = Boolean(calendarConnection && calendar);
 
   const disconnect = () => {
-    window.localStorage.removeItem(connectedCoachCodeStorageKey);
-    setCalendarCode('');
+    clearStoredCalendarConnection();
+    setCalendarConnection(null);
     setConnectionPanelKey((current) => current + 1);
   };
 
@@ -854,15 +893,15 @@ function SupporterStudio() {
           projects={projects}
           connected={connected}
           connectionLabel={calendar?.teamSeason || calendar?.title || profile.teamName}
-          loadingCalendar={Boolean(calendarCode && loadingCalendar)}
-          calendarError={Boolean(calendarCode && calendarError)}
+          loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
+          calendarError={Boolean(calendarConnection && calendarError)}
           guestRemaining={accountAccess?.accessMode === 'guest' ? accountAccess.remaining : undefined}
           onOpenProfile={() => setLocation('/studio/profile')}
           onDisconnect={disconnect}
           connectionPanel={(
             <FanCalendarConnectionPanel
               key={connectionPanelKey}
-              onConnectionChange={setCalendarCode}
+              onConnectionChange={setCalendarConnection}
             />
           )}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
@@ -1079,14 +1118,14 @@ function CoachCalendarCodePanel() {
       <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
       <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Family calendar connection</p>
-          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Share your coach code.</h2>
+           <p className="text-xs font-bold uppercase tracking-widest text-primary">Family calendar connection</p>
+           <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Share your calendar link.</h2>
           <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">
-            Families can enter this code above their calendar to keep their schedule current when you update it.
+             Give families this private link to connect in Pixl Sports or subscribe from their calendar app. The coach code remains available as a fallback.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="border border-primary bg-background px-4 py-3 font-display text-3xl tracking-[0.28em] text-foreground" aria-label="Coach calendar code">
+            <div className="border border-primary bg-background px-4 py-3 font-display text-3xl tracking-[0.28em] text-foreground" aria-label="Fallback coach calendar code">
             {isLoading ? '·····' : data?.code ?? '-----'}
           </div>
           <button
@@ -1094,14 +1133,14 @@ function CoachCalendarCodePanel() {
             onClick={() => { void copyCode(); }}
             disabled={!data?.code || isError}
             className="grid h-12 w-12 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-            aria-label="Copy coach calendar code"
+             aria-label="Copy fallback coach calendar code"
             data-testid="button-copy-coach-calendar-code"
           >
             {copied ? <Check className="h-5 w-5 text-primary" /> : <Clipboard className="h-5 w-5" />}
           </button>
         </div>
       </div>
-      {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not create the coach code. Refresh and try again.</p>}
+       {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not load the calendar sharing options. Refresh and try again.</p>}
       <div className="relative z-10 mt-6 border-t border-primary/20 pt-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-xl">
@@ -1181,11 +1220,19 @@ function CoachCalendarCodePanel() {
   );
 }
 
-function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange?: (code: string) => void }) {
-  const [code, setCode] = useState(() => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '');
-  const [input, setInput] = useState(code);
+function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange?: (connection: CalendarConnection | null) => void }) {
+  const [connection, setConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
+  const [input, setInput] = useState(() => (
+    connection?.kind === 'subscription'
+      ? `${window.location.origin}/api/coach-calendar/feed/${connection.value}.ics`
+      : connection?.value ?? ''
+  ));
+  const [pendingSubscriptionToken, setPendingSubscriptionToken] = useState('');
+  const [inputError, setInputError] = useState('');
   const connect = useConnectToCoachCalendar();
-  const { data: calendar, isLoading, isError, isFetching } = useGetConnectedCoachCalendar(code, {
+  const code = connection?.kind === 'code' ? connection.value : '';
+  const subscriptionToken = connection?.kind === 'subscription' ? connection.value : '';
+  const codeCalendarQuery = useGetConnectedCoachCalendar(code, {
     query: {
       enabled: Boolean(code),
       refetchInterval: 30000,
@@ -1193,35 +1240,87 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
       queryKey: ['/api/coach-calendar', code],
     },
   });
+  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(subscriptionToken, {
+    query: {
+      enabled: Boolean(subscriptionToken),
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+      queryKey: ['/api/coach-calendar/subscription', subscriptionToken],
+    },
+  });
+  const pendingSubscriptionQuery = useGetConnectedCoachCalendarBySubscription(pendingSubscriptionToken, {
+    query: {
+      enabled: Boolean(pendingSubscriptionToken),
+      retry: false,
+      queryKey: ['/api/coach-calendar/subscription/pending', pendingSubscriptionToken],
+    },
+  });
+  const activeCalendarQuery = connection?.kind === 'subscription'
+    ? subscriptionCalendarQuery
+    : codeCalendarQuery;
+  const calendar = activeCalendarQuery.data;
+  const isLoading = activeCalendarQuery.isLoading || pendingSubscriptionQuery.isLoading;
+  const isError = activeCalendarQuery.isError;
+  const isFetching = activeCalendarQuery.isFetching;
   const hasConnectedSchedule = Boolean(
     calendar
     && (calendar.scheduleAvailable || calendar.events.length > 0 || calendar.title || calendar.teamSeason),
   );
 
   useEffect(() => {
-    onConnectionChange?.(code);
-  }, [code, onConnectionChange]);
+    onConnectionChange?.(connection);
+  }, [connection, onConnectionChange]);
+
+  useEffect(() => {
+    if (!pendingSubscriptionToken) return;
+    if (pendingSubscriptionQuery.data) {
+      const nextConnection = { kind: 'subscription' as const, value: pendingSubscriptionToken };
+      storeCalendarConnection(nextConnection);
+      setConnection(nextConnection);
+      setPendingSubscriptionToken('');
+      setInputError('');
+      return;
+    }
+    if (pendingSubscriptionQuery.isError) {
+      setPendingSubscriptionToken('');
+      setInputError('That calendar link is invalid, expired, or revoked.');
+    }
+  }, [pendingSubscriptionQuery.data, pendingSubscriptionQuery.isError, pendingSubscriptionToken]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const nextCode = input.trim().toUpperCase();
-    if (nextCode.length !== 5) return;
+    const value = input.trim();
+    const subscriptionToken = getCoachCalendarSubscriptionToken(value, window.location.origin, window.location.hostname);
+    if (subscriptionToken) {
+      setInputError('');
+      setPendingSubscriptionToken(subscriptionToken);
+      return;
+    }
+    const nextCode = value.toUpperCase();
+    if (nextCode.length !== 5) {
+      setInputError('Paste a Pixl Sports calendar link or enter the five-character coach code.');
+      return;
+    }
     connect.mutate(
       { data: { code: nextCode } },
       {
         onSuccess: (connected) => {
-          window.localStorage.setItem(connectedCoachCodeStorageKey, connected.code);
-          setCode(connected.code);
+          const nextConnection = { kind: 'code' as const, value: connected.code };
+          storeCalendarConnection(nextConnection);
+          setConnection(nextConnection);
           setInput(connected.code);
+          setInputError('');
         },
       },
     );
   };
 
   const disconnect = () => {
-    window.localStorage.removeItem(connectedCoachCodeStorageKey);
-    setCode('');
+    clearStoredCalendarConnection();
+    setConnection(null);
+    setPendingSubscriptionToken('');
     setInput('');
+    setInputError('');
   };
 
   return (
@@ -1229,37 +1328,40 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-xl">
           <p className="text-xs font-bold uppercase tracking-widest text-primary">Connect your family calendar</p>
-          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Enter your coach code.</h2>
+          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Connect your calendar.</h2>
           <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">
-            Your calendar refreshes automatically when your coach updates the team schedule.
+            Paste the private link your coach shared, or use their five-character code. Your calendar refreshes automatically when the team schedule changes.
           </p>
         </div>
         <form onSubmit={submit} className="flex w-full max-w-md gap-2" data-testid="form-connect-coach-calendar">
-          <label className="sr-only" htmlFor="coach-calendar-code">Coach calendar code</label>
+          <label className="sr-only" htmlFor="coach-calendar-connection">Coach calendar link or code</label>
           <input
-            id="coach-calendar-code"
+            id="coach-calendar-connection"
             value={input}
-            onChange={(event) => setInput(event.target.value.replace(/[^a-zA-Z2-9]/g, '').slice(0, 5).toUpperCase())}
-            placeholder="ABCDE"
+            onChange={(event) => {
+              setInput(event.target.value);
+              setInputError('');
+            }}
+            placeholder="Paste link or enter ABCDE"
             autoComplete="off"
-            className="min-w-0 flex-1 border border-border bg-background px-4 py-3 text-center font-display text-2xl uppercase tracking-[0.24em] text-foreground outline-none transition-colors focus:border-primary"
+            className="min-w-0 flex-1 border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none transition-colors focus:border-primary"
             aria-describedby="coach-calendar-code-help"
-            data-testid="input-coach-calendar-code"
+            data-testid="input-coach-calendar-link"
           />
           <button
             type="submit"
-            disabled={connect.isPending || input.trim().length !== 5}
+            disabled={connect.isPending || Boolean(pendingSubscriptionToken) || !input.trim()}
             className="shrink-0 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
             data-testid="button-connect-coach-calendar"
           >
-            {connect.isPending ? 'Connecting…' : 'Connect'}
+            {connect.isPending || pendingSubscriptionToken ? 'Connecting…' : 'Connect'}
           </button>
         </form>
       </div>
       <p id="coach-calendar-code-help" className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-        {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the five-character code shown on their dashboard.'}
+        {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the private calendar link or five-character code from the Calendar section.'}
       </p>
-      {code && (
+      {connection && (
         <button
           type="button"
           onClick={disconnect}
@@ -1269,7 +1371,7 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
           Disconnect from coach
         </button>
       )}
-      {(connect.isError || isError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">That coach code could not be connected. Check the code and try again.</p>}
+      {(connect.isError || isError || inputError) && <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">{inputError || 'That calendar connection could not be connected. Check the link or code and try again.'}</p>}
 
       {calendar && hasConnectedSchedule && (
         <div className="mt-5 border-t border-primary/20 pt-5" data-testid="fan-connected-calendar">
@@ -2018,7 +2120,7 @@ function ScheduleEditor() {
   const consumeAccountUsage = useConsumeAccountUsage();
   const queryClient = useQueryClient();
   const isFan = getUserRole(user) === 'fan';
-  const [connectedCoachCode, setConnectedCoachCode] = useState(() => window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '');
+  const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [storedDraft] = useState(() => readScheduleDraft());
   const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
@@ -2369,7 +2471,7 @@ function ScheduleEditor() {
     setNoticeFor('SCHEDULE DRAFT RESET');
   };
 
-  if (isFan && connectedCoachCode) {
+  if (isFan && calendarConnection) {
     return (
       <StudioLayout>
         <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
@@ -2384,7 +2486,7 @@ function ScheduleEditor() {
               <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Your coach’s latest schedule.</p>
             </div>
           </div>
-          <FanCalendarConnectionPanel onConnectionChange={setConnectedCoachCode} />
+           <FanCalendarConnectionPanel onConnectionChange={setCalendarConnection} />
         </main>
       </StudioLayout>
     );
@@ -2393,7 +2495,8 @@ function ScheduleEditor() {
   return (
     <StudioLayout>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
-        {isFan && <FanCalendarConnectionPanel onConnectionChange={setConnectedCoachCode} />}
+        {!isFan && accountAccess?.accessMode !== 'guest' && <CoachCalendarCodePanel />}
+        {isFan && <FanCalendarConnectionPanel onConnectionChange={setCalendarConnection} />}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">

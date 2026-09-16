@@ -225,6 +225,18 @@ router.delete("/coach-calendar/subscription", requireAuth, async (_req, res): Pr
   }
 });
 
+router.get("/coach-calendar/subscription/:token", requireAuth, async (req, res): Promise<void> => {
+  const token = typeof req.params.token === "string" ? req.params.token : "";
+  const subscription = await findActiveCoachCalendarSubscription(token);
+  if (!subscription) {
+    res.status(404).json({ error: "Calendar subscription not found" });
+    return;
+  }
+
+  const response = await calendarResponse(subscription.code, subscription.ownerClerkUserId);
+  res.json(ConnectToCoachCalendarResponse.parse(response));
+});
+
 router.post("/coach-calendar/connect", requireAuth, async (req, res): Promise<void> => {
   const parsed = ConnectToCoachCalendarBody.safeParse({
     ...req.body,

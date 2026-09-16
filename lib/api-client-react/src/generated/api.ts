@@ -1205,6 +1205,84 @@ export const useDeleteCoachCalendarSubscription = <TError = ErrorType<Unauthoriz
       return useMutation(getDeleteCoachCalendarSubscriptionMutationOptions(options));
     }
 
+export const getGetConnectedCoachCalendarBySubscriptionUrl = (token: string,) => {
+
+
+
+
+  return `/api/coach-calendar/subscription/${token}`
+}
+
+/**
+ * Returns the current schedule for an authenticated supporter using an active private subscription link.
+ * @summary Get a connected coach calendar by private subscription token
+ */
+export const getConnectedCoachCalendarBySubscription = async (token: string, options?: Parameters<typeof customFetch>[1]): Promise<CoachCalendar> => {
+
+  return customFetch<CoachCalendar>(getGetConnectedCoachCalendarBySubscriptionUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConnectedCoachCalendarBySubscriptionQueryKey = (token: string,) => {
+    return [
+    `/api/coach-calendar/subscription/${token}`
+    ] as const;
+    }
+
+
+export const getGetConnectedCoachCalendarBySubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConnectedCoachCalendarBySubscriptionQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>> = ({ signal }) => getConnectedCoachCalendarBySubscription(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConnectedCoachCalendarBySubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>>
+export type GetConnectedCoachCalendarBySubscriptionQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get a connected coach calendar by private subscription token
+ */
+
+export function useGetConnectedCoachCalendarBySubscription<TData = Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConnectedCoachCalendarBySubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConnectedCoachCalendarBySubscriptionQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getConnectToCoachCalendarUrl = () => {
 
 

@@ -265,6 +265,25 @@ paths:
           description: Calendar subscription revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /coach-calendar/subscription/{token}:
+    get:
+      operationId: getConnectedCoachCalendarBySubscription
+      tags: [coach-calendars]
+      summary: Get a connected coach calendar by private subscription token
+      description: Returns the current schedule for an authenticated supporter using an active private subscription link.
+      parameters:
+        - $ref: "#/components/parameters/CoachCalendarSubscriptionTokenParam"
+      responses:
+        "200":
+          description: Current coach calendar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachCalendar"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /coach-calendar/connect:
     post:
       operationId: connectToCoachCalendar
@@ -733,6 +752,13 @@ components:
       schema:
         type: string
         pattern: "^[A-Z2-9]{5}$"
+    CoachCalendarSubscriptionTokenParam:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{32,100}$"
     HypeCardShareToken:
       name: shareToken
       in: path

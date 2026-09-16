@@ -380,6 +380,56 @@ export const DeleteCoachCalendarSubscriptionResponse = zod.void()
 
 
 /**
+ * Returns the current schedule for an authenticated supporter using an active private subscription link.
+ * @summary Get a connected coach calendar by private subscription token
+ */
+export const getConnectedCoachCalendarBySubscriptionPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,100}$');
+
+
+export const GetConnectedCoachCalendarBySubscriptionParams = zod.object({
+  "token": zod.coerce.string().regex(getConnectedCoachCalendarBySubscriptionPathTokenRegExp)
+})
+
+export const getConnectedCoachCalendarBySubscriptionResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemIdMax = 100;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemDateMax = 30;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemTimeMax = 30;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemLocationMax = 300;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemOpponentMax = 200;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemSnacksMax = 300;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemDrinksMax = 300;
+
+export const getConnectedCoachCalendarBySubscriptionResponseEventsItemNotesMax = 1000;
+
+
+
+export const GetConnectedCoachCalendarBySubscriptionResponse = zod.object({
+  "code": zod.string().regex(getConnectedCoachCalendarBySubscriptionResponseCodeRegExp),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(getConnectedCoachCalendarBySubscriptionResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "date": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemDateMax),
+  "time": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemTimeMax),
+  "location": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemLocationMax),
+  "opponent": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemDrinksMax),
+  "notes": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemNotesMax)
+})),
+  "scheduleAvailable": zod.boolean(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary Connect a fan to a coach calendar
  */
 export const connectToCoachCalendarBodyCodeMin = 5;
