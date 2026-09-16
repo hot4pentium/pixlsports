@@ -835,8 +835,7 @@ function SupporterStudio() {
   ].join('-');
   const events = [...(calendar?.events ?? [])]
     .filter((event) => event.date >= todayKey)
-    .sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`))
-    .slice(0, 4);
+    .sort((left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`));
   const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
   const connected = Boolean(calendarCode && calendar);
 

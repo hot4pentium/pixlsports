@@ -5,7 +5,7 @@ import {
   Users, Activity, Image as ImageIcon, Unlink, ShieldCheck,
   CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2
 } from 'lucide-react';
-import { format, parseISO, isValid } from 'date-fns';
+import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
 
 export interface SupporterProfile {
@@ -67,6 +67,26 @@ function formatDateDisplay(dateStr: string) {
   return dateStr;
 }
 
+function formatTimeDisplay(time: string) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!match) return time;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return time;
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${match[2]} ${suffix}`;
+}
+
+function formatDaysUntil(dateStr: string) {
+  const date = parseISO(dateStr);
+  if (!isValid(date)) return 'Next game';
+  const days = differenceInCalendarDays(date, new Date());
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `${days} days`;
+}
+
 function formatRelativeTime(date: string | Date) {
   try {
     const d = typeof date === 'string' ? parseISO(date) : date;
@@ -100,6 +120,7 @@ export function SupporterDashboardView({
     failed: calendarError,
     calendar: connected ? { events } : undefined,
   });
+  const nextGame = events.find((event) => event.type === 'game');
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
@@ -260,11 +281,22 @@ export function SupporterDashboardView({
             </div>
           </Link>
           <Link href="/studio/schedule" className="group bg-card hover:bg-muted border border-border p-6 clip-angled-sm flex items-center justify-between transition-all hover:border-foreground" data-testid="link-quick-schedule">
-            <div>
-              <h4 className="font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">Game Day</h4>
-              <p className="text-sm font-medium text-muted-foreground mt-1">Share what's next.</p>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+                {nextGame ? formatDaysUntil(nextGame.date) : 'Game Day'}
+              </p>
+              <h4 className="mt-1 font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">Game Day</h4>
+              {nextGame ? (
+                <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
+                  {formatDateDisplay(nextGame.date)} · {formatTimeDisplay(nextGame.time)}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm font-medium text-muted-foreground">
+                  {connected ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}
+                </p>
+              )}
             </div>
-            <ArrowRight className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            <ArrowRight className="h-6 w-6 shrink-0 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
           </Link>
         </div>
       </section>
@@ -312,7 +344,7 @@ export function SupporterDashboardView({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {events.map((event, idx) => (
+                  {events.slice(0, 4).map((event, idx) => (
                     <div key={event.id} className={`flex items-stretch gap-4 p-4 border transition-colors ${idx === 0 ? 'bg-primary/5 border-primary/30' : 'bg-background border-border hover:border-foreground/30'}`}>
                       {/* Date block */}
                       <div className="flex flex-col items-center justify-center text-center shrink-0 w-16 border-r border-border/50 pr-4">
