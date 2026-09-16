@@ -259,25 +259,6 @@ export function SupporterDashboardView({
             </div>
             <ArrowRight className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
           </Link>
-          {profile.accessMode === 'guest' && guestRemaining ? (
-            <div className="bg-card border border-border p-6 clip-angled-sm flex items-center justify-between">
-              <div>
-                <h4 className="font-display text-2xl uppercase tracking-wide">Guest Balance</h4>
-                <p className="text-sm font-medium text-muted-foreground mt-1">
-                  {guestRemaining.hypeCards} Hype Cards · {guestRemaining.scheduleEvents} events left
-                </p>
-              </div>
-              <Lock className="w-6 h-6 text-muted-foreground" />
-            </div>
-          ) : (
-            <Link href="/studio/profile" className="group bg-card hover:bg-muted border border-border p-6 clip-angled-sm flex items-center justify-between transition-all hover:border-foreground" data-testid="link-quick-profile">
-               <div>
-                <h4 className="font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">My Athlete</h4>
-                <p className="text-sm font-medium text-muted-foreground mt-1">Update player details.</p>
-              </div>
-              <ArrowRight className="w-6 h-6 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </Link>
-          )}
         </div>
       </section>
 
