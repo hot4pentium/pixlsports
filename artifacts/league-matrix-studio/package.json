@@ -7,7 +7,7 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "test": "tsx --test src/features/schedule-draft.test.ts src/features/roster-draft.test.ts src/features/hype-card-svg.test.ts src/features/hype-card-export.test.ts src/features/hype-card-persistence.test.ts src/features/guest-access.test.ts src/features/supporter-photo-cache.test.ts src/features/supporter-dashboard-model.test.ts src/features/calendar-connection.test.ts",
+    "test": "tsx --test src/features/schedule-draft.test.ts src/features/roster-draft.test.ts src/features/hype-card-svg.test.ts src/features/hype-card-export.test.ts src/features/hype-card-persistence.test.ts src/features/guest-access.test.ts src/features/supporter-photo-cache.test.ts src/features/supporter-dashboard-model.test.ts src/features/calendar-connection.test.ts src/features/studio-role-boundary.test.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
@@ -48,6 +48,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/react-test-renderer": "19.1.0",
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",
     "class-variance-authority": "catalog:",
@@ -65,6 +66,7 @@
     "react-hook-form": "^7.55.0",
     "react-icons": "^5.4.0",
     "react-resizable-panels": "^2.1.7",
+    "react-test-renderer": "19.1.0",
     "recharts": "^2.15.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "catalog:",

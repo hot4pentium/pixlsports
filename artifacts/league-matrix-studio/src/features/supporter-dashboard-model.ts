@@ -14,7 +14,7 @@ export interface UserProfile {
   relationship: string;
 }
 
-type UserLike = {
+export type UserLike = {
   firstName?: string | null;
   lastName?: string | null;
   unsafeMetadata?: unknown;

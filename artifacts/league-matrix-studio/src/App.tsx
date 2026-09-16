@@ -85,7 +85,6 @@ import { getCoachCalendarSubscriptionToken } from '@/features/calendar-connectio
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
-  getStudioDestination,
   getUserProfile,
   getUserRole,
   mapRecentSupporterProjects,
@@ -93,6 +92,7 @@ import {
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
+import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import {
   createBlankRosterPlayer,
   getBenchPlayers,
@@ -536,7 +536,6 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
     </div>
   );
 }
-
 
 
 function Studio({ role }: { role: UserRole }) {
@@ -3483,17 +3482,18 @@ function RoleSelectionPage() {
 function StudioPortal() {
   const { user, isLoaded, isSignedIn } = useUser();
 
-  if (!isLoaded) {
-    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>;
-  }
-  if (!isSignedIn) {
-    return <Redirect to="/sign-in" />;
-  }
-
-  const role = getUserRole(user);
-  const destination = getStudioDestination(role);
-  if (destination === 'role-selection') return <RoleSelectionPage />;
-  return destination === 'supporter' ? <SupporterStudio /> : <Studio role="coach" />;
+  return (
+    <StudioRoleBoundary
+      user={user}
+      isLoaded={isLoaded}
+      isSignedIn={Boolean(isSignedIn)}
+      loading={<div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>}
+      signedOut={<Redirect to="/sign-in" />}
+      roleSelection={<RoleSelectionPage />}
+      supporter={<SupporterStudio />}
+      coach={<Studio role="coach" />}
+    />
+  );
 }
 
 function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt: string | Date | null; expired: boolean }) {
