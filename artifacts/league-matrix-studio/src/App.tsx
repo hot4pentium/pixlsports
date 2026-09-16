@@ -118,6 +118,7 @@ import { createRosterBoardGeometrySvg, rosterBoardViewBox } from '@/features/ros
 import baseballFieldAsset from '@/assets/baseball-field.svg';
 import baseballFieldSvg from '@/assets/baseball-field.svg?raw';
 import basketballCourtAsset from '@/assets/basketball-court.svg';
+import heroBanner from '@/assets/hero-banner.png';
 import basketballCourtSvg from '@/assets/basketball-court.svg?raw';
 import footballFieldAsset from '@/assets/football-field.svg';
 import footballFieldSvg from '@/assets/football-field.svg?raw';
@@ -328,8 +329,15 @@ function HomePage() {
       <main>
         {/* HERO */}
         <section className="relative overflow-hidden bg-foreground text-background clip-angled pb-24 pt-16 sm:pb-32 sm:pt-24">
-          <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/15 rounded-full blur-[120px] mix-blend-screen pointer-events-none animate-stadium-flash" />
+          <img
+            src={heroBanner}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-70"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#070a0d]/95 via-[#070a0d]/75 to-[#070a0d]/45" />
+          <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
+          <div className="pointer-events-none absolute inset-0 bg-primary/5 mix-blend-screen" />
 
           <div className="relative z-10 mx-auto grid max-w-[1400px] items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.1fr_.9fr] lg:gap-20">
             <div>
