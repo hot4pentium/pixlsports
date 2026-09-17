@@ -1262,52 +1262,29 @@ function CoachCalendarCodePanel() {
   };
 
   return (
-    <section className="relative w-full overflow-hidden border border-primary/30 bg-primary/5 p-2.5 clip-angled-sm sm:p-3" data-testid="coach-calendar-code-panel">
+    <section className="relative w-fit max-w-full overflow-hidden border border-primary/30 bg-primary/5 p-2 clip-angled-sm" data-testid="coach-calendar-code-panel">
       <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
       <div className="relative z-10 flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Connect your calendar</p>
-          <p className="mt-0.5 hidden text-[10px] font-medium text-muted-foreground sm:block">Share team access</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          <div className="border border-primary bg-background px-2.5 py-1.5 font-display text-lg tracking-[0.18em] text-foreground" aria-label="Fallback coach calendar code">
+        <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-primary sm:text-[10px]">Connect your calendar</p>
+        <div className="flex shrink-0 items-center justify-end gap-1">
+          <div className="border border-primary bg-background px-2 py-1 font-display text-base tracking-[0.12em] text-foreground" aria-label="Fallback coach calendar code">
             {isLoading ? '·····' : data?.code ?? '-----'}
           </div>
           <button
             type="button"
             onClick={() => { void copyCode(); }}
             disabled={!data?.code || isError}
-             className="grid h-9 w-9 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+             className="grid h-8 w-8 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
              aria-label="Copy fallback coach calendar code"
             data-testid="button-copy-coach-calendar-code"
           >
              {copied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
           </button>
-           {feedUrl ? (
-             <button
-               type="button"
-               onClick={() => { void copySubscription(); }}
-               className="inline-flex items-center gap-1.5 bg-foreground px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm"
-               data-testid="button-copy-coach-calendar-link-compact"
-             >
-               <Share2 className="h-3.5 w-3.5" /> {subscriptionCopied ? 'Copied' : 'Copy link'}
-             </button>
-           ) : (
-             <button
-               type="button"
-               onClick={createOrRefreshSubscription}
-               disabled={createSubscription.isPending || isLoading || isError}
-               className="inline-flex items-center gap-1.5 bg-foreground px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-               data-testid="button-create-coach-calendar-subscription"
-             >
-               <Link2 className="h-3.5 w-3.5" /> {createSubscription.isPending ? 'Creating…' : 'Create link'}
-             </button>
-           )}
         </div>
       </div>
        {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not load the calendar sharing options. Refresh and try again.</p>}
         <details className="relative z-10 mt-2 border-t border-primary/20 pt-2">
-         <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">Calendar app options</summary>
+          <summary className="cursor-pointer text-[9px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">More options</summary>
          <div className="pt-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-xl">
@@ -2807,7 +2784,7 @@ function ScheduleEditor() {
               events={events}
               selectedTemplate={selectedTemplate}
             />
-            <div className="mt-3 flex items-start justify-between gap-3">
+            <div className="mx-auto mt-3 flex w-full max-w-[960px] items-start justify-between gap-3">
               <button
                 type="button"
                 onClick={openNewEventForm}
@@ -2819,7 +2796,7 @@ function ScheduleEditor() {
                 <span className="sr-only">Add event</span>
               </button>
               {!isFan && accountAccess?.accessMode !== 'guest' && (
-                <div className="w-full max-w-xl">
+                <div className="min-w-0 max-w-[420px]">
                   <CoachCalendarCodePanel />
                 </div>
               )}
