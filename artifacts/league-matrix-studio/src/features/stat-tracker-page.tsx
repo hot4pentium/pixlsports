@@ -303,45 +303,37 @@ export function StatTrackerPage() {
           </section>
         </section>
       ) : (
-        <section className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <div className="space-y-5">
-            <div className="border border-primary/40 bg-foreground p-6 text-background clip-angled-sm" aria-live="polite">
+        <section className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
+          <div className="lg:col-start-1 lg:row-start-1">
+            <div className="border border-primary/40 bg-foreground p-3 text-background clip-angled-sm sm:p-6" aria-live="polite">
               <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
-              <p className="mt-7 text-xs font-bold uppercase tracking-widest text-white/60">{profile.teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
-              <div className="mt-5 grid grid-cols-2 gap-3">
+              <p className="mt-3 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{profile.teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
                 {([
                   ['athlete', profile.athleteName || 'Your score', currentGame.score],
                   ['opponent', currentGame.opponent || 'Opponent', currentGame.opponentScore],
                 ] as const).map(([side, label, score]) => (
-                  <div key={side} className="border border-white/10 bg-white/5 p-3">
+                  <div key={side} className="border border-white/10 bg-white/5 p-2 sm:p-3">
                     <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
-                    <p className={`mt-1 font-display text-5xl leading-none ${side === 'athlete' ? 'text-primary' : 'text-white'}`}>{score}</p>
-                    <div className="mt-3 flex gap-2">
-                      <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, -1))} aria-label={`Subtract one from ${label}`} className="flex h-9 w-9 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
-                      <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, 1))} aria-label={`Add one to ${label}`} className="flex h-9 w-9 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
+                    <p className={`mt-1 font-display text-4xl leading-none sm:text-5xl ${side === 'athlete' ? 'text-primary' : 'text-white'}`}>{score}</p>
+                    <div className="mt-2 flex gap-2 sm:mt-3">
+                      <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, -1))} aria-label={`Subtract one from ${label}`} className="flex h-8 w-8 items-center justify-center border border-white/20 text-white hover:bg-white/10 sm:h-9 sm:w-9"><Minus className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, 1))} aria-label={`Add one to ${label}`} className="flex h-8 w-8 items-center justify-center border border-white/20 text-white hover:bg-white/10 sm:h-9 sm:w-9"><Plus className="h-4 w-4" /></button>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-center justify-between gap-4">
+              <div className="mt-2 flex items-center justify-between gap-4 sm:mt-4">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">Manual score adjustment</span>
-                <span className="text-right font-display text-xl uppercase tracking-wide text-white/80">{rule.phaseLabel} {currentGame.period}</span>
+                <span className="text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{rule.phaseLabel} {currentGame.period}</span>
               </div>
-              <div className="mt-7 flex flex-wrap gap-2">
-                <button type="button" onClick={() => setCurrentGame((game) => game ? { ...game, status: game.status === 'paused' ? 'live' : 'paused' } : game)} className="border border-white/20 px-4 py-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
-                <button type="button" onClick={() => setCurrentGame((game) => game ? { ...game, period: game.period + 1 } : game)} className="border border-white/20 px-4 py-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10">Next {rule.phaseLabel}</button>
+              <div className="mt-3 flex flex-wrap gap-2 sm:mt-7">
+                <button type="button" onClick={() => setCurrentGame((game) => game ? { ...game, status: game.status === 'paused' ? 'live' : 'paused' } : game)} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
+                <button type="button" onClick={() => setCurrentGame((game) => game ? { ...game, period: game.period + 1 } : game)} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {rule.phaseLabel}</button>
               </div>
-            </div>
-            <div className="border border-border bg-card p-5 clip-angled-sm">
-              <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
-              <div className="space-y-2">
-                {currentGame.events.slice(-5).reverse().map((event) => <div key={event.id} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm"><span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}</span><span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span></div>)}
-                {!currentGame.events.length && <p className="text-sm text-muted-foreground">Your taps will appear here.</p>}
-              </div>
-              <button type="button" onClick={() => updateCurrentGame(undoLastStatEvent(currentGame))} disabled={!currentGame.events.length} className="mt-5 inline-flex min-h-11 items-center gap-2 border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40"><RotateCcw className="h-4 w-4" /> Undo last</button>
             </div>
           </div>
-          <div className="border border-border bg-card p-5 clip-angled-sm sm:p-7">
+          <div className="order-2 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Tap a stat</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{profile.athleteName || 'Athlete'}</h2></div><span className="text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {displayStats.map((item) => <button key={item.id} type="button" onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary">{item.label}</span><span className="mt-2 block font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block text-xs font-bold text-primary">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
@@ -354,6 +346,14 @@ export function StatTrackerPage() {
               <button type="button" onClick={() => setCurrentGame(null)} className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /> Leave game open</button>
               <button type="button" disabled={saving} onClick={() => void saveCompletedGame()} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50"><CircleStop className="h-4 w-4" /> {saving ? 'Saving…' : 'End & save game'}</button>
             </div>
+          </div>
+          <div className="order-3 border border-border bg-card p-4 clip-angled-sm sm:p-5 lg:col-start-1 lg:row-start-2">
+            <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
+            <div className="space-y-2">
+              {currentGame.events.slice(-5).reverse().map((event) => <div key={event.id} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm"><span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}</span><span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span></div>)}
+              {!currentGame.events.length && <p className="text-sm text-muted-foreground">Your taps will appear here.</p>}
+            </div>
+            <button type="button" onClick={() => updateCurrentGame(undoLastStatEvent(currentGame))} disabled={!currentGame.events.length} className="mt-5 inline-flex min-h-11 items-center gap-2 border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40"><RotateCcw className="h-4 w-4" /> Undo last</button>
           </div>
         </section>
       )}
