@@ -195,11 +195,11 @@ export function SupporterDashboardView({
       </header>
 
       {/* ATHLETE HERO */}
-      <section className="animate-slide-up delay-100 relative bg-foreground text-background overflow-hidden clip-angled shadow-2xl p-1 border border-border/20">
+      <section className="athlete-hero-depth animate-slide-up delay-100 relative bg-foreground text-background overflow-hidden clip-angled p-1 border border-border/20">
         <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] mix-blend-screen pointer-events-none" />
         
-        <div className="relative bg-[#111316] clip-angled p-6 sm:p-10 flex flex-col md:flex-row items-center md:items-start gap-8">
+        <div className="athlete-hero-inner-depth relative bg-[#111316] clip-angled p-6 sm:p-10 flex flex-col md:flex-row items-center md:items-start gap-8">
           <img
             src={heroBanner}
             alt=""
@@ -208,10 +208,12 @@ export function SupporterDashboardView({
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b0d0f]/85 via-[#0b0d0f]/45 to-[#0b0d0f]/25" />
           <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
+          <div className="pointer-events-none absolute inset-x-8 top-0 z-[2] h-px bg-gradient-to-r from-transparent via-white/55 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-24 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
           {/* Avatar Circle */}
           <div className="relative z-10 shrink-0">
-            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-primary bg-background text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(22,163,74,0.3)]">
+            <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-primary bg-background text-foreground flex items-center justify-center shadow-[0_18px_34px_rgba(0,0,0,0.58),0_0_34px_rgba(22,232,120,0.3)]">
               {athletePhotoUrl ? (
                 <div className="h-full w-full overflow-hidden rounded-full">
                   <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
