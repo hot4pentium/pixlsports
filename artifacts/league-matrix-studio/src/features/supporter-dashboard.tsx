@@ -87,7 +87,7 @@ function formatDateDisplay(dateStr: string) {
     if (isValid(d)) {
       return format(d, 'MMM d, yyyy');
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
   return dateStr;
@@ -123,6 +123,22 @@ function formatRelativeTime(date: string | Date) {
     // ignore
   }
   return String(date);
+}
+
+function getEventDateParts(dateStr: string) {
+  try {
+    const d = parseISO(dateStr);
+    if (isValid(d)) {
+      return {
+        month: format(d, 'MMM'),
+        day: format(d, 'd'),
+        dayOfWeek: format(d, 'EEE')
+      };
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { month: 'TBD', day: '-', dayOfWeek: '' };
 }
 
 export function SupporterDashboardView({
@@ -352,13 +368,18 @@ export function SupporterDashboardView({
         
         {/* TEAM SCHEDULE */}
         <section>
-          <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-            <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Team Schedule</h3>
-            {scheduleSource && (
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <CalendarDays className="w-4 h-4" /> {scheduleSource === 'team' ? 'Team Calendar' : 'Custom Schedule'}
-              </span>
-            )}
+          <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+            <div className="flex items-center gap-3">
+              <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
+              {scheduleSource && (
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:flex items-center gap-1.5 border-l border-border/50 pl-3">
+                  <CalendarDays className="w-3 h-3" /> {scheduleSource === 'team' ? 'Team Calendar' : 'Custom Schedule'}
+                </span>
+              )}
+            </div>
+            <Link href="/studio/schedule" className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1.5">
+              View Calendar <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
 
           <SupporterScheduleSelector
@@ -373,9 +394,9 @@ export function SupporterDashboardView({
             actionError={scheduleActionError}
           />
 
-          <div className="bg-card border border-border relative min-h-[300px] flex flex-col clip-angled-sm">
+          <div className="bg-card border border-border relative min-h-[220px] flex flex-col clip-angled-sm">
             <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-            <div className="relative p-6 flex-1 flex flex-col">
+            <div className="relative p-3 sm:p-4 flex-1 flex flex-col">
               {calendarState === 'loading' ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -453,48 +474,95 @@ export function SupporterDashboardView({
                   <p className="text-sm max-w-xs text-balance">The coach hasn’t added any events to the team schedule right now.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {events.map((event, idx) => (
-                    <div key={event.id} className={`flex items-stretch gap-4 p-4 border transition-colors ${idx === 0 ? 'bg-primary/5 border-primary/30' : 'bg-background border-border hover:border-foreground/30'}`}>
-                      {/* Date block */}
-                      <div className="flex flex-col items-center justify-center text-center shrink-0 w-16 border-r border-border/50 pr-4">
-                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                          {formatDateDisplay(event.date) ? formatDateDisplay(event.date).split(' ')[0] : 'DATE'}
-                        </span>
-                        <span className="font-display text-2xl leading-none">
-                          {formatDateDisplay(event.date).split(' ')[1]?.replace(',', '') || 'TBD'}
-                        </span>
-                      </div>
-                      
-                      {/* Details */}
-                      <div className="flex-1 min-w-0 flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm ${event.type === 'game' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                            {event.type}
-                          </span>
-                          {idx === 0 && (
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1">
-                              <Activity className="w-3 h-3" /> Up Next
-                            </span>
-                          )}
+                <div className="flex flex-col gap-1">
+                  {events.slice(0, 3).map((event, idx) => {
+                    const isFirst = idx === 0;
+                    const dateParts = getEventDateParts(event.date);
+                    const title = event.opponent ? `${profile.teamName || 'Team'} vs ${event.opponent}` : (event.notes || 'Team Event');
+
+                    if (isFirst) {
+                      return (
+                        <div key={event.id} className="group relative mb-2.5 grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 border border-primary/40 bg-primary/5 p-3 transition-colors hover:border-primary/60 sm:grid-cols-[4rem_minmax(0,1fr)_auto] clip-angled-sm">
+                          {/* Date Block */}
+                          <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-sm border border-border/50 bg-background shadow-sm sm:h-16 sm:w-16">
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-foreground/60 leading-none mb-1">{dateParts.month}</span>
+                            <span className="font-display text-2xl leading-none text-foreground sm:text-3xl">{dateParts.day}</span>
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center">
+                            <div className="text-[10px] font-bold text-primary uppercase tracking-widest mb-0.5">
+                              Next {event.type}
+                            </div>
+                            <div className="font-display text-xl uppercase tracking-wide leading-none truncate mb-1.5 group-hover:text-primary transition-colors">
+                              {title}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-muted-foreground">
+                              <span className="uppercase">{dateParts.dayOfWeek} · {formatTimeDisplay(event.time)}</span>
+                              {event.location && (
+                                <>
+                                  <span className="opacity-50">•</span>
+                                  <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" /> <span className="truncate">{event.location}</span></span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Badges and Actions */}
+                          <div className="col-span-2 mt-0.5 flex w-full shrink-0 flex-row items-center justify-between gap-2 border-t border-border/30 pt-2 sm:col-span-1 sm:mt-0 sm:w-auto sm:flex-col sm:items-end sm:justify-center sm:border-0 sm:pt-0">
+                            <div className="bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-sm flex items-center justify-center min-w-[70px]">
+                              {formatDaysUntil(event.date)}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Link href={`/studio/schedule`} className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm flex items-center gap-1.5 hover:brightness-110 transition-all clip-angled-sm">
+                                <CalendarDays className="w-3.5 h-3.5" /> Graphic
+                              </Link>
+                              {event.location && (
+                                <a href={`https://maps.google.com/?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="bg-muted text-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm flex items-center gap-1.5 hover:bg-foreground hover:text-background transition-colors clip-angled-sm">
+                                  <MapPin className="w-3.5 h-3.5" /> Map
+                                </a>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <h4 className="font-bold text-sm sm:text-base truncate">
-                          {event.opponent ? `${profile.teamName || 'Team'} vs ${event.opponent}` : (event.notes || 'Team Event')}
-                        </h4>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {event.time}</span>
-                          <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3" /> {event.location}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Action */}
-                      <div className="hidden sm:flex items-center shrink-0">
-                        <Link href={`/studio/schedule`} className="w-10 h-10 flex items-center justify-center bg-muted hover:bg-foreground hover:text-background transition-colors clip-angled-sm group" title="Create graphic">
-                           <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+                      );
+                    }
+
+                    return (
+                      <div key={event.id} className="group relative flex items-center gap-3 sm:gap-4 py-2.5 px-2 hover:bg-muted/30 transition-colors border-b border-border/40 last:border-0 rounded-sm">
+                        {/* Link overlay */}
+                        <Link href={`/studio/schedule`} className="absolute inset-0 z-10">
+                          <span className="sr-only">View event</span>
                         </Link>
+
+                        {/* Date Block */}
+                        <div className="flex flex-col items-center justify-center bg-muted/40 rounded-sm w-12 h-14 shrink-0 border border-border/30">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/60 leading-none mb-1">{dateParts.month}</span>
+                          <span className="font-display text-xl leading-none text-foreground">{dateParts.day}</span>
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-center pointer-events-none relative z-20">
+                          <div className="font-display text-lg uppercase tracking-wide leading-none truncate mb-1 group-hover:text-primary transition-colors">
+                            {title}
+                          </div>
+                          <div className="flex items-center text-xs text-muted-foreground truncate font-medium">
+                            <span className="uppercase">{dateParts.dayOfWeek}, {formatTimeDisplay(event.time)}</span>
+                            {event.location && (
+                              <>
+                                <span className="mx-1.5 opacity-50">•</span>
+                                <span className="truncate">{event.location}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-foreground transition-all group-hover:translate-x-1 relative z-20 pointer-events-none">
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
