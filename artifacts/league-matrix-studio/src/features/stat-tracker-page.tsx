@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, FileText, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useCreateProject, useGetAccountAccess, useListProjects, useUpdateProject, getGetAccountAccessQueryKey, getListProjectsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { getUserProfile } from './supporter-dashboard-model';
 import { readScheduleDraft } from './schedule-draft';
 import {
   addStatEvent,
+  adjustScore,
   createGameSession,
   endGame,
   getSportRule,
@@ -82,6 +83,7 @@ export function StatTrackerPage() {
   const [currentGame, setCurrentGame] = useState<GameSession | null>(() => readLocalActiveGame());
   const [date, setDate] = useState(searchParams.get('date') ?? nextGame?.date ?? new Date().toISOString().slice(0, 10));
   const [opponent, setOpponent] = useState(searchParams.get('opponent') ?? nextGame?.opponent ?? '');
+  const [notes, setNotes] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -134,7 +136,7 @@ export function StatTrackerPage() {
 
   const beginGame = () => {
     setError('');
-    setCurrentGame(createGameSession(sport, { date, opponent }));
+    setCurrentGame(createGameSession(sport, { date, opponent, notes }));
     announce('GAME STARTED — LIVE STATS ARE READY');
   };
 
@@ -214,10 +216,13 @@ export function StatTrackerPage() {
               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
                 <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
               </label>
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
+               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
                 <input value={opponent} onChange={(event) => setOpponent(event.target.value)} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
               </label>
             </div>
+             <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes
+               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+             </label>
             {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
             <button type="button" onClick={beginGame} className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
               <Clock3 className="h-4 w-4" /> Start game
@@ -241,7 +246,25 @@ export function StatTrackerPage() {
             <div className="border border-primary/40 bg-foreground p-6 text-background clip-angled-sm" aria-live="polite">
               <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
               <p className="mt-7 text-xs font-bold uppercase tracking-widest text-white/60">{profile.teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
-              <div className="mt-2 flex items-end justify-between gap-4"><span className="font-display text-7xl leading-none text-primary">{currentGame.score}</span><span className="pb-1 text-right font-display text-2xl uppercase tracking-wide text-white/80">{rule.phaseLabel} {currentGame.period}</span></div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {([
+                  ['athlete', profile.athleteName || 'Your score', currentGame.score],
+                  ['opponent', currentGame.opponent || 'Opponent', currentGame.opponentScore],
+                ] as const).map(([side, label, score]) => (
+                  <div key={side} className="border border-white/10 bg-white/5 p-3">
+                    <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
+                    <p className={`mt-1 font-display text-5xl leading-none ${side === 'athlete' ? 'text-primary' : 'text-white'}`}>{score}</p>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, -1))} aria-label={`Subtract one from ${label}`} className="flex h-9 w-9 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, 1))} aria-label={`Add one to ${label}`} className="flex h-9 w-9 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">Manual score adjustment</span>
+                <span className="text-right font-display text-xl uppercase tracking-wide text-white/80">{rule.phaseLabel} {currentGame.period}</span>
+              </div>
               <div className="mt-7 flex flex-wrap gap-2">
                 <button type="button" onClick={() => setCurrentGame((game) => game ? { ...game, status: game.status === 'paused' ? 'live' : 'paused' } : game)} className="border border-white/20 px-4 py-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
                 <button type="button" onClick={() => setCurrentGame((game) => game ? { ...game, period: game.period + 1 } : game)} className="border border-white/20 px-4 py-3 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10">Next {rule.phaseLabel}</button>
@@ -262,6 +285,9 @@ export function StatTrackerPage() {
               {displayStats.map((item) => <button key={item.id} type="button" onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary">{item.label}</span><span className="mt-2 block font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block text-xs font-bold text-primary">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
             </div>
             <button type="button" onClick={() => setShowAllStats((value) => !value)} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
+             <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Game notes</span>
+               <textarea value={currentGame.notes} onChange={(event) => setCurrentGame((game) => game ? { ...game, notes: event.target.value } : game)} placeholder="Add a note to look back on later." rows={4} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+             </label>
             <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
               <button type="button" onClick={() => setCurrentGame(null)} className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /> Leave game open</button>
               <button type="button" disabled={saving} onClick={() => void saveCompletedGame()} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50"><CircleStop className="h-4 w-4" /> {saving ? 'Saving…' : 'End & save game'}</button>
@@ -272,7 +298,7 @@ export function StatTrackerPage() {
 
       <section className="mt-10 border border-border bg-card p-5 clip-angled-sm sm:p-7">
         <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
-        {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <div key={game.id} className="flex items-center justify-between gap-4 border border-border bg-background p-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary">{game.score}</p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">points</p></div></div>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
+         {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <div key={game.id} className="border border-border bg-background p-4"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</div>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
       {notice && <div className="fixed bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-primary bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary shadow-lg" role="status"><Check className="h-4 w-4" /> {notice}</div>}
     </div>

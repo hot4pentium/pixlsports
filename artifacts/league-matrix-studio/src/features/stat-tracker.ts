@@ -31,6 +31,8 @@ export type GameSession = {
   opponent: string;
   period: number;
   score: number;
+  opponentScore: number;
+  notes: string;
   stats: Record<string, number>;
   events: StatEvent[];
   startedAt: string;
@@ -141,7 +143,7 @@ export function isSport(value: unknown): value is Sport {
 
 export function createGameSession(
   sport: Sport,
-  input: { date?: string; opponent?: string },
+  input: { date?: string; opponent?: string; notes?: string },
   now = new Date(),
 ): GameSession {
   return {
@@ -152,10 +154,24 @@ export function createGameSession(
     opponent: input.opponent?.trim() ?? '',
     period: 1,
     score: 0,
+    opponentScore: 0,
+    notes: input.notes?.trim() ?? '',
     stats: {},
     events: [],
     startedAt: now.toISOString(),
   };
+}
+
+export function adjustScore(
+  game: GameSession,
+  side: 'athlete' | 'opponent',
+  delta: number,
+): GameSession {
+  if (game.status === 'final' || !Number.isFinite(delta) || delta === 0) return game;
+  const nextScore = Math.max(0, (side === 'athlete' ? game.score : game.opponentScore) + delta);
+  return side === 'athlete'
+    ? { ...game, score: nextScore }
+    : { ...game, opponentScore: nextScore };
 }
 
 export function addStatEvent(game: GameSession, statId: string, now = new Date()): GameSession {
@@ -209,6 +225,11 @@ export function normalizeTrackerData(value: unknown): StatTrackerData {
       && typeof (game as GameSession).stats === 'object'
       && Array.isArray((game as GameSession).events)
     ))
+    .map((game) => ({
+      ...game,
+      opponentScore: typeof game.opponentScore === 'number' ? Math.max(0, game.opponentScore) : 0,
+      notes: typeof game.notes === 'string' ? game.notes : '',
+    }))
     : [];
   return { version: 1, games };
 }
