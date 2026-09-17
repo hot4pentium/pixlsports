@@ -137,6 +137,21 @@ function getEventDateParts(dateStr: string) {
   return { month: 'TBD', day: '-', dayOfWeek: '' };
 }
 
+function QuickActionSportBackground() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-gradient-to-br from-[#07130d] via-[#0b1511] to-[#050807]">
+      <div className="absolute inset-0 bg-tech-grid-dark opacity-55" />
+      <div className="absolute inset-y-0 left-[30%] w-px -skew-x-[18deg] bg-white/10" />
+      <div className="absolute inset-y-[-20%] left-[48%] w-8 -skew-x-[18deg] bg-primary/10 transition-transform duration-500 group-hover:translate-x-2" />
+      <div className="absolute inset-y-[-20%] left-[66%] w-3 -skew-x-[18deg] bg-white/[0.05] transition-transform duration-500 group-hover:translate-x-3" />
+      <div className="absolute -right-10 top-1/2 h-28 w-28 -translate-y-1/2 rounded-full border border-primary/20" />
+      <div className="absolute -right-4 top-1/2 h-px w-24 -translate-y-1/2 bg-gradient-to-r from-primary/30 to-transparent" />
+      <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-primary/15 blur-2xl" />
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+    </div>
+  );
+}
+
 export function SupporterDashboardView({
   profile,
   events,
@@ -305,16 +320,9 @@ export function SupporterDashboardView({
           <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Turn moments into lasting memories.</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Link href="/studio/hype-card" className="group grid min-h-[148px] grid-cols-[42%_1fr] overflow-hidden border border-border bg-card transition-all hover:border-foreground hover:bg-muted clip-angled-sm" data-testid="link-quick-hype">
-            <div className="relative flex min-h-[148px] min-w-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#07130d] via-[#0b1511] to-[#050807] p-3">
-              <div className="absolute inset-0 bg-tech-grid-dark opacity-55" />
-              <div className="absolute inset-y-0 left-[30%] w-px -skew-x-[18deg] bg-white/10" />
-              <div className="absolute inset-y-[-20%] left-[48%] w-8 -skew-x-[18deg] bg-primary/10 transition-transform duration-500 group-hover:translate-x-2" />
-              <div className="absolute inset-y-[-20%] left-[66%] w-3 -skew-x-[18deg] bg-white/[0.05] transition-transform duration-500 group-hover:translate-x-3" />
-              <div className="absolute -right-10 top-1/2 h-28 w-28 -translate-y-1/2 rounded-full border border-primary/20" />
-              <div className="absolute -right-4 top-1/2 h-px w-24 -translate-y-1/2 bg-gradient-to-r from-primary/30 to-transparent" />
-              <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-primary/15 blur-2xl" />
-              <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+          <Link href="/studio/hype-card" className="group relative grid min-h-[148px] grid-cols-[42%_1fr] overflow-hidden border border-border bg-[#07130d] text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-hype">
+            <QuickActionSportBackground />
+            <div className="relative z-10 flex min-h-[148px] min-w-0 items-center justify-center overflow-hidden border-r border-white/10 p-3">
               {profile.teamName ? (
                 <span
                   className="relative z-10 max-w-full whitespace-nowrap px-1 text-center font-display leading-none tracking-wide text-white uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
@@ -335,39 +343,41 @@ export function SupporterDashboardView({
                 {profile.teamName ? 'Team card' : 'Start with Pixl Sports'}
               </span>
             </div>
-            <div className="flex min-w-0 items-center justify-between gap-3 p-5">
+            <div className="relative z-10 flex min-w-0 items-center justify-between gap-3 p-5">
               <div className="min-w-0">
                 <h4 className="font-display text-2xl uppercase tracking-wide transition-colors group-hover:text-primary">Hype Card</h4>
-                <p className="mt-1 text-sm font-medium text-muted-foreground">Celebrate a big moment.</p>
+                <p className="mt-1 text-sm font-medium text-white/60">Celebrate a big moment.</p>
               </div>
-              <ArrowRight className="h-6 w-6 shrink-0 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+              <ArrowRight className="h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
             </div>
           </Link>
-          <Link href="/studio/schedule" className="group bg-card hover:bg-muted border border-border p-6 clip-angled-sm flex items-center justify-between transition-all hover:border-foreground" data-testid="link-quick-schedule">
-            <div className="min-w-0">
+          <Link href="/studio/schedule" className="group relative flex min-h-[148px] items-center justify-between overflow-hidden border border-border bg-[#07130d] p-6 text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-schedule">
+            <QuickActionSportBackground />
+            <div className="relative z-10 min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
                 {nextGame ? (nextGameIsUpcoming ? formatDaysUntil(nextGame.date) : 'Scheduled') : 'Game Day'}
               </p>
               <h4 className="mt-1 font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">Game Day</h4>
               {nextGame ? (
-                <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
+                <p className="mt-1 truncate text-sm font-medium text-white/60">
                   {formatDateDisplay(nextGame.date)} · {formatTimeDisplay(nextGame.time)}
                 </p>
               ) : (
-                <p className="mt-1 text-sm font-medium text-muted-foreground">
+                <p className="mt-1 text-sm font-medium text-white/60">
                   {scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}
                 </p>
               )}
             </div>
-            <ArrowRight className="h-6 w-6 shrink-0 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+            <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
           </Link>
-          <button type="button" onClick={onOpenStatTracker} className="group bg-foreground text-background border border-foreground p-6 clip-angled-sm flex items-center justify-between text-left transition-all hover:bg-primary hover:text-primary-foreground" data-testid="link-quick-stat-tracker">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary group-hover:text-primary-foreground">Live numbers</p>
+          <button type="button" onClick={onOpenStatTracker} className="group relative flex min-h-[148px] items-center justify-between overflow-hidden border border-border bg-[#07130d] p-6 text-left text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-stat-tracker">
+            <QuickActionSportBackground />
+            <div className="relative z-10 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live numbers</p>
               <h4 className="mt-1 font-display text-2xl uppercase tracking-wide">Stat Tracker</h4>
-              <p className="mt-1 text-sm font-medium text-white/60 group-hover:text-primary-foreground/80">Track the game as it happens.</p>
+              <p className="mt-1 text-sm font-medium text-white/60">Track the game as it happens.</p>
             </div>
-            <ArrowRight className="h-6 w-6 shrink-0 opacity-70 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+            <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
           </button>
         </div>
       </section>
