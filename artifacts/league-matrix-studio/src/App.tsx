@@ -128,7 +128,7 @@ import { createRosterBoardGeometrySvg, rosterBoardViewBox } from '@/features/ros
 import baseballFieldAsset from '@/assets/baseball-field.svg';
 import baseballFieldSvg from '@/assets/baseball-field.svg?raw';
 import basketballCourtAsset from '@/assets/basketball-court.svg';
-import heroBanner from '@/assets/hero-banner.png';
+import heroBanner from '@/assets/hero-banner.webp';
 import basketballCourtSvg from '@/assets/basketball-court.svg?raw';
 import footballFieldAsset from '@/assets/football-field.svg';
 import footballFieldSvg from '@/assets/football-field.svg?raw';
