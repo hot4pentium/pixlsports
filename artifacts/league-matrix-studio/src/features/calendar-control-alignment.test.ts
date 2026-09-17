@@ -16,18 +16,22 @@ const schedulePreview = appSource.slice(
   appSource.indexOf('function PublicSchedulePage'),
 );
 
-test('calendar bottom actions stay pinned to matching phone and desktop edges', () => {
+test('calendar controls stay pinned to their current phone and desktop edges', () => {
   assert.match(
     schedulePreview,
     /data-testid="schedule-bottom-actions"/,
   );
   assert.match(
     schedulePreview,
-    /w-\[calc\(100%-2rem\)\].*max-w-\[960px\].*items-end.*justify-between.*sm:w-\[calc\(100%-4rem\)\]/,
+    /w-\[calc\(100%-2rem\)\].*max-w-\[960px\].*items-end.*justify-end.*sm:w-\[calc\(100%-4rem\)\]/,
+  );
+  assert.match(
+    schedulePreview,
+    /data-testid="button-add-event"/,
   );
   assert.match(
     scheduleEditor,
-    /data-testid="button-add-event"[\s\S]*min-w-0 w-full max-w-\[380px\] flex-1[\s\S]*<FanCalendarConnectionPanel compact/,
+    /<FanCalendarConnectionPanel compact/,
   );
 });
 

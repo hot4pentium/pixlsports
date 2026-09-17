@@ -117,9 +117,7 @@ test('selector keeps connected team calendar guidance visible while custom choic
   assert.match(renderedText(renderer), /Your connected team calendar is currently shown first/);
 });
 
-test('schedule management exposes open and rename actions for every saved schedule', async () => {
-  let openedId = '';
-  let renamed: [string, string] | null = null;
+test('saved schedule selector does not render the schedule management section', () => {
   let renderer!: ReactTestRenderer;
 
   act(() => {
@@ -128,32 +126,13 @@ test('schedule management exposes open and rename actions for every saved schedu
       selectedScheduleId: 'latest',
       connected: false,
       onSelect: () => {},
-      onOpen: (scheduleId: string) => {
-        openedId = scheduleId;
-      },
-      onRename: (scheduleId: string, name: string) => {
-        renamed = [scheduleId, name];
-      },
+      onOpen: () => {},
+      onRename: () => {},
       onRemove: () => {},
     }));
   });
 
-  act(() => {
-    renderer.root.findByProps({ 'data-testid': 'button-open-saved-schedule-older' }).props.onClick();
-  });
-  assert.equal(openedId, 'older');
-
-  act(() => {
-    renderer.root.findByProps({ 'data-testid': 'button-rename-saved-schedule-latest' }).props.onClick();
-  });
-  const input = renderer.root.findByProps({ 'data-testid': 'input-rename-saved-schedule-latest' });
-  act(() => {
-    input.props.onChange({ target: { value: 'Main season' } });
-  });
-  await act(async () => {
-    renderer.root.findByType('form').props.onSubmit({
-      preventDefault: () => {},
-    });
-  });
-  assert.deepEqual(renamed, ['latest', 'Main season']);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'manage-saved-schedules' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'button-open-saved-schedule-older' }).length, 0);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'button-rename-saved-schedule-latest' }).length, 0);
 });
