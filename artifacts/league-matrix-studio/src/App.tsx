@@ -1869,7 +1869,12 @@ function createRosterSvg(draft: RosterDraft) {
   const starters = getStarterPlayers(draft.players);
   const bench = getBenchPlayers(draft.players);
   const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
-    const board = boardRef.current;
+  const board = {
+    x: 72,
+    y: 350,
+    width: 936,
+    height: isPortraitRosterBoardStyle(draft.boardStyle) ? 1248 : 702,
+  };
   const starterTokens = starters.length === 0
     ? `<text x="${board.x + board.width / 2}" y="${board.y + board.height / 2}" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
     : starters.map((player) => {
@@ -2037,8 +2042,9 @@ function RosterEditor() {
         announce('ROSTER SAVED TO CLOUD');
       } else {
         const created = await createCloudProject.mutateAsync({
-          data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
+          data: { name: `${draft.teamName.trim()} - Roster`, project: cloudDraft() },
         });
+        cloudRevision.current = created.revision;
         setSaved(true);
         setLocation(`/studio/roster/${created.id}`);
       }
@@ -2057,7 +2063,7 @@ function RosterEditor() {
   useEffect(() => {
     if (!cloudProjectId || !cloudProjectData || initializedCloudId.current === cloudProjectId) return;
     if (!isCloudToolProject(cloudProjectData.project, 'roster')) return;
-    const loadedDraft = normalizeScheduleDraft(selectedCloudProject.project);
+    const loadedDraft = normalizeRosterDraft(cloudProjectData.project);
     if (!loadedDraft) return;
     initializedCloudId.current = cloudProjectId;
     setDraft(loadedDraft);
@@ -2575,12 +2581,6 @@ function ScheduleEditor() {
     });
   };
 
-  const saveProject = () => {
-    saveCurrentDraft();
-    setSaved(true);
-    setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
-  };
-
   const cloudSchedule = (): CloudProjectPayload => ({
     tool: 'schedule',
     version: 1,
@@ -2597,6 +2597,10 @@ function ScheduleEditor() {
       return;
     }
     try {
+      const data = {
+        project: cloudSchedule(),
+        expectedRevision: cloudRevision.current,
+      };
       if (activeCloudProjectId) {
         const updated = await updateCloudProject.mutateAsync({
           projectId: activeCloudProjectId,
@@ -2609,9 +2613,10 @@ function ScheduleEditor() {
         });
         cloudRevision.current = created.revision;
         await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-        setSaved(true);
         setLocation(`/studio/schedule/${created.id}`);
       }
+      setSaved(true);
+      setNoticeFor('SCHEDULE SAVED');
     } catch (error: any) {
        setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT' : 'CLOUD SAVE FAILED — TRY AGAIN');
     }
@@ -2665,10 +2670,12 @@ function ScheduleEditor() {
         });
         cloudRevision.current = updated.revision;
       } else {
+        const project = { ...cloudSchedule(), shareToken: nextShareToken };
         const created = await createCloudProject.mutateAsync({
-          data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
+          data: { name: `${teamName.trim()} - Schedule`, project },
         });
         createdProjectId = created.id;
+        cloudRevision.current = created.revision;
       }
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       saveCurrentDraft(nextShareToken);
@@ -2815,14 +2822,11 @@ function ScheduleEditor() {
             <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
               <Check className="h-4 w-4" /> Saved
             </span>
-            <button type="button" onClick={saveProject} className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background transition-transform hover:scale-105 clip-angled-sm" data-testid="button-save-project">
-              <Save className="h-4 w-4" /> Save Draft
-            </button>
-            <button type="button" onClick={saveToCloud} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex items-center gap-2 border border-primary bg-primary/10 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm" data-testid="button-save-schedule-cloud">
-              <Share2 className="h-4 w-4" /> Save Progress to Cloud
+            <button type="button" onClick={() => { void saveSchedule(); }} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background transition-transform hover:scale-105 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-project">
+              <Save className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending ? 'Saving…' : 'Save'}
             </button>
             <button type="button" onClick={publishSchedule} disabled={createCloudProject.isPending || updateCloudProject.isPending || sharePending} className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-publish-schedule">
-              <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish to Team'}
+              <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish to All'}
             </button>
           </div>
         </div>
@@ -2855,16 +2859,6 @@ function ScheduleEditor() {
 
               <div className="overflow-x-auto pb-2 no-scrollbar" data-testid="schedule-week-list">
                 <div className="flex min-w-max gap-2">
-                  <button
-                    type="button"
-                    onClick={openNewEventForm}
-                    className="grid min-h-[62px] min-w-[58px] place-items-center border border-dashed border-primary bg-primary/5 text-primary transition-colors hover:bg-primary/10 clip-angled-sm"
-                    aria-label="Add new schedule event"
-                    title="Add new schedule event"
-                    data-testid="button-add-event-week"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
                   {scheduleWeeks.map((week) => (
                     <button
                       key={week.key}
@@ -2904,6 +2898,15 @@ function ScheduleEditor() {
                       <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider">{formatScheduleTime(event.time)}</span>
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={openNewEventForm}
+                    className="flex w-full items-center justify-center gap-2 border border-dashed border-primary bg-primary/5 px-3 py-3 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/10 clip-angled-sm"
+                    aria-label="Add new schedule event"
+                    data-testid="button-add-event"
+                  >
+                    <Plus className="h-4 w-4" /> Add Event
+                  </button>
                 </div>
               </div>
 
@@ -2922,7 +2925,7 @@ function ScheduleEditor() {
                   />
                 </div>
               ) : (
-                <p className="mt-4 border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground">Select an entry to edit it, or use + to add a new event.</p>
+                <p className="mt-4 border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground">Select an entry to edit it, or choose Add Event.</p>
               )}
             </div>
 
@@ -3645,9 +3648,7 @@ function RoleSelectionPage() {
   if (!isLoaded) {
     return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Checking account access…</div>;
   }
-  if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
-    return <LockedAccountPage deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} />;
-  }
+  if (!user) return <Redirect to="/sign-in" />;
 
   const saveProfile = async () => {
     const cleanName = displayName.trim();
