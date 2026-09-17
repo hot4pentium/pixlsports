@@ -47,6 +47,37 @@ import { getGuestUsageKey } from './guest-access';
 import { prepareHypeCardShareMedia } from './hype-card-share';
 
 
+function waitForVideoEvent(
+  video: HTMLVideoElement,
+  eventName: 'loadedmetadata' | 'seeked',
+  timeoutMs: number,
+  rejectOnError: boolean,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      video.removeEventListener(eventName, onReady);
+      video.removeEventListener('error', onError);
+    };
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      if (rejectOnError) reject(new Error('This browser cannot decode that video. Try an MP4/H.264 clip.'));
+      else resolve();
+    };
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      if (rejectOnError) reject(new Error('The browser took too long to read that video. Try an MP4/H.264 clip.'));
+      else resolve();
+    }, timeoutMs);
+    video.addEventListener(eventName, onReady, { once: true });
+    video.addEventListener('error', onError, { once: true });
+  });
+}
+
 function drawVideoContain(
   context: CanvasRenderingContext2D,
   video: HTMLVideoElement,
@@ -654,6 +685,7 @@ export function HypeCardEditor() {
   const [exportProgress, setExportProgress] = useState(0);
   const [validation, setValidation] = useState('');
   const [videoUrl, setVideoUrl] = useState<string | undefined>(undefined);
+  const [preparingVideo, setPreparingVideo] = useState(false);
   const [exportSupport, setExportSupport] = useState(() => checkExportSupport());
   const [includeAudio, setIncludeAudio] = useState(true);
   const [imageFormat, setImageFormat] = useState<'png' | 'jpeg'>('png');
@@ -663,6 +695,7 @@ export function HypeCardEditor() {
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
+  const mediaPreparationAbortRef = useRef<AbortController | null>(null);
 
   const initializedForId = useRef<string | null>(null);
   const lastSaved = useRef<HypeCardProject>(project);
@@ -852,6 +885,10 @@ export function HypeCardEditor() {
     };
   }, [videoUrl]);
 
+  useEffect(() => () => {
+    mediaPreparationAbortRef.current?.abort();
+  }, []);
+
   const processNextSave = async () => {
     if (isSavingRef.current || !nextSaveDataRef.current || !cloudProjectId || saveStatus === 'Conflict') return;
 
@@ -1010,6 +1047,13 @@ export function HypeCardEditor() {
     return designOnlyProject(project);
   };
 
+  const cancelVideoPreparation = () => {
+    mediaPreparationAbortRef.current?.abort();
+    setAutosaveWarning('');
+    setPreparingVideo(false);
+    setNotice('Video preparation cancelled. Choose the video again when you are ready.');
+  };
+
   const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -1023,16 +1067,16 @@ export function HypeCardEditor() {
       
       const id = slugify(`${file.name}-${Date.now()}`);
       const url = URL.createObjectURL(file);
+      mediaPreparationAbortRef.current?.abort();
+      const preparationAbort = new AbortController();
+      mediaPreparationAbortRef.current = preparationAbort;
       try {
         const v = document.createElement('video');
         v.preload = 'auto';
         v.muted = true;
         v.playsInline = true;
         v.src = url;
-        await new Promise<void>((resolve, reject) => {
-          v.addEventListener('loadedmetadata', () => resolve(), { once: true });
-          v.addEventListener('error', () => reject(new Error('This browser cannot decode that video. Try an MP4/H.264 clip.')), { once: true });
-        });
+        await waitForVideoEvent(v, 'loadedmetadata', 10_000, true);
         if (!Number.isFinite(v.duration) || v.duration <= 0) {
           throw new Error('This video has an invalid duration.');
         }
@@ -1041,17 +1085,28 @@ export function HypeCardEditor() {
         let conversionWarning = '';
         try {
           setNotice('');
+          setPreparingVideo(true);
           setAutosaveWarning('Preparing a smaller MP4 locally… 0%');
-          preparedVideo = await transcodeVideoToMp4(file, (progress) => {
-            setAutosaveWarning(`Preparing a smaller MP4 locally… ${Math.round(progress * 100)}%`);
-          });
+          preparedVideo = await transcodeVideoToMp4(
+            file,
+            (progress) => {
+              if (!preparationAbort.signal.aborted) {
+                setAutosaveWarning(`Preparing a smaller MP4 locally… ${Math.round(progress * 100)}%`);
+              }
+            },
+            { signal: preparationAbort.signal },
+          );
           if (preparedVideo.size >= file.size && file.type.includes('mp4')) {
             preparedVideo = file;
           }
           playbackUrl = URL.createObjectURL(preparedVideo);
         } catch (conversionError) {
+          if (preparationAbort.signal.aborted) throw conversionError;
           console.warn('Video conversion unavailable; keeping original locally.', conversionError);
-          conversionWarning = 'This browser could not create a smaller MP4, so the original video will stay local.';
+          const stalled = conversionError instanceof Error && conversionError.message.toLowerCase().includes('stalled');
+          conversionWarning = stalled
+            ? 'Video preparation stopped because this browser was not making progress. The original video will stay local.'
+            : 'This browser could not create a smaller MP4, so the original video will stay local.';
         }
 
         await saveMediaBlob(id, preparedVideo);
@@ -1062,10 +1117,7 @@ export function HypeCardEditor() {
         
         // Generate poster for project.photo as fallback
         v.currentTime = Math.min(0.05, v.duration / 2);
-        await new Promise<void>((resolve) => {
-          v.addEventListener('seeked', () => resolve(), { once: true });
-          v.addEventListener('error', () => resolve(), { once: true });
-        });
+        await waitForVideoEvent(v, 'seeked', 5_000, false);
         let poster: string | null = null;
         try {
           const cv = document.createElement('canvas');
@@ -1100,8 +1152,14 @@ export function HypeCardEditor() {
         if (playbackUrl !== url) URL.revokeObjectURL(url);
       } catch (err) {
         URL.revokeObjectURL(url);
+        if (preparationAbort.signal.aborted) return;
         setAutosaveWarning('');
         setNotice(err instanceof Error ? err.message : 'Could not save video to local storage.');
+      } finally {
+        if (mediaPreparationAbortRef.current === preparationAbort) {
+          mediaPreparationAbortRef.current = null;
+          setPreparingVideo(false);
+        }
       }
     } else if (file.type.startsWith('image/')) {
       try {
@@ -1485,7 +1543,13 @@ export function HypeCardEditor() {
       {autosaveWarning && (
         <div className="flex shrink-0 items-center justify-between border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-950">
           {autosaveWarning}
-          <button type="button" onClick={() => setAutosaveWarning('')} aria-label="Dismiss autosave warning"><X className="h-4 w-4" /></button>
+          {preparingVideo ? (
+            <button type="button" onClick={cancelVideoPreparation} className="ml-3 font-bold uppercase tracking-wide underline" aria-label="Cancel video preparation">
+              Cancel
+            </button>
+          ) : (
+            <button type="button" onClick={() => setAutosaveWarning('')} aria-label="Dismiss autosave warning"><X className="h-4 w-4" /></button>
+          )}
         </div>
       )}
 

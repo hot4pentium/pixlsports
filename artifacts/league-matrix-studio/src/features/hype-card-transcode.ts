@@ -2,110 +2,226 @@ import { checkExportSupport } from './hype-card-media';
 
 export type TranscodeProgressCallback = (progress: number) => void;
 
-function waitForSeek(video: HTMLVideoElement): Promise<void> {
+const MEDIA_READY_TIMEOUT_MS = 10_000;
+const PLAYBACK_START_TIMEOUT_MS = 8_000;
+const NO_PROGRESS_TIMEOUT_MS = 8_000;
+
+export type VideoTranscodeOptions = {
+  signal?: AbortSignal;
+  mediaReadyTimeoutMs?: number;
+  playbackStartTimeoutMs?: number;
+  noProgressTimeoutMs?: number;
+};
+
+function abortError() {
+  const error = new Error('Video preparation was cancelled.');
+  error.name = 'AbortError';
+  return error;
+}
+
+function waitForMediaEvent(
+  video: HTMLVideoElement,
+  eventName: 'loadedmetadata' | 'seeked',
+  errorMessage: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const onSeeked = () => {
-      video.removeEventListener('seeked', onSeeked);
+    let timeoutId = 0;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      video.removeEventListener(eventName, onReady);
       video.removeEventListener('error', onError);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onReady = () => {
+      cleanup();
       resolve();
     };
     const onError = () => {
-      video.removeEventListener('seeked', onSeeked);
-      video.removeEventListener('error', onError);
-      reject(new Error('The video could not be decoded.'));
+      cleanup();
+      reject(new Error(errorMessage));
     };
-    video.addEventListener('seeked', onSeeked, { once: true });
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Video preparation stalled while reading the clip.'));
+    }, timeoutMs);
+    video.addEventListener(eventName, onReady, { once: true });
     video.addEventListener('error', onError, { once: true });
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let timeoutId = 0;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error(message));
+    }, timeoutMs);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
   });
 }
 
 export async function transcodeVideoToMp4(
   source: File,
   onProgress: TranscodeProgressCallback,
+  options: VideoTranscodeOptions = {},
 ): Promise<Blob> {
+  const {
+    signal,
+    mediaReadyTimeoutMs = MEDIA_READY_TIMEOUT_MS,
+    playbackStartTimeoutMs = PLAYBACK_START_TIMEOUT_MS,
+    noProgressTimeoutMs = NO_PROGRESS_TIMEOUT_MS,
+  } = options;
   const support = checkExportSupport();
   if (!support.mp4Mime) {
     throw new Error('This browser cannot create a smaller MP4. The original clip will be kept locally.');
   }
+  if (signal?.aborted) throw abortError();
+
+  const video = document.createElement('video');
+  const canvas = document.createElement('canvas');
+  if (typeof canvas.captureStream !== 'function') {
+    throw new Error('This browser cannot prepare video locally. The original clip will be kept locally.');
+  }
+
+  const AudioContextConstructor = window.AudioContext
+    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) {
+    throw new Error('This browser cannot preserve audio during local preparation. The original clip will be kept locally.');
+  }
 
   const sourceUrl = URL.createObjectURL(source);
-  const video = document.createElement('video');
   video.preload = 'auto';
   video.muted = true;
   video.playsInline = true;
   video.src = sourceUrl;
+  let stream: MediaStream | null = null;
+  let audioStream: MediaStream | null = null;
+  let audioElement: HTMLVideoElement | null = null;
+  let audioContext: AudioContext | null = null;
+  let recorder: MediaRecorder | null = null;
+  let animationFrame = 0;
+  let stallTimer = 0;
+
+  const cleanup = () => {
+    cancelAnimationFrame(animationFrame);
+    window.clearTimeout(stallTimer);
+    if (recorder?.state !== 'inactive') {
+      try {
+        recorder?.stop();
+      } catch {
+        // Some Safari versions throw when stopping a recorder whose stream failed.
+      }
+    }
+    stream?.getTracks().forEach((track) => track.stop());
+    audioStream?.getTracks().forEach((track) => track.stop());
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    audioElement?.pause();
+    audioElement?.removeAttribute('src');
+    audioElement?.load();
+    audioElement?.remove();
+    void audioContext?.close().catch(() => undefined);
+  };
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      video.addEventListener('loadedmetadata', () => resolve(), { once: true });
-      video.addEventListener('error', () => reject(new Error('This browser cannot decode that video.')), { once: true });
-    });
+    await waitForMediaEvent(
+      video,
+      'loadedmetadata',
+      'This browser cannot decode that video.',
+      mediaReadyTimeoutMs,
+      signal,
+    );
 
     const scale = Math.min(1, 1280 / Math.max(video.videoWidth || 1280, video.videoHeight || 720));
     const width = Math.max(2, Math.floor((video.videoWidth || 1280) * scale / 2) * 2);
     const height = Math.max(2, Math.floor((video.videoHeight || 720) * scale / 2) * 2);
-    const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Could not create a video conversion canvas.');
 
-    const stream = canvas.captureStream(30);
-    let audioStream: MediaStream | null = null;
-    let audioElement: HTMLVideoElement | null = null;
-    let audioContext: AudioContext | null = null;
-    try {
-      const AudioContextConstructor = window.AudioContext
-        ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextConstructor) throw new Error('Web Audio is unavailable.');
-      audioElement = document.createElement('video');
-      audioElement.preload = 'auto';
-      audioElement.playsInline = true;
-      audioElement.muted = false;
-      audioElement.src = sourceUrl;
-      await new Promise<void>((resolve, reject) => {
-        audioElement?.addEventListener('loadedmetadata', () => resolve(), { once: true });
-        audioElement?.addEventListener('error', () => reject(new Error('Audio could not be decoded.')), { once: true });
-      });
-      audioContext = new AudioContextConstructor();
-      await audioContext.resume();
-      const audioSource = audioContext.createMediaElementSource(audioElement);
-      const audioDestination = audioContext.createMediaStreamDestination();
-      audioSource.connect(audioDestination);
-      audioStream = audioDestination.stream;
-      audioStream.getAudioTracks().forEach((track) => stream.addTrack(track));
-    } catch (error) {
-      console.warn('Could not preserve clip audio while preparing MP4', error);
-      audioStream = null;
-      audioElement?.remove();
-      audioElement = null;
-      await audioContext?.close().catch(() => undefined);
-      audioContext = null;
-      throw error;
+    stream = canvas.captureStream(30);
+    if (stream.getVideoTracks().length === 0) {
+      throw new Error('This browser could not create a video conversion stream. The original clip will be kept locally.');
     }
+    audioElement = document.createElement('video');
+    audioElement.preload = 'auto';
+    audioElement.playsInline = true;
+    audioElement.muted = false;
+    audioElement.src = sourceUrl;
+    await waitForMediaEvent(
+      audioElement,
+      'loadedmetadata',
+      'Audio could not be decoded.',
+      mediaReadyTimeoutMs,
+      signal,
+    );
+    audioContext = new AudioContextConstructor();
+    await withTimeout(
+      audioContext.resume(),
+      playbackStartTimeoutMs,
+      'Video preparation stalled while starting audio.',
+      signal,
+    );
+    const audioSource = audioContext.createMediaElementSource(audioElement);
+    const audioDestination = audioContext.createMediaStreamDestination();
+    audioSource.connect(audioDestination);
+    audioStream = audioDestination.stream;
+    audioStream.getAudioTracks().forEach((track) => stream?.addTrack(track));
 
-    const recorder = new MediaRecorder(stream, {
+    recorder = new MediaRecorder(stream, {
       mimeType: support.mp4Mime,
       videoBitsPerSecond: 2_500_000,
       audioBitsPerSecond: 128_000,
     });
+    const activeRecorder = recorder;
     const chunks: Blob[] = [];
 
     const result = await new Promise<Blob>((resolve, reject) => {
-      let animationFrame = 0;
       let settled = false;
-      const cleanup = () => {
-        cancelAnimationFrame(animationFrame);
-        stream.getTracks().forEach((track) => track.stop());
-        audioStream?.getTracks().forEach((track) => track.stop());
-        audioElement?.pause();
-        audioElement?.remove();
-        void audioContext?.close().catch(() => undefined);
-        video.pause();
-      };
       const finish = (error?: Error) => {
         if (settled) return;
         settled = true;
+        signal?.removeEventListener('abort', onAbort);
         cleanup();
         if (error) reject(error);
         else {
@@ -115,40 +231,67 @@ export async function transcodeVideoToMp4(
         }
       };
 
-      recorder.ondataavailable = (event) => {
+      activeRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data);
       };
-      recorder.onerror = () => finish(new Error('The browser could not create a smaller MP4.'));
-      recorder.onstop = () => finish();
+      activeRecorder.onerror = () => finish(new Error('The browser could not create a smaller MP4.'));
+      activeRecorder.onstop = () => finish();
 
+      let lastCurrentTime = video.currentTime;
+      const armStallWatchdog = () => {
+        window.clearTimeout(stallTimer);
+        stallTimer = window.setTimeout(() => {
+          finish(new Error('Video preparation stalled. The original clip will be kept locally.'));
+        }, noProgressTimeoutMs);
+      };
       const draw = () => {
         if (settled) return;
         const duration = Number.isFinite(video.duration) ? video.duration : 0;
         if (video.ended || (duration > 0 && video.currentTime >= duration - 0.03)) {
           onProgress(1);
           video.pause();
-          if (recorder.state !== 'inactive') recorder.stop();
+          if (activeRecorder.state !== 'inactive') activeRecorder.stop();
           return;
         }
-        context.drawImage(video, 0, 0, width, height);
-        onProgress(video.duration ? video.currentTime / video.duration : 0);
+        try {
+          context.drawImage(video, 0, 0, width, height);
+        } catch {
+          finish(new Error('The browser could not read video frames. The original clip will be kept locally.'));
+          return;
+        }
+        if (video.currentTime > lastCurrentTime + 0.01) {
+          lastCurrentTime = video.currentTime;
+          armStallWatchdog();
+        }
+        onProgress(duration > 0 ? video.currentTime / duration : 0);
         animationFrame = requestAnimationFrame(draw);
       };
+
+      const onAbort = () => finish(abortError());
+      signal?.addEventListener('abort', onAbort, { once: true });
 
       void (async () => {
         try {
           if (video.currentTime > 0.01) {
             video.currentTime = 0;
-            await waitForSeek(video);
+            await waitForMediaEvent(
+              video,
+              'seeked',
+              'The video could not be decoded.',
+              mediaReadyTimeoutMs,
+              signal,
+            );
           }
-          recorder.start(1000);
-          await Promise.all([
-            video.play(),
-            audioElement?.play(),
-          ]);
+          activeRecorder.start(1000);
+          await withTimeout(
+            Promise.all([video.play(), audioElement?.play()]),
+            playbackStartTimeoutMs,
+            'Video preparation stalled before playback started.',
+            signal,
+          );
+          armStallWatchdog();
           draw();
         } catch (error) {
-          if (recorder.state !== 'inactive') recorder.stop();
           finish(error instanceof Error ? error : new Error('The video could not be converted.'));
         }
       })();
@@ -157,6 +300,7 @@ export async function transcodeVideoToMp4(
     onProgress(1);
     return result;
   } finally {
+    cleanup();
     URL.revokeObjectURL(sourceUrl);
   }
 }
