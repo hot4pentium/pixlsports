@@ -105,6 +105,7 @@ import {
   type UserRole,
 } from '@/features/supporter-dashboard-model';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
+import { SupporterScheduleSelector } from '@/features/supporter-schedule-selector';
 import {
   createBlankRosterPlayer,
   getBenchPlayers,
@@ -844,7 +845,6 @@ function SupporterStudio() {
   const [selectedCustomScheduleId, setSelectedCustomScheduleId] = useState<string | null>(
     readSupporterScheduleSelection(),
   );
-  const [scheduleActionError, setScheduleActionError] = useState('');
   const { data: athletePhoto } = useGetSupporterPhoto({
     query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
   });
@@ -891,8 +891,6 @@ function SupporterStudio() {
       queryKey: getListProjectsQueryKey(),
     },
   });
-  const updateScheduleProject = useUpdateProject();
-  const deleteScheduleProject = useDeleteProject();
   const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
   const selectedCloudScheduleProject = getSelectedCloudScheduleProject(
     cloudScheduleProjects,
@@ -902,25 +900,6 @@ function SupporterStudio() {
     ? normalizeScheduleDraft(selectedCloudScheduleProject.project)
     : null;
   const customSchedule = cloudSchedule ?? localSchedule;
-  const savedCustomSchedules: SupporterScheduleOption[] = cloudScheduleProjects.flatMap((project) => {
-    const draft = normalizeScheduleDraft(project.project);
-    if (!draft) return [];
-    const identity = [draft.teamName, draft.season].filter(Boolean).join(' · ');
-    const projectName = project.name?.trim() ?? '';
-    const generatedName = `${draft.teamName.trim()} - Schedule`;
-    return [{
-      id: project.id,
-      label: projectName && projectName !== generatedName
-        ? projectName
-        : identity || projectName || 'Custom schedule',
-      name: projectName,
-      teamName: draft.teamName,
-      season: draft.season,
-      revision: project.revision,
-      updatedAt: project.updatedAt,
-      eventCount: draft.events.length,
-    }];
-  });
   const scheduleSelection = getSupporterScheduleSelection({
     hasTeamConnection: hasCalendarConnection,
     teamSchedule: calendar,
@@ -957,61 +936,9 @@ function SupporterStudio() {
   };
 
   const selectCustomSchedule = (projectId: string) => {
-    setScheduleActionError('');
     setSelectedCustomScheduleId(projectId);
     saveSupporterScheduleSelection(window.localStorage, projectId);
   };
-
-  const openCustomSchedule = (projectId: string) => {
-    selectCustomSchedule(projectId);
-    setLocation(`/studio/schedule/${projectId}`);
-  };
-
-  const renameCustomSchedule = async (projectId: string, name: string) => {
-    const project = cloudScheduleProjects.find((candidate) => candidate.id === projectId);
-    if (!project) return;
-
-    setScheduleActionError('');
-    try {
-      await updateScheduleProject.mutateAsync({
-        projectId,
-        data: {
-          name,
-          expectedRevision: project.revision,
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    } catch (error) {
-      setScheduleActionError('SCHEDULE NAME COULD NOT BE SAVED — TRY AGAIN');
-      throw error;
-    }
-  };
-
-  const removeCustomSchedule = async (projectId: string) => {
-    const remainingProjects = cloudScheduleProjects.filter((project) => project.id !== projectId);
-    const activeSelectionId = selectedCloudScheduleProject?.id ?? null;
-    const nextSelectionId = activeSelectionId && activeSelectionId !== projectId
-      && remainingProjects.some((project) => project.id === activeSelectionId)
-      ? activeSelectionId
-      : remainingProjects[0]?.id ?? null;
-
-    setScheduleActionError('');
-    try {
-      await deleteScheduleProject.mutateAsync({ projectId });
-      setSelectedCustomScheduleId(nextSelectionId);
-      if (nextSelectionId) {
-        saveSupporterScheduleSelection(window.localStorage, nextSelectionId);
-      } else {
-        clearSupporterScheduleSelection();
-      }
-      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    } catch (error) {
-      setScheduleActionError('SCHEDULE COULD NOT BE REMOVED — TRY AGAIN');
-      throw error;
-    }
-  };
-
-  const scheduleActionPending = updateScheduleProject.isPending || deleteScheduleProject.isPending;
 
   return (
     <StudioLayout role="fan">
@@ -1021,14 +948,6 @@ function SupporterStudio() {
           events={events}
           nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
-          savedCustomSchedules={savedCustomSchedules}
-          selectedCustomScheduleId={selectedCloudScheduleProject?.id ?? null}
-          onSelectCustomSchedule={selectCustomSchedule}
-          onOpenCustomSchedule={openCustomSchedule}
-          onRenameCustomSchedule={renameCustomSchedule}
-          onRemoveCustomSchedule={removeCustomSchedule}
-          scheduleActionPending={scheduleActionPending}
-          scheduleActionError={scheduleActionError}
           scheduleSource={scheduleSource}
           connected={connected}
           connectionLabel={scheduleLabel}
@@ -2423,6 +2342,26 @@ function ScheduleEditor() {
   });
   const createCloudProject = useCreateProject();
   const updateCloudProject = useUpdateProject();
+  const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
+  const savedCustomSchedules: SupporterScheduleOption[] = cloudScheduleProjects.flatMap((project) => {
+    const draft = normalizeScheduleDraft(project.project);
+    if (!draft) return [];
+    const identity = [draft.teamName, draft.season].filter(Boolean).join(' · ');
+    const projectName = project.name?.trim() ?? '';
+    const generatedName = `${draft.teamName.trim()} - Schedule`;
+    return [{
+      id: project.id,
+      label: projectName && projectName !== generatedName
+        ? projectName
+        : identity || projectName || 'Custom schedule',
+      name: projectName,
+      teamName: draft.teamName,
+      season: draft.season,
+      revision: project.revision,
+      updatedAt: project.updatedAt,
+      eventCount: draft.events.length,
+    }];
+  });
   const latestCloudScheduleProject = getLatestCloudScheduleProject(cloudProjects ?? []);
   const selectedCloudProject = cloudProjectId
     ? (cloudProjectData && isCloudToolProject(cloudProjectData.project, 'schedule')
@@ -2430,6 +2369,13 @@ function ScheduleEditor() {
       : null)
     : latestCloudScheduleProject;
   const activeCloudProjectId = cloudProjectId ?? selectedCloudProject?.id;
+  const selectedSavedScheduleId = savedCustomSchedules.some(({ id }) => id === activeCloudProjectId)
+    ? activeCloudProjectId ?? null
+    : null;
+  const openSavedSchedule = (projectId: string) => {
+    saveSupporterScheduleSelection(window.localStorage, projectId);
+    setLocation(`/studio/schedule/${projectId}`);
+  };
   const hasExistingShare = Boolean(shareToken);
   const sharePending = createShare.isPending || updateShare.isPending;
   const scheduleWeeks = getScheduleWeeks(events);
@@ -2734,7 +2680,7 @@ function ScheduleEditor() {
     }
   };
 
-  if (isFan && calendarConnection) {
+  if (isFan && calendarConnection && !cloudProjectId) {
     return (
       <StudioLayout>
         <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
@@ -2749,6 +2695,13 @@ function ScheduleEditor() {
               <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Your coach’s latest schedule.</p>
             </div>
           </div>
+           <SupporterScheduleSelector
+             schedules={savedCustomSchedules}
+             selectedScheduleId={selectedSavedScheduleId}
+             connected
+             onSelect={openSavedSchedule}
+             compact
+           />
            <FanCalendarConnectionPanel onConnectionChange={setCalendarConnection} />
         </main>
       </StudioLayout>
@@ -2782,6 +2735,16 @@ function ScheduleEditor() {
             </button>
           </div>
         </div>
+
+        {isFan && (
+          <SupporterScheduleSelector
+            schedules={savedCustomSchedules}
+            selectedScheduleId={selectedSavedScheduleId}
+            connected={Boolean(calendarConnection)}
+            onSelect={openSavedSchedule}
+            compact
+          />
+        )}
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <section className="min-w-0 lg:sticky lg:top-6">

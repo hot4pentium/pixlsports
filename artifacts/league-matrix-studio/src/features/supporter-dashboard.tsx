@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
-import { SupporterScheduleSelector } from './supporter-schedule-selector';
 import heroBanner from '@/assets/hero-banner.png';
 
 export interface SupporterProfile {
@@ -59,14 +58,6 @@ export interface SupporterDashboardViewProps {
   events: SupporterEvent[];
   nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
-  savedCustomSchedules: SupporterScheduleOption[];
-  selectedCustomScheduleId: string | null;
-  onSelectCustomSchedule: (projectId: string) => void;
-  onOpenCustomSchedule?: (projectId: string) => void;
-  onRenameCustomSchedule?: (projectId: string, name: string) => void | Promise<void>;
-  onRemoveCustomSchedule?: (projectId: string) => void | Promise<void>;
-  scheduleActionPending?: boolean;
-  scheduleActionError?: string;
   scheduleSource: 'team' | 'custom' | null;
   connected: boolean;
   connectionLabel: string;
@@ -146,14 +137,6 @@ export function SupporterDashboardView({
   events,
   nextGameIsUpcoming,
   projects,
-  savedCustomSchedules,
-  selectedCustomScheduleId,
-  onSelectCustomSchedule,
-  onOpenCustomSchedule,
-  onRenameCustomSchedule,
-  onRemoveCustomSchedule,
-  scheduleActionPending,
-  scheduleActionError,
   scheduleSource,
   connected,
   connectionLabel,
@@ -383,18 +366,6 @@ export function SupporterDashboardView({
               View Calendar <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-
-          <SupporterScheduleSelector
-            schedules={savedCustomSchedules}
-            selectedScheduleId={selectedCustomScheduleId}
-            connected={connected}
-            onSelect={onSelectCustomSchedule}
-            onOpen={onOpenCustomSchedule}
-            onRename={onRenameCustomSchedule}
-            onRemove={onRemoveCustomSchedule}
-            actionPending={scheduleActionPending}
-            actionError={scheduleActionError}
-          />
 
           <div className="bg-card border border-border relative min-h-[220px] flex flex-col clip-angled-sm">
             <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
