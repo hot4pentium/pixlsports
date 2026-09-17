@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { getGetSupporterPhotoQueryKey } from '@workspace/api-client-react';
-import { clearSupporterPhotoCache } from './supporter-photo-cache';
+import { clearSupporterPhotoCache, updateSupporterPhotoCache } from './supporter-photo-cache';
 
 test('successful photo removal notifies the active view with no photo immediately', () => {
   const queryClient = new QueryClient();
@@ -28,4 +28,27 @@ test('successful photo removal notifies the active view with no photo immediatel
   assert.equal(observer.getCurrentResult().data, null);
   assert.equal(observed.at(-1), null);
   unsubscribe();
+});
+
+test('successful photo save immediately replaces stale crop data in the active view', () => {
+  const queryClient = new QueryClient();
+  const queryKey = getGetSupporterPhotoQueryKey();
+  queryClient.setQueryData(queryKey, {
+    url: '/api/supporter-photo/image',
+    cropX: 50,
+    cropY: 50,
+    cropZoom: 100,
+    updatedAt: '2026-09-17T20:00:00.000Z',
+  });
+  const savedPhoto = {
+    url: '/api/supporter-photo/image',
+    cropX: 72,
+    cropY: 34,
+    cropZoom: 185,
+    updatedAt: '2026-09-17T21:00:00.000Z',
+  };
+
+  updateSupporterPhotoCache(queryClient, savedPhoto);
+
+  assert.deepEqual(queryClient.getQueryData(queryKey), savedPhoto);
 });

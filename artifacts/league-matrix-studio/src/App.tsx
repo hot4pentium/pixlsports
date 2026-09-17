@@ -87,7 +87,7 @@ import {
   type ScheduleEventType,
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
-import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
+import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import {
   clearStoredCalendarConnection,
   getCalendarConnectionErrorKind,
@@ -1029,12 +1029,13 @@ function SupporterProfilePage() {
       const prepared = await requestPhotoUpload.mutateAsync({ data: { contentType: file.type as 'image/jpeg' | 'image/png' | 'image/webp', size: file.size } });
       const uploaded = await fetch(prepared.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
       if (!uploaded.ok) throw new Error('upload failed');
-      await savePhoto.mutateAsync({ data: {
+      const savedPhoto = await savePhoto.mutateAsync({ data: {
         objectPath: prepared.objectPath,
         cropX: pendingPhotoCrop.x,
         cropY: pendingPhotoCrop.y,
         cropZoom: pendingPhotoCrop.zoom,
       } });
+      updateSupporterPhotoCache(queryClient, savedPhoto);
       await queryClient.invalidateQueries({ queryKey: getGetSupporterPhotoQueryKey() });
       setPendingPhoto(null);
     } catch {

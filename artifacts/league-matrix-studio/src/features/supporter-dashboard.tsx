@@ -879,16 +879,22 @@ function AthletePhoto({
   crop: AthletePhotoCrop;
   alt: string;
 }) {
+  const x = Math.max(0, Math.min(100, Number.isFinite(crop.x) ? crop.x : 50));
+  const y = Math.max(0, Math.min(100, Number.isFinite(crop.y) ? crop.y : 50));
+  const zoom = Math.max(100, Math.min(250, Number.isFinite(crop.zoom) ? crop.zoom : 100));
+
   return (
-    <img
-      src={url}
-      alt={alt}
-      className="h-full w-full object-cover"
-      style={{
-        objectPosition: `${crop.x}% ${crop.y}%`,
-        transform: `scale(${crop.zoom / 100})`,
-        transformOrigin: `${crop.x}% ${crop.y}%`,
-      }}
-    />
+    <span className="relative block h-full w-full overflow-hidden">
+      <img
+        src={url}
+        alt={alt}
+        className="absolute inset-0 block h-full w-full max-w-none object-cover"
+        style={{
+          objectPosition: `${x}% ${y}%`,
+          transform: `scale(${zoom / 100})`,
+          transformOrigin: `${x}% ${y}%`,
+        }}
+      />
+    </span>
   );
 }
