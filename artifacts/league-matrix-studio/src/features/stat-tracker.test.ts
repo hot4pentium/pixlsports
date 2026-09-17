@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { act, create } from 'react-test-renderer';
+import { createElement } from 'react';
 
 import {
   addStatEvent,
@@ -7,6 +9,7 @@ import {
   createGameSession,
   endGame,
   getTrackerStorageKeys,
+  getSportRule,
   isTrackerRevisionConflict,
   migrateLegacyTrackerStorage,
   mergeTrackerData,
@@ -17,6 +20,9 @@ import {
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
+import { LiveTrackerGame } from './stat-tracker-page';
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 function createMemoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -27,6 +33,58 @@ function createMemoryStorage(initial: Record<string, string> = {}) {
     has: (key: string) => values.has(key),
   };
 }
+
+test('mobile live game keeps scoreboard and stat controls ahead of recent activity', () => {
+  const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('basketball');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Northside',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const layout = renderer.root.findByProps({ 'data-testid': 'live-tracker-layout' });
+  const regionIds = new Set([
+    'live-tracker-scoreboard',
+    'live-tracker-stat-controls',
+    'live-tracker-recent-activity',
+  ]);
+  const regions = layout
+    .findAll((node) => regionIds.has(node.props['data-testid']))
+    .map((node) => node.props['data-testid']);
+
+  assert.deepEqual(regions, [
+    'live-tracker-scoreboard',
+    'live-tracker-stat-controls',
+    'live-tracker-recent-activity',
+  ]);
+  assert.match(renderer.root.findByProps({ 'data-testid': 'live-tracker-scoreboard' }).parent.props.className, /order-1/);
+  assert.match(renderer.root.findByProps({ 'data-testid': 'live-tracker-stat-controls' }).props.className, /order-2/);
+  assert.match(renderer.root.findByProps({ 'data-testid': 'live-tracker-recent-activity' }).props.className, /order-3/);
+
+  const addAthleteScore = renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' });
+  assert.match(addAthleteScore.props.className, /min-h-11/);
+  assert.match(addAthleteScore.props.className, /min-w-11/);
+  act(() => addAthleteScore.props.onClick());
+  assert.equal(changedGame.score, 1);
+
+  const threePointStat = renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' });
+  act(() => threePointStat.props.onClick());
+  assert.equal(changedGame.stats['three-point'], 1);
+});
 
 test('sport rules award points while retaining zero-point stat counts', () => {
   let game = createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
