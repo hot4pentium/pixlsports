@@ -3,7 +3,6 @@ import { escapeXml } from './hype-card-types';
 const POSITION_BADGE_RIGHT = 938;
 const POSITION_BADGE_MIN_WIDTH = 152;
 const POSITION_BADGE_MAX_WIDTH = 310;
-const POSITION_BADGE_TEXT_X = 890;
 const POSITION_BADGE_TEXT_PADDING = 82;
 
 function estimateTextWidth(text: string, fontSize: number, charWidthRatio: number, letterSpacing: number) {
@@ -33,7 +32,7 @@ export function getPositionBadgeLayout(position: string) {
     width,
     x: POSITION_BADGE_RIGHT - width,
     right: POSITION_BADGE_RIGHT,
-    textX: POSITION_BADGE_TEXT_X,
+    textX: POSITION_BADGE_RIGHT - width / 2 + 9,
     maxTextWidth,
     fontSize,
     // Keep the minimum font size readable, then compress only labels that
@@ -49,5 +48,5 @@ export function buildPositionBadgeMarkup(position: string, stroke: string, textF
     ? ` textLength="${layout.textLength}" lengthAdjust="spacingAndGlyphs"`
     : '';
 
-  return `<path d="M${layout.x} 46 H${layout.right} V114 H${layout.x + 18} L${layout.x} 96 Z" fill="#020811" stroke="${stroke}" stroke-width="3"/><text x="${layout.textX}" y="95" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${layout.fontSize}" font-weight="800" letter-spacing="2"${textSizing} fill="${textFill}">${text}</text>`;
+  return `<path d="M${layout.x} 46 H${layout.right} V114 H${layout.x + 18} L${layout.x} 96 Z" fill="#020811" stroke="${stroke}" stroke-width="3"/><text x="${layout.textX}" y="95" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${layout.fontSize}" font-weight="800" letter-spacing="2"${textSizing} fill="${textFill}">${text}</text>`;
 }
