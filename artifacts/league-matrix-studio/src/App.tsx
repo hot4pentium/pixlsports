@@ -328,12 +328,12 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
 function Footer() {
   return (
     <footer className="border-t border-border bg-background bg-tech-grid">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-8 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between bg-background/80 backdrop-blur-sm">
-        <div className="space-y-4">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4 sm:px-8 bg-background/80 backdrop-blur-sm">
+        <div className="flex min-w-0 items-center gap-4">
           <BrandMark />
-          <p className="text-sm font-medium text-muted-foreground">Premium local-first sports graphics.<br/>Built for your team account.</p>
+          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Premium local-first sports graphics <span className="mx-1 text-primary">·</span> Built for your team account.</p>
         </div>
-        <div className="flex gap-8 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
           <Link href="/privacy" className="transition-colors hover:text-foreground" data-testid="link-footer-privacy">Privacy</Link>
         </div>
