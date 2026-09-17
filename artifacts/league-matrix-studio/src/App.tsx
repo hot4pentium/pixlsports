@@ -529,7 +529,7 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
   const visibleTools = roleToolKinds[activeRole];
   const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
   return (
-    <div className="noise min-h-dvh bg-background flex flex-col">
+    <div className="noise min-h-dvh bg-background bg-tech-grid flex flex-col">
       <SiteNav dark />
       <div className="border-b border-border bg-background bg-tech-grid">
         <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
