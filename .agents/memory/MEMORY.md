@@ -9,3 +9,4 @@
 - [Custom domain routing](custom-domain-routing.md) — Replit requires apex and www domains to be added separately; registrar or app logic must handle the redirect.
 - [Upload claim cleanup races](upload-claim-cleanup-races.md) — confirmation must atomically renew a valid claim before cleanup can remove it.
 - [Live role routing](live-role-routing.md) — studio role UI must derive from the current Clerk user on every render, not the initial session role.
+- [Checklist sharing test harness](checklist-sharing-test-harness.md) — direct route tests must provide Clerk-branded session auth; browser coverage uses installed Chromium CDP.
