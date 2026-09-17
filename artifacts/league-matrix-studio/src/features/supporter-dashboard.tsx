@@ -1,7 +1,7 @@
 import { type FormEvent } from 'react';
 import { Link } from 'wouter';
 import {
-  CalendarDays, Zap, MapPin, Clock, Trophy, ChevronRight, User,
+  CalendarDays, Zap, MapPin, Clock, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon, Unlink, ShieldCheck,
   CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw
 } from 'lucide-react';
@@ -75,6 +75,7 @@ export interface SupporterDashboardViewProps {
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
   onOpenStatTracker: () => void;
+  onOpenChecklist: () => void;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -170,6 +171,7 @@ export function SupporterDashboardView({
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onOpenStatTracker,
+  onOpenChecklist,
 }: SupporterDashboardViewProps) {
   const hasAthlete = Boolean(profile.athleteName);
   const calendarState = getCalendarViewState({
@@ -376,6 +378,15 @@ export function SupporterDashboardView({
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live numbers</p>
               <h4 className="mt-1 font-display text-2xl uppercase tracking-wide">Stat Tracker</h4>
               <p className="mt-1 text-sm font-medium text-white/60">Track the game as it happens.</p>
+            </div>
+            <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+          </button>
+          <button type="button" onClick={onOpenChecklist} className="group relative flex min-h-[148px] items-center justify-between overflow-hidden border border-border bg-[#07130d] p-6 text-left text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-checklist">
+            <QuickActionSportBackground />
+            <div className="relative z-10 min-w-0">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary"><ClipboardCheck className="h-3.5 w-3.5" /> Ready together</p>
+              <h4 className="mt-1 font-display text-2xl uppercase tracking-wide">Checklist</h4>
+              <p className="mt-1 text-sm font-medium text-white/60">Prepare with the whole team.</p>
             </div>
             <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
           </button>

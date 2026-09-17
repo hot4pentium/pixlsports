@@ -174,6 +174,8 @@ export const guestUsageEventsTable = pgTable("guest_usage_events", {
   ),
 }));
 
+export * from "./checklistShares";
+
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,
   createdAt: true,

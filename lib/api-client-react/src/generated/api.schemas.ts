@@ -131,6 +131,63 @@ export interface ScheduleShare {
   createdAt: string;
 }
 
+export interface ChecklistItem {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  label: string;
+  completed: boolean;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  section?: string | null;
+}
+
+export type ChecklistShareInputMode = typeof ChecklistShareInputMode[keyof typeof ChecklistShareInputMode];
+
+
+export const ChecklistShareInputMode = {
+  gameday: 'gameday',
+  tournament: 'tournament',
+} as const;
+
+export interface ChecklistShareInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  mode: ChecklistShareInputMode;
+  /** @maxItems 100 */
+  items: ChecklistItem[];
+}
+
+export type ChecklistShareUpdate = ChecklistShareInput & {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type ChecklistShare = ChecklistShareInput & {
+  shareToken: string;
+  /** @minimum 1 */
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  canManage: boolean;
+};
+
+export interface ChecklistConflict {
+  error: string;
+  current: ChecklistShare;
+}
+
 export type HypeCardShareUploadInputMediaKind = typeof HypeCardShareUploadInputMediaKind[keyof typeof HypeCardShareUploadInputMediaKind];
 
 

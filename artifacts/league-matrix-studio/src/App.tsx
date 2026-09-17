@@ -29,6 +29,10 @@ import {
   useSaveSupporterPhoto,
   useDeleteSupporterPhoto,
   getGetSupporterPhotoQueryKey,
+  useCreateChecklistShare,
+  useDeleteChecklistShare,
+  useGetChecklistShare,
+  useUpdateChecklistShare,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
@@ -41,7 +45,7 @@ import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard,
+  ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard, ClipboardCheck,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
@@ -112,6 +116,17 @@ import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import { SupporterScheduleSelector } from '@/features/supporter-schedule-selector';
 import { StatTrackerPage } from '@/features/stat-tracker-page';
 import {
+  completedChecklistCount,
+  createGamedayChecklist,
+  gamedayChecklistStorageKey,
+  normalizeChecklist,
+  readGamedayChecklist,
+  resetGamedayChecklist,
+  saveGamedayChecklist,
+  type GamedayChecklistItem,
+  type LocalGamedayChecklist,
+} from '@/features/gameday-checklist';
+import {
   createBlankRosterPlayer,
   getBenchPlayers,
   getDefaultRoster,
@@ -172,10 +187,10 @@ function stripBase(path: string): string {
     : path;
 }
 
-type ToolKind = 'hype' | 'schedule' | 'roster' | 'stat-tracker';
+type ToolKind = 'hype' | 'schedule' | 'roster' | 'stat-tracker' | 'checklist';
 const roleToolKinds: Record<UserRole, ToolKind[]> = {
-  coach: ['schedule', 'roster'],
-  fan: ['hype', 'schedule', 'stat-tracker'],
+  coach: ['schedule', 'roster', 'checklist'],
+  fan: ['hype', 'schedule', 'stat-tracker', 'checklist'],
 };
 
 const toolData: Record<ToolKind, {
@@ -226,6 +241,16 @@ const toolData: Record<ToolKind, {
     icon: Activity,
     accent: 'bg-primary text-primary-foreground',
     soft: 'bg-[#1d2a25] text-white',
+    templateNames: [],
+  },
+  checklist: {
+    slug: 'checklist',
+    label: 'Gameday Checklist',
+    kicker: 'Be ready before first whistle.',
+    description: 'Keep uniforms, equipment, timing, lineup, and schedule details in one shared checklist.',
+    icon: ClipboardCheck,
+    accent: 'bg-primary text-primary-foreground',
+    soft: 'bg-[#28352f] text-white',
     templateNames: [],
   },
 };
@@ -948,6 +973,7 @@ function SupporterStudio() {
                : '';
              setLocation(`/studio/stat-tracker${query}`);
            }}
+           onOpenChecklist={() => setLocation('/studio/checklist')}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
           athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
         />
@@ -3321,6 +3347,333 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
   );
 }
 
+function ChecklistPage({ shared = false }: { shared?: boolean }) {
+  const [, setLocation] = useLocation();
+  const params = useParams<{ shareToken?: string }>();
+  const shareToken = shared ? (params.shareToken ?? '') : '';
+  const { user, isSignedIn } = useUser();
+  const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(user?.id ?? 'anonymous')}`;
+  const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist());
+  const [hydrated, setHydrated] = useState(!shared);
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [shareUrl, setShareUrl] = useState(shareToken ? `${appOrigin}${basePath}/checklist/${shareToken}` : '');
+  const [revision, setRevision] = useState(1);
+  const saveTimer = useRef<number | null>(null);
+  const latestChecklist = useRef(checklist);
+  const revisionRef = useRef(revision);
+  const saveQueue = useRef(Promise.resolve());
+
+  const { data: sharedChecklist, isLoading: sharedLoading, isError: sharedError } = useGetChecklistShare(shareToken, {
+    query: {
+      enabled: Boolean(shared && shareToken),
+      refetchInterval: 8000,
+      retry: false,
+      queryKey: ['/api/checklist-shares', shareToken],
+    },
+  });
+  const createShare = useCreateChecklistShare();
+  const updateShare = useUpdateChecklistShare();
+  const deleteShare = useDeleteChecklistShare();
+
+  useEffect(() => {
+    latestChecklist.current = checklist;
+  }, [checklist]);
+
+  useEffect(() => {
+    revisionRef.current = revision;
+  }, [revision]);
+
+  useEffect(() => {
+    if (shared) return;
+    try {
+      const stored = readGamedayChecklist(window.localStorage, userStorageKey);
+      if (stored) {
+        setChecklist(stored);
+        if (stored.shareToken) setShareUrl(`${appOrigin}${basePath}/checklist/${stored.shareToken}`);
+        if (stored.revision) {
+          setRevision(stored.revision);
+          revisionRef.current = stored.revision;
+        }
+      }
+    } catch {
+      setStorageUnavailable(true);
+    } finally {
+      setHydrated(true);
+    }
+  }, [shared, userStorageKey]);
+
+  useEffect(() => {
+    if (!sharedChecklist) return;
+    const normalized = normalizeChecklist(sharedChecklist);
+    if (!normalized) return;
+    setChecklist(normalized);
+    setRevision(sharedChecklist.revision);
+    revisionRef.current = sharedChecklist.revision;
+    setShareUrl(`${appOrigin}${basePath}/checklist/${sharedChecklist.shareToken}`);
+    setHydrated(true);
+  }, [sharedChecklist]);
+
+  useEffect(() => () => {
+    if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+  }, []);
+
+  const setNoticeFor = (message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice(''), 2600);
+  };
+
+  const persistLocal = (next: LocalGamedayChecklist) => {
+    if (shared) return;
+    try {
+      saveGamedayChecklist(window.localStorage, next, userStorageKey);
+      setStorageUnavailable(false);
+    } catch {
+      setStorageUnavailable(true);
+    }
+  };
+
+  const persistShared = (next: LocalGamedayChecklist) => {
+    if (!shared || !shareToken) return;
+    const payload = {
+      title: next.title.trim() || 'Gameday Checklist',
+      mode: next.mode,
+      items: next.items,
+      expectedRevision: revisionRef.current,
+    };
+    saveQueue.current = saveQueue.current.then(async () => {
+      try {
+        const savedShare = await updateShare.mutateAsync({ shareToken, data: payload });
+        setRevision(savedShare.revision);
+        revisionRef.current = savedShare.revision;
+        setChecklist((current) => ({ ...current, revision: savedShare.revision }));
+      } catch (error: any) {
+        if (error?.status === 409 && error?.data?.current) {
+          const current = normalizeChecklist(error.data.current);
+          if (current) {
+            setChecklist(current);
+            setRevision(error.data.current.revision);
+            revisionRef.current = error.data.current.revision;
+          }
+          setNoticeFor('ANOTHER COLLABORATOR SAVED FIRST — THEIR LATEST CHECKLIST IS NOW SHOWN');
+        } else if (error?.status === 404) {
+          setNoticeFor('THIS EDIT LINK WAS REVOKED — ASK THE OWNER FOR A NEW LINK');
+        } else {
+          setNoticeFor('SHARED SAVE FAILED — YOUR CHANGES ARE STILL VISIBLE HERE; TRY AGAIN');
+        }
+      }
+    });
+  };
+
+  const updateChecklist = (next: LocalGamedayChecklist) => {
+    setChecklist(next);
+    persistLocal(next);
+    if (shared) {
+      if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+      saveTimer.current = window.setTimeout(() => persistShared(latestChecklist.current), 350);
+    }
+  };
+
+  const updateItem = (id: string, patch: Partial<GamedayChecklistItem>) => {
+    updateChecklist({
+      ...latestChecklist.current,
+      items: latestChecklist.current.items.map((item) => item.id === id ? { ...item, ...patch } : item),
+    });
+  };
+
+  const addItem = () => {
+    const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    updateChecklist({
+      ...latestChecklist.current,
+      items: [...latestChecklist.current.items, { id, label: 'New checklist item', completed: false, section: null }],
+    });
+    setNoticeFor('ITEM ADDED');
+  };
+
+  const resetChecklist = () => {
+    updateChecklist(resetGamedayChecklist(latestChecklist.current));
+    setNoticeFor('CHECKLIST RESET — TEMPLATE ITEMS RESTORED');
+  };
+
+  const createOrCopyShare = async () => {
+    if (!isSignedIn) {
+      setLocation(`/sign-in?redirect_url=${encodeURIComponent('/studio/checklist')}`);
+      return;
+    }
+    try {
+      const created = await createShare.mutateAsync({
+        data: {
+          title: latestChecklist.current.title.trim() || 'Gameday Checklist',
+          mode: latestChecklist.current.mode,
+          items: latestChecklist.current.items,
+        },
+      });
+      const url = `${appOrigin}${basePath}/checklist/${created.shareToken}`;
+      setShareUrl(url);
+      setChecklist((current) => ({ ...current, shareToken: created.shareToken, revision: created.revision }));
+      setRevision(created.revision);
+      revisionRef.current = created.revision;
+      try {
+        saveGamedayChecklist(window.localStorage, { ...latestChecklist.current, shareToken: created.shareToken, revision: created.revision }, userStorageKey);
+      } catch {
+        setStorageUnavailable(true);
+      }
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({ title: latestChecklist.current.title, text: 'Open this checklist to edit it with me.', url });
+          setNoticeFor('EDIT LINK SHARED');
+          if (shared) setLocation(`/checklist/${created.shareToken}`);
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+        }
+      }
+      await navigator.clipboard?.writeText(url);
+      setNoticeFor('EDIT LINK COPIED TO CLIPBOARD');
+      if (shared) setLocation(`/checklist/${created.shareToken}`);
+    } catch {
+      setNoticeFor('SHARING FAILED — SIGN IN AND TRY AGAIN');
+    }
+  };
+
+  const revokeShare = async () => {
+    const activeShareToken = shared ? shareToken : latestChecklist.current.shareToken;
+    if (!activeShareToken || !window.confirm('Revoke this edit link? Everyone using it will lose access.')) return;
+    try {
+      await deleteShare.mutateAsync({ shareToken: activeShareToken });
+      if (!shared) {
+        const next = { ...latestChecklist.current };
+        delete next.shareToken;
+        delete next.revision;
+        updateChecklist(next);
+      }
+      setNoticeFor('EDIT LINK REVOKED');
+      if (shared) setLocation('/studio/checklist');
+    } catch {
+      setNoticeFor('ONLY THE CHECKLIST OWNER CAN REVOKE THIS LINK');
+    }
+  };
+
+  if (shared && sharedLoading && !sharedError && !sharedChecklist && !hydrated) {
+    return (
+      <div className="noise min-h-dvh bg-background">
+        <SiteNav />
+        <main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5">
+          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading shared checklist…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (shared && (sharedError || !sharedChecklist)) {
+    return (
+      <div className="noise min-h-dvh bg-background">
+        <SiteNav />
+        <main className="mx-auto flex min-h-[calc(100dvh-72px)] max-w-xl flex-col items-center justify-center px-5 py-12 text-center">
+          <Link2Off className="h-11 w-11 text-primary" />
+          <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Checklist link unavailable</h1>
+          <p className="mt-3 text-sm font-medium leading-relaxed text-muted-foreground">This edit link may have been revoked or copied incorrectly. Ask the owner to create a fresh link.</p>
+          <Link href="/studio/checklist" className="mt-7 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm">Start a local checklist</Link>
+        </main>
+      </div>
+    );
+  }
+
+  const completed = completedChecklistCount(checklist.items);
+  const progress = checklist.items.length ? Math.round((completed / checklist.items.length) * 100) : 0;
+  const isSaving = createShare.isPending || updateShare.isPending;
+  const canManageShare = shared ? Boolean(sharedChecklist?.canManage) : Boolean(checklist.shareToken && isSignedIn);
+
+  return (
+    <StudioLayout>
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-6 sm:px-8 sm:py-10">
+        <div className="mb-7 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div className="flex items-start gap-4">
+            <Link href={shared ? '/studio/checklist' : '/studio'} className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : 'Game Day Hub'}</p>
+              <h1 className="mt-2 font-display text-5xl uppercase leading-[.88] tracking-tight sm:text-7xl">GAMEDAY<br /><span className="text-primary">CHECKLIST.</span></h1>
+              <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : 'Start with the essentials, then make the list yours for every game day.'}</p>
+            </div>
+          </div>
+          <div className="border border-border bg-card px-4 py-3 text-right clip-angled-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Progress</p>
+            <p className="mt-1 font-display text-3xl text-primary">{completed}/{checklist.items.length}</p>
+          </div>
+        </div>
+
+        {storageUnavailable && !shared && (
+          <div className="mb-5 border-l-4 border-primary bg-primary/10 px-4 py-3 text-sm font-medium text-foreground" role="status">
+            This browser is not allowing local storage. You can keep editing, but reload recovery is unavailable until storage is enabled.
+          </div>
+        )}
+
+        <section className="border border-border bg-card p-4 shadow-sm clip-angled-sm sm:p-6">
+          <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <label className="min-w-0 flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Checklist name</span>
+              <input value={checklist.title} onChange={(event) => updateChecklist({ ...latestChecklist.current, title: event.target.value })} className="mt-1 w-full bg-transparent font-display text-3xl uppercase tracking-wide text-foreground outline-none placeholder:text-muted-foreground" aria-label="Checklist name" />
+            </label>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={resetChecklist} className="inline-flex items-center gap-2 border border-border bg-background px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-foreground" data-testid="button-reset-checklist"><RotateCcw className="h-3.5 w-3.5" /> Reset</button>
+              <button type="button" onClick={addItem} className="inline-flex items-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90" data-testid="button-add-checklist-item"><Plus className="h-3.5 w-3.5" /> Add item</button>
+            </div>
+          </div>
+
+          <div className="mt-5 h-2 overflow-hidden bg-muted" aria-label={`${progress}% complete`}><div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div>
+
+          <div className="mt-6 space-y-6">
+            {(Array.from(new Set(checklist.items.map((item) => item.section || 'Game day'))) as string[]).map((section) => (
+              <div key={section}>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">{section}</p>
+                <div className="space-y-2">
+                  {checklist.items.filter((item) => (item.section || 'Game day') === section).map((item) => (
+                    <div key={item.id} className={`flex items-center gap-3 border px-3 py-3 transition-colors ${item.completed ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}>
+                      <button type="button" onClick={() => updateItem(item.id, { completed: !item.completed })} className={`grid h-7 w-7 shrink-0 place-items-center border ${item.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 text-transparent hover:border-primary'}`} aria-label={`${item.completed ? 'Uncheck' : 'Check'} ${item.label}`} data-testid={`button-checklist-toggle-${item.id}`}><Check className="h-4 w-4" /></button>
+                      <input value={item.label} onChange={(event) => updateItem(item.id, { label: event.target.value })} className={`min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none ${item.completed ? 'line-through opacity-60' : ''}`} aria-label={`Edit ${item.label}`} data-testid={`input-checklist-item-${item.id}`} />
+                      <button type="button" onClick={() => updateChecklist({ ...latestChecklist.current, items: latestChecklist.current.items.filter((candidate) => candidate.id !== item.id) })} className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive" aria-label={`Remove ${item.label}`}>×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {checklist.items.length === 0 && <div className="border-2 border-dashed border-border p-8 text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">No items yet. Add the first game-day task.</div>}
+          </div>
+        </section>
+
+        <section className="mt-5 border border-border bg-foreground p-5 text-background clip-angled-sm sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><UsersRound className="h-4 w-4" /> Work together</p>
+              <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can add, rename, check, and uncheck items. Refreshing keeps the latest saved version.' : 'Create one edit link for coaches, parents, and helpers. No collaborator accounts are required.'}</p>
+            </div>
+            {!shared && <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-checklist"><Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : 'Create edit link'}</button>}
+          </div>
+          {shareUrl && (
+            <div className="mt-5 border border-white/15 bg-white/5 p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Collaborative edit link</p>
+              <div className="mt-2 flex items-center gap-2">
+                <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-white outline-none" aria-label="Collaborative checklist edit link" />
+                <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('EDIT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-white/20 bg-white/10 text-white hover:bg-white/20" aria-label="Copy collaborative checklist edit link"><Clipboard className="h-4 w-4" /></button>
+              </div>
+              {canManageShare && (
+                <div className="mt-3 flex flex-wrap items-center gap-4">
+                  <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/55 hover:text-primary disabled:opacity-60"><RotateCcw className="h-3.5 w-3.5" /> {createShare.isPending ? 'Refreshing…' : 'Refresh link'}</button>
+                  <button type="button" onClick={() => { void revokeShare(); }} disabled={deleteShare.isPending} className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/55 hover:text-primary disabled:opacity-60"><Link2Off className="h-3.5 w-3.5" /> {deleteShare.isPending ? 'Revoking…' : 'Revoke link'}</button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+        {notice && <p className="mt-5 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status">{notice}</p>}
+        {isSaving && <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground" role="status">Saving latest changes…</p>}
+      </main>
+    </StudioLayout>
+  );
+}
+
 function Field({ label, value, onChange, testId }: { label: string; value: string; onChange: (val: string) => void; testId?: string }) {
   return (
     <label className="block">
@@ -3827,7 +4180,7 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn } = useUser();
-  const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/watch/') || location.startsWith('/h/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
+   const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/checklist/') || location.startsWith('/watch/') || location.startsWith('/h/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
   const { data: lifecycle, isLoading } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
@@ -3918,6 +4271,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
+               <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
@@ -3927,6 +4281,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
               <Route path="/studio/roster/:id?"><ProtectedEditor kind="roster"><RosterEditor /></ProtectedEditor></Route>
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
+               <Route path="/studio/checklist"><ChecklistPage /></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
               <Route component={NotFound} />

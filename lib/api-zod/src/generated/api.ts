@@ -240,6 +240,178 @@ export const DeleteScheduleShareResponse = zod.void()
 
 
 /**
+ * Creates an edit link owned by the authenticated user.
+ * @summary Create a collaborative Gameday Checklist share
+ */
+export const createChecklistShareBodyTitleMax = 200;
+
+export const createChecklistShareBodyItemsItemIdMax = 100;
+
+export const createChecklistShareBodyItemsItemLabelMax = 240;
+
+export const createChecklistShareBodyItemsItemSectionMax = 100;
+
+export const createChecklistShareBodyItemsMax = 100;
+
+
+
+export const CreateChecklistShareBody = zod.object({
+  "title": zod.string().min(1).max(createChecklistShareBodyTitleMax),
+  "mode": zod.enum(['gameday', 'tournament']),
+  "items": zod.array(zod.object({
+  "id": zod.string().min(1).max(createChecklistShareBodyItemsItemIdMax),
+  "label": zod.string().min(1).max(createChecklistShareBodyItemsItemLabelMax),
+  "completed": zod.boolean(),
+  "section": zod.string().max(createChecklistShareBodyItemsItemSectionMax).nullish()
+})).max(createChecklistShareBodyItemsMax)
+})
+
+export const createChecklistShareResponseOneTitleMax = 200;
+
+export const createChecklistShareResponseOneItemsItemIdMax = 100;
+
+export const createChecklistShareResponseOneItemsItemLabelMax = 240;
+
+export const createChecklistShareResponseOneItemsItemSectionMax = 100;
+
+export const createChecklistShareResponseOneItemsMax = 100;
+
+
+
+
+export const CreateChecklistShareResponse = zod.object({
+  "title": zod.string().min(1).max(createChecklistShareResponseOneTitleMax),
+  "mode": zod.enum(['gameday', 'tournament']),
+  "items": zod.array(zod.object({
+  "id": zod.string().min(1).max(createChecklistShareResponseOneItemsItemIdMax),
+  "label": zod.string().min(1).max(createChecklistShareResponseOneItemsItemLabelMax),
+  "completed": zod.boolean(),
+  "section": zod.string().max(createChecklistShareResponseOneItemsItemSectionMax).nullish()
+})).max(createChecklistShareResponseOneItemsMax)
+}).and(zod.object({
+  "shareToken": zod.string().uuid(),
+  "revision": zod.number().int().min(1),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "canManage": zod.boolean()
+}))
+
+
+/**
+ * @summary Open a collaborative checklist edit link
+ */
+export const GetChecklistShareParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const getChecklistShareResponseOneTitleMax = 200;
+
+export const getChecklistShareResponseOneItemsItemIdMax = 100;
+
+export const getChecklistShareResponseOneItemsItemLabelMax = 240;
+
+export const getChecklistShareResponseOneItemsItemSectionMax = 100;
+
+export const getChecklistShareResponseOneItemsMax = 100;
+
+
+
+
+export const GetChecklistShareResponse = zod.object({
+  "title": zod.string().min(1).max(getChecklistShareResponseOneTitleMax),
+  "mode": zod.enum(['gameday', 'tournament']),
+  "items": zod.array(zod.object({
+  "id": zod.string().min(1).max(getChecklistShareResponseOneItemsItemIdMax),
+  "label": zod.string().min(1).max(getChecklistShareResponseOneItemsItemLabelMax),
+  "completed": zod.boolean(),
+  "section": zod.string().max(getChecklistShareResponseOneItemsItemSectionMax).nullish()
+})).max(getChecklistShareResponseOneItemsMax)
+}).and(zod.object({
+  "shareToken": zod.string().uuid(),
+  "revision": zod.number().int().min(1),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "canManage": zod.boolean()
+}))
+
+
+/**
+ * Saves only when the expected revision is current.
+ * @summary Save a collaborative checklist edit
+ */
+export const UpdateChecklistShareParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const updateChecklistShareBodyOneTitleMax = 200;
+
+export const updateChecklistShareBodyOneItemsItemIdMax = 100;
+
+export const updateChecklistShareBodyOneItemsItemLabelMax = 240;
+
+export const updateChecklistShareBodyOneItemsItemSectionMax = 100;
+
+export const updateChecklistShareBodyOneItemsMax = 100;
+
+
+
+
+export const UpdateChecklistShareBody = zod.object({
+  "title": zod.string().min(1).max(updateChecklistShareBodyOneTitleMax),
+  "mode": zod.enum(['gameday', 'tournament']),
+  "items": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateChecklistShareBodyOneItemsItemIdMax),
+  "label": zod.string().min(1).max(updateChecklistShareBodyOneItemsItemLabelMax),
+  "completed": zod.boolean(),
+  "section": zod.string().max(updateChecklistShareBodyOneItemsItemSectionMax).nullish()
+})).max(updateChecklistShareBodyOneItemsMax)
+}).and(zod.object({
+  "expectedRevision": zod.number().int().min(1)
+}))
+
+export const updateChecklistShareResponseOneTitleMax = 200;
+
+export const updateChecklistShareResponseOneItemsItemIdMax = 100;
+
+export const updateChecklistShareResponseOneItemsItemLabelMax = 240;
+
+export const updateChecklistShareResponseOneItemsItemSectionMax = 100;
+
+export const updateChecklistShareResponseOneItemsMax = 100;
+
+
+
+
+export const UpdateChecklistShareResponse = zod.object({
+  "title": zod.string().min(1).max(updateChecklistShareResponseOneTitleMax),
+  "mode": zod.enum(['gameday', 'tournament']),
+  "items": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateChecklistShareResponseOneItemsItemIdMax),
+  "label": zod.string().min(1).max(updateChecklistShareResponseOneItemsItemLabelMax),
+  "completed": zod.boolean(),
+  "section": zod.string().max(updateChecklistShareResponseOneItemsItemSectionMax).nullish()
+})).max(updateChecklistShareResponseOneItemsMax)
+}).and(zod.object({
+  "shareToken": zod.string().uuid(),
+  "revision": zod.number().int().min(1),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "canManage": zod.boolean()
+}))
+
+
+/**
+ * Only the checklist owner can revoke the link.
+ * @summary Revoke a collaborative checklist edit link
+ */
+export const DeleteChecklistShareParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const DeleteChecklistShareResponse = zod.void()
+
+
+/**
  * @summary List owned Hype Card shares
  */
 export const ListHypeCardSharesResponseItem = zod.object({

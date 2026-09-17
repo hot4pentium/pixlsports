@@ -16,6 +16,8 @@ tags:
     description: Project media storage operations
   - name: schedule-shares
     description: Public schedule sharing operations
+  - name: checklist-shares
+    description: Collaborative Gameday Checklist sharing operations
   - name: hype-card-shares
     description: Interactive Hype Card sharing operations
   - name: coach-calendars
@@ -110,6 +112,85 @@ paths:
       responses:
         "204":
           description: Public schedule share revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /checklist-shares:
+    post:
+      operationId: createChecklistShare
+      tags: [checklist-shares]
+      summary: Create a collaborative Gameday Checklist share
+      description: Creates an edit link owned by the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistShareInput"
+      responses:
+        "201":
+          description: Collaborative checklist created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /checklist-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ChecklistShareToken"
+    get:
+      operationId: getChecklistShare
+      tags: [checklist-shares]
+      summary: Open a collaborative checklist edit link
+      responses:
+        "200":
+          description: Current checklist contents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateChecklistShare
+      tags: [checklist-shares]
+      summary: Save a collaborative checklist edit
+      description: Saves only when the expected revision is current.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistShareUpdate"
+      responses:
+        "200":
+          description: Checklist updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistConflict"
+    delete:
+      operationId: deleteChecklistShare
+      tags: [checklist-shares]
+      summary: Revoke a collaborative checklist edit link
+      description: Only the checklist owner can revoke the link.
+      responses:
+        "204":
+          description: Checklist link revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -789,6 +870,13 @@ components:
       schema:
         type: string
         format: uuid
+    ChecklistShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     CoachCalendarCodeParam:
       name: code
       in: path
@@ -921,6 +1009,52 @@ components:
         createdAt:
           type: string
           format: date-time
+    ChecklistItem:
+      type: object
+      required: [id, label, completed]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        completed: { type: boolean }
+        section:
+          type: ["string", "null"]
+          maxLength: 100
+    ChecklistShareInput:
+      type: object
+      required: [title, mode, items]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        mode: { type: string, enum: [gameday, tournament] }
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ChecklistItem"
+    ChecklistShareUpdate:
+      allOf:
+        - $ref: "#/components/schemas/ChecklistShareInput"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision: { type: integer, minimum: 1 }
+    ChecklistShare:
+      allOf:
+        - $ref: "#/components/schemas/ChecklistShareInput"
+        - type: object
+          required: [shareToken, revision, createdAt, updatedAt, canManage]
+          properties:
+            shareToken: { type: string, format: uuid }
+            revision: { type: integer, minimum: 1 }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            canManage: { type: boolean }
+    ChecklistConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error: { type: string }
+        current:
+          $ref: "#/components/schemas/ChecklistShare"
     HypeCardShareUploadInput:
       type: object
       required: [mediaKind, contentType]

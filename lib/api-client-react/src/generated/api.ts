@@ -26,6 +26,10 @@ import type {
   AccountUsageConsumeInput,
   BadRequestResponse,
   BillingWebhookResponse,
+  ChecklistConflict,
+  ChecklistShare,
+  ChecklistShareInput,
+  ChecklistShareUpdate,
   CoachCalendar,
   CoachCalendarCode,
   CoachCalendarConnectInput,
@@ -492,6 +496,337 @@ export const useDeleteScheduleShare = <TError = ErrorType<UnauthorizedResponse |
         TContext
       > => {
       return useMutation(getDeleteScheduleShareMutationOptions(options));
+    }
+
+export const getCreateChecklistShareUrl = () => {
+
+
+
+
+  return `/api/checklist-shares`
+}
+
+/**
+ * Creates an edit link owned by the authenticated user.
+ * @summary Create a collaborative Gameday Checklist share
+ */
+export const createChecklistShare = async (checklistShareInput: ChecklistShareInput, options?: Parameters<typeof customFetch>[1]): Promise<ChecklistShare> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ChecklistShare>(getCreateChecklistShareUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(checklistShareInput)
+  }
+);}
+
+
+
+
+
+export const getCreateChecklistShareMutationKey = () => ['createChecklistShare'] as const;
+
+export const getCreateChecklistShareMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChecklistShare>>, TError,CreateChecklistShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChecklistShare>>, TError,CreateChecklistShareMutationVariables, TContext> => {
+
+const mutationKey = getCreateChecklistShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChecklistShare>>, CreateChecklistShareMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createChecklistShare(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChecklistShareMutationResult = NonNullable<Awaited<ReturnType<typeof createChecklistShare>>>
+    export type CreateChecklistShareMutationBody = BodyType<ChecklistShareInput>
+    export type CreateChecklistShareMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type CreateChecklistShareMutationVariables = {data: BodyType<ChecklistShareInput>}
+
+    /**
+ * @summary Create a collaborative Gameday Checklist share
+ */
+export const useCreateChecklistShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChecklistShare>>, TError,CreateChecklistShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createChecklistShare>>,
+        TError,
+        CreateChecklistShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateChecklistShareMutationOptions(options));
+    }
+
+export const getGetChecklistShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/checklist-shares/${shareToken}`
+}
+
+/**
+ * @summary Open a collaborative checklist edit link
+ */
+export const getChecklistShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<ChecklistShare> => {
+
+  return customFetch<ChecklistShare>(getGetChecklistShareUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChecklistShareQueryKey = (shareToken: string,) => {
+    return [
+    `/api/checklist-shares/${shareToken}`
+    ] as const;
+    }
+
+
+export const getGetChecklistShareQueryOptions = <TData = Awaited<ReturnType<typeof getChecklistShare>>, TError = ErrorType<NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChecklistShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChecklistShareQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChecklistShare>>> = ({ signal }) => getChecklistShare(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChecklistShare>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChecklistShareQueryResult = NonNullable<Awaited<ReturnType<typeof getChecklistShare>>>
+export type GetChecklistShareQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Open a collaborative checklist edit link
+ */
+
+export function useGetChecklistShare<TData = Awaited<ReturnType<typeof getChecklistShare>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChecklistShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChecklistShareQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateChecklistShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/checklist-shares/${shareToken}`
+}
+
+/**
+ * Saves only when the expected revision is current.
+ * @summary Save a collaborative checklist edit
+ */
+export const updateChecklistShare = async (shareToken: string,
+    checklistShareUpdate: ChecklistShareUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ChecklistShare> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ChecklistShare>(getUpdateChecklistShareUrl(shareToken),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(checklistShareUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateChecklistShareMutationKey = () => ['updateChecklistShare'] as const;
+
+export const getUpdateChecklistShareMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse | ChecklistConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChecklistShare>>, TError,UpdateChecklistShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateChecklistShare>>, TError,UpdateChecklistShareMutationVariables, TContext> => {
+
+const mutationKey = getUpdateChecklistShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateChecklistShare>>, UpdateChecklistShareMutationVariables> = (props) => {
+          const {shareToken,data} = props ?? {};
+
+          return  updateChecklistShare(shareToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateChecklistShareMutationResult = NonNullable<Awaited<ReturnType<typeof updateChecklistShare>>>
+    export type UpdateChecklistShareMutationBody = BodyType<ChecklistShareUpdate>
+    export type UpdateChecklistShareMutationError = ErrorType<BadRequestResponse | NotFoundResponse | ChecklistConflict>
+    export type UpdateChecklistShareMutationVariables = {shareToken: string;data: BodyType<ChecklistShareUpdate>}
+
+    /**
+ * @summary Save a collaborative checklist edit
+ */
+export const useUpdateChecklistShare = <TError = ErrorType<BadRequestResponse | NotFoundResponse | ChecklistConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChecklistShare>>, TError,UpdateChecklistShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateChecklistShare>>,
+        TError,
+        UpdateChecklistShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateChecklistShareMutationOptions(options));
+    }
+
+export const getDeleteChecklistShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/checklist-shares/${shareToken}`
+}
+
+/**
+ * Only the checklist owner can revoke the link.
+ * @summary Revoke a collaborative checklist edit link
+ */
+export const deleteChecklistShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteChecklistShareUrl(shareToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteChecklistShareMutationKey = () => ['deleteChecklistShare'] as const;
+
+export const getDeleteChecklistShareMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteChecklistShare>>, TError,DeleteChecklistShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteChecklistShare>>, TError,DeleteChecklistShareMutationVariables, TContext> => {
+
+const mutationKey = getDeleteChecklistShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteChecklistShare>>, DeleteChecklistShareMutationVariables> = (props) => {
+          const {shareToken} = props ?? {};
+
+          return  deleteChecklistShare(shareToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteChecklistShareMutationResult = NonNullable<Awaited<ReturnType<typeof deleteChecklistShare>>>
+
+    export type DeleteChecklistShareMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteChecklistShareMutationVariables = {shareToken: string}
+
+    /**
+ * @summary Revoke a collaborative checklist edit link
+ */
+export const useDeleteChecklistShare = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteChecklistShare>>, TError,DeleteChecklistShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteChecklistShare>>,
+        TError,
+        DeleteChecklistShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteChecklistShareMutationOptions(options));
     }
 
 export const getListHypeCardSharesUrl = () => {
