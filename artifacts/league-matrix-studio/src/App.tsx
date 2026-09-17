@@ -2843,21 +2843,6 @@ function ScheduleEditor() {
           </section>
 
           <aside className="flex flex-col border border-border bg-card p-5 clip-angled-sm">
-            <div className="relative z-10 mb-6 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule details</p>
-                <p className="mt-1 text-xs font-medium text-muted-foreground">Build the family handoff.</p>
-              </div>
-              <span className="bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
-            </div>
-
-            <div className="relative z-10 space-y-4">
-              <ScheduleField label="Team name" value={teamName} onChange={(value) => { setSaved(false); setTeamName(value); }} placeholder="Eastside Falcons" testId="input-team-name" />
-              <ScheduleField label="Season" value={season} onChange={(value) => { setSaved(false); setSeason(value); }} placeholder="Fall 2024" testId="input-season" />
-            </div>
-
-            <div className="relative z-10 my-7 h-px bg-border" />
-
             <div className="relative z-10">
               <div className="mb-4 flex items-center justify-between">
                 <div>
