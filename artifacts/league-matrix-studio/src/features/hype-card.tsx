@@ -329,24 +329,240 @@ function AssetButton({
   hasAsset,
   onChange,
   onRemove,
+  accept = 'image/*,video/*',
 }: {
   label: string;
   hasAsset: boolean;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
+  accept?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
       <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-3 border-2 border-dashed border-border bg-background px-4 text-sm font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm">
         {hasAsset ? <Check className="h-5 w-5 text-primary" /> : <Upload className="h-5 w-5 text-muted-foreground" />}
         {hasAsset ? `${label} added` : `Add ${label}`}
-        <input type="file" accept="image/*,video/*" className="sr-only" onChange={onChange} />
+        <input type="file" accept={accept} className="sr-only" onChange={onChange} />
       </label>
       {hasAsset && (
         <button type="button" onClick={onRemove} className="grid h-12 w-12 shrink-0 place-items-center bg-muted border border-border text-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors clip-angled-sm" aria-label={`Remove ${label}`}>
           <X className="h-5 w-5" />
         </button>
       )}
+    </div>
+  );
+}
+
+function MediaAssetControls({
+  hasMedia,
+  hasLogo,
+  onMediaChange,
+  onMediaRemove,
+  onLogoChange,
+  onLogoRemove,
+}: {
+  hasMedia: boolean;
+  hasLogo: boolean;
+  onMediaChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onMediaRemove: () => void | Promise<void>;
+  onLogoChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onLogoRemove: () => void | Promise<void>;
+}) {
+  return (
+    <div className="space-y-3">
+      <AssetButton
+        label="Media"
+        hasAsset={hasMedia}
+        onChange={onMediaChange}
+        onRemove={onMediaRemove}
+      />
+      <AssetButton
+        label="Team logo"
+        hasAsset={hasLogo}
+        onChange={onLogoChange}
+        onRemove={onLogoRemove}
+        accept="image/*"
+      />
+    </div>
+  );
+}
+
+function MediaFramingControls({
+  project,
+  onReset,
+  onTransformChange,
+  onVideoFitChange,
+  children,
+}: {
+  project: HypeCardProject;
+  onReset: () => void;
+  onTransformChange: (key: keyof HypeCardProject['photoTransform'], value: number | boolean) => void;
+  onVideoFitChange: (value: HypeCardProject['videoFit']) => void;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/50 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <Label className="text-xs font-bold">Crop & Position</Label>
+        <button type="button" onClick={onReset} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">Reset</button>
+      </div>
+      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
+        <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
+        <Slider value={[project.photoTransform.zoom]} min={0.5} max={3} step={0.01} onValueChange={([value]) => onTransformChange('zoom', value)} aria-label="Media zoom" />
+        <Move className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="grid grid-cols-2 gap-2">
+          <Slider value={[project.photoTransform.x]} min={-500} max={500} step={1} onValueChange={([value]) => onTransformChange('x', value)} aria-label="Move media horizontally" />
+          <Slider value={[project.photoTransform.y]} min={-500} max={500} step={1} onValueChange={([value]) => onTransformChange('y', value)} aria-label="Move media vertically" />
+        </div>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => onTransformChange('rotation', (project.photoTransform.rotation + 90) % 360)}>
+          <RotateCw className="h-3.5 w-3.5" /> Rotate
+        </Button>
+        <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => onTransformChange('flip', !project.photoTransform.flip)}>
+          <FlipHorizontal2 className="h-3.5 w-3.5" /> Flip
+        </Button>
+      </div>
+      {project.mediaType === 'video' && (
+        <div className="mt-4 flex items-center gap-2" role="group" aria-label="Video framing">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Video frame</span>
+          {(['fill', 'fit'] as const).map((mode) => (
+            <Button key={mode} type="button" size="sm" variant={project.videoFit === mode ? 'default' : 'outline'} className="rounded-none text-[10px] uppercase" onClick={() => onVideoFitChange(mode)}>
+              {mode === 'fill' ? 'Fill' : 'Fit'}
+            </Button>
+          ))}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function MediaAdjustmentControls({
+  project,
+  showAdvanced,
+  onToggle,
+  onAdjustmentChange,
+  className = 'rounded-xl border border-border bg-muted/50 p-4',
+}: {
+  project: HypeCardProject;
+  showAdvanced: boolean;
+  onToggle: () => void;
+  onAdjustmentChange: (key: keyof HypeCardProject['adjustments'], value: number) => void;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between text-xs font-bold"
+        aria-expanded={showAdvanced}
+      >
+        <span className="flex items-center gap-2"><SlidersHorizontal className="h-3.5 w-3.5" /> Image adjustments</span>
+        <span>{showAdvanced ? 'Hide' : 'Show'}</span>
+      </button>
+      {showAdvanced && (
+        <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
+          <Label className="text-[10px] uppercase tracking-wide">Brightness</Label>
+          <Slider value={[project.adjustments.brightness]} min={0.5} max={1.5} step={0.01} onValueChange={([value]) => onAdjustmentChange('brightness', value)} aria-label="Brightness" />
+          <Label className="text-[10px] uppercase tracking-wide">Contrast</Label>
+          <Slider value={[project.adjustments.contrast]} min={0.5} max={1.5} step={0.01} onValueChange={([value]) => onAdjustmentChange('contrast', value)} aria-label="Contrast" />
+          <Label className="text-[10px] uppercase tracking-wide">Color</Label>
+          <Slider value={[project.adjustments.saturation]} min={0} max={2} step={0.01} onValueChange={([value]) => onAdjustmentChange('saturation', value)} aria-label="Color saturation" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MediaTrimAndAudioControls({
+  project,
+  exportSupport,
+  includeAudio,
+  audioId,
+  onAudioChange,
+  onTrimChange,
+}: {
+  project: HypeCardProject;
+  exportSupport: { mp4Mime: string | null; webmMime: string | null };
+  includeAudio: boolean;
+  audioId: string;
+  onAudioChange: (value: boolean) => void;
+  onTrimChange: (edge: 'start' | 'end', value: number) => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg bg-muted px-3 py-3">
+      <div className="space-y-3 border-b border-border pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <Label className="text-xs font-medium">Trim video</Label>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            {formatVideoTime(project.trimStart)}–{formatVideoTime(project.trimEnd)}
+          </span>
+        </div>
+        <div className="grid grid-cols-[3rem_1fr] items-center gap-3">
+          <Label className="text-[10px] uppercase tracking-wide">Start</Label>
+          <Slider
+            value={[project.trimStart]}
+            min={0}
+            max={Math.max(0.1, (project.videoMeta?.duration ?? 15) - 0.1)}
+            step={0.1}
+            onValueChange={([value]) => onTrimChange('start', value)}
+            aria-label="Video trim start"
+          />
+          <Label className="text-[10px] uppercase tracking-wide">End</Label>
+          <Slider
+            value={[project.trimEnd]}
+            min={0.1}
+            max={Math.max(0.1, project.videoMeta?.duration ?? 15)}
+            step={0.1}
+            onValueChange={([value]) => onTrimChange('end', value)}
+            aria-label="Video trim end"
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Selected length: {(project.trimEnd - project.trimStart).toFixed(1)}s. Exports can be up to 15 seconds.
+        </p>
+      </div>
+      <p className="text-[11px] font-medium text-muted-foreground" data-testid="text-video-export-support">
+        {exportSupport.mp4Mime
+          ? 'This browser will export a phone-ready MP4.'
+          : exportSupport.webmMime
+            ? 'This browser will export WebM. For MP4, use a browser that supports MP4 recording.'
+            : 'Video export is not supported in this browser. You can still edit and preview the card.'}
+      </p>
+      <p className="text-[10px] text-muted-foreground">Original sound is included when this browser exposes the clip audio for recording.</p>
+      <div className="flex items-center justify-between">
+        <Label htmlFor={audioId} className="text-xs font-medium">Keep original sound</Label>
+        <Switch id={audioId} checked={includeAudio} onCheckedChange={onAudioChange} />
+      </div>
+    </div>
+  );
+}
+
+function MediaImageDownloadControls({
+  imageFormat,
+  onFormatChange,
+}: {
+  imageFormat: 'png' | 'jpeg';
+  onFormatChange: (format: 'png' | 'jpeg') => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
+      <Label className="text-xs font-medium">Download format</Label>
+      <div className="flex gap-1" role="group" aria-label="Image download format">
+        {(['png', 'jpeg'] as const).map((format) => (
+          <button
+            key={format}
+            type="button"
+            onClick={() => onFormatChange(format)}
+            aria-pressed={imageFormat === format}
+            className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase ${imageFormat === format ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}
+          >
+            {format === 'jpeg' ? 'JPG' : 'PNG'}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1855,134 +2071,53 @@ export function HypeCardEditor() {
                   {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo or video before exporting.
                 </p>
               )}
-              <AssetButton
-                label="Media"
-                hasAsset={Boolean(project.mediaType)}
-                onChange={handleMediaUpload}
-                onRemove={handleMediaRemove}
+              <MediaAssetControls
+                hasMedia={Boolean(project.mediaType)}
+                hasLogo={Boolean(project.logo)}
+                onMediaChange={handleMediaUpload}
+                onMediaRemove={handleMediaRemove}
+                onLogoChange={handleLogoUpload}
+                onLogoRemove={async () => {
+                  if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
+                  if (project.logoMediaId) await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
+                  setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
+                }}
               />
-               <div className="mt-3">
-                 <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={handleLogoUpload} onRemove={async () => {
-                   if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
-                   if (project.logoMediaId) await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
-                   setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
-                 }} />
-               </div>
               {project.mediaType && (
-                <div className="mt-4 rounded-xl border border-border bg-muted/50 p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <Label className="text-xs font-bold">Crop & Position</Label>
-                    <button type="button" onClick={() => setProject((c) => ({ ...c, photoTransform: defaultProject().photoTransform }))} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">Reset</button>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
-                    <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
-                    <Slider value={[project.photoTransform.zoom]} min={0.5} max={3} step={0.01} onValueChange={([v]) => updateTransform('zoom', v)} />
-                    <Move className="h-3.5 w-3.5 text-muted-foreground" />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Slider value={[project.photoTransform.x]} min={-500} max={500} step={1} onValueChange={([v]) => updateTransform('x', v)} />
-                      <Slider value={[project.photoTransform.y]} min={-500} max={500} step={1} onValueChange={([v]) => updateTransform('y', v)} />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => updateTransform('rotation', (project.photoTransform.rotation + 90) % 360)}>
-                      <RotateCw className="h-3.5 w-3.5" /> Rotate
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => updateTransform('flip', !project.photoTransform.flip)}>
-                      <FlipHorizontal2 className="h-3.5 w-3.5" /> Flip
-                    </Button>
-                  </div>
-                  {project.mediaType === 'video' && (
-                    <div className="mt-4 flex items-center gap-2" role="group" aria-label="Video framing">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Video frame</span>
-                      {(['fill', 'fit'] as const).map((mode) => (
-                        <Button key={mode} type="button" size="sm" variant={project.videoFit === mode ? 'default' : 'outline'} className="rounded-none text-[10px] uppercase" onClick={() => updateProject('videoFit', mode)}>
-                          {mode === 'fill' ? 'Fill' : 'Fit'}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced((open) => !open)}
-                    className="mt-4 flex w-full items-center justify-between border-t border-border pt-3 text-xs font-bold"
+                <div className="mt-4">
+                  <MediaFramingControls
+                    project={project}
+                    onReset={() => setProject((current) => ({ ...current, photoTransform: defaultProject().photoTransform }))}
+                    onTransformChange={updateTransform}
+                    onVideoFitChange={(value) => updateProject('videoFit', value)}
                   >
-                    <span className="flex items-center gap-2"><SlidersHorizontal className="h-3.5 w-3.5" /> Image adjustments</span>
-                    <span>{showAdvanced ? 'Hide' : 'Show'}</span>
-                  </button>
-                  {showAdvanced && (
-                    <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
-                      <Label className="text-[10px] uppercase tracking-wide">Brightness</Label>
-                      <Slider value={[project.adjustments.brightness]} min={0.5} max={1.5} step={0.01} onValueChange={([v]) => updateAdjustment('brightness', v)} />
-                      <Label className="text-[10px] uppercase tracking-wide">Contrast</Label>
-                      <Slider value={[project.adjustments.contrast]} min={0.5} max={1.5} step={0.01} onValueChange={([v]) => updateAdjustment('contrast', v)} />
-                      <Label className="text-[10px] uppercase tracking-wide">Color</Label>
-                      <Slider value={[project.adjustments.saturation]} min={0} max={2} step={0.01} onValueChange={([v]) => updateAdjustment('saturation', v)} />
+                    <div className="mt-4 border-t border-border pt-3">
+                      <MediaAdjustmentControls
+                        project={project}
+                        showAdvanced={showAdvanced}
+                        onToggle={() => setShowAdvanced((open) => !open)}
+                        onAdjustmentChange={updateAdjustment}
+                        className="rounded-none border-0 bg-transparent p-0"
+                      />
                     </div>
-                  )}
+                  </MediaFramingControls>
                 </div>
               )}
               {project.mediaType === 'video' && (
-                <div className="mt-3 space-y-3 rounded-lg bg-muted px-3 py-3">
-                  <div className="space-y-3 border-b border-border pb-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label className="text-xs font-medium">Trim video</Label>
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                        {formatVideoTime(project.trimStart)}–{formatVideoTime(project.trimEnd)}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-[3rem_1fr] items-center gap-3">
-                      <Label className="text-[10px] uppercase tracking-wide">Start</Label>
-                      <Slider
-                        value={[project.trimStart]}
-                        min={0}
-                        max={Math.max(0.1, (project.videoMeta?.duration ?? 15) - 0.1)}
-                        step={0.1}
-                        onValueChange={([value]) => updateTrim('start', value)}
-                        aria-label="Video trim start"
-                      />
-                      <Label className="text-[10px] uppercase tracking-wide">End</Label>
-                      <Slider
-                        value={[project.trimEnd]}
-                        min={0.1}
-                        max={Math.max(0.1, project.videoMeta?.duration ?? 15)}
-                        step={0.1}
-                        onValueChange={([value]) => updateTrim('end', value)}
-                        aria-label="Video trim end"
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Selected length: {(project.trimEnd - project.trimStart).toFixed(1)}s. Exports can be up to 15 seconds.
-                    </p>
-                  </div>
-                  <p className="text-[11px] font-medium text-muted-foreground" data-testid="text-video-export-support">
-                    {exportSupport.mp4Mime
-                      ? 'This browser will export a phone-ready MP4.'
-                      : exportSupport.webmMime
-                        ? 'This browser will export WebM. For MP4, use a browser that supports MP4 recording.'
-                        : 'Video export is not supported in this browser. You can still edit and preview the card.'}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">Original sound is included when this browser exposes the clip audio for recording.</p>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="include-audio" className="text-xs font-medium">Keep original sound</Label>
-                    <Switch id="include-audio" checked={includeAudio} onCheckedChange={setIncludeAudio} />
-                  </div>
+                <div className="mt-3">
+                  <MediaTrimAndAudioControls
+                    project={project}
+                    exportSupport={exportSupport}
+                    includeAudio={includeAudio}
+                    audioId="include-audio"
+                    onAudioChange={setIncludeAudio}
+                    onTrimChange={updateTrim}
+                  />
                 </div>
               )}
               {project.mediaType === 'image' && (
-                <div className="mt-3 flex items-center justify-between rounded-lg bg-muted px-3 py-2">
-                  <Label className="text-xs font-medium">Download format</Label>
-                  <div className="flex gap-1" role="group" aria-label="Image download format">
-                    {(['png', 'jpeg'] as const).map((format) => (
-                      <button
-                        key={format}
-                        type="button"
-                        onClick={() => setImageFormat(format)}
-                        className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase ${imageFormat === format ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}
-                      >
-                        {format === 'jpeg' ? 'JPG' : 'PNG'}
-                      </button>
-                    ))}
-                  </div>
+                <div className="mt-3">
+                  <MediaImageDownloadControls imageFormat={imageFormat} onFormatChange={setImageFormat} />
                 </div>
               )}
               </div>
@@ -2019,55 +2154,29 @@ export function HypeCardEditor() {
                         {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo or video before exporting.
                       </p>
                     )}
-                    <AssetButton
-                      label="Media"
-                      hasAsset={Boolean(project.mediaType)}
-                      onChange={handleMediaUpload}
-                      onRemove={handleMediaRemove}
+                    <MediaAssetControls
+                      hasMedia={Boolean(project.mediaType)}
+                      hasLogo={Boolean(project.logo)}
+                      onMediaChange={handleMediaUpload}
+                      onMediaRemove={handleMediaRemove}
+                      onLogoChange={handleLogoUpload}
+                      onLogoRemove={async () => {
+                        if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
+                        if (project.logoMediaId) await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
+                        setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
+                      }}
                     />
-                    <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={handleLogoUpload} onRemove={async () => {
-                      if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
-                      if (project.logoMediaId) await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
-                      setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
-                    }} />
                   </div>
                 )}
 
                 {mediaSubstep === 1 && (
                   project.mediaType ? (
-                    <div className="rounded-xl border border-border bg-muted/50 p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <Label className="text-xs font-bold">Crop & Position</Label>
-                        <button type="button" onClick={() => setProject((c) => ({ ...c, photoTransform: defaultProject().photoTransform }))} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">Reset</button>
-                      </div>
-                      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
-                        <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
-                        <Slider value={[project.photoTransform.zoom]} min={0.5} max={3} step={0.01} onValueChange={([v]) => updateTransform('zoom', v)} />
-                        <Move className="h-3.5 w-3.5 text-muted-foreground" />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Slider value={[project.photoTransform.x]} min={-500} max={500} step={1} onValueChange={([v]) => updateTransform('x', v)} aria-label="Move media horizontally" />
-                          <Slider value={[project.photoTransform.y]} min={-500} max={500} step={1} onValueChange={([v]) => updateTransform('y', v)} aria-label="Move media vertically" />
-                        </div>
-                      </div>
-                      <div className="mt-4 flex gap-2">
-                        <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => updateTransform('rotation', (project.photoTransform.rotation + 90) % 360)}>
-                          <RotateCw className="h-3.5 w-3.5" /> Rotate
-                        </Button>
-                        <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => updateTransform('flip', !project.photoTransform.flip)}>
-                          <FlipHorizontal2 className="h-3.5 w-3.5" /> Flip
-                        </Button>
-                      </div>
-                      {project.mediaType === 'video' && (
-                        <div className="mt-4 flex items-center gap-2" role="group" aria-label="Video framing">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Video frame</span>
-                          {(['fill', 'fit'] as const).map((mode) => (
-                            <Button key={mode} type="button" size="sm" variant={project.videoFit === mode ? 'default' : 'outline'} className="rounded-none text-[10px] uppercase" onClick={() => updateProject('videoFit', mode)}>
-                              {mode === 'fill' ? 'Fill' : 'Fit'}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <MediaFramingControls
+                      project={project}
+                      onReset={() => setProject((current) => ({ ...current, photoTransform: defaultProject().photoTransform }))}
+                      onTransformChange={updateTransform}
+                      onVideoFitChange={(value) => updateProject('videoFit', value)}
+                    />
                   ) : (
                     <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
                       Add a photo or video in the first step to adjust its framing.
@@ -2079,68 +2188,24 @@ export function HypeCardEditor() {
                   <div className="space-y-3">
                     {project.mediaType ? (
                       <>
-                        <div className="rounded-xl border border-border bg-muted/50 p-4">
-                          <button
-                            type="button"
-                            onClick={() => setShowAdvanced((open) => !open)}
-                            className="flex w-full items-center justify-between text-xs font-bold"
-                          >
-                            <span className="flex items-center gap-2"><SlidersHorizontal className="h-3.5 w-3.5" /> Image adjustments</span>
-                            <span>{showAdvanced ? 'Hide' : 'Show'}</span>
-                          </button>
-                          {showAdvanced && (
-                            <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
-                              <Label className="text-[10px] uppercase tracking-wide">Brightness</Label>
-                              <Slider value={[project.adjustments.brightness]} min={0.5} max={1.5} step={0.01} onValueChange={([v]) => updateAdjustment('brightness', v)} />
-                              <Label className="text-[10px] uppercase tracking-wide">Contrast</Label>
-                              <Slider value={[project.adjustments.contrast]} min={0.5} max={1.5} step={0.01} onValueChange={([v]) => updateAdjustment('contrast', v)} />
-                              <Label className="text-[10px] uppercase tracking-wide">Color</Label>
-                              <Slider value={[project.adjustments.saturation]} min={0} max={2} step={0.01} onValueChange={([v]) => updateAdjustment('saturation', v)} />
-                            </div>
-                          )}
-                        </div>
+                        <MediaAdjustmentControls
+                          project={project}
+                          showAdvanced={showAdvanced}
+                          onToggle={() => setShowAdvanced((open) => !open)}
+                          onAdjustmentChange={updateAdjustment}
+                        />
                         {project.mediaType === 'video' && (
-                          <div className="space-y-3 rounded-lg bg-muted px-3 py-3">
-                            <div className="space-y-3 border-b border-border pb-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <Label className="text-xs font-medium">Trim video</Label>
-                                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                                  {formatVideoTime(project.trimStart)}–{formatVideoTime(project.trimEnd)}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-[3rem_1fr] items-center gap-3">
-                                <Label className="text-[10px] uppercase tracking-wide">Start</Label>
-                                <Slider value={[project.trimStart]} min={0} max={Math.max(0.1, (project.videoMeta?.duration ?? 15) - 0.1)} step={0.1} onValueChange={([value]) => updateTrim('start', value)} aria-label="Video trim start" />
-                                <Label className="text-[10px] uppercase tracking-wide">End</Label>
-                                <Slider value={[project.trimEnd]} min={0.1} max={Math.max(0.1, project.videoMeta?.duration ?? 15)} step={0.1} onValueChange={([value]) => updateTrim('end', value)} aria-label="Video trim end" />
-                              </div>
-                              <p className="text-[10px] text-muted-foreground">Selected length: {(project.trimEnd - project.trimStart).toFixed(1)}s. Exports can be up to 15 seconds.</p>
-                            </div>
-                            <p className="text-[11px] font-medium text-muted-foreground">
-                              {exportSupport.mp4Mime
-                                ? 'This browser will export a phone-ready MP4.'
-                                : exportSupport.webmMime
-                                  ? 'This browser will export WebM. For MP4, use a browser that supports MP4 recording.'
-                                  : 'Video export is not supported in this browser. You can still edit and preview the card.'}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">Original sound is included when this browser exposes the clip audio for recording.</p>
-                            <div className="flex items-center justify-between">
-                              <Label htmlFor="mobile-include-audio" className="text-xs font-medium">Keep original sound</Label>
-                              <Switch id="mobile-include-audio" checked={includeAudio} onCheckedChange={setIncludeAudio} />
-                            </div>
-                          </div>
+                          <MediaTrimAndAudioControls
+                            project={project}
+                            exportSupport={exportSupport}
+                            includeAudio={includeAudio}
+                            audioId="mobile-include-audio"
+                            onAudioChange={setIncludeAudio}
+                            onTrimChange={updateTrim}
+                          />
                         )}
                         {project.mediaType === 'image' && (
-                          <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
-                            <Label className="text-xs font-medium">Download format</Label>
-                            <div className="flex gap-1" role="group" aria-label="Image download format">
-                              {(['png', 'jpeg'] as const).map((format) => (
-                                <button key={format} type="button" onClick={() => setImageFormat(format)} className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase ${imageFormat === format ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>
-                                  {format === 'jpeg' ? 'JPG' : 'PNG'}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
+                          <MediaImageDownloadControls imageFormat={imageFormat} onFormatChange={setImageFormat} />
                         )}
                       </>
                     ) : (
