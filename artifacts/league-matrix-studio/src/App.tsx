@@ -1262,25 +1262,22 @@ function CoachCalendarCodePanel() {
   };
 
   return (
-    <section className="relative mt-4 overflow-hidden border border-primary/30 bg-primary/5 p-3 clip-angled-sm sm:p-4" data-testid="coach-calendar-code-panel">
+    <section className="relative w-full overflow-hidden border border-primary/30 bg-primary/5 p-2.5 clip-angled-sm sm:p-3" data-testid="coach-calendar-code-panel">
       <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
-      <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative z-10 flex items-center justify-between gap-2">
         <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Connect your calendar</p>
-            <h2 className="mt-1 font-display text-xl uppercase tracking-wide text-foreground">Share access with your team.</h2>
-           <p className="mt-1 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground">
-              Use the code or private link to connect families.
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Connect your calendar</p>
+          <p className="mt-0.5 hidden text-[10px] font-medium text-muted-foreground sm:block">Share team access</p>
         </div>
-         <div className="flex shrink-0 flex-wrap items-center gap-2">
-             <div className="border border-primary bg-background px-3 py-2 font-display text-xl tracking-[0.22em] text-foreground" aria-label="Fallback coach calendar code">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          <div className="border border-primary bg-background px-2.5 py-1.5 font-display text-lg tracking-[0.18em] text-foreground" aria-label="Fallback coach calendar code">
             {isLoading ? '·····' : data?.code ?? '-----'}
           </div>
           <button
             type="button"
             onClick={() => { void copyCode(); }}
             disabled={!data?.code || isError}
-             className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+             className="grid h-9 w-9 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
              aria-label="Copy fallback coach calendar code"
             data-testid="button-copy-coach-calendar-code"
           >
@@ -1290,7 +1287,7 @@ function CoachCalendarCodePanel() {
              <button
                type="button"
                onClick={() => { void copySubscription(); }}
-               className="inline-flex items-center gap-2 bg-foreground px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm"
+               className="inline-flex items-center gap-1.5 bg-foreground px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm"
                data-testid="button-copy-coach-calendar-link-compact"
              >
                <Share2 className="h-3.5 w-3.5" /> {subscriptionCopied ? 'Copied' : 'Copy link'}
@@ -1300,7 +1297,7 @@ function CoachCalendarCodePanel() {
                type="button"
                onClick={createOrRefreshSubscription}
                disabled={createSubscription.isPending || isLoading || isError}
-               className="inline-flex items-center gap-2 bg-foreground px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+               className="inline-flex items-center gap-1.5 bg-foreground px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
                data-testid="button-create-coach-calendar-subscription"
              >
                <Link2 className="h-3.5 w-3.5" /> {createSubscription.isPending ? 'Creating…' : 'Create link'}
@@ -1309,7 +1306,7 @@ function CoachCalendarCodePanel() {
         </div>
       </div>
        {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not load the calendar sharing options. Refresh and try again.</p>}
-       <details className="relative z-10 mt-3 border-t border-primary/20 pt-3">
+        <details className="relative z-10 mt-2 border-t border-primary/20 pt-2">
          <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">Calendar app options</summary>
          <div className="pt-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -2776,7 +2773,6 @@ function ScheduleEditor() {
   return (
     <StudioLayout>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
-        {!isFan && accountAccess?.accessMode !== 'guest' && <CoachCalendarCodePanel />}
         {isFan && <FanCalendarConnectionPanel onConnectionChange={setCalendarConnection} />}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
@@ -2810,8 +2806,24 @@ function ScheduleEditor() {
               season={season}
               events={events}
               selectedTemplate={selectedTemplate}
-              onAddEvent={openNewEventForm}
             />
+            <div className="mt-3 flex items-start justify-between gap-3">
+              <button
+                type="button"
+                onClick={openNewEventForm}
+                className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+                aria-label="Add event"
+                data-testid="button-add-event"
+              >
+                <Plus className="h-7 w-7" strokeWidth={3} />
+                <span className="sr-only">Add event</span>
+              </button>
+              {!isFan && accountAccess?.accessMode !== 'guest' && (
+                <div className="w-full max-w-xl">
+                  <CoachCalendarCodePanel />
+                </div>
+              )}
+            </div>
           </section>
 
           <aside className="flex flex-col border border-border bg-card p-5 clip-angled-sm">
@@ -3190,13 +3202,11 @@ function SchedulePreview({
   season,
   events,
   selectedTemplate,
-  onAddEvent,
 }: {
   teamName: string;
   season: string;
   events: ScheduleEvent[];
   selectedTemplate: number;
-  onAddEvent: () => void;
 }) {
   const templateClass = selectedTemplate === 1
     ? 'bg-[#177d76] text-[#f9f3e8]'
@@ -3210,7 +3220,7 @@ function SchedulePreview({
       : 'border-white/25 bg-black/10';
 
   return (
-    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-border bg-muted px-4 pb-20 pt-4 sm:min-h-[760px] sm:px-8 sm:pb-24 sm:pt-8 clip-angled-sm">
+    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[760px] sm:p-8 clip-angled-sm">
       <div className="absolute inset-0 bg-tech-grid opacity-50" />
       <div className={`relative w-full max-w-[960px] overflow-hidden rounded-[22px] ${templateClass} p-5 shadow-2xl sm:p-8`} data-testid="preview-canvas">
         <div className={`absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] ${selectedTemplate === 2 ? 'border-[#f36f4c]/45' : 'border-[#f5c94d]/35'}`} />
@@ -3266,16 +3276,6 @@ function SchedulePreview({
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onAddEvent}
-        className="absolute bottom-4 left-1/2 z-20 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background sm:bottom-5 sm:h-16 sm:w-16"
-        aria-label="Add event"
-        data-testid="button-add-event"
-      >
-        <Plus className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={3} />
-        <span className="sr-only">Add event</span>
-      </button>
     </div>
   );
 }
