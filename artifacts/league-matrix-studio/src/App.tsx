@@ -2783,24 +2783,26 @@ function ScheduleEditor() {
               season={season}
               events={events}
               selectedTemplate={selectedTemplate}
-            />
-            <div className="mx-auto mt-3 flex w-full max-w-[960px] items-start justify-between gap-3">
-              <button
-                type="button"
-                onClick={openNewEventForm}
-                className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
-                aria-label="Add event"
-                data-testid="button-add-event"
-              >
-                <Plus className="h-7 w-7" strokeWidth={3} />
-                <span className="sr-only">Add event</span>
-              </button>
-              {!isFan && accountAccess?.accessMode !== 'guest' && (
-                <div className="min-w-0 max-w-[420px]">
-                  <CoachCalendarCodePanel />
-                </div>
+              bottomActions={(
+                <>
+                  <button
+                    type="button"
+                    onClick={openNewEventForm}
+                    className="ml-2 grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background sm:ml-3"
+                    aria-label="Add event"
+                    data-testid="button-add-event"
+                  >
+                    <Plus className="h-7 w-7" strokeWidth={3} />
+                    <span className="sr-only">Add event</span>
+                  </button>
+                  {!isFan && accountAccess?.accessMode !== 'guest' && (
+                    <div className="min-w-0 max-w-[420px]">
+                      <CoachCalendarCodePanel />
+                    </div>
+                  )}
+                </>
               )}
-            </div>
+            />
           </section>
 
           <aside className="flex flex-col border border-border bg-card p-5 clip-angled-sm">
@@ -3179,11 +3181,13 @@ function SchedulePreview({
   season,
   events,
   selectedTemplate,
+  bottomActions,
 }: {
   teamName: string;
   season: string;
   events: ScheduleEvent[];
   selectedTemplate: number;
+  bottomActions: ReactNode;
 }) {
   const templateClass = selectedTemplate === 1
     ? 'bg-[#177d76] text-[#f9f3e8]'
@@ -3197,7 +3201,7 @@ function SchedulePreview({
       : 'border-white/25 bg-black/10';
 
   return (
-    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[760px] sm:p-8 clip-angled-sm">
+    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-border bg-muted px-4 pb-24 pt-4 sm:min-h-[760px] sm:px-8 sm:pb-28 sm:pt-8 clip-angled-sm">
       <div className="absolute inset-0 bg-tech-grid opacity-50" />
       <div className={`relative w-full max-w-[960px] overflow-hidden rounded-[22px] ${templateClass} p-5 shadow-2xl sm:p-8`} data-testid="preview-canvas">
         <div className={`absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] ${selectedTemplate === 2 ? 'border-[#f36f4c]/45' : 'border-[#f5c94d]/35'}`} />
@@ -3252,6 +3256,9 @@ function SchedulePreview({
             <CalendarDays className="h-5 w-5" />
           </div>
         </div>
+      </div>
+      <div className="absolute bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[960px] -translate-x-1/2 items-start justify-between gap-3 sm:bottom-6 sm:w-[calc(100%-4rem)]">
+        {bottomActions}
       </div>
     </div>
   );
