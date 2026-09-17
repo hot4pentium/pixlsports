@@ -201,5 +201,6 @@ test('maps only recent designs in newest-first order, limited to four', () => {
   assert.deepEqual(recent.map(({ id }) => id), ['new', 'middle', 'fourth', 'old']);
   assert.deepEqual(recent.map(({ kind }) => kind), ['hype-card', 'hype-card', 'hype-card', 'hype-card']);
   assert.equal(recent[0]?.href, '/studio/hype-card/new');
+  assert.equal(recent[0]?.thumbnailProject, projects[2]?.project);
   assert.equal(recent.some(({ id }) => id === 'schedule'), false);
 });

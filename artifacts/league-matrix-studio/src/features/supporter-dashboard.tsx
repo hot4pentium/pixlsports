@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
+import { HypeCardThumbnail } from './hype-card-thumbnail';
 import heroBanner from '@/assets/hero-banner.webp';
 
 export interface SupporterProfile {
@@ -35,6 +36,7 @@ export interface SupporterProject {
   kind: 'hype-card' | 'schedule';
   updatedAt: string | Date;
   href: string;
+  thumbnailProject?: unknown;
 }
 
 export interface SupporterScheduleOption {
@@ -559,8 +561,14 @@ export function SupporterDashboardView({
               projects.slice(0, 4).map(project => (
                 <Link key={project.id} href={project.href} className="group flex min-w-0 flex-col" data-testid={`link-project-${project.id}`}>
                   <div className="aspect-square w-full bg-muted border border-border mb-2.5 relative overflow-hidden group-hover:border-primary transition-colors flex items-center justify-center clip-angled-sm">
-                    <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-                    <Zap className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors group-hover:scale-110 duration-300" />
+                    {project.thumbnailProject ? (
+                      <HypeCardThumbnail project={project.thumbnailProject} name={project.name} />
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
+                        <Zap className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors group-hover:scale-110 duration-300" />
+                      </>
+                    )}
                   </div>
                   <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{project.name}</h4>
                   <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(project.updatedAt)}</p>

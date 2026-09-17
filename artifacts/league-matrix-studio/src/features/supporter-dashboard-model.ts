@@ -173,5 +173,6 @@ export function mapRecentSupporterProjects(projects: CloudProjectLike[]): Suppor
       kind: 'hype-card',
       updatedAt: project.updatedAt,
       href: `/studio/hype-card/${project.id}`,
+      thumbnailProject: project.project,
     }));
 }
