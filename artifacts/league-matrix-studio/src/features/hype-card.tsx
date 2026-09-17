@@ -2031,7 +2031,7 @@ export function HypeCardEditor() {
             </Button>
               <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'} title={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'}>
               <Share2 className="h-4 w-4" />
-               <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh link' : 'Share'}</span>
+               <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh link' : 'Publish page'}</span>
             </Button>
             {exporting && (
               <Button variant="outline" size="icon" onClick={handleCancelExport} className="rounded-xl border-destructive text-destructive">
