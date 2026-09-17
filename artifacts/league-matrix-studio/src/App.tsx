@@ -1265,7 +1265,7 @@ function CoachCalendarCodePanel() {
     <section className="relative w-fit max-w-full overflow-hidden border border-primary/30 bg-primary/5 p-2 clip-angled-sm" data-testid="coach-calendar-code-panel">
       <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
       <div className="relative z-10 flex items-center justify-between gap-2">
-        <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-primary sm:text-[10px]">Connect your calendar</p>
+        <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-primary sm:text-[10px]">Share coach schedule</p>
         <div className="flex shrink-0 items-center justify-end gap-1">
           <div className="border border-primary bg-background px-2 py-1 font-display text-base tracking-[0.12em] text-foreground" aria-label="Fallback coach calendar code">
             {isLoading ? '·····' : data?.code ?? '-----'}
@@ -1398,7 +1398,7 @@ function FanCalendarConnectionPanel({
         window.location.origin,
         window.location.hostname,
       )
-        ? 'That calendar link is invalid, expired, or revoked.'
+        ? 'That coach schedule link is invalid, expired, or revoked.'
         : '';
     } catch {
       return '';
@@ -1473,7 +1473,7 @@ function FanCalendarConnectionPanel({
     if (!pendingSubscriptionToken) return;
     if (pendingSubscriptionQuery.isError) {
       setPendingSubscriptionToken('');
-      setInputError('That calendar link is invalid, expired, or revoked.');
+      setInputError('That coach schedule link is invalid, expired, or revoked.');
     }
   }, [pendingSubscriptionQuery.data, pendingSubscriptionQuery.isError, pendingSubscriptionToken]);
 
@@ -1504,7 +1504,7 @@ function FanCalendarConnectionPanel({
     }
     const nextCode = value.toUpperCase();
     if (nextCode.length !== 5) {
-      setInputError('Paste a Pixl Sports calendar link or enter the five-character coach code.');
+      setInputError('Paste a Pixl Sports schedule link from your coach or enter their five-character code.');
       return;
     }
     connect.mutate(
@@ -1534,15 +1534,15 @@ function FanCalendarConnectionPanel({
       <div className={compact ? 'flex items-center gap-2' : 'flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between'}>
         <div className={compact ? 'shrink-0' : 'max-w-xl'}>
           <p className={`${compact ? 'hidden text-[9px] tracking-wider text-black md:block' : 'text-xs tracking-widest text-primary'} font-bold uppercase`}>
-            {compact ? 'Connect to Coach’s Schedule' : 'Connect your family calendar'}
+            Connect to Coach’s Schedule
           </p>
-          <h2 className={`${compact ? 'sr-only' : 'mt-2 font-display text-3xl uppercase tracking-wide text-foreground'}`}>Connect your calendar.</h2>
+          <h2 className={`${compact ? 'sr-only' : 'mt-2 font-display text-3xl uppercase tracking-wide text-foreground'}`}>Connect to your coach’s Pixl Sports schedule.</h2>
           <p className={`${compact ? 'sr-only' : 'mt-2 text-sm font-medium leading-relaxed text-muted-foreground'}`}>
-            Paste the private link your coach shared, or use their five-character code. Your calendar refreshes automatically when the team schedule changes.
+            Paste the private Pixl Sports schedule link your coach shared, or use their five-character code. The connected schedule refreshes automatically when your coach makes changes.
           </p>
         </div>
         <form onSubmit={submit} className={`${compact ? 'min-w-0 flex-1 gap-1' : 'w-full max-w-md gap-2'} flex`} data-testid="form-connect-coach-calendar">
-          <label className="sr-only" htmlFor="coach-calendar-connection">Coach calendar link or code</label>
+          <label className="sr-only" htmlFor="coach-calendar-connection">Coach’s Pixl Sports schedule link or code</label>
           <input
             id="coach-calendar-connection"
             value={input}
@@ -1567,23 +1567,23 @@ function FanCalendarConnectionPanel({
         </form>
       </div>
       <p id="coach-calendar-code-help" className={`${compact ? 'sr-only' : 'mt-3 text-[10px]'} font-bold uppercase tracking-wider text-muted-foreground`}>
-        {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the private calendar link or five-character code from the Calendar section.'}
+        {calendar ? `Connected to ${calendar.title || 'your coach’s schedule'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the private Pixl Sports schedule link or five-character code from the Schedule section.'}
       </p>
       {pendingSubscriptionToken && (
         <div className="mt-5 border border-primary/40 bg-background p-4 clip-angled-sm" data-testid="calendar-handoff-confirmation">
           {pendingSubscriptionQuery.isLoading ? (
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking the private calendar link…</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking the private schedule link…</p>
           ) : pendingSubscriptionQuery.data ? (
             <>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">Calendar link found</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">Coach schedule found</p>
               <h3 className="mt-2 font-display text-2xl uppercase tracking-wide text-foreground">
-                {pendingSubscriptionQuery.data.title || 'Your coach’s calendar'}
+                {pendingSubscriptionQuery.data.title || 'Your coach’s schedule'}
               </h3>
               <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 {pendingSubscriptionQuery.data.teamSeason || 'Current team schedule'}
               </p>
               <p className="mt-3 text-sm font-medium leading-relaxed text-muted-foreground">
-                Connect this coach calendar to your family account? Your existing connection will stay unchanged until you confirm.
+                Connect to this coach’s Pixl Sports schedule? Your existing schedule connection will stay unchanged until you confirm.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
@@ -1592,7 +1592,7 @@ function FanCalendarConnectionPanel({
                   className="bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/80 clip-angled-sm"
                   data-testid="button-confirm-coach-calendar"
                 >
-                  Connect this calendar
+                  Connect this schedule
                 </button>
                 <button
                   type="button"
@@ -1614,7 +1614,7 @@ function FanCalendarConnectionPanel({
           className="mt-3 text-xs font-bold uppercase tracking-wider text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-destructive"
           data-testid="button-disconnect-coach-calendar"
         >
-          Disconnect from coach
+          Disconnect coach’s schedule
         </button>
       )}
       {(connect.isError || isError || inputError) && (
@@ -1622,11 +1622,11 @@ function FanCalendarConnectionPanel({
           {inputError
             || (activeCalendarErrorKind === 'invalid'
               ? connection?.kind === 'subscription'
-                ? 'This private calendar link has expired or was revoked. Paste a new link or code from your coach.'
+                ? 'This private schedule link has expired or was revoked. Paste a new link or code from your coach.'
                 : 'This coach code is no longer valid. Ask your coach for a new code.'
               : connectErrorKind === 'invalid'
                 ? 'That coach code is no longer valid. Ask your coach for a new code.'
-                : 'That calendar connection could not be connected. Check the link or code and try again.')}
+                : 'That coach schedule could not be connected. Check the link or code and try again.')}
         </p>
       )}
 
