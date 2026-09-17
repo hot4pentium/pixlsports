@@ -2785,6 +2785,20 @@ function ScheduleEditor() {
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <section className="min-w-0 lg:sticky lg:top-6">
+            <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5" data-testid="schedule-template-picker">
+              <span className="mr-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Template</span>
+              {toolData.schedule.templateNames.map((name, index) => (
+                <button
+                  type="button"
+                  key={name}
+                  onClick={() => { setSaved(false); setSelectedTemplate(index); }}
+                  className={`h-8 min-w-[76px] border px-2 text-center font-display text-[11px] uppercase leading-none tracking-wide transition-all clip-angled-sm ${selectedTemplate === index ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground'}`}
+                  data-testid={`button-template-${index}`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
             <SchedulePreview
               teamName={teamName}
               season={season}
@@ -2872,22 +2886,6 @@ function ScheduleEditor() {
               <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Select an event to edit it
               </p>
-            </div>
-
-            <div className="relative z-10 my-7 h-px bg-border" />
-
-            <div className="relative z-10">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-foreground">Playbook template</p>
-                <Grid2X2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {toolData.schedule.templateNames.map((name, index) => (
-                  <button type="button" key={name} onClick={() => { setSaved(false); setSelectedTemplate(index); }} className={`min-h-[64px] border p-2 text-left font-display text-base uppercase leading-none tracking-wide transition-all clip-angled-sm ${selectedTemplate === index ? 'border-primary bg-primary text-primary-foreground shadow-md' : 'border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground'}`} data-testid={`button-template-${index}`}>
-                    {name}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="relative z-10 mt-auto pt-8">
