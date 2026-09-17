@@ -2831,8 +2831,18 @@ function ScheduleEditor() {
           </div>
         </div>
 
-        <div className="grid flex-1 gap-6 lg:grid-cols-[380px_1fr]">
-          <aside className="order-2 flex flex-col border border-border bg-card p-5 clip-angled-sm lg:order-1 sm:p-6">
+        <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <section className="min-w-0 lg:sticky lg:top-6">
+            <SchedulePreview
+              teamName={teamName}
+              season={season}
+              events={events}
+              selectedTemplate={selectedTemplate}
+              onAddEvent={openNewEventForm}
+            />
+          </section>
+
+          <aside className="flex flex-col border border-border bg-card p-5 clip-angled-sm">
             <div className="relative z-10 mb-6 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule details</p>
@@ -2867,7 +2877,6 @@ function ScheduleEditor() {
                         setSelectedWeekKey(week.key);
                         const firstEvent = week.events[0];
                         setSelectedEventId(firstEvent?.id ?? '');
-                        if (firstEvent) setEventForm({ ...firstEvent });
                       }}
                       aria-pressed={week.key === selectedWeek?.key}
                       className={`min-w-[138px] border px-3 py-2.5 text-left transition-colors clip-angled-sm ${week.key === selectedWeek?.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/60 hover:text-foreground'}`}
@@ -2898,35 +2907,11 @@ function ScheduleEditor() {
                       <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider">{formatScheduleTime(event.time)}</span>
                     </button>
                   ))}
-                  <button
-                    type="button"
-                    onClick={openNewEventForm}
-                    className="flex w-full items-center justify-center gap-2 border border-dashed border-primary bg-primary/5 px-3 py-3 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/10 clip-angled-sm"
-                    aria-label="Add new schedule event"
-                    data-testid="button-add-event"
-                  >
-                    <Plus className="h-4 w-4" /> Add Event
-                  </button>
                 </div>
               </div>
-
-              {eventForm ? (
-                <div className="mt-4">
-                  <ScheduleEventCard
-                    event={eventForm}
-                    index={selectedEventIndex >= 0 ? selectedEventIndex : events.length}
-                    count={events.length}
-                    onChange={updateEvent}
-                    onRemove={removeEvent}
-                    onMove={moveEvent}
-                     onSave={() => { void saveEventForm(); }}
-                    isNew={!events.some((event) => event.id === eventForm.id)}
-                    onCancel={() => setEventForm(null)}
-                  />
-                </div>
-              ) : (
-                <p className="mt-4 border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground">Select an entry to edit it, or choose Add Event.</p>
-              )}
+              <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Select an event to edit it
+              </p>
             </div>
 
             <div className="relative z-10 my-7 h-px bg-border" />
@@ -2981,11 +2966,39 @@ function ScheduleEditor() {
 
             {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
           </aside>
-
-          <section className="order-1 min-w-0 lg:order-2">
-            <SchedulePreview teamName={teamName} season={season} events={events} selectedTemplate={selectedTemplate} />
-          </section>
         </div>
+
+        <Dialog
+          open={Boolean(eventForm)}
+          onOpenChange={(open) => {
+            if (!open) setEventForm(null);
+          }}
+        >
+          <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] gap-5 overflow-y-auto border-primary/40 bg-card p-4 sm:max-w-2xl sm:p-6" data-testid="schedule-event-dialog">
+            <DialogHeader className="pr-8">
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Team calendar</p>
+              <DialogTitle className="font-display text-3xl uppercase tracking-wide">
+                {eventForm && events.some((event) => event.id === eventForm.id) ? 'Edit event' : 'Add event'}
+              </DialogTitle>
+              <DialogDescription className="text-left">
+                Add the details families need, then save the event to the calendar.
+              </DialogDescription>
+            </DialogHeader>
+            {eventForm && (
+              <ScheduleEventCard
+                event={eventForm}
+                index={selectedEventIndex >= 0 ? selectedEventIndex : events.length}
+                count={events.length}
+                onChange={updateEvent}
+                onRemove={removeEvent}
+                onMove={moveEvent}
+                onSave={() => { void saveEventForm(); }}
+                isNew={!events.some((event) => event.id === eventForm.id)}
+                onCancel={() => setEventForm(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </StudioLayout>
   );
@@ -3227,7 +3240,19 @@ function buildScheduleGraphicSvg({
   </svg>`;
 }
 
-function SchedulePreview({ teamName, season, events, selectedTemplate }: { teamName: string; season: string; events: ScheduleEvent[]; selectedTemplate: number }) {
+function SchedulePreview({
+  teamName,
+  season,
+  events,
+  selectedTemplate,
+  onAddEvent,
+}: {
+  teamName: string;
+  season: string;
+  events: ScheduleEvent[];
+  selectedTemplate: number;
+  onAddEvent: () => void;
+}) {
   const templateClass = selectedTemplate === 1
     ? 'bg-[#177d76] text-[#f9f3e8]'
     : selectedTemplate === 2
@@ -3240,9 +3265,9 @@ function SchedulePreview({ teamName, season, events, selectedTemplate }: { teamN
       : 'border-white/25 bg-black/10';
 
   return (
-    <div className="relative flex min-h-[520px] items-center justify-center overflow-hidden border border-border bg-muted p-4 sm:min-h-[680px] sm:p-8 clip-angled-sm">
+    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-border bg-muted px-4 pb-20 pt-4 sm:min-h-[760px] sm:px-8 sm:pb-24 sm:pt-8 clip-angled-sm">
       <div className="absolute inset-0 bg-tech-grid opacity-50" />
-      <div className={`relative w-full max-w-[760px] overflow-hidden rounded-[22px] ${templateClass} p-5 shadow-2xl sm:p-8`} data-testid="preview-canvas">
+      <div className={`relative w-full max-w-[960px] overflow-hidden rounded-[22px] ${templateClass} p-5 shadow-2xl sm:p-8`} data-testid="preview-canvas">
         <div className={`absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] ${selectedTemplate === 2 ? 'border-[#f36f4c]/45' : 'border-[#f5c94d]/35'}`} />
         <div className={`absolute -bottom-28 -left-20 h-72 w-72 rounded-full ${selectedTemplate === 1 ? 'bg-[#f5c94d]' : 'bg-[#177d76]'}`} />
         <div className="relative">
@@ -3296,6 +3321,16 @@ function SchedulePreview({ teamName, season, events, selectedTemplate }: { teamN
           </div>
         </div>
       </div>
+      <button
+        type="button"
+        onClick={onAddEvent}
+        className="absolute bottom-4 left-1/2 z-20 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background sm:bottom-5 sm:h-16 sm:w-16"
+        aria-label="Add event"
+        data-testid="button-add-event"
+      >
+        <Plus className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={3} />
+        <span className="sr-only">Add event</span>
+      </button>
     </div>
   );
 }
