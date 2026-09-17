@@ -28,6 +28,7 @@ import {
   endGame,
   getSportRule,
   isSport,
+  isTrackerRevisionConflict,
   mergeTrackerData,
   normalizeTrackerData,
   seasonTotals,
@@ -135,6 +136,8 @@ export function StatTrackerPage() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [retryAvailable, setRetryAvailable] = useState(false);
+  const [revisionConflict, setRevisionConflict] = useState(false);
   const [showAllStats, setShowAllStats] = useState(false);
   const [cloudProject, setCloudProject] = useState<{ id: string; revision: number } | null>(null);
   const initializedCloud = useRef(false);
@@ -198,6 +201,8 @@ export function StatTrackerPage() {
 
   const beginGame = () => {
     setError('');
+    setRetryAvailable(false);
+    setRevisionConflict(false);
     setCurrentGame(createGameSession(sport, { date, opponent, notes }));
     announce('GAME STARTED — LIVE STATS ARE READY');
   };
@@ -205,6 +210,23 @@ export function StatTrackerPage() {
   const updateCurrentGame = (next: GameSession) => {
     setCurrentGame(next);
     announce('STAT UPDATED');
+  };
+
+  const syncTrackerData = async (nextData: StatTrackerData) => {
+    if (cloudProject) {
+      const saved = await updateProject.mutateAsync({
+        projectId: cloudProject.id,
+        data: { project: trackerPayload(nextData), expectedRevision: cloudProject.revision },
+      });
+      setCloudProject({ id: saved.id, revision: saved.revision });
+    } else {
+      const created = await createProject.mutateAsync({
+        data: { name: `${profile.athleteName || 'Athlete'} — Stat Tracker`, project: trackerPayload(nextData), guestUsageKey },
+      });
+      setCloudProject({ id: created.id, revision: created.revision });
+    }
+    await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
   };
 
   const saveCompletedGame = async () => {
@@ -215,25 +237,36 @@ export function StatTrackerPage() {
     setCurrentGame(null);
     setSaving(true);
     setError('');
+    setRetryAvailable(false);
+    setRevisionConflict(false);
     try {
-      if (cloudProject) {
-        const saved = await updateProject.mutateAsync({
-          projectId: cloudProject.id,
-          data: { project: trackerPayload(nextData), expectedRevision: cloudProject.revision },
-        });
-        setCloudProject({ id: saved.id, revision: saved.revision });
-      } else {
-        const created = await createProject.mutateAsync({
-          data: { name: `${profile.athleteName || 'Athlete'} — Stat Tracker`, project: trackerPayload(nextData), guestUsageKey },
-        });
-        setCloudProject({ id: created.id, revision: created.revision });
-      }
-      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+      await syncTrackerData(nextData);
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
       setError(trackerSaveErrorMessage(saveError));
+      setRevisionConflict(isTrackerRevisionConflict(saveError));
+      setRetryAvailable(!isTrackerRevisionConflict(saveError));
       announce('LOCAL COPY SAVED — CLOUD SYNC NEEDS ATTENTION');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const retryCloudSync = async () => {
+    if (saving || !retryAvailable) return;
+    setSaving(true);
+    setError('');
+    try {
+      await syncTrackerData(data);
+      setRetryAvailable(false);
+      setRevisionConflict(false);
+      announce('CLOUD SYNC RESTORED — SEASON HISTORY IS SAFE');
+    } catch (saveError: any) {
+      const conflict = isTrackerRevisionConflict(saveError);
+      setError(trackerSaveErrorMessage(saveError));
+      setRevisionConflict(conflict);
+      setRetryAvailable(!conflict);
+      announce('LOCAL COPY STILL SAFE — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
     }
@@ -265,7 +298,21 @@ export function StatTrackerPage() {
         ))}
       </div>
 
-      {error && <div className="mb-5 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive" role="alert">{error}</div>}
+      {error && (
+        <div className="mb-5 flex flex-col gap-3 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive sm:flex-row sm:items-center sm:justify-between" role="alert">
+          <p>{error}</p>
+          {retryAvailable && (
+            <button type="button" disabled={saving} onClick={() => void retryCloudSync()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50">
+              <RotateCcw className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} /> {saving ? 'Retrying…' : 'Retry cloud sync'}
+            </button>
+          )}
+          {revisionConflict && (
+            <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground">
+              <RotateCcw className="h-4 w-4" /> Refresh to merge
+            </button>
+          )}
+        </div>
+      )}
 
       {!currentGame ? (
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

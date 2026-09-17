@@ -6,6 +6,7 @@ import {
   adjustScore,
   createGameSession,
   endGame,
+  isTrackerRevisionConflict,
   mergeTrackerData,
   normalizeTrackerData,
   seasonTotals,
@@ -128,6 +129,12 @@ test('a later successful sync preserves games kept locally through a failed sync
 test('revision conflicts explain how to recover without discarding the local game', () => {
   const message = trackerSaveErrorMessage({ status: 409 });
 
-  assert.match(message, /local game is safe/);
-  assert.match(message, /reload this page/);
+  assert.equal(isTrackerRevisionConflict({ status: 409 }), true);
+  assert.match(message, /local history is safe/);
+  assert.match(message, /refresh this page/);
+});
+
+test('ordinary sync failures remain retryable instead of looking like conflicts', () => {
+  assert.equal(isTrackerRevisionConflict({ status: 503 }), false);
+  assert.match(trackerSaveErrorMessage({ status: 503 }), /Try saving again/);
 });
