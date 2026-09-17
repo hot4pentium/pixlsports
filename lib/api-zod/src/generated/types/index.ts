@@ -22,6 +22,7 @@ export * from './badRequestResponse';
 export * from './billingWebhookResponse';
 export * from './billingWebhookResponseStatus';
 export * from './checklistConflict';
+export * from './checklistGame';
 export * from './checklistItem';
 export * from './checklistShare';
 export * from './checklistShareInput';

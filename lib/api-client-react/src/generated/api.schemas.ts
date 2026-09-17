@@ -150,6 +150,22 @@ export interface ChecklistItem {
   section?: string | null;
 }
 
+export interface ChecklistGame {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  /** @maxLength 20 */
+  date: string;
+  /** @maxLength 20 */
+  time: string;
+  /** @maxLength 240 */
+  location: string;
+  /** @maxLength 240 */
+  opponent: string;
+}
+
 export type ChecklistShareInputMode = typeof ChecklistShareInputMode[keyof typeof ChecklistShareInputMode];
 
 
@@ -167,6 +183,8 @@ export interface ChecklistShareInput {
   mode: ChecklistShareInputMode;
   /** @maxItems 100 */
   items: ChecklistItem[];
+  /** @nullable */
+  selectedGame?: ChecklistGame | null;
 }
 
 export type ChecklistShareUpdate = ChecklistShareInput & {

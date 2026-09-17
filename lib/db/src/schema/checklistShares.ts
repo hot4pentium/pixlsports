@@ -8,6 +8,7 @@ export const checklistSharesTable = pgTable("checklist_shares", {
   title: text("title").notNull(),
   mode: text("mode").notNull().default("gameday"),
   items: jsonb("items").notNull(),
+  selectedGame: jsonb("selected_game"),
   revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

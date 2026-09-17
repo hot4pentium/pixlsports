@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChecklistGame } from './checklistGame';
 import type { ChecklistItem } from './checklistItem';
 import type { ChecklistShareInputMode } from './checklistShareInputMode';
 
@@ -17,4 +18,6 @@ export interface ChecklistShareInput {
   mode: ChecklistShareInputMode;
   /** @maxItems 100 */
   items: ChecklistItem[];
+  /** @nullable */
+  selectedGame?: ChecklistGame | null;
 }

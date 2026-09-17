@@ -24,11 +24,25 @@ test('normalizes malformed values and resets completion without dropping custom 
   const checklist = normalizeChecklist({
     title: 'Saturday tournament',
     mode: 'gameday',
+    selectedGame: {
+      id: 'game-1',
+      date: '2026-09-19',
+      time: '16:30',
+      location: 'Central Field',
+      opponent: 'Riverside',
+    },
     items: [{ id: 'one', label: '  Bring cones  ', completed: true, section: 'Game 1' }],
   });
   assert.deepEqual(checklist, {
     title: 'Saturday tournament',
     mode: 'gameday',
+    selectedGame: {
+      id: 'game-1',
+      date: '2026-09-19',
+      time: '16:30',
+      location: 'Central Field',
+      opponent: 'Riverside',
+    },
     items: [{ id: 'one', label: 'Bring cones', completed: true, section: 'Game 1' }],
   });
   assert.equal(completedChecklistCount(checklist?.items ?? []), 1);

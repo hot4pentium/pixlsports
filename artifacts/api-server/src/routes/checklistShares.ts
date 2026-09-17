@@ -20,6 +20,7 @@ function shareResponse(share: typeof checklistSharesTable.$inferSelect, canManag
     title: share.title,
     mode: share.mode,
     items: share.items,
+    selectedGame: share.selectedGame,
     revision: share.revision,
     createdAt: share.createdAt,
     updatedAt: share.updatedAt,
@@ -45,6 +46,7 @@ router.post("/checklist-shares", requireAuth, async (req, res): Promise<void> =>
       title: parsed.data.title,
       mode: parsed.data.mode,
       items: parsed.data.items,
+      selectedGame: parsed.data.selectedGame ?? null,
     }).returning();
     res.status(201).json(shareResponse(created, true));
   } catch (error) {
@@ -91,6 +93,7 @@ router.patch("/checklist-shares/:shareToken", async (req, res): Promise<void> =>
       title: parsed.data.title,
       mode: parsed.data.mode,
       items: parsed.data.items,
+      selectedGame: parsed.data.selectedGame ?? null,
       revision: sql`${checklistSharesTable.revision} + 1`,
       updatedAt: new Date(),
     }).where(and(

@@ -124,6 +124,7 @@ import {
   resetGamedayChecklist,
   saveGamedayChecklist,
   type GamedayChecklistItem,
+  type GamedayChecklistGame,
   type LocalGamedayChecklist,
 } from '@/features/gameday-checklist';
 import {
@@ -3354,6 +3355,8 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const { user, isSignedIn } = useUser();
   const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(user?.id ?? 'anonymous')}`;
   const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist());
+  const [localSchedule] = useState(() => readScheduleDraft());
+  const [calendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [hydrated, setHydrated] = useState(!shared);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [notice, setNotice] = useState('');
@@ -3363,6 +3366,34 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const latestChecklist = useRef(checklist);
   const revisionRef = useRef(revision);
   const saveQueue = useRef(Promise.resolve());
+
+  const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
+  const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
+  const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
+    query: {
+      enabled: Boolean(isSignedIn && calendarCode),
+      refetchInterval: 30000,
+      queryKey: ['/api/coach-calendar', calendarCode],
+    },
+  });
+  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
+    query: {
+      enabled: Boolean(isSignedIn && calendarSubscriptionToken),
+      refetchInterval: 30000,
+      queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
+    },
+  });
+  const activeCalendarQuery = calendarConnection?.kind === 'subscription'
+    ? subscriptionCalendarQuery
+    : codeCalendarQuery;
+  const calendar = activeCalendarQuery.data;
+  const calendarLoading = activeCalendarQuery.isFetching;
+  const calendarEvents = calendarConnection
+    ? (calendar?.events ?? [])
+    : (localSchedule?.events ?? []);
+  const calendarGames = calendarEvents.filter((event) => event.type === 'game');
+  const liveSelectedGame = calendarGames.find((event) => event.id === checklist.selectedGame?.id);
+  const displayedGame = liveSelectedGame ?? checklist.selectedGame;
 
   const { data: sharedChecklist, isLoading: sharedLoading, isError: sharedError } = useGetChecklistShare(shareToken, {
     query: {
@@ -3439,6 +3470,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
       title: next.title.trim() || 'Gameday Checklist',
       mode: next.mode,
       items: next.items,
+      selectedGame: next.selectedGame ?? null,
       expectedRevision: revisionRef.current,
     };
     saveQueue.current = saveQueue.current.then(async () => {
@@ -3506,6 +3538,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           title: latestChecklist.current.title.trim() || 'Gameday Checklist',
           mode: latestChecklist.current.mode,
           items: latestChecklist.current.items,
+          selectedGame: latestChecklist.current.selectedGame ?? null,
         },
       });
       const url = `${appOrigin}${basePath}/checklist/${created.shareToken}`;
@@ -3620,6 +3653,68 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
               <button type="button" onClick={resetChecklist} className="inline-flex items-center gap-2 border border-border bg-background px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-foreground" data-testid="button-reset-checklist"><RotateCcw className="h-3.5 w-3.5" /> Reset</button>
               <button type="button" onClick={addItem} className="inline-flex items-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90" data-testid="button-add-checklist-item"><Plus className="h-3.5 w-3.5" /> Add item</button>
             </div>
+          </div>
+
+          <div className="mt-5 border-t border-border pt-5" data-testid="checklist-game-selector">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <label className="min-w-0 flex-1">
+                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary"><CalendarDays className="h-3.5 w-3.5" /> Checklist for game</span>
+                <select
+                  value={displayedGame?.id ?? ''}
+                  onChange={(event) => {
+                    const nextGame = calendarGames.find((candidate) => candidate.id === event.target.value);
+                    updateChecklist({
+                      ...latestChecklist.current,
+                      selectedGame: nextGame
+                        ? {
+                            id: nextGame.id,
+                            date: nextGame.date,
+                            time: nextGame.time,
+                            location: nextGame.location,
+                            opponent: nextGame.opponent,
+                          }
+                        : undefined,
+                    });
+                  }}
+                  disabled={shared || calendarGames.length === 0}
+                  className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm font-bold uppercase tracking-wide text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+                  aria-label="Choose which game this checklist is for"
+                  data-testid="select-checklist-game"
+                >
+                  <option value="">Choose a game</option>
+                  {displayedGame && !calendarGames.some((game) => game.id === displayedGame.id) && (
+                    <option value={displayedGame.id}>Previously selected · {displayedGame.opponent || 'Opponent TBD'}</option>
+                  )}
+                  {calendarGames.map((game) => (
+                    <option key={game.id} value={game.id}>
+                      {formatScheduleDate(game.date)} · VS {game.opponent || 'OPPONENT TBD'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="max-w-sm text-xs font-medium leading-relaxed text-muted-foreground">
+                {calendarLoading
+                  ? 'Updating your connected calendar…'
+                  : calendarConnection
+                    ? 'Choose the game this checklist should follow from your connected calendar.'
+                    : localSchedule
+                      ? 'Choose a game from your saved schedule.'
+                      : 'Add games in Schedule to connect this checklist to a calendar event.'}
+              </p>
+            </div>
+            {displayedGame && (
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-l-4 border-primary bg-primary/5 px-3 py-3 text-xs font-bold uppercase tracking-wider text-foreground">
+                <span>{formatScheduleDate(displayedGame.date)}</span>
+                <span>{formatScheduleTime(displayedGame.time)}</span>
+                <span>VS {displayedGame.opponent || 'OPPONENT TBD'}</span>
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {displayedGame.location || 'Location TBD'}</span>
+              </div>
+            )}
+            {!shared && !calendarLoading && calendarGames.length === 0 && (
+              <Link href="/studio/schedule" className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
+                Open schedule <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
           </div>
 
           <div className="mt-5 h-2 overflow-hidden bg-muted" aria-label={`${progress}% complete`}><div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div>

@@ -1019,6 +1019,15 @@ components:
         section:
           type: ["string", "null"]
           maxLength: 100
+    ChecklistGame:
+      type: object
+      required: [id, date, time, location, opponent]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        date: { type: string, maxLength: 20 }
+        time: { type: string, maxLength: 20 }
+        location: { type: string, maxLength: 240 }
+        opponent: { type: string, maxLength: 240 }
     ChecklistShareInput:
       type: object
       required: [title, mode, items]
@@ -1030,6 +1039,10 @@ components:
           maxItems: 100
           items:
             $ref: "#/components/schemas/ChecklistItem"
+        selectedGame:
+          type: ["object", "null"]
+          allOf:
+            - $ref: "#/components/schemas/ChecklistGame"
     ChecklistShareUpdate:
       allOf:
         - $ref: "#/components/schemas/ChecklistShareInput"

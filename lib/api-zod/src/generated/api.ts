@@ -253,6 +253,16 @@ export const createChecklistShareBodyItemsItemSectionMax = 100;
 
 export const createChecklistShareBodyItemsMax = 100;
 
+export const createChecklistShareBodySelectedGameOneIdMax = 100;
+
+export const createChecklistShareBodySelectedGameOneDateMax = 20;
+
+export const createChecklistShareBodySelectedGameOneTimeMax = 20;
+
+export const createChecklistShareBodySelectedGameOneLocationMax = 240;
+
+export const createChecklistShareBodySelectedGameOneOpponentMax = 240;
+
 
 
 export const CreateChecklistShareBody = zod.object({
@@ -263,7 +273,14 @@ export const CreateChecklistShareBody = zod.object({
   "label": zod.string().min(1).max(createChecklistShareBodyItemsItemLabelMax),
   "completed": zod.boolean(),
   "section": zod.string().max(createChecklistShareBodyItemsItemSectionMax).nullish()
-})).max(createChecklistShareBodyItemsMax)
+})).max(createChecklistShareBodyItemsMax),
+  "selectedGame": zod.object({
+  "id": zod.string().min(1).max(createChecklistShareBodySelectedGameOneIdMax),
+  "date": zod.string().max(createChecklistShareBodySelectedGameOneDateMax),
+  "time": zod.string().max(createChecklistShareBodySelectedGameOneTimeMax),
+  "location": zod.string().max(createChecklistShareBodySelectedGameOneLocationMax),
+  "opponent": zod.string().max(createChecklistShareBodySelectedGameOneOpponentMax)
+}).nullish()
 })
 
 export const createChecklistShareResponseOneTitleMax = 200;
@@ -276,6 +293,16 @@ export const createChecklistShareResponseOneItemsItemSectionMax = 100;
 
 export const createChecklistShareResponseOneItemsMax = 100;
 
+export const createChecklistShareResponseOneSelectedGameOneIdMax = 100;
+
+export const createChecklistShareResponseOneSelectedGameOneDateMax = 20;
+
+export const createChecklistShareResponseOneSelectedGameOneTimeMax = 20;
+
+export const createChecklistShareResponseOneSelectedGameOneLocationMax = 240;
+
+export const createChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
+
 
 
 
@@ -287,7 +314,14 @@ export const CreateChecklistShareResponse = zod.object({
   "label": zod.string().min(1).max(createChecklistShareResponseOneItemsItemLabelMax),
   "completed": zod.boolean(),
   "section": zod.string().max(createChecklistShareResponseOneItemsItemSectionMax).nullish()
-})).max(createChecklistShareResponseOneItemsMax)
+})).max(createChecklistShareResponseOneItemsMax),
+  "selectedGame": zod.object({
+  "id": zod.string().min(1).max(createChecklistShareResponseOneSelectedGameOneIdMax),
+  "date": zod.string().max(createChecklistShareResponseOneSelectedGameOneDateMax),
+  "time": zod.string().max(createChecklistShareResponseOneSelectedGameOneTimeMax),
+  "location": zod.string().max(createChecklistShareResponseOneSelectedGameOneLocationMax),
+  "opponent": zod.string().max(createChecklistShareResponseOneSelectedGameOneOpponentMax)
+}).nullish()
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
   "revision": zod.number().int().min(1),
@@ -314,6 +348,16 @@ export const getChecklistShareResponseOneItemsItemSectionMax = 100;
 
 export const getChecklistShareResponseOneItemsMax = 100;
 
+export const getChecklistShareResponseOneSelectedGameOneIdMax = 100;
+
+export const getChecklistShareResponseOneSelectedGameOneDateMax = 20;
+
+export const getChecklistShareResponseOneSelectedGameOneTimeMax = 20;
+
+export const getChecklistShareResponseOneSelectedGameOneLocationMax = 240;
+
+export const getChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
+
 
 
 
@@ -325,7 +369,14 @@ export const GetChecklistShareResponse = zod.object({
   "label": zod.string().min(1).max(getChecklistShareResponseOneItemsItemLabelMax),
   "completed": zod.boolean(),
   "section": zod.string().max(getChecklistShareResponseOneItemsItemSectionMax).nullish()
-})).max(getChecklistShareResponseOneItemsMax)
+})).max(getChecklistShareResponseOneItemsMax),
+  "selectedGame": zod.object({
+  "id": zod.string().min(1).max(getChecklistShareResponseOneSelectedGameOneIdMax),
+  "date": zod.string().max(getChecklistShareResponseOneSelectedGameOneDateMax),
+  "time": zod.string().max(getChecklistShareResponseOneSelectedGameOneTimeMax),
+  "location": zod.string().max(getChecklistShareResponseOneSelectedGameOneLocationMax),
+  "opponent": zod.string().max(getChecklistShareResponseOneSelectedGameOneOpponentMax)
+}).nullish()
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
   "revision": zod.number().int().min(1),
@@ -353,6 +404,16 @@ export const updateChecklistShareBodyOneItemsItemSectionMax = 100;
 
 export const updateChecklistShareBodyOneItemsMax = 100;
 
+export const updateChecklistShareBodyOneSelectedGameOneIdMax = 100;
+
+export const updateChecklistShareBodyOneSelectedGameOneDateMax = 20;
+
+export const updateChecklistShareBodyOneSelectedGameOneTimeMax = 20;
+
+export const updateChecklistShareBodyOneSelectedGameOneLocationMax = 240;
+
+export const updateChecklistShareBodyOneSelectedGameOneOpponentMax = 240;
+
 
 
 
@@ -364,7 +425,14 @@ export const UpdateChecklistShareBody = zod.object({
   "label": zod.string().min(1).max(updateChecklistShareBodyOneItemsItemLabelMax),
   "completed": zod.boolean(),
   "section": zod.string().max(updateChecklistShareBodyOneItemsItemSectionMax).nullish()
-})).max(updateChecklistShareBodyOneItemsMax)
+})).max(updateChecklistShareBodyOneItemsMax),
+  "selectedGame": zod.object({
+  "id": zod.string().min(1).max(updateChecklistShareBodyOneSelectedGameOneIdMax),
+  "date": zod.string().max(updateChecklistShareBodyOneSelectedGameOneDateMax),
+  "time": zod.string().max(updateChecklistShareBodyOneSelectedGameOneTimeMax),
+  "location": zod.string().max(updateChecklistShareBodyOneSelectedGameOneLocationMax),
+  "opponent": zod.string().max(updateChecklistShareBodyOneSelectedGameOneOpponentMax)
+}).nullish()
 }).and(zod.object({
   "expectedRevision": zod.number().int().min(1)
 }))
@@ -379,6 +447,16 @@ export const updateChecklistShareResponseOneItemsItemSectionMax = 100;
 
 export const updateChecklistShareResponseOneItemsMax = 100;
 
+export const updateChecklistShareResponseOneSelectedGameOneIdMax = 100;
+
+export const updateChecklistShareResponseOneSelectedGameOneDateMax = 20;
+
+export const updateChecklistShareResponseOneSelectedGameOneTimeMax = 20;
+
+export const updateChecklistShareResponseOneSelectedGameOneLocationMax = 240;
+
+export const updateChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
+
 
 
 
@@ -390,7 +468,14 @@ export const UpdateChecklistShareResponse = zod.object({
   "label": zod.string().min(1).max(updateChecklistShareResponseOneItemsItemLabelMax),
   "completed": zod.boolean(),
   "section": zod.string().max(updateChecklistShareResponseOneItemsItemSectionMax).nullish()
-})).max(updateChecklistShareResponseOneItemsMax)
+})).max(updateChecklistShareResponseOneItemsMax),
+  "selectedGame": zod.object({
+  "id": zod.string().min(1).max(updateChecklistShareResponseOneSelectedGameOneIdMax),
+  "date": zod.string().max(updateChecklistShareResponseOneSelectedGameOneDateMax),
+  "time": zod.string().max(updateChecklistShareResponseOneSelectedGameOneTimeMax),
+  "location": zod.string().max(updateChecklistShareResponseOneSelectedGameOneLocationMax),
+  "opponent": zod.string().max(updateChecklistShareResponseOneSelectedGameOneOpponentMax)
+}).nullish()
 }).and(zod.object({
   "shareToken": zod.string().uuid(),
   "revision": zod.number().int().min(1),

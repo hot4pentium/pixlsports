@@ -158,12 +158,19 @@
     background-size: 32px 32px;
   }
   .studio-page-background {
+    position: relative;
+    isolation: isolate;
     background-color: hsl(var(--background));
-    background-image: url('./assets/page-background.webp');
-    background-position: center top;
-    background-repeat: repeat;
-    background-size: 1024px 1024px;
-    background-attachment: fixed;
+  }
+  .studio-page-background::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: hsl(var(--background)) url('./assets/page-background.webp') center center / cover no-repeat;
+    transform: translateZ(0);
+    will-change: transform;
   }
   .studio-page-background > main {
     background-color: transparent;
