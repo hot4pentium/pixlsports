@@ -70,6 +70,7 @@ test("collaborators recover stale checklist revisions and owners control link ro
   const ownerId = `checklist-owner-${crypto.randomUUID()}`;
   const collaboratorId = `checklist-collaborator-${crypto.randomUUID()}`;
   const app = express();
+  let eventsAbortController: AbortController | undefined;
 
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -119,6 +120,28 @@ test("collaborators recover stale checklist revisions and owners control link ro
     assert.equal(collaboratorView.canManage, false);
     assert.equal(collaboratorView.revision, 1);
 
+    eventsAbortController = new AbortController();
+    const eventsResponse = await fetch(`${baseUrl}/api/checklist-shares/${firstShare.shareToken}/events`, {
+      signal: eventsAbortController.signal,
+    });
+    assert.equal(eventsResponse.status, 200);
+    assert.match(eventsResponse.headers.get("content-type") || "", /^text\/event-stream/);
+    const eventReader = eventsResponse.body?.getReader();
+    assert.ok(eventReader);
+    const decoder = new TextDecoder();
+    let eventText = "";
+    const readEvent = async (expected: string) => {
+      while (!eventText.includes(expected)) {
+        const result = await eventReader.read();
+        assert.equal(result.done, false);
+        eventText += decoder.decode(result.value, { stream: true });
+      }
+      const matchingText = eventText;
+      eventText = "";
+      return matchingText;
+    };
+    assert.match(await readEvent('"revision":1'), /event: checklist/);
+
     const ownerUpdate = await requestJson(
       baseUrl,
       "PATCH",
@@ -133,6 +156,7 @@ test("collaborators recover stale checklist revisions and owners control link ro
     );
     assert.equal(ownerUpdate.revision, 2);
     assert.equal(ownerUpdate.items[0]?.completed, true);
+    assert.match(await readEvent('"revision":2'), /"completed":true/);
 
     await assert.rejects(
       () => requestJson(
@@ -244,6 +268,7 @@ test("collaborators recover stale checklist revisions and owners control link ro
       rotatedShare.shareToken,
     );
   } finally {
+    eventsAbortController?.abort();
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     });

@@ -3362,6 +3362,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const [notice, setNotice] = useState('');
   const [shareUrl, setShareUrl] = useState(shareToken ? `${appOrigin}${basePath}/checklist/${shareToken}` : '');
   const [revision, setRevision] = useState(1);
+  const [liveStatus, setLiveStatus] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const saveTimer = useRef<number | null>(null);
   const latestChecklist = useRef(checklist);
   const revisionRef = useRef(revision);
@@ -3395,10 +3396,14 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const liveSelectedGame = calendarGames.find((event) => event.id === checklist.selectedGame?.id);
   const displayedGame = liveSelectedGame ?? checklist.selectedGame;
 
-  const { data: sharedChecklist, isLoading: sharedLoading, isError: sharedError } = useGetChecklistShare(shareToken, {
+  const {
+    data: sharedChecklist,
+    isLoading: sharedLoading,
+    isError: sharedError,
+    refetch: refetchSharedChecklist,
+  } = useGetChecklistShare(shareToken, {
     query: {
       enabled: Boolean(shared && shareToken),
-      refetchInterval: 8000,
       retry: false,
       queryKey: ['/api/checklist-shares', shareToken],
     },
@@ -3438,12 +3443,64 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
     if (!sharedChecklist) return;
     const normalized = normalizeChecklist(sharedChecklist);
     if (!normalized) return;
-    setChecklist(normalized);
+    if (sharedChecklist.revision < revisionRef.current) return;
+    setChecklist({ ...normalized, revision: sharedChecklist.revision });
     setRevision(sharedChecklist.revision);
     revisionRef.current = sharedChecklist.revision;
     setShareUrl(`${appOrigin}${basePath}/checklist/${sharedChecklist.shareToken}`);
     setHydrated(true);
   }, [sharedChecklist]);
+
+  useEffect(() => {
+    if (!shared || !shareToken) return;
+    setLiveStatus('connecting');
+    if (typeof window.EventSource === 'undefined') {
+      setLiveStatus('reconnecting');
+      return;
+    }
+
+    let active = true;
+    const source = new EventSource(`${basePath}/api/checklist-shares/${encodeURIComponent(shareToken)}/events`);
+    const applyLiveChecklist = (raw: unknown) => {
+      if (typeof raw !== 'object' || raw === null) return;
+      const payload = raw as { revision?: unknown };
+      if (typeof payload.revision !== 'number' || !Number.isInteger(payload.revision) || payload.revision <= revisionRef.current) return;
+      const normalized = normalizeChecklist(raw);
+      if (!normalized) return;
+      setChecklist({ ...normalized, revision: payload.revision });
+      setRevision(payload.revision);
+      revisionRef.current = payload.revision;
+      setHydrated(true);
+    };
+
+    source.onopen = () => {
+      if (!active) return;
+      setLiveStatus('connected');
+      void refetchSharedChecklist();
+    };
+    const handleChecklistEvent = (event: Event) => {
+      try {
+        applyLiveChecklist(JSON.parse((event as MessageEvent<string>).data));
+      } catch {
+        // Ignore malformed events; the next reconnect rehydrates from the API.
+      }
+    };
+    source.addEventListener('checklist', handleChecklistEvent);
+    source.addEventListener('revoked', () => {
+      source.close();
+      void refetchSharedChecklist();
+    });
+    source.onerror = () => {
+      if (!active) return;
+      setLiveStatus('reconnecting');
+    };
+
+    return () => {
+      active = false;
+      source.removeEventListener('checklist', handleChecklistEvent);
+      source.close();
+    };
+  }, [shared, shareToken, refetchSharedChecklist]);
 
   useEffect(() => () => {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
@@ -3629,6 +3686,12 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : 'Game Day Hub'}</p>
               <h1 className="mt-2 font-display text-5xl uppercase leading-[.88] tracking-tight sm:text-7xl">GAMEDAY<br /><span className="text-primary">CHECKLIST.</span></h1>
               <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : 'Start with the essentials, then make the list yours for every game day.'}</p>
+            {shared && (
+              <p className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground" role="status" data-testid="checklist-live-status">
+                <span className={`h-2 w-2 rounded-full ${liveStatus === 'connected' ? 'bg-primary' : 'bg-muted-foreground animate-pulse'}`} />
+                {liveStatus === 'connected' ? 'Live updates connected' : 'Reconnecting live updates…'}
+              </p>
+            )}
             </div>
           </div>
           <div className="border border-border bg-card px-4 py-3 text-right clip-angled-sm">
@@ -3742,7 +3805,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><UsersRound className="h-4 w-4" /> Work together</p>
-              <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can add, rename, check, and uncheck items. Refreshing keeps the latest saved version.' : 'Create one edit link for coaches, parents, and helpers. No collaborator accounts are required.'}</p>
+              <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can add, rename, check, and uncheck items. Live updates keep collaborators in sync.' : 'Create one edit link for coaches, parents, and helpers. No collaborator accounts are required.'}</p>
             </div>
             {!shared && <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-checklist"><Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : 'Create edit link'}</button>}
           </div>
