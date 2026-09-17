@@ -2752,34 +2752,6 @@ function ScheduleEditor() {
     }
   };
 
-  const downloadGraphic = () => {
-    const svg = buildScheduleGraphicSvg({ teamName, season, events, template: selectedTemplate });
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    const downloadUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = downloadUrl;
-    anchor.download = `${teamName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'team-schedule'}.svg`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(downloadUrl);
-    setNoticeFor('PHONE-FRIENDLY GRAPHIC DOWNLOADED');
-  };
-
-  const resetProject = () => {
-    window.localStorage.removeItem(scheduleStorageKey);
-    setSelectedTemplate(0);
-    setSaved(false);
-    setTeamName('Eastside Falcons');
-    setSeason('Fall 2024');
-    const resetEvents = getDefaultScheduleEvents();
-    setEvents(resetEvents);
-    setSelectedEventId(resetEvents[0]?.id ?? '');
-    setSelectedWeekKey(getScheduleWeekKey(resetEvents[0]?.date ?? ''));
-    setEventForm(null);
-    setNoticeFor('SCHEDULE DRAFT RESET');
-  };
-
   if (isFan && calendarConnection) {
     return (
       <StudioLayout>
@@ -2915,20 +2887,8 @@ function ScheduleEditor() {
               </div>
             </div>
 
-            <div className="relative z-10 mt-auto flex gap-3 pt-8">
-              <button type="button" onClick={resetProject} className="inline-flex flex-1 items-center justify-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-muted hover:text-foreground clip-angled-sm" data-testid="button-reset-project">
-                <RotateCcw className="h-4 w-4" /> Reset
-              </button>
-              <button type="button" onClick={() => setNoticeFor('PREVIEW UPDATED')} className="inline-flex flex-[1.5] items-center justify-center gap-2 bg-primary px-4 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-1 clip-angled-sm shadow-md" data-testid="button-next-preview">
-                Preview <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="relative z-10 mt-3 grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={downloadGraphic} className="inline-flex items-center justify-center gap-2 border border-border bg-background px-3 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:bg-muted clip-angled-sm" data-testid="button-download-schedule">
-                <FileImage className="h-4 w-4" /> Download graphic
-              </button>
-              <button type="button" onClick={shareSchedule} disabled={sharePending || deleteShare.isPending} className="inline-flex items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
+            <div className="relative z-10 mt-auto pt-8">
+              <button type="button" onClick={shareSchedule} disabled={sharePending || deleteShare.isPending} className="inline-flex w-full items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
                 <Share2 className="h-4 w-4" /> {sharePending ? (hasExistingShare ? 'Updating link…' : 'Creating link…') : hasExistingShare ? 'Update parent link' : 'Share with parents'}
               </button>
             </div>
