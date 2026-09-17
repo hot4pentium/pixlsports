@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  getStoredCalendarConnection,
   getCalendarConnectionErrorKind,
   getCoachCalendarHandoffToken,
   getCoachCalendarSubscriptionToken,
@@ -8,10 +9,44 @@ import {
 
 const token = 'A'.repeat(32);
 
+function createStorage(values: Record<string, string> = {}): Storage {
+  const entries = new Map(Object.entries(values));
+  return {
+    getItem: (key) => entries.get(key) ?? null,
+    setItem: (key, value) => { entries.set(key, value); },
+    removeItem: (key) => { entries.delete(key); },
+    clear: () => { entries.clear(); },
+    key: (index) => [...entries.keys()][index] ?? null,
+    get length() { return entries.size; },
+  };
+}
+
 test('distinguishes missing or revoked calendar connections from temporary failures', () => {
   assert.equal(getCalendarConnectionErrorKind({ status: 404 }), 'invalid');
   assert.equal(getCalendarConnectionErrorKind({ status: 503 }), 'temporary');
   assert.equal(getCalendarConnectionErrorKind(new Error('network unavailable')), 'temporary');
+});
+
+test('reads the active subscription connection before a legacy coach code', () => {
+  const storage = createStorage({
+    'leaguematrix-connected-coach-code': 'ABCDE',
+    'leaguematrix-connected-coach-subscription-token': token,
+  });
+  assert.deepEqual(getStoredCalendarConnection(storage), {
+    kind: 'subscription',
+    value: token,
+  });
+});
+
+test('falls back to the stored coach code when no valid subscription exists', () => {
+  const storage = createStorage({
+    'leaguematrix-connected-coach-code': 'ABCDE',
+    'leaguematrix-connected-coach-subscription-token': 'too-short',
+  });
+  assert.deepEqual(getStoredCalendarConnection(storage), {
+    kind: 'code',
+    value: 'ABCDE',
+  });
 });
 
 test('accepts Pixl Sports subscription links and extracts the token', () => {

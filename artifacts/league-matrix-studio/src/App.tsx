@@ -89,9 +89,13 @@ import {
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import {
+  clearStoredCalendarConnection,
   getCalendarConnectionErrorKind,
   getCoachCalendarHandoffToken,
   getCoachCalendarSubscriptionToken,
+  getStoredCalendarConnection,
+  storeCalendarConnection,
+  type CalendarConnection,
 } from '@/features/calendar-connection';
 import {
   cleanSupporterProfile,
@@ -173,37 +177,6 @@ const roleToolKinds: Record<UserRole, ToolKind[]> = {
   coach: ['schedule', 'roster'],
   fan: ['hype', 'schedule', 'stat-tracker'],
 };
-
-const connectedCoachCodeStorageKey = 'leaguematrix-connected-coach-code';
-const connectedCoachSubscriptionStorageKey = 'leaguematrix-connected-coach-subscription-token';
-
-type CalendarConnection =
-  | { kind: 'code'; value: string }
-  | { kind: 'subscription'; value: string };
-
-function getStoredCalendarConnection(): CalendarConnection | null {
-  const subscriptionToken = window.localStorage.getItem(connectedCoachSubscriptionStorageKey) ?? '';
-  if (/^[A-Za-z0-9_-]{32,100}$/.test(subscriptionToken)) {
-    return { kind: 'subscription', value: subscriptionToken };
-  }
-  const code = window.localStorage.getItem(connectedCoachCodeStorageKey) ?? '';
-  return code ? { kind: 'code', value: code } : null;
-}
-
-function storeCalendarConnection(connection: CalendarConnection) {
-  if (connection.kind === 'subscription') {
-    window.localStorage.setItem(connectedCoachSubscriptionStorageKey, connection.value);
-    window.localStorage.removeItem(connectedCoachCodeStorageKey);
-  } else {
-    window.localStorage.setItem(connectedCoachCodeStorageKey, connection.value);
-    window.localStorage.removeItem(connectedCoachSubscriptionStorageKey);
-  }
-}
-
-function clearStoredCalendarConnection() {
-  window.localStorage.removeItem(connectedCoachCodeStorageKey);
-  window.localStorage.removeItem(connectedCoachSubscriptionStorageKey);
-}
 
 const toolData: Record<ToolKind, {
   slug: string;

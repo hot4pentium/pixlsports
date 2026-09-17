@@ -2,9 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, FileText, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
 import { useUser } from '@clerk/react';
-import { useCreateProject, useGetAccountAccess, useListProjects, useUpdateProject, getGetAccountAccessQueryKey, getListProjectsQueryKey } from '@workspace/api-client-react';
+import {
+  useCreateProject,
+  useGetAccountAccess,
+  useGetConnectedCoachCalendar,
+  useGetConnectedCoachCalendarBySubscription,
+  useListProjects,
+  useUpdateProject,
+  getGetAccountAccessQueryKey,
+  getListProjectsQueryKey,
+} from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import {
+  getCalendarConnectionErrorKind,
+  getStoredCalendarConnection,
+} from './calendar-connection';
 import { getGuestUsageKey } from './guest-access';
 import { getUserProfile } from './supporter-dashboard-model';
 import { readScheduleDraft } from './schedule-draft';
@@ -54,10 +67,16 @@ function readLocalActiveGame(): GameSession | null {
   }
 }
 
-function getNextScheduledGame() {
-  const draft = readScheduleDraft() ?? { events: [] };
+type ScheduledGame = {
+  type: string;
+  date: string;
+  time: string;
+  opponent: string;
+};
+
+function getNextScheduledGame(events: readonly ScheduledGame[] = (readScheduleDraft()?.events ?? [])) {
   const today = new Date().toISOString().slice(0, 10);
-  return [...draft.events]
+  return [...events]
     .filter((event) => event.type === 'game' && event.date >= today)
     .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))[0];
 }
@@ -78,13 +97,40 @@ export function StatTrackerPage() {
   const { user, isLoaded, isSignedIn } = useUser();
   const queryClient = useQueryClient();
   const profile = getUserProfile(user);
-  const nextGame = useMemo(() => getNextScheduledGame(), []);
+  const localNextGame = useMemo(() => getNextScheduledGame(), []);
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const calendarConnection = useMemo(() => getStoredCalendarConnection(), []);
+  const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
+  const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
+  const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
+    query: {
+      enabled: Boolean(isSignedIn && calendarCode),
+      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
+      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
+      queryKey: ['/api/coach-calendar', calendarCode],
+    },
+  });
+  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
+    query: {
+      enabled: Boolean(isSignedIn && calendarSubscriptionToken),
+      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
+      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
+      queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
+    },
+  });
+  const activeCalendarQuery = calendarConnection?.kind === 'subscription'
+    ? subscriptionCalendarQuery
+    : codeCalendarQuery;
+  const connectedCalendar = activeCalendarQuery.data;
+  const connectedNextGame = useMemo(
+    () => getNextScheduledGame(connectedCalendar?.events),
+    [connectedCalendar?.events],
+  );
   const [sport, setSport] = useState<Sport>(profile.sport ?? 'basketball');
   const [data, setData] = useState<StatTrackerData>(() => readLocalTracker());
   const [currentGame, setCurrentGame] = useState<GameSession | null>(() => readLocalActiveGame());
-  const [date, setDate] = useState(searchParams.get('date') ?? nextGame?.date ?? new Date().toISOString().slice(0, 10));
-  const [opponent, setOpponent] = useState(searchParams.get('opponent') ?? nextGame?.opponent ?? '');
+  const [date, setDate] = useState(searchParams.get('date') ?? localNextGame?.date ?? new Date().toISOString().slice(0, 10));
+  const [opponent, setOpponent] = useState(searchParams.get('opponent') ?? localNextGame?.opponent ?? '');
   const [notes, setNotes] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -92,6 +138,11 @@ export function StatTrackerPage() {
   const [showAllStats, setShowAllStats] = useState(false);
   const [cloudProject, setCloudProject] = useState<{ id: string; revision: number } | null>(null);
   const initializedCloud = useRef(false);
+  const manuallyEditedSetup = useRef({
+    date: searchParams.has('date'),
+    opponent: searchParams.has('opponent'),
+  });
+  const connectedPrefillApplied = useRef(false);
   const guestUsageKey = useRef(getGuestUsageKey('lineup', 'stat-tracker')).current;
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
@@ -123,9 +174,17 @@ export function StatTrackerPage() {
     else window.localStorage.removeItem(activeGameStorageKey);
   }, [currentGame]);
 
+  useEffect(() => {
+    if (!connectedNextGame || connectedPrefillApplied.current) return;
+    connectedPrefillApplied.current = true;
+    if (!manuallyEditedSetup.current.date) setDate(connectedNextGame.date);
+    if (!manuallyEditedSetup.current.opponent) setOpponent(connectedNextGame.opponent);
+  }, [connectedNextGame]);
+
   const rule = getSportRule(sport);
   const totals = seasonTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => showAllStats || item.featured);
+  const nextGame = connectedNextGame ?? localNextGame;
   const announce = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2600);
@@ -216,11 +275,11 @@ export function StatTrackerPage() {
               <Trophy className="h-7 w-7 text-primary" />
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
-                <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
+                 <input type="date" value={date} onChange={(event) => { manuallyEditedSetup.current.date = true; setDate(event.target.value); }} className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
               </label>
                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
-                <input value={opponent} onChange={(event) => setOpponent(event.target.value)} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+                 <input value={opponent} onChange={(event) => { manuallyEditedSetup.current.opponent = true; setOpponent(event.target.value); }} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
               </label>
             </div>
              <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes

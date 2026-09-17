@@ -2,8 +2,44 @@ const subscriptionTokenPattern = /^[A-Za-z0-9_-]{32,100}$/;
 const subscriptionPathPattern = /^\/api\/coach-calendar\/feed\/([A-Za-z0-9_-]{32,100})(?:\.ics)?\/?$/;
 const calendarHandoffPathPattern = /^\/studio\/schedule\/?$/;
 const calendarHandoffQueryKeys = ['calendarToken', 'calendar'];
+const connectedCoachCodeStorageKey = 'leaguematrix-connected-coach-code';
+const connectedCoachSubscriptionStorageKey = 'leaguematrix-connected-coach-subscription-token';
+
+export type CalendarConnection =
+  | { kind: 'code'; value: string }
+  | { kind: 'subscription'; value: string };
 
 export type CalendarConnectionErrorKind = 'invalid' | 'temporary';
+
+export function getStoredCalendarConnection(
+  storage: Storage = window.localStorage,
+): CalendarConnection | null {
+  const subscriptionToken = storage.getItem(connectedCoachSubscriptionStorageKey) ?? '';
+  if (subscriptionTokenPattern.test(subscriptionToken)) {
+    return { kind: 'subscription', value: subscriptionToken };
+  }
+
+  const code = storage.getItem(connectedCoachCodeStorageKey) ?? '';
+  return code ? { kind: 'code', value: code } : null;
+}
+
+export function storeCalendarConnection(
+  connection: CalendarConnection,
+  storage: Storage = window.localStorage,
+) {
+  if (connection.kind === 'subscription') {
+    storage.setItem(connectedCoachSubscriptionStorageKey, connection.value);
+    storage.removeItem(connectedCoachCodeStorageKey);
+  } else {
+    storage.setItem(connectedCoachCodeStorageKey, connection.value);
+    storage.removeItem(connectedCoachSubscriptionStorageKey);
+  }
+}
+
+export function clearStoredCalendarConnection(storage: Storage = window.localStorage) {
+  storage.removeItem(connectedCoachCodeStorageKey);
+  storage.removeItem(connectedCoachSubscriptionStorageKey);
+}
 
 export function getCalendarConnectionErrorKind(error: unknown): CalendarConnectionErrorKind {
   const status = typeof error === 'object' && error !== null && 'status' in error
