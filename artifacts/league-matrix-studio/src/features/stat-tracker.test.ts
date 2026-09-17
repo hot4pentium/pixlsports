@@ -6,13 +6,27 @@ import {
   adjustScore,
   createGameSession,
   endGame,
+  getTrackerStorageKeys,
   isTrackerRevisionConflict,
+  migrateLegacyTrackerStorage,
   mergeTrackerData,
   normalizeTrackerData,
+  readStoredActiveGame,
+  readStoredTrackerData,
   seasonTotals,
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
+
+function createMemoryStorage(initial: Record<string, string> = {}) {
+  const values = new Map(Object.entries(initial));
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+    has: (key: string) => values.has(key),
+  };
+}
 
 test('sport rules award points while retaining zero-point stat counts', () => {
   let game = createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
@@ -96,6 +110,44 @@ test('reload merges locally saved games with cloud history without replacing eit
   assert.deepEqual(merged.games.map((game) => game.id), [localGame.id, cloudGame.id]);
   assert.equal(merged.games.find((game) => game.id === localGame.id)?.opponent, 'Northside');
   assert.equal(seasonTotals(merged.games, 'soccer').gamesPlayed, 2);
+});
+
+test('legacy tracker storage migrates into the first signed-in account namespace', () => {
+  const game = endGame(createGameSession('soccer', { opponent: 'Northside' }));
+  const storage = createMemoryStorage({
+    'leaguematrix-stat-tracker': JSON.stringify({ version: 1, games: [game] }),
+    'leaguematrix-stat-tracker-active-game': JSON.stringify(createGameSession('basketball', {})),
+  });
+
+  const accountA = readStoredTrackerData(storage, 'user_a');
+  const activeA = readStoredActiveGame(storage, 'user_a');
+
+  assert.deepEqual(accountA.games.map((item) => item.id), [game.id]);
+  assert.equal(activeA?.sport, 'basketball');
+  assert.equal(storage.has('leaguematrix-stat-tracker'), false);
+  assert.equal(storage.has('leaguematrix-stat-tracker-active-game'), false);
+  assert.equal(storage.has(getTrackerStorageKeys('user_a').history), true);
+  assert.equal(storage.has(getTrackerStorageKeys('user_a').activeGame), true);
+});
+
+test('switching accounts and reloading never reads or merges the previous account history', () => {
+  const accountAGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
+  const accountBGame = endGame(createGameSession('soccer', { opponent: 'Westview' }));
+  const storage = createMemoryStorage({
+    [getTrackerStorageKeys('user_a').history]: JSON.stringify({ version: 1, games: [accountAGame] }),
+  });
+
+  const accountA = readStoredTrackerData(storage, 'user_a');
+  const accountBOnSwitch = readStoredTrackerData(storage, 'user_b');
+  storage.setItem(getTrackerStorageKeys('user_b').history, JSON.stringify({ version: 1, games: [accountBGame] }));
+  const accountBAfterReload = readStoredTrackerData(storage, 'user_b');
+  const accountAAfterSwitchBack = readStoredTrackerData(storage, 'user_a');
+
+  assert.deepEqual(accountA.games.map((item) => item.id), [accountAGame.id]);
+  assert.deepEqual(accountBOnSwitch.games, []);
+  assert.deepEqual(accountBAfterReload.games.map((item) => item.id), [accountBGame.id]);
+  assert.deepEqual(accountAAfterSwitchBack.games.map((item) => item.id), [accountAGame.id]);
+  assert.equal(accountBAfterReload.games.some((item) => item.id === accountAGame.id), false);
 });
 
 test('a later successful sync preserves games kept locally through a failed sync and reload', () => {

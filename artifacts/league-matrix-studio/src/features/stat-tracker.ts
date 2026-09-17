@@ -44,6 +44,56 @@ export type StatTrackerData = {
   games: GameSession[];
 };
 
+export type TrackerStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
+
+export const trackerLocalStorageKey = 'leaguematrix-stat-tracker';
+export const activeGameStorageKey = 'leaguematrix-stat-tracker-active-game';
+
+export function getTrackerStorageKeys(accountId: string) {
+  const suffix = encodeURIComponent(accountId);
+  return {
+    history: `${trackerLocalStorageKey}:${suffix}`,
+    activeGame: `${activeGameStorageKey}:${suffix}`,
+  };
+}
+
+function migrateLegacyStorageValue(storage: TrackerStorage, legacyKey: string, scopedKey: string) {
+  const legacyValue = storage.getItem(legacyKey);
+  if (legacyValue === null) return;
+
+  if (storage.getItem(scopedKey) === null) {
+    storage.setItem(scopedKey, legacyValue);
+  }
+  // Removing the unscoped value prevents a second account from claiming it if
+  // this account already had a scoped copy from an earlier session.
+  storage.removeItem(legacyKey);
+}
+
+export function migrateLegacyTrackerStorage(storage: TrackerStorage, accountId: string) {
+  const keys = getTrackerStorageKeys(accountId);
+  migrateLegacyStorageValue(storage, trackerLocalStorageKey, keys.history);
+  migrateLegacyStorageValue(storage, activeGameStorageKey, keys.activeGame);
+}
+
+export function readStoredTrackerData(storage: TrackerStorage, accountId: string): StatTrackerData {
+  migrateLegacyTrackerStorage(storage, accountId);
+  try {
+    return normalizeTrackerData(JSON.parse(storage.getItem(getTrackerStorageKeys(accountId).history) ?? '{}'));
+  } catch {
+    return normalizeTrackerData(null);
+  }
+}
+
+export function readStoredActiveGame(storage: TrackerStorage, accountId: string): GameSession | null {
+  migrateLegacyTrackerStorage(storage, accountId);
+  try {
+    const value = JSON.parse(storage.getItem(getTrackerStorageKeys(accountId).activeGame) ?? 'null');
+    return value && typeof value === 'object' && isSport(value.sport) ? value as GameSession : null;
+  } catch {
+    return null;
+  }
+}
+
 const stat = (
   id: string,
   label: string,

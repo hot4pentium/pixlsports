@@ -27,10 +27,12 @@ import {
   createGameSession,
   endGame,
   getSportRule,
-  isSport,
+  getTrackerStorageKeys,
   isTrackerRevisionConflict,
   mergeTrackerData,
   normalizeTrackerData,
+  readStoredActiveGame,
+  readStoredTrackerData,
   seasonTotals,
   sports,
   trackerSaveErrorMessage,
@@ -40,32 +42,20 @@ import {
   type StatTrackerData,
 } from './stat-tracker';
 
-const localStorageKey = 'leaguematrix-stat-tracker';
-const activeGameStorageKey = 'leaguematrix-stat-tracker-active-game';
-
 function trackerPayload(data: StatTrackerData) {
   return { ...data, tool: 'stat-tracker' };
 }
 
-function readLocalTracker(): StatTrackerData {
-  try {
-    return normalizeTrackerData(JSON.parse(window.localStorage.getItem(localStorageKey) ?? '{}'));
-  } catch {
-    return normalizeTrackerData(null);
-  }
+function readLocalTracker(accountId: string): StatTrackerData {
+  return readStoredTrackerData(window.localStorage, accountId);
 }
 
-function saveLocalTracker(data: StatTrackerData) {
-  window.localStorage.setItem(localStorageKey, JSON.stringify(data));
+function saveLocalTracker(data: StatTrackerData, accountId: string) {
+  window.localStorage.setItem(getTrackerStorageKeys(accountId).history, JSON.stringify(data));
 }
 
-function readLocalActiveGame(): GameSession | null {
-  try {
-    const value = JSON.parse(window.localStorage.getItem(activeGameStorageKey) ?? 'null');
-    return value && typeof value === 'object' && isSport(value.sport) ? value as GameSession : null;
-  } catch {
-    return null;
-  }
+function readLocalActiveGame(accountId: string): GameSession | null {
+  return readStoredActiveGame(window.localStorage, accountId);
 }
 
 type ScheduledGame = {
@@ -96,6 +86,7 @@ function formatEventTime(value: string) {
 export function StatTrackerPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded, isSignedIn } = useUser();
+  const accountId = isLoaded && isSignedIn && user?.id ? user.id : null;
   const queryClient = useQueryClient();
   const profile = getUserProfile(user);
   const localNextGame = useMemo(() => getNextScheduledGame(), []);
@@ -128,8 +119,9 @@ export function StatTrackerPage() {
     [connectedCalendar?.events],
   );
   const [sport, setSport] = useState<Sport>(profile.sport ?? 'basketball');
-  const [data, setData] = useState<StatTrackerData>(() => readLocalTracker());
-  const [currentGame, setCurrentGame] = useState<GameSession | null>(() => readLocalActiveGame());
+  const [storageAccountId, setStorageAccountId] = useState<string | null>(null);
+  const [data, setData] = useState<StatTrackerData>(() => normalizeTrackerData(null));
+  const [currentGame, setCurrentGame] = useState<GameSession | null>(null);
   const [date, setDate] = useState(searchParams.get('date') ?? localNextGame?.date ?? new Date().toISOString().slice(0, 10));
   const [opponent, setOpponent] = useState(searchParams.get('opponent') ?? localNextGame?.opponent ?? '');
   const [notes, setNotes] = useState('');
@@ -150,32 +142,58 @@ export function StatTrackerPage() {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const { data: accountAccess } = useGetAccountAccess({
-    query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() },
+    query: {
+      enabled: Boolean(accountId),
+      staleTime: 15000,
+      queryKey: [...getGetAccountAccessQueryKey(), accountId],
+    },
   });
   const { data: projects } = useListProjects({
-    query: { enabled: Boolean(isSignedIn && accountAccess), queryKey: getListProjectsQueryKey() },
+    query: {
+      enabled: Boolean(accountId && accountAccess),
+      queryKey: [...getListProjectsQueryKey(), accountId],
+    },
   });
 
   useEffect(() => {
+    initializedCloud.current = false;
+    setCloudProject(null);
+    setStorageAccountId(null);
+    if (!accountId) {
+      setData(normalizeTrackerData(null));
+      setCurrentGame(null);
+      return;
+    }
+
+    setData(readLocalTracker(accountId));
+    setCurrentGame(readLocalActiveGame(accountId));
+    setSport(profile.sport ?? 'basketball');
+    setStorageAccountId(accountId);
+  }, [accountId]);
+
+  useEffect(() => {
+    if (!accountId || storageAccountId !== accountId) return;
     const existing = (projects ?? [])
       .filter((project) => project.project.tool === 'stat-tracker')
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
     if (!existing || initializedCloud.current) return;
     initializedCloud.current = true;
-    const mergedData = mergeTrackerData(readLocalTracker(), existing.project);
+    const mergedData = mergeTrackerData(readLocalTracker(accountId), existing.project);
     setData(mergedData);
     setCloudProject({ id: existing.id, revision: existing.revision });
-    saveLocalTracker(mergedData);
-  }, [projects]);
+    saveLocalTracker(mergedData, accountId);
+  }, [accountId, projects, storageAccountId]);
 
   useEffect(() => {
-    saveLocalTracker(data);
-  }, [data]);
+    if (accountId && storageAccountId === accountId) saveLocalTracker(data, accountId);
+  }, [accountId, data, storageAccountId]);
 
   useEffect(() => {
-    if (currentGame) window.localStorage.setItem(activeGameStorageKey, JSON.stringify(currentGame));
-    else window.localStorage.removeItem(activeGameStorageKey);
-  }, [currentGame]);
+    if (!accountId || storageAccountId !== accountId) return;
+    const key = getTrackerStorageKeys(accountId).activeGame;
+    if (currentGame) window.localStorage.setItem(key, JSON.stringify(currentGame));
+    else window.localStorage.removeItem(key);
+  }, [accountId, currentGame, storageAccountId]);
 
   useEffect(() => {
     if (!connectedNextGame || connectedPrefillApplied.current) return;
@@ -193,7 +211,7 @@ export function StatTrackerPage() {
     window.setTimeout(() => setNotice(''), 2600);
   };
 
-  if (!isLoaded) return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading tracker…</div>;
+  if (!isLoaded || (isSignedIn && storageAccountId !== accountId)) return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading tracker…</div>;
   if (!isSignedIn) {
     setLocation('/sign-in?redirect_url=%2Fstudio%2Fstat-tracker');
     return null;
