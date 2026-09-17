@@ -160,20 +160,18 @@ interface CloudProjectLike {
 
 export function mapRecentSupporterProjects(projects: CloudProjectLike[]): SupporterProject[] {
   return [...projects]
+    .filter((project) => !(
+      typeof project.project === 'object'
+      && project.project !== null
+      && (project.project as { tool?: unknown }).tool === 'schedule'
+    ))
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     .slice(0, 4)
-    .map((project) => {
-      const kind = typeof project.project === 'object'
-        && project.project !== null
-        && (project.project as { tool?: unknown }).tool === 'schedule'
-        ? 'schedule'
-        : 'hype-card';
-      return {
-        id: project.id,
-        name: project.name,
-        kind,
-        updatedAt: project.updatedAt,
-        href: `/studio/${kind}/${project.id}`,
-      };
-    });
+    .map((project) => ({
+      id: project.id,
+      name: project.name,
+      kind: 'hype-card',
+      updatedAt: project.updatedAt,
+      href: `/studio/hype-card/${project.id}`,
+    }));
 }

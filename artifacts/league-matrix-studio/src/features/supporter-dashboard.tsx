@@ -577,23 +577,19 @@ export function SupporterDashboardView({
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,136px))] gap-4">
             {projects.length === 0 ? (
-              <div className="col-span-2 py-12 border border-border bg-card flex flex-col items-center justify-center text-muted-foreground gap-3 clip-angled-sm min-h-[300px]">
+              <div className="col-span-full w-full py-10 border border-border bg-card flex flex-col items-center justify-center text-muted-foreground gap-3 clip-angled-sm min-h-[180px]">
                 <ImageIcon className="w-10 h-10 opacity-50" />
                 <p className="font-bold uppercase tracking-widest text-sm">No Designs Yet</p>
                 <p className="text-xs max-w-xs text-center text-balance">Your saved graphics will appear here for quick access.</p>
               </div>
             ) : (
               projects.slice(0, 4).map(project => (
-                <Link key={project.id} href={project.href} className="group flex flex-col" data-testid={`link-project-${project.id}`}>
-                  <div className="aspect-[4/3] bg-muted border border-border mb-3 relative overflow-hidden group-hover:border-primary transition-colors flex items-center justify-center clip-angled-sm">
+                <Link key={project.id} href={project.href} className="group flex min-w-0 flex-col" data-testid={`link-project-${project.id}`}>
+                  <div className="aspect-square w-full bg-muted border border-border mb-2.5 relative overflow-hidden group-hover:border-primary transition-colors flex items-center justify-center clip-angled-sm">
                     <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-                    {project.kind === 'hype-card' ? (
-                      <Zap className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors group-hover:scale-110 duration-300" />
-                    ) : (
-                      <CalendarDays className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors group-hover:scale-110 duration-300" />
-                    )}
+                    <Zap className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors group-hover:scale-110 duration-300" />
                   </div>
                   <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{project.name}</h4>
                   <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(project.updatedAt)}</p>

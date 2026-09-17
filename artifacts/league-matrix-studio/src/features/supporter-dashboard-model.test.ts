@@ -187,7 +187,7 @@ test('an empty local draft keeps the disconnected empty state after reload', () 
   }), 'disconnected');
 });
 
-test('maps recent designs by kind and newest-first order, limited to four', () => {
+test('maps only recent designs in newest-first order, limited to four', () => {
   const projects = [
     { id: 'old', name: 'Old card', updatedAt: '2026-01-01T00:00:00Z', project: { tool: 'hype' } },
     { id: 'schedule', name: 'Schedule', updatedAt: '2026-05-01T00:00:00Z', project: { tool: 'schedule' } },
@@ -198,8 +198,8 @@ test('maps recent designs by kind and newest-first order, limited to four', () =
 
   const recent = mapRecentSupporterProjects(projects);
 
-  assert.deepEqual(recent.map(({ id }) => id), ['new', 'schedule', 'middle', 'fourth']);
-  assert.deepEqual(recent.map(({ kind }) => kind), ['hype-card', 'schedule', 'hype-card', 'hype-card']);
+  assert.deepEqual(recent.map(({ id }) => id), ['new', 'middle', 'fourth', 'old']);
+  assert.deepEqual(recent.map(({ kind }) => kind), ['hype-card', 'hype-card', 'hype-card', 'hype-card']);
   assert.equal(recent[0]?.href, '/studio/hype-card/new');
-  assert.equal(recent[1]?.href, '/studio/schedule/schedule');
+  assert.equal(recent.some(({ id }) => id === 'schedule'), false);
 });
