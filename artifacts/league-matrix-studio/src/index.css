@@ -159,7 +159,7 @@
   }
   .studio-page-background {
     background-color: hsl(var(--background));
-    background-image: url('./assets/page-background.png');
+    background-image: url('./assets/page-background.webp');
     background-position: center top;
     background-repeat: repeat;
     background-size: 1024px 1024px;
