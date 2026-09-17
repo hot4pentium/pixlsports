@@ -1375,7 +1375,13 @@ function CoachCalendarCodePanel() {
   );
 }
 
-function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange?: (connection: CalendarConnection | null) => void }) {
+function FanCalendarConnectionPanel({
+  onConnectionChange,
+  compact = false,
+}: {
+  onConnectionChange?: (connection: CalendarConnection | null) => void;
+  compact?: boolean;
+}) {
   const [connection, setConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [handoffToken] = useState(() => getCoachCalendarHandoffToken(
     window.location.href,
@@ -1524,16 +1530,16 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
   };
 
   return (
-    <section className="mb-6 border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-6" data-testid="fan-calendar-connection-panel">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-xl">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Connect your family calendar</p>
-          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">Connect your calendar.</h2>
-          <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">
+    <section className={`${compact ? 'w-full max-w-[380px] p-2' : 'mb-6 p-5 sm:p-6'} border border-primary/30 bg-primary/5 clip-angled-sm`} data-testid="fan-calendar-connection-panel">
+      <div className={compact ? 'flex items-center gap-2' : 'flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between'}>
+        <div className={compact ? 'shrink-0' : 'max-w-xl'}>
+          <p className={`${compact ? 'hidden text-[9px] tracking-wider md:block' : 'text-xs tracking-widest'} font-bold uppercase text-primary`}>Connect your family calendar</p>
+          <h2 className={`${compact ? 'sr-only' : 'mt-2 font-display text-3xl uppercase tracking-wide text-foreground'}`}>Connect your calendar.</h2>
+          <p className={`${compact ? 'sr-only' : 'mt-2 text-sm font-medium leading-relaxed text-muted-foreground'}`}>
             Paste the private link your coach shared, or use their five-character code. Your calendar refreshes automatically when the team schedule changes.
           </p>
         </div>
-        <form onSubmit={submit} className="flex w-full max-w-md gap-2" data-testid="form-connect-coach-calendar">
+        <form onSubmit={submit} className={`${compact ? 'min-w-0 flex-1 gap-1' : 'w-full max-w-md gap-2'} flex`} data-testid="form-connect-coach-calendar">
           <label className="sr-only" htmlFor="coach-calendar-connection">Coach calendar link or code</label>
           <input
             id="coach-calendar-connection"
@@ -1544,21 +1550,21 @@ function FanCalendarConnectionPanel({ onConnectionChange }: { onConnectionChange
             }}
             placeholder="Paste link or enter ABCDE"
             autoComplete="off"
-            className="min-w-0 flex-1 border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none transition-colors focus:border-primary"
+            className={`min-w-0 flex-1 border border-border bg-background font-medium text-foreground outline-none transition-colors focus:border-primary ${compact ? 'px-2 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
             aria-describedby="coach-calendar-code-help"
             data-testid="input-coach-calendar-link"
           />
           <button
             type="submit"
             disabled={connect.isPending || Boolean(pendingSubscriptionToken) || !input.trim()}
-            className="shrink-0 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
+            className={`shrink-0 bg-foreground font-bold uppercase text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm ${compact ? 'px-3 py-2 text-[9px] tracking-wider' : 'px-5 py-3 text-xs tracking-widest'}`}
             data-testid="button-connect-coach-calendar"
           >
             {connect.isPending || pendingSubscriptionToken ? 'Connecting…' : 'Connect'}
           </button>
         </form>
       </div>
-      <p id="coach-calendar-code-help" className="mt-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <p id="coach-calendar-code-help" className={`${compact ? 'sr-only' : 'mt-3 text-[10px]'} font-bold uppercase tracking-wider text-muted-foreground`}>
         {calendar ? `Connected to ${calendar.title || 'your coach'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the private calendar link or five-character code from the Calendar section.'}
       </p>
       {pendingSubscriptionToken && (
@@ -2750,7 +2756,6 @@ function ScheduleEditor() {
   return (
     <StudioLayout>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
-        {isFan && <FanCalendarConnectionPanel onConnectionChange={setCalendarConnection} />}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
@@ -2798,6 +2803,11 @@ function ScheduleEditor() {
                   {!isFan && accountAccess?.accessMode !== 'guest' && (
                     <div className="min-w-0 max-w-[420px]">
                       <CoachCalendarCodePanel />
+                    </div>
+                  )}
+                  {isFan && (
+                    <div className="min-w-0 max-w-[380px]">
+                      <FanCalendarConnectionPanel compact onConnectionChange={setCalendarConnection} />
                     </div>
                   )}
                 </>
