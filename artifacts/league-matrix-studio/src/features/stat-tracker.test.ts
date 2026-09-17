@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { act, create } from 'react-test-renderer';
+import { act, create, type ReactTestRendererNode } from 'react-test-renderer';
 import { createElement } from 'react';
 
 import {
@@ -27,7 +27,7 @@ import {
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
-import { LiveTrackerGame } from './stat-tracker-page';
+import { LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -39,6 +39,16 @@ function createMemoryStorage(initial: Record<string, string> = {}) {
     removeItem: (key: string) => { values.delete(key); },
     has: (key: string) => values.has(key),
   };
+}
+
+function renderedText(renderer: { toJSON: () => ReactTestRendererNode | ReactTestRendererNode[] | null }): string {
+  const visit = (node: ReactTestRendererNode | ReactTestRendererNode[] | null): string => {
+    if (node === null) return '';
+    if (typeof node === 'string') return node;
+    if (Array.isArray(node)) return node.map(visit).join('');
+    return (node.children ?? []).map(visit).join('');
+  };
+  return visit(renderer.toJSON());
 }
 
 test('mobile live game keeps scoreboard and stat controls ahead of recent activity', () => {
@@ -255,6 +265,69 @@ test('legacy tracker storage migrates into the first signed-in account namespace
   assert.equal(storage.has('leaguematrix-stat-tracker-active-game'), false);
   assert.equal(storage.has(getTrackerStorageKeys('user_a').history), true);
   assert.equal(storage.has(getTrackerStorageKeys('user_a').activeGame), true);
+});
+
+test('signed-in tracker reload restores the active game into the live scoreboard', () => {
+  const accountId = 'user_phone_reload';
+  const activeGame = {
+    ...addStatEvent(
+      createGameSession('basketball', {
+        date: '2026-09-17',
+        opponent: 'Northside',
+        notes: 'Keep attacking the paint.',
+      }, new Date('2026-09-17T12:00:00Z')),
+      'three-point',
+      new Date('2026-09-17T12:01:00Z'),
+    ),
+    period: 3,
+    opponentScore: 41,
+  };
+  const storage = createMemoryStorage({
+    [getTrackerStorageKeys(accountId).activeGame]: JSON.stringify(activeGame),
+    [getTrackerStorageKeys('another_account').activeGame]: JSON.stringify(
+      createGameSession('soccer', { opponent: 'Different team' }),
+    ),
+  });
+
+  const restored = readLocalTrackerSession(storage, accountId);
+  assert.deepEqual(restored.currentGame, activeGame);
+  assert.notEqual(readLocalTrackerSession(storage, 'another_account').currentGame?.id, activeGame.id);
+  assert.equal(readLocalTrackerSession(storage, 'another_account').currentGame?.sport, 'soccer');
+
+  const rule = getSportRule('basketball');
+  let renderer!: ReturnType<typeof create>;
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: restored.currentGame!,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Northside',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      onGameChange: () => {},
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  assert.equal(
+    renderer.root.findByProps({ 'data-testid': 'live-tracker-score-card-athlete' })
+      .findAllByType('p')[1]?.children[0],
+    '3',
+  );
+  assert.equal(
+    renderer.root.findByProps({ 'data-testid': 'live-tracker-score-card-opponent' })
+      .findAllByType('p')[1]?.children[0],
+    '41',
+  );
+  assert.deepEqual(
+    renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' }).findAllByType('span')[2]?.children,
+    ['1', ' · +3'],
+  );
+  assert.equal(renderer.root.findByType('textarea').props.value, 'Keep attacking the paint.');
+  assert.match(renderedText(renderer), /Quarter 3/);
 });
 
 test('selected conflict history survives reload until cloud sync succeeds', () => {

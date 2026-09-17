@@ -46,20 +46,20 @@ import {
   type StatTrackerData,
   type StatDefinition,
   type SportRule,
+  type TrackerStorage,
   type TrackerConflict,
   type TrackerConflictResolution,
 } from './stat-tracker';
 
-function readLocalTracker(accountId: string): StatTrackerData {
-  return readStoredTrackerData(window.localStorage, accountId);
+export function readLocalTrackerSession(storage: TrackerStorage, accountId: string) {
+  return {
+    data: readStoredTrackerData(storage, accountId),
+    currentGame: readStoredActiveGame(storage, accountId),
+  };
 }
 
 function saveLocalTracker(data: StatTrackerData, accountId: string) {
   window.localStorage.setItem(getTrackerStorageKeys(accountId).history, JSON.stringify(data));
-}
-
-function readLocalActiveGame(accountId: string): GameSession | null {
-  return readStoredActiveGame(window.localStorage, accountId);
 }
 
 type ScheduledGame = {
@@ -297,8 +297,9 @@ export function StatTrackerPage() {
       return;
     }
 
-    setData(readLocalTracker(accountId));
-    setCurrentGame(readLocalActiveGame(accountId));
+    const restored = readLocalTrackerSession(window.localStorage, accountId);
+    setData(restored.data);
+    setCurrentGame(restored.currentGame);
     setSport(profile.sport ?? 'basketball');
     setStorageAccountId(accountId);
   }, [accountId]);
@@ -333,7 +334,7 @@ export function StatTrackerPage() {
       });
       return;
     }
-    const mergedData = mergeTrackerData(readLocalTracker(accountId), existing.project);
+    const mergedData = mergeTrackerData(readLocalTrackerSession(window.localStorage, accountId).data, existing.project);
     setData(mergedData);
     setCloudProject({ id: existing.id, revision: existing.revision });
     saveLocalTracker(mergedData, accountId);
