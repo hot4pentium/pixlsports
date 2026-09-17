@@ -2890,7 +2890,9 @@ function ScheduleEditor() {
 
             <div className="relative z-10 mt-auto pt-8">
               <button type="button" onClick={shareSchedule} disabled={sharePending || deleteShare.isPending} className="inline-flex w-full items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
-                <Share2 className="h-4 w-4" /> {sharePending ? (hasExistingShare ? 'Updating link…' : 'Creating link…') : hasExistingShare ? 'Update parent link' : 'Share with parents'}
+                <Share2 className="h-4 w-4" /> {sharePending
+                  ? (isFan ? 'Sharing…' : hasExistingShare ? 'Updating link…' : 'Creating link…')
+                  : isFan ? 'Share Calendar' : hasExistingShare ? 'Update parent link' : 'Share with parents'}
               </button>
             </div>
 
