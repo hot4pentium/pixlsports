@@ -1533,7 +1533,9 @@ function FanCalendarConnectionPanel({
     <section className={`${compact ? 'w-full max-w-[380px] p-2' : 'mb-6 p-5 sm:p-6'} border border-primary/30 bg-primary/5 clip-angled-sm`} data-testid="fan-calendar-connection-panel">
       <div className={compact ? 'flex items-center gap-2' : 'flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between'}>
         <div className={compact ? 'shrink-0' : 'max-w-xl'}>
-          <p className={`${compact ? 'hidden text-[9px] tracking-wider md:block' : 'text-xs tracking-widest'} font-bold uppercase text-primary`}>Connect your family calendar</p>
+          <p className={`${compact ? 'hidden text-[9px] tracking-wider text-black md:block' : 'text-xs tracking-widest text-primary'} font-bold uppercase`}>
+            {compact ? 'Connect to Coach’s Schedule' : 'Connect your family calendar'}
+          </p>
           <h2 className={`${compact ? 'sr-only' : 'mt-2 font-display text-3xl uppercase tracking-wide text-foreground'}`}>Connect your calendar.</h2>
           <p className={`${compact ? 'sr-only' : 'mt-2 text-sm font-medium leading-relaxed text-muted-foreground'}`}>
             Paste the private link your coach shared, or use their five-character code. Your calendar refreshes automatically when the team schedule changes.
