@@ -289,6 +289,12 @@ const hypeWalkthroughSteps = [
   { label: 'Review', hint: 'Preview and export' },
 ] as const;
 
+const mobileMediaSteps = [
+  { label: 'Add media', hint: 'Choose the player media and team logo.' },
+  { label: 'Frame', hint: 'Set the crop, position, and video framing.' },
+  { label: 'Fine-tune', hint: 'Adjust color, trim video, and export options.' },
+] as const;
+
 function HypeField({
   label,
   value,
@@ -743,6 +749,7 @@ export function HypeCardEditor() {
   const [includeAudio, setIncludeAudio] = useState(true);
   const [imageFormat, setImageFormat] = useState<'png' | 'jpeg'>('png');
   const [walkthroughStep, setWalkthroughStep] = useState(0);
+  const [mediaSubstep, setMediaSubstep] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [shareProgress, setShareProgress] = useState(0);
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
@@ -1836,6 +1843,7 @@ export function HypeCardEditor() {
             </Section>}
 
             {walkthroughStep === 1 && <Section title="Media" icon={ImagePlus}>
+              <div className="hidden sm:block">
                <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? 'Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. Guest and unpaid saves keep design settings only. Preview video loads after Play; download quality loads only when you export.' : 'Add a photo or video up to 120MB. Guest and unpaid cloud saves contain design settings only; your media stays on this device.'}</p>
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
@@ -1977,6 +1985,196 @@ export function HypeCardEditor() {
                   </div>
                 </div>
               )}
+              </div>
+              <div className="sm:hidden">
+                <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? 'Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage.' : 'Add a photo or video up to 120MB. Your media stays on this device unless you save with a paid account.'}</p>
+
+                <div className="mb-4 flex gap-1 overflow-x-auto border-y border-border py-2" role="tablist" aria-label="Mobile media editing steps">
+                  {mobileMediaSteps.map((step, index) => (
+                    <button
+                      key={step.label}
+                      type="button"
+                      role="tab"
+                      aria-selected={mediaSubstep === index}
+                      onClick={() => setMediaSubstep(index)}
+                      className={`min-h-9 shrink-0 border px-3 text-[10px] font-bold uppercase tracking-wide transition-colors ${mediaSubstep === index ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
+                    >
+                      {index + 1}. {step.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mb-4 text-xs font-medium text-muted-foreground">
+                  {mobileMediaSteps[mediaSubstep].hint}
+                </p>
+
+                {mediaSubstep === 0 && (
+                  <div className="space-y-3">
+                    {cloudProjectId && !project.mediaType && (
+                      <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
+                        This saved design does not include media. Add a photo or video before exporting.
+                      </p>
+                    )}
+                    {templateMediaNotice && !project.mediaType && (
+                      <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-portable-template-media-notice">
+                        {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo or video before exporting.
+                      </p>
+                    )}
+                    <AssetButton
+                      label="Media"
+                      hasAsset={Boolean(project.mediaType)}
+                      onChange={handleMediaUpload}
+                      onRemove={handleMediaRemove}
+                    />
+                    <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={handleLogoUpload} onRemove={async () => {
+                      if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
+                      if (project.logoMediaId) await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
+                      setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
+                    }} />
+                  </div>
+                )}
+
+                {mediaSubstep === 1 && (
+                  project.mediaType ? (
+                    <div className="rounded-xl border border-border bg-muted/50 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <Label className="text-xs font-bold">Crop & Position</Label>
+                        <button type="button" onClick={() => setProject((c) => ({ ...c, photoTransform: defaultProject().photoTransform }))} className="text-[10px] font-bold text-muted-foreground hover:text-foreground">Reset</button>
+                      </div>
+                      <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
+                        <ZoomIn className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Slider value={[project.photoTransform.zoom]} min={0.5} max={3} step={0.01} onValueChange={([v]) => updateTransform('zoom', v)} />
+                        <Move className="h-3.5 w-3.5 text-muted-foreground" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Slider value={[project.photoTransform.x]} min={-500} max={500} step={1} onValueChange={([v]) => updateTransform('x', v)} aria-label="Move media horizontally" />
+                          <Slider value={[project.photoTransform.y]} min={-500} max={500} step={1} onValueChange={([v]) => updateTransform('y', v)} aria-label="Move media vertically" />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => updateTransform('rotation', (project.photoTransform.rotation + 90) % 360)}>
+                          <RotateCw className="h-3.5 w-3.5" /> Rotate
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" className="flex-1 gap-2" onClick={() => updateTransform('flip', !project.photoTransform.flip)}>
+                          <FlipHorizontal2 className="h-3.5 w-3.5" /> Flip
+                        </Button>
+                      </div>
+                      {project.mediaType === 'video' && (
+                        <div className="mt-4 flex items-center gap-2" role="group" aria-label="Video framing">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Video frame</span>
+                          {(['fill', 'fit'] as const).map((mode) => (
+                            <Button key={mode} type="button" size="sm" variant={project.videoFit === mode ? 'default' : 'outline'} className="rounded-none text-[10px] uppercase" onClick={() => updateProject('videoFit', mode)}>
+                              {mode === 'fill' ? 'Fill' : 'Fit'}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
+                      Add a photo or video in the first step to adjust its framing.
+                    </div>
+                  )
+                )}
+
+                {mediaSubstep === 2 && (
+                  <div className="space-y-3">
+                    {project.mediaType ? (
+                      <>
+                        <div className="rounded-xl border border-border bg-muted/50 p-4">
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvanced((open) => !open)}
+                            className="flex w-full items-center justify-between text-xs font-bold"
+                          >
+                            <span className="flex items-center gap-2"><SlidersHorizontal className="h-3.5 w-3.5" /> Image adjustments</span>
+                            <span>{showAdvanced ? 'Hide' : 'Show'}</span>
+                          </button>
+                          {showAdvanced && (
+                            <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-4">
+                              <Label className="text-[10px] uppercase tracking-wide">Brightness</Label>
+                              <Slider value={[project.adjustments.brightness]} min={0.5} max={1.5} step={0.01} onValueChange={([v]) => updateAdjustment('brightness', v)} />
+                              <Label className="text-[10px] uppercase tracking-wide">Contrast</Label>
+                              <Slider value={[project.adjustments.contrast]} min={0.5} max={1.5} step={0.01} onValueChange={([v]) => updateAdjustment('contrast', v)} />
+                              <Label className="text-[10px] uppercase tracking-wide">Color</Label>
+                              <Slider value={[project.adjustments.saturation]} min={0} max={2} step={0.01} onValueChange={([v]) => updateAdjustment('saturation', v)} />
+                            </div>
+                          )}
+                        </div>
+                        {project.mediaType === 'video' && (
+                          <div className="space-y-3 rounded-lg bg-muted px-3 py-3">
+                            <div className="space-y-3 border-b border-border pb-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <Label className="text-xs font-medium">Trim video</Label>
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                  {formatVideoTime(project.trimStart)}–{formatVideoTime(project.trimEnd)}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-[3rem_1fr] items-center gap-3">
+                                <Label className="text-[10px] uppercase tracking-wide">Start</Label>
+                                <Slider value={[project.trimStart]} min={0} max={Math.max(0.1, (project.videoMeta?.duration ?? 15) - 0.1)} step={0.1} onValueChange={([value]) => updateTrim('start', value)} aria-label="Video trim start" />
+                                <Label className="text-[10px] uppercase tracking-wide">End</Label>
+                                <Slider value={[project.trimEnd]} min={0.1} max={Math.max(0.1, project.videoMeta?.duration ?? 15)} step={0.1} onValueChange={([value]) => updateTrim('end', value)} aria-label="Video trim end" />
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">Selected length: {(project.trimEnd - project.trimStart).toFixed(1)}s. Exports can be up to 15 seconds.</p>
+                            </div>
+                            <p className="text-[11px] font-medium text-muted-foreground">
+                              {exportSupport.mp4Mime
+                                ? 'This browser will export a phone-ready MP4.'
+                                : exportSupport.webmMime
+                                  ? 'This browser will export WebM. For MP4, use a browser that supports MP4 recording.'
+                                  : 'Video export is not supported in this browser. You can still edit and preview the card.'}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">Original sound is included when this browser exposes the clip audio for recording.</p>
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="mobile-include-audio" className="text-xs font-medium">Keep original sound</Label>
+                              <Switch id="mobile-include-audio" checked={includeAudio} onCheckedChange={setIncludeAudio} />
+                            </div>
+                          </div>
+                        )}
+                        {project.mediaType === 'image' && (
+                          <div className="flex items-center justify-between rounded-lg bg-muted px-3 py-2">
+                            <Label className="text-xs font-medium">Download format</Label>
+                            <div className="flex gap-1" role="group" aria-label="Image download format">
+                              {(['png', 'jpeg'] as const).map((format) => (
+                                <button key={format} type="button" onClick={() => setImageFormat(format)} className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase ${imageFormat === format ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground'}`}>
+                                  {format === 'jpeg' ? 'JPG' : 'PNG'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
+                        Add a photo or video in the first step to fine-tune it.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setMediaSubstep((step) => Math.max(0, step - 1))} disabled={mediaSubstep === 0} className="rounded-none clip-angled-sm">
+                    Back
+                  </Button>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {mediaSubstep + 1} / {mobileMediaSteps.length}
+                  </span>
+                  <Button type="button" size="sm" onClick={() => setMediaSubstep((step) => Math.min(mobileMediaSteps.length - 1, step + 1))} disabled={mediaSubstep === mobileMediaSteps.length - 1} className="rounded-none bg-foreground text-background hover:bg-primary hover:text-primary-foreground clip-angled-sm">
+                    Next
+                  </Button>
+                </div>
+
+                <div className="mt-5 border border-border bg-muted p-2" data-testid="mobile-media-preview">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Live preview</span>
+                    <button type="button" onClick={() => setMobilePreviewOpen(true)} className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground">
+                      Full screen
+                    </button>
+                  </div>
+                  <div className="h-[58dvh] min-h-[360px] max-h-[560px]">
+                    <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
+                  </div>
+                </div>
+              </div>
             </Section>}
 
             {walkthroughStep === 2 && <Section title="Details" icon={FileImage}>
@@ -2079,7 +2277,7 @@ export function HypeCardEditor() {
           </div>
         </aside>
 
-        <main className="block h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8">
+        <main className={`${walkthroughStep === 1 ? 'hidden sm:block' : 'block'} h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8`}>
           <div className="mx-auto h-full max-w-[800px]">
             <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
           </div>
