@@ -2822,7 +2822,7 @@ function ScheduleEditor() {
                     </div>
                   )}
                   {isFan && (
-                    <div className="min-w-0 max-w-[380px]">
+                    <div className="min-w-0 w-full max-w-[380px] flex-1">
                       <FanCalendarConnectionPanel compact onConnectionChange={setCalendarConnection} />
                     </div>
                   )}
@@ -3267,7 +3267,7 @@ function SchedulePreview({
           </div>
         </div>
       </div>
-      <div className="absolute bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[960px] -translate-x-1/2 items-start justify-between gap-3 sm:bottom-6 sm:w-[calc(100%-4rem)]">
+      <div className="absolute bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[960px] -translate-x-1/2 items-end justify-between gap-3 sm:bottom-6 sm:w-[calc(100%-4rem)]" data-testid="schedule-bottom-actions">
         {bottomActions}
       </div>
     </div>
