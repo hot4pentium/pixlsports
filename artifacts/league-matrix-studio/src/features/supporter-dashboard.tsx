@@ -188,7 +188,7 @@ export function SupporterDashboardView({
         <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] mix-blend-screen pointer-events-none" />
         
-        <div className="athlete-hero-inner-depth relative flex flex-col items-center gap-4 bg-[#111316] p-4 sm:gap-8 sm:p-10 md:flex-row md:items-start clip-angled">
+        <div className="athlete-hero-inner-depth relative flex flex-row items-center gap-4 bg-[#111316] p-4 sm:gap-6 sm:p-6 md:items-start md:gap-8 md:p-10 clip-angled">
           <img
             src={heroBanner}
             alt=""
@@ -202,31 +202,31 @@ export function SupporterDashboardView({
 
           {/* Avatar Circle */}
           <div className="relative z-10 shrink-0">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-primary bg-background text-foreground shadow-[0_18px_34px_rgba(0,0,0,0.58),0_0_34px_rgba(22,232,120,0.3)] sm:h-40 sm:w-40 sm:border-4">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-primary bg-background text-foreground shadow-[0_18px_34px_rgba(0,0,0,0.58),0_0_34px_rgba(22,232,120,0.3)] sm:h-28 sm:w-28 md:h-40 md:w-40 md:border-4">
               {athletePhotoUrl ? (
                 <div className="h-full w-full overflow-hidden rounded-full">
                   <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
                 </div>
               ) : hasAthlete ? (
-                  <User className="h-12 w-12 opacity-20 sm:h-16 sm:w-16" />
+                  <User className="h-10 w-10 opacity-20 sm:h-14 sm:w-14 md:h-16 md:w-16" />
               ) : (
-                  <Users className="h-12 w-12 opacity-20 sm:h-16 sm:w-16" />
+                  <Users className="h-10 w-10 opacity-20 sm:h-14 sm:w-14 md:h-16 md:w-16" />
               )}
             </div>
             <button 
               onClick={onOpenProfile}
-              className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-10 sm:w-10"
+              className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-9 sm:w-9 md:h-10 md:w-10"
               aria-label="Edit Profile"
               title="Edit Profile"
               data-testid="btn-edit-athlete-avatar"
             >
-              <PenSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <PenSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
             </button>
           </div>
 
           {/* Info */}
-          <div className="relative z-10 flex-1 text-center md:text-left w-full">
-            <div className="mb-1 flex flex-col items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary sm:mb-2 sm:flex-row sm:gap-2 sm:text-xs md:justify-start">
+          <div className="relative z-10 min-w-0 flex-1 text-left">
+            <div className="mb-1 flex items-center justify-start gap-1 text-[10px] font-bold uppercase tracking-widest text-primary sm:mb-2 sm:gap-2 sm:text-xs">
               <span className="flex items-center gap-2">My Athlete</span>
             </div>
             {hasAthlete ? (
@@ -234,7 +234,7 @@ export function SupporterDashboardView({
                 <h2 className="mb-2 break-words font-display text-3xl uppercase leading-none tracking-wide text-white sm:mb-3 sm:text-5xl lg:text-6xl">
                   {profile.athleteName}
                 </h2>
-                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-bold uppercase tracking-widest text-white/70 sm:gap-x-4 sm:gap-y-2 sm:text-base md:justify-start">
+                <div className="flex flex-wrap items-center justify-start gap-x-1.5 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/70 sm:gap-x-3 sm:gap-y-2 sm:text-sm md:gap-x-4 md:text-base">
                   {profile.jerseyNumber && (
                     <span className="text-white flex items-center gap-1">
                       <span className="text-primary">#</span>{profile.jerseyNumber}
@@ -247,7 +247,7 @@ export function SupporterDashboardView({
                 </div>
 
                 {profile.teamName && (
-                  <div className="mt-3 inline-flex items-center justify-center gap-2 border border-white/10 bg-white/5 px-3 py-1.5 sm:mt-6 sm:gap-3 sm:px-4 sm:py-2 md:justify-start clip-angled-sm">
+                  <div className="mt-3 inline-flex items-center justify-start gap-2 border border-white/10 bg-white/5 px-3 py-1.5 sm:gap-3 sm:px-4 sm:py-2 md:mt-6 clip-angled-sm">
                     <Trophy className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
                     <span className="font-display text-base uppercase tracking-wide text-white sm:text-xl">{profile.teamName}</span>
                   </div>
@@ -258,7 +258,7 @@ export function SupporterDashboardView({
                 <h2 className="mb-2 font-display text-3xl uppercase leading-none tracking-wide text-white/50 sm:mb-3 sm:text-5xl lg:text-6xl">
                   UNASSIGNED
                 </h2>
-                <p className="mx-auto mb-3 max-w-md text-xs font-medium text-white/60 sm:mb-6 sm:text-sm md:mx-0">
+                <p className="mb-3 max-w-md text-xs font-medium text-white/60 sm:mb-6 sm:text-sm">
                   Set up your athlete's details to personalize your graphics and dashboard.
                 </p>
                 <button
