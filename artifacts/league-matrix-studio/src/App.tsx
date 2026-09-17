@@ -2804,18 +2804,9 @@ function ScheduleEditor() {
               season={season}
               events={events}
               selectedTemplate={selectedTemplate}
+              onAddEvent={openNewEventForm}
               bottomActions={(
                 <>
-                  <button
-                    type="button"
-                    onClick={openNewEventForm}
-                    className="ml-2 grid h-14 w-14 shrink-0 place-items-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background sm:ml-3"
-                    aria-label="Add event"
-                    data-testid="button-add-event"
-                  >
-                    <Plus className="h-7 w-7" strokeWidth={3} />
-                    <span className="sr-only">Add event</span>
-                  </button>
                   {!isFan && accountAccess?.accessMode !== 'guest' && (
                     <div className="min-w-0 max-w-[420px]">
                       <CoachCalendarCodePanel />
@@ -3193,12 +3184,14 @@ function SchedulePreview({
   season,
   events,
   selectedTemplate,
+  onAddEvent,
   bottomActions,
 }: {
   teamName: string;
   season: string;
   events: ScheduleEvent[];
   selectedTemplate: number;
+  onAddEvent: () => void;
   bottomActions: ReactNode;
 }) {
   const templateClass = selectedTemplate === 1
@@ -3228,8 +3221,21 @@ function SchedulePreview({
           </div>
           <p className="mt-5 text-sm font-bold uppercase tracking-[.12em] opacity-85 sm:text-base">{season || 'SEASON'}</p>
 
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={onAddEvent}
+              className="grid h-11 w-11 place-items-center rounded-full border-2 border-current bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2"
+              aria-label="Add event"
+              data-testid="button-add-event"
+            >
+              <Plus className="h-6 w-6" strokeWidth={3} />
+              <span className="sr-only">Add event</span>
+            </button>
+          </div>
+
           <div
-            className="mt-8 max-h-[300px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable] sm:max-h-[420px]"
+            className="mt-2 max-h-[300px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable] sm:max-h-[420px]"
             aria-label="Schedule events"
             tabIndex={events.length > 0 ? 0 : undefined}
             data-testid="preview-schedule-event-list"
@@ -3274,7 +3280,7 @@ function SchedulePreview({
           </div>
         </div>
       </div>
-      <div className="absolute bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[960px] -translate-x-1/2 items-end justify-between gap-3 sm:bottom-6 sm:w-[calc(100%-4rem)]" data-testid="schedule-bottom-actions">
+      <div className="absolute bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[960px] -translate-x-1/2 items-end justify-end gap-3 sm:bottom-6 sm:w-[calc(100%-4rem)]" data-testid="schedule-bottom-actions">
         {bottomActions}
       </div>
     </div>
