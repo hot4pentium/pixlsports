@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, FileText, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -24,15 +24,19 @@ import { readScheduleDraft } from './schedule-draft';
 import {
   addStatEvent,
   adjustScore,
+  clearStoredTrackerConflict,
   createGameSession,
   endGame,
   getSportRule,
+  getTrackerConflict,
   getTrackerStorageKeys,
   getTrackerSyncRecovery,
   mergeTrackerData,
   normalizeTrackerData,
   readStoredActiveGame,
+  readStoredTrackerConflict,
   readStoredTrackerData,
+  saveStoredTrackerConflict,
   seasonTotals,
   sports,
   syncTrackerDataToCloud,
@@ -42,6 +46,8 @@ import {
   type StatTrackerData,
   type StatDefinition,
   type SportRule,
+  type TrackerConflict,
+  type TrackerConflictResolution,
 } from './stat-tracker';
 
 function readLocalTracker(accountId: string): StatTrackerData {
@@ -79,6 +85,43 @@ function formatDate(value: string) {
 function formatEventTime(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function ConflictHistoryPreview({
+  label,
+  data,
+  accent = false,
+}: {
+  label: string;
+  data: StatTrackerData;
+  accent?: boolean;
+}) {
+  const games = data.games.slice().reverse();
+
+  return (
+    <div className={`border p-4 ${accent ? 'border-primary/60 bg-primary/5' : 'border-border bg-background'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className={`text-[10px] font-bold uppercase tracking-widest ${accent ? 'text-primary' : 'text-muted-foreground'}`}>{label}</p>
+          <p className="mt-1 font-display text-2xl uppercase">{data.games.length} {data.games.length === 1 ? 'game' : 'games'}</p>
+        </div>
+        {accent && <span className="border border-primary/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">On this device</span>}
+      </div>
+      <div className="mt-4 space-y-2">
+        {games.slice(0, 4).map((game) => (
+          <div key={game.id} className="flex items-center justify-between gap-3 border-t border-border/70 pt-2 text-sm">
+            <div className="min-w-0">
+              <p className="truncate font-bold">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.sport}</p>
+            </div>
+            <span className="shrink-0 font-display text-xl text-primary">{game.score}–{game.opponentScore}</span>
+          </div>
+        ))}
+        {!games.length && <p className="border-t border-border/70 pt-2 text-sm text-muted-foreground">No completed games in this copy.</p>}
+        {games.length > 4 && <p className="pt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">+ {games.length - 4} more games</p>}
+      </div>
+    </div>
+  );
 }
 
 type LiveTrackerGameProps = {
@@ -215,6 +258,8 @@ export function StatTrackerPage() {
   const [saving, setSaving] = useState(false);
   const [retryAvailable, setRetryAvailable] = useState(false);
   const [revisionConflict, setRevisionConflict] = useState(false);
+  const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
+  const [selectedConflictResolution, setSelectedConflictResolution] = useState<'local' | 'cloud' | 'merge' | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
   const [cloudProject, setCloudProject] = useState<{ id: string; revision: number } | null>(null);
   const initializedCloud = useRef(false);
@@ -244,6 +289,8 @@ export function StatTrackerPage() {
     initializedCloud.current = false;
     setCloudProject(null);
     setStorageAccountId(null);
+    setTrackerConflict(null);
+    setSelectedConflictResolution(null);
     if (!accountId) {
       setData(normalizeTrackerData(null));
       setCurrentGame(null);
@@ -263,6 +310,29 @@ export function StatTrackerPage() {
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
     if (!existing || initializedCloud.current) return;
     initializedCloud.current = true;
+    const pendingConflict = readStoredTrackerConflict(window.localStorage, accountId);
+    if (pendingConflict && pendingConflict.cloudProject.id === existing.id) {
+      const currentCloudData = normalizeTrackerData(existing.project);
+      const currentCloudProject = { id: existing.id, revision: existing.revision };
+      const restoredConflict: TrackerConflict = {
+        localData: pendingConflict.data,
+        cloudData: currentCloudData,
+        cloudProject: currentCloudProject,
+      };
+      setData(pendingConflict.data);
+      setCloudProject(currentCloudProject);
+      setTrackerConflict(restoredConflict);
+      setSelectedConflictResolution(pendingConflict.resolution);
+      setRevisionConflict(true);
+      setError('A history choice is ready to sync. Your selected result is still saved on this device.');
+      saveStoredTrackerConflict(window.localStorage, accountId, {
+        resolution: pendingConflict.resolution,
+        data: pendingConflict.data,
+        cloudData: currentCloudData,
+        cloudProject: currentCloudProject,
+      });
+      return;
+    }
     const mergedData = mergeTrackerData(readLocalTracker(accountId), existing.project);
     setData(mergedData);
     setCloudProject({ id: existing.id, revision: existing.revision });
@@ -306,6 +376,8 @@ export function StatTrackerPage() {
     setError('');
     setRetryAvailable(false);
     setRevisionConflict(false);
+    setTrackerConflict(null);
+    setSelectedConflictResolution(null);
     setCurrentGame(createGameSession(sport, { date, opponent, notes }));
     announce('GAME STARTED — LIVE STATS ARE READY');
   };
@@ -341,14 +413,19 @@ export function StatTrackerPage() {
     setError('');
     setRetryAvailable(false);
     setRevisionConflict(false);
+    setTrackerConflict(null);
+    setSelectedConflictResolution(null);
     try {
       await syncTrackerData(nextData);
+      if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
+      const conflict = getTrackerConflict(saveError, nextData);
       setError(recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
+      setTrackerConflict(conflict);
       announce('LOCAL COPY SAVED — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
@@ -361,21 +438,98 @@ export function StatTrackerPage() {
     setError('');
     try {
       await syncTrackerData(data);
+      if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
       setRetryAvailable(false);
       setRevisionConflict(false);
+      setTrackerConflict(null);
+      setSelectedConflictResolution(null);
       announce('CLOUD SYNC RESTORED — SEASON HISTORY IS SAFE');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
+      const conflict = getTrackerConflict(saveError, data);
       setError(recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
+      setTrackerConflict(conflict ?? trackerConflict);
       announce('LOCAL COPY STILL SAFE — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
     }
   };
 
-  const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
+  const chooseConflictResolution = (resolution: TrackerConflictResolution) => {
+    if (!trackerConflict || !accountId || saving) return;
+
+    const nextData = resolution === 'local'
+      ? trackerConflict.localData
+      : resolution === 'cloud'
+        ? trackerConflict.cloudData
+        : mergeTrackerData(trackerConflict.localData, trackerConflict.cloudData);
+
+    setData(nextData);
+    saveLocalTracker(nextData, accountId);
+    setCloudProject(trackerConflict.cloudProject);
+    setSelectedConflictResolution(resolution);
+    saveStoredTrackerConflict(window.localStorage, accountId, {
+      resolution,
+      data: nextData,
+      cloudData: trackerConflict.cloudData,
+      cloudProject: trackerConflict.cloudProject,
+    });
+    setRetryAvailable(false);
+    setError('');
+    announce(
+      resolution === 'local'
+        ? 'LOCAL HISTORY SELECTED — READY TO SYNC'
+        : resolution === 'cloud'
+          ? 'CLOUD HISTORY SELECTED — READY TO SYNC'
+          : 'NON-OVERLAPPING GAMES MERGED — READY TO SYNC',
+    );
+  };
+
+  const syncSelectedConflict = async () => {
+    if (!trackerConflict || !selectedConflictResolution || saving) return;
+    setSaving(true);
+    setError('');
+    setRetryAvailable(false);
+    const selectedData = data;
+    try {
+      await syncTrackerData(selectedData);
+      if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
+      setRevisionConflict(false);
+      setTrackerConflict(null);
+      setSelectedConflictResolution(null);
+      announce('HISTORY RESOLVED — CLOUD SYNC RESTORED');
+    } catch (saveError: any) {
+      const recovery = getTrackerSyncRecovery(saveError);
+      const nextConflict = getTrackerConflict(saveError, selectedData);
+      setError(recovery.message);
+      setRevisionConflict(recovery.revisionConflict);
+      setRetryAvailable(recovery.retryAvailable);
+      setTrackerConflict(nextConflict ?? { ...trackerConflict, localData: selectedData });
+      if (nextConflict) {
+        setSelectedConflictResolution(null);
+        if (accountId) {
+          saveStoredTrackerConflict(window.localStorage, accountId, {
+            resolution: null,
+            data: selectedData,
+            cloudData: nextConflict.cloudData,
+            cloudProject: nextConflict.cloudProject,
+          });
+        }
+      } else if (accountId) {
+        saveStoredTrackerConflict(window.localStorage, accountId, {
+          resolution: selectedConflictResolution,
+          data: selectedData,
+          cloudData: trackerConflict.cloudData,
+          cloudProject: trackerConflict.cloudProject,
+        });
+      }
+      announce('SELECTED HISTORY STILL SAFE — CLOUD SYNC NEEDS ATTENTION');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
@@ -409,12 +563,59 @@ export function StatTrackerPage() {
               <RotateCcw className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} /> {saving ? 'Retrying…' : 'Retry cloud sync'}
             </button>
           )}
-          {revisionConflict && (
+          {revisionConflict && !trackerConflict && (
             <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground">
               <RotateCcw className="h-4 w-4" /> Refresh to merge
             </button>
           )}
         </div>
+      )}
+
+      {revisionConflict && trackerConflict && (
+        <section className="mb-6 border border-primary/50 bg-card p-5 clip-angled-sm sm:p-7" aria-labelledby="tracker-conflict-heading">
+          <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">History needs a choice</p>
+              <h2 id="tracker-conflict-heading" className="mt-1 font-display text-3xl uppercase tracking-wide">Newer cloud copy found</h2>
+              <p className="mt-2 max-w-3xl text-sm font-medium text-muted-foreground">Your local history is preserved. Choose a copy or merge games that only exist in one history, then sync the selected result without leaving this page.</p>
+            </div>
+            <GitMerge className="hidden h-7 w-7 shrink-0 text-primary sm:block" />
+          </div>
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            <ConflictHistoryPreview label="Local copy" data={trackerConflict.localData} accent />
+            <ConflictHistoryPreview label="Newer cloud copy" data={trackerConflict.cloudData} />
+          </div>
+          <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose what to sync</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {([
+                ['local', 'Keep local copy', 'Replace cloud history with this device’s history.'],
+                ['cloud', 'Accept cloud copy', 'Use the newer cloud history on this device.'],
+                ['merge', 'Merge new games', 'Keep games from both copies when IDs do not overlap.'],
+              ] as const).map(([value, label, description]) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={saving}
+                  onClick={() => chooseConflictResolution(value)}
+                  className={`min-h-24 border p-3 text-left transition-colors disabled:opacity-50 ${selectedConflictResolution === value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border bg-background hover:border-primary'}`}
+                >
+                  <span className="block text-xs font-bold uppercase tracking-widest">{label}</span>
+                  <span className="mt-2 block text-xs font-medium leading-5 text-muted-foreground">{description}</span>
+                </button>
+              ))}
+            </div>
+            {selectedConflictResolution && (
+              <div className="flex flex-col gap-3 border-l-2 border-primary bg-primary/5 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-bold">Selected history is saved on this device until cloud sync succeeds.</p>
+                <button type="button" disabled={saving} onClick={() => void syncSelectedConflict()} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}
+                  {saving ? 'Syncing selected history…' : 'Sync selected history'}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {!currentGame ? (

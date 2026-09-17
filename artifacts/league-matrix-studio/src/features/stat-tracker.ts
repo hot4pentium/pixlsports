@@ -49,6 +49,21 @@ export type TrackerCloudProject = {
   revision: number;
 };
 
+export type TrackerConflict = {
+  localData: StatTrackerData;
+  cloudData: StatTrackerData;
+  cloudProject: TrackerCloudProject;
+};
+
+export type TrackerConflictResolution = 'local' | 'cloud' | 'merge';
+
+export type StoredTrackerConflict = {
+  resolution: TrackerConflictResolution | null;
+  data: StatTrackerData;
+  cloudData: StatTrackerData;
+  cloudProject: TrackerCloudProject;
+};
+
 export type TrackerPayload = StatTrackerData & {
   tool: 'stat-tracker';
 };
@@ -80,6 +95,7 @@ export function getTrackerStorageKeys(accountId: string) {
   return {
     history: `${trackerLocalStorageKey}:${suffix}`,
     activeGame: `${activeGameStorageKey}:${suffix}`,
+    pendingConflict: `${trackerLocalStorageKey}:pending-conflict:${suffix}`,
   };
 }
 
@@ -118,6 +134,46 @@ export function readStoredActiveGame(storage: TrackerStorage, accountId: string)
   } catch {
     return null;
   }
+}
+
+export function readStoredTrackerConflict(storage: TrackerStorage, accountId: string): StoredTrackerConflict | null {
+  migrateLegacyTrackerStorage(storage, accountId);
+  try {
+    const value = JSON.parse(storage.getItem(getTrackerStorageKeys(accountId).pendingConflict) ?? 'null') as Partial<StoredTrackerConflict> | null;
+    if (
+      !value
+      || (value.resolution !== null && value.resolution !== 'local' && value.resolution !== 'cloud' && value.resolution !== 'merge')
+      || typeof value.cloudProject !== 'object'
+      || value.cloudProject === null
+      || typeof value.cloudProject.id !== 'string'
+      || typeof value.cloudProject.revision !== 'number'
+      || !Number.isInteger(value.cloudProject.revision)
+      || value.cloudProject.revision < 1
+    ) {
+      return null;
+    }
+
+    return {
+      resolution: value.resolution ?? null,
+      data: normalizeTrackerData(value.data),
+      cloudData: normalizeTrackerData(value.cloudData),
+      cloudProject: value.cloudProject,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveStoredTrackerConflict(storage: TrackerStorage, accountId: string, value: StoredTrackerConflict) {
+  storage.setItem(getTrackerStorageKeys(accountId).pendingConflict, JSON.stringify({
+    ...value,
+    data: normalizeTrackerData(value.data),
+    cloudData: normalizeTrackerData(value.cloudData),
+  }));
+}
+
+export function clearStoredTrackerConflict(storage: TrackerStorage, accountId: string) {
+  storage.removeItem(getTrackerStorageKeys(accountId).pendingConflict);
 }
 
 const stat = (
@@ -365,6 +421,31 @@ export function isTrackerRevisionConflict(error: unknown): boolean {
     && (error as { status?: unknown }).status === 409;
 }
 
+export function getTrackerConflict(error: unknown, localData: StatTrackerData): TrackerConflict | null {
+  if (!isTrackerRevisionConflict(error) || typeof error !== 'object' || error === null) return null;
+
+  const responseData = (error as { data?: unknown }).data;
+  if (typeof responseData !== 'object' || responseData === null) return null;
+  const current = (responseData as { current?: unknown }).current;
+  if (typeof current !== 'object' || current === null) return null;
+
+  const project = current as { id?: unknown; revision?: unknown; project?: unknown };
+  if (
+    typeof project.id !== 'string'
+    || typeof project.revision !== 'number'
+    || !Number.isInteger(project.revision)
+    || project.revision < 1
+  ) {
+    return null;
+  }
+
+  return {
+    localData: normalizeTrackerData(localData),
+    cloudData: normalizeTrackerData(project.project),
+    cloudProject: { id: project.id, revision: project.revision },
+  };
+}
+
 export function seasonTotals(games: GameSession[], sport: Sport) {
   const totals: Record<string, number> = {};
   let score = 0;
@@ -382,7 +463,7 @@ export function seasonTotals(games: GameSession[], sport: Sport) {
 
 export function trackerSaveErrorMessage(error: unknown): string {
   return isTrackerRevisionConflict(error)
-    ? 'This tracker changed elsewhere. Your local history is safe; refresh this page to merge the newer cloud copy before trying again.'
+    ? 'This tracker changed elsewhere. Your local history is safe; choose which history to keep before syncing again.'
     : 'Game saved on this device, but cloud sync failed. Try saving again.';
 }
 

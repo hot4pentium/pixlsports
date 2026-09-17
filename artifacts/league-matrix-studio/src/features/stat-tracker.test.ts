@@ -6,8 +6,10 @@ import { createElement } from 'react';
 import {
   addStatEvent,
   adjustScore,
+  clearStoredTrackerConflict,
   createGameSession,
   endGame,
+  getTrackerConflict,
   getTrackerSyncRecovery,
   getTrackerStorageKeys,
   getSportRule,
@@ -16,7 +18,9 @@ import {
   mergeTrackerData,
   normalizeTrackerData,
   readStoredActiveGame,
+  readStoredTrackerConflict,
   readStoredTrackerData,
+  saveStoredTrackerConflict,
   seasonTotals,
   syncTrackerDataToCloud,
   trackerPayload,
@@ -191,6 +195,24 @@ test('legacy tracker storage migrates into the first signed-in account namespace
   assert.equal(storage.has(getTrackerStorageKeys('user_a').activeGame), true);
 });
 
+test('selected conflict history survives reload until cloud sync succeeds', () => {
+  const localGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
+  const cloudGame = endGame(createGameSession('soccer', { opponent: 'Westview' }));
+  const storage = createMemoryStorage();
+  const pending = {
+    resolution: 'local' as const,
+    data: { version: 1 as const, games: [localGame] },
+    cloudData: { version: 1 as const, games: [cloudGame] },
+    cloudProject: { id: 'tracker-1', revision: 4 },
+  };
+
+  saveStoredTrackerConflict(storage, 'user_a', pending);
+  assert.deepEqual(readStoredTrackerConflict(storage, 'user_a'), pending);
+
+  clearStoredTrackerConflict(storage, 'user_a');
+  assert.equal(readStoredTrackerConflict(storage, 'user_a'), null);
+});
+
 test('switching accounts and reloading never reads or merges the previous account history', () => {
   const accountAGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
   const accountBGame = endGame(createGameSession('soccer', { opponent: 'Westview' }));
@@ -239,16 +261,46 @@ test('a later successful sync preserves games kept locally through a failed sync
   });
 });
 
-test('revision conflicts explain how to recover without discarding the local game', () => {
+test('revision conflicts explain how to choose a history without discarding the local game', () => {
   const message = trackerSaveErrorMessage({ status: 409 });
   const recovery = getTrackerSyncRecovery({ status: 409 });
 
   assert.equal(isTrackerRevisionConflict({ status: 409 }), true);
   assert.match(message, /local history is safe/);
-  assert.match(message, /refresh this page/);
+  assert.match(message, /choose which history to keep/);
   assert.equal(recovery.revisionConflict, true);
   assert.equal(recovery.retryAvailable, false);
-  assert.match(recovery.message, /merge/);
+  assert.match(recovery.message, /syncing again/);
+});
+
+test('revision conflicts expose the newer cloud history and revision for in-page resolution', () => {
+  const localGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
+  const cloudGame = endGame(createGameSession('soccer', { opponent: 'Westview' }));
+  const conflict = getTrackerConflict({
+    status: 409,
+    data: {
+      error: 'Project revision is stale',
+      current: {
+        id: 'tracker-1',
+        revision: 9,
+        project: { tool: 'stat-tracker', version: 1, games: [cloudGame] },
+      },
+    },
+  }, { version: 1, games: [localGame] });
+
+  assert.deepEqual(conflict?.cloudProject, { id: 'tracker-1', revision: 9 });
+  assert.deepEqual(conflict?.localData.games.map((game) => game.id), [localGame.id]);
+  assert.deepEqual(conflict?.cloudData.games.map((game) => game.id), [cloudGame.id]);
+});
+
+test('malformed revision conflict payloads do not create an unsafe recovery choice', () => {
+  const localData = { version: 1 as const, games: [] };
+
+  assert.equal(getTrackerConflict({ status: 409 }, localData), null);
+  assert.equal(getTrackerConflict({
+    status: 409,
+    data: { current: { id: 'tracker-1', revision: 0, project: {} } },
+  }, localData), null);
 });
 
 test('ordinary sync failures remain retryable instead of looking like conflicts', () => {
@@ -308,7 +360,7 @@ test('retry resends the complete local history and stores the returned cloud rev
   assert.deepEqual(saved, { id: 'tracker-1', revision: 8 });
 });
 
-test('a revision conflict preserves local history and only offers refresh guidance', async () => {
+test('a revision conflict preserves local history until a selected copy is synced', async () => {
   const localGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
   const data = { version: 1 as const, games: [localGame] };
   const client = {
@@ -334,5 +386,5 @@ test('a revision conflict preserves local history and only offers refresh guidan
   const recovery = getTrackerSyncRecovery({ status: 409 });
   assert.equal(recovery.retryAvailable, false);
   assert.equal(recovery.revisionConflict, true);
-  assert.match(recovery.message, /refresh this page to merge/);
+  assert.match(recovery.message, /choose which history to keep/);
 });
