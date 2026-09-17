@@ -1,7 +1,7 @@
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -20,6 +20,52 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH;
+const dashboardHeroSizeBudget = 80 * 1024;
+
+function dashboardHeroAssetGuard(): Plugin {
+  return {
+    name: 'dashboard-hero-asset-guard',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      const heroAssets = Object.values(bundle).filter(
+        (output) =>
+          output.type === 'asset' &&
+          /^assets\/hero-banner-[\w-]+\.webp$/.test(output.fileName),
+      );
+
+      if (heroAssets.length !== 1) {
+        const emittedMatches = Object.values(bundle)
+          .filter(
+            (output) =>
+              output.type === 'asset' &&
+              output.fileName.includes('hero-banner'),
+          )
+          .map((output) => output.fileName);
+
+        throw new Error(
+          [
+            'Dashboard hero asset check failed: expected exactly one hashed WebP asset.',
+            emittedMatches.length > 0
+              ? `Found: ${emittedMatches.join(', ')}`
+              : 'No emitted hero-banner asset was found.',
+          ].join(' '),
+        );
+      }
+
+      const [heroAsset] = heroAssets;
+      const emittedBytes =
+        typeof heroAsset.source === 'string'
+          ? Buffer.byteLength(heroAsset.source)
+          : heroAsset.source.byteLength;
+
+      if (emittedBytes > dashboardHeroSizeBudget) {
+        throw new Error(
+          `Dashboard hero asset check failed: ${heroAsset.fileName} is ${emittedBytes} bytes; the budget is ${dashboardHeroSizeBudget} bytes.`,
+        );
+      }
+    },
+  };
+}
 
 if (!basePath) {
   throw new Error(
@@ -33,6 +79,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    dashboardHeroAssetGuard(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined
       ? [
