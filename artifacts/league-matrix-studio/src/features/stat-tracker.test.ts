@@ -8,6 +8,7 @@ import {
   adjustScore,
   createGameSession,
   endGame,
+  getTrackerSyncRecovery,
   getTrackerStorageKeys,
   getSportRule,
   isTrackerRevisionConflict,
@@ -17,6 +18,8 @@ import {
   readStoredActiveGame,
   readStoredTrackerData,
   seasonTotals,
+  syncTrackerDataToCloud,
+  trackerPayload,
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
@@ -238,13 +241,98 @@ test('a later successful sync preserves games kept locally through a failed sync
 
 test('revision conflicts explain how to recover without discarding the local game', () => {
   const message = trackerSaveErrorMessage({ status: 409 });
+  const recovery = getTrackerSyncRecovery({ status: 409 });
 
   assert.equal(isTrackerRevisionConflict({ status: 409 }), true);
   assert.match(message, /local history is safe/);
   assert.match(message, /refresh this page/);
+  assert.equal(recovery.revisionConflict, true);
+  assert.equal(recovery.retryAvailable, false);
+  assert.match(recovery.message, /merge/);
 });
 
 test('ordinary sync failures remain retryable instead of looking like conflicts', () => {
+  const recovery = getTrackerSyncRecovery({ status: 503 });
+
   assert.equal(isTrackerRevisionConflict({ status: 503 }), false);
   assert.match(trackerSaveErrorMessage({ status: 503 }), /Try saving again/);
+  assert.equal(recovery.revisionConflict, false);
+  assert.equal(recovery.retryAvailable, true);
+});
+
+test('retry resends the complete local history and stores the returned cloud revision', async () => {
+  const firstGame = endGame(
+    addStatEvent(createGameSession('basketball', { opponent: 'Northside' }), 'three-point'),
+  );
+  const secondGame = endGame(
+    addStatEvent(createGameSession('basketball', { opponent: 'Westview' }), 'two-point'),
+  );
+  const data = { version: 1 as const, games: [firstGame, secondGame] };
+  const requests: Array<{ projectId: string; data: { project: ReturnType<typeof trackerPayload>; expectedRevision: number } }> = [];
+  let attempts = 0;
+  const client = {
+    createProject: async () => {
+      throw new Error('retry should update the existing project');
+    },
+    updateProject: async (input: typeof requests[number]) => {
+      requests.push(input);
+      attempts += 1;
+      if (attempts === 1) throw { status: 503 };
+      return { id: 'tracker-1', revision: 8 };
+    },
+  };
+  const cloudProject = { id: 'tracker-1', revision: 7 };
+
+  await assert.rejects(
+    syncTrackerDataToCloud({
+      data,
+      cloudProject,
+      athleteName: 'Jordan',
+      guestUsageKey: 'guest-key',
+      client,
+    }),
+    (error: unknown) => (error as { status?: number }).status === 503,
+  );
+  const saved = await syncTrackerDataToCloud({
+    data,
+    cloudProject,
+    athleteName: 'Jordan',
+    guestUsageKey: 'guest-key',
+    client,
+  });
+
+  assert.equal(requests.length, 2);
+  assert.deepEqual(requests[1]?.data.project, trackerPayload(data));
+  assert.deepEqual(requests[1]?.data.project.games, [firstGame, secondGame]);
+  assert.equal(requests[1]?.data.expectedRevision, 7);
+  assert.deepEqual(saved, { id: 'tracker-1', revision: 8 });
+});
+
+test('a revision conflict preserves local history and only offers refresh guidance', async () => {
+  const localGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
+  const data = { version: 1 as const, games: [localGame] };
+  const client = {
+    createProject: async () => {
+      throw { status: 409 };
+    },
+    updateProject: async () => {
+      throw { status: 409 };
+    },
+  };
+
+  await assert.rejects(
+    syncTrackerDataToCloud({
+      data,
+      cloudProject: null,
+      athleteName: 'Jordan',
+      client,
+    }),
+    (error: unknown) => (error as { status?: number }).status === 409,
+  );
+
+  assert.deepEqual(data.games, [localGame]);
+  const recovery = getTrackerSyncRecovery({ status: 409 });
+  assert.equal(recovery.retryAvailable, false);
+  assert.equal(recovery.revisionConflict, true);
+  assert.match(recovery.message, /refresh this page to merge/);
 });

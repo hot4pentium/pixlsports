@@ -44,6 +44,32 @@ export type StatTrackerData = {
   games: GameSession[];
 };
 
+export type TrackerCloudProject = {
+  id: string;
+  revision: number;
+};
+
+export type TrackerPayload = StatTrackerData & {
+  tool: 'stat-tracker';
+};
+
+export type TrackerSyncClient = {
+  createProject: (input: {
+    data: {
+      name: string;
+      project: TrackerPayload;
+      guestUsageKey?: string;
+    };
+  }) => Promise<TrackerCloudProject>;
+  updateProject: (input: {
+    projectId: string;
+    data: {
+      project: TrackerPayload;
+      expectedRevision: number;
+    };
+  }) => Promise<TrackerCloudProject>;
+};
+
 export type TrackerStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
 
 export const trackerLocalStorageKey = 'leaguematrix-stat-tracker';
@@ -298,6 +324,40 @@ export function mergeTrackerData(localValue: unknown, cloudValue: unknown): Stat
   };
 }
 
+export function trackerPayload(data: StatTrackerData): TrackerPayload {
+  return { ...data, tool: 'stat-tracker' };
+}
+
+export async function syncTrackerDataToCloud({
+  data,
+  cloudProject,
+  athleteName,
+  guestUsageKey,
+  client,
+}: {
+  data: StatTrackerData;
+  cloudProject: TrackerCloudProject | null;
+  athleteName: string;
+  guestUsageKey?: string;
+  client: TrackerSyncClient;
+}): Promise<TrackerCloudProject> {
+  const project = trackerPayload(data);
+  if (cloudProject) {
+    return client.updateProject({
+      projectId: cloudProject.id,
+      data: { project, expectedRevision: cloudProject.revision },
+    });
+  }
+
+  return client.createProject({
+    data: {
+      name: `${athleteName || 'Athlete'} — Stat Tracker`,
+      project,
+      guestUsageKey,
+    },
+  });
+}
+
 export function isTrackerRevisionConflict(error: unknown): boolean {
   return typeof error === 'object'
     && error !== null
@@ -324,4 +384,13 @@ export function trackerSaveErrorMessage(error: unknown): string {
   return isTrackerRevisionConflict(error)
     ? 'This tracker changed elsewhere. Your local history is safe; refresh this page to merge the newer cloud copy before trying again.'
     : 'Game saved on this device, but cloud sync failed. Try saving again.';
+}
+
+export function getTrackerSyncRecovery(error: unknown) {
+  const revisionConflict = isTrackerRevisionConflict(error);
+  return {
+    message: trackerSaveErrorMessage(error),
+    revisionConflict,
+    retryAvailable: !revisionConflict,
+  };
 }

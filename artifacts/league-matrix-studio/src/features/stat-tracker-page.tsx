@@ -28,14 +28,14 @@ import {
   endGame,
   getSportRule,
   getTrackerStorageKeys,
-  isTrackerRevisionConflict,
+  getTrackerSyncRecovery,
   mergeTrackerData,
   normalizeTrackerData,
   readStoredActiveGame,
   readStoredTrackerData,
   seasonTotals,
   sports,
-  trackerSaveErrorMessage,
+  syncTrackerDataToCloud,
   undoLastStatEvent,
   type GameSession,
   type Sport,
@@ -43,10 +43,6 @@ import {
   type StatDefinition,
   type SportRule,
 } from './stat-tracker';
-
-function trackerPayload(data: StatTrackerData) {
-  return { ...data, tool: 'stat-tracker' };
-}
 
 function readLocalTracker(accountId: string): StatTrackerData {
   return readStoredTrackerData(window.localStorage, accountId);
@@ -320,18 +316,17 @@ export function StatTrackerPage() {
   };
 
   const syncTrackerData = async (nextData: StatTrackerData) => {
-    if (cloudProject) {
-      const saved = await updateProject.mutateAsync({
-        projectId: cloudProject.id,
-        data: { project: trackerPayload(nextData), expectedRevision: cloudProject.revision },
-      });
-      setCloudProject({ id: saved.id, revision: saved.revision });
-    } else {
-      const created = await createProject.mutateAsync({
-        data: { name: `${profile.athleteName || 'Athlete'} — Stat Tracker`, project: trackerPayload(nextData), guestUsageKey },
-      });
-      setCloudProject({ id: created.id, revision: created.revision });
-    }
+    const saved = await syncTrackerDataToCloud({
+      data: nextData,
+      cloudProject,
+      athleteName: profile.athleteName,
+      guestUsageKey,
+      client: {
+        createProject: (input) => createProject.mutateAsync(input),
+        updateProject: (input) => updateProject.mutateAsync(input),
+      },
+    });
+    setCloudProject({ id: saved.id, revision: saved.revision });
     await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
   };
@@ -350,9 +345,10 @@ export function StatTrackerPage() {
       await syncTrackerData(nextData);
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
-      setError(trackerSaveErrorMessage(saveError));
-      setRevisionConflict(isTrackerRevisionConflict(saveError));
-      setRetryAvailable(!isTrackerRevisionConflict(saveError));
+      const recovery = getTrackerSyncRecovery(saveError);
+      setError(recovery.message);
+      setRevisionConflict(recovery.revisionConflict);
+      setRetryAvailable(recovery.retryAvailable);
       announce('LOCAL COPY SAVED — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
@@ -369,10 +365,10 @@ export function StatTrackerPage() {
       setRevisionConflict(false);
       announce('CLOUD SYNC RESTORED — SEASON HISTORY IS SAFE');
     } catch (saveError: any) {
-      const conflict = isTrackerRevisionConflict(saveError);
-      setError(trackerSaveErrorMessage(saveError));
-      setRevisionConflict(conflict);
-      setRetryAvailable(!conflict);
+      const recovery = getTrackerSyncRecovery(saveError);
+      setError(recovery.message);
+      setRevisionConflict(recovery.revisionConflict);
+      setRetryAvailable(recovery.retryAvailable);
       announce('LOCAL COPY STILL SAFE — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
