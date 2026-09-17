@@ -142,12 +142,12 @@ function QuickActionSportBackground() {
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-gradient-to-br from-[#07130d] via-[#0b1511] to-[#050807]">
       <div className="absolute inset-0 bg-tech-grid-dark opacity-55" />
       <div className="absolute inset-y-0 left-[30%] w-px -skew-x-[18deg] bg-white/10" />
-      <div className="absolute inset-y-[-20%] left-[48%] w-8 -skew-x-[18deg] bg-primary/10 transition-transform duration-500 group-hover:translate-x-2" />
-      <div className="absolute inset-y-[-20%] left-[66%] w-3 -skew-x-[18deg] bg-white/[0.05] transition-transform duration-500 group-hover:translate-x-3" />
+      <div className="quick-sport-flow-primary absolute inset-y-[-20%] left-[48%] w-8 -skew-x-[18deg] bg-primary/10 transition-transform duration-500 group-hover:translate-x-2" />
+      <div className="quick-sport-flow-secondary absolute inset-y-[-20%] left-[66%] w-3 -skew-x-[18deg] bg-white/[0.05] transition-transform duration-500 group-hover:translate-x-3" />
       <div className="absolute -right-10 top-1/2 h-28 w-28 -translate-y-1/2 rounded-full border border-primary/20" />
       <div className="absolute -right-4 top-1/2 h-px w-24 -translate-y-1/2 bg-gradient-to-r from-primary/30 to-transparent" />
       <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-primary/15 blur-2xl" />
-      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
+      <div className="quick-sport-flow-glow absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
     </div>
   );
 }
