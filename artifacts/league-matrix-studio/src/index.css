@@ -216,6 +216,32 @@
   }
 }
 
+.studio-page-background :is(section, aside, article, a).bg-card.border {
+  filter:
+    drop-shadow(0 14px 12px rgb(0 0 0 / 0.2))
+    drop-shadow(0 4px 4px rgb(0 0 0 / 0.18));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.92),
+    inset 0 -26px 42px -28px rgb(15 23 42 / 0.48);
+}
+
+.studio-page-background :is(div).bg-card.border,
+.studio-page-background :is(div).bg-background.border {
+  filter: drop-shadow(0 7px 7px rgb(0 0 0 / 0.16));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.84),
+    inset 0 -18px 30px -24px rgb(15 23 42 / 0.4);
+}
+
+.studio-page-background a.bg-card.border:hover {
+  filter:
+    drop-shadow(0 17px 14px rgb(0 0 0 / 0.24))
+    drop-shadow(0 5px 5px rgb(0 0 0 / 0.2));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    inset 0 -28px 44px -26px rgb(15 23 42 / 0.54);
+}
+
 @keyframes stadium-flash {
   0%, 100% { opacity: 0.6; filter: brightness(1); }
   50% { opacity: 1; filter: brightness(1.3); }
