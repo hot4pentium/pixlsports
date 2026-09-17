@@ -13,6 +13,7 @@ import {
   useCreateProject, 
   useUpdateProject, 
   useGetProject, 
+  useListProjects,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
   useGetAccountAccess,
@@ -27,6 +28,7 @@ import {
   getListHypeCardSharesQueryKey,
   requestHypeCardShareUploadUrl,
   type HypeCardShare,
+  type OwnedHypeCardShare,
   type Project
 } from '@workspace/api-client-react';
 
@@ -35,6 +37,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
@@ -48,7 +52,12 @@ import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-c
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
 import { prepareHypeCardShareMedia } from './hype-card-share';
+import { sports, getSportRule } from './stat-tracker';
 
+
+function isOwnedHypeCardShare(share: HypeCardShare | OwnedHypeCardShare): share is OwnedHypeCardShare {
+  return 'trackerProjectId' in share && 'expiresInDays' in share;
+}
 
 function waitForVideoEvent(
   video: HTMLVideoElement,
@@ -968,6 +977,11 @@ export function HypeCardEditor() {
   const [mediaSubstep, setMediaSubstep] = useState(0);
   const [sharing, setSharing] = useState(false);
   const [shareProgress, setShareProgress] = useState(0);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareTrackerProjectId, setShareTrackerProjectId] = useState<string>('none');
+  const [shareSport, setShareSport] = useState<string>('basketball');
+  const [shareAthleteName, setShareAthleteName] = useState<string>('');
+  const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
@@ -1032,6 +1046,15 @@ export function HypeCardEditor() {
   const createProject = useCreateProject();
   const createHypeShare = useCreateHypeCardShare();
   const deleteHypeShare = useDeleteHypeCardShare();
+  const { data: projects } = useListProjects({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListProjectsQueryKey(),
+      staleTime: 10_000,
+    },
+  });
+  const trackerProjects = projects?.filter(p => p.project.tool === 'stat-tracker') || [];
+
   const { data: hypeShares } = useListHypeCardShares({
     query: {
       enabled: Boolean(isSignedIn),
@@ -1039,7 +1062,8 @@ export function HypeCardEditor() {
       staleTime: 10_000,
     },
   });
-  const existingShare = publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
+  const existingShare: HypeCardShare | OwnedHypeCardShare | null =
+    publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
   useEffect(() => {
@@ -1790,59 +1814,124 @@ export function HypeCardEditor() {
     return `${origin}${cleanBase}/h/${share.shareToken}`;
   };
 
-  const handleShare = async () => {
+  const handleShareClick = () => {
     setValidation('');
     setNotice('');
     if (!isSignedIn) {
       setLocation('/sign-in');
       return;
     }
-    if (project.mediaType !== 'video' || !videoUrl || !videoRef.current) {
-      setValidation('Interactive share links require an attached video. PNG and JPG exports remain static.');
+    if (project.mediaType === 'video' && (!videoUrl || !videoRef.current)) {
+      setValidation('Add a video and wait for its preview to finish loading before publishing.');
       return;
     }
+    if (project.mediaType !== 'video' && (project.mediaType !== 'image' || !project.photo)) {
+      setValidation('Add a photo before publishing this Hype Card.');
+      return;
+    }
+    if (existingShare && isOwnedHypeCardShare(existingShare)) {
+      setShareTrackerProjectId(existingShare.trackerProjectId ?? 'none');
+      setShareSport(existingShare.sport ?? 'basketball');
+      setShareAthleteName(existingShare.athleteName ?? project.playerName ?? '');
+      setShareExpiresInDays(String(existingShare.expiresInDays));
+    } else if (!existingShare) {
+      setShareTrackerProjectId('none');
+      setShareSport('basketball');
+      setShareAthleteName(project.playerName || '');
+      setShareExpiresInDays('30');
+    }
+    setShareDialogOpen(true);
+  };
+
+  const handlePublishShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setShareDialogOpen(false);
     setSharing(true);
     setShareProgress(0);
     try {
-      const prepared = await prepareHypeCardShareMedia(videoRef.current, project, setShareProgress);
-      const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
-      const [videoUpload, posterUpload] = await Promise.all([
-        requestHypeCardShareUploadUrl({ mediaKind: 'video', contentType: videoContentType }),
-        requestHypeCardShareUploadUrl({ mediaKind: 'poster', contentType: 'image/jpeg' }),
-      ]);
-      const uploadResponses = await Promise.all([
-        fetch(videoUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': videoContentType }, body: prepared.video }),
-        fetch(posterUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: prepared.poster }),
-      ]);
-      if (uploadResponses.some((response) => !response.ok)) throw new Error('The prepared media could not be uploaded.');
+      let claimId = '';
+      let posterClaimId: string | undefined = undefined;
+      let mediaKind: 'video' | 'image' = 'video';
 
-      const duration = Math.max(0.1, project.trimEnd - project.trimStart);
       const shareProject: HypeCardProject = {
         ...project,
-        mediaType: 'video',
         mediaId: null,
-        photo: null,
-        trimStart: 0,
-        trimEnd: duration,
-        videoMeta: {
+      };
+
+      if (project.mediaType === 'video' && videoUrl && videoRef.current) {
+        const prepared = await prepareHypeCardShareMedia(videoRef.current, project, setShareProgress);
+        const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
+        const [videoUpload, posterUpload] = await Promise.all([
+          requestHypeCardShareUploadUrl({ mediaKind: 'video', contentType: videoContentType }),
+          requestHypeCardShareUploadUrl({ mediaKind: 'poster', contentType: 'image/jpeg' }),
+        ]);
+        const uploadResponses = await Promise.all([
+          fetch(videoUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': videoContentType }, body: prepared.video }),
+          fetch(posterUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: prepared.poster }),
+        ]);
+        if (uploadResponses.some((response) => !response.ok)) throw new Error('The prepared media could not be uploaded.');
+
+        const duration = Math.max(0.1, project.trimEnd - project.trimStart);
+        mediaKind = 'video';
+        claimId = videoUpload.claimId;
+        posterClaimId = posterUpload.claimId;
+
+        shareProject.mediaType = 'video';
+        shareProject.photo = null;
+        shareProject.trimStart = 0;
+        shareProject.trimEnd = duration;
+        shareProject.videoMeta = {
           name: project.videoMeta?.name || 'Hype Card highlight',
           type: videoContentType,
           size: prepared.video.size,
           duration,
-        },
-      };
+        };
+      } else {
+        setShareProgress(0.2);
+        const dimensions = getDimensions(project.format);
+        const svg = buildHypeCardSvg(project, 'all', 'export');
+        const { dataUrl, mimeType } = await rasterizeSvgForDownload(
+          svg,
+          dimensions.width,
+          dimensions.height,
+          'jpeg',
+        );
+        setShareProgress(0.5);
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+
+        const imageUpload = await requestHypeCardShareUploadUrl({ mediaKind: 'image', contentType: mimeType as any });
+        const uploadResponse = await fetch(imageUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': mimeType }, body: blob });
+        if (!uploadResponse.ok) throw new Error('The prepared image could not be uploaded.');
+
+        mediaKind = 'image';
+        claimId = imageUpload.claimId;
+
+        shareProject.mediaType = 'image';
+        shareProject.photo = 'shared-image';
+        shareProject.trimStart = 0;
+        shareProject.trimEnd = 0;
+        shareProject.videoMeta = null;
+        setShareProgress(0.9);
+      }
+
       const created = await createHypeShare.mutateAsync({
         data: {
           title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline}`,
-          slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80),
+          slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80) || 'hype-card',
           manifest: { version: 1, shareKey, project: shareProject },
-          videoUploadClaimId: videoUpload.claimId,
-          posterUploadClaimId: posterUpload.claimId,
+          shareKey,
+          mediaType: mediaKind,
+          mediaUploadClaimId: claimId,
+          posterUploadClaimId: posterClaimId,
+          trackerProjectId: shareTrackerProjectId !== 'none' ? shareTrackerProjectId : null,
+          sport: shareTrackerProjectId !== 'none' ? (shareSport as any) : null,
+          athleteName: shareTrackerProjectId !== 'none' ? shareAthleteName : null,
+          expiresInDays: parseInt(shareExpiresInDays, 10),
+          replaceShareToken: existingShare?.shareToken ?? null,
         },
       });
-      if (existingShare && existingShare.shareToken !== created.shareToken) {
-        await deleteHypeShare.mutateAsync({ shareToken: existingShare.shareToken }).catch(() => undefined);
-      }
+
       setPublishedShare(created);
       await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
       const url = shareUrlFor(created);
@@ -1852,7 +1941,7 @@ export function HypeCardEditor() {
       } catch {
         await navigator.clipboard.writeText(url).catch(() => undefined);
       }
-      setNotice('Interactive link published for 30 days. The link is ready to share.');
+      setNotice(`Player page published for ${shareExpiresInDays} days. The link is ready to share.`);
     } catch (error) {
       console.error(error);
       setNotice(error instanceof Error ? error.message : 'Could not publish the interactive Hype Card.');
@@ -1862,12 +1951,12 @@ export function HypeCardEditor() {
   };
 
   const revokeShare = async () => {
-    if (!existingShare || !window.confirm('Revoke this link and remove its shared clip and poster?')) return;
+    if (!existingShare || !window.confirm('Revoke this link and remove its hosted Hype Card media?')) return;
     try {
       await deleteHypeShare.mutateAsync({ shareToken: existingShare.shareToken });
       setPublishedShare(null);
       await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
-      setNotice('Interactive link revoked and shared media removed.');
+      setNotice('Player page link revoked and shared media removed.');
     } catch {
       setNotice('The interactive link could not be revoked.');
     }
@@ -1940,9 +2029,9 @@ export function HypeCardEditor() {
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
-             <Button variant="outline" onClick={handleShare} disabled={sharing || exporting} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Replace interactive share link' : 'Share interactive Hype Card'} title={existingShare ? 'Replace interactive share link' : 'Share interactive Hype Card'}>
+              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'} title={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'}>
               <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Replace link' : 'Share'}</span>
+               <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh link' : 'Share'}</span>
             </Button>
             {exporting && (
               <Button variant="outline" size="icon" onClick={handleCancelExport} className="rounded-xl border-destructive text-destructive">
@@ -1971,8 +2060,8 @@ export function HypeCardEditor() {
 
       {existingShare && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
-          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Interactive link</span>
-          <input readOnly value={shareUrlFor(existingShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Interactive Hype Card share link" />
+          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Player page</span>
+          <input readOnly value={shareUrlFor(existingShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Hype Card player page link" />
           <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingShare)).then(() => setNotice('Share link copied.')).catch(() => setNotice('Select and copy the link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
           <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
         </div>
@@ -2343,6 +2432,89 @@ export function HypeCardEditor() {
       </div>
 
       <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
+
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="clip-angled-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display uppercase tracking-wider text-xl">Publish Player Page</DialogTitle>
+            <DialogDescription>
+              Create a hosted share link to send to players and family. Optionally link a stat tracker.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handlePublishShare} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Stats Project</Label>
+              <Select value={shareTrackerProjectId} onValueChange={setShareTrackerProjectId}>
+                <SelectTrigger className="clip-angled-sm h-12 rounded-none">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Do not link stats</SelectItem>
+                  {trackerProjects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {shareTrackerProjectId !== 'none' && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sport</Label>
+                  <Select value={shareSport} onValueChange={setShareSport}>
+                    <SelectTrigger className="clip-angled-sm h-12 rounded-none">
+                      <SelectValue placeholder="Select sport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sports.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {getSportRule(s).label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Athlete Display Name</Label>
+                  <Input
+                    required
+                    maxLength={100}
+                    value={shareAthleteName}
+                    onChange={(e) => setShareAthleteName(e.target.value)}
+                    className="clip-angled-sm h-12 rounded-none"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Expiration</Label>
+              <Select value={shareExpiresInDays} onValueChange={setShareExpiresInDays}>
+                <SelectTrigger className="clip-angled-sm h-12 rounded-none">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 Days</SelectItem>
+                  <SelectItem value="14">14 Days</SelectItem>
+                  <SelectItem value="30">30 Days</SelectItem>
+                  <SelectItem value="90">90 Days</SelectItem>
+                  {!['7', '14', '30', '90'].includes(shareExpiresInDays) && (
+                    <SelectItem value={shareExpiresInDays}>{shareExpiresInDays} Days</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button type="submit" className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
+                Publish Link
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     
       {saveStatus === 'Conflict' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">

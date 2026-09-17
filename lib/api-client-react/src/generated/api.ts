@@ -915,7 +915,7 @@ export const getCreateHypeCardShareUrl = () => {
 }
 
 /**
- * @summary Publish an interactive Hype Card
+ * @summary Publish a Hype Card player page
  */
 export const createHypeCardShare = async (hypeCardShareInput: HypeCardShareInput, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShare> => {
 
@@ -981,7 +981,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateHypeCardShareMutationVariables = {data: BodyType<HypeCardShareInput>}
 
     /**
- * @summary Publish an interactive Hype Card
+ * @summary Publish a Hype Card player page
  */
 export const useCreateHypeCardShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShare>>, TError,CreateHypeCardShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1091,7 +1091,7 @@ export const getGetHypeCardShareUrl = (shareToken: string,) => {
 }
 
 /**
- * @summary Get a public interactive Hype Card
+ * @summary Get a public Hype Card player page
  */
 export const getHypeCardShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShare> => {
 
@@ -1138,7 +1138,7 @@ export type GetHypeCardShareQueryError = ErrorType<NotFoundResponse>
 
 
 /**
- * @summary Get a public interactive Hype Card
+ * @summary Get a public Hype Card player page
  */
 
 export function useGetHypeCardShare<TData = Awaited<ReturnType<typeof getHypeCardShare>>, TError = ErrorType<NotFoundResponse>>(

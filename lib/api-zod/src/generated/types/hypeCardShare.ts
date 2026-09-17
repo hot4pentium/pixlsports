@@ -6,14 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HypeCardShareManifest } from './hypeCardShareManifest';
+import type { HypeCardShareMediaType } from './hypeCardShareMediaType';
+import type { HypeCardShareStats } from './hypeCardShareStats';
 
 export interface HypeCardShare {
   shareToken: string;
   slug: string;
   title: string;
   manifest: HypeCardShareManifest;
-  videoUrl: string;
+  mediaType: HypeCardShareMediaType;
+  mediaUrl: string;
+  /** @nullable */
+  videoUrl: string | null;
   posterUrl: string;
+  stats: HypeCardShareStats | null;
   expiresAt: Date;
   createdAt: Date;
 }

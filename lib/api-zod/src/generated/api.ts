@@ -499,21 +499,46 @@ export const DeleteChecklistShareResponse = zod.void()
 /**
  * @summary List owned Hype Card shares
  */
+export const listHypeCardSharesResponseOneStatsOneGamesPlayedMin = 0;
+
+export const listHypeCardSharesResponseOneStatsOneScoreMin = 0;
+
+export const listHypeCardSharesResponseOneStatsOneStatsMinOne = 0;
+
+export const listHypeCardSharesResponseTwoExpiresInDaysMax = 365;
+
+
+
 export const ListHypeCardSharesResponseItem = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
   "manifest": zod.record(zod.string(), zod.unknown()),
-  "videoUrl": zod.string(),
+  "mediaType": zod.enum(['image', 'video']),
+  "mediaUrl": zod.string(),
+  "videoUrl": zod.string().nullable(),
   "posterUrl": zod.string(),
+  "stats": zod.union([zod.object({
+  "athleteName": zod.string(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "gamesPlayed": zod.number().int().min(listHypeCardSharesResponseOneStatsOneGamesPlayedMin),
+  "score": zod.number().int().min(listHypeCardSharesResponseOneStatsOneScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(listHypeCardSharesResponseOneStatsOneStatsMinOne)),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "expiresAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
-})
+}).and(zod.object({
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "athleteName": zod.string().nullable(),
+  "sport": zod.union([zod.literal('baseball'),zod.literal('basketball'),zod.literal('football'),zod.literal('soccer'),zod.literal('volleyball'),zod.literal(null)]).nullable(),
+  "expiresInDays": zod.number().int().min(1).max(listHypeCardSharesResponseTwoExpiresInDaysMax)
+}))
 export const ListHypeCardSharesResponse = zod.array(ListHypeCardSharesResponseItem)
 
 
 /**
- * @summary Publish an interactive Hype Card
+ * @summary Publish a Hype Card player page
  */
 export const createHypeCardShareBodyTitleMax = 200;
 
@@ -521,23 +546,56 @@ export const createHypeCardShareBodySlugMax = 80;
 
 
 export const createHypeCardShareBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const createHypeCardShareBodyShareKeyMax = 200;
+
+export const createHypeCardShareBodyAthleteNameMax = 100;
+
+export const createHypeCardShareBodyExpiresInDaysDefault = 30;
+export const createHypeCardShareBodyExpiresInDaysMax = 365;
+
+export const createHypeCardShareBodyReplaceShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
 
 export const CreateHypeCardShareBody = zod.object({
   "title": zod.string().min(1).max(createHypeCardShareBodyTitleMax),
   "slug": zod.string().min(1).max(createHypeCardShareBodySlugMax).regex(createHypeCardShareBodySlugRegExp),
   "manifest": zod.record(zod.string(), zod.unknown()),
-  "videoUploadClaimId": zod.string().uuid(),
-  "posterUploadClaimId": zod.string().uuid()
+  "shareKey": zod.string().min(1).max(createHypeCardShareBodyShareKeyMax).optional(),
+  "mediaType": zod.enum(['image', 'video']),
+  "mediaUploadClaimId": zod.string().uuid(),
+  "posterUploadClaimId": zod.string().uuid().nullish(),
+  "trackerProjectId": zod.string().uuid().nullish(),
+  "athleteName": zod.string().max(createHypeCardShareBodyAthleteNameMax).nullish(),
+  "sport": zod.union([zod.literal('baseball'),zod.literal('basketball'),zod.literal('football'),zod.literal('soccer'),zod.literal('volleyball'),zod.literal(null)]).nullish(),
+  "expiresInDays": zod.number().int().min(1).max(createHypeCardShareBodyExpiresInDaysMax).default(createHypeCardShareBodyExpiresInDaysDefault),
+  "replaceShareToken": zod.string().regex(createHypeCardShareBodyReplaceShareTokenRegExp).nullish()
 })
+
+export const createHypeCardShareResponseStatsOneGamesPlayedMin = 0;
+
+export const createHypeCardShareResponseStatsOneScoreMin = 0;
+
+export const createHypeCardShareResponseStatsOneStatsMinOne = 0;
+
+
 
 export const CreateHypeCardShareResponse = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
   "manifest": zod.record(zod.string(), zod.unknown()),
-  "videoUrl": zod.string(),
+  "mediaType": zod.enum(['image', 'video']),
+  "mediaUrl": zod.string(),
+  "videoUrl": zod.string().nullable(),
   "posterUrl": zod.string(),
+  "stats": zod.union([zod.object({
+  "athleteName": zod.string(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "gamesPlayed": zod.number().int().min(createHypeCardShareResponseStatsOneGamesPlayedMin),
+  "score": zod.number().int().min(createHypeCardShareResponseStatsOneScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(createHypeCardShareResponseStatsOneStatsMinOne)),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "expiresAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 })
@@ -547,7 +605,7 @@ export const CreateHypeCardShareResponse = zod.object({
  * @summary Request a private upload URL for prepared share media
  */
 export const RequestHypeCardShareUploadUrlBody = zod.object({
-  "mediaKind": zod.enum(['video', 'poster']),
+  "mediaKind": zod.enum(['video', 'image', 'poster']),
   "contentType": zod.enum(['video/mp4', 'video/webm', 'image/jpeg', 'image/png'])
 })
 
@@ -560,7 +618,7 @@ export const RequestHypeCardShareUploadUrlResponse = zod.object({
 
 
 /**
- * @summary Get a public interactive Hype Card
+ * @summary Get a public Hype Card player page
  */
 export const getHypeCardSharePathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -569,13 +627,31 @@ export const GetHypeCardShareParams = zod.object({
   "shareToken": zod.coerce.string().regex(getHypeCardSharePathShareTokenRegExp)
 })
 
+export const getHypeCardShareResponseStatsOneGamesPlayedMin = 0;
+
+export const getHypeCardShareResponseStatsOneScoreMin = 0;
+
+export const getHypeCardShareResponseStatsOneStatsMinOne = 0;
+
+
+
 export const GetHypeCardShareResponse = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
   "manifest": zod.record(zod.string(), zod.unknown()),
-  "videoUrl": zod.string(),
+  "mediaType": zod.enum(['image', 'video']),
+  "mediaUrl": zod.string(),
+  "videoUrl": zod.string().nullable(),
   "posterUrl": zod.string(),
+  "stats": zod.union([zod.object({
+  "athleteName": zod.string(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "gamesPlayed": zod.number().int().min(getHypeCardShareResponseStatsOneGamesPlayedMin),
+  "score": zod.number().int().min(getHypeCardShareResponseStatsOneScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(getHypeCardShareResponseStatsOneStatsMinOne)),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
   "expiresAt": zod.coerce.date(),
   "createdAt": zod.coerce.date()
 })

@@ -11,5 +11,6 @@ export type HypeCardShareUploadInputMediaKind = typeof HypeCardShareUploadInputM
 
 export const HypeCardShareUploadInputMediaKind = {
   video: 'video',
+  image: 'image',
   poster: 'poster',
 } as const;

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HypeCardShareInputManifest } from './hypeCardShareInputManifest';
+import type { HypeCardShareInputMediaType } from './hypeCardShareInputMediaType';
+import type { HypeCardShareInputSport } from './hypeCardShareInputSport';
 
 export interface HypeCardShareInput {
   /**
@@ -20,6 +22,32 @@ export interface HypeCardShareInput {
      */
   slug: string;
   manifest: HypeCardShareInputManifest;
-  videoUploadClaimId: string;
-  posterUploadClaimId: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  shareKey?: string;
+  mediaType: HypeCardShareInputMediaType;
+  mediaUploadClaimId: string;
+  /** @nullable */
+  posterUploadClaimId?: string | null;
+  /** @nullable */
+  trackerProjectId?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  athleteName?: string | null;
+  /** @nullable */
+  sport?: HypeCardShareInputSport;
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  expiresInDays?: number;
+  /**
+     * @nullable
+     * @pattern ^[A-Za-z0-9_-]{24,80}$
+     */
+  replaceShareToken?: string | null;
 }

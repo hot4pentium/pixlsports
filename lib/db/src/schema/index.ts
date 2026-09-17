@@ -1,4 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import {
   integer,
   index,
@@ -94,18 +95,28 @@ export const hypeCardSharesTable = pgTable("hype_card_shares", {
   slug: text("slug").notNull(),
   title: text("title").notNull(),
   manifest: jsonb("manifest").notNull(),
+  shareKey: text("share_key"),
+  mediaType: text("media_type").notNull().default("video"),
   videoObjectPath: text("video_object_path").notNull(),
   videoContentType: text("video_content_type").notNull(),
   videoSize: integer("video_size").notNull(),
   posterObjectPath: text("poster_object_path").notNull(),
   posterContentType: text("poster_content_type").notNull(),
   posterSize: integer("poster_size").notNull(),
+  trackerProjectId: uuid("tracker_project_id").references(() => cloudProjectsTable.id, {
+    onDelete: "set null",
+  }),
+  athleteName: text("athlete_name"),
+  sport: text("sport"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
   publicTokenUnique: uniqueIndex("hype_card_shares_public_token_unique").on(table.publicToken),
+  activeShareKeyUnique: uniqueIndex("hype_card_shares_active_share_key_unique")
+    .on(table.ownerClerkUserId, table.shareKey)
+    .where(sql`${table.revokedAt} is null`),
 }));
 
 export const hypeCardShareUploadClaimsTable = pgTable("hype_card_share_upload_claims", {

@@ -211,6 +211,7 @@ export type HypeCardShareUploadInputMediaKind = typeof HypeCardShareUploadInputM
 
 export const HypeCardShareUploadInputMediaKind = {
   video: 'video',
+  image: 'image',
   poster: 'poster',
 } as const;
 
@@ -238,6 +239,28 @@ export interface HypeCardShareUpload {
 
 export type HypeCardShareInputManifest = { [key: string]: unknown };
 
+export type HypeCardShareInputMediaType = typeof HypeCardShareInputMediaType[keyof typeof HypeCardShareInputMediaType];
+
+
+export const HypeCardShareInputMediaType = {
+  image: 'image',
+  video: 'video',
+} as const;
+
+/**
+ * @nullable
+ */
+export type HypeCardShareInputSport = typeof HypeCardShareInputSport[keyof typeof HypeCardShareInputSport] | null;
+
+
+export const HypeCardShareInputSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
 export interface HypeCardShareInput {
   /**
      * @minLength 1
@@ -251,24 +274,114 @@ export interface HypeCardShareInput {
      */
   slug: string;
   manifest: HypeCardShareInputManifest;
-  videoUploadClaimId: string;
-  posterUploadClaimId: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  shareKey?: string;
+  mediaType: HypeCardShareInputMediaType;
+  mediaUploadClaimId: string;
+  /** @nullable */
+  posterUploadClaimId?: string | null;
+  /** @nullable */
+  trackerProjectId?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  athleteName?: string | null;
+  /** @nullable */
+  sport?: HypeCardShareInputSport;
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  expiresInDays?: number;
+  /**
+     * @nullable
+     * @pattern ^[A-Za-z0-9_-]{24,80}$
+     */
+  replaceShareToken?: string | null;
+}
+
+export type HypeCardShareStatsSport = typeof HypeCardShareStatsSport[keyof typeof HypeCardShareStatsSport];
+
+
+export const HypeCardShareStatsSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export type HypeCardShareStatsStats = {[key: string]: number};
+
+export interface HypeCardShareStats {
+  athleteName: string;
+  sport: HypeCardShareStatsSport;
+  /** @minimum 0 */
+  gamesPlayed: number;
+  /** @minimum 0 */
+  score: number;
+  stats: HypeCardShareStatsStats;
+  updatedAt: string;
 }
 
 export type HypeCardShareManifest = { [key: string]: unknown };
+
+export type HypeCardShareMediaType = typeof HypeCardShareMediaType[keyof typeof HypeCardShareMediaType];
+
+
+export const HypeCardShareMediaType = {
+  image: 'image',
+  video: 'video',
+} as const;
 
 export interface HypeCardShare {
   shareToken: string;
   slug: string;
   title: string;
   manifest: HypeCardShareManifest;
-  videoUrl: string;
+  mediaType: HypeCardShareMediaType;
+  mediaUrl: string;
+  /** @nullable */
+  videoUrl: string | null;
   posterUrl: string;
+  stats: HypeCardShareStats | null;
   expiresAt: string;
   createdAt: string;
 }
 
-export type HypeCardShareList = HypeCardShare[];
+/**
+ * @nullable
+ */
+export type OwnedHypeCardShareSport = typeof OwnedHypeCardShareSport[keyof typeof OwnedHypeCardShareSport] | null;
+
+
+export const OwnedHypeCardShareSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export type OwnedHypeCardShare = HypeCardShare & ({
+  /** @nullable */
+  trackerProjectId: string | null;
+  /** @nullable */
+  athleteName: string | null;
+  /** @nullable */
+  sport: OwnedHypeCardShareSport;
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  expiresInDays: number;
+});
+
+export type HypeCardShareList = OwnedHypeCardShare[];
 
 export interface CoachCalendarCode {
   /** @pattern ^[A-Z2-9]{5}$ */

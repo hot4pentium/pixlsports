@@ -5,6 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { HypeCardShare } from './hypeCardShare';
+import type { OwnedHypeCardShare } from './ownedHypeCardShare';
 
-export type HypeCardShareList = HypeCardShare[];
+export type HypeCardShareList = OwnedHypeCardShare[];
