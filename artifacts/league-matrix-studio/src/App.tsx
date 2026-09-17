@@ -3228,7 +3228,12 @@ function SchedulePreview({
           </div>
           <p className="mt-5 text-sm font-bold uppercase tracking-[.12em] opacity-85 sm:text-base">{season || 'SEASON'}</p>
 
-          <div className="mt-8 space-y-3">
+          <div
+            className="mt-8 max-h-[300px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable] sm:max-h-[420px]"
+            aria-label="Schedule events"
+            tabIndex={events.length > 0 ? 0 : undefined}
+            data-testid="preview-schedule-event-list"
+          >
             {events.length === 0 ? (
               <div className={`border border-dashed p-6 text-center text-sm font-bold uppercase tracking-widest opacity-75 ${eventClass}`}>
                 Add an event to fill the schedule
