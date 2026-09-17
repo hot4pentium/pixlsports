@@ -39,7 +39,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
   HEADLINES, templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
-  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject,
+  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject, clearHypeCardMedia,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
@@ -1110,7 +1110,7 @@ export function HypeCardEditor() {
     let cancelled = false;
     
     const loadMedia = async () => {
-      if (!project.mediaId || !project.mediaType) {
+      if (cloudProjectId || (project.mediaType === 'image' && project.photo) || !project.mediaId || !project.mediaType) {
         if (project.mediaType !== 'image') setVideoUrl(undefined);
         return;
       }
@@ -1120,9 +1120,12 @@ export function HypeCardEditor() {
       if (!blob) {
         if (!cancelled) {
           if (project.mediaType === 'video') setVideoUrl(undefined);
-          if (!cloudProjectId || project.mediaType !== 'video') {
-            setNotice('The attached media is no longer available on this device. Please add it again.');
-          }
+          setNotice('The attached media is no longer available on this device. Please add it again.');
+          setProject((current) => (
+            current.mediaId === project.mediaId
+              ? clearHypeCardMedia(current)
+              : current
+          ));
         }
         return;
       }
@@ -1629,17 +1632,7 @@ export function HypeCardEditor() {
     }
     setVideoUrl(undefined);
     setTemplateMediaNotice(false);
-    setProject(curr => ({
-      ...curr,
-      mediaType: null,
-      mediaId: null,
-      downloadMediaId: null,
-      posterMediaId: null,
-      videoMeta: null,
-      photo: null,
-      photoTransform: defaultProject().photoTransform,
-      adjustments: defaultProject().adjustments
-    }));
+    setProject(clearHypeCardMedia);
   };
 
   const handleExport = async () => {

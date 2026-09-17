@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   defaultProject,
+  clearHypeCardMedia,
   designOnlyProject,
   normalizeHypeCardProject,
   parseHypeCardTemplate,
@@ -143,4 +144,39 @@ test('saved projects always reopen in the portrait card format', () => {
 
     assert.equal(reopened.format, 'card');
   }
+});
+
+test('empty projects stay media-free and missing local media can be cleared safely', () => {
+  const empty = defaultProject();
+  assert.equal(empty.mediaType, null);
+  assert.equal(empty.mediaId, null);
+  assert.equal(empty.photo, null);
+
+  const missing = normalizeHypeCardProject({
+    ...empty,
+    mediaType: 'image',
+    mediaId: 'missing-local-image',
+  });
+  assert.equal(missing.mediaType, 'image');
+  assert.equal(missing.mediaId, 'missing-local-image');
+
+  const cleared = clearHypeCardMedia(missing);
+  assert.equal(cleared.mediaType, null);
+  assert.equal(cleared.mediaId, null);
+  assert.equal(cleared.downloadMediaId, null);
+  assert.equal(cleared.posterMediaId, null);
+  assert.equal(cleared.photo, null);
+});
+
+test('a saved image with an embedded preview does not retain a separate media reference', () => {
+  const project = normalizeHypeCardProject({
+    ...defaultProject(),
+    mediaType: 'image',
+    mediaId: 'stale-local-image',
+    photo: 'data:image/png;base64,embedded-photo',
+  });
+
+  assert.equal(project.mediaType, 'image');
+  assert.equal(project.mediaId, null);
+  assert.equal(project.photo, 'data:image/png;base64,embedded-photo');
 });

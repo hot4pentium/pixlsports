@@ -165,6 +165,22 @@ export function designOnlyProject(project: HypeCardProject): HypeCardProject {
   };
 }
 
+export function clearHypeCardMedia(project: HypeCardProject): HypeCardProject {
+  const defaults = defaultProject();
+  return {
+    ...project,
+    mediaType: null,
+    mediaId: null,
+    downloadMediaId: null,
+    posterMediaId: null,
+    videoMeta: null,
+    videoPrepared: false,
+    photo: null,
+    photoTransform: defaults.photoTransform,
+    adjustments: defaults.adjustments,
+  };
+}
+
 export function normalizeHypeCardProject(value: unknown): HypeCardProject {
   const defaults = defaultProject();
   const project = value && typeof value === 'object'
