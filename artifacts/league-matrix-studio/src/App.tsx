@@ -106,6 +106,7 @@ import {
 } from '@/features/supporter-dashboard-model';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import { SupporterScheduleSelector } from '@/features/supporter-schedule-selector';
+import { StatTrackerPage } from '@/features/stat-tracker-page';
 import {
   createBlankRosterPlayer,
   getBenchPlayers,
@@ -167,10 +168,10 @@ function stripBase(path: string): string {
     : path;
 }
 
-type ToolKind = 'hype' | 'schedule' | 'roster';
+type ToolKind = 'hype' | 'schedule' | 'roster' | 'stat-tracker';
 const roleToolKinds: Record<UserRole, ToolKind[]> = {
   coach: ['schedule', 'roster'],
-  fan: ['hype', 'schedule'],
+  fan: ['hype', 'schedule', 'stat-tracker'],
 };
 
 const connectedCoachCodeStorageKey = 'leaguematrix-connected-coach-code';
@@ -243,6 +244,16 @@ const toolData: Record<ToolKind, {
     accent: 'bg-primary text-primary-foreground',
     soft: 'bg-[#253a39] text-white',
     templateNames: ['Full Roster', 'Game Day', 'Numbers Up'],
+  },
+  'stat-tracker': {
+    slug: 'stat-tracker',
+    label: 'Stat Tracker',
+    kicker: 'Keep the game moving.',
+    description: 'Tap live plays, finish the game, and build a season total for your athlete.',
+    icon: Activity,
+    accent: 'bg-primary text-primary-foreground',
+    soft: 'bg-[#1d2a25] text-white',
+    templateNames: [],
   },
 };
 
@@ -958,6 +969,12 @@ function SupporterStudio() {
           onRetryCalendar={() => void activeCalendarQuery.refetch()}
            onReconnectCalendar={() => setLocation('/studio/schedule')}
           onDisconnect={disconnect}
+           onOpenStatTracker={() => {
+             const query = nextGame
+               ? `?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
+               : '';
+             setLocation(`/studio/stat-tracker${query}`);
+           }}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
           athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
         />
@@ -3935,6 +3952,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
               <Route path="/studio/roster/:id?"><ProtectedEditor kind="roster"><RosterEditor /></ProtectedEditor></Route>
+              <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
               <Route component={NotFound} />

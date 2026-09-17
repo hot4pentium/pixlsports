@@ -9,6 +9,7 @@ import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import heroBanner from '@/assets/hero-banner.webp';
+import type { Sport } from './stat-tracker';
 
 export interface SupporterProfile {
   displayName: string;
@@ -18,6 +19,7 @@ export interface SupporterProfile {
   position: string;
   relationship: string;
   accessMode: 'full' | 'guest' | null;
+  sport: Sport | null;
 }
 
 export interface SupporterEvent {
@@ -72,6 +74,7 @@ export interface SupporterDashboardViewProps {
   onDisconnect: () => void;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
+  onOpenStatTracker: () => void;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -151,6 +154,7 @@ export function SupporterDashboardView({
   onDisconnect,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
+  onOpenStatTracker,
 }: SupporterDashboardViewProps) {
   const hasAthlete = Boolean(profile.athleteName);
   const calendarState = getCalendarViewState({
@@ -347,6 +351,14 @@ export function SupporterDashboardView({
             </div>
             <ArrowRight className="h-6 w-6 shrink-0 opacity-40 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
           </Link>
+          <button type="button" onClick={onOpenStatTracker} className="group bg-foreground text-background border border-foreground p-6 clip-angled-sm flex items-center justify-between text-left transition-all hover:bg-primary hover:text-primary-foreground" data-testid="link-quick-stat-tracker">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary group-hover:text-primary-foreground">Live numbers</p>
+              <h4 className="mt-1 font-display text-2xl uppercase tracking-wide">Stat Tracker</h4>
+              <p className="mt-1 text-sm font-medium text-white/60 group-hover:text-primary-foreground/80">Track the game as it happens.</p>
+            </div>
+            <ArrowRight className="h-6 w-6 shrink-0 opacity-70 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+          </button>
         </div>
       </section>
 
@@ -735,6 +747,17 @@ export function SupporterProfileView({
                   className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   placeholder="e.g. Brian"
                 />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="sport" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Athlete Sport</label>
+                <select id="sport" value={profile.sport ?? ''} onChange={(e) => onChange('sport', e.target.value as Sport)} className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+                  <option value="">Choose a sport</option>
+                  <option value="baseball">Baseball</option>
+                  <option value="basketball">Basketball</option>
+                  <option value="football">Football</option>
+                  <option value="soccer">Soccer</option>
+                  <option value="volleyball">Volleyball</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <label htmlFor="relationship" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">

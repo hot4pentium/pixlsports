@@ -27,6 +27,7 @@ test('saved supporter metadata reloads as the same normalized profile', () => {
     position: ' Guard ',
     relationship: ' Parent ',
     accessMode: 'full' as const,
+    sport: null,
   };
   const savePlan = createSupporterProfileSavePlan(currentMetadata, editedProfile);
 
@@ -41,6 +42,7 @@ test('saved supporter metadata reloads as the same normalized profile', () => {
       jerseyNumber: '24',
       position: 'Guard',
       relationship: 'Parent',
+      sport: null,
     },
     redirectTo: '/studio',
     studioDestination: 'supporter',
@@ -53,6 +55,7 @@ test('saved supporter metadata reloads as the same normalized profile', () => {
     position: 'Guard',
     relationship: 'Parent',
     accessMode: 'full',
+    sport: null,
   });
 });
 

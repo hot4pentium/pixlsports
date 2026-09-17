@@ -115,6 +115,8 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
         ? "schedule_event"
         : tool === "roster"
           ? "lineup"
+          : tool === "stat-tracker"
+            ? "lineup"
           : null;
     if (!usageCategory) {
       res.status(400).json({ error: "Unknown project tool" });

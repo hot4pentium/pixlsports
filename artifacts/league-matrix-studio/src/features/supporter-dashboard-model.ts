@@ -1,4 +1,5 @@
 import type { SupporterProfile, SupporterProject } from './supporter-dashboard';
+import { isSport, type Sport } from './stat-tracker';
 
 export type UserRole = 'coach' | 'fan';
 export type AccessMode = 'full' | 'guest';
@@ -12,6 +13,7 @@ export interface UserProfile {
   jerseyNumber: string;
   position: string;
   relationship: string;
+  sport: Sport | null;
 }
 
 export type UserLike = {
@@ -47,6 +49,7 @@ export function getUserProfile(user: UserLike): UserProfile {
     jerseyNumber: typeof metadata.jerseyNumber === 'string' ? metadata.jerseyNumber.trim() : '',
     position: typeof metadata.position === 'string' ? metadata.position.trim() : '',
     relationship: typeof metadata.relationship === 'string' ? metadata.relationship.trim() : '',
+    sport: isSport(metadata.sport) ? metadata.sport : null,
   };
 }
 
@@ -60,6 +63,7 @@ export function supporterProfileFromUser(user: UserLike): SupporterProfile {
     position: profile.position,
     relationship: profile.relationship,
     accessMode: profile.accessMode,
+    sport: profile.sport,
   };
 }
 
@@ -71,6 +75,7 @@ export function cleanSupporterProfile(profile: SupporterProfile): Omit<Supporter
     jerseyNumber: profile.jerseyNumber.trim().replace(/^#/, '').trim(),
     position: profile.position.trim(),
     relationship: profile.relationship.trim(),
+    sport: profile.sport,
   };
 }
 
