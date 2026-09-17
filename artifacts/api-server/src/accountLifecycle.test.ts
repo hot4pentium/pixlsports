@@ -9,22 +9,44 @@ import {
   db,
   guestUsageEventsTable,
   projectMediaTable,
+  projectMediaUploadClaimsTable,
 } from "@workspace/db";
 import {
   cancelAccount,
   getAccountLifecycleSnapshot,
   reactivateAccount,
   reactivateAccountFromEntitlement,
+  hasActivePaidEntitlement,
 } from "./lib/accountLifecycle";
 import { runExpiredAccountPurge } from "./jobs/purgeCancelledAccounts";
 
 async function deleteTestAccount(ownerClerkUserId: string) {
   await db.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId));
+  await db.delete(projectMediaUploadClaimsTable).where(eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(accountEntitlementEventsTable).where(eq(accountEntitlementEventsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
 }
+
+test("paid eligibility requires active lifecycle and an unexpired entitlement", async () => {
+  const ownerClerkUserId = `paid-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({ ownerClerkUserId, role: "fan", accessMode: "full" });
+    assert.equal(await hasActivePaidEntitlement(ownerClerkUserId), false);
+    await db.insert(accountEntitlementEventsTable).values({
+      providerEventId: randomUUID(),
+      ownerClerkUserId,
+      entitlementExpiresAt: new Date(Date.now() + 60_000),
+    });
+    assert.equal(await hasActivePaidEntitlement(ownerClerkUserId), true);
+    await db.update(accountAccessTable).set({ lifecycleStatus: "cancelled" })
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+    assert.equal(await hasActivePaidEntitlement(ownerClerkUserId), false);
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
 
 test("lifecycle transitions cannot reset expired or purge-claimed accounts", async () => {
   const ownerClerkUserId = `lifecycle-test-${randomUUID()}`;

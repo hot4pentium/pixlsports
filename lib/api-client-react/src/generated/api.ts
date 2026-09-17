@@ -37,7 +37,9 @@ import type {
   HypeCardShareList,
   HypeCardShareUpload,
   HypeCardShareUploadInput,
+  Media,
   MediaUpload,
+  MediaUploadCompleteInput,
   MediaUploadInput,
   NotFoundResponse,
   PaidEntitlementEvent,
@@ -2507,8 +2509,7 @@ export const getRequestProjectMediaUploadUrlUrl = () => {
 }
 
 /**
- * New cloud projects contain design settings only. This endpoint always returns 410.
- * @summary Legacy media upload endpoint (disabled)
+ * @summary Request a private project media upload URL
  */
 export const requestProjectMediaUploadUrl = async (mediaUploadInput: MediaUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<MediaUpload> => {
 
@@ -2541,7 +2542,7 @@ return customFetch<MediaUpload>(getRequestProjectMediaUploadUrlUrl(),
 
 export const getRequestProjectMediaUploadUrlMutationKey = () => ['requestProjectMediaUploadUrl'] as const;
 
-export const getRequestProjectMediaUploadUrlMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>,
+export const getRequestProjectMediaUploadUrlMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestProjectMediaUploadUrl>>, TError,RequestProjectMediaUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof requestProjectMediaUploadUrl>>, TError,RequestProjectMediaUploadUrlMutationVariables, TContext> => {
 
@@ -2570,13 +2571,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RequestProjectMediaUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestProjectMediaUploadUrl>>>
     export type RequestProjectMediaUploadUrlMutationBody = BodyType<MediaUploadInput>
-    export type RequestProjectMediaUploadUrlMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>
+    export type RequestProjectMediaUploadUrlMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
     export type RequestProjectMediaUploadUrlMutationVariables = {data: BodyType<MediaUploadInput>}
 
     /**
- * @summary Legacy media upload endpoint (disabled)
+ * @summary Request a private project media upload URL
  */
-export const useRequestProjectMediaUploadUrl = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | Error>,
+export const useRequestProjectMediaUploadUrl = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestProjectMediaUploadUrl>>, TError,RequestProjectMediaUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof requestProjectMediaUploadUrl>>,
@@ -2585,6 +2586,94 @@ export const useRequestProjectMediaUploadUrl = <TError = ErrorType<BadRequestRes
         TContext
       > => {
       return useMutation(getRequestProjectMediaUploadUrlMutationOptions(options));
+    }
+
+export const getCompleteProjectMediaUploadUrl = () => {
+
+
+
+
+  return `/api/storage/uploads/complete`
+}
+
+/**
+ * @summary Validate and save a prepared project media upload
+ */
+export const completeProjectMediaUpload = async (mediaUploadCompleteInput: MediaUploadCompleteInput, options?: Parameters<typeof customFetch>[1]): Promise<Media> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Media>(getCompleteProjectMediaUploadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mediaUploadCompleteInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteProjectMediaUploadMutationKey = () => ['completeProjectMediaUpload'] as const;
+
+export const getCompleteProjectMediaUploadMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeProjectMediaUpload>>, TError,CompleteProjectMediaUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeProjectMediaUpload>>, TError,CompleteProjectMediaUploadMutationVariables, TContext> => {
+
+const mutationKey = getCompleteProjectMediaUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeProjectMediaUpload>>, CompleteProjectMediaUploadMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  completeProjectMediaUpload(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteProjectMediaUploadMutationResult = NonNullable<Awaited<ReturnType<typeof completeProjectMediaUpload>>>
+    export type CompleteProjectMediaUploadMutationBody = BodyType<MediaUploadCompleteInput>
+    export type CompleteProjectMediaUploadMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type CompleteProjectMediaUploadMutationVariables = {data: BodyType<MediaUploadCompleteInput>}
+
+    /**
+ * @summary Validate and save a prepared project media upload
+ */
+export const useCompleteProjectMediaUpload = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeProjectMediaUpload>>, TError,CompleteProjectMediaUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeProjectMediaUpload>>,
+        TError,
+        CompleteProjectMediaUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCompleteProjectMediaUploadMutationOptions(options));
     }
 
 export const getServeProjectMediaUrl = (mediaId: string,) => {
@@ -2663,6 +2752,80 @@ export function useServeProjectMedia<TData = Awaited<ReturnType<typeof serveProj
 
 
 
+
+export const getDeleteProjectMediaUrl = (mediaId: string,) => {
+
+
+
+
+  return `/api/storage/media/${mediaId}`
+}
+
+/**
+ * @summary Delete owned project media
+ */
+export const deleteProjectMedia = async (mediaId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteProjectMediaUrl(mediaId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProjectMediaMutationKey = () => ['deleteProjectMedia'] as const;
+
+export const getDeleteProjectMediaMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProjectMedia>>, TError,DeleteProjectMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProjectMedia>>, TError,DeleteProjectMediaMutationVariables, TContext> => {
+
+const mutationKey = getDeleteProjectMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProjectMedia>>, DeleteProjectMediaMutationVariables> = (props) => {
+          const {mediaId} = props ?? {};
+
+          return  deleteProjectMedia(mediaId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProjectMediaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProjectMedia>>>
+
+    export type DeleteProjectMediaMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteProjectMediaMutationVariables = {mediaId: string}
+
+    /**
+ * @summary Delete owned project media
+ */
+export const useDeleteProjectMedia = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProjectMedia>>, TError,DeleteProjectMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProjectMedia>>,
+        TError,
+        DeleteProjectMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteProjectMediaMutationOptions(options));
+    }
 
 export const getGetSupporterPhotoUrl = () => {
 

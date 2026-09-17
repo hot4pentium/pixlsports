@@ -11,8 +11,10 @@ import {
   accountAccessTable,
   db,
   guestUsageEventsTable,
+  projectMediaTable,
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { hasActivePaidEntitlement, PROJECT_MEDIA_QUOTA_BYTES } from "../lib/accountLifecycle";
 
 const router: IRouter = Router();
 
@@ -64,6 +66,10 @@ export async function getAccountAccessSnapshot(ownerClerkUserId: string) {
     .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
     .limit(1);
   const usage = await usageForUser(ownerClerkUserId);
+  const [storage] = await db
+    .select({ bytes: sql<number>`coalesce(sum(${projectMediaTable.size}), 0)` })
+    .from(projectMediaTable)
+    .where(eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId));
   const limits = { ...GUEST_LIMITS };
   const remaining = {
     hypeCards: Math.max(0, limits.hypeCards - usage.hypeCards),
@@ -77,6 +83,11 @@ export async function getAccountAccessSnapshot(ownerClerkUserId: string) {
     usage,
     remaining,
     limits,
+    paid: await hasActivePaidEntitlement(ownerClerkUserId),
+    storage: {
+      usedBytes: Number(storage?.bytes ?? 0),
+      limitBytes: PROJECT_MEDIA_QUOTA_BYTES,
+    },
   };
 }
 

@@ -8,8 +8,9 @@
 import type { Media } from './media';
 
 export interface MediaUpload {
-  id: string;
   uploadURL: string;
   objectPath: string;
-  media: Media;
+  claimId: string;
+  expiresAt: Date;
+  media?: Media;
 }

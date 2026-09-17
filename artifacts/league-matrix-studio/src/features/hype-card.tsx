@@ -18,6 +18,9 @@ import {
   useGetAccountAccess,
   getGetAccountAccessQueryKey,
   serveProjectMedia,
+  requestProjectMediaUploadUrl,
+  completeProjectMediaUpload,
+  deleteProjectMedia,
   useCreateHypeCardShare,
   useDeleteHypeCardShare,
   useListHypeCardShares,
@@ -85,6 +88,7 @@ function drawVideoContain(
   y: number,
   width: number,
   height: number,
+  fit: 'fill' | 'fit' = 'fit',
 ) {
   const sourceWidth = video.videoWidth;
   const sourceHeight = video.videoHeight;
@@ -95,6 +99,13 @@ function drawVideoContain(
   let drawY = y;
   let drawWidth = width;
   let drawHeight = height;
+  if (fit === 'fill') {
+    const scale = Math.max(width / sourceWidth, height / sourceHeight);
+    const drawWidth = sourceWidth * scale;
+    const drawHeight = sourceHeight * scale;
+    context.drawImage(video, 0, 0, sourceWidth, sourceHeight, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+    return;
+  }
   if (sourceRatio > targetRatio) {
     drawHeight = width / sourceRatio;
     drawY += (height - drawHeight) / 2;
@@ -132,6 +143,38 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+function isCloudMediaId(value: string | null | undefined): value is string {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value));
+}
+
+async function uploadProjectMedia(
+  projectId: string,
+  mediaRole: 'photo' | 'logo' | 'poster' | 'video_preview' | 'video_download',
+  blob: Blob,
+  name: string,
+) {
+  const contentType = blob.type || (mediaRole.startsWith('video') ? 'video/mp4' : 'image/jpeg');
+  const mediaType = mediaRole.startsWith('video') ? 'video' : 'image';
+  const upload = await requestProjectMediaUploadUrl({
+    projectId, mediaRole, mediaType, name, size: blob.size, contentType,
+  });
+  const response = await fetch(upload.uploadURL, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: blob,
+  });
+  if (!response.ok) throw new Error('The media upload could not be completed.');
+  return completeProjectMediaUpload({ objectPath: upload.objectPath });
+}
+
+function projectForCloudSave(project: HypeCardProject, paid: boolean): HypeCardProject {
+  const design = designOnlyProject(project);
+  return paid
+    ? { ...design, videoMeta: project.videoMeta }
+    : design;
+}
+
 function assetUpload(
   event: ChangeEvent<HTMLInputElement>,
   onLoad: (dataUrl: string) => void,
@@ -343,6 +386,7 @@ export function PreviewArtwork({
     filter: `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`,
     transformOrigin: 'center',
     transform: `rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})`,
+    objectFit: hasVideo && project.videoFit === 'fill' ? ('cover' as const) : ('contain' as const),
   };
 
   return (
@@ -359,16 +403,20 @@ export function PreviewArtwork({
         }}
       >
         {hasVideo ? (
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            poster={poster}
-            className="absolute max-w-none object-contain"
-            autoPlay
-            muted={muted}
-            playsInline
-            style={mediaStyle}
-          />
+          <>
+            {project.videoFit === 'fit' && (
+              <video src={videoUrl} className="absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-xl" muted playsInline aria-hidden="true" />
+            )}
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              poster={poster}
+              className="absolute max-w-none"
+              muted={muted}
+              playsInline
+              style={mediaStyle}
+            />
+          </>
         ) : (
           <img
             src={project.photo ?? ''}
@@ -388,17 +436,19 @@ export function PreviewCanvas({
   project,
   videoUrl,
   videoRef,
+  onRequestPlay,
 }: {
   project: HypeCardProject;
   videoUrl?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
+  onRequestPlay?: () => void;
 }) {
   const dimensions = getDimensions(project.format);
   const ns = useMemo(() => Math.random().toString(36).substring(2, 9), [project.layout, project.format, project.template]);
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageBounds, setStageBounds] = useState({ width: 0, height: 0 });
 
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(Boolean(videoUrl));
   const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
@@ -419,7 +469,7 @@ export function PreviewCanvas({
   useEffect(() => {
     if (videoRef?.current) {
       videoRef.current.loop = false;
-      if (isPlaying) videoRef.current.play().catch(() => setIsPlaying(false));
+      if (isPlaying && videoUrl) videoRef.current.play().catch(() => setIsPlaying(false));
       else videoRef.current.pause();
     }
   }, [isPlaying, videoUrl, videoRef]);
@@ -471,9 +521,12 @@ export function PreviewCanvas({
         </div>
       </div>
       
-      {project.mediaType === 'video' && videoUrl && (
-        <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 bg-foreground/90 p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 clip-angled-sm shadow-xl border border-white/10">
-          <button type="button" data-testid="button-play-pause" onClick={() => setIsPlaying(!isPlaying)} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
+      {project.mediaType === 'video' && (
+        <div className={`absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex items-center gap-2 bg-foreground/90 p-2 transition-opacity ${videoUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} focus-within:opacity-100 clip-angled-sm shadow-xl border border-white/10`}>
+          <button type="button" data-testid="button-play-pause" onClick={() => {
+            if (!videoUrl) { onRequestPlay?.(); setIsPlaying(true); return; }
+            setIsPlaying(!isPlaying);
+          }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label={isPlaying ? 'Pause' : 'Play'}>
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </button>
           <button type="button" data-testid="button-restart" onClick={() => { if (videoRef?.current) { videoRef.current.currentTime = project.trimStart; videoRef.current.play().catch(()=>setIsPlaying(false)); setIsPlaying(true); } }} className="grid h-10 w-10 place-items-center bg-white/10 text-white hover:bg-primary hover:text-primary-foreground clip-angled-sm transition-colors" aria-label="Restart">
@@ -696,6 +749,7 @@ export function HypeCardEditor() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
   const mediaPreparationAbortRef = useRef<AbortController | null>(null);
+  const cloudPreviewLoadingRef = useRef(false);
 
   const initializedForId = useRef<string | null>(null);
   const lastSaved = useRef<HypeCardProject>(project);
@@ -768,11 +822,45 @@ export function HypeCardEditor() {
   useEffect(() => {
     if (cloudProjectId && cloudProjectData && initializedForId.current !== cloudProjectId) {
       initializedForId.current = cloudProjectId;
-      const p = normalizeHypeCardProject(cloudProjectData.project);
+      const source = normalizeHypeCardProject(cloudProjectData.project);
+      const photo = cloudProjectData.media.find((item) => item.mediaRole === 'photo');
+      const logo = cloudProjectData.media.find((item) => item.mediaRole === 'logo');
+      const poster = cloudProjectData.media.find((item) => item.mediaRole === 'poster');
+      const preview = cloudProjectData.media.find((item) => item.mediaRole === 'video_preview');
+      const download = cloudProjectData.media.find((item) => item.mediaRole === 'video_download');
+      const p = normalizeHypeCardProject({
+        ...source,
+        mediaType: preview || download ? 'video' : photo ? 'image' : null,
+        mediaId: preview?.id ?? photo?.id ?? null,
+        downloadMediaId: download?.id ?? null,
+        posterMediaId: poster?.id ?? null,
+        logoMediaId: logo?.id ?? null,
+      });
       setProject(p);
       lastSaved.current = p;
       currentRevision.current = cloudProjectData.revision;
       setSaveStatus('Saved design');
+      void (async () => {
+        const loadStatic = async (id: string, kind: 'photo' | 'logo' | 'poster') => {
+          const blob = await serveProjectMedia(id);
+          await saveMediaBlob(id, blob);
+          const dataUrl = await blobToDataUrl(blob);
+          setProject((current) => kind === 'logo'
+            ? { ...current, logo: dataUrl }
+            : current.mediaType === (kind === 'poster' ? 'video' : 'image')
+              ? { ...current, photo: dataUrl }
+              : current);
+        };
+        try {
+          await Promise.all([
+            photo && loadStatic(photo.id, 'photo'),
+            logo && loadStatic(logo.id, 'logo'),
+            poster && loadStatic(poster.id, 'poster'),
+          ]);
+        } catch {
+          setNotice('Some saved images could not be loaded. Check your connection and try again.');
+        }
+      })();
     }
   }, [cloudProjectData, cloudProjectId]);
 
@@ -806,21 +894,12 @@ export function HypeCardEditor() {
 
       let blob = await loadMediaBlob(project.mediaId);
       
-      if (!blob && cloudProjectId) {
-        try {
-          blob = await serveProjectMedia(project.mediaId);
-          if (blob) {
-            await saveMediaBlob(project.mediaId, blob);
-          }
-        } catch (e) {
-          console.error("Failed to load cloud media", e);
-        }
-      }
-
       if (!blob) {
         if (!cancelled) {
           if (project.mediaType === 'video') setVideoUrl(undefined);
-          setNotice('The attached media is no longer available on this device. Please add it again.');
+          if (!cloudProjectId || project.mediaType !== 'video') {
+            setNotice('The attached media is no longer available on this device. Please add it again.');
+          }
         }
         return;
       }
@@ -848,7 +927,21 @@ export function HypeCardEditor() {
     loadMedia();
 
     return () => { cancelled = true; };
-  }, [project.mediaId, project.mediaType, cloudProjectId, project.photo]);
+  }, [project.mediaId, project.mediaType, project.photo]);
+
+  const loadPreviewForPlay = async () => {
+    if (videoUrl || !cloudProjectId || !project.mediaId || cloudPreviewLoadingRef.current) return;
+    cloudPreviewLoadingRef.current = true;
+    try {
+      const blob = await serveProjectMedia(project.mediaId);
+      await saveMediaBlob(project.mediaId, blob);
+      setVideoUrl(URL.createObjectURL(blob));
+    } catch {
+      setNotice('The preview video could not be loaded. Check your connection and try again.');
+    } finally {
+      cloudPreviewLoadingRef.current = false;
+    }
+  };
 
   useEffect(() => {
     if (project.mediaType !== 'image' || !project.photo || project.mediaId) return;
@@ -898,7 +991,7 @@ export function HypeCardEditor() {
     setSaveStatus('Saving');
 
     try {
-      const savedProject = designOnlyProject(dataToSave);
+      const savedProject = projectForCloudSave(dataToSave, Boolean(accountAccess?.paid));
 
       await mutateFnRef.current({
         projectId: cloudProjectId,
@@ -963,13 +1056,41 @@ export function HypeCardEditor() {
       const created = await createProject.mutateAsync({
         data: {
           name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
-          project: designOnlyProject(project),
+          project: projectForCloudSave(project, Boolean(accountAccess?.paid)),
           ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey } : {}),
         }
       });
       queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
       lastSaved.current = project;
-      setNotice('Design saved. Add media anytime to create a new export.');
+      if (accountAccess?.paid) {
+        try {
+          const uploads: Promise<unknown>[] = [];
+          if (project.mediaType === 'image' && project.mediaId) {
+            const blob = await loadMediaBlob(project.mediaId);
+            if (blob) uploads.push(uploadProjectMedia(created.id, 'photo', blob, 'photo'));
+          }
+          if (project.logoMediaId) {
+            const blob = await loadMediaBlob(project.logoMediaId);
+            if (blob) uploads.push(uploadProjectMedia(created.id, 'logo', blob, 'logo'));
+          } else if (project.logo) {
+            uploads.push(uploadProjectMedia(created.id, 'logo', await (await fetch(project.logo)).blob(), 'logo'));
+          }
+          if (project.mediaType === 'video' && project.videoPrepared) {
+            const preview = project.mediaId ? await loadMediaBlob(project.mediaId) : undefined;
+            const download = project.downloadMediaId ? await loadMediaBlob(project.downloadMediaId) : undefined;
+            if (preview) uploads.push(uploadProjectMedia(created.id, 'video_preview', preview, 'preview.mp4'));
+            if (download) uploads.push(uploadProjectMedia(created.id, 'video_download', download, 'download.mp4'));
+            if (project.photo) uploads.push(uploadProjectMedia(created.id, 'poster', await (await fetch(project.photo)).blob(), 'poster.jpg'));
+          }
+          await Promise.all(uploads);
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(created.id) });
+          setNotice('Project and private media saved. Video preview loads when you press Play; download quality loads when you export.');
+        } catch (error) {
+          setNotice(error instanceof Error ? `${error.message} Your cloud draft was saved; media remains available locally.` : 'Cloud draft saved, but media upload failed.');
+        }
+      } else {
+        setNotice('Design saved. Paid accounts can keep private media; guest and unpaid saves contain design settings only.');
+      }
       setLocation(`/studio/hype-card/${created.id}`);
     } catch (e: any) {
       setSaveStatus('Save failed');
@@ -998,7 +1119,7 @@ export function HypeCardEditor() {
          const created = await createProject.mutateAsync({
            data: {
              name: `${p.teamName || 'Untitled'} - ${p.headline || 'Project'} (Copy)`,
-              project: designOnlyProject(p),
+              project: projectForCloudSave(p, Boolean(accountAccess?.paid)),
                ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey: `${guestUsageKey}-copy` } : {}),
            }
          });
@@ -1081,24 +1202,36 @@ export function HypeCardEditor() {
           throw new Error('This video has an invalid duration.');
         }
         let preparedVideo: Blob = file;
+        let preparedDownload: Blob = file;
+        let preparedPreview: Blob = file;
+        let conversionSucceeded = false;
         let playbackUrl = url;
         let conversionWarning = '';
         try {
           setNotice('');
           setPreparingVideo(true);
-          setAutosaveWarning('Preparing a smaller MP4 locally… 0%');
-          preparedVideo = await transcodeVideoToMp4(
+          setAutosaveWarning('Preparing the download video locally… 0%');
+          preparedDownload = await transcodeVideoToMp4(
             file,
             (progress) => {
               if (!preparationAbort.signal.aborted) {
-                setAutosaveWarning(`Preparing a smaller MP4 locally… ${Math.round(progress * 100)}%`);
+                setAutosaveWarning(`Preparing the download video locally… ${Math.round(progress * 100)}%`);
               }
             },
             { signal: preparationAbort.signal },
           );
-          if (preparedVideo.size >= file.size && file.type.includes('mp4')) {
-            preparedVideo = file;
-          }
+          setAutosaveWarning('Preparing the preview video locally… 0%');
+          preparedPreview = await transcodeVideoToMp4(
+            preparedDownload,
+            (progress) => {
+              if (!preparationAbort.signal.aborted) {
+                setAutosaveWarning(`Preparing the preview video locally… ${Math.round(progress * 100)}%`);
+              }
+            },
+            { signal: preparationAbort.signal, longEdge: 640, videoBitsPerSecond: 850_000 },
+          );
+          conversionSucceeded = true;
+          preparedVideo = preparedPreview;
           playbackUrl = URL.createObjectURL(preparedVideo);
         } catch (conversionError) {
           if (preparationAbort.signal.aborted) throw conversionError;
@@ -1109,34 +1242,68 @@ export function HypeCardEditor() {
             : 'This browser could not create a smaller MP4, so the original video will stay local.';
         }
 
-        await saveMediaBlob(id, preparedVideo);
-        if (project.mediaId) {
-          await deleteMediaBlob(project.mediaId).catch(console.warn);
-        }
+        const previewId = `${id}-preview`;
+        const downloadId = `${id}-download`;
+        await Promise.all([
+          saveMediaBlob(previewId, preparedPreview),
+          saveMediaBlob(downloadId, preparedDownload),
+        ]);
+        if (project.mediaId) await deleteMediaBlob(project.mediaId).catch(console.warn);
+        if (project.downloadMediaId) await deleteMediaBlob(project.downloadMediaId).catch(console.warn);
         setVideoUrl(playbackUrl);
         
         // Generate poster for project.photo as fallback
         v.currentTime = Math.min(0.05, v.duration / 2);
         await waitForVideoEvent(v, 'seeked', 5_000, false);
         let poster: string | null = null;
+        let posterBlob: Blob | null = null;
         try {
           const cv = document.createElement('canvas');
           cv.width = v.videoWidth || 640;
           cv.height = v.videoHeight || 640;
           cv.getContext('2d')?.drawImage(v, 0, 0, cv.width, cv.height);
           poster = cv.toDataURL('image/jpeg', 0.8);
+          posterBlob = await new Promise<Blob | null>((resolve) => cv.toBlob(resolve, 'image/jpeg', 0.8));
         } catch (e) {}
+
+        let cloudPreviewId: string | null = null;
+        let cloudDownloadId: string | null = null;
+        let cloudPosterId: string | null = null;
+        let uploadWarning = '';
+        if (cloudProjectId && accountAccess?.paid && posterBlob && conversionSucceeded) {
+          try {
+            const [previewMedia, downloadMedia, posterMedia] = await Promise.all([
+              uploadProjectMedia(cloudProjectId, 'video_preview', preparedPreview, `${file.name}.preview.mp4`),
+              uploadProjectMedia(cloudProjectId, 'video_download', preparedDownload, `${file.name}.download.mp4`),
+              uploadProjectMedia(cloudProjectId, 'poster', posterBlob, `${file.name}.jpg`),
+            ]);
+            cloudPreviewId = previewMedia.id;
+            cloudDownloadId = downloadMedia.id;
+            cloudPosterId = posterMedia.id;
+            queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
+            queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+          } catch (uploadError) {
+            uploadWarning = uploadError instanceof Error
+              ? uploadError.message
+              : 'Media upload failed. Your local copy is still available.';
+          }
+        } else if (cloudProjectId && accountAccess?.paid && !conversionSucceeded) {
+          uploadWarning = 'This browser could not prepare the two private video qualities. The video remains local; try Chrome or Safari again before saving it to the cloud.';
+        }
 
         setProject(curr => ({
           ...curr,
           mediaType: 'video',
-          mediaId: id,
+            mediaId: cloudPreviewId ?? previewId,
+            downloadMediaId: cloudDownloadId ?? downloadId,
+            posterMediaId: cloudPosterId,
+            videoPrepared: conversionSucceeded,
           videoMeta: {
             name: preparedVideo.type.includes('mp4')
               ? file.name.replace(/\.[^.]+$/, '') + '.mp4'
               : file.name,
             type: preparedVideo.type || file.type,
-            size: preparedVideo.size,
+            size: preparedDownload.size,
             duration: v.duration,
           },
           trimStart: 0,
@@ -1148,7 +1315,7 @@ export function HypeCardEditor() {
          setTemplateMediaNotice(false);
         setValidation('');
         setAutosaveWarning('');
-        setNotice(conversionWarning);
+         setNotice(uploadWarning || conversionWarning);
         if (playbackUrl !== url) URL.revokeObjectURL(url);
       } catch (err) {
         URL.revokeObjectURL(url);
@@ -1170,14 +1337,21 @@ export function HypeCardEditor() {
         }
         const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
         await saveMediaBlob(id, file);
-        if (project.mediaId) {
+        let savedId = id;
+        if (cloudProjectId && accountAccess?.paid) {
+          const media = await uploadProjectMedia(cloudProjectId, 'photo', file, file.name);
+          savedId = media.id;
+          if (isCloudMediaId(project.mediaId)) await deleteProjectMedia(project.mediaId).catch(() => undefined);
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
+          queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+        } else if (project.mediaId) {
           await deleteMediaBlob(project.mediaId).catch(console.warn);
         }
         setVideoUrl(undefined);
         setProject(curr => ({
           ...curr,
           mediaType: 'image',
-          mediaId: id,
+           mediaId: savedId,
           videoMeta: null,
           photo: res,
           photoTransform: defaultProject().photoTransform,
@@ -1195,9 +1369,40 @@ export function HypeCardEditor() {
     }
   };
 
+  const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !file.type.startsWith('image/')) {
+      setNotice('Please choose a valid team logo image.');
+      return;
+    }
+    try {
+      const logo = await blobToDataUrl(file);
+      if (!isSafeRasterDataUrl(logo)) throw new Error('Invalid logo');
+      let logoId = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      await saveMediaBlob(logoId, file);
+      if (cloudProjectId && accountAccess?.paid) {
+        const media = await uploadProjectMedia(cloudProjectId, 'logo', file, file.name);
+        logoId = media.id;
+        if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
+        queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+      } else if (project.logoMediaId) {
+        await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
+      }
+      setProject((current) => ({ ...current, logo, logoMediaId: logoId }));
+    } catch {
+      setNotice('That logo could not be saved. Try a smaller PNG, JPG, or WebP.');
+    }
+  };
+
   const handleMediaRemove = async () => {
     if (project.mediaId) {
       await deleteMediaBlob(project.mediaId).catch(console.warn);
+    }
+    if (project.downloadMediaId) await deleteMediaBlob(project.downloadMediaId).catch(console.warn);
+    for (const id of [project.mediaId, project.downloadMediaId, project.posterMediaId]) {
+      if (isCloudMediaId(id)) await deleteProjectMedia(id).catch(() => undefined);
     }
     setVideoUrl(undefined);
     setTemplateMediaNotice(false);
@@ -1205,6 +1410,8 @@ export function HypeCardEditor() {
       ...curr,
       mediaType: null,
       mediaId: null,
+      downloadMediaId: null,
+      posterMediaId: null,
       videoMeta: null,
       photo: null,
       photoTransform: defaultProject().photoTransform,
@@ -1224,17 +1431,26 @@ export function HypeCardEditor() {
       return;
     }
     
-    if (project.mediaType === 'video' && (!videoUrl || !videoRef.current)) {
-      setValidation('Please re-attach the original video before exporting.');
-      return;
-    }
-
-    if (project.mediaType === 'video' && videoRef.current) {
+    if (project.mediaType === 'video') {
       setExporting(true);
       setExportProgress(0);
       exportAbortRef.current = new AbortController();
-      
+      let temporaryExportUrl: string | null = null;
       try {
+        let video = videoRef.current;
+        if (project.downloadMediaId) {
+          let downloadBlob = await loadMediaBlob(project.downloadMediaId);
+          if (!downloadBlob && cloudProjectId) downloadBlob = await serveProjectMedia(project.downloadMediaId);
+          if (!downloadBlob) throw new Error('Download-quality video is unavailable. Please choose the video again.');
+          temporaryExportUrl = URL.createObjectURL(downloadBlob);
+          video = document.createElement('video');
+          video.preload = 'auto';
+          video.muted = true;
+          video.playsInline = true;
+          video.src = temporaryExportUrl;
+          await waitForVideoEvent(video, 'loadedmetadata', 10_000, true);
+        }
+        if (!video) throw new Error('The download-quality video is unavailable. Please choose the video again.');
         const { width, height } = getDimensions(project.format);
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -1253,7 +1469,6 @@ export function HypeCardEditor() {
           svgToImage(fgSvg, width, height)
         ]);
 
-        const video = videoRef.current;
         const originalTime = video.currentTime;
         
         const { blob, ext, audioIncluded } = await exportVideoCanvas(
@@ -1288,7 +1503,13 @@ export function HypeCardEditor() {
             ctx.scale(project.photoTransform.flip ? -1 : 1, 1);
             ctx.translate(-clipInfo.cx, -clipInfo.cy);
             ctx.filter = `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`;
-            drawVideoContain(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h);
+             if (project.videoFit === 'fit') {
+               ctx.save();
+               ctx.filter = 'blur(18px) brightness(0.35)';
+               drawVideoContain(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h, 'fill');
+               ctx.restore();
+             }
+             drawVideoContain(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h, project.videoFit);
             ctx.restore();
             
             // Draw FG
@@ -1296,7 +1517,7 @@ export function HypeCardEditor() {
           }
         );
         
-        video.currentTime = originalTime; // restore playback
+         video.currentTime = originalTime; // restore playback
 
         const a = document.createElement('a');
         const downloadUrl = URL.createObjectURL(blob);
@@ -1315,6 +1536,7 @@ export function HypeCardEditor() {
           setNotice(err.message || 'Export failed.');
         }
       } finally {
+        if (temporaryExportUrl) URL.revokeObjectURL(temporaryExportUrl);
         setExporting(false);
       }
     } else {
@@ -1614,7 +1836,7 @@ export function HypeCardEditor() {
             </Section>}
 
             {walkthroughStep === 1 && <Section title="Media" icon={ImagePlus}>
-              <p className="mb-4 text-xs text-muted-foreground">Add a photo or a video up to 120MB. Videos are prepared locally as a smaller MP4 when supported, and exports are limited to a 15-second selection. Media never leaves this device.</p>
+               <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? 'Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. Guest and unpaid saves keep design settings only. Preview video loads after Play; download quality loads only when you export.' : 'Add a photo or video up to 120MB. Guest and unpaid cloud saves contain design settings only; your media stays on this device.'}</p>
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
                   This saved design does not include media. Add a photo or video before exporting.
@@ -1631,6 +1853,13 @@ export function HypeCardEditor() {
                 onChange={handleMediaUpload}
                 onRemove={handleMediaRemove}
               />
+               <div className="mt-3">
+                 <AssetButton label="Team logo" hasAsset={Boolean(project.logo)} onChange={handleLogoUpload} onRemove={async () => {
+                   if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
+                   if (project.logoMediaId) await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
+                   setProject((current) => ({ ...current, logo: null, logoMediaId: null }));
+                 }} />
+               </div>
               {project.mediaType && (
                 <div className="mt-4 rounded-xl border border-border bg-muted/50 p-4">
                   <div className="mb-3 flex items-center justify-between">
@@ -1654,6 +1883,16 @@ export function HypeCardEditor() {
                       <FlipHorizontal2 className="h-3.5 w-3.5" /> Flip
                     </Button>
                   </div>
+                  {project.mediaType === 'video' && (
+                    <div className="mt-4 flex items-center gap-2" role="group" aria-label="Video framing">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Video frame</span>
+                      {(['fill', 'fit'] as const).map((mode) => (
+                        <Button key={mode} type="button" size="sm" variant={project.videoFit === mode ? 'default' : 'outline'} className="rounded-none text-[10px] uppercase" onClick={() => updateProject('videoFit', mode)}>
+                          {mode === 'fill' ? 'Fill' : 'Fit'}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => setShowAdvanced((open) => !open)}
@@ -1842,7 +2081,7 @@ export function HypeCardEditor() {
 
         <main className="block h-[72dvh] max-h-[720px] min-h-[520px] shrink-0 overflow-hidden p-4 sm:h-auto sm:min-h-0 sm:max-h-none sm:flex-1 sm:p-8">
           <div className="mx-auto h-full max-w-[800px]">
-            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} />
+            <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
           </div>
         </main>
       </div>

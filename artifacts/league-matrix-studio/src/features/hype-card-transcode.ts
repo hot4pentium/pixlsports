@@ -8,6 +8,8 @@ const NO_PROGRESS_TIMEOUT_MS = 8_000;
 
 export type VideoTranscodeOptions = {
   signal?: AbortSignal;
+  longEdge?: number;
+  videoBitsPerSecond?: number;
   mediaReadyTimeoutMs?: number;
   playbackStartTimeoutMs?: number;
   noProgressTimeoutMs?: number;
@@ -99,7 +101,7 @@ function withTimeout<T>(
 }
 
 export async function transcodeVideoToMp4(
-  source: File,
+  source: Blob,
   onProgress: TranscodeProgressCallback,
   options: VideoTranscodeOptions = {},
 ): Promise<Blob> {
@@ -110,8 +112,9 @@ export async function transcodeVideoToMp4(
     noProgressTimeoutMs = NO_PROGRESS_TIMEOUT_MS,
   } = options;
   const support = checkExportSupport();
-  if (!support.mp4Mime) {
-    throw new Error('This browser cannot create a smaller MP4. The original clip will be kept locally.');
+  const mimeType = support.mp4Mime ?? support.webmMime;
+  if (!mimeType) {
+    throw new Error('This browser cannot create a smaller MP4 or WebM. The original clip will be kept locally.');
   }
   if (signal?.aborted) throw abortError();
 
@@ -171,7 +174,7 @@ export async function transcodeVideoToMp4(
       signal,
     );
 
-    const scale = Math.min(1, 1280 / Math.max(video.videoWidth || 1280, video.videoHeight || 720));
+    const scale = Math.min(1, (options.longEdge ?? 1280) / Math.max(video.videoWidth || 1280, video.videoHeight || 720));
     const width = Math.max(2, Math.floor((video.videoWidth || 1280) * scale / 2) * 2);
     const height = Math.max(2, Math.floor((video.videoHeight || 720) * scale / 2) * 2);
     canvas.width = width;
@@ -209,8 +212,8 @@ export async function transcodeVideoToMp4(
     audioStream.getAudioTracks().forEach((track) => stream?.addTrack(track));
 
     recorder = new MediaRecorder(stream, {
-      mimeType: support.mp4Mime,
-      videoBitsPerSecond: 2_500_000,
+      mimeType,
+      videoBitsPerSecond: options.videoBitsPerSecond ?? 2_500_000,
       audioBitsPerSecond: 128_000,
     });
     const activeRecorder = recorder;
@@ -225,7 +228,7 @@ export async function transcodeVideoToMp4(
         cleanup();
         if (error) reject(error);
         else {
-          const output = new Blob(chunks, { type: support.mp4Mime ?? 'video/mp4' });
+          const output = new Blob(chunks, { type: mimeType });
           if (output.size === 0) reject(new Error('The browser created an empty MP4.'));
           else resolve(output);
         }

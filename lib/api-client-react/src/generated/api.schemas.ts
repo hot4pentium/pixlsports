@@ -345,6 +345,13 @@ export const AccountAccessRole = {
   fan: 'fan',
 } as const;
 
+export interface StorageQuota {
+  /** @minimum 0 */
+  usedBytes: number;
+  /** @minimum 1 */
+  limitBytes: number;
+}
+
 export interface AccountAccess {
   accessMode: AccountAccessAccessMode;
   /** @nullable */
@@ -352,6 +359,8 @@ export interface AccountAccess {
   usage: AccountUsage;
   remaining: AccountUsageRemaining;
   limits: AccountUsage;
+  paid: boolean;
+  storage: StorageQuota;
 }
 
 export type AccountLifecycleStatus = typeof AccountLifecycleStatus[keyof typeof AccountLifecycleStatus];
@@ -534,14 +543,26 @@ export const MediaMediaType = {
   video: 'video',
 } as const;
 
+export type MediaMediaRole = typeof MediaMediaRole[keyof typeof MediaMediaRole];
+
+
+export const MediaMediaRole = {
+  photo: 'photo',
+  logo: 'logo',
+  poster: 'poster',
+  video_preview: 'video_preview',
+  video_download: 'video_download',
+  legacy: 'legacy',
+} as const;
+
 export interface Media {
   id: string;
-  objectPath: string;
   name: string;
   contentType: string;
   /** @minimum 1 */
   size: number;
   mediaType: MediaMediaType;
+  mediaRole: MediaMediaRole;
   createdAt: string;
 }
 
@@ -601,6 +622,17 @@ export const MediaUploadInputMediaType = {
   video: 'video',
 } as const;
 
+export type MediaUploadInputMediaRole = typeof MediaUploadInputMediaRole[keyof typeof MediaUploadInputMediaRole];
+
+
+export const MediaUploadInputMediaRole = {
+  photo: 'photo',
+  logo: 'logo',
+  poster: 'poster',
+  video_preview: 'video_preview',
+  video_download: 'video_download',
+} as const;
+
 export interface MediaUploadInput {
   projectId?: string;
   /**
@@ -612,13 +644,20 @@ export interface MediaUploadInput {
   size: number;
   contentType: string;
   mediaType: MediaUploadInputMediaType;
+  mediaRole: MediaUploadInputMediaRole;
 }
 
 export interface MediaUpload {
-  id: string;
   uploadURL: string;
   objectPath: string;
-  media: Media;
+  claimId: string;
+  expiresAt: string;
+  media?: Media;
+}
+
+export interface MediaUploadCompleteInput {
+  /** @minLength 10 */
+  objectPath: string;
 }
 
 /**

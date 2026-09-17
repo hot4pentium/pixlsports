@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MediaUploadInputMediaRole } from './mediaUploadInputMediaRole';
 import type { MediaUploadInputMediaType } from './mediaUploadInputMediaType';
 
 export interface MediaUploadInput {
@@ -18,4 +19,5 @@ export interface MediaUploadInput {
   size: number;
   contentType: string;
   mediaType: MediaUploadInputMediaType;
+  mediaRole: MediaUploadInputMediaRole;
 }

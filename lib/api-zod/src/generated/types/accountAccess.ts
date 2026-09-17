@@ -9,6 +9,7 @@ import type { AccountAccessAccessMode } from './accountAccessAccessMode';
 import type { AccountAccessRole } from './accountAccessRole';
 import type { AccountUsage } from './accountUsage';
 import type { AccountUsageRemaining } from './accountUsageRemaining';
+import type { StorageQuota } from './storageQuota';
 
 export interface AccountAccess {
   accessMode: AccountAccessAccessMode;
@@ -17,4 +18,6 @@ export interface AccountAccess {
   usage: AccountUsage;
   remaining: AccountUsageRemaining;
   limits: AccountUsage;
+  paid: boolean;
+  storage: StorageQuota;
 }

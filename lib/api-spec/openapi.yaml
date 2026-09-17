@@ -604,8 +604,7 @@ paths:
     post:
       operationId: requestProjectMediaUploadUrl
       tags: [storage]
-      summary: Legacy media upload endpoint (disabled)
-      description: New cloud projects contain design settings only. This endpoint always returns 410.
+      summary: Request a private project media upload URL
       requestBody:
         required: true
         content:
@@ -631,8 +630,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "410":
-          description: Cloud media uploads are disabled
+        "403":
+          description: An active paid entitlement is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/uploads/complete:
+    post:
+      operationId: completeProjectMediaUpload
+      tags: [storage]
+      summary: Validate and save a prepared project media upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaUploadCompleteInput"
+      responses:
+        "201":
+          description: Saved project media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Upload claim expired or quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Uploaded media is too large
           content:
             application/json:
               schema:
@@ -650,6 +683,17 @@ paths:
           content:
             image/*: {}
             video/*: {}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteProjectMedia
+      tags: [storage]
+      summary: Delete owned project media
+      responses:
+        "204":
+          description: Media deleted
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1039,7 +1083,7 @@ components:
         lineups: { type: integer, minimum: 0 }
     AccountAccess:
       type: object
-      required: [accessMode, role, usage, remaining, limits]
+      required: [accessMode, role, usage, remaining, limits, paid, storage]
       properties:
         accessMode: { type: string, enum: [full, guest] }
         role:
@@ -1051,6 +1095,15 @@ components:
           $ref: "#/components/schemas/AccountUsageRemaining"
         limits:
           $ref: "#/components/schemas/AccountUsage"
+        paid: { type: boolean }
+        storage:
+          $ref: "#/components/schemas/StorageQuota"
+    StorageQuota:
+      type: object
+      required: [usedBytes, limitBytes]
+      properties:
+        usedBytes: { type: integer, minimum: 0 }
+        limitBytes: { type: integer, minimum: 1 }
     AccountLifecycle:
       type: object
       required: [status, cancelledAt, lastActivityAt, deletionEligibleAt, retentionDays, expired]
@@ -1214,13 +1267,11 @@ components:
           $ref: "#/components/schemas/Project"
     Media:
       type: object
-      required: [id, objectPath, name, contentType, size, mediaType, createdAt]
+      required: [id, name, contentType, size, mediaType, mediaRole, createdAt]
       properties:
         id:
           type: string
           format: uuid
-        objectPath:
-          type: string
         name:
           type: string
         contentType:
@@ -1231,12 +1282,15 @@ components:
         mediaType:
           type: string
           enum: [image, video]
+        mediaRole:
+          type: string
+          enum: [photo, logo, poster, video_preview, video_download, legacy]
         createdAt:
           type: string
           format: date-time
     MediaUploadInput:
       type: object
-      required: [name, size, contentType, mediaType]
+      required: [name, size, contentType, mediaType, mediaRole]
       properties:
         projectId:
           type: string
@@ -1253,18 +1307,29 @@ components:
         mediaType:
           type: string
           enum: [image, video]
+        mediaRole:
+          type: string
+          enum: [photo, logo, poster, video_preview, video_download]
     MediaUpload:
       type: object
-      required: [id, uploadURL, objectPath, media]
+      required: [uploadURL, objectPath, claimId, expiresAt]
       properties:
-        id:
-          type: string
-          format: uuid
         uploadURL:
           type: string
           format: uri
         objectPath:
           type: string
+        claimId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
         media:
           $ref: "#/components/schemas/Media"
+    MediaUploadCompleteInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 10 }
 

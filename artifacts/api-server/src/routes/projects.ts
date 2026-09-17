@@ -7,10 +7,11 @@ import {
   UpdateProjectBody,
   UpdateProjectParams,
 } from "@workspace/api-zod";
-import { cloudProjectsTable, db, projectMediaTable } from "@workspace/db";
+import { cloudProjectsTable, db, projectMediaTable, projectMediaUploadClaimsTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { consumeGuestUsageBatch, getAccountAccessSnapshot } from "./accountAccess";
+import { hasActivePaidEntitlement } from "../lib/accountLifecycle";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -18,19 +19,21 @@ const MAX_PROJECTS_PER_USER = 100;
 
 type ProjectRow = typeof cloudProjectsTable.$inferSelect;
 
-function withoutMedia(project: unknown): unknown {
+function withoutMedia(project: unknown, preserveFraming = false): unknown {
   if (!project || typeof project !== "object" || Array.isArray(project)) {
     return project;
   }
 
-  return {
+  const source = project as Record<string, unknown>;
+  const cleaned = {
     ...project,
     mediaType: null,
     mediaId: null,
-    videoMeta: null,
+    videoMeta: preserveFraming ? source.videoMeta : null,
     photo: null,
     logo: null,
   };
+  return cleaned;
 }
 
 async function mediaForProject(projectId: string, ownerClerkUserId: string) {
@@ -42,6 +45,7 @@ async function mediaForProject(projectId: string, ownerClerkUserId: string) {
       contentType: projectMediaTable.contentType,
       size: projectMediaTable.size,
       mediaType: projectMediaTable.mediaType,
+      mediaRole: projectMediaTable.mediaRole,
       createdAt: projectMediaTable.createdAt,
     })
     .from(projectMediaTable)
@@ -99,6 +103,7 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
   }
 
   const accountAccess = await getAccountAccessSnapshot(ownerClerkUserId);
+  const paid = await hasActivePaidEntitlement(ownerClerkUserId);
   if (accountAccess.accessMode === "guest") {
     const project = parsed.data.project as { tool?: unknown; events?: unknown } | null;
     const tool = project && typeof project === "object" && typeof project.tool === "string"
@@ -141,7 +146,7 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
       .values({
         ownerClerkUserId,
         name: parsed.data.name,
-        project: withoutMedia(parsed.data.project),
+         project: withoutMedia(parsed.data.project, paid),
       })
       .returning();
     res.status(201).json(await projectResponse(created, ownerClerkUserId));
@@ -225,7 +230,7 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
   };
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
   if (parsed.data.project !== undefined) {
-    updates.project = withoutMedia(parsed.data.project);
+    updates.project = withoutMedia(parsed.data.project, await hasActivePaidEntitlement(ownerClerkUserId));
   }
 
   try {
@@ -286,6 +291,11 @@ router.delete("/projects/:projectId", requireAuth, async (req, res): Promise<voi
         eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
       ),
     );
+  const claims = await db.select({ objectPath: projectMediaUploadClaimsTable.objectPath }).from(projectMediaUploadClaimsTable).where(and(
+    eq(projectMediaUploadClaimsTable.projectId, params.data.projectId),
+    eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
+  ));
+  const claimPaths = claims.map((claim) => claim.objectPath);
   const deletableObjectPaths: string[] = [];
   for (const item of media) {
     const [otherReference] = await db
@@ -323,6 +333,15 @@ router.delete("/projects/:projectId", requireAuth, async (req, res): Promise<voi
       req.log.warn({ err: error, objectPath }, "Unable to remove project media object");
     }
   }
+  for (const objectPath of claimPaths) {
+    try { await objectStorageService.deleteObjectEntity(objectPath); } catch (error) {
+      req.log.warn({ err: error, objectPath }, "Unable to remove expired project media claim object");
+    }
+  }
+  await db.delete(projectMediaUploadClaimsTable).where(and(
+    eq(projectMediaUploadClaimsTable.projectId, params.data.projectId),
+    eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
+  ));
   res.sendStatus(204);
 });
 

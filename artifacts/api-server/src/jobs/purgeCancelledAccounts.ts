@@ -8,6 +8,7 @@ import {
   guestUsageEventsTable,
   hypeCardSharesTable,
   projectMediaTable,
+  projectMediaUploadClaimsTable,
   scheduleSharesTable,
   supporterPhotosTable,
   supporterPhotoUploadClaimsTable,
@@ -82,6 +83,10 @@ async function purgeAccount(
     .select({ objectPath: projectMediaTable.objectPath })
     .from(projectMediaTable)
     .where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
+  const uploadClaims = await db
+    .select({ objectPath: projectMediaUploadClaimsTable.objectPath })
+    .from(projectMediaUploadClaimsTable)
+    .where(eq(projectMediaUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
   const hypeShares = await db
     .select({
       videoObjectPath: hypeCardSharesTable.videoObjectPath,
@@ -95,6 +100,13 @@ async function purgeAccount(
     .where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
 
   for (const item of media) {
+    try {
+      await dependencies.deleteObject(item.objectPath);
+    } catch (error) {
+      if (!(error instanceof ObjectNotFoundError)) throw error;
+    }
+  }
+  for (const item of uploadClaims) {
     try {
       await dependencies.deleteObject(item.objectPath);
     } catch (error) {
@@ -120,6 +132,7 @@ async function purgeAccount(
 
   await db.transaction(async (tx) => {
     await tx.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(projectMediaUploadClaimsTable).where(eq(projectMediaUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));

@@ -566,6 +566,9 @@ export const getAccountAccessResponseLimitsScheduleEventsMin = 0;
 
 export const getAccountAccessResponseLimitsLineupsMin = 0;
 
+export const getAccountAccessResponseStorageUsedBytesMin = 0;
+
+
 
 
 export const GetAccountAccessResponse = zod.object({
@@ -585,6 +588,11 @@ export const GetAccountAccessResponse = zod.object({
   "hypeCards": zod.number().int().min(getAccountAccessResponseLimitsHypeCardsMin),
   "scheduleEvents": zod.number().int().min(getAccountAccessResponseLimitsScheduleEventsMin),
   "lineups": zod.number().int().min(getAccountAccessResponseLimitsLineupsMin)
+}),
+  "paid": zod.boolean(),
+  "storage": zod.object({
+  "usedBytes": zod.number().int().min(getAccountAccessResponseStorageUsedBytesMin),
+  "limitBytes": zod.number().int().min(1)
 })
 })
 
@@ -615,6 +623,9 @@ export const updateAccountAccessResponseLimitsScheduleEventsMin = 0;
 
 export const updateAccountAccessResponseLimitsLineupsMin = 0;
 
+export const updateAccountAccessResponseStorageUsedBytesMin = 0;
+
+
 
 
 export const UpdateAccountAccessResponse = zod.object({
@@ -634,6 +645,11 @@ export const UpdateAccountAccessResponse = zod.object({
   "hypeCards": zod.number().int().min(updateAccountAccessResponseLimitsHypeCardsMin),
   "scheduleEvents": zod.number().int().min(updateAccountAccessResponseLimitsScheduleEventsMin),
   "lineups": zod.number().int().min(updateAccountAccessResponseLimitsLineupsMin)
+}),
+  "paid": zod.boolean(),
+  "storage": zod.object({
+  "usedBytes": zod.number().int().min(updateAccountAccessResponseStorageUsedBytesMin),
+  "limitBytes": zod.number().int().min(1)
 })
 })
 
@@ -746,6 +762,9 @@ export const consumeAccountUsageResponseLimitsScheduleEventsMin = 0;
 
 export const consumeAccountUsageResponseLimitsLineupsMin = 0;
 
+export const consumeAccountUsageResponseStorageUsedBytesMin = 0;
+
+
 
 
 export const ConsumeAccountUsageResponse = zod.object({
@@ -765,6 +784,11 @@ export const ConsumeAccountUsageResponse = zod.object({
   "hypeCards": zod.number().int().min(consumeAccountUsageResponseLimitsHypeCardsMin),
   "scheduleEvents": zod.number().int().min(consumeAccountUsageResponseLimitsScheduleEventsMin),
   "lineups": zod.number().int().min(consumeAccountUsageResponseLimitsLineupsMin)
+}),
+  "paid": zod.boolean(),
+  "storage": zod.object({
+  "usedBytes": zod.number().int().min(consumeAccountUsageResponseStorageUsedBytesMin),
+  "limitBytes": zod.number().int().min(1)
 })
 })
 
@@ -785,11 +809,11 @@ export const ListProjectsResponseItem = zod.object({
   "updatedAt": zod.coerce.date(),
   "media": zod.array(zod.object({
   "id": zod.string().uuid(),
-  "objectPath": zod.string(),
   "name": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -824,11 +848,11 @@ export const CreateProjectResponse = zod.object({
   "updatedAt": zod.coerce.date(),
   "media": zod.array(zod.object({
   "id": zod.string().uuid(),
-  "objectPath": zod.string(),
   "name": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -854,11 +878,11 @@ export const GetProjectResponse = zod.object({
   "updatedAt": zod.coerce.date(),
   "media": zod.array(zod.object({
   "id": zod.string().uuid(),
-  "objectPath": zod.string(),
   "name": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -895,11 +919,11 @@ export const UpdateProjectResponse = zod.object({
   "updatedAt": zod.coerce.date(),
   "media": zod.array(zod.object({
   "id": zod.string().uuid(),
-  "objectPath": zod.string(),
   "name": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -916,8 +940,7 @@ export const DeleteProjectResponse = zod.void()
 
 
 /**
- * New cloud projects contain design settings only. This endpoint always returns 410.
- * @summary Legacy media upload endpoint (disabled)
+ * @summary Request a private project media upload URL
  */
 export const requestProjectMediaUploadUrlBodyNameMax = 255;
 
@@ -929,25 +952,52 @@ export const RequestProjectMediaUploadUrlBody = zod.object({
   "name": zod.string().min(1).max(requestProjectMediaUploadUrlBodyNameMax),
   "size": zod.number().int().min(1),
   "contentType": zod.string(),
-  "mediaType": zod.enum(['image', 'video'])
+  "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download'])
 })
 
 
 
 
 export const RequestProjectMediaUploadUrlResponse = zod.object({
-  "id": zod.string().uuid(),
   "uploadURL": zod.string().url(),
   "objectPath": zod.string(),
+  "claimId": zod.string().uuid(),
+  "expiresAt": zod.coerce.date(),
   "media": zod.object({
   "id": zod.string().uuid(),
-  "objectPath": zod.string(),
   "name": zod.string(),
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
+}).optional()
 })
+
+
+/**
+ * @summary Validate and save a prepared project media upload
+ */
+export const completeProjectMediaUploadBodyObjectPathMin = 10;
+
+
+
+export const CompleteProjectMediaUploadBody = zod.object({
+  "objectPath": zod.string().min(completeProjectMediaUploadBodyObjectPathMin)
+})
+
+
+
+
+export const CompleteProjectMediaUploadResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int().min(1),
+  "mediaType": zod.enum(['image', 'video']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "createdAt": zod.coerce.date()
 })
 
 
@@ -959,6 +1009,16 @@ export const ServeProjectMediaParams = zod.object({
 })
 
 export const ServeProjectMediaResponse = zod.unknown()
+
+
+/**
+ * @summary Delete owned project media
+ */
+export const DeleteProjectMediaParams = zod.object({
+  "mediaId": zod.coerce.string().uuid()
+})
+
+export const DeleteProjectMediaResponse = zod.void()
 
 
 /**

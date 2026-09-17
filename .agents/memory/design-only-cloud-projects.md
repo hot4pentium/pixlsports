@@ -1,10 +1,12 @@
 ---
-name: Design-only cloud projects
-description: Product policy for cloud project persistence and the temporary treatment of legacy uploaded media.
+name: Paid cloud project media
+description: Product policy for private project media, paid eligibility, and design-only saves.
 ---
 
-Cloud project saves must contain reusable card design settings only. Photos, videos, uploaded logos, posters, media identifiers, and video metadata remain local; users share finished cards by exporting files.
+Only accounts with an active entitlement recorded by the signed billing webhook may persist private Hype Card photos, logos, posters, and locally prepared video renditions. Guest and unpaid saves remain design-only.
 
-**Why:** This reduces privacy exposure for youth-sports media, keeps storage costs low, and makes saved projects reusable as templates.
+Video storage uses separate preview and download renditions. Cloud project listings use static images, preview video transfers only after Play, and download-quality video transfers only after Download. Original source videos and permanent rendered exports are not stored.
 
-**How to apply:** New create and update paths must strip media fields and must not issue upload URLs. Existing cloud media may remain readable temporarily to avoid destructive migration, but no new cloud media may be accepted.
+**Why:** This provides cross-device paid storage while limiting privacy exposure, storage use, and unnecessary video transfer. Client-selected account modes are not payment proof.
+
+**How to apply:** Gate upload claims with the server-side entitlement ledger, enforce the shared quota from verified object metadata, keep objects private and owner-scoped, and preserve framing while stripping embedded media from project JSON.

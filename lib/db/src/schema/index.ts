@@ -31,9 +31,25 @@ export const projectMediaTable = pgTable("project_media", {
   name: text("name").notNull(),
   contentType: text("content_type").notNull(),
   mediaType: text("media_type").notNull(),
+  mediaRole: text("media_role").notNull().default("legacy"),
   size: integer("size").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const projectMediaUploadClaimsTable = pgTable("project_media_upload_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  projectId: uuid("project_id").references(() => cloudProjectsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  contentType: text("content_type").notNull(),
+  mediaRole: text("media_role").notNull(),
+  size: integer("size").notNull(),
+  objectPath: text("object_path").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  expiresAtIndex: index("project_media_upload_claims_expires_at_index").on(table.expiresAt),
+}));
 
 export const supporterPhotosTable = pgTable("supporter_photos", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -172,6 +188,7 @@ export const insertProjectMediaSchema = createInsertSchema(projectMediaTable).om
 });
 export type InsertProjectMedia = z.infer<typeof insertProjectMediaSchema>;
 export type ProjectMedia = typeof projectMediaTable.$inferSelect;
+export type ProjectMediaUploadClaim = typeof projectMediaUploadClaimsTable.$inferSelect;
 export type SupporterPhoto = typeof supporterPhotosTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type HypeCardShare = typeof hypeCardSharesTable.$inferSelect;

@@ -5,15 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MediaMediaRole } from './mediaMediaRole';
 import type { MediaMediaType } from './mediaMediaType';
 
 export interface Media {
   id: string;
-  objectPath: string;
   name: string;
   contentType: string;
   /** @minimum 1 */
   size: number;
   mediaType: MediaMediaType;
+  mediaRole: MediaMediaRole;
   createdAt: Date;
 }

@@ -3392,7 +3392,7 @@ function Help() {
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Will my media follow me across devices?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">For Hype Cards, attached photos, videos, and logos stay on the device where you added them. Cloud saves keep the reusable design settings, so you can reopen the design elsewhere, but you will need to add the original media again before editing or exporting. When you publish a Hype Card share, a prepared video and poster are uploaded separately so the public link can display them. Schedule, roster, and lineup data saved to your cloud workspace can be reopened on other signed-in devices.</p>
+           <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">For paid Hype Card accounts, attached photos, logos, posters, and locally prepared preview/download videos are kept in private cloud storage under the account quota, so saved projects reopen across signed-in devices. Preview video loads only after Play and download quality loads only when you export. Guest and unpaid cloud saves remain design-only, while local media stays on the device. When you publish a Hype Card share, its prepared video and poster are uploaded separately for the public link.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>

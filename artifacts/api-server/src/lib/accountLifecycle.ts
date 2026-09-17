@@ -1,7 +1,8 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
 
 export const ACCOUNT_RETENTION_DAYS = 90;
+export const PROJECT_MEDIA_QUOTA_BYTES = 1024 * 1024 * 1024;
 const ACCOUNT_RETENTION_MS = ACCOUNT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 export type AccountLifecycleStatus = "active" | "cancelled" | "deletion_pending";
@@ -173,4 +174,20 @@ export async function reactivateAccountFromEntitlement(entitlement: PaidEntitlem
 export async function isAccountActive(ownerClerkUserId: string) {
   const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
   return lifecycle.status === "active";
+}
+
+/** Paid is derived only from the signed entitlement ledger, never accessMode. */
+export async function hasActivePaidEntitlement(ownerClerkUserId: string, now = new Date()) {
+  const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
+  if (lifecycle.status !== "active") return false;
+  const [entitlement] = await db
+    .select({ expiresAt: accountEntitlementEventsTable.entitlementExpiresAt })
+    .from(accountEntitlementEventsTable)
+    .where(and(
+      eq(accountEntitlementEventsTable.ownerClerkUserId, ownerClerkUserId),
+      gt(accountEntitlementEventsTable.entitlementExpiresAt, now),
+    ))
+    .orderBy(desc(accountEntitlementEventsTable.entitlementExpiresAt))
+    .limit(1);
+  return Boolean(entitlement);
 }

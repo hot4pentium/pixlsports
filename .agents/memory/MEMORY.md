@@ -1,6 +1,6 @@
 - [Radix dialog runtime conflict](radix-dialog-runtime-conflict.md) — this Vite artifact hit a duplicate-React hook failure when Radix Dialog was newly optimized.
 - [Preview aspect fitting](preview-aspect-fitting.md) — expanded card previews must choose their limiting axis from measured stage bounds.
-- [Design-only cloud projects](design-only-cloud-projects.md) — account saves never include user media; legacy cloud media remains readable only during migration.
+- [Paid cloud project media](design-only-cloud-projects.md) — only server-verified paid accounts may persist private project media; other saves remain design-only.
 - [Local video preparation](local-video-preparation.md) — accept source clips up to 120MB, prepare smaller MP4s locally, and limit exports to a selected 15-second segment.
 - [Schedule identity compatibility](schedule-identity-compatibility.md) — new shares use separate team name and season while legacy API field names preserve existing parent links.
 - [Vite asset imports in Node tests](vite-asset-imports-in-node-tests.md) — keep Node-focused tests away from SVG modules that import Vite-only image assets.

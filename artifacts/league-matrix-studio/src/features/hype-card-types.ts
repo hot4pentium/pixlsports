@@ -9,6 +9,11 @@ export type HypeCardProject = {
   headline: string;
   mediaType: 'image' | 'video' | null;
   mediaId: string | null;
+  downloadMediaId: string | null;
+  posterMediaId: string | null;
+  logoMediaId: string | null;
+  videoFit: 'fill' | 'fit';
+  videoPrepared: boolean;
   videoMeta: {
     name: string;
     type: string;
@@ -110,6 +115,11 @@ export const defaultProject = (): HypeCardProject => ({
   headline: 'BIG PLAY',
   mediaType: null,
   mediaId: null,
+  downloadMediaId: null,
+  posterMediaId: null,
+  logoMediaId: null,
+  videoFit: 'fill',
+  videoPrepared: false,
   videoMeta: null,
   trimStart: 0,
   trimEnd: 15,
@@ -146,6 +156,9 @@ export function designOnlyProject(project: HypeCardProject): HypeCardProject {
     ...project,
     mediaType: null,
     mediaId: null,
+    downloadMediaId: null,
+    posterMediaId: null,
+    logoMediaId: null,
     videoMeta: null,
     photo: null,
     logo: null,
@@ -187,6 +200,11 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
       : mediaType && typeof project.mediaId === 'string'
         ? project.mediaId
         : null,
+    downloadMediaId: typeof project.downloadMediaId === 'string' ? project.downloadMediaId : null,
+    posterMediaId: typeof project.posterMediaId === 'string' ? project.posterMediaId : null,
+    logoMediaId: typeof project.logoMediaId === 'string' ? project.logoMediaId : null,
+    videoFit: project.videoFit === 'fit' ? 'fit' : 'fill',
+    videoPrepared: project.videoPrepared === true,
     videoMeta: mediaType === 'video' && project.videoMeta && typeof project.videoMeta === 'object'
       ? {
           name: String(project.videoMeta.name || 'Attached video'),
