@@ -93,6 +93,68 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   assert.equal(changedGame.stats['three-point'], 1);
 });
 
+test('long live tracker names cannot push score or featured stat controls off-screen', () => {
+  const game = createGameSession('basketball', {
+    opponent: 'The Very Long Opponent Name That Should Stay Inside The Scoreboard',
+  }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('basketball');
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Athlete With An Exceptionally Long Name',
+      teamName: 'A Team Name That Is Much Longer Than A Phone Should Need To Display',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      onGameChange: () => {},
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  assert.match(
+    renderer.root.findByProps({ 'data-testid': 'live-tracker-scoreboard' }).props.className,
+    /min-w-0/,
+  );
+  assert.match(
+    renderer.root.findByProps({ 'data-testid': 'live-tracker-matchup' }).props.className,
+    /truncate/,
+  );
+  for (const side of ['athlete', 'opponent']) {
+    const scoreCard = renderer.root.findByProps({ 'data-testid': `live-tracker-score-card-${side}` });
+    assert.match(scoreCard.props.className, /min-w-0/);
+    assert.match(
+      renderer.root.findByProps({ 'data-testid': `score-adjust-${side}-increase` }).props.className,
+      /shrink-0/,
+    );
+    assert.match(
+      renderer.root.findByProps({ 'data-testid': `score-adjust-${side}-decrease` }).props.className,
+      /shrink-0/,
+    );
+  }
+
+  assert.match(renderer.root.findByType('h2').props.className, /break-words/);
+  assert.match(
+    renderer.root.findByProps({ 'data-testid': 'live-tracker-stat-controls' }).props.className,
+    /min-w-0/,
+  );
+  const featuredStatButtons = renderer.root.findAll(
+    (node) => typeof node.props['data-testid'] === 'string' && node.props['data-testid'].startsWith('live-stat-'),
+  );
+  assert.ok(featuredStatButtons.length > 0);
+  for (const button of featuredStatButtons) {
+    assert.match(button.props.className, /min-w-0/);
+    assert.match(button.props.className, /overflow-hidden/);
+    for (const label of button.findAllByType('span')) {
+      assert.match(label.props.className, /truncate/);
+    }
+  }
+});
+
 test('sport rules award points while retaining zero-point stat counts', () => {
   let game = createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   game = addStatEvent(game, 'goal', new Date('2026-09-17T12:01:00Z'));

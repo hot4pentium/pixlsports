@@ -157,27 +157,27 @@ export function LiveTrackerGame({
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
-        <div data-testid="live-tracker-scoreboard" className="border border-primary/40 bg-foreground p-3 text-background clip-angled-sm sm:p-6" aria-live="polite">
-          <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
-          <p className="mt-3 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
+        <div data-testid="live-tracker-scoreboard" className="min-w-0 border border-primary/40 bg-foreground p-3 text-background clip-angled-sm sm:p-6" aria-live="polite">
+          <div className="flex min-w-0 items-center justify-between gap-3"><span className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
+          <p data-testid="live-tracker-matchup" className="mt-3 min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
+          <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
             {([
               ['athlete', athleteName || 'Your score', currentGame.score],
               ['opponent', currentGame.opponent || 'Opponent', currentGame.opponentScore],
             ] as const).map(([side, label, score]) => (
-              <div key={side} className="border border-white/10 bg-white/5 p-2 sm:p-3">
+              <div key={side} data-testid={`live-tracker-score-card-${side}`} className="min-w-0 border border-white/10 bg-white/5 p-2 sm:p-3">
                 <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
                 <p className={`mt-1 font-display text-4xl leading-none sm:text-5xl ${side === 'athlete' ? 'text-primary' : 'text-white'}`}>{score}</p>
-                <div className="mt-2 flex gap-2 sm:mt-3">
-                  <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, -1))} aria-label={`Subtract one from ${label}`} data-testid={`score-adjust-${side}-decrease`} className="flex min-h-11 min-w-11 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, 1))} aria-label={`Add one to ${label}`} data-testid={`score-adjust-${side}-increase`} className="flex min-h-11 min-w-11 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
+                <div className="mt-2 flex flex-wrap gap-2 sm:mt-3">
+                  <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, -1))} aria-label={`Subtract one from ${label}`} data-testid={`score-adjust-${side}-decrease`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, 1))} aria-label={`Add one to ${label}`} data-testid={`score-adjust-${side}-increase`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-2 flex items-center justify-between gap-4 sm:mt-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">Manual score adjustment</span>
-            <span className="text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{rule.phaseLabel} {currentGame.period}</span>
+            <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-widest text-white/45">Manual score adjustment</span>
+            <span className="shrink-0 text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{rule.phaseLabel} {currentGame.period}</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 sm:mt-7">
             <button type="button" onClick={() => onGameChange({ ...currentGame, status: currentGame.status === 'paused' ? 'live' : 'paused' })} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
@@ -185,10 +185,10 @@ export function LiveTrackerGame({
           </div>
         </div>
       </div>
-      <div data-testid="live-tracker-stat-controls" className="order-2 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Tap a stat</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {displayStats.map((item) => <button key={item.id} type="button" data-testid={`live-stat-${item.id}`} onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary">{item.label}</span><span className="mt-2 block font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block text-xs font-bold text-primary">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
+      <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-primary">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
+        <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+          {displayStats.map((item) => <button key={item.id} type="button" data-testid={`live-stat-${item.id}`} onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] min-w-0 overflow-hidden border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary">{item.label}</span><span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block truncate text-xs font-bold text-primary">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
         </div>
         <button type="button" onClick={onToggleShowAllStats} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
         <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Game notes</span>
