@@ -234,6 +234,19 @@ export function normalizeTrackerData(value: unknown): StatTrackerData {
   return { version: 1, games };
 }
 
+export function mergeTrackerData(localValue: unknown, cloudValue: unknown): StatTrackerData {
+  const local = normalizeTrackerData(localValue);
+  const cloud = normalizeTrackerData(cloudValue);
+  const localGameIds = new Set(local.games.map((game) => game.id));
+
+  return {
+    version: 1,
+    games: [
+      ...local.games,
+      ...cloud.games.filter((game) => !localGameIds.has(game.id)),
+    ],
+  };
+}
 export function seasonTotals(games: GameSession[], sport: Sport) {
   const totals: Record<string, number> = {};
   let score = 0;
@@ -247,4 +260,13 @@ export function seasonTotals(games: GameSession[], sport: Sport) {
     }
   }
   return { gamesPlayed, score, stats: totals };
+}
+
+export function trackerSaveErrorMessage(error: unknown): string {
+  const status = typeof error === 'object' && error !== null && 'status' in error
+    ? (error as { status?: unknown }).status
+    : undefined;
+  return status === 409
+    ? 'This tracker changed elsewhere. Your local game is safe; reload this page to merge it before saving again.'
+    : 'Game saved on this device, but cloud sync failed. Try saving again.';
 }

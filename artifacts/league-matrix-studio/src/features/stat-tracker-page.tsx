@@ -15,9 +15,11 @@ import {
   endGame,
   getSportRule,
   isSport,
+  mergeTrackerData,
   normalizeTrackerData,
   seasonTotals,
   sports,
+  trackerSaveErrorMessage,
   undoLastStatEvent,
   type GameSession,
   type Sport,
@@ -106,9 +108,10 @@ export function StatTrackerPage() {
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
     if (!existing || initializedCloud.current) return;
     initializedCloud.current = true;
-    setData(normalizeTrackerData(existing.project));
+    const mergedData = mergeTrackerData(readLocalTracker(), existing.project);
+    setData(mergedData);
     setCloudProject({ id: existing.id, revision: existing.revision });
-    saveLocalTracker(normalizeTrackerData(existing.project));
+    saveLocalTracker(mergedData);
   }, [projects]);
 
   useEffect(() => {
@@ -170,7 +173,7 @@ export function StatTrackerPage() {
       queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
-      setError(saveError?.status === 409 ? 'This tracker changed elsewhere. Refresh before saving again.' : 'Game saved on this device, but cloud sync failed. Try saving again.');
+      setError(trackerSaveErrorMessage(saveError));
       announce('LOCAL COPY SAVED — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
