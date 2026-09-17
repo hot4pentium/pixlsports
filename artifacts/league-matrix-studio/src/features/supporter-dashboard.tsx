@@ -514,9 +514,6 @@ export function SupporterDashboardView({
                               {formatDaysUntil(event.date)}
                             </div>
                             <div className="flex items-center gap-2">
-                              <Link href={`/studio/schedule`} className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm flex items-center gap-1.5 hover:brightness-110 transition-all clip-angled-sm">
-                                <CalendarDays className="w-3.5 h-3.5" /> Graphic
-                              </Link>
                               {event.location && (
                                 <a href={`https://maps.google.com/?q=${encodeURIComponent(event.location)}`} target="_blank" rel="noreferrer" className="bg-muted text-foreground text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm flex items-center gap-1.5 hover:bg-foreground hover:text-background transition-colors clip-angled-sm">
                                   <MapPin className="w-3.5 h-3.5" /> Map
