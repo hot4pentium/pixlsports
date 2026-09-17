@@ -1064,6 +1064,9 @@ export function HypeCardEditor() {
   });
   const existingShare: HypeCardShare | OwnedHypeCardShare | null =
     publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
+  const isShareSuccessNotice = notice.startsWith('Player page published')
+    || notice === 'Share link copied.'
+    || notice.startsWith('Player page link revoked');
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
   useEffect(() => {
@@ -2052,7 +2055,11 @@ export function HypeCardEditor() {
       )}
 
       {notice && (
-        <div className="flex shrink-0 items-center justify-between border-b border-border bg-destructive px-4 py-2 text-sm font-bold text-destructive-foreground">
+        <div className={`flex shrink-0 items-center justify-between border-b px-4 py-2 text-sm font-bold ${
+          isShareSuccessNotice
+            ? 'border-primary/30 bg-primary text-primary-foreground'
+            : 'border-border bg-destructive text-destructive-foreground'
+        }`}>
           {notice}
           <button type="button" onClick={() => setNotice('')}><X className="h-4 w-4" /></button>
         </div>
