@@ -35,6 +35,7 @@ import type {
   CoachCalendarConnectInput,
   CoachCalendarSubscription,
   Error,
+  GetNotificationSubscriptionStatusParams,
   HealthStatus,
   HypeCardShare,
   HypeCardShareInput,
@@ -46,6 +47,10 @@ import type {
   MediaUploadCompleteInput,
   MediaUploadInput,
   NotFoundResponse,
+  NotificationConfig,
+  NotificationSubscriptionDeleteInput,
+  NotificationSubscriptionInput,
+  NotificationSubscriptionStatus,
   PaidEntitlementEvent,
   Project,
   ProjectConflict,
@@ -3487,5 +3492,416 @@ export const useRequestSupporterPhotoUploadUrl = <TError = ErrorType<BadRequestR
         TContext
       > => {
       return useMutation(getRequestSupporterPhotoUploadUrlMutationOptions(options));
+    }
+
+export const getGetNotificationConfigUrl = () => {
+
+
+
+
+  return `/api/notifications/config`
+}
+
+/**
+ * @summary Get browser push notification availability
+ */
+export const getNotificationConfig = async ( options?: Parameters<typeof customFetch>[1]): Promise<NotificationConfig> => {
+
+  return customFetch<NotificationConfig>(getGetNotificationConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationConfigQueryKey = () => {
+    return [
+    `/api/notifications/config`
+    ] as const;
+    }
+
+
+export const getGetNotificationConfigQueryOptions = <TData = Awaited<ReturnType<typeof getNotificationConfig>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNotificationConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNotificationConfig>>> = ({ signal }) => getNotificationConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNotificationConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNotificationConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getNotificationConfig>>>
+export type GetNotificationConfigQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get browser push notification availability
+ */
+
+export function useGetNotificationConfig<TData = Awaited<ReturnType<typeof getNotificationConfig>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNotificationConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveNotificationSubscriptionUrl = () => {
+
+
+
+
+  return `/api/notifications/subscriptions`
+}
+
+/**
+ * @summary Register a browser push subscription
+ */
+export const saveNotificationSubscription = async (notificationSubscriptionInput: NotificationSubscriptionInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getSaveNotificationSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationSubscriptionInput)
+  }
+);}
+
+
+
+
+
+export const getSaveNotificationSubscriptionMutationKey = () => ['saveNotificationSubscription'] as const;
+
+export const getSaveNotificationSubscriptionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveNotificationSubscription>>, TError,SaveNotificationSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveNotificationSubscription>>, TError,SaveNotificationSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getSaveNotificationSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveNotificationSubscription>>, SaveNotificationSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveNotificationSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveNotificationSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof saveNotificationSubscription>>>
+    export type SaveNotificationSubscriptionMutationBody = BodyType<NotificationSubscriptionInput>
+    export type SaveNotificationSubscriptionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type SaveNotificationSubscriptionMutationVariables = {data: BodyType<NotificationSubscriptionInput>}
+
+    /**
+ * @summary Register a browser push subscription
+ */
+export const useSaveNotificationSubscription = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveNotificationSubscription>>, TError,SaveNotificationSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveNotificationSubscription>>,
+        TError,
+        SaveNotificationSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveNotificationSubscriptionMutationOptions(options));
+    }
+
+export const getDeleteNotificationSubscriptionUrl = () => {
+
+
+
+
+  return `/api/notifications/subscriptions`
+}
+
+/**
+ * @summary Remove a browser push subscription
+ */
+export const deleteNotificationSubscription = async (notificationSubscriptionDeleteInput: NotificationSubscriptionDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getDeleteNotificationSubscriptionUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationSubscriptionDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteNotificationSubscriptionMutationKey = () => ['deleteNotificationSubscription'] as const;
+
+export const getDeleteNotificationSubscriptionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNotificationSubscription>>, TError,DeleteNotificationSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteNotificationSubscription>>, TError,DeleteNotificationSubscriptionMutationVariables, TContext> => {
+
+const mutationKey = getDeleteNotificationSubscriptionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteNotificationSubscription>>, DeleteNotificationSubscriptionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  deleteNotificationSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteNotificationSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteNotificationSubscription>>>
+    export type DeleteNotificationSubscriptionMutationBody = BodyType<NotificationSubscriptionDeleteInput>
+    export type DeleteNotificationSubscriptionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type DeleteNotificationSubscriptionMutationVariables = {data: BodyType<NotificationSubscriptionDeleteInput>}
+
+    /**
+ * @summary Remove a browser push subscription
+ */
+export const useDeleteNotificationSubscription = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNotificationSubscription>>, TError,DeleteNotificationSubscriptionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteNotificationSubscription>>,
+        TError,
+        DeleteNotificationSubscriptionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteNotificationSubscriptionMutationOptions(options));
+    }
+
+export const getGetNotificationSubscriptionStatusUrl = (params: GetNotificationSubscriptionStatusParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/notifications/subscriptions/status?${stringifiedParams}` : `/api/notifications/subscriptions/status`
+}
+
+/**
+ * @summary Check ownership of a browser push subscription
+ */
+export const getNotificationSubscriptionStatus = async (params: GetNotificationSubscriptionStatusParams, options?: Parameters<typeof customFetch>[1]): Promise<NotificationSubscriptionStatus> => {
+
+  return customFetch<NotificationSubscriptionStatus>(getGetNotificationSubscriptionStatusUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationSubscriptionStatusQueryKey = (params?: GetNotificationSubscriptionStatusParams,) => {
+    return [
+    `/api/notifications/subscriptions/status`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNotificationSubscriptionStatusQueryOptions = <TData = Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse>>(params: GetNotificationSubscriptionStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNotificationSubscriptionStatusQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>> = ({ signal }) => getNotificationSubscriptionStatus(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNotificationSubscriptionStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>>
+export type GetNotificationSubscriptionStatusQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+
+/**
+ * @summary Check ownership of a browser push subscription
+ */
+
+export function useGetNotificationSubscriptionStatus<TData = Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse>>(
+ params: GetNotificationSubscriptionStatusParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationSubscriptionStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNotificationSubscriptionStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendTestNotificationUrl = () => {
+
+
+
+
+  return `/api/notifications/test`
+}
+
+/**
+ * @summary Send a test notification
+ */
+export const sendTestNotification = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getSendTestNotificationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSendTestNotificationMutationKey = () => ['sendTestNotification'] as const;
+
+export const getSendTestNotificationMutationOptions = <TError = ErrorType<UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestNotification>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendTestNotification>>, TError,void, TContext> => {
+
+const mutationKey = getSendTestNotificationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendTestNotification>>, void> = () => {
+
+
+          return  sendTestNotification(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendTestNotificationMutationResult = NonNullable<Awaited<ReturnType<typeof sendTestNotification>>>
+
+    export type SendTestNotificationMutationError = ErrorType<UnauthorizedResponse | Error>
+
+
+    /**
+ * @summary Send a test notification
+ */
+export const useSendTestNotification = <TError = ErrorType<UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestNotification>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendTestNotification>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSendTestNotificationMutationOptions(options));
     }
 

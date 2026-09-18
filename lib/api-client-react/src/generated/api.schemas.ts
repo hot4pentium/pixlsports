@@ -71,6 +71,44 @@ export interface SupporterPhotoSave {
   cropZoom: number;
 }
 
+export interface NotificationConfig {
+  available: boolean;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  publicKey: string | null;
+}
+
+export type NotificationSubscriptionInputKeys = {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  p256dh: string;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  auth: string;
+};
+
+export interface NotificationSubscriptionInput {
+  /** @maxLength 2048 */
+  endpoint: string;
+  keys: NotificationSubscriptionInputKeys;
+}
+
+export interface NotificationSubscriptionDeleteInput {
+  /** @maxLength 2048 */
+  endpoint: string;
+}
+
+export interface NotificationSubscriptionStatus {
+  owned: boolean;
+  ownedByAnotherAccount: boolean;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -862,4 +900,11 @@ export type UnauthorizedResponse = Error;
  * Resource not found
  */
 export type NotFoundResponse = Error;
+
+export type GetNotificationSubscriptionStatusParams = {
+/**
+ * @maxLength 2048
+ */
+endpoint: string;
+};
 

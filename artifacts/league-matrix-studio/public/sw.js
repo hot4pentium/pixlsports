@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v1`;
+const CACHE_NAME = `${CACHE_PREFIX}-v2`;
 
 function getScopePath() {
   return new URL(self.registration.scope).pathname;
@@ -7,6 +7,14 @@ function getScopePath() {
 
 function isInScope(url) {
   return url.origin === self.location.origin && url.pathname.startsWith(getScopePath());
+}
+
+function resolveAppUrl(value) {
+  const scope = new URL(self.registration.scope);
+  if (typeof value !== 'string' || !value) return scope.href;
+  const normalized = value.startsWith('/') ? value.slice(1) : value;
+  const resolved = new URL(normalized, scope.href);
+  return isInScope(resolved) ? resolved.href : scope.href;
 }
 
 self.addEventListener('install', (event) => {
@@ -27,6 +35,33 @@ self.addEventListener('activate', (event) => {
       ))
       .then(() => self.clients.claim()),
   );
+});
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data?.json() ?? {}; } catch { payload = { body: event.data?.text() ?? '' }; }
+  const title = typeof payload.title === 'string' && payload.title.length > 0 ? payload.title : 'Pixl Sports';
+  const body = typeof payload.body === 'string' ? payload.body : '';
+  const tag = typeof payload.tag === 'string' ? payload.tag : 'pixl-sports-notification';
+  const url = resolveAppUrl(payload.url);
+  event.waitUntil(self.registration.showNotification(title, {
+    body, tag, data: { url },
+    icon: `${getScopePath()}pwa-icon-192.png`,
+    badge: `${getScopePath()}pwa-icon-192.png`,
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = resolveAppUrl(event.notification.data?.url);
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    const scopePath = new URL(self.registration.scope).pathname;
+    const matching = clients.find((client) => {
+      try { return new URL(client.url).pathname.startsWith(scopePath); } catch { return false; }
+    });
+    if (matching && 'focus' in matching) { void matching.navigate(url); return matching.focus(); }
+    return self.clients.openWindow(url);
+  }));
 });
 
 self.addEventListener('fetch', (event) => {

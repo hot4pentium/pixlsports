@@ -26,6 +26,8 @@ tags:
     description: Authenticated account role and Guest usage
   - name: supporter-photos
     description: Private supporter athlete photos
+  - name: notifications
+    description: Authenticated browser push notifications
 paths:
   /healthz:
     get:
@@ -847,6 +849,107 @@ paths:
                 $ref: "#/components/schemas/SupporterPhotoUpload"
         "400":
           $ref: "#/components/responses/BadRequest"
+  /notifications/config:
+    get:
+      operationId: getNotificationConfig
+      tags: [notifications]
+      summary: Get browser push notification availability
+      responses:
+        "200":
+          description: Push configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notifications/subscriptions:
+    post:
+      operationId: saveNotificationSubscription
+      tags: [notifications]
+      summary: Register a browser push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSubscriptionInput"
+      responses:
+        "204":
+          description: Subscription saved
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Subscription belongs to another account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteNotificationSubscription
+      tags: [notifications]
+      summary: Remove a browser push subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSubscriptionDeleteInput"
+      responses:
+        "204":
+          description: Subscription removed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notifications/subscriptions/status:
+    get:
+      operationId: getNotificationSubscriptionStatus
+      tags: [notifications]
+      summary: Check ownership of a browser push subscription
+      parameters:
+        - name: endpoint
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+            maxLength: 2048
+      responses:
+        "200":
+          description: Subscription ownership status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationSubscriptionStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /notifications/test:
+    post:
+      operationId: sendTestNotification
+      tags: [notifications]
+      summary: Send a test notification
+      responses:
+        "202":
+          description: Test notification queued
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          description: Push notifications are not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No live subscription received the notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   parameters:
     ProjectId:
@@ -956,6 +1059,34 @@ components:
         cropX: { type: integer, minimum: 0, maximum: 100 }
         cropY: { type: integer, minimum: 0, maximum: 100 }
         cropZoom: { type: integer, minimum: 100, maximum: 250 }
+    NotificationConfig:
+      type: object
+      required: [available, publicKey]
+      properties:
+        available: { type: boolean }
+        publicKey: { type: ["string", "null"], maxLength: 300 }
+    NotificationSubscriptionInput:
+      type: object
+      required: [endpoint, keys]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, minLength: 1, maxLength: 300 }
+            auth: { type: string, minLength: 1, maxLength: 300 }
+    NotificationSubscriptionDeleteInput:
+      type: object
+      required: [endpoint]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+    NotificationSubscriptionStatus:
+      type: object
+      required: [owned, ownedByAnotherAccount]
+      properties:
+        owned: { type: boolean }
+        ownedByAnotherAccount: { type: boolean }
     HealthStatus:
       type: object
       properties:

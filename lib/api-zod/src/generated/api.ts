@@ -1450,3 +1450,75 @@ export const RequestSupporterPhotoUploadUrlResponse = zod.object({
 })
 
 
+/**
+ * @summary Get browser push notification availability
+ */
+export const getNotificationConfigResponsePublicKeyMax = 300;
+
+
+
+export const GetNotificationConfigResponse = zod.object({
+  "available": zod.boolean(),
+  "publicKey": zod.string().max(getNotificationConfigResponsePublicKeyMax).nullable()
+})
+
+
+/**
+ * @summary Register a browser push subscription
+ */
+export const saveNotificationSubscriptionBodyEndpointMax = 2048;
+
+export const saveNotificationSubscriptionBodyKeysP256dhMax = 300;
+
+export const saveNotificationSubscriptionBodyKeysAuthMax = 300;
+
+
+
+export const SaveNotificationSubscriptionBody = zod.object({
+  "endpoint": zod.string().url().max(saveNotificationSubscriptionBodyEndpointMax),
+  "keys": zod.object({
+  "p256dh": zod.string().min(1).max(saveNotificationSubscriptionBodyKeysP256dhMax),
+  "auth": zod.string().min(1).max(saveNotificationSubscriptionBodyKeysAuthMax)
+})
+})
+
+export const SaveNotificationSubscriptionResponse = zod.void()
+
+
+/**
+ * @summary Remove a browser push subscription
+ */
+export const deleteNotificationSubscriptionBodyEndpointMax = 2048;
+
+
+
+export const DeleteNotificationSubscriptionBody = zod.object({
+  "endpoint": zod.string().url().max(deleteNotificationSubscriptionBodyEndpointMax)
+})
+
+export const DeleteNotificationSubscriptionResponse = zod.void()
+
+
+/**
+ * @summary Check ownership of a browser push subscription
+ */
+export const getNotificationSubscriptionStatusQueryEndpointMax = 2048;
+
+
+
+export const GetNotificationSubscriptionStatusQueryParams = zod.object({
+  "endpoint": zod.coerce.string().url().max(getNotificationSubscriptionStatusQueryEndpointMax)
+})
+
+export const GetNotificationSubscriptionStatusResponse = zod.object({
+  "owned": zod.boolean(),
+  "ownedByAnotherAccount": zod.boolean()
+})
+
+
+/**
+ * @summary Send a test notification
+ */
+export const SendTestNotificationResponse = zod.void()
+
+

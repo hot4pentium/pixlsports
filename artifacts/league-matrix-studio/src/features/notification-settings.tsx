@@ -1,0 +1,88 @@
+import { useEffect, useState } from 'react';
+import { Bell, Loader2, ShieldCheck, Smartphone } from 'lucide-react';
+import { getGetNotificationConfigQueryKey, getNotificationSubscriptionStatus, useDeleteNotificationSubscription, useGetNotificationConfig, useSaveNotificationSubscription, useSendTestNotification } from '@workspace/api-client-react';
+
+function decodeBase64Url(value: string) {
+  const padded = `${value}${'='.repeat((4 - value.length % 4) % 4)}`.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = window.atob(padded);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+export function NotificationSettings() {
+  const config = useGetNotificationConfig({ query: { retry: false, queryKey: getGetNotificationConfigQueryKey() } });
+  const save = useSaveNotificationSubscription();
+  const remove = useDeleteNotificationSubscription();
+  const test = useSendTestNotification();
+  const [enabled, setEnabled] = useState(false);
+  const [message, setMessage] = useState('');
+  const available = Boolean(config.data?.available && config.data.publicKey && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+
+  useEffect(() => {
+    if (!available) return;
+    void navigator.serviceWorker.ready
+      .then((registration) => registration.pushManager.getSubscription())
+      .then(async (subscription) => {
+        if (!subscription?.endpoint) {
+          setEnabled(false);
+          return;
+        }
+        const status = await getNotificationSubscriptionStatus({ endpoint: subscription.endpoint });
+        if (status.owned) {
+          setEnabled(true);
+          return;
+        }
+        // A browser subscription can outlive a Clerk session. Never show it as
+        // enabled for a new account; detach it before allowing a new opt-in.
+        if (status.ownedByAnotherAccount) {
+          await subscription.unsubscribe();
+          setMessage('This device was linked to another Pixl Sports account. Alerts were detached; enable them again for this account.');
+        }
+        setEnabled(false);
+      })
+      .catch(() => setEnabled(false));
+  }, [available]);
+
+  async function enableNotifications() {
+    setMessage('');
+    if (!available || !config.data?.publicKey) return;
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { setMessage(permission === 'denied' ? 'Notifications are blocked. Enable them in your phone settings.' : 'Notification permission was not granted.'); return; }
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: decodeBase64Url(config.data.publicKey) });
+      const json = subscription.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) throw new Error('The browser returned an incomplete push subscription.');
+      await save.mutateAsync({ data: { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } } });
+      setEnabled(true); setMessage('Notifications are on for this device.');
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to enable notifications.'); }
+  }
+
+  async function disableNotifications() {
+    setMessage('');
+    try {
+      const subscription = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+      if (subscription?.endpoint) { await remove.mutateAsync({ data: { endpoint: subscription.endpoint } }); await subscription.unsubscribe(); }
+      setEnabled(false); setMessage('Notifications are off for this device.');
+    } catch { setMessage('Unable to turn off notifications. Please try again.'); }
+  }
+
+  async function sendTest() {
+    setMessage('');
+    try { await test.mutateAsync(); setMessage('Test alert sent. Check your phone notification tray.'); }
+    catch { setMessage('The test alert could not be sent. Check your notification setup.'); }
+  }
+
+  return (
+    <section className="space-y-4 border-t border-border/60 pt-6" data-testid="notification-settings">
+      <h3 className="flex items-center gap-2 border-b border-border/50 pb-2 text-xs font-bold uppercase tracking-widest text-primary"><Bell className="h-4 w-4" /> Phone Alerts</h3>
+      <div className="border border-primary/20 bg-primary/5 p-4">
+        <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to every Hype Card reply</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Get an alert even when Pixl Sports is closed. You can turn this off anytime on this device.</p></div></div>
+        {!config.isLoading && !config.data?.available && <p className="mt-3 text-sm font-medium text-muted-foreground">Phone alerts are not configured on this deployment yet.</p>}
+        {config.isError && <p className="mt-3 text-sm font-medium text-destructive">Could not check notification availability.</p>}
+        {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
+        {enabled && <p className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><ShieldCheck className="h-4 w-4" /> This device is connected</p>}
+        {message && <p className="mt-3 text-sm font-medium text-muted-foreground" role="status">{message}</p>}
+      </div>
+    </section>
+  );
+}

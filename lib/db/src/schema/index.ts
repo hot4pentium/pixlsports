@@ -185,6 +185,20 @@ export const guestUsageEventsTable = pgTable("guest_usage_events", {
   ),
 }));
 
+export const webPushSubscriptionsTable = pgTable("web_push_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => ({
+  endpointUnique: uniqueIndex("web_push_subscriptions_endpoint_unique").on(table.endpoint),
+  ownerIndex: index("web_push_subscriptions_owner_index").on(table.ownerClerkUserId),
+}));
+
 export * from "./checklistShares";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
@@ -210,3 +224,4 @@ export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
 export type AccountAccess = typeof accountAccessTable.$inferSelect;
 export type AccountEntitlementEvent = typeof accountEntitlementEventsTable.$inferSelect;
 export type GuestUsageEvent = typeof guestUsageEventsTable.$inferSelect;
+export type WebPushSubscription = typeof webPushSubscriptionsTable.$inferSelect;

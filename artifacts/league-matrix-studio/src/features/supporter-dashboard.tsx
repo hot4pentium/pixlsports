@@ -10,6 +10,7 @@ import { getCalendarViewState } from './supporter-dashboard-model';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import heroBanner from '@/assets/hero-banner.webp';
 import type { Sport } from './stat-tracker';
+import { NotificationSettings } from './notification-settings';
 
 export interface SupporterProfile {
   displayName: string;
@@ -875,6 +876,8 @@ export function SupporterProfileView({
               </div>
             </div>
           </div>
+
+          <NotificationSettings />
 
           <div className="pt-6 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-end gap-4">
             <button
