@@ -642,7 +642,7 @@ export function StatTrackerPage() {
 
       {!currentGame ? (
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="border border-border bg-card p-6 clip-angled-sm sm:p-8">
+          <div className="border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
             <div className="mb-8 flex items-start justify-between gap-4">
               <div><p className="text-xs font-bold uppercase tracking-widest text-primary">New game</p><h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{rule.label}</h2></div>
               <Trophy className="h-7 w-7 text-primary" />
