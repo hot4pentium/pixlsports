@@ -982,7 +982,6 @@ export function HypeCardEditor() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareTrackerProjectId, setShareTrackerProjectId] = useState<string>('none');
   const [shareSport, setShareSport] = useState<string>('basketball');
-  const [shareAthleteName, setShareAthleteName] = useState<string>('');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1837,12 +1836,10 @@ export function HypeCardEditor() {
     if (existingShare && isOwnedHypeCardShare(existingShare)) {
       setShareTrackerProjectId(existingShare.trackerProjectId ?? 'none');
       setShareSport(profile.sport ?? existingShare.sport ?? 'basketball');
-      setShareAthleteName(existingShare.athleteName ?? project.playerName ?? '');
       setShareExpiresInDays(String(existingShare.expiresInDays));
     } else if (!existingShare) {
       setShareTrackerProjectId('none');
       setShareSport(profile.sport ?? 'basketball');
-      setShareAthleteName(project.playerName || '');
       setShareExpiresInDays('30');
     }
     setShareDialogOpen(true);
@@ -1931,7 +1928,7 @@ export function HypeCardEditor() {
           posterUploadClaimId: posterClaimId,
           trackerProjectId: shareTrackerProjectId !== 'none' ? shareTrackerProjectId : null,
           sport: shareTrackerProjectId !== 'none' ? ((profile.sport ?? shareSport) as any) : null,
-          athleteName: shareTrackerProjectId !== 'none' ? shareAthleteName : null,
+          athleteName: shareTrackerProjectId !== 'none' ? profile.athleteName : null,
           expiresInDays: parseInt(shareExpiresInDays, 10),
           replaceShareToken: existingShare?.shareToken ?? null,
         },
@@ -2502,13 +2499,10 @@ export function HypeCardEditor() {
                 )}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Athlete Display Name</Label>
-                  <Input
-                    required
-                    maxLength={100}
-                    value={shareAthleteName}
-                    onChange={(e) => setShareAthleteName(e.target.value)}
-                    className="clip-angled-sm h-12 rounded-none"
-                  />
+                  <div className={`flex min-h-12 items-center border px-3 text-sm font-bold ${profile.athleteName ? 'border-border bg-muted/40' : 'border-destructive/50 bg-destructive/10 text-destructive'}`} data-testid="publish-profile-athlete">
+                    {profile.athleteName || 'Add an athlete name in Profile Settings'}
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground">Uses the athlete name saved in Profile Settings.</p>
                 </div>
               </>
             )}
@@ -2532,7 +2526,7 @@ export function HypeCardEditor() {
             </div>
 
             <DialogFooter className="mt-6">
-              <Button type="submit" className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
+              <Button type="submit" disabled={shareTrackerProjectId !== 'none' && !profile.athleteName} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
                 Publish Link
               </Button>
             </DialogFooter>
