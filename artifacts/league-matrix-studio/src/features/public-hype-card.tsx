@@ -6,6 +6,7 @@ import { useCreateHypeCardShareReply, useGetHypeCardShare } from '@workspace/api
 import { PreviewArtwork } from './hype-card';
 import { getDimensions, normalizeHypeCardProject } from './hype-card-types';
 import { getSportRule, isSport } from './stat-tracker';
+import { trackEvent } from '../lib/analytics';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const reactions = ['🔥', '👏', '💪', '⭐', '❤️'] as const;
@@ -113,10 +114,15 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
   const submitReply = async (event: React.FormEvent) => {
     event.preventDefault();
     setReplyError('');
+    const hasMessage = message.trim().length > 0;
     try {
       await createReply.mutateAsync({
         shareToken,
-        data: { reaction, message: message.trim() || null },
+        data: { reaction, message: hasMessage ? message.trim() : null },
+      });
+      trackEvent('hype_card_reply_submitted', {
+        reaction,
+        has_message: hasMessage,
       });
       setMessage('');
       setReplySent(true);
