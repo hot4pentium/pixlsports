@@ -380,6 +380,23 @@ export function mergeTrackerData(localValue: unknown, cloudValue: unknown): Stat
   };
 }
 
+export function getPreferredTrackerSport(value: unknown, fallback: Sport): Sport {
+  const games = normalizeTrackerData(value).games;
+  let preferredSport = fallback;
+  let latestTime = Number.NEGATIVE_INFINITY;
+
+  games.forEach((game, index) => {
+    const parsedTime = Date.parse(game.endedAt ?? game.startedAt ?? game.date);
+    const comparableTime = Number.isFinite(parsedTime) ? parsedTime : index;
+    if (comparableTime >= latestTime) {
+      latestTime = comparableTime;
+      preferredSport = game.sport;
+    }
+  });
+
+  return preferredSport;
+}
+
 export function trackerPayload(data: StatTrackerData): TrackerPayload {
   return { ...data, tool: 'stat-tracker' };
 }

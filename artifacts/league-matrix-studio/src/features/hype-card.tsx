@@ -53,6 +53,7 @@ import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
 import { prepareHypeCardShareMedia } from './hype-card-share';
 import { sports, getSportRule } from './stat-tracker';
+import { getUserProfile } from './supporter-dashboard-model';
 
 
 function isOwnedHypeCardShare(share: HypeCardShare | OwnedHypeCardShare): share is OwnedHypeCardShare {
@@ -1839,7 +1840,7 @@ export function HypeCardEditor() {
       setShareExpiresInDays(String(existingShare.expiresInDays));
     } else if (!existingShare) {
       setShareTrackerProjectId('none');
-      setShareSport('basketball');
+      setShareSport(getUserProfile(user).sport ?? 'basketball');
       setShareAthleteName(project.playerName || '');
       setShareExpiresInDays('30');
     }

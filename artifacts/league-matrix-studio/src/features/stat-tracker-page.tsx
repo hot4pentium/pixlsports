@@ -27,6 +27,7 @@ import {
   clearStoredTrackerConflict,
   createGameSession,
   endGame,
+  getPreferredTrackerSport,
   getSportRule,
   getTrackerConflict,
   getTrackerStorageKeys,
@@ -300,7 +301,7 @@ export function StatTrackerPage() {
     const restored = readLocalTrackerSession(window.localStorage, accountId);
     setData(restored.data);
     setCurrentGame(restored.currentGame);
-    setSport(profile.sport ?? 'basketball');
+    setSport(getPreferredTrackerSport(restored.data, profile.sport ?? 'basketball'));
     setStorageAccountId(accountId);
   }, [accountId]);
 
@@ -321,6 +322,7 @@ export function StatTrackerPage() {
         cloudProject: currentCloudProject,
       };
       setData(pendingConflict.data);
+      setSport(getPreferredTrackerSport(pendingConflict.data, profile.sport ?? 'basketball'));
       setCloudProject(currentCloudProject);
       setTrackerConflict(restoredConflict);
       setSelectedConflictResolution(pendingConflict.resolution);
@@ -336,6 +338,7 @@ export function StatTrackerPage() {
     }
     const mergedData = mergeTrackerData(readLocalTrackerSession(window.localStorage, accountId).data, existing.project);
     setData(mergedData);
+    setSport(getPreferredTrackerSport(mergedData, profile.sport ?? 'basketball'));
     setCloudProject({ id: existing.id, revision: existing.revision });
     saveLocalTracker(mergedData, accountId);
   }, [accountId, projects, storageAccountId]);
