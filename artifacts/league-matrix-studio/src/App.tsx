@@ -1013,7 +1013,7 @@ function SupporterProfilePage() {
   const saveProfile = async () => {
     const cleanProfile = cleanSupporterProfile(profile);
     if (!cleanProfile.displayName || !cleanProfile.teamName) {
-      setError('Add your display name and team before saving.');
+      setError('Add your name and team before saving.');
       return;
     }
 

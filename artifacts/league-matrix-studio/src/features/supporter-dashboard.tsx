@@ -190,7 +190,7 @@ export function SupporterDashboardView({
       <header className="animate-slide-up">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
           <Activity className="w-4 h-4 text-primary" />
-          YOUR SPORTS HOME
+          {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
         </div>
         <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
           GAME DAY <span className="text-primary">HUB.</span>
@@ -768,7 +768,7 @@ export function SupporterProfileView({
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <label htmlFor="displayName" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">
-                  Display Name
+                  Your Name
                 </label>
                 <input
                   id="displayName"
@@ -778,6 +778,9 @@ export function SupporterProfileView({
                   className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   placeholder="e.g. Brian"
                 />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  The person managing this account. Your athlete’s name is entered separately below.
+                </p>
               </div>
               <div className="space-y-2">
                 <label htmlFor="sport" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">Athlete Sport</label>
@@ -823,6 +826,9 @@ export function SupporterProfileView({
                 className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold"
                 placeholder="e.g. Mason Carter"
               />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                This is the name shown on the athlete card and in sports content.
+              </p>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
