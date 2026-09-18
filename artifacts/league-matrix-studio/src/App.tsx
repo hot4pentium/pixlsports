@@ -36,7 +36,7 @@ import {
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
-import { type FormEvent, type PointerEvent, type ReactNode, useEffect, useState } from 'react';
+import { lazy, Suspense, type FormEvent, type PointerEvent, type ReactNode, useEffect, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -60,14 +60,10 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { HypeCardEditor } from '@/features/hype-card';
-import { PublicHypeCardPage } from '@/features/public-hype-card';
-import {
-  SupporterDashboardView,
-  SupporterProfileView,
-  type SupporterProfile,
-  type SupporterProject,
-  type SupporterScheduleOption,
+import type {
+  SupporterProfile,
+  SupporterProject,
+  SupporterScheduleOption,
 } from '@/features/supporter-dashboard';
 import {
   createBlankScheduleEvent,
@@ -114,7 +110,6 @@ import {
 } from '@/features/supporter-dashboard-model';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import { SupporterScheduleSelector } from '@/features/supporter-schedule-selector';
-import { StatTrackerPage } from '@/features/stat-tracker-page';
 import {
   completedChecklistCount,
   createGamedayChecklist,
@@ -157,6 +152,22 @@ import soccerFieldAsset from '@/assets/soccer-field.svg';
 import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
 import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
+
+const HypeCardEditor = lazy(() =>
+  import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
+);
+const PublicHypeCardPage = lazy(() =>
+  import('@/features/public-hype-card').then(({ PublicHypeCardPage }) => ({ default: PublicHypeCardPage })),
+);
+const StatTrackerPage = lazy(() =>
+  import('@/features/stat-tracker-page').then(({ StatTrackerPage }) => ({ default: StatTrackerPage })),
+);
+const SupporterDashboardView = lazy(() =>
+  import('@/features/supporter-dashboard').then(({ SupporterDashboardView }) => ({ default: SupporterDashboardView })),
+);
+const SupporterProfileView = lazy(() =>
+  import('@/features/supporter-dashboard').then(({ SupporterProfileView }) => ({ default: SupporterProfileView })),
+);
 
  const queryClient = new QueryClient();
 
@@ -4424,7 +4435,8 @@ function ClerkProviderWithRoutes() {
         <TooltipProvider>
           <AccountLifecycleGate>
             <ErrorBoundary resetKey={useLocation()[0]}>
-              <Switch>
+              <Suspense fallback={<RouteLoadingState />}>
+                <Switch>
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
@@ -4442,13 +4454,25 @@ function ClerkProviderWithRoutes() {
                <Route path="/studio/checklist"><ChecklistPage /></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
-              <Route component={NotFound} />
-              </Switch>
+                 <Route component={NotFound} />
+                </Switch>
+              </Suspense>
             </ErrorBoundary>
           </AccountLifecycleGate>
         </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>
+  );
+}
+
+function RouteLoadingState() {
+  return (
+    <div
+      className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground"
+      role="status"
+    >
+      Loading your studio…
+    </div>
   );
 }
 
