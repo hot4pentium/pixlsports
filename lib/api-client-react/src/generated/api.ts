@@ -1481,6 +1481,83 @@ export const useMarkHypeCardShareRepliesRead = <TError = ErrorType<UnauthorizedR
       return useMutation(getMarkHypeCardShareRepliesReadMutationOptions(options));
     }
 
+export const getDeleteHypeCardShareReplyUrl = (shareToken: string,
+    replyId: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}/replies/${replyId}`
+}
+
+/**
+ * Deletes the reply only when its share belongs to the authenticated user.
+ * @summary Delete one reply from an owned Hype Card share
+ */
+export const deleteHypeCardShareReply = async (shareToken: string,
+    replyId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteHypeCardShareReplyUrl(shareToken,replyId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteHypeCardShareReplyMutationKey = () => ['deleteHypeCardShareReply'] as const;
+
+export const getDeleteHypeCardShareReplyMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHypeCardShareReply>>, TError,DeleteHypeCardShareReplyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteHypeCardShareReply>>, TError,DeleteHypeCardShareReplyMutationVariables, TContext> => {
+
+const mutationKey = getDeleteHypeCardShareReplyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteHypeCardShareReply>>, DeleteHypeCardShareReplyMutationVariables> = (props) => {
+          const {shareToken,replyId} = props ?? {};
+
+          return  deleteHypeCardShareReply(shareToken,replyId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteHypeCardShareReplyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteHypeCardShareReply>>>
+
+    export type DeleteHypeCardShareReplyMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteHypeCardShareReplyMutationVariables = {shareToken: string;replyId: string}
+
+    /**
+ * @summary Delete one reply from an owned Hype Card share
+ */
+export const useDeleteHypeCardShareReply = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHypeCardShareReply>>, TError,DeleteHypeCardShareReplyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteHypeCardShareReply>>,
+        TError,
+        DeleteHypeCardShareReplyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteHypeCardShareReplyMutationOptions(options));
+    }
+
 export const getServeHypeCardShareMediaUrl = (shareToken: string,
     mediaKind: 'video' | 'poster',) => {
 

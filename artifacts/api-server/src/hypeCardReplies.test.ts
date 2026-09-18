@@ -86,6 +86,18 @@ test("anonymous replies enforce ownership, read state, active shares, and an ato
     assert.equal(replies.replies.length, 5);
     assert.equal(replies.replies[0]?.message, "Great play!");
 
+    const unreadReplyId = replies.replies[0]!.id;
+    const replyUrl = `${baseUrl}/${unreadReplyId}`;
+    assert.equal((await fetch(replyUrl, { method: "DELETE", headers: { "x-test-user": otherId } })).status, 404);
+    assert.equal((await fetch(replyUrl, { method: "DELETE", headers: { "x-test-user": ownerId } })).status, 204);
+    const afterDelete = ListHypeCardShareRepliesResponse.parse(await (await fetch(baseUrl, {
+      headers: { "x-test-user": ownerId },
+    })).json());
+    assert.equal(afterDelete.unreadCount, 4);
+    assert.equal(afterDelete.replies.length, 4);
+    assert.ok(!afterDelete.replies.some((reply) => reply.id === unreadReplyId));
+    assert.equal((await fetch(replyUrl, { method: "DELETE", headers: { "x-test-user": ownerId } })).status, 404);
+
     const marked = await fetch(baseUrl, { method: "PATCH", headers: { "x-test-user": ownerId } });
     assert.equal(marked.status, 204);
     const readList = ListHypeCardShareRepliesResponse.parse(await (await fetch(baseUrl, {

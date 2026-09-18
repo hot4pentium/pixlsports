@@ -734,6 +734,21 @@ export const MarkHypeCardShareRepliesReadResponse = zod.void()
 
 
 /**
+ * Deletes the reply only when its share belongs to the authenticated user.
+ * @summary Delete one reply from an owned Hype Card share
+ */
+export const deleteHypeCardShareReplyPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const DeleteHypeCardShareReplyParams = zod.object({
+  "shareToken": zod.coerce.string().regex(deleteHypeCardShareReplyPathShareTokenRegExp),
+  "replyId": zod.coerce.string().uuid()
+})
+
+export const DeleteHypeCardShareReplyResponse = zod.void()
+
+
+/**
  * @summary Serve media for an active public Hype Card share
  */
 export const serveHypeCardShareMediaPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');

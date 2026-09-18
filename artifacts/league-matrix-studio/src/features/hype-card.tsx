@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, MessageCircle, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2Off, Clipboard
+  LayoutGrid, Lightbulb, MessageCircle, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2Off, Clipboard, Trash2
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -27,6 +27,7 @@ import {
   useListHypeCardShares,
   useListHypeCardShareReplies,
   useMarkHypeCardShareRepliesRead,
+  useDeleteHypeCardShareReply,
   getListHypeCardShareRepliesQueryKey,
   getListHypeCardSharesQueryKey,
   requestHypeCardShareUploadUrl,
@@ -1077,6 +1078,23 @@ export function HypeCardEditor() {
     },
   });
   const markRepliesRead = useMarkHypeCardShareRepliesRead();
+  const deleteReply = useDeleteHypeCardShareReply({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        const queryKey = getListHypeCardShareRepliesQueryKey(variables.shareToken);
+        queryClient.setQueryData(queryKey, (current: typeof shareReplies) => {
+          if (!current) return current;
+          const removed = current.replies.find((reply) => reply.id === variables.replyId);
+          return {
+            ...current,
+            unreadCount: removed && !removed.isRead ? Math.max(0, current.unreadCount - 1) : current.unreadCount,
+            replies: current.replies.filter((reply) => reply.id !== variables.replyId),
+          };
+        });
+      },
+      onError: () => setNotice('Could not delete that reply. Please try again.'),
+    },
+  });
   const isShareSuccessNotice = notice.startsWith('Player page published')
     || notice === 'Share link copied.'
     || notice.startsWith('Player page link revoked');
@@ -2575,6 +2593,21 @@ export function HypeCardEditor() {
                     <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{new Date(reply.createdAt).toLocaleString()}</p>
                   </div>
                   {!reply.isRead && <span className="text-[9px] font-bold uppercase tracking-widest text-primary">New</span>}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={deleteReply.isPending}
+                    onClick={() => existingShare && deleteReply.mutate({
+                      shareToken: existingShare.shareToken,
+                      replyId: reply.id,
+                    })}
+                    aria-label="Delete reply"
+                    title="Delete reply"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </article>
             ))}

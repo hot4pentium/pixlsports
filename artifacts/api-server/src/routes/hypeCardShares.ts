@@ -9,6 +9,7 @@ import {
   CreateHypeCardShareReplyParams,
   CreateHypeCardShareReplyResponse,
   CreateHypeCardShareResponse,
+  DeleteHypeCardShareReplyParams,
   DeleteHypeCardShareParams,
   GetHypeCardShareParams,
   ListHypeCardSharesResponse,
@@ -252,6 +253,31 @@ router.patch("/hype-card-shares/:shareToken/replies", requireAuth, async (req, r
     eq(hypeCardShareRepliesTable.shareId, share.id),
     isNull(hypeCardShareRepliesTable.readAt),
   ));
+  res.status(204).send();
+});
+
+router.delete("/hype-card-shares/:shareToken/replies/:replyId", requireAuth, async (req, res): Promise<void> => {
+  const params = DeleteHypeCardShareReplyParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Hype Card reply not found" });
+    return;
+  }
+  const [deleted] = await db.delete(hypeCardShareRepliesTable)
+    .where(and(
+      eq(hypeCardShareRepliesTable.id, params.data.replyId),
+      sql`exists (
+        select 1
+        from ${hypeCardSharesTable}
+        where ${hypeCardSharesTable.id} = ${hypeCardShareRepliesTable.shareId}
+          and ${hypeCardSharesTable.publicToken} = ${params.data.shareToken}
+          and ${hypeCardSharesTable.ownerClerkUserId} = ${getRequiredClerkUserId(res)}
+      )`,
+    ))
+    .returning({ id: hypeCardShareRepliesTable.id });
+  if (!deleted) {
+    res.status(404).json({ error: "Hype Card reply not found" });
+    return;
+  }
   res.status(204).send();
 });
 

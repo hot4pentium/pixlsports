@@ -349,6 +349,22 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/replies/{replyId}:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+      - $ref: "#/components/parameters/HypeCardShareReplyId"
+    delete:
+      operationId: deleteHypeCardShareReply
+      tags: [hype-card-shares]
+      summary: Delete one reply from an owned Hype Card share
+      description: Deletes the reply only when its share belongs to the authenticated user.
+      responses:
+        "204":
+          description: Reply deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /hype-card-shares/{shareToken}/media/{mediaKind}:
     parameters:
       - $ref: "#/components/parameters/HypeCardShareToken"
@@ -1057,6 +1073,13 @@ components:
       schema:
         type: string
         pattern: "^[A-Za-z0-9_-]{24,80}$"
+    HypeCardShareReplyId:
+      name: replyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     HypeCardShareMediaKind:
       name: mediaKind
       in: path
