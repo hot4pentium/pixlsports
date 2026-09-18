@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
 import { useUser } from '@clerk/react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, Legend, ReferenceLine } from 'recharts';
 import {
   useCreateProject,
   useGetAccountAccess,
@@ -42,6 +43,7 @@ import {
   sports,
   syncTrackerDataToCloud,
   undoLastStatEvent,
+  buildGameReport,
   type GameSession,
   type Sport,
   type StatTrackerData,
@@ -50,6 +52,7 @@ import {
   type TrackerStorage,
   type TrackerConflict,
   type TrackerConflictResolution,
+  type GameReport,
 } from './stat-tracker';
 
 export function readLocalTrackerSession(storage: TrackerStorage, accountId: string) {
@@ -212,6 +215,255 @@ export function LiveTrackerGame({
   );
 }
 
+export function GameReportView({
+  report,
+  rule,
+  onClose,
+  onSelectGame,
+}: {
+  report: GameReport;
+  rule: SportRule;
+  onClose: () => void;
+  onSelectGame: (gameId: string) => void;
+}) {
+  const { selectedGame, seasonToDate, averages, previousGame } = report;
+  const isOneGame = report.games.length === 1;
+  const hasStats = Object.values(selectedGame.stats).some(val => val > 0);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  const trendStats = useMemo(() => rule.stats
+    .map((stat) => ({
+      ...stat,
+      seasonTotal: report.games.reduce((total, game) => total + (game.stats[stat.id] ?? 0), 0),
+    }))
+    .filter((stat) => stat.seasonTotal > 0)
+    .sort((left, right) => right.seasonTotal - left.seasonTotal)
+    .slice(0, 3), [report.games, rule.stats]);
+
+  const chartData = useMemo(() => {
+    return report.games.map((g, index) => ({
+      name: `G${index + 1}`,
+      date: formatDate(g.date),
+      score: g.score,
+      opponent: g.opponent || 'TBD',
+      isCurrent: g.id === selectedGame.id,
+      gameId: g.id,
+      ...Object.fromEntries(rule.stats.map((stat) => [stat.id, g.stats[stat.id] ?? 0])),
+    }));
+  }, [report.games, rule.stats, selectedGame.id]);
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="border border-border bg-card p-3 shadow-lg clip-angled-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{data.date}</p>
+          <p className="mt-1 font-display text-xl uppercase">vs {data.opponent}</p>
+          <p className="font-display text-2xl text-primary">{data.score} PTS</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md" data-testid="game-report-overlay" role="dialog" aria-modal="true" aria-labelledby="game-report-title">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-5 py-4 backdrop-blur-md sm:px-8">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Game Report</p>
+          <h2 id="game-report-title" className="font-display text-2xl uppercase tracking-wide">
+            {selectedGame.opponent ? `vs ${selectedGame.opponent}` : 'Game'}
+          </h2>
+        </div>
+        <button type="button" autoFocus onClick={onClose} data-testid="game-report-close" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-muted clip-angled-sm">
+          <ArrowLeft className="h-4 w-4" /> Back to Tracker
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5 sm:p-8">
+        <div className="mx-auto max-w-[1200px] space-y-6 sm:space-y-8">
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="border border-primary/40 bg-primary/5 p-5 clip-angled-sm" data-testid="report-score-box">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Final Score</p>
+              <p className="mt-2 font-display text-5xl text-foreground sm:text-6xl">{selectedGame.score}<span className="text-muted-foreground">–</span><span className="text-muted-foreground">{selectedGame.opponentScore}</span></p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(selectedGame.date)}</p>
+            </div>
+
+            <div className="border border-border bg-card p-5 clip-angled-sm">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season to Date (thru this game)</p>
+              <p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{seasonToDate.score} PTS</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary">{seasonToDate.gamesPlayed} GAMES</p>
+            </div>
+
+            <div className="border border-border bg-card p-5 clip-angled-sm">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season Average</p>
+              <p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{averages.score.toFixed(1)} <span className="text-xl">PTS/G</span></p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">OVER {seasonToDate.gamesPlayed} GAMES</p>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="border border-border bg-card p-5 sm:p-7 clip-angled-sm">
+                <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Box Score</h3>
+                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  {rule.stats.map(stat => {
+                    const count = selectedGame.stats[stat.id] || 0;
+                    const prevCount = previousGame ? (previousGame.stats[stat.id] || 0) : 0;
+                    const avgCount = averages.stats[stat.id] || 0;
+
+                    return (
+                      <div key={stat.id} className="border border-border/50 bg-background p-3 clip-angled-sm" data-testid={`report-stat-${stat.id}`}>
+                        <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
+                        <p className="mt-1 font-display text-3xl">{count}</p>
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary">
+                          Season: {seasonToDate.stats[stat.id] ?? 0}
+                        </p>
+                        {previousGame && (
+                          <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${count > prevCount ? 'text-primary' : count < prevCount ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            {count > prevCount ? '+' : ''}{count - prevCount} vs last
+                          </p>
+                        )}
+                        {!isOneGame && (
+                          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Avg: {avgCount.toFixed(1)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {!hasStats && (
+                  <div className="mt-6 border border-border/50 bg-background p-6 text-center clip-angled-sm">
+                    <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">No stats recorded for this game.</p>
+                  </div>
+                )}
+
+                {selectedGame.notes && (
+                  <div className="mt-6 border-t border-border pt-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary"><FileText className="inline h-3 w-3 mr-1" /> Game Notes</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">{selectedGame.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border border-border bg-card p-5 sm:p-7 clip-angled-sm">
+                <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Scoring Trend</h3>
+                {isOneGame ? (
+                  <div className="mt-6 flex h-[200px] items-center justify-center border border-border/50 bg-background p-4 clip-angled-sm">
+                    <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground text-center">Play more games<br />to see trends.</p>
+                  </div>
+                ) : (
+                  <div className="mt-6 h-[250px] w-full" data-testid="report-chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} onClick={(data) => { if (data && data.activePayload) onSelectGame(data.activePayload[0].payload.gameId); }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                        <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
+                        <ReferenceLine y={averages.score} stroke="hsl(var(--primary))" strokeDasharray="3 3" label={{ position: 'right', value: 'AVG', fill: 'hsl(var(--primary))', fontSize: 10, fontWeight: 'bold' }} />
+                        <Bar dataKey="score" radius={[2, 2, 0, 0]} className="cursor-pointer" aria-label="Score">
+                          {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.isCurrent ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.3)'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              <div className="border border-border bg-card p-5 sm:p-7 clip-angled-sm">
+                <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Stat Trends</h3>
+                <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">Game-to-game leaders for {rule.label}</p>
+                {!trendStats.length ? (
+                  <div className="mt-6 flex h-[200px] items-center justify-center border border-border/50 bg-background p-4 clip-angled-sm">
+                    <p className="text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">No tracked stats yet.</p>
+                  </div>
+                ) : isOneGame ? (
+                  <div className="mt-6 flex h-[200px] items-center justify-center border border-border/50 bg-background p-4 clip-angled-sm">
+                    <p className="text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">Play more games<br />to compare stat trends.</p>
+                  </div>
+                ) : (
+                  <div className="mt-6 h-[280px] w-full" data-testid="report-stat-chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                        <YAxis allowDecimals={false} width={28} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                        <RechartsTooltip
+                          cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                          contentStyle={{ border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                          labelFormatter={(label) => `${label} · ${chartData.find((game) => game.name === label)?.opponent ?? ''}`}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }} />
+                        {trendStats.map((stat, statIndex) => (
+                          <Bar key={stat.id} dataKey={stat.id} name={stat.shortLabel} radius={[2, 2, 0, 0]}>
+                            {chartData.map((entry, gameIndex) => (
+                              <Cell
+                                key={`${stat.id}-${gameIndex}`}
+                                fill={entry.isCurrent
+                                  ? 'hsl(var(--primary))'
+                                  : `hsl(var(--foreground) / ${0.18 + statIndex * 0.12})`}
+                              />
+                            ))}
+                          </Bar>
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="border border-border bg-card p-5 clip-angled-sm">
+              <h3 className="font-display text-xl uppercase tracking-wide text-foreground">Season Log</h3>
+              <div className="mt-5 space-y-2">
+                {report.games.map((g, index) => {
+                  const isSelected = g.id === selectedGame.id;
+                  return (
+                    <button
+                      type="button"
+                      key={g.id}
+                      onClick={() => onSelectGame(g.id)}
+                      data-testid={`history-nav-${g.id}`}
+                      className={`w-full flex items-center justify-between border p-3 text-left transition-colors clip-angled-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${isSelected ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/50'}`}
+                    >
+                      <div className="min-w-0">
+                        <p className={`truncate font-display uppercase ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                          G{index + 1} <span className="text-sm opacity-60 ml-1">vs {g.opponent || 'TBD'}</span>
+                        </p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{formatDate(g.date)}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className={`font-display text-xl ${isSelected ? 'text-primary' : 'text-foreground'}`}>{g.score} <span className="text-xs opacity-60">PTS</span></p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function StatTrackerPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded, isSignedIn } = useUser();
@@ -262,6 +514,7 @@ export function StatTrackerPage() {
   const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
   const [selectedConflictResolution, setSelectedConflictResolution] = useState<'local' | 'cloud' | 'merge' | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
+  const [selectedReportGameId, setSelectedReportGameId] = useState<string | null>(null);
   const [cloudProject, setCloudProject] = useState<{ id: string; revision: number } | null>(null);
   const initializedCloud = useRef(false);
   const manuallyEditedSetup = useRef({
@@ -365,6 +618,10 @@ export function StatTrackerPage() {
   const totals = seasonTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => showAllStats || item.featured);
   const nextGame = connectedNextGame ?? localNextGame;
+  const report = useMemo(() => {
+    if (!selectedReportGameId) return null;
+    return buildGameReport(data.games, sport, selectedReportGameId);
+  }, [data.games, sport, selectedReportGameId]);
   const announce = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2600);
@@ -675,8 +932,16 @@ export function StatTrackerPage() {
 
       <section className="mt-10 border border-border bg-card p-5 clip-angled-sm sm:p-7">
         <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
-         {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <div key={game.id} className="border border-border bg-background p-4"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</div>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
+         {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
+      {report && (
+        <GameReportView
+          report={report}
+          rule={rule}
+          onClose={() => setSelectedReportGameId(null)}
+          onSelectGame={setSelectedReportGameId}
+        />
+      )}
       {notice && <div className="fixed bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-primary bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary shadow-lg" role="status"><Check className="h-4 w-4" /> {notice}</div>}
     </div>
   );

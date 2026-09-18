@@ -6,6 +6,7 @@ import { createElement } from 'react';
 import {
   addStatEvent,
   adjustScore,
+  buildGameReport,
   clearStoredTrackerConflict,
   createGameSession,
   endGame,
@@ -29,7 +30,7 @@ import {
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
-import { LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
+import { GameReportView, LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -233,6 +234,73 @@ test('season totals only include completed games of the selected sport', () => {
     score: 1,
     stats: { goal: 1 },
   });
+});
+
+test('game reports calculate season-to-date values through the selected game', () => {
+  const first = endGame(
+    addStatEvent(createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-10T12:00:00Z')), 'goal'),
+    new Date('2026-09-10T13:00:00Z'),
+  );
+  const second = endGame(
+    addStatEvent(
+      addStatEvent(createGameSession('soccer', { opponent: 'Westview' }, new Date('2026-09-12T12:00:00Z')), 'assist'),
+      'assist',
+    ),
+    new Date('2026-09-12T13:00:00Z'),
+  );
+  const later = endGame(
+    addStatEvent(createGameSession('soccer', { opponent: 'Central' }, new Date('2026-09-14T12:00:00Z')), 'goal'),
+    new Date('2026-09-14T13:00:00Z'),
+  );
+  const otherSport = endGame(createGameSession('basketball', {}, new Date('2026-09-11T12:00:00Z')));
+
+  const report = buildGameReport([later, otherSport, second, first], 'soccer', second.id);
+
+  assert.ok(report);
+  assert.deepEqual(report.games.map((game) => game.id), [first.id, second.id, later.id]);
+  assert.equal(report.previousGame?.id, first.id);
+  assert.deepEqual(report.seasonToDate, {
+    gamesPlayed: 2,
+    score: 1,
+    stats: { goal: 1, assist: 2 },
+  });
+  assert.equal(report.averages.score, 0.5);
+  assert.equal(report.averages.stats.assist, 1);
+});
+
+test('game reports safely reject missing and unfinished selections', () => {
+  const live = createGameSession('soccer', {}, new Date('2026-09-10T12:00:00Z'));
+  assert.equal(buildGameReport([live], 'soccer', live.id), null);
+  assert.equal(buildGameReport([], 'soccer', 'missing'), null);
+});
+
+test('game report renders every sport stat and closes without changing the report', () => {
+  const game = endGame(
+    addStatEvent(createGameSession('soccer', { opponent: 'Northside', notes: 'Strong finish.' }), 'goal'),
+  );
+  const report = buildGameReport([game], 'soccer', game.id);
+  assert.ok(report);
+  let closeCount = 0;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(GameReportView, {
+      report,
+      rule: getSportRule('soccer'),
+      onClose: () => { closeCount += 1; },
+      onSelectGame: () => {},
+    }));
+  });
+
+  assert.equal(renderer.root.findAll((node) => (
+    typeof node.props['data-testid'] === 'string'
+    && node.props['data-testid'].startsWith('report-stat-')
+  )).length, getSportRule('soccer').stats.length);
+  assert.match(renderedText(renderer), /Season: 1/);
+  assert.match(renderedText(renderer), /Strong finish/);
+  act(() => renderer.root.findByProps({ 'data-testid': 'game-report-close' }).props.onClick());
+  assert.equal(closeCount, 1);
+  assert.equal(report.selectedGame.id, game.id);
 });
 
 test('invalid saved tracker payloads normalize to an empty season', () => {

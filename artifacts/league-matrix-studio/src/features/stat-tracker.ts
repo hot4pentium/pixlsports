@@ -44,6 +44,18 @@ export type StatTrackerData = {
   games: GameSession[];
 };
 
+export type GameReport = {
+  games: GameSession[];
+  selectedGame: GameSession;
+  selectedIndex: number;
+  previousGame: GameSession | null;
+  seasonToDate: ReturnType<typeof seasonTotals>;
+  averages: {
+    score: number;
+    stats: Record<string, number>;
+  };
+};
+
 export type TrackerCloudProject = {
   id: string;
   revision: number;
@@ -484,6 +496,45 @@ export function seasonTotals(games: GameSession[], sport: Sport) {
     }
   }
   return { gamesPlayed, score, stats: totals };
+}
+
+export function buildGameReport(
+  games: GameSession[],
+  sport: Sport,
+  selectedGameId: string,
+): GameReport | null {
+  const completedGames = games
+    .filter((game) => game.sport === sport && game.status === 'final')
+    .map((game, index) => ({ game, index }))
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.game.startedAt ?? left.game.date);
+      const rightTime = Date.parse(right.game.startedAt ?? right.game.date);
+      const safeLeftTime = Number.isFinite(leftTime) ? leftTime : left.index;
+      const safeRightTime = Number.isFinite(rightTime) ? rightTime : right.index;
+      return safeLeftTime - safeRightTime || left.index - right.index;
+    })
+    .map(({ game }) => game);
+  const selectedIndex = completedGames.findIndex((game) => game.id === selectedGameId);
+  if (selectedIndex < 0) return null;
+
+  const selectedGame = completedGames[selectedIndex];
+  const seasonToDate = seasonTotals(completedGames.slice(0, selectedIndex + 1), sport);
+  const divisor = Math.max(1, seasonToDate.gamesPlayed);
+  const averageStats = Object.fromEntries(
+    Object.entries(seasonToDate.stats).map(([statId, total]) => [statId, total / divisor]),
+  );
+
+  return {
+    games: completedGames,
+    selectedGame,
+    selectedIndex,
+    previousGame: completedGames[selectedIndex - 1] ?? null,
+    seasonToDate,
+    averages: {
+      score: seasonToDate.score / divisor,
+      stats: averageStats,
+    },
+  };
 }
 
 export function trackerSaveErrorMessage(error: unknown): string {
