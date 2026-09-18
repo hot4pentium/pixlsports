@@ -2033,7 +2033,7 @@ export function HypeCardEditor() {
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
-              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'} title={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'}>
+              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Preparing share link' : existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'} title={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'}>
               <Share2 className="h-4 w-4" />
                <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh link' : 'Publish page'}</span>
             </Button>
@@ -2523,6 +2523,46 @@ export function HypeCardEditor() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {sharing && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-background/80 p-5 backdrop-blur-sm"
+          data-testid="share-link-preparing"
+          role="status"
+          aria-live="polite"
+          aria-label="Preparing share link"
+        >
+          <div className="w-full max-w-md border border-primary/50 bg-card p-6 shadow-2xl clip-angled-sm sm:p-8">
+            <div className="flex items-start gap-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center border border-primary/40 bg-primary/10 text-primary">
+                <RotateCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">Preparing share link</p>
+                <h2 className="mt-1 font-display text-2xl uppercase tracking-wide text-foreground">Building your player page</h2>
+                <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
+                  Keep this page open while we prepare the media, upload it securely, and connect the selected stats.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6">
+              <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <span>Preparing</span>
+                <span data-testid="share-link-progress">{Math.round(shareProgress * 100)}%</span>
+              </div>
+              <div
+                className="h-2 overflow-hidden bg-muted"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(shareProgress * 100)}
+              >
+                <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${Math.max(3, shareProgress * 100)}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     
       {saveStatus === 'Conflict' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">

@@ -30,7 +30,8 @@ import {
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
-import { GameReportView, LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
+import { LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
+import { GameReportView } from './stat-tracker-game-report';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
