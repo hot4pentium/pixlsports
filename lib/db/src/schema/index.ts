@@ -119,6 +119,21 @@ export const hypeCardSharesTable = pgTable("hype_card_shares", {
     .where(sql`${table.revokedAt} is null`),
 }));
 
+export const hypeCardShareRepliesTable = pgTable("hype_card_share_replies", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  shareId: uuid("share_id").notNull().references(() => hypeCardSharesTable.id, {
+    onDelete: "cascade",
+  }),
+  reaction: text("reaction").notNull(),
+  message: text("message"),
+  rateLimitKey: text("rate_limit_key").notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  shareCreatedIndex: index("hype_card_share_replies_share_created_index").on(table.shareId, table.createdAt),
+  rateLimitIndex: index("hype_card_share_replies_rate_limit_index").on(table.rateLimitKey, table.createdAt),
+}));
+
 export const hypeCardShareUploadClaimsTable = pgTable("hype_card_share_upload_claims", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
@@ -219,6 +234,7 @@ export type ProjectMediaUploadClaim = typeof projectMediaUploadClaimsTable.$infe
 export type SupporterPhoto = typeof supporterPhotosTable.$inferSelect;
 export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type HypeCardShare = typeof hypeCardSharesTable.$inferSelect;
+export type HypeCardShareReply = typeof hypeCardShareRepliesTable.$inferSelect;
 export type HypeCardShareUploadClaim = typeof hypeCardShareUploadClaimsTable.$inferSelect;
 export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
 export type AccountAccess = typeof accountAccessTable.$inferSelect;

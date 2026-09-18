@@ -366,6 +366,57 @@ export interface HypeCardShareStats {
   updatedAt: string;
 }
 
+export type HypeCardShareReplyInputReaction = typeof HypeCardShareReplyInputReaction[keyof typeof HypeCardShareReplyInputReaction];
+
+
+export const HypeCardShareReplyInputReaction = {
+  '🔥': '🔥',
+  '👏': '👏',
+  '💪': '💪',
+  '⭐': '⭐',
+  '❤️': '❤️',
+} as const;
+
+export interface HypeCardShareReplyInput {
+  reaction: HypeCardShareReplyInputReaction;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  message?: string | null;
+}
+
+export const HypeCardShareReplyReceiptValue = {
+  accepted: true,
+} as const;
+export type HypeCardShareReplyReceipt = typeof HypeCardShareReplyReceiptValue;
+
+export type HypeCardShareReplyReaction = typeof HypeCardShareReplyReaction[keyof typeof HypeCardShareReplyReaction];
+
+
+export const HypeCardShareReplyReaction = {
+  '🔥': '🔥',
+  '👏': '👏',
+  '💪': '💪',
+  '⭐': '⭐',
+  '❤️': '❤️',
+} as const;
+
+export interface HypeCardShareReply {
+  id: string;
+  reaction: HypeCardShareReplyReaction;
+  /** @nullable */
+  message: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface HypeCardShareReplyList {
+  /** @minimum 0 */
+  unreadCount: number;
+  replies: HypeCardShareReply[];
+}
+
 export type HypeCardShareManifest = { [key: string]: unknown };
 
 export type HypeCardShareMediaType = typeof HypeCardShareMediaType[keyof typeof HypeCardShareMediaType];

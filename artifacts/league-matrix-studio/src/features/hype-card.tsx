@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2Off, Clipboard
+  LayoutGrid, Lightbulb, MessageCircle, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2Off, Clipboard
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -25,6 +25,9 @@ import {
   useCreateHypeCardShare,
   useDeleteHypeCardShare,
   useListHypeCardShares,
+  useListHypeCardShareReplies,
+  useMarkHypeCardShareRepliesRead,
+  getListHypeCardShareRepliesQueryKey,
   getListHypeCardSharesQueryKey,
   requestHypeCardShareUploadUrl,
   type HypeCardShare,
@@ -980,6 +983,7 @@ export function HypeCardEditor() {
   const [sharing, setSharing] = useState(false);
   const [shareProgress, setShareProgress] = useState(0);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [replyDialogOpen, setReplyDialogOpen] = useState(() => new URLSearchParams(window.location.search).has('replies'));
   const [shareTrackerProjectId, setShareTrackerProjectId] = useState<string>('none');
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
@@ -1065,10 +1069,25 @@ export function HypeCardEditor() {
   });
   const existingShare: HypeCardShare | OwnedHypeCardShare | null =
     publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
+  const { data: shareReplies } = useListHypeCardShareReplies(existingShare?.shareToken ?? '', {
+    query: {
+      enabled: Boolean(isSignedIn && existingShare),
+      queryKey: getListHypeCardShareRepliesQueryKey(existingShare?.shareToken ?? ''),
+      refetchInterval: 15_000,
+    },
+  });
+  const markRepliesRead = useMarkHypeCardShareRepliesRead();
   const isShareSuccessNotice = notice.startsWith('Player page published')
     || notice === 'Share link copied.'
     || notice.startsWith('Player page link revoked');
   mutateFnRef.current = updateProjectMutation.mutateAsync;
+
+  useEffect(() => {
+    if (!replyDialogOpen || !existingShare || !shareReplies?.unreadCount || markRepliesRead.isPending) return;
+    void markRepliesRead.mutateAsync({ shareToken: existingShare.shareToken }).then(() =>
+      queryClient.invalidateQueries({ queryKey: getListHypeCardShareRepliesQueryKey(existingShare.shareToken) })
+    );
+  }, [replyDialogOpen, existingShare?.shareToken, shareReplies?.unreadCount]);
 
   useEffect(() => {
     if (cloudProjectId && cloudProjectData && initializedForId.current !== cloudProjectId) {
@@ -2069,6 +2088,10 @@ export function HypeCardEditor() {
           <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Player page</span>
           <input readOnly value={shareUrlFor(existingShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Hype Card player page link" />
           <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingShare)).then(() => setNotice('Share link copied.')).catch(() => setNotice('Select and copy the link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
+          <Button type="button" size="sm" variant="outline" className="relative rounded-none" onClick={() => setReplyDialogOpen(true)}>
+            <MessageCircle className="mr-2 h-4 w-4" /> Replies
+            {Boolean(shareReplies?.unreadCount) && <span className="ml-2 bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{shareReplies?.unreadCount}</span>}
+          </Button>
           <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
         </div>
       )}
@@ -2531,6 +2554,31 @@ export function HypeCardEditor() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+        <DialogContent className="clip-angled-sm sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display uppercase tracking-wider text-xl">Hype Card Replies</DialogTitle>
+            <DialogDescription>Reactions and messages from people who opened your active player page.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55dvh] space-y-3 overflow-y-auto pt-3">
+            {!shareReplies?.replies.length ? (
+              <div className="border border-dashed border-border p-6 text-center text-sm font-medium text-muted-foreground">No replies yet. Share the player page to invite reactions.</div>
+            ) : shareReplies.replies.map((reply) => (
+              <article key={reply.id} className={`border p-3 ${reply.isRead ? 'border-border bg-muted/30' : 'border-primary/40 bg-primary/10'}`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl" aria-hidden="true">{reply.reaction}</span>
+                  <div className="min-w-0 flex-1">
+                    {reply.message && <p className="whitespace-pre-wrap break-words text-sm font-medium">{reply.message}</p>}
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{new Date(reply.createdAt).toLocaleString()}</p>
+                  </div>
+                  {!reply.isRead && <span className="text-[9px] font-bold uppercase tracking-widest text-primary">New</span>}
+                </div>
+              </article>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
 

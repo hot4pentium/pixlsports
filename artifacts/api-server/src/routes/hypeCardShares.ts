@@ -1,23 +1,30 @@
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { Readable } from "stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { and, count, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { Router, type IRouter, type Request } from "express";
 import {
   CreateHypeCardShareBody,
+  CreateHypeCardShareReplyBody,
+  CreateHypeCardShareReplyParams,
+  CreateHypeCardShareReplyResponse,
   CreateHypeCardShareResponse,
   DeleteHypeCardShareParams,
   GetHypeCardShareParams,
   ListHypeCardSharesResponse,
+  ListHypeCardShareRepliesParams,
+  ListHypeCardShareRepliesResponse,
+  MarkHypeCardShareRepliesReadParams,
   RequestHypeCardShareUploadUrlBody,
   RequestHypeCardShareUploadUrlResponse,
   ServeHypeCardShareMediaParams,
 } from "@workspace/api-zod";
-import { cloudProjectsTable, db, hypeCardSharesTable, hypeCardShareUploadClaimsTable } from "@workspace/db";
+import { cloudProjectsTable, db, hypeCardShareRepliesTable, hypeCardSharesTable, hypeCardShareUploadClaimsTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { sendPushNotificationToUser } from "../lib/webPush";
 
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
@@ -25,6 +32,8 @@ const MAX_VIDEO_BYTES = 35 * 1024 * 1024;
 const MAX_POSTER_BYTES = 5 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 400 * 1024;
 const UPLOAD_CLAIM_LIFETIME_MS = 2 * 60 * 60 * 1000;
+const REPLY_RATE_WINDOW_MS = 60 * 60 * 1000;
+const REPLY_RATE_LIMIT = 5;
 
 function activeShareWhere(publicToken: string) {
   return and(
@@ -32,6 +41,13 @@ function activeShareWhere(publicToken: string) {
     isNull(hypeCardSharesTable.revokedAt),
     gt(hypeCardSharesTable.expiresAt, new Date()),
   );
+}
+
+function replyRateLimitKey(req: Request, shareId: string) {
+  const source = req.ip || req.socket.remoteAddress || "unknown";
+  return createHash("sha256")
+    .update(`${process.env.SESSION_SECRET ?? "pixl-hype-replies"}:${shareId}:${source.trim()}`)
+    .digest("hex");
 }
 
 function publicManifest(manifest: unknown) {
@@ -140,6 +156,103 @@ router.get("/hype-card-shares", requireAuth, async (_req, res): Promise<void> =>
     .orderBy(desc(hypeCardSharesTable.createdAt))
     .limit(25);
   res.json(ListHypeCardSharesResponse.parse(await Promise.all(shares.map(ownedShareResponse))));
+});
+
+router.post("/hype-card-shares/:shareToken/replies", async (req, res): Promise<void> => {
+  const params = CreateHypeCardShareReplyParams.safeParse(req.params);
+  const body = CreateHypeCardShareReplyBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Choose a reaction and keep your message under 240 characters." });
+    return;
+  }
+  const message = body.data.message?.trim() || null;
+  const [share] = await db.select().from(hypeCardSharesTable).where(activeShareWhere(params.data.shareToken));
+  if (!share || !(await isAccountActive(share.ownerClerkUserId))) {
+    res.status(404).json({ error: "This Hype Card is no longer accepting replies." });
+    return;
+  }
+  const rateLimitKey = replyRateLimitKey(req, share.id);
+  const accepted = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${rateLimitKey}))`);
+    const [recent] = await tx.select({ value: count() }).from(hypeCardShareRepliesTable).where(and(
+      eq(hypeCardShareRepliesTable.rateLimitKey, rateLimitKey),
+      gt(hypeCardShareRepliesTable.createdAt, new Date(Date.now() - REPLY_RATE_WINDOW_MS)),
+    ));
+    if ((recent?.value ?? 0) >= REPLY_RATE_LIMIT) return false;
+    await tx.insert(hypeCardShareRepliesTable).values({
+      shareId: share.id,
+      reaction: body.data.reaction,
+      message,
+      rateLimitKey,
+    });
+    return true;
+  });
+  if (!accepted) {
+    res.setHeader("Retry-After", "3600");
+    res.status(429).json({ error: "You’ve sent several replies. Please try again later." });
+    return;
+  }
+  const cloudProjectPath = share.shareKey && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(share.shareKey)
+    ? `/studio/hype-card/${share.shareKey}`
+    : "/studio/hype-card";
+  void sendPushNotificationToUser(share.ownerClerkUserId, {
+    title: `New Hype Card reply ${body.data.reaction}`,
+    body: message ?? `Someone reacted to ${share.title}.`,
+    url: `${cloudProjectPath}?replies=${share.publicToken}`,
+    tag: `hype-card-reply-${share.id}`,
+  }).catch((error) => req.log.warn({ err: error, shareId: share.id }, "Unable to send Hype Card reply push"));
+  res.status(201).json(CreateHypeCardShareReplyResponse.parse({ accepted: true }));
+});
+
+router.get("/hype-card-shares/:shareToken/replies", requireAuth, async (req, res): Promise<void> => {
+  const params = ListHypeCardShareRepliesParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Hype Card share not found" });
+    return;
+  }
+  const [share] = await db.select({ id: hypeCardSharesTable.id }).from(hypeCardSharesTable).where(and(
+    eq(hypeCardSharesTable.publicToken, params.data.shareToken),
+    eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  ));
+  if (!share) {
+    res.status(404).json({ error: "Hype Card share not found" });
+    return;
+  }
+  const replies = await db.select().from(hypeCardShareRepliesTable)
+    .where(eq(hypeCardShareRepliesTable.shareId, share.id))
+    .orderBy(desc(hypeCardShareRepliesTable.createdAt))
+    .limit(100);
+  res.json(ListHypeCardShareRepliesResponse.parse({
+    unreadCount: replies.filter((reply) => !reply.readAt).length,
+    replies: replies.map((reply) => ({
+      id: reply.id,
+      reaction: reply.reaction,
+      message: reply.message,
+      isRead: Boolean(reply.readAt),
+      createdAt: reply.createdAt,
+    })),
+  }));
+});
+
+router.patch("/hype-card-shares/:shareToken/replies", requireAuth, async (req, res): Promise<void> => {
+  const params = MarkHypeCardShareRepliesReadParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Hype Card share not found" });
+    return;
+  }
+  const [share] = await db.select({ id: hypeCardSharesTable.id }).from(hypeCardSharesTable).where(and(
+    eq(hypeCardSharesTable.publicToken, params.data.shareToken),
+    eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  ));
+  if (!share) {
+    res.status(404).json({ error: "Hype Card share not found" });
+    return;
+  }
+  await db.update(hypeCardShareRepliesTable).set({ readAt: new Date() }).where(and(
+    eq(hypeCardShareRepliesTable.shareId, share.id),
+    isNull(hypeCardShareRepliesTable.readAt),
+  ));
+  res.status(204).send();
 });
 
 router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> => {

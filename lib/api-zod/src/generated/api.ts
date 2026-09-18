@@ -671,6 +671,69 @@ export const DeleteHypeCardShareResponse = zod.void()
 
 
 /**
+ * @summary Reply to an active public Hype Card share
+ */
+export const createHypeCardShareReplyPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const CreateHypeCardShareReplyParams = zod.object({
+  "shareToken": zod.coerce.string().regex(createHypeCardShareReplyPathShareTokenRegExp)
+})
+
+export const createHypeCardShareReplyBodyMessageMax = 240;
+
+
+
+export const CreateHypeCardShareReplyBody = zod.object({
+  "reaction": zod.enum(['🔥', '👏', '💪', '⭐', '❤️']),
+  "message": zod.string().max(createHypeCardShareReplyBodyMessageMax).nullish()
+})
+
+export const CreateHypeCardShareReplyResponse = zod.object({
+  "accepted": zod.literal(true)
+})
+
+
+/**
+ * @summary List replies for an owned Hype Card share
+ */
+export const listHypeCardShareRepliesPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ListHypeCardShareRepliesParams = zod.object({
+  "shareToken": zod.coerce.string().regex(listHypeCardShareRepliesPathShareTokenRegExp)
+})
+
+export const listHypeCardShareRepliesResponseUnreadCountMin = 0;
+
+
+
+export const ListHypeCardShareRepliesResponse = zod.object({
+  "unreadCount": zod.number().int().min(listHypeCardShareRepliesResponseUnreadCountMin),
+  "replies": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "reaction": zod.enum(['🔥', '👏', '💪', '⭐', '❤️']),
+  "message": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Mark all replies for an owned Hype Card share as read
+ */
+export const markHypeCardShareRepliesReadPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const MarkHypeCardShareRepliesReadParams = zod.object({
+  "shareToken": zod.coerce.string().regex(markHypeCardShareRepliesReadPathShareTokenRegExp)
+})
+
+export const MarkHypeCardShareRepliesReadResponse = zod.void()
+
+
+/**
  * @summary Serve media for an active public Hype Card share
  */
 export const serveHypeCardShareMediaPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');

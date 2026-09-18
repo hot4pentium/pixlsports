@@ -40,6 +40,9 @@ import type {
   HypeCardShare,
   HypeCardShareInput,
   HypeCardShareList,
+  HypeCardShareReplyInput,
+  HypeCardShareReplyList,
+  HypeCardShareReplyReceipt,
   HypeCardShareUpload,
   HypeCardShareUploadInput,
   Media,
@@ -1236,6 +1239,246 @@ export const useDeleteHypeCardShare = <TError = ErrorType<UnauthorizedResponse |
         TContext
       > => {
       return useMutation(getDeleteHypeCardShareMutationOptions(options));
+    }
+
+export const getCreateHypeCardShareReplyUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}/replies`
+}
+
+/**
+ * @summary Reply to an active public Hype Card share
+ */
+export const createHypeCardShareReply = async (shareToken: string,
+    hypeCardShareReplyInput: HypeCardShareReplyInput, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShareReplyReceipt> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<HypeCardShareReplyReceipt>(getCreateHypeCardShareReplyUrl(shareToken),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(hypeCardShareReplyInput)
+  }
+);}
+
+
+
+
+
+export const getCreateHypeCardShareReplyMutationKey = () => ['createHypeCardShareReply'] as const;
+
+export const getCreateHypeCardShareReplyMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShareReply>>, TError,CreateHypeCardShareReplyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShareReply>>, TError,CreateHypeCardShareReplyMutationVariables, TContext> => {
+
+const mutationKey = getCreateHypeCardShareReplyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHypeCardShareReply>>, CreateHypeCardShareReplyMutationVariables> = (props) => {
+          const {shareToken,data} = props ?? {};
+
+          return  createHypeCardShareReply(shareToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHypeCardShareReplyMutationResult = NonNullable<Awaited<ReturnType<typeof createHypeCardShareReply>>>
+    export type CreateHypeCardShareReplyMutationBody = BodyType<HypeCardShareReplyInput>
+    export type CreateHypeCardShareReplyMutationError = ErrorType<BadRequestResponse | NotFoundResponse | Error>
+    export type CreateHypeCardShareReplyMutationVariables = {shareToken: string;data: BodyType<HypeCardShareReplyInput>}
+
+    /**
+ * @summary Reply to an active public Hype Card share
+ */
+export const useCreateHypeCardShareReply = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHypeCardShareReply>>, TError,CreateHypeCardShareReplyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createHypeCardShareReply>>,
+        TError,
+        CreateHypeCardShareReplyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateHypeCardShareReplyMutationOptions(options));
+    }
+
+export const getListHypeCardShareRepliesUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}/replies`
+}
+
+/**
+ * @summary List replies for an owned Hype Card share
+ */
+export const listHypeCardShareReplies = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShareReplyList> => {
+
+  return customFetch<HypeCardShareReplyList>(getListHypeCardShareRepliesUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHypeCardShareRepliesQueryKey = (shareToken: string,) => {
+    return [
+    `/api/hype-card-shares/${shareToken}/replies`
+    ] as const;
+    }
+
+
+export const getListHypeCardShareRepliesQueryOptions = <TData = Awaited<ReturnType<typeof listHypeCardShareReplies>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShareReplies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHypeCardShareRepliesQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHypeCardShareReplies>>> = ({ signal }) => listHypeCardShareReplies(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShareReplies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHypeCardShareRepliesQueryResult = NonNullable<Awaited<ReturnType<typeof listHypeCardShareReplies>>>
+export type ListHypeCardShareRepliesQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary List replies for an owned Hype Card share
+ */
+
+export function useListHypeCardShareReplies<TData = Awaited<ReturnType<typeof listHypeCardShareReplies>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShareReplies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHypeCardShareRepliesQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkHypeCardShareRepliesReadUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}/replies`
+}
+
+/**
+ * @summary Mark all replies for an owned Hype Card share as read
+ */
+export const markHypeCardShareRepliesRead = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getMarkHypeCardShareRepliesReadUrl(shareToken),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkHypeCardShareRepliesReadMutationKey = () => ['markHypeCardShareRepliesRead'] as const;
+
+export const getMarkHypeCardShareRepliesReadMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markHypeCardShareRepliesRead>>, TError,MarkHypeCardShareRepliesReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markHypeCardShareRepliesRead>>, TError,MarkHypeCardShareRepliesReadMutationVariables, TContext> => {
+
+const mutationKey = getMarkHypeCardShareRepliesReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markHypeCardShareRepliesRead>>, MarkHypeCardShareRepliesReadMutationVariables> = (props) => {
+          const {shareToken} = props ?? {};
+
+          return  markHypeCardShareRepliesRead(shareToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkHypeCardShareRepliesReadMutationResult = NonNullable<Awaited<ReturnType<typeof markHypeCardShareRepliesRead>>>
+
+    export type MarkHypeCardShareRepliesReadMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type MarkHypeCardShareRepliesReadMutationVariables = {shareToken: string}
+
+    /**
+ * @summary Mark all replies for an owned Hype Card share as read
+ */
+export const useMarkHypeCardShareRepliesRead = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markHypeCardShareRepliesRead>>, TError,MarkHypeCardShareRepliesReadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markHypeCardShareRepliesRead>>,
+        TError,
+        MarkHypeCardShareRepliesReadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMarkHypeCardShareRepliesReadMutationOptions(options));
     }
 
 export const getServeHypeCardShareMediaUrl = (shareToken: string,

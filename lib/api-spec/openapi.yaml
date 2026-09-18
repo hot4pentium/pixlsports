@@ -293,6 +293,62 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/replies:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+    post:
+      operationId: createHypeCardShareReply
+      tags: [hype-card-shares]
+      summary: Reply to an active public Hype Card share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HypeCardShareReplyInput"
+      responses:
+        "201":
+          description: Reply accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareReplyReceipt"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Too many replies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listHypeCardShareReplies
+      tags: [hype-card-shares]
+      summary: List replies for an owned Hype Card share
+      responses:
+        "200":
+          description: Replies, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardShareReplyList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: markHypeCardShareRepliesRead
+      tags: [hype-card-shares]
+      summary: Mark all replies for an owned Hype Card share as read
+      responses:
+        "204":
+          description: Replies marked read
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /hype-card-shares/{shareToken}/media/{mediaKind}:
     parameters:
       - $ref: "#/components/parameters/HypeCardShareToken"
@@ -1293,6 +1349,51 @@ components:
         updatedAt:
           type: string
           format: date-time
+    HypeCardShareReplyInput:
+      type: object
+      required: [reaction]
+      properties:
+        reaction:
+          type: string
+          enum: ["🔥", "👏", "💪", "⭐", "❤️"]
+        message:
+          type: ["string", "null"]
+          maxLength: 240
+    HypeCardShareReplyReceipt:
+      type: object
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+          const: true
+    HypeCardShareReply:
+      type: object
+      required: [id, reaction, message, isRead, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reaction:
+          type: string
+          enum: ["🔥", "👏", "💪", "⭐", "❤️"]
+        message:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    HypeCardShareReplyList:
+      type: object
+      required: [unreadCount, replies]
+      properties:
+        unreadCount:
+          type: integer
+          minimum: 0
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardShareReply"
     HypeCardShare:
       type: object
       required: [shareToken, slug, title, manifest, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
