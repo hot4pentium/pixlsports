@@ -2398,9 +2398,14 @@ export function HypeCardEditor() {
                 <p className="mt-5 text-xs font-medium leading-relaxed text-muted-foreground">
                   Your design updates instantly in the preview. You can go back to any step before exporting.
                 </p>
-                <Button type="button" onClick={handleExport} disabled={exporting} className="mt-5 w-full gap-2 rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
-                  <Download className="h-4 w-4" /> {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}
-                </Button>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <Button type="button" onClick={handleExport} disabled={exporting || sharing} data-testid="walkthrough-export-card" className="min-w-0 gap-2 rounded-none bg-primary px-3 font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
+                    <Download className="h-4 w-4 shrink-0" /> <span className="truncate">{exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}</span>
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
+                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh page' : 'Publish page'}</span>
+                  </Button>
+                </div>
               </section>
             )}
 
