@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
 import { useUser } from '@clerk/react';
@@ -52,8 +52,7 @@ import {
   type TrackerConflict,
   type TrackerConflictResolution,
 } from './stat-tracker';
-
-const GameReportView = lazy(() => import('./stat-tracker-game-report').then((module) => ({ default: module.GameReportView })));
+import { GameReportView } from './stat-tracker-game-report';
 
 export function readLocalTrackerSession(storage: TrackerStorage, accountId: string) {
   return {
@@ -266,7 +265,9 @@ export function StatTrackerPage() {
   const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
   const [selectedConflictResolution, setSelectedConflictResolution] = useState<'local' | 'cloud' | 'merge' | null>(null);
   const [showAllStats, setShowAllStats] = useState(false);
-  const [selectedReportGameId, setSelectedReportGameId] = useState<string | null>(null);
+  const [selectedReportGameId, setSelectedReportGameId] = useState<string | null>(() => (
+    typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('reportGame')
+  ));
   const [cloudProject, setCloudProject] = useState<{ id: string; revision: number } | null>(null);
   const initializedCloud = useRef(false);
   const manuallyEditedSetup = useRef({
@@ -374,6 +375,14 @@ export function StatTrackerPage() {
     if (!selectedReportGameId) return null;
     return buildGameReport(data.games, sport, selectedReportGameId);
   }, [data.games, sport, selectedReportGameId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (selectedReportGameId) url.searchParams.set('reportGame', selectedReportGameId);
+    else url.searchParams.delete('reportGame');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [selectedReportGameId]);
   const announce = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2600);
@@ -687,14 +696,12 @@ export function StatTrackerPage() {
          {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
       {report && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-background/95 backdrop-blur-md" data-testid="game-report-loading" role="status" aria-live="polite"><div className="border border-primary/50 bg-card px-6 py-5 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">Loading game report…</div></div>}>
-          <GameReportView
-            report={report}
-            rule={rule}
-            onClose={() => setSelectedReportGameId(null)}
-            onSelectGame={setSelectedReportGameId}
-          />
-        </Suspense>
+        <GameReportView
+          report={report}
+          rule={rule}
+          onClose={() => setSelectedReportGameId(null)}
+          onSelectGame={setSelectedReportGameId}
+        />
       )}
       {notice && <div className="fixed bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-primary bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary shadow-lg" role="status"><Check className="h-4 w-4" /> {notice}</div>}
     </div>

@@ -304,6 +304,48 @@ test('game report renders every sport stat and closes without changing the repor
   assert.equal(report.selectedGame.id, game.id);
 });
 
+test('game report keeps statistics visible and retries a failed chart download', async () => {
+  const first = endGame(addStatEvent(createGameSession('soccer', { opponent: 'Northside' }), 'goal'));
+  const second = endGame(addStatEvent(createGameSession('soccer', { opponent: 'Westview' }), 'assist'));
+  const report = buildGameReport([first, second], 'soccer', second.id);
+  assert.ok(report);
+  let loadAttempts = 0;
+  let retryCount = 0;
+  const TestCharts = () => createElement('div', { 'data-testid': 'loaded-test-charts' }, 'Charts loaded');
+  const loadCharts = async () => {
+    loadAttempts += 1;
+    if (loadAttempts === 1) throw new Error('Network connection lost');
+    return { default: TestCharts };
+  };
+  let renderer!: ReturnType<typeof create>;
+
+  await act(async () => {
+    renderer = create(createElement(GameReportView, {
+      report,
+      rule: getSportRule('soccer'),
+      onClose: () => {},
+      onSelectGame: () => {},
+      loadCharts,
+      onRetryCharts: () => { retryCount += 1; },
+    }));
+  });
+
+  assert.match(renderedText(renderer), /Charts couldn’t load/);
+  assert.match(renderedText(renderer), /Season to Date/);
+  assert.match(renderedText(renderer), /Box Score/);
+  assert.equal(report.selectedGame.id, second.id);
+
+  await act(async () => {
+    renderer.root.findByProps({ 'data-testid': 'report-charts-retry' }).props.onClick();
+  });
+
+  assert.equal(retryCount, 1);
+  assert.equal(loadAttempts, 2);
+  assert.match(renderedText(renderer), /Charts loaded/);
+  assert.match(renderedText(renderer), /Box Score/);
+  assert.equal(report.selectedGame.id, second.id);
+});
+
 test('invalid saved tracker payloads normalize to an empty season', () => {
   assert.deepEqual(normalizeTrackerData({ version: 99, games: [{ id: 'bad', sport: 'curling' }] }), {
     version: 1,
