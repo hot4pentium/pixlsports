@@ -1498,7 +1498,7 @@ function FanCalendarConnectionPanel({
               setInput(event.target.value);
               setInputError('');
             }}
-            placeholder="Paste link or enter ABCDE"
+            placeholder="Enter coach code"
             autoComplete="off"
             className={`min-w-0 flex-1 border border-border bg-background font-medium text-foreground outline-none transition-colors focus:border-primary ${compact ? 'px-2 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
             aria-describedby="coach-calendar-code-help"
