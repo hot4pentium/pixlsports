@@ -671,6 +671,42 @@ export const DeleteHypeCardShareResponse = zod.void()
 
 
 /**
+ * @summary Get replies grouped by owned Hype Card share
+ */
+export const getHypeCardReplyInboxResponseTotalCountMin = 0;
+
+export const getHypeCardReplyInboxResponseUnreadCountMin = 0;
+
+export const getHypeCardReplyInboxResponseGroupsItemUnreadCountMin = 0;
+
+
+
+export const GetHypeCardReplyInboxResponse = zod.object({
+  "totalCount": zod.number().int().min(getHypeCardReplyInboxResponseTotalCountMin),
+  "unreadCount": zod.number().int().min(getHypeCardReplyInboxResponseUnreadCountMin),
+  "groups": zod.array(zod.object({
+  "shareToken": zod.string(),
+  "title": zod.string(),
+  "sentAt": zod.coerce.date(),
+  "unreadCount": zod.number().int().min(getHypeCardReplyInboxResponseGroupsItemUnreadCountMin),
+  "replies": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "reaction": zod.enum(['🔥', '👏', '💪', '⭐', '❤️']),
+  "message": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}))
+}))
+})
+
+
+/**
+ * @summary Mark all replies for active owned Hype Card shares as read
+ */
+export const MarkHypeCardReplyInboxReadResponse = zod.void()
+
+
+/**
  * @summary Reply to an active public Hype Card share
  */
 export const createHypeCardShareReplyPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');

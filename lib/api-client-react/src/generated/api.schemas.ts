@@ -417,6 +417,23 @@ export interface HypeCardShareReplyList {
   replies: HypeCardShareReply[];
 }
 
+export interface HypeCardReplyInboxGroup {
+  shareToken: string;
+  title: string;
+  sentAt: string;
+  /** @minimum 0 */
+  unreadCount: number;
+  replies: HypeCardShareReply[];
+}
+
+export interface HypeCardReplyInbox {
+  /** @minimum 0 */
+  totalCount: number;
+  /** @minimum 0 */
+  unreadCount: number;
+  groups: HypeCardReplyInboxGroup[];
+}
+
 export type HypeCardShareManifest = { [key: string]: unknown };
 
 export type HypeCardShareMediaType = typeof HypeCardShareMediaType[keyof typeof HypeCardShareMediaType];

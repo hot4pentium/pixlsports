@@ -8,6 +8,7 @@ import {
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
+import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import heroBanner from '@/assets/hero-banner.webp';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
@@ -288,10 +289,15 @@ export function SupporterDashboardView({
                 </button>
               </>
             )}
+
+            <div className="mt-4 block lg:hidden w-full max-w-[240px]">
+              <HypeCardReplyInboxTrigger variant="supporter" />
+            </div>
           </div>
 
           {/* Quick Actions (Desktop only) */}
           <div className="relative z-10 hidden lg:flex flex-col gap-3 min-w-[240px]">
+            <HypeCardReplyInboxTrigger variant="supporter" />
             <button onClick={onOpenProfile} className="flex items-center justify-between px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors group" data-testid="btn-edit-profile-side">
               <span className="text-sm font-bold uppercase tracking-widest text-white/80 group-hover:text-white">Profile Details</span>
               <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-1" />

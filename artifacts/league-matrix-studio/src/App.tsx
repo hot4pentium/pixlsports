@@ -1,3 +1,4 @@
+import { HypeCardReplyInboxTrigger } from '@/features/hype-card-reply-inbox';
 import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
@@ -683,7 +684,10 @@ function Studio({ role }: { role: UserRole }) {
               <p className="text-xs font-bold uppercase tracking-widest text-primary">{role === 'coach' ? 'Coaching' : 'Supporting'}</p>
               <p className="mt-1 font-display text-2xl uppercase tracking-wide">{profile.teamName}</p>
             </div>
-            <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
+              <HypeCardReplyInboxTrigger variant="coach" />
+            </div>
           </div>
         </div>
 

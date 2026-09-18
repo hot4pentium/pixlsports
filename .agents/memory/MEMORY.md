@@ -13,3 +13,4 @@
 - [Public Hype Card boundaries](public-hype-card-boundaries.md) — player pages expose flattened media and finalized aggregates while rotating one owner/design URL server-side.
 - [Profile sport precedence](profile-sport-precedence.md) — a selected profile sport controls sport-specific tools; history chooses the sport only when the profile has none.
 - [TSX test JSX runtime](tsx-test-jsx-runtime.md) — TSX modules rendered by Node tests need a React binding even when Vite and TypeScript accept named-only React imports.
+- [Reply inbox retention](reply-inbox-retention.md) — owner reply history remains visible after a shared Hype Card expires or is revoked.

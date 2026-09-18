@@ -37,6 +37,7 @@ import type {
   Error,
   GetNotificationSubscriptionStatusParams,
   HealthStatus,
+  HypeCardReplyInbox,
   HypeCardShare,
   HypeCardShareInput,
   HypeCardShareList,
@@ -1239,6 +1240,157 @@ export const useDeleteHypeCardShare = <TError = ErrorType<UnauthorizedResponse |
         TContext
       > => {
       return useMutation(getDeleteHypeCardShareMutationOptions(options));
+    }
+
+export const getGetHypeCardReplyInboxUrl = () => {
+
+
+
+
+  return `/api/hype-card-shares/reply-inbox`
+}
+
+/**
+ * @summary Get replies grouped by owned Hype Card share
+ */
+export const getHypeCardReplyInbox = async ( options?: Parameters<typeof customFetch>[1]): Promise<HypeCardReplyInbox> => {
+
+  return customFetch<HypeCardReplyInbox>(getGetHypeCardReplyInboxUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHypeCardReplyInboxQueryKey = () => {
+    return [
+    `/api/hype-card-shares/reply-inbox`
+    ] as const;
+    }
+
+
+export const getGetHypeCardReplyInboxQueryOptions = <TData = Awaited<ReturnType<typeof getHypeCardReplyInbox>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHypeCardReplyInbox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHypeCardReplyInboxQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHypeCardReplyInbox>>> = ({ signal }) => getHypeCardReplyInbox({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHypeCardReplyInbox>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHypeCardReplyInboxQueryResult = NonNullable<Awaited<ReturnType<typeof getHypeCardReplyInbox>>>
+export type GetHypeCardReplyInboxQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get replies grouped by owned Hype Card share
+ */
+
+export function useGetHypeCardReplyInbox<TData = Awaited<ReturnType<typeof getHypeCardReplyInbox>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHypeCardReplyInbox>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHypeCardReplyInboxQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkHypeCardReplyInboxReadUrl = () => {
+
+
+
+
+  return `/api/hype-card-shares/reply-inbox`
+}
+
+/**
+ * @summary Mark all replies for active owned Hype Card shares as read
+ */
+export const markHypeCardReplyInboxRead = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getMarkHypeCardReplyInboxReadUrl(),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkHypeCardReplyInboxReadMutationKey = () => ['markHypeCardReplyInboxRead'] as const;
+
+export const getMarkHypeCardReplyInboxReadMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>, TError,void, TContext> => {
+
+const mutationKey = getMarkHypeCardReplyInboxReadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>, void> = () => {
+
+
+          return  markHypeCardReplyInboxRead(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkHypeCardReplyInboxReadMutationResult = NonNullable<Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>>
+
+    export type MarkHypeCardReplyInboxReadMutationError = ErrorType<UnauthorizedResponse>
+
+
+    /**
+ * @summary Mark all replies for active owned Hype Card shares as read
+ */
+export const useMarkHypeCardReplyInboxRead = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getMarkHypeCardReplyInboxReadMutationOptions(options));
     }
 
 export const getCreateHypeCardShareReplyUrl = (shareToken: string,) => {

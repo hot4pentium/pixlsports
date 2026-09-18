@@ -44,6 +44,8 @@ export * from './hypeCardProjectMediaType';
 export * from './hypeCardProjectPalette';
 export * from './hypeCardProjectTemplate';
 export * from './hypeCardProjectVersion';
+export * from './hypeCardReplyInbox';
+export * from './hypeCardReplyInboxGroup';
 export * from './hypeCardShare';
 export * from './hypeCardShareInput';
 export * from './hypeCardShareInputManifest';

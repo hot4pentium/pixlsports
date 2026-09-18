@@ -12,9 +12,11 @@ import {
   DeleteHypeCardShareReplyParams,
   DeleteHypeCardShareParams,
   GetHypeCardShareParams,
+  GetHypeCardReplyInboxResponse,
   ListHypeCardSharesResponse,
   ListHypeCardShareRepliesParams,
   ListHypeCardShareRepliesResponse,
+  MarkHypeCardReplyInboxReadResponse,
   MarkHypeCardShareRepliesReadParams,
   RequestHypeCardShareUploadUrlBody,
   RequestHypeCardShareUploadUrlResponse,
@@ -149,6 +151,21 @@ router.get("/hype-card-shares", requireAuth, async (_req, res): Promise<void> =>
   const shares = await db
     .select()
     .from(hypeCardSharesTable)
+    .where(eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)))
+    .orderBy(desc(hypeCardSharesTable.createdAt))
+    .limit(25);
+  res.json(ListHypeCardSharesResponse.parse(await Promise.all(shares.map(ownedShareResponse))));
+});
+
+router.get("/hype-card-shares/reply-inbox", requireAuth, async (_req, res): Promise<void> => {
+  const shares = await db
+    .select({
+      id: hypeCardSharesTable.id,
+      shareToken: hypeCardSharesTable.publicToken,
+      title: hypeCardSharesTable.title,
+      sentAt: hypeCardSharesTable.createdAt,
+    })
+    .from(hypeCardSharesTable)
     .where(and(
       eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
       isNull(hypeCardSharesTable.revokedAt),
@@ -156,7 +173,57 @@ router.get("/hype-card-shares", requireAuth, async (_req, res): Promise<void> =>
     ))
     .orderBy(desc(hypeCardSharesTable.createdAt))
     .limit(25);
-  res.json(ListHypeCardSharesResponse.parse(await Promise.all(shares.map(ownedShareResponse))));
+  const replies = shares.length
+    ? await db
+      .select()
+      .from(hypeCardShareRepliesTable)
+      .where(inArray(hypeCardShareRepliesTable.shareId, shares.map((share) => share.id)))
+      .orderBy(desc(hypeCardShareRepliesTable.createdAt))
+      .limit(2500)
+    : [];
+  const repliesByShare = new Map<string, typeof replies>();
+  for (const reply of replies) {
+    const current = repliesByShare.get(reply.shareId) ?? [];
+    current.push(reply);
+    repliesByShare.set(reply.shareId, current);
+  }
+  const groups = shares.map((share) => {
+    const shareReplies = repliesByShare.get(share.id) ?? [];
+    return {
+      shareToken: share.shareToken,
+      title: share.title,
+      sentAt: share.sentAt,
+      unreadCount: shareReplies.filter((reply) => !reply.readAt).length,
+      replies: shareReplies.map((reply) => ({
+        id: reply.id,
+        reaction: reply.reaction,
+        message: reply.message,
+        isRead: Boolean(reply.readAt),
+        createdAt: reply.createdAt,
+      })),
+    };
+  });
+  res.json(GetHypeCardReplyInboxResponse.parse({
+    totalCount: replies.length,
+    unreadCount: replies.filter((reply) => !reply.readAt).length,
+    groups,
+  }));
+});
+
+router.patch("/hype-card-shares/reply-inbox", requireAuth, async (_req, res): Promise<void> => {
+  const shares = await db
+    .select({ id: hypeCardSharesTable.id })
+    .from(hypeCardSharesTable)
+    .where(eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)))
+    .orderBy(desc(hypeCardSharesTable.createdAt))
+    .limit(25);
+  if (shares.length) {
+    await db.update(hypeCardShareRepliesTable).set({ readAt: new Date() }).where(and(
+      inArray(hypeCardShareRepliesTable.shareId, shares.map((share) => share.id)),
+      isNull(hypeCardShareRepliesTable.readAt),
+    ));
+  }
+  res.status(204).send(MarkHypeCardReplyInboxReadResponse.parse(undefined));
 });
 
 router.post("/hype-card-shares/:shareToken/replies", async (req, res): Promise<void> => {
@@ -193,13 +260,10 @@ router.post("/hype-card-shares/:shareToken/replies", async (req, res): Promise<v
     res.status(429).json({ error: "You’ve sent several replies. Please try again later." });
     return;
   }
-  const cloudProjectPath = share.shareKey && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(share.shareKey)
-    ? `/studio/hype-card/${share.shareKey}`
-    : "/studio/hype-card";
   void sendPushNotificationToUser(share.ownerClerkUserId, {
     title: `New Hype Card reply ${body.data.reaction}`,
     body: message ?? `Someone reacted to ${share.title}.`,
-    url: `${cloudProjectPath}?replies=${share.publicToken}`,
+    url: `/studio?replies=${share.publicToken}`,
     tag: `hype-card-reply-${share.id}`,
   }).catch((error) => req.log.warn({ err: error, shareId: share.id }, "Unable to send Hype Card reply push"));
   res.status(201).json(CreateHypeCardShareReplyResponse.parse({ accepted: true }));

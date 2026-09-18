@@ -293,6 +293,29 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /hype-card-shares/reply-inbox:
+    get:
+      operationId: getHypeCardReplyInbox
+      tags: [hype-card-shares]
+      summary: Get replies grouped by owned Hype Card share
+      responses:
+        "200":
+          description: Replies grouped by recent sent Hype Cards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HypeCardReplyInbox"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: markHypeCardReplyInboxRead
+      tags: [hype-card-shares]
+      summary: Mark all replies for recent owned Hype Card shares as read
+      responses:
+        "204":
+          description: Reply inbox marked read
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /hype-card-shares/{shareToken}/replies:
     parameters:
       - $ref: "#/components/parameters/HypeCardShareToken"
@@ -1417,6 +1440,38 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/HypeCardShareReply"
+    HypeCardReplyInboxGroup:
+      type: object
+      required: [shareToken, title, sentAt, unreadCount, replies]
+      properties:
+        shareToken:
+          type: string
+        title:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        unreadCount:
+          type: integer
+          minimum: 0
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardShareReply"
+    HypeCardReplyInbox:
+      type: object
+      required: [totalCount, unreadCount, groups]
+      properties:
+        totalCount:
+          type: integer
+          minimum: 0
+        unreadCount:
+          type: integer
+          minimum: 0
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardReplyInboxGroup"
     HypeCardShare:
       type: object
       required: [shareToken, slug, title, manifest, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
