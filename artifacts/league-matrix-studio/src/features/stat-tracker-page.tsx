@@ -27,8 +27,8 @@ import {
   clearStoredTrackerConflict,
   createGameSession,
   endGame,
-  getPreferredTrackerSport,
   getSportRule,
+  getTrackerSportForProfile,
   getTrackerConflict,
   getTrackerStorageKeys,
   getTrackerSyncRecovery,
@@ -301,7 +301,7 @@ export function StatTrackerPage() {
     const restored = readLocalTrackerSession(window.localStorage, accountId);
     setData(restored.data);
     setCurrentGame(restored.currentGame);
-    setSport(getPreferredTrackerSport(restored.data, profile.sport ?? 'basketball'));
+    setSport(getTrackerSportForProfile(restored.data, profile.sport));
     setStorageAccountId(accountId);
   }, [accountId]);
 
@@ -322,7 +322,7 @@ export function StatTrackerPage() {
         cloudProject: currentCloudProject,
       };
       setData(pendingConflict.data);
-      setSport(getPreferredTrackerSport(pendingConflict.data, profile.sport ?? 'basketball'));
+      setSport(getTrackerSportForProfile(pendingConflict.data, profile.sport));
       setCloudProject(currentCloudProject);
       setTrackerConflict(restoredConflict);
       setSelectedConflictResolution(pendingConflict.resolution);
@@ -338,7 +338,7 @@ export function StatTrackerPage() {
     }
     const mergedData = mergeTrackerData(readLocalTrackerSession(window.localStorage, accountId).data, existing.project);
     setData(mergedData);
-    setSport(getPreferredTrackerSport(mergedData, profile.sport ?? 'basketball'));
+    setSport(getTrackerSportForProfile(mergedData, profile.sport));
     setCloudProject({ id: existing.id, revision: existing.revision });
     saveLocalTracker(mergedData, accountId);
   }, [accountId, projects, storageAccountId]);
@@ -552,7 +552,7 @@ export function StatTrackerPage() {
       </div>
 
       <div className="mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">
-        {sports.map((option) => (
+        {(profile.sport ? [profile.sport] : sports).map((option) => (
           <button key={option} type="button" role="tab" aria-selected={sport === option} onClick={() => !currentGame && setSport(option)} disabled={Boolean(currentGame)} className={`shrink-0 border-b-4 px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed ${sport === option ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {getSportRule(option).label}
           </button>

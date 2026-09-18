@@ -11,4 +11,4 @@
 - [Live role routing](live-role-routing.md) — studio role UI must derive from the current Clerk user on every render, not the initial session role.
 - [Checklist sharing test harness](checklist-sharing-test-harness.md) — direct route tests must provide Clerk-branded session auth; browser coverage uses installed Chromium CDP.
 - [Public Hype Card boundaries](public-hype-card-boundaries.md) — player pages expose flattened media and finalized aggregates while rotating one owner/design URL server-side.
-- [Profile sport precedence](profile-sport-precedence.md) — profile sport defaults new sport-specific work; saved project or activity sport wins when reopening existing work.
+- [Profile sport precedence](profile-sport-precedence.md) — a selected profile sport controls sport-specific tools; history chooses the sport only when the profile has none.

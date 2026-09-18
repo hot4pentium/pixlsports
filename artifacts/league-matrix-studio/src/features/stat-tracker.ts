@@ -397,6 +397,14 @@ export function getPreferredTrackerSport(value: unknown, fallback: Sport): Sport
   return preferredSport;
 }
 
+export function getTrackerSportForProfile(
+  value: unknown,
+  profileSport: Sport | null,
+  fallback: Sport = 'basketball',
+): Sport {
+  return profileSport ?? getPreferredTrackerSport(value, fallback);
+}
+
 export function trackerPayload(data: StatTrackerData): TrackerPayload {
   return { ...data, tool: 'stat-tracker' };
 }

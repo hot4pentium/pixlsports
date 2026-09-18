@@ -10,6 +10,7 @@ import {
   createGameSession,
   endGame,
   getPreferredTrackerSport,
+  getTrackerSportForProfile,
   getTrackerConflict,
   getTrackerSyncRecovery,
   getTrackerStorageKeys,
@@ -104,9 +105,7 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   assert.equal(changedGame.stats['three-point'], 1);
 });
 
-test('profile sport is the default until tracker history establishes a more recent sport', () => {
-  assert.equal(getPreferredTrackerSport({ version: 1, games: [] }, 'soccer'), 'soccer');
-
+test('profile sport controls the tracker while accounts without one resume their latest sport', () => {
   const olderBasketballGame = createGameSession(
     'basketball',
     { opponent: 'Northside' },
@@ -118,13 +117,11 @@ test('profile sport is the default until tracker history establishes a more rece
     new Date('2026-09-12T12:00:00Z'),
   );
 
-  assert.equal(
-    getPreferredTrackerSport(
-      { version: 1, games: [newerVolleyballGame, olderBasketballGame] },
-      'soccer',
-    ),
-    'volleyball',
-  );
+  const history = { version: 1, games: [newerVolleyballGame, olderBasketballGame] };
+
+  assert.equal(getTrackerSportForProfile(history, 'soccer'), 'soccer');
+  assert.equal(getTrackerSportForProfile(history, null), 'volleyball');
+  assert.equal(getPreferredTrackerSport({ version: 1, games: [] }, 'baseball'), 'baseball');
 });
 
 test('long live tracker names cannot push score or featured stat controls off-screen', () => {
