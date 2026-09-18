@@ -947,6 +947,7 @@ export function HypeCardEditor() {
   const [, setLocation] = useLocation();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
+  const profile = getUserProfile(user);
   const queryClient = useQueryClient();
 
   const [project, setProject] = useState<HypeCardProject>(() => {
@@ -1835,12 +1836,12 @@ export function HypeCardEditor() {
     }
     if (existingShare && isOwnedHypeCardShare(existingShare)) {
       setShareTrackerProjectId(existingShare.trackerProjectId ?? 'none');
-      setShareSport(existingShare.sport ?? 'basketball');
+      setShareSport(profile.sport ?? existingShare.sport ?? 'basketball');
       setShareAthleteName(existingShare.athleteName ?? project.playerName ?? '');
       setShareExpiresInDays(String(existingShare.expiresInDays));
     } else if (!existingShare) {
       setShareTrackerProjectId('none');
-      setShareSport(getUserProfile(user).sport ?? 'basketball');
+      setShareSport(profile.sport ?? 'basketball');
       setShareAthleteName(project.playerName || '');
       setShareExpiresInDays('30');
     }
@@ -1929,7 +1930,7 @@ export function HypeCardEditor() {
           mediaUploadClaimId: claimId,
           posterUploadClaimId: posterClaimId,
           trackerProjectId: shareTrackerProjectId !== 'none' ? shareTrackerProjectId : null,
-          sport: shareTrackerProjectId !== 'none' ? (shareSport as any) : null,
+          sport: shareTrackerProjectId !== 'none' ? ((profile.sport ?? shareSport) as any) : null,
           athleteName: shareTrackerProjectId !== 'none' ? shareAthleteName : null,
           expiresInDays: parseInt(shareExpiresInDays, 10),
           replaceShareToken: existingShare?.shareToken ?? null,
@@ -2474,21 +2475,31 @@ export function HypeCardEditor() {
 
             {shareTrackerProjectId !== 'none' && (
               <>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sport</Label>
-                  <Select value={shareSport} onValueChange={setShareSport}>
-                    <SelectTrigger className="clip-angled-sm h-12 rounded-none">
-                      <SelectValue placeholder="Select sport" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sports.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {getSportRule(s).label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {profile.sport ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sport</Label>
+                    <div className="flex h-12 items-center border border-border bg-muted/40 px-3 text-sm font-bold" data-testid="publish-profile-sport">
+                      {getSportRule(profile.sport).label}
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground">Uses the sport selected in Profile Settings.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sport</Label>
+                    <Select value={shareSport} onValueChange={setShareSport}>
+                      <SelectTrigger className="clip-angled-sm h-12 rounded-none">
+                        <SelectValue placeholder="Select sport" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sports.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {getSportRule(s).label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Athlete Display Name</Label>
                   <Input
