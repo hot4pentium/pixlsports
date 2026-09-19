@@ -388,7 +388,7 @@ export function SupporterDashboardView({
             {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
           </div>
           <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-            GAME DAY <span className="text-primary studio-textured-heading-accent">HUB.</span>
+            GAME DAY <span className="text-primary studio-textured-accent">HUB.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
             One clear path from the next game to the moment you send around.
@@ -545,10 +545,10 @@ export function SupporterDashboardView({
         <section className="animate-slide-up delay-200 border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-7" data-testid="section-capture-moment" aria-labelledby="capture-heading">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Camera className="h-4 w-4" /> Capture from this game</div>
+              <div className="studio-textured-accent flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Camera className="h-4 w-4" /> Capture from this game</div>
               <h2 id="capture-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">{gameStage === 'live' ? 'Keep the moment close.' : gameStage === 'completed' ? 'Pick the moment to send.' : 'Be ready to capture.'}</h2>
               <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">Use your device camera or media picker. Nothing is uploaded, stored, or turned into a media record here.</p>
-              {captureNotice && <p className="mt-3 text-sm font-bold text-primary" role="status" data-testid="status-capture-notice">{captureNotice}</p>}
+               {captureNotice && <p className="studio-textured-accent mt-3 text-sm font-bold text-primary" role="status" data-testid="status-capture-notice">{captureNotice}</p>}
             </div>
             <div className="grid w-full gap-3 sm:grid-cols-3 lg:max-w-2xl">
               <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-capture-photo">
@@ -580,8 +580,8 @@ export function SupporterDashboardView({
             className="flex w-full items-center justify-between gap-4 text-left"
             data-testid="button-all-tools-toggle"
           >
-            <span id="all-tools-heading">
-              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
+              <span id="all-tools-heading">
+               <span className="studio-textured-accent mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
               <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
             </span>
             <span className="inline-flex shrink-0 items-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm">
@@ -652,7 +652,7 @@ export function SupporterDashboardView({
         <section>
           <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
             <div className="flex items-center gap-3">
-              <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
+              <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
               {scheduleSource && (
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:flex items-center gap-1.5 border-l border-border/50 pl-3">
                   <CalendarDays className="w-3 h-3" /> {scheduleSource === 'team' ? 'Team Calendar' : 'Custom Schedule'}
@@ -839,7 +839,7 @@ export function SupporterDashboardView({
         {/* RECENT DESIGNS */}
         <section>
           <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-            <h3 className="font-display text-2xl text-primary uppercase tracking-wide">Recent Designs</h3>
+            <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Recent Designs</h3>
             <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-view-all-designs">
               View All <ChevronRight className="w-3 h-3" />
             </Link>
@@ -933,7 +933,7 @@ export function SupporterProfileView({
           <ChevronRight className="w-4 h-4 rotate-180" /> Back to Dashboard
         </button>
         <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">
-          Supporter <span className="text-primary studio-textured-heading-accent">Profile.</span>
+          Supporter <span className="text-primary studio-textured-accent">Profile.</span>
         </h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Personalize your dashboard and pre-fill graphics with your athlete's details.
