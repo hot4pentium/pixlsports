@@ -971,7 +971,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
         </div>
 
         {kind === 'hype' && (
-          <div className="relative mx-auto aspect-[760/1036] max-w-[270px] overflow-hidden border border-primary/40 bg-[#10181b]">
+          <div className="relative mx-auto aspect-[760/1036] max-w-[230px] overflow-hidden border border-primary/40 bg-[#10181b] sm:max-w-[250px]">
             <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
               <img
@@ -1033,22 +1033,26 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
         {kind === 'stat-tracker' && (
           <div className="grid gap-3 md:grid-cols-2">
             <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
-              <img src={statTrackerLive} alt="Stat Tracker live game score controls" className="h-auto w-full" />
+              <div className="h-[180px] overflow-hidden sm:h-[220px]">
+                <img src={statTrackerLive} alt="Stat Tracker live game score controls" className="h-full w-full object-cover object-top" />
+              </div>
               <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">1 / Track the live game</figcaption>
             </figure>
             <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
-              <img src={statTrackerTapStat} alt="Stat Tracker tap-a-stat detail screen" className="h-auto w-full" />
+              <div className="h-[180px] overflow-hidden sm:h-[220px]">
+                <img src={statTrackerTapStat} alt="Stat Tracker tap-a-stat detail screen" className="h-full w-full object-cover object-top" />
+              </div>
               <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">2 / Tap a stat and build the report</figcaption>
             </figure>
           </div>
         )}
 
         {kind === 'checklist' && (
-          <div className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+          <div className="relative aspect-[16/10] overflow-hidden border border-primary/30 bg-[#f5f0e3]">
             <img
               src={gameDayChecklist}
               alt="Game Day checklist with saved game selection, equipment tasks, and team details"
-              className="h-auto w-full"
+              className="absolute inset-0 h-full w-full object-cover object-top"
             />
           </div>
         )}
