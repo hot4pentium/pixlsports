@@ -58,6 +58,7 @@ import { getGuestUsageKey } from './guest-access';
 import { prepareHypeCardShareMedia } from './hype-card-share';
 import { sports, getSportRule, normalizeTrackerData, type GameSession } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
+import { LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from './privacy-copy';
 
 
 function isOwnedHypeCardShare(share: HypeCardShare | OwnedHypeCardShare): share is OwnedHypeCardShare {
@@ -2274,7 +2275,7 @@ export function HypeCardEditor() {
 
             {walkthroughStep === 1 && <Section title="Media" icon={ImagePlus}>
               <div className="hidden sm:block">
-               <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? 'Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. Guest and unpaid saves keep design settings only. Preview video loads after Play; download quality loads only when you export.' : 'Add a photo or video up to 120MB. Guest and unpaid cloud saves contain design settings only; your media stays on this device.'}</p>
+               <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. Guest and unpaid saves keep design settings only. Preview video loads after Play; download quality loads only when you export. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo or video up to 120MB. Guest and unpaid cloud saves contain design settings only; {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
                   This saved design does not include media. Add a photo or video before exporting.
@@ -2336,7 +2337,7 @@ export function HypeCardEditor() {
               )}
               </div>
               <div className="sm:hidden">
-                <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? 'Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage.' : 'Add a photo or video up to 120MB. Your media stays on this device unless you save with a paid account.'}</p>
+                 <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo or video up to 120MB. {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
 
                 <div className="mb-4 flex gap-1 overflow-x-auto border-y border-border py-2" role="tablist" aria-label="Mobile media editing steps">
                   {mobileMediaSteps.map((step, index) => (
@@ -2575,7 +2576,7 @@ export function HypeCardEditor() {
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Publish Player Page</DialogTitle>
             <DialogDescription>
-              Create a hosted share link to send to players and family. Optionally link a stat tracker.
+              {PUBLIC_SHARE_MEDIA} Choose how long the link stays active below. Optionally link a stat tracker.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePublishShare} className="space-y-4 pt-4">

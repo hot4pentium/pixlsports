@@ -87,6 +87,7 @@ import {
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
+import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
 import {
   clearStoredCalendarConnection,
   getCalendarConnectionErrorKind,
@@ -389,7 +390,7 @@ function HomePage() {
                 </a>
               </div>
               <div className="home-reveal home-reveal-delay-4 mt-12 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
-                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Media stays local</span>
+                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {LANDING_MEDIA_BADGE}</span>
                 <span className="inline-flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Made for real life</span>
               </div>
             </div>
@@ -534,7 +535,7 @@ function HomePage() {
                 <div>
                   <span className="grid h-12 w-12 place-items-center bg-primary text-primary-foreground clip-angled-sm"><ShieldCheck className="h-5 w-5" /></span>
                   <p className="home-display mt-12 text-4xl">Private<br />by default.</p>
-                  <p className="mt-4 text-sm font-medium leading-relaxed text-[#f5f0e3]/55">Sign in to sync reusable design settings. Your attached photos and videos stay on your device.</p>
+                  <p className="mt-4 text-sm font-medium leading-relaxed text-[#f5f0e3]/55">Sign in to sync reusable design settings. {LANDING_MEDIA_DETAIL}</p>
                 </div>
                 <Link href="/privacy" className="group mt-10 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary" data-testid="link-tools-privacy">Read the privacy promise <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" /></Link>
               </div>
@@ -548,7 +549,7 @@ function HomePage() {
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full border-[18px] border-primary-foreground/15" />
             <Heart className="relative h-9 w-9" />
             <p className="home-display relative mt-12 text-5xl leading-[0.88]">The good stuff<br />stays yours.</p>
-            <p className="relative mt-6 max-w-sm text-sm font-semibold leading-relaxed text-primary-foreground/72">Pixl helps you make and share the right thing without asking your family archive to leave home.</p>
+            <p className="relative mt-6 max-w-sm text-sm font-semibold leading-relaxed text-primary-foreground/72">{LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</p>
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-ink">Built for the in-between moments</p>
@@ -711,7 +712,7 @@ function Studio({ role }: { role: UserRole }) {
                       <p className="font-bold uppercase tracking-widest text-primary">Save to cloud</p>
                       <p className="mt-1">Stores reusable design settings with your signed-in account so you can reopen them across devices.</p>
                     </div>
-                    <p className="text-xs text-white/55">Photos, videos, and uploaded logos remain on the device where they were added.</p>
+                    <p className="text-xs text-white/55">{LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</p>
                   </div>
                   <DialogFooter>
                     <DialogClose asChild>
@@ -867,7 +868,7 @@ function Studio({ role }: { role: UserRole }) {
                   <Activity className="h-6 w-6" />
                 </div>
                 <p className="relative z-10 mt-5 font-display text-2xl uppercase tracking-wide text-foreground">CLOUD SYNC</p>
-                <p className="relative z-10 mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Sign in to sync reusable designs. Photos, videos, and uploaded logos remain on your device.</p>
+                <p className="relative z-10 mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Sign in to sync reusable designs. {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</p>
                 <Link href="/sign-in" className="relative z-10 mt-6 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform">
                   Sign In
                 </Link>
@@ -4007,11 +4008,11 @@ function Help() {
         <div className="mt-12 space-y-10">
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where are my graphics saved?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings and attached media are saved in this browser. If you sign in and choose Save design, only reusable design settings sync to your account; photos, videos, and uploaded logos stay on this device. Reopen a saved design, add media, then export the finished file to share it. Clearing browser data can remove locally stored work.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings and source media are saved in this browser. If you sign in and choose Save design, only reusable design settings sync to your account; source photos, videos, and uploaded logos stay on this device. Reopen a saved design, add media, then export the finished file to share it. {PUBLIC_SHARE_MEDIA} Clearing browser data can remove locally stored work.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Will my media follow me across devices?</h2>
-           <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">For paid Hype Card accounts, attached photos, logos, posters, and locally prepared preview/download videos are kept in private cloud storage under the account quota, so saved projects reopen across signed-in devices. Preview video loads only after Play and download quality loads only when you export. Guest and unpaid cloud saves remain design-only, while local media stays on the device. When you publish a Hype Card share, its prepared video and poster are uploaded separately for the public link.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">For paid Hype Card accounts, attached photos, logos, posters, and locally prepared preview/download videos are kept in private cloud storage under the account quota, so saved projects reopen across signed-in devices. Preview video loads only after Play and download quality loads only when you export. Guest and unpaid cloud saves remain design-only, while local media stays on the device. {PUBLIC_SHARE_MEDIA}</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>
@@ -4046,15 +4047,15 @@ function Privacy() {
         </div>
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Privacy Policy</h1>
         <div className="prose prose-lg mt-12 max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-a:text-primary hover:prose-a:text-foreground">
-           <p className="lead font-medium text-xl">The short version: We don't track your team, and Pixl Sports does not upload newly attached photos, videos, or logos. Account saves contain reusable design settings only.</p>
+           <p className="lead font-medium text-xl">The short version: We don't track your team, and Pixl Sports keeps source media on your device by default. Account saves contain reusable design settings only unless you use private media storage on a paid Hype Card account. {PUBLIC_SHARE_MEDIA}</p>
           <h3>1. Local Execution</h3>
-           <p>Pixl Sports is built as a local-first application. When you attach a photo, video, or logo to create a graphic, that media is processed on your device using browser APIs. Saving a design to your account sends the layout, text, colors, crop settings, and output configuration, but not the attached media. Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
+            <p>Pixl Sports is built as a local-first application. When you attach a photo, video, or logo to create a graphic, that source media is processed on your device using browser APIs. Guest and unpaid design saves send the layout, text, colors, crop settings, and output configuration, but not the attached media. Paid Hype Card accounts can keep private project media in cloud storage under the account quota. {PUBLIC_SHARE_MEDIA} Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
           <h3>2. Analytics</h3>
           <p>We do not use tracking pixels, session recording tools, or advertising analytics in this release.</p>
           <h3>3. Cookies</h3>
           <p>Project settings and attached media may be kept in local browser storage so they can survive a reload. If you create an account, Clerk uses necessary session cookies to maintain your login. We do not use advertising cookies.</p>
           <h3>4. Your Media</h3>
-           <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. To share a finished card, export the image or video and share that file; Pixl Sports does not host new finished media for public sharing.</p>
+            <p>You are responsible for having the rights and any required consent to use media you attach, including permission involving minors. Source media remains local by default, while a published Hype Card uses a prepared hosted copy so the public player page can display it. {PUBLIC_SHARE_MEDIA}</p>
         </div>
       </main>
     </StudioLayout>
