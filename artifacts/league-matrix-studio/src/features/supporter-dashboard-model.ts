@@ -111,6 +111,64 @@ export type CalendarViewState = 'loading' | 'invalid' | 'failed' | 'disconnected
 
 export type SupporterScheduleSource = 'team' | 'custom' | null;
 
+export type SupporterGameStage = 'upcoming' | 'live' | 'completed';
+
+export type SupporterGameLike = {
+  id: string;
+  date: string;
+  time: string;
+};
+
+export const supporterActiveGameStorageKey = 'pixlsports-supporter-active-game';
+
+export function getSupporterGameStage(
+  game: Pick<SupporterGameLike, 'date' | 'time'>,
+  now = new Date(),
+): SupporterGameStage {
+  const todayKey = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+  if (game.date > todayKey) return 'upcoming';
+  if (game.date < todayKey) return 'completed';
+
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(game.time.trim());
+  if (!timeMatch) return 'live';
+  const start = new Date(now);
+  start.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
+  if (start.getTime() > now.getTime()) return 'upcoming';
+  return now.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
+}
+
+export function getActiveSupporterGame<T extends SupporterGameLike>(
+  games: readonly T[],
+  selectedGameId: string | null,
+  now = new Date(),
+): T | undefined {
+  const selected = selectedGameId
+    ? games.find((game) => game.id === selectedGameId)
+    : undefined;
+  if (selected) return selected;
+  return games.find((game) => getSupporterGameStage(game, now) !== 'completed')
+    ?? games.at(-1);
+}
+
+export function readSupporterActiveGame(storage: Pick<Storage, 'getItem'>): string | null {
+  try {
+    return storage.getItem(supporterActiveGameStorageKey);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSupporterActiveGame(
+  storage: Pick<Storage, 'setItem'>,
+  gameId: string,
+) {
+  storage.setItem(supporterActiveGameStorageKey, gameId);
+}
+
 export function getSupporterScheduleSelection<T>(input: {
   hasTeamConnection: boolean;
   teamSchedule: { events: T[] } | null | undefined;

@@ -7,7 +7,14 @@ import {
   Video, Shuffle, CheckCircle2
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
-import { getCalendarViewState } from './supporter-dashboard-model';
+import {
+  getActiveSupporterGame,
+  getCalendarViewState,
+  getSupporterGameStage,
+  readSupporterActiveGame,
+  saveSupporterActiveGame,
+  type SupporterGameStage,
+} from './supporter-dashboard-model';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import heroBanner from '@/assets/hero-banner.webp';
@@ -141,27 +148,7 @@ function getEventDateParts(dateStr: string) {
   return { month: 'TBD', day: '-', dayOfWeek: '' };
 }
 
-type GameStage = 'upcoming' | 'live' | 'completed';
-
-function getGameStage(event: SupporterEvent | undefined, fallbackUpcoming: boolean): GameStage {
-  if (!event || !event.date) return fallbackUpcoming ? 'upcoming' : 'completed';
-  const today = new Date();
-  const eventDate = parseISO(event.date);
-  if (!isValid(eventDate)) return fallbackUpcoming ? 'upcoming' : 'completed';
-
-  const todayKey = format(today, 'yyyy-MM-dd');
-  if (event.date > todayKey) return 'upcoming';
-  if (event.date < todayKey) return 'completed';
-
-  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(event.time.trim());
-  if (!timeMatch) return fallbackUpcoming ? 'upcoming' : 'live';
-  const start = new Date(today);
-  start.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
-  if (start.getTime() > today.getTime()) return 'upcoming';
-  return today.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
-}
-
-const stageCopy: Record<GameStage, {
+const stageCopy: Record<SupporterGameStage, {
   label: string;
   kicker: string;
   description: string;
@@ -224,6 +211,9 @@ export function SupporterDashboardView({
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
   const [captureNotice, setCaptureNotice] = useState('');
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
+    typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
+  ));
   const hasAthlete = Boolean(profile.athleteName);
   const calendarState = getCalendarViewState({
     calendarCode: connected || loadingCalendar || calendarError || calendarConnectionInvalid ? 'connected-calendar' : '',
@@ -234,9 +224,10 @@ export function SupporterDashboardView({
     customSchedule: scheduleSource === 'custom' ? { events } : undefined,
   });
   const gameEvents = events.filter((event) => event.type === 'game');
-  const nextGame = gameEvents.find((event) => getGameStage(event, true) !== 'completed')
-    ?? gameEvents[gameEvents.length - 1];
-  const gameStage: GameStage = nextGame ? getGameStage(nextGame, nextGameIsUpcoming) : 'upcoming';
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
+  const gameStage: SupporterGameStage = nextGame
+    ? getSupporterGameStage(nextGame)
+    : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const currentStage = stageCopy[gameStage];
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
@@ -244,6 +235,22 @@ export function SupporterDashboardView({
   const statTrackerHref = nextGame
     ? `/studio/stat-tracker?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
     : '/studio/stat-tracker';
+  const checklistHref = nextGame
+    ? `/studio/checklist?gameId=${encodeURIComponent(nextGame.id)}`
+    : '/studio/checklist';
+  const hypeCardHref = nextGame
+    ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(nextGame.id)}&date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
+    : '/studio/hype-card';
+
+  const selectGame = (gameId: string) => {
+    setSelectedGameId(gameId);
+    try {
+      saveSupporterActiveGame(window.localStorage, gameId);
+    } catch {
+      // The selection still works for this session when storage is unavailable.
+    }
+    setCaptureNotice('');
+  };
 
   const handleSurpriseMe = () => {
     if (!nextGame) {
@@ -251,14 +258,14 @@ export function SupporterDashboardView({
       return;
     }
     if (gameStage === 'upcoming') {
-      onOpenChecklist();
+      setLocation(checklistHref);
       return;
     }
     if (gameStage === 'live') {
       setLocation(statTrackerHref);
       return;
     }
-    setLocation('/studio/hype-card');
+    setLocation(hypeCardHref);
   };
 
   const handleCapture = (kind: 'photo' | 'video', file?: File) => {
@@ -323,12 +330,31 @@ export function SupporterDashboardView({
                 Add a game to the schedule and Pixl Sports will put the right action front and center.
               </p>
             )}
+            {gameEvents.length > 1 && (
+              <label className="mt-5 block max-w-md">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Active game</span>
+                <select
+                  value={nextGame?.id ?? ''}
+                  onChange={(event) => selectGame(event.target.value)}
+                  className="mt-2 w-full border border-white/20 bg-[#111316] px-3 py-3 text-sm font-bold uppercase tracking-wide text-white outline-none focus:border-primary"
+                  aria-label="Choose the active game"
+                  data-testid="select-active-supporter-game"
+                >
+                  {gameEvents.map((game) => (
+                    <option key={game.id} value={game.id}>
+                      {formatDateDisplay(game.date)} · {game.opponent || 'Opponent TBD'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {gameStage === 'upcoming' && <button type="button" onClick={onOpenChecklist} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
+              {gameStage === 'upcoming' && nextGame && <button type="button" onClick={() => setLocation(checklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
               {gameStage === 'live' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
-              {gameStage === 'completed' && <Link href="/studio/hype-card" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
+              {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
               {!nextGame && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add a game</Link>}
+              {!nextGame && <button type="button" onClick={() => setLocation('/studio/stat-tracker')} className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/25 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-manual-game"><Activity className="h-4 w-4" /> Start manual game</button>}
               <button type="button" onClick={handleSurpriseMe} className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/25 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-surprise-me"><Shuffle className="h-4 w-4" /> Surprise me</button>
             </div>
           </div>
@@ -361,7 +387,7 @@ export function SupporterDashboardView({
               <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">Use your device camera or media picker. Nothing is uploaded, stored, or turned into a media record here.</p>
               {captureNotice && <p className="mt-3 text-sm font-bold text-primary" role="status" data-testid="status-capture-notice">{captureNotice}</p>}
             </div>
-            <div className="grid w-full gap-3 sm:grid-cols-2 lg:max-w-md">
+            <div className="grid w-full gap-3 sm:grid-cols-3 lg:max-w-2xl">
               <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-capture-photo">
                 <Camera className="h-5 w-5" /> Take a photo
                 <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('photo', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Take a photo of this game" data-testid="input-capture-photo" />
@@ -369,6 +395,10 @@ export function SupporterDashboardView({
               <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-capture-video">
                 <Video className="h-5 w-5" /> Record a video
                 <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-capture-video" />
+              </label>
+              <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-choose-existing-media">
+                <ImageIcon className="h-5 w-5" /> Choose existing
+                <input type="file" accept="image/*,video/*" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; handleCapture(file?.type.startsWith('video/') ? 'video' : 'photo', file); event.currentTarget.value = ''; }} aria-label="Choose an existing photo or video" data-testid="input-choose-existing-media" />
               </label>
               <p className="col-span-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">If camera capture is unavailable, your device picker can still choose a file.</p>
             </div>

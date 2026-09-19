@@ -56,7 +56,7 @@ import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-c
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
 import { prepareHypeCardShareMedia } from './hype-card-share';
-import { sports, getSportRule } from './stat-tracker';
+import { sports, getSportRule, normalizeTrackerData, type GameSession } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
 
 
@@ -132,6 +132,41 @@ function drawVideoContain(
 
 function slugify(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'hype-card';
+}
+
+type GameDayHypePrefill = {
+  date: string;
+  opponent: string;
+};
+
+function readGameDayHypePrefill(): GameDayHypePrefill | null {
+  if (typeof window === 'undefined') return null;
+  const search = new URLSearchParams(window.location.search);
+  if (search.get('source') !== 'game-day') return null;
+  return {
+    date: search.get('date') ?? '',
+    opponent: search.get('opponent') ?? '',
+  };
+}
+
+function getGameDayStatSummary(game: GameSession | undefined): string {
+  if (!game) return '';
+  const rule = getSportRule(game.sport);
+  const highlights = rule.stats
+    .filter((stat) => (game.stats[stat.id] ?? 0) > 0)
+    .slice(0, 2)
+    .map((stat) => `${game.stats[stat.id]} ${stat.shortLabel}`);
+  return highlights.length
+    ? highlights.join(' · ')
+    : `${game.score}–${game.opponentScore} final`;
+}
+
+function formatGameDayDate(value: string): string {
+  if (!value) return '';
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function formatVideoTime(seconds: number) {
@@ -952,6 +987,7 @@ export function HypeCardEditor() {
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
   const profile = getUserProfile(user);
+  const gameDayPrefill = useMemo(readGameDayHypePrefill, []);
   const queryClient = useQueryClient();
 
   const [project, setProject] = useState<HypeCardProject>(() => {
@@ -993,6 +1029,7 @@ export function HypeCardEditor() {
   const exportAbortRef = useRef<AbortController | null>(null);
   const mediaPreparationAbortRef = useRef<AbortController | null>(null);
   const cloudPreviewLoadingRef = useRef(false);
+  const gameDayPrefillAppliedRef = useRef(false);
 
   const initializedForId = useRef<string | null>(null);
   const lastSaved = useRef<HypeCardProject>(project);
@@ -1060,6 +1097,54 @@ export function HypeCardEditor() {
     },
   });
   const trackerProjects = projects?.filter(p => p.project.tool === 'stat-tracker') || [];
+
+  useEffect(() => {
+    if (
+      !gameDayPrefill
+      || cloudProjectId
+      || !isLoaded
+      || gameDayPrefillAppliedRef.current
+    ) {
+      return;
+    }
+    const completedGames = trackerProjects.flatMap((trackerProject) => (
+      normalizeTrackerData(trackerProject.project).games
+    ));
+    const matchingGame = completedGames
+      .filter((game) => game.status === 'final')
+      .find((game) => (
+        game.date === gameDayPrefill.date
+        && (!gameDayPrefill.opponent || game.opponent === gameDayPrefill.opponent)
+      ));
+    const context = [
+      gameDayPrefill.opponent ? `vs ${gameDayPrefill.opponent}` : '',
+      formatGameDayDate(gameDayPrefill.date),
+    ].filter(Boolean).join(' · ');
+    const statSummary = getGameDayStatSummary(matchingGame);
+
+    setProject((current) => ({
+      ...current,
+      playerName: profile.athleteName || current.playerName,
+      jerseyNumber: profile.jerseyNumber || current.jerseyNumber,
+      position: profile.position || current.position,
+      teamName: profile.teamName || current.teamName,
+      achievement: context || current.achievement,
+      stat: statSummary || current.stat,
+    }));
+    gameDayPrefillAppliedRef.current = true;
+    setNotice(statSummary
+      ? 'Game details and finished stats are ready. Choose media from your camera roll.'
+      : 'Game details are ready. Choose media from your camera roll.');
+  }, [
+    cloudProjectId,
+    gameDayPrefill,
+    isLoaded,
+    profile.athleteName,
+    profile.jerseyNumber,
+    profile.position,
+    profile.teamName,
+    trackerProjects,
+  ]);
 
   const { data: hypeShares } = useListHypeCardShares({
     query: {

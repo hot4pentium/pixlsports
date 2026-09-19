@@ -3,13 +3,35 @@ import test from 'node:test';
 
 import {
   createSupporterProfileSavePlan,
+  getActiveSupporterGame,
   getCalendarViewState,
+  getSupporterGameStage,
   getSupporterScheduleSelection,
   getStudioDestination,
   getUserRole,
   mapRecentSupporterProjects,
   supporterProfileFromUser,
 } from './supporter-dashboard-model';
+
+test('models upcoming, live, and completed supporter game phases', () => {
+  const now = new Date(2026, 8, 19, 15, 0, 0);
+  assert.equal(getSupporterGameStage({ date: '2026-09-20', time: '10:00' }, now), 'upcoming');
+  assert.equal(getSupporterGameStage({ date: '2026-09-19', time: '14:00' }, now), 'live');
+  assert.equal(getSupporterGameStage({ date: '2026-09-19', time: '10:00' }, now), 'completed');
+  assert.equal(getSupporterGameStage({ date: '2026-09-18', time: '18:00' }, now), 'completed');
+});
+
+test('keeps a valid selected game and otherwise chooses the next relevant game', () => {
+  const now = new Date(2026, 8, 19, 15, 0, 0);
+  const games = [
+    { id: 'past', date: '2026-09-18', time: '18:00' },
+    { id: 'today', date: '2026-09-19', time: '14:00' },
+    { id: 'future', date: '2026-09-21', time: '18:00' },
+  ];
+  assert.equal(getActiveSupporterGame(games, 'future', now)?.id, 'future');
+  assert.equal(getActiveSupporterGame(games, 'missing', now)?.id, 'today');
+  assert.equal(getActiveSupporterGame([games[0]], null, now)?.id, 'past');
+});
 
 test('routes fan and coach accounts to their correct /studio experiences', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'fan' } })), 'supporter');

@@ -3377,6 +3377,12 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const [notice, setNotice] = useState('');
   const [shareUrl, setShareUrl] = useState(shareToken ? `${appOrigin}${basePath}/checklist/${shareToken}` : '');
   const [revision, setRevision] = useState(1);
+  const requestedGameId = useRef(
+    shared || typeof window === 'undefined'
+      ? ''
+      : new URLSearchParams(window.location.search).get('gameId') ?? '',
+  );
+  const requestedGameApplied = useRef(false);
   const [liveStatus, setLiveStatus] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const saveTimer = useRef<number | null>(null);
   const latestChecklist = useRef(checklist);
@@ -3568,6 +3574,26 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
       }
     });
   };
+
+  useEffect(() => {
+    if (shared || !hydrated || requestedGameApplied.current || !requestedGameId.current) return;
+    const requestedGame = calendarGames.find((game) => game.id === requestedGameId.current);
+    if (!requestedGame) return;
+    requestedGameApplied.current = true;
+    const next = {
+      ...latestChecklist.current,
+      selectedGame: {
+        id: requestedGame.id,
+        date: requestedGame.date,
+        time: requestedGame.time,
+        location: requestedGame.location,
+        opponent: requestedGame.opponent,
+      },
+    };
+    latestChecklist.current = next;
+    setChecklist(next);
+    persistLocal(next);
+  }, [calendarGames, hydrated, shared]);
 
   const updateChecklist = (next: LocalGamedayChecklist) => {
     setChecklist(next);
