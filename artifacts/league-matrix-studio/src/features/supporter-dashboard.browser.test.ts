@@ -157,7 +157,7 @@ const profile = {
   sport: 'basketball',
 };
 
-const events = [{
+let dashboardEvents = [{
   id: 'game-1',
   type: 'game',
   date: '2026-09-21',
@@ -184,12 +184,13 @@ export function mount() {
     return originalFetch(input, init);
   };
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  createRoot(document.getElementById('test-root')).render(
+  const root = createRoot(document.getElementById('test-root'));
+  const renderDashboard = () => root.render(
     createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
         createElement(SupporterDashboardView, {
           profile,
-          events,
+          events: dashboardEvents,
           nextGameIsUpcoming: true,
           projects: [],
           scheduleSource: 'team',
@@ -208,6 +209,11 @@ export function mount() {
       ),
     ),
   );
+  window.__setSupporterDashboardEvents = (nextEvents) => {
+    dashboardEvents = nextEvents;
+    renderDashboard();
+  };
+  renderDashboard();
 }
 `;
 }
@@ -283,6 +289,72 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/supporter-dashboard-test.html`);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
 
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
+      /Get ready/,
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-got-it"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+
+    await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
+      false,
+    );
+
+    await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:upcoming")', page.sessionId);
+    await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-choose-task"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-choose-task"]')?.click()`, page.sessionId);
+
+    await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:upcoming")', page.sessionId);
+    await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-close\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-close"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-choose-task"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-choose-task"]')?.click()`, page.sessionId);
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' }])`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
+      /Happening now/,
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-got-it"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
+      { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'Visitors', status: 'upcoming' }
+    ])`, page.sessionId);
+    await connection.evaluate(`(() => { const select = document.querySelector('[data-testid="select-active-supporter-game"]'); if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector missing'); select.value = 'game-2'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
+      /Get ready/,
+    );
+    await connection.evaluate(`(() => { const select = document.querySelector('[data-testid="select-active-supporter-game"]'); if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector missing'); select.value = 'game-1'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([])`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-next-game-context\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
+      false,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"select-active-supporter-game\\"]"))', page.sessionId),
+      false,
+    );
+
     assert.equal(await connection.evaluate<boolean>(
       'Boolean(document.querySelector(\'[data-testid="button-choose-task"]\'))',
       page.sessionId,
@@ -333,6 +405,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
 
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") === null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid")', (value) => value === 'button-choose-task');
     assert.equal(await connection.evaluate<string>(
       'document.activeElement?.getAttribute("data-testid")',
       page.sessionId,

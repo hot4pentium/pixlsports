@@ -1,9 +1,9 @@
-import { type FormEvent, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
-  CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw,
+  CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw, X,
   Video, Shuffle, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
@@ -11,6 +11,9 @@ import {
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
+  getSupporterStageAcknowledgmentKey,
+  hasAcknowledgedSupporterGameStage,
+  acknowledgeSupporterGameStage,
   readSupporterActiveGame,
   saveSupporterActiveGame,
   supporterToolRoutes,
@@ -218,6 +221,16 @@ export function SupporterDashboardView({
     ? getSupporterGameStage(nextGame)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const currentStage = stageCopy[gameStage];
+  const stageReminderKey = nextGame
+    ? getSupporterStageAcknowledgmentKey(nextGame.id, gameStage)
+    : null;
+  const [, setReminderVersion] = useState(0);
+  const showStageReminder = Boolean(
+    nextGame
+    && stageReminderKey
+    && typeof window !== 'undefined'
+    && !hasAcknowledgedSupporterGameStage(window.localStorage, nextGame.id, gameStage),
+  );
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
@@ -230,6 +243,23 @@ export function SupporterDashboardView({
   const hypeCardHref = nextGame
     ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(nextGame.id)}&date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
     : supporterToolRoutes.hypeCard;
+
+  useEffect(() => {
+    if (!showStageReminder || !nextGame || !stageReminderKey) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      acknowledgeSupporterGameStage(window.localStorage, nextGame.id, gameStage);
+      setReminderVersion((version) => version + 1);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameStage, nextGame, showStageReminder, stageReminderKey]);
+
+  const dismissStageReminder = () => {
+    if (!nextGame) return;
+    acknowledgeSupporterGameStage(window.localStorage, nextGame.id, gameStage);
+    setReminderVersion((version) => version + 1);
+  };
 
   const selectGame = (gameId: string) => {
     setSelectedGameId(gameId);
@@ -294,6 +324,39 @@ export function SupporterDashboardView({
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
+      {showStageReminder && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-5 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stage-reminder-heading"
+          data-testid="stage-reminder-dialog"
+        >
+          <div className="relative w-full max-w-lg border border-primary/40 bg-card p-6 shadow-2xl clip-angled sm:p-8">
+            <button
+              type="button"
+              onClick={dismissStageReminder}
+              className="absolute right-4 top-4 grid h-10 w-10 place-items-center border border-border bg-muted text-foreground transition-colors hover:border-primary hover:text-primary"
+              aria-label="Close stage reminder"
+              data-testid="stage-reminder-close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <p className="pr-12 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{currentStage.kicker}</p>
+            <h2 id="stage-reminder-heading" className="mt-3 pr-12 font-display text-4xl uppercase tracking-wide">{currentStage.label}</h2>
+            <p className="mt-4 text-base font-medium leading-relaxed text-muted-foreground">{currentStage.description}</p>
+            <p className="mt-4 border-l-2 border-primary pl-3 text-sm font-bold uppercase tracking-wide">{gameTitle}</p>
+            <button
+              type="button"
+              onClick={dismissStageReminder}
+              className="mt-7 inline-flex min-h-12 w-full items-center justify-center bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
+              data-testid="stage-reminder-got-it"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
       {/* HEADER */}
       <header className="animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
         <div>

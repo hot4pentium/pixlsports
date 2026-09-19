@@ -7,4 +7,4 @@ Browser coverage for the supporter dashboard should use a standalone Vite HTML f
 
 **Why:** The live shell owns a React root that can replace a test DOM, and the inbox query renders alongside the dashboard even when the test only targets tool disclosure behavior.
 
-**How to apply:** Keep dashboard browser tests isolated from the app shell, mock only unrelated API responses at their actual generated routes, and assert keyboard, route, and responsive behavior against the real dashboard component.
+**How to apply:** Keep dashboard browser tests isolated from the app shell, mock only unrelated API responses at their actual generated routes, and assert keyboard, route, and responsive behavior against the real dashboard component. When a React close handler restores focus in a later animation frame, wait for the expected `activeElement` in CDP assertions instead of checking immediately after unmount.
