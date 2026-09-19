@@ -154,7 +154,9 @@ import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
 import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
-import youthFootballPlayer from '@/assets/youth-football-player-cutout.png';
+import hypecardPlayerPhoto from '@/assets/hypecard-player-photo.png';
+import statTrackerLive from '@/assets/stat-tracker-live.png';
+import statTrackerTapStat from '@/assets/stat-tracker-tap-stat.png';
 
 const HypeCardEditor = lazy(() =>
   import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
@@ -955,6 +957,18 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
       </div>
 
       <div className="min-h-[250px] bg-[#10181b] p-5 sm:p-6">
+        <div className="mb-4 border-l-2 border-primary pl-3">
+          <p className="text-sm font-semibold leading-relaxed text-white/85">{copy.what}</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/50">{copy.next}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {copy.steps.map((item, index) => (
+              <span key={item} className="inline-flex items-center gap-1.5 border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white/55">
+                <span className="text-primary">0{index + 1}</span> {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
         {kind === 'hype' && (
           <div className="relative mx-auto aspect-[760/1036] max-w-[270px] overflow-hidden border border-primary/40 bg-[#10181b]">
             <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
@@ -967,9 +981,9 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#102d1e]/35 via-transparent to-[#102d1e]/20" />
               <img
-                src={youthFootballPlayer}
-                alt="Youth football player media in the Hype Card"
-                className="relative h-full w-full object-contain object-bottom drop-shadow-[0_8px_10px_rgba(0,0,0,0.45)]"
+                src={hypecardPlayerPhoto}
+                alt="Youth football player running with a football"
+                className="relative h-full w-full object-cover object-center"
               />
             </div>
           </div>
