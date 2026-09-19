@@ -46,7 +46,7 @@ import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, Check, Clipboard, ClipboardCheck,
+  ArrowLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Clipboard, ClipboardCheck,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
   Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
