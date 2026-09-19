@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Image as ImageIcon, Loader2, Minus, Plus, RotateCcw, Save, Trophy, Video } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -344,6 +344,7 @@ export function StatTrackerPage() {
   const [date, setDate] = useState(searchParams.get('date') ?? localNextGame?.date ?? new Date().toISOString().slice(0, 10));
   const [opponent, setOpponent] = useState(searchParams.get('opponent') ?? localNextGame?.opponent ?? '');
   const [notes, setNotes] = useState('');
+  const [captureNotice, setCaptureNotice] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -488,6 +489,17 @@ export function StatTrackerPage() {
   const announce = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2600);
+  };
+
+  const handleCapture = (kind: 'photo' | 'video', file?: File) => {
+    if (!file) {
+      setCaptureNotice('No media selected. You can try again whenever you are ready.');
+      return;
+    }
+    const gameTitle = opponent ? `${profile.teamName || 'Your team'} vs ${opponent}` : 'this game';
+    setCaptureNotice(
+      `${kind === 'photo' ? 'Photo' : 'Video'} ready for ${gameTitle}. It stays in your camera roll; Pixl Sports does not upload or store it here.`,
+    );
   };
 
   const updateOwnedScheduledGameStatus = (
@@ -717,6 +729,32 @@ export function StatTrackerPage() {
           </button>
         ))}
       </div>
+
+      <section className="mb-6 border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-7" data-testid="section-stat-tracker-capture" aria-labelledby="stat-tracker-capture-heading">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="studio-textured-accent flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Camera className="h-4 w-4" /> Capture from this game</div>
+            <h2 id="stat-tracker-capture-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">Keep the moment close.</h2>
+            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">Use your device camera or media picker while you track the game. Nothing is uploaded, stored, or turned into a media record here.</p>
+            {captureNotice && <p className="studio-textured-accent mt-3 text-sm font-bold text-primary" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
+          </div>
+          <div className="grid w-full gap-3 sm:grid-cols-3 lg:max-w-2xl">
+            <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-capture-photo">
+              <Camera className="h-5 w-5" /> Take a photo
+              <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('photo', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Take a photo of this game" data-testid="input-stat-tracker-capture-photo" />
+            </label>
+            <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-capture-video">
+              <Video className="h-5 w-5" /> Record a video
+              <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
+            </label>
+            <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-choose-existing-media">
+              <ImageIcon className="h-5 w-5" /> Choose existing
+              <input type="file" accept="image/*,video/*" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; handleCapture(file?.type.startsWith('video/') ? 'video' : 'photo', file); event.currentTarget.value = ''; }} aria-label="Choose an existing photo or video" data-testid="input-stat-tracker-choose-existing-media" />
+            </label>
+            <p className="col-span-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">If camera capture is unavailable, your device picker can still choose a file.</p>
+          </div>
+        </div>
+      </section>
 
       {error && (
         <div className="mb-5 flex flex-col gap-3 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive sm:flex-row sm:items-center sm:justify-between" role="alert">
