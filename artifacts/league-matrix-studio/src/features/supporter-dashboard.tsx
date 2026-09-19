@@ -14,6 +14,7 @@ import {
   getSupporterStageAcknowledgmentKey,
   hasAcknowledgedSupporterGameStage,
   acknowledgeSupporterGameStage,
+  parseSupporterStorageSyncEvent,
   readSupporterActiveGame,
   saveSupporterActiveGame,
   supporterToolRoutes,
@@ -254,6 +255,28 @@ export function SupporterDashboardView({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameStage, nextGame, showStageReminder, stageReminderKey]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      const syncEvent = parseSupporterStorageSyncEvent(event);
+      if (!syncEvent) return;
+
+      if (syncEvent.type === 'active-game') {
+        if (!gameEvents.some((game) => game.id === syncEvent.gameId)) return;
+        setSelectedGameId(syncEvent.gameId);
+        setCaptureNotice('');
+        return;
+      }
+
+      if (syncEvent.key === stageReminderKey) {
+        setReminderVersion((version) => version + 1);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [gameEvents, stageReminderKey]);
 
   const dismissStageReminder = () => {
     if (!nextGame) return;

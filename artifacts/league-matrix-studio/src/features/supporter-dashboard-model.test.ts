@@ -10,7 +10,11 @@ import {
   getStudioDestination,
   getUserRole,
   mapRecentSupporterProjects,
+  parseSupporterStorageSyncEvent,
   supporterProfileFromUser,
+  supporterActiveGameStorageKey,
+  supporterStageAcknowledgmentStoragePrefix,
+  getSupporterStageAcknowledgmentKey,
   supporterToolRoutes,
 } from './supporter-dashboard-model';
 
@@ -70,6 +74,36 @@ test('keeps every supporter shortcut on its existing studio route', () => {
     statTracker: '/studio/stat-tracker',
     checklist: '/studio/checklist',
   });
+});
+
+test('parses only valid supporter storage synchronization events', () => {
+  assert.deepEqual(parseSupporterStorageSyncEvent({
+    key: supporterActiveGameStorageKey,
+    newValue: 'game-2',
+  }), {
+    type: 'active-game',
+    gameId: 'game-2',
+  });
+  assert.deepEqual(parseSupporterStorageSyncEvent({
+    key: getSupporterStageAcknowledgmentKey('game:2', 'live'),
+    newValue: '1',
+  }), {
+    type: 'stage-acknowledgment',
+    gameId: 'game:2',
+    stage: 'live',
+    key: getSupporterStageAcknowledgmentKey('game:2', 'live'),
+  });
+
+  for (const event of [
+    { key: 'unrelated', newValue: '1' },
+    { key: supporterActiveGameStorageKey, newValue: '' },
+    { key: supporterActiveGameStorageKey, newValue: null },
+    { key: `${getSupporterStageAcknowledgmentKey('game-1', 'upcoming')}-extra`, newValue: '1' },
+    { key: getSupporterStageAcknowledgmentKey('game-1', 'upcoming'), newValue: '0' },
+    { key: `${supporterStageAcknowledgmentStoragePrefix}:bad%ZZ:live`, newValue: '1' },
+  ]) {
+    assert.equal(parseSupporterStorageSyncEvent(event), null);
+  }
 });
 
 test('saved supporter metadata reloads as the same normalized profile', () => {

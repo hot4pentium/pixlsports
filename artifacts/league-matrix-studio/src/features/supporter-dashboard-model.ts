@@ -130,11 +130,48 @@ export type SupporterGameLike = {
 export const supporterActiveGameStorageKey = 'pixlsports-supporter-active-game';
 export const supporterStageAcknowledgmentStoragePrefix = 'pixlsports-supporter-stage-ack';
 
+export type SupporterStorageSyncEvent =
+  | { type: 'active-game'; gameId: string }
+  | { type: 'stage-acknowledgment'; gameId: string; stage: SupporterGameStage; key: string }
+  | null;
+
 export function getSupporterStageAcknowledgmentKey(
   gameId: string,
   stage: SupporterGameStage,
 ): string {
   return `${supporterStageAcknowledgmentStoragePrefix}:${encodeURIComponent(gameId)}:${stage}`;
+}
+
+export function parseSupporterStorageSyncEvent(event: {
+  key: string | null;
+  newValue: string | null;
+}): SupporterStorageSyncEvent {
+  if (event.key === supporterActiveGameStorageKey) {
+    const gameId = event.newValue?.trim();
+    return gameId ? { type: 'active-game', gameId } : null;
+  }
+
+  if (!event.key || event.newValue !== '1') return null;
+
+  const keyPrefix = `${supporterStageAcknowledgmentStoragePrefix}:`;
+  if (!event.key.startsWith(keyPrefix)) return null;
+
+  const match = /^([^:]+):(upcoming|live|completed)$/.exec(event.key.slice(keyPrefix.length));
+  if (!match) return null;
+
+  try {
+    const gameId = decodeURIComponent(match[1]);
+    if (!gameId.trim()) return null;
+    const stage = match[2] as SupporterGameStage;
+    return {
+      type: 'stage-acknowledgment',
+      gameId,
+      stage,
+      key: event.key,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function hasAcknowledgedSupporterGameStage(
