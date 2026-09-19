@@ -960,9 +960,16 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
             <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
               <img
+                src={footballFieldAsset}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover opacity-90"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#102d1e]/35 via-transparent to-[#102d1e]/20" />
+              <img
                 src={youthFootballPlayer}
                 alt="Youth football player media in the Hype Card"
-                className="h-full w-full object-contain object-bottom drop-shadow-[0_8px_10px_rgba(0,0,0,0.45)]"
+                className="relative h-full w-full object-contain object-bottom drop-shadow-[0_8px_10px_rgba(0,0,0,0.45)]"
               />
             </div>
           </div>
