@@ -388,7 +388,7 @@ export function SupporterDashboardView({
             {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
           </div>
           <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-            GAME DAY <span className="text-primary">HUB.</span>
+            GAME DAY <span className="text-primary studio-textured-heading-accent">HUB.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
             One clear path from the next game to the moment you send around.
@@ -933,7 +933,7 @@ export function SupporterProfileView({
           <ChevronRight className="w-4 h-4 rotate-180" /> Back to Dashboard
         </button>
         <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">
-          Supporter <span className="text-primary">Profile.</span>
+          Supporter <span className="text-primary studio-textured-heading-accent">Profile.</span>
         </h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Personalize your dashboard and pre-fill graphics with your athlete's details.

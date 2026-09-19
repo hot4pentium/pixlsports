@@ -617,7 +617,7 @@ function Studio({ role }: { role: UserRole }) {
               <Maximize className="h-4 w-4" /> Command Center
             </div>
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
-               {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary">CENTER.</span>
+               {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
             </h1>
              <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
                <span>Save Hype Cards, schedules, and roster lineups locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
@@ -2032,7 +2032,7 @@ function RosterEditor() {
             <div className="mb-4 inline-flex items-center gap-2 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
               <UsersRound className="h-4 w-4" /> Team Operations Board
             </div>
-            <h1 className="font-display text-5xl leading-[.88] tracking-tight sm:text-7xl">ROSTER <span className="text-primary">&amp; LINEUP.</span></h1>
+            <h1 className="font-display text-5xl leading-[.88] tracking-tight sm:text-7xl">ROSTER <span className="text-primary studio-textured-heading-accent">&amp; LINEUP.</span></h1>
             <p className="mt-5 max-w-2xl text-base font-medium leading-relaxed text-muted-foreground sm:text-lg">
               Keep the whole squad clear, then switch to a game-day board when it is time to share the call.
             </p>
@@ -3733,7 +3733,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
             </Link>
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : 'Game Day Hub'}</p>
-              <h1 className="mt-2 font-display text-5xl uppercase leading-[.88] tracking-tight sm:text-7xl">GAMEDAY<br /><span className="text-primary">CHECKLIST.</span></h1>
+              <h1 className="mt-2 font-display text-5xl uppercase leading-[.88] tracking-tight sm:text-7xl">GAMEDAY<br /><span className="text-primary studio-textured-heading-accent">CHECKLIST.</span></h1>
               <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : 'Start with the essentials, then make the list yours for every game day.'}</p>
             {shared && (
               <p className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground" role="status" data-testid="checklist-live-status">

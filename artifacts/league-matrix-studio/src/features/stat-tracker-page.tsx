@@ -702,7 +702,7 @@ export function StatTrackerPage() {
             <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
           </Link>
           <p className="text-xs font-bold uppercase tracking-widest text-primary">Live numbers</p>
-          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary">TRACKER.</span></h1>
+          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary studio-textured-heading-accent">TRACKER.</span></h1>
           <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Tap each play as it happens. Finish the game to add it to your season history.</p>
         </div>
         <div className="border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground clip-angled-sm">
