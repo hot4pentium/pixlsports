@@ -3,16 +3,15 @@ import test from 'node:test';
 
 import {
   createSupporterProfileSavePlan,
-  acknowledgeSupporterGameStage,
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
-  hasAcknowledgedSupporterGameStage,
   getSupporterScheduleSelection,
   getStudioDestination,
   getUserRole,
   mapRecentSupporterProjects,
   supporterProfileFromUser,
+  supporterToolRoutes,
 } from './supporter-dashboard-model';
 
 test('models upcoming, live, and completed supporter game phases', () => {
@@ -58,41 +57,19 @@ test('keeps a valid selected game and otherwise chooses the next relevant game',
   assert.equal(getActiveSupporterGame([games[0]], null, now)?.id, 'past');
 });
 
-test('remembers stage reminders independently for each game and stage', () => {
-  const values = new Map<string, string>();
-  const storage = {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => values.set(key, value),
-  };
-
-  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'upcoming'), false);
-
-  acknowledgeSupporterGameStage(storage, 'game-1', 'upcoming');
-
-  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'upcoming'), true);
-  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'live'), false);
-  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-2', 'upcoming'), false);
-});
-
-test('does not make unavailable storage block the stage reminder', () => {
-  const storage = {
-    getItem: () => {
-      throw new Error('storage unavailable');
-    },
-    setItem: () => {
-      throw new Error('storage unavailable');
-    },
-  };
-
-  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'live'), false);
-  acknowledgeSupporterGameStage(storage, 'game-1', 'live');
-  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'live'), false);
-});
-
 test('routes fan and coach accounts to their correct /studio experiences', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'fan' } })), 'supporter');
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'coach' } })), 'coach');
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'admin' } })), 'role-selection');
+});
+
+test('keeps every supporter shortcut on its existing studio route', () => {
+  assert.deepEqual(supporterToolRoutes, {
+    hypeCard: '/studio/hype-card',
+    schedule: '/studio/schedule',
+    statTracker: '/studio/stat-tracker',
+    checklist: '/studio/checklist',
+  });
 });
 
 test('saved supporter metadata reloads as the same normalized profile', () => {

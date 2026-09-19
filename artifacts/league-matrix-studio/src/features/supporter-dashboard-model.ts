@@ -114,6 +114,12 @@ export type SupporterScheduleSource = 'team' | 'custom' | null;
 
 export type SupporterGameStage = 'upcoming' | 'live' | 'completed';
 
+export const supporterToolRoutes = {
+  hypeCard: '/studio/hype-card',
+  schedule: '/studio/schedule',
+  statTracker: '/studio/stat-tracker',
+  checklist: '/studio/checklist',
+} as const;
 export type SupporterGameLike = {
   id: string;
   date: string;

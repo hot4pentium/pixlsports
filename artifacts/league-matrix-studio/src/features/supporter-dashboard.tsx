@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
@@ -11,10 +11,9 @@ import {
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
-  acknowledgeSupporterGameStage,
-  hasAcknowledgedSupporterGameStage,
   readSupporterActiveGame,
   saveSupporterActiveGame,
+  supporterToolRoutes,
   type SupporterGameStage,
 } from './supporter-dashboard-model';
 import type { ScheduleEventStatus } from './schedule-draft';
@@ -22,14 +21,6 @@ import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 export interface SupporterProfile {
   displayName: string;
@@ -164,28 +155,24 @@ const stageCopy: Record<SupporterGameStage, {
   kicker: string;
   description: string;
   accent: string;
-  nextMove: string;
 }> = {
   upcoming: {
     label: 'Get ready',
     kicker: 'Next up',
     description: 'Pack the details now so game day feels easy.',
     accent: 'Preparation',
-    nextMove: 'Open checklist',
   },
   live: {
     label: 'Capture the game',
     kicker: 'Happening now',
     description: 'Keep the game moving and save the moments worth replaying.',
     accent: 'Live',
-    nextMove: 'Track the game',
   },
   completed: {
     label: 'Send the hype',
     kicker: 'After the whistle',
     description: 'Turn the best part of the game into something worth sharing.',
     accent: 'Celebrate',
-    nextMove: 'Make a Hype Card',
   },
 };
 
@@ -212,8 +199,7 @@ export function SupporterDashboardView({
   const [, setLocation] = useLocation();
   const [captureNotice, setCaptureNotice] = useState('');
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [stageReminderOpen, setStageReminderOpen] = useState(false);
-  const [stageNow, setStageNow] = useState(() => new Date());
+  const toolsTriggerRef = useRef<HTMLButtonElement>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
@@ -227,37 +213,23 @@ export function SupporterDashboardView({
     customSchedule: scheduleSource === 'custom' ? { events } : undefined,
   });
   const gameEvents = events.filter((event) => event.type === 'game');
-  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, stageNow);
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
   const gameStage: SupporterGameStage = nextGame
-    ? getSupporterGameStage(nextGame, stageNow)
+    ? getSupporterGameStage(nextGame)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const currentStage = stageCopy[gameStage];
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
   const statTrackerHref = nextGame
-    ? `/studio/stat-tracker?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
-    : '/studio/stat-tracker';
+    ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
+    : supporterToolRoutes.statTracker;
   const checklistHref = nextGame
     ? `/studio/checklist?gameId=${encodeURIComponent(nextGame.id)}`
-    : '/studio/checklist';
+    : supporterToolRoutes.checklist;
   const hypeCardHref = nextGame
     ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(nextGame.id)}&date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
-    : '/studio/hype-card';
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setStageNow(new Date()), 30_000);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!nextGame) {
-      setStageReminderOpen(false);
-      return;
-    }
-
-    setStageReminderOpen(!hasAcknowledgedSupporterGameStage(window.localStorage, nextGame.id, gameStage));
-  }, [nextGame?.id, gameStage]);
+    : supporterToolRoutes.hypeCard;
 
   const selectGame = (gameId: string) => {
     setSelectedGameId(gameId);
@@ -295,68 +267,33 @@ export function SupporterDashboardView({
     );
   };
 
-  const dismissStageReminder = () => {
-    if (nextGame) {
-      acknowledgeSupporterGameStage(window.localStorage, nextGame.id, gameStage);
-    }
-    setStageReminderOpen(false);
+  const focusFirstTool = () => {
+    document.getElementById('all-tools-panel')?.querySelector<HTMLElement>('a, button')?.focus();
   };
 
   const openTools = () => {
     setToolsOpen(true);
     window.requestAnimationFrame(() => {
       document.getElementById('all-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      focusFirstTool();
     });
+  };
+
+  const closeTools = () => {
+    setToolsOpen(false);
+    window.requestAnimationFrame(() => toolsTriggerRef.current?.focus());
+  };
+
+  const toggleTools = () => {
+    if (toolsOpen) {
+      closeTools();
+    } else {
+      openTools();
+    }
   };
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
-      {nextGame && (
-        <Dialog
-          open={stageReminderOpen}
-          onOpenChange={(open) => {
-            if (!open) dismissStageReminder();
-          }}
-        >
-          <DialogContent
-            className="w-[calc(100%-2rem)] overflow-hidden border-primary/40 bg-[#111316] p-0 text-white sm:max-w-lg"
-            data-testid="stage-reminder-dialog"
-          >
-            <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" />
-            <DialogHeader className="relative border-b border-white/10 bg-foreground p-5 text-left sm:p-7">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{currentStage.accent}</p>
-              <DialogTitle className="mt-2 font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
-                {currentStage.label}
-              </DialogTitle>
-              <DialogDescription className="mt-3 max-w-md text-left text-sm font-medium leading-relaxed text-white/65">
-                {currentStage.description}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="relative space-y-4 p-5 sm:p-7">
-              <div className="border border-primary/30 bg-primary/10 p-4 clip-angled-sm">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Your active game</p>
-                <p className="mt-2 font-display text-2xl uppercase leading-none tracking-wide">{gameTitle}</p>
-                <p className="mt-2 text-xs font-bold uppercase tracking-widest text-white/55">
-                  {formatDateDisplay(nextGame.date)} · {formatTimeDisplay(nextGame.time)}
-                </p>
-              </div>
-              <p className="text-sm font-bold uppercase tracking-widest text-white/75">
-                Next move: <span className="text-primary">{currentStage.nextMove}</span>
-              </p>
-            </div>
-            <DialogFooter className="relative border-t border-white/10 bg-black/10 p-5 sm:p-7">
-              <button
-                type="button"
-                onClick={dismissStageReminder}
-                className="inline-flex min-h-12 w-full items-center justify-center bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm"
-                data-testid="button-stage-reminder-got-it"
-              >
-                Got it
-              </button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
       {/* HEADER */}
       <header className="animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
         <div>
@@ -365,24 +302,25 @@ export function SupporterDashboardView({
             {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
           </div>
           <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-            GAME DAY <span className="text-primary supporter-dashboard-heading-accent">HUB.</span>
+            GAME DAY <span className="text-primary">HUB.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
             One clear path from the next game to the moment you send around.
           </p>
           <button
             type="button"
-            onClick={openTools}
+            onClick={toggleTools}
             aria-controls="all-tools-panel"
             aria-expanded={toolsOpen}
             className="mt-6 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm"
             data-testid="button-choose-task"
+            ref={toolsTriggerRef}
           >
             Choose a task / all tools <ArrowRight className="h-4 w-4" />
           </button>
         </div>
 
-        <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading">
+        <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading" data-testid="athlete-summary">
           <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
           <div className="relative flex items-center gap-4 bg-[#111316] p-4 sm:gap-5 sm:p-5">
@@ -411,7 +349,7 @@ export function SupporterDashboardView({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">My athlete</p>
-              <h2 id="athlete-summary-heading" className="mt-1 truncate font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
+              <h2 id="athlete-summary-heading" className="mt-1 break-words font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
                 {hasAthlete ? profile.athleteName : 'Unassigned'}
               </h2>
               {hasAthlete ? (
@@ -429,7 +367,7 @@ export function SupporterDashboardView({
               {profile.teamName && (
                 <div className="mt-3 inline-flex max-w-full items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1 text-white/80 clip-angled-sm">
                   <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span className="truncate text-[10px] font-bold uppercase tracking-widest">{profile.teamName}</span>
+                  <span className="min-w-0 whitespace-normal break-words text-[10px] font-bold uppercase tracking-widest" data-testid="athlete-team-name">{profile.teamName}</span>
                 </div>
               )}
             </div>
@@ -550,13 +488,13 @@ export function SupporterDashboardView({
         <div className="border-b border-border pb-4">
           <button
             type="button"
-            onClick={() => setToolsOpen((open) => !open)}
+            onClick={toggleTools}
             aria-controls="all-tools-panel"
             aria-expanded={toolsOpen}
             className="flex w-full items-center justify-between gap-4 text-left"
             data-testid="button-all-tools-toggle"
           >
-            <span>
+            <span id="all-tools-heading">
               <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
               <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
             </span>
@@ -568,8 +506,16 @@ export function SupporterDashboardView({
           <p className="mt-3 text-sm font-medium text-muted-foreground">The next best move is always close.</p>
         </div>
         {toolsOpen && (
-          <div id="all-tools-panel" className="mt-4 grid gap-2 sm:grid-cols-2" data-testid="all-tools-panel">
-            <Link href="/studio/hype-card" className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
+          <div
+            id="all-tools-panel"
+            className="mt-4 grid gap-2 sm:grid-cols-2"
+            data-testid="all-tools-panel"
+            aria-labelledby="all-tools-heading"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') closeTools();
+            }}
+          >
+            <Link href={supporterToolRoutes.hypeCard} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
               <span className="flex min-w-0 items-center gap-3">
                 <Zap className="h-5 w-5 shrink-0 text-primary" />
                 <span className="min-w-0">
@@ -579,7 +525,7 @@ export function SupporterDashboardView({
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
             </Link>
-            <Link href="/studio/schedule" className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-schedule">
+            <Link href={supporterToolRoutes.schedule} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-schedule">
               <span className="flex min-w-0 items-center gap-3">
                 <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
                 <span className="min-w-0">
