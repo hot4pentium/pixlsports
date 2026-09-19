@@ -155,9 +155,21 @@ import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
 import hypecardPlayerPhoto from '@/assets/hypecard-player-photo.png';
+import hypecardPlayerPhoto320 from '@/assets/hypecard-player-photo-320.webp';
+import hypecardPlayerPhoto640 from '@/assets/hypecard-player-photo-640.webp';
+import hypecardPlayerPhoto1024 from '@/assets/hypecard-player-photo-1024.webp';
 import statTrackerLive from '@/assets/stat-tracker-live.png';
+import statTrackerLive480 from '@/assets/stat-tracker-live-480.webp';
+import statTrackerLive768 from '@/assets/stat-tracker-live-768.webp';
+import statTrackerLive974 from '@/assets/stat-tracker-live-974.webp';
 import statTrackerTapStat from '@/assets/stat-tracker-tap-stat.png';
+import statTrackerTapStat480 from '@/assets/stat-tracker-tap-stat-480.webp';
+import statTrackerTapStat768 from '@/assets/stat-tracker-tap-stat-768.webp';
+import statTrackerTapStat1248 from '@/assets/stat-tracker-tap-stat-1248.webp';
 import gameDayChecklist from '@/assets/game-day-checklist.png';
+import gameDayChecklist480 from '@/assets/game-day-checklist-480.webp';
+import gameDayChecklist768 from '@/assets/game-day-checklist-768.webp';
+import gameDayChecklist1404 from '@/assets/game-day-checklist-1404.webp';
 
 const HypeCardEditor = lazy(() =>
   import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
@@ -266,6 +278,41 @@ const toolData: Record<ToolKind, {
     templateNames: [],
   },
 };
+
+type ResponsiveLandingImageProps = {
+  alt: string;
+  className: string;
+  fallback: string;
+  sizes: string;
+  srcSet: string;
+  width: number;
+  height: number;
+};
+
+function ResponsiveLandingImage({
+  alt,
+  className,
+  fallback,
+  sizes,
+  srcSet,
+  width,
+  height,
+}: ResponsiveLandingImageProps) {
+  return (
+    <picture className="contents">
+      <source type="image/webp" srcSet={srcSet} sizes={sizes} />
+      <img
+        src={fallback}
+        alt={alt}
+        width={width}
+        height={height}
+        loading="lazy"
+        decoding="async"
+        className={className}
+      />
+    </picture>
+  );
+}
 
 type LandingJourneyStep = {
   icon: typeof CalendarDays;
@@ -981,10 +1028,14 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
                 className="absolute inset-0 h-full w-full object-cover opacity-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#102d1e]/35 via-transparent to-[#102d1e]/20" />
-              <img
-                src={hypecardPlayerPhoto}
+              <ResponsiveLandingImage
+                fallback={hypecardPlayerPhoto}
+                srcSet={`${hypecardPlayerPhoto320} 320w, ${hypecardPlayerPhoto640} 640w, ${hypecardPlayerPhoto1024} 1024w`}
+                sizes="(min-width: 640px) 170px, 156px"
                 alt="Youth football player running with a football"
                 className="relative h-full w-full object-cover object-center"
+                width={1024}
+                height={1536}
               />
             </div>
           </div>
@@ -1034,13 +1085,29 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
           <div className="grid gap-3 md:grid-cols-2">
             <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
               <div className="h-[180px] overflow-hidden sm:h-[220px]">
-                <img src={statTrackerLive} alt="Stat Tracker live game score controls" className="h-full w-full object-cover object-top" />
+                <ResponsiveLandingImage
+                  fallback={statTrackerLive}
+                  srcSet={`${statTrackerLive480} 480w, ${statTrackerLive768} 768w, ${statTrackerLive974} 974w`}
+                  sizes="(min-width: 768px) 50vw, calc(100vw - 3rem)"
+                  alt="Stat Tracker live game score controls"
+                  className="h-full w-full object-cover object-top"
+                  width={974}
+                  height={802}
+                />
               </div>
               <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">1 / Track the live game</figcaption>
             </figure>
             <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
               <div className="h-[180px] overflow-hidden sm:h-[220px]">
-                <img src={statTrackerTapStat} alt="Stat Tracker tap-a-stat detail screen" className="h-full w-full object-cover object-top" />
+                <ResponsiveLandingImage
+                  fallback={statTrackerTapStat}
+                  srcSet={`${statTrackerTapStat480} 480w, ${statTrackerTapStat768} 768w, ${statTrackerTapStat1248} 1248w`}
+                  sizes="(min-width: 768px) 50vw, calc(100vw - 3rem)"
+                  alt="Stat Tracker tap-a-stat detail screen"
+                  className="h-full w-full object-cover object-top"
+                  width={1248}
+                  height={1110}
+                />
               </div>
               <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">2 / Tap a stat and build the report</figcaption>
             </figure>
@@ -1049,10 +1116,14 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
 
         {kind === 'checklist' && (
           <div className="relative aspect-[16/10] overflow-hidden border border-primary/30 bg-[#f5f0e3]">
-            <img
-              src={gameDayChecklist}
+            <ResponsiveLandingImage
+              fallback={gameDayChecklist}
+              srcSet={`${gameDayChecklist480} 480w, ${gameDayChecklist768} 768w, ${gameDayChecklist1404} 1404w`}
+              sizes="(min-width: 1024px) 800px, calc(100vw - 3rem)"
               alt="Game Day checklist with saved game selection, equipment tasks, and team details"
               className="absolute inset-0 h-full w-full object-cover object-top"
+              width={1404}
+              height={1378}
             />
           </div>
         )}
