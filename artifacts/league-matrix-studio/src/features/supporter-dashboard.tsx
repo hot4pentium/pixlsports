@@ -2,9 +2,9 @@ import { type FormEvent, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
-  Users, Activity, Image as ImageIcon, ShieldCheck,
+  Users, Activity, Image as ImageIcon,
   CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw,
-  Video, Shuffle, CheckCircle2
+  Video, Shuffle, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -18,7 +18,6 @@ import {
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
-import heroBanner from '@/assets/hero-banner.webp';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
 
@@ -176,21 +175,6 @@ const stageCopy: Record<SupporterGameStage, {
   },
 };
 
-function QuickActionSportBackground() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-gradient-to-br from-[#07130d] via-[#0b1511] to-[#050807]">
-      <div className="absolute inset-0 bg-tech-grid-dark opacity-55" />
-      <div className="absolute inset-y-0 left-[30%] w-px -skew-x-[18deg] bg-white/10" />
-      <div className="quick-sport-flow-primary absolute inset-y-[-20%] left-[48%] w-8 -skew-x-[18deg] bg-primary/10 transition-transform duration-500 group-hover:translate-x-2" />
-      <div className="quick-sport-flow-secondary absolute inset-y-[-20%] left-[66%] w-3 -skew-x-[18deg] bg-white/[0.05] transition-transform duration-500 group-hover:translate-x-3" />
-      <div className="absolute -right-10 top-1/2 h-28 w-28 -translate-y-1/2 rounded-full border border-primary/20" />
-      <div className="absolute -right-4 top-1/2 h-px w-24 -translate-y-1/2 bg-gradient-to-r from-primary/30 to-transparent" />
-      <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-primary/15 blur-2xl" />
-      <div className="quick-sport-flow-glow absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/20 blur-2xl transition-transform duration-500 group-hover:scale-125" />
-    </div>
-  );
-}
-
 export function SupporterDashboardView({
   profile,
   events,
@@ -213,6 +197,7 @@ export function SupporterDashboardView({
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
   const [captureNotice, setCaptureNotice] = useState('');
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
@@ -280,27 +265,96 @@ export function SupporterDashboardView({
     );
   };
 
-  const scrollToTools = () => {
-    document.getElementById('all-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const openTools = () => {
+    setToolsOpen(true);
+    window.requestAnimationFrame(() => {
+      document.getElementById('all-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
       {/* HEADER */}
-      <header className="animate-slide-up">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
-          <Activity className="w-4 h-4 text-primary" />
-          {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
+      <header className="animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
+            <Activity className="w-4 h-4 text-primary" />
+            {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
+          </div>
+          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
+            GAME DAY <span className="text-primary">HUB.</span>
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
+            One clear path from the next game to the moment you send around.
+          </p>
+          <button
+            type="button"
+            onClick={openTools}
+            aria-controls="all-tools-panel"
+            aria-expanded={toolsOpen}
+            className="mt-6 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm"
+            data-testid="button-choose-task"
+          >
+            Choose a task / all tools <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
-        <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-          GAME DAY <span className="text-primary">HUB.</span>
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
-          One clear path from the next game to the moment you send around.
-        </p>
-        <button type="button" onClick={scrollToTools} aria-controls="all-tools" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-choose-task">
-          Choose a task / all tools <ArrowRight className="h-4 w-4" />
-        </button>
+
+        <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading">
+          <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
+          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
+          <div className="relative flex items-center gap-4 bg-[#111316] p-4 sm:gap-5 sm:p-5">
+            <div className="relative shrink-0">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-background text-foreground shadow-[0_0_26px_rgba(22,232,120,0.25)] sm:h-20 sm:w-20">
+                {athletePhotoUrl ? (
+                  <div className="h-full w-full overflow-hidden rounded-full">
+                    <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
+                  </div>
+                ) : hasAthlete ? (
+                  <User className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
+                ) : (
+                  <Users className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={onOpenProfile}
+                className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-7 sm:w-7"
+                aria-label="Edit athlete profile"
+                title="Edit athlete profile"
+                data-testid="btn-edit-athlete-avatar"
+              >
+                <PenSquare className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">My athlete</p>
+              <h2 id="athlete-summary-heading" className="mt-1 truncate font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
+                {hasAthlete ? profile.athleteName : 'Unassigned'}
+              </h2>
+              {hasAthlete ? (
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/65 sm:text-xs">
+                  {profile.jerseyNumber && <span><span className="text-primary">#</span>{profile.jerseyNumber}</span>}
+                  {profile.jerseyNumber && profile.position && <span className="opacity-40">•</span>}
+                  {profile.position && <span>{profile.position}</span>}
+                  {profile.relationship && <><span className="opacity-40">•</span><span>{profile.relationship}</span></>}
+                </div>
+              ) : (
+                <button type="button" onClick={onOpenProfile} className="mt-2 text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
+                  Set up athlete details
+                </button>
+              )}
+              {profile.teamName && (
+                <div className="mt-3 inline-flex max-w-full items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1 text-white/80 clip-angled-sm">
+                  <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate text-[10px] font-bold uppercase tracking-widest">{profile.teamName}</span>
+                </div>
+              )}
+            </div>
+            <div className="relative z-10 shrink-0">
+              <HypeCardReplyInboxTrigger variant="coach" className="!px-2.5 !py-2" />
+            </div>
+          </div>
+        </section>
       </header>
 
       <section
@@ -408,205 +462,72 @@ export function SupporterDashboardView({
         </section>
       )}
 
-      {/* ATHLETE HERO */}
-      <section className="athlete-hero-depth animate-slide-up delay-100 relative bg-foreground text-background overflow-hidden clip-angled p-1 border border-border/20">
-        <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] mix-blend-screen pointer-events-none" />
-        
-        <div className="athlete-hero-inner-depth relative flex flex-row items-center gap-4 bg-[#111316] p-4 sm:gap-6 sm:p-6 md:items-start md:gap-8 md:p-10 clip-angled">
-          <img
-            src={heroBanner}
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-70"
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0b0d0f]/85 via-[#0b0d0f]/45 to-[#0b0d0f]/25" />
-          <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
-          <div className="pointer-events-none absolute inset-x-8 top-0 z-[2] h-px bg-gradient-to-r from-transparent via-white/55 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-24 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-          {/* Avatar Circle */}
-          <div className="relative z-10 shrink-0">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-[3px] border-primary bg-background text-foreground shadow-[0_18px_34px_rgba(0,0,0,0.58),0_0_34px_rgba(22,232,120,0.3)] sm:h-28 sm:w-28 md:h-40 md:w-40 md:border-4">
-              {athletePhotoUrl ? (
-                <div className="h-full w-full overflow-hidden rounded-full">
-                  <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
-                </div>
-              ) : hasAthlete ? (
-                  <User className="h-10 w-10 opacity-20 sm:h-14 sm:w-14 md:h-16 md:w-16" />
-              ) : (
-                  <Users className="h-10 w-10 opacity-20 sm:h-14 sm:w-14 md:h-16 md:w-16" />
-              )}
-            </div>
-            <button 
-              onClick={onOpenProfile}
-              className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-9 sm:w-9 md:h-10 md:w-10"
-              aria-label="Edit Profile"
-              title="Edit Profile"
-              data-testid="btn-edit-athlete-avatar"
-            >
-              <PenSquare className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
-            </button>
-          </div>
-
-          {/* Info */}
-          <div className="relative z-10 min-w-0 flex-1 text-left">
-            <div className="mb-1 flex items-center justify-start gap-1 text-[10px] font-bold uppercase tracking-widest text-primary sm:mb-2 sm:gap-2 sm:text-xs">
-              <span className="flex items-center gap-2">My Athlete</span>
-            </div>
-            {hasAthlete ? (
-              <>
-                <h2 className="mb-2 break-words font-display text-3xl uppercase leading-none tracking-wide text-white sm:mb-3 sm:text-5xl lg:text-6xl">
-                  {profile.athleteName}
-                </h2>
-                <div className="flex flex-wrap items-center justify-start gap-x-1.5 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/70 sm:gap-x-3 sm:gap-y-2 sm:text-sm md:gap-x-4 md:text-base">
-                  {profile.jerseyNumber && (
-                    <span className="text-white flex items-center gap-1">
-                      <span className="text-primary">#</span>{profile.jerseyNumber}
-                    </span>
-                  )}
-                  {profile.jerseyNumber && profile.position && <span className="opacity-50">•</span>}
-                  {profile.position && <span>{profile.position}</span>}
-                  {(profile.jerseyNumber || profile.position) && profile.relationship && <span className="opacity-50">•</span>}
-                  {profile.relationship && <span>{profile.relationship}</span>}
-                </div>
-
-                {profile.teamName && (
-                  <div className="mt-3 inline-flex items-center justify-start gap-2 border border-white/10 bg-white/5 px-3 py-1.5 sm:gap-3 sm:px-4 sm:py-2 md:mt-6 clip-angled-sm">
-                    <Trophy className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
-                    <span className="font-display text-base uppercase tracking-wide text-white sm:text-xl">{profile.teamName}</span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <h2 className="mb-2 font-display text-3xl uppercase leading-none tracking-wide text-white/50 sm:mb-3 sm:text-5xl lg:text-6xl">
-                  UNASSIGNED
-                </h2>
-                <p className="mb-3 max-w-md text-xs font-medium text-white/60 sm:mb-6 sm:text-sm">
-                  Set up your athlete's details to personalize your graphics and dashboard.
-                </p>
-                <button
-                  onClick={onOpenProfile}
-                  className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-all hover:brightness-110 sm:px-6 sm:py-2.5 sm:text-sm clip-angled-sm"
-                  data-testid="btn-setup-athlete"
-                >
-                  <PenSquare className="w-4 h-4" /> Setup Profile
-                </button>
-              </>
-            )}
-
-            <div className="mt-4 block lg:hidden w-full max-w-[240px]">
-              <HypeCardReplyInboxTrigger variant="supporter" />
-            </div>
-          </div>
-
-          {/* Quick Actions (Desktop only) */}
-          <div className="relative z-10 hidden lg:flex flex-col gap-3 min-w-[240px]">
-            <HypeCardReplyInboxTrigger variant="supporter" />
-            <button onClick={onOpenProfile} className="flex items-center justify-between px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors group" data-testid="btn-edit-profile-side">
-              <span className="text-sm font-bold uppercase tracking-widest text-white/80 group-hover:text-white">Profile Details</span>
-              <ChevronRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-1" />
-            </button>
-            <div className={`px-5 py-3 border flex items-center gap-3 ${scheduleSource ? 'bg-primary/10 text-primary border-primary/30' : 'bg-white/5 text-white/50 border-white/10'}`}>
-              {scheduleSource === 'team' ? <ShieldCheck className="w-5 h-5" /> : scheduleSource === 'custom' ? <CalendarDays className="w-5 h-5" /> : <CalendarX2 className="w-5 h-5" />}
-              <span className="min-w-0 text-sm font-bold uppercase tracking-widest">
-                {scheduleSource ? (
-                  <>
-                    <span className="block">{scheduleSource === 'team' ? 'Team Connected' : 'Custom Schedule'}</span>
-                    <span className="block truncate text-[10px] text-white/55">{connectionLabel || 'Live team calendar'}</span>
-                  </>
-                ) : 'No Schedule'}
-              </span>
-            </div>
-            {connected && (
-              <button onClick={onDisconnect} className="text-xs font-bold text-white/40 hover:text-destructive transition-colors text-right uppercase tracking-widest mt-1" data-testid="btn-disconnect">
-                Disconnect
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* QUICK CREATE */}
+      {/* TOOL CHOOSER */}
       <section id="all-tools" className="animate-slide-up delay-200">
-        <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-          <div>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</p>
-            <h3 className="font-display text-3xl uppercase tracking-wide">All tools</h3>
-          </div>
-          <span className="hidden text-sm font-medium text-muted-foreground sm:inline">The next best move is always close.</span>
+        <div className="border-b border-border pb-4">
+          <button
+            type="button"
+            onClick={() => setToolsOpen((open) => !open)}
+            aria-controls="all-tools-panel"
+            aria-expanded={toolsOpen}
+            className="flex w-full items-center justify-between gap-4 text-left"
+            data-testid="button-all-tools-toggle"
+          >
+            <span>
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
+              <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm">
+              {toolsOpen ? 'Hide tools' : 'View tools'}
+              <ChevronDown className={`h-4 w-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">The next best move is always close.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Link href="/studio/hype-card" className="group relative grid min-h-[148px] grid-cols-[42%_1fr] overflow-hidden border border-border bg-[#07130d] text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-hype">
-            <QuickActionSportBackground />
-            <div className="relative z-10 flex min-h-[148px] min-w-0 items-center justify-center overflow-hidden border-r border-white/10 p-3">
-              {profile.teamName ? (
-                <span
-                  className="relative z-10 max-w-full whitespace-nowrap px-1 text-center font-display leading-none tracking-wide text-white uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
-                  style={{ fontSize: `${Math.max(10, Math.min(30, 220 / Math.max(profile.teamName.trim().length, 6)))}px` }}
-                  title={profile.teamName}
-                >
-                  {profile.teamName}
+        {toolsOpen && (
+          <div id="all-tools-panel" className="mt-4 grid gap-2 sm:grid-cols-2" data-testid="all-tools-panel">
+            <Link href="/studio/hype-card" className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
+              <span className="flex min-w-0 items-center gap-3">
+                <Zap className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Hype Card</span>
+                  <span className="block text-xs font-medium text-muted-foreground">Celebrate a big moment.</span>
                 </span>
-              ) : (
-                <img
-                  src={`${import.meta.env.BASE_URL}pixlsports-logo.png`}
-                  alt="Pixl Sports"
-                  className="relative z-10 max-h-16 w-full object-contain opacity-90 transition-transform duration-500 group-hover:scale-105"
-                  data-testid="img-quick-hype-placeholder"
-                />
-              )}
-              <span className="absolute bottom-2 left-3 z-10 text-[9px] font-bold uppercase tracking-[0.18em] text-primary">
-                {profile.teamName ? 'Team card' : 'Start with Pixl Sports'}
               </span>
-            </div>
-            <div className="relative z-10 flex min-w-0 items-center justify-between gap-3 p-5">
-              <div className="min-w-0">
-                <h4 className="font-display text-2xl uppercase tracking-wide transition-colors group-hover:text-primary">Hype Card</h4>
-                <p className="mt-1 text-sm font-medium text-white/60">Celebrate a big moment.</p>
-              </div>
-              <ArrowRight className="h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-            </div>
-          </Link>
-          <Link href="/studio/schedule" className="group relative flex min-h-[148px] items-center justify-between overflow-hidden border border-border bg-[#07130d] p-6 text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-schedule">
-            <QuickActionSportBackground />
-            <div className="relative z-10 min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-                {nextGame ? (nextGameIsUpcoming ? formatDaysUntil(nextGame.date) : 'Scheduled') : 'Game Day'}
-              </p>
-              <h4 className="mt-1 font-display text-2xl uppercase tracking-wide group-hover:text-primary transition-colors">Game Day</h4>
-              {nextGame ? (
-                <p className="mt-1 truncate text-sm font-medium text-white/60">
-                  {formatDateDisplay(nextGame.date)} · {formatTimeDisplay(nextGame.time)}
-                </p>
-              ) : (
-                <p className="mt-1 text-sm font-medium text-white/60">
-                  {scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}
-                </p>
-              )}
-            </div>
-            <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-          </Link>
-          <button type="button" onClick={onOpenStatTracker} className="group relative flex min-h-[148px] items-center justify-between overflow-hidden border border-border bg-[#07130d] p-6 text-left text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-stat-tracker">
-            <QuickActionSportBackground />
-            <div className="relative z-10 min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live numbers</p>
-              <h4 className="mt-1 font-display text-2xl uppercase tracking-wide">Stat Tracker</h4>
-              <p className="mt-1 text-sm font-medium text-white/60">Track the game as it happens.</p>
-            </div>
-            <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-          </button>
-          <button type="button" onClick={onOpenChecklist} className="group relative flex min-h-[148px] items-center justify-between overflow-hidden border border-border bg-[#07130d] p-6 text-left text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-checklist">
-            <QuickActionSportBackground />
-            <div className="relative z-10 min-w-0">
-              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-primary"><ClipboardCheck className="h-3.5 w-3.5" /> Ready together</p>
-              <h4 className="mt-1 font-display text-2xl uppercase tracking-wide">Checklist</h4>
-              <p className="mt-1 text-sm font-medium text-white/60">Prepare with the whole team.</p>
-            </div>
-            <ArrowRight className="relative z-10 h-6 w-6 shrink-0 text-white opacity-50 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-          </button>
-        </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+            <Link href="/studio/schedule" className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-schedule">
+              <span className="flex min-w-0 items-center gap-3">
+                <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Game Day</span>
+                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+            <button type="button" onClick={onOpenStatTracker} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-stat-tracker">
+              <span className="flex min-w-0 items-center gap-3">
+                <Activity className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Stat Tracker</span>
+                  <span className="block text-xs font-medium text-muted-foreground">Track the game as it happens.</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </button>
+            <button type="button" onClick={onOpenChecklist} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-checklist">
+              <span className="flex min-w-0 items-center gap-3">
+                <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Checklist</span>
+                  <span className="block text-xs font-medium text-muted-foreground">Prepare with the whole team.</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </button>
+          </div>
+        )}
       </section>
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
