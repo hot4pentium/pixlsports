@@ -703,35 +703,23 @@ function HomePage() {
           </div>
         </section>
 
-        {/* CREATIVE DESK */}
+         {/* ROLE TOOL WALKTHROUGH */}
         <section id="tools" className="relative overflow-hidden bg-[#172024] py-20 text-[#f5f0e3] clip-angled sm:py-28">
           <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-20" />
           <div className="relative mx-auto max-w-[1400px] px-5 sm:px-8">
             <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
               <div>
-                <div className="inline-flex items-center gap-2 border border-[#f5f0e3]/20 bg-[#f5f0e3]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm">Your creative desk</div>
-                <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">Make the week<br /><span className="text-primary">look like yours.</span></h2>
+                 <div className="inline-flex items-center gap-2 border border-[#f5f0e3]/20 bg-[#f5f0e3]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm" data-testid="text-walkthrough-role">{roleCopy.eyebrow}</div>
+                 <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">See your<br /><span className="text-primary">tools in action.</span></h2>
               </div>
-              <p className="max-w-xs text-sm font-medium leading-relaxed text-[#f5f0e3]/55">The right tool is waiting at the exact moment you need it.</p>
+               <p className="max-w-xs text-sm font-medium leading-relaxed text-[#f5f0e3]/55">This is what your {selectedRole === 'fan' ? 'Fan Hub' : 'Coach Hub'} looks like, one tool at a time.</p>
             </div>
 
-            <div className="mt-14 grid gap-4 lg:grid-cols-[1.1fr_.9fr_.9fr]">
-                 <ToolFeatureCard kind={showcaseTools[0]} large />
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                   <ToolFeatureCard kind={showcaseTools[1]} />
-                   <ToolFeatureCard kind={showcaseTools[2]} />
-              </div>
-              <div className="flex flex-col justify-between border border-[#f5f0e3]/15 bg-[#f5f0e3]/5 p-6 clip-angled-sm sm:p-8">
-                <div>
-                  <span className="grid h-12 w-12 place-items-center bg-primary text-primary-foreground clip-angled-sm"><ShieldCheck className="h-5 w-5" /></span>
-                   <p className="home-display mt-12 text-4xl">{roleCopy ? <>{roleCopy.eyebrow}<br /><span className="text-primary">by default.</span></> : <>Private<br />by default.</>}</p>
-                   <p className="mt-4 text-sm font-medium leading-relaxed text-[#f5f0e3]/55">
-                     {roleCopy ? `Your path includes ${roleToolKinds[selectedRole!].map((kind) => toolData[kind].label.replace(' Creator', '')).join(', ')}.` : `Sign in to sync reusable design settings. ${LANDING_MEDIA_DETAIL}`}
-                   </p>
-                </div>
-                <Link href="/privacy" className="group mt-10 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary" data-testid="link-tools-privacy">Read the privacy promise <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" /></Link>
-              </div>
-            </div>
+             <div className="mt-14 grid gap-4 md:grid-cols-2" data-testid="section-role-tool-walkthrough">
+               {showcaseTools.map((kind, index) => (
+                 <ToolWalkthroughCard key={kind} kind={kind} step={index + 1} role={selectedRole} />
+               ))}
+             </div>
           </div>
         </section>
 
@@ -803,6 +791,144 @@ function ToolFeatureCard({ kind, large = false }: { kind: ToolKind; large?: bool
         <p className={`mt-4 max-w-md text-sm font-medium leading-relaxed ${large ? 'text-white/60' : 'text-muted-foreground'}`}>{tool.description}</p>
       </div>
     </Link>
+  );
+}
+
+function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: number; role: UserRole }) {
+  const tool = toolData[kind];
+  const Icon = tool.icon;
+  const toolHref = `/studio/${tool.slug}`;
+
+  return (
+    <article className="group overflow-hidden border border-[#f5f0e3]/15 bg-[#f5f0e3]/5 clip-angled-sm" data-testid={`card-tool-walkthrough-${kind}`}>
+      <div className="flex items-start justify-between gap-4 border-b border-[#f5f0e3]/10 p-5 sm:p-6">
+        <div className="flex items-start gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center bg-primary text-primary-foreground clip-angled-sm">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">0{step} / {role === 'fan' ? 'Fan Hub' : 'Coach Hub'}</p>
+            <h3 className="mt-1 font-display text-3xl uppercase tracking-wide text-[#f5f0e3]">{tool.label.replace(' Creator', '')}</h3>
+          </div>
+        </div>
+        <ArrowUpRight className="mt-1 h-5 w-5 text-[#f5f0e3]/40 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-primary" />
+      </div>
+
+      <div className="min-h-[250px] bg-[#10181b] p-5 sm:p-6">
+        {kind === 'hype' && (
+          <div className="relative min-h-[214px] overflow-hidden border border-primary/40 bg-[#263236] p-5">
+            <img src={heroBanner} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-45" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#11181c] via-[#11181c]/50 to-transparent" />
+            <div className="relative flex h-full min-h-[174px] flex-col justify-between">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+                <span>Moment captured</span><span>01 / 04</span>
+              </div>
+              <div>
+                <p className="font-display text-5xl uppercase leading-[0.85] text-white">Maya<br /><span className="text-primary">came to play.</span></p>
+                <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/65">
+                  <span>Slugger / Eastside Falcons</span><span>Share</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {kind === 'schedule' && (
+          <div className="border border-primary/30 bg-[#f5f0e3] text-[#11181c]">
+            <div className="flex items-center justify-between border-b border-[#11181c]/15 px-4 py-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#087a48]">Next event</span>
+              <CalendarDays className="h-4 w-4 text-[#087a48]" />
+            </div>
+            <div className="grid grid-cols-[72px_1fr]">
+              <div className="border-r border-[#11181c]/15 bg-[#dfe6df] p-4 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#087a48]">SAT</p>
+                <p className="font-display text-4xl leading-none">14</p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest">SEP</p>
+              </div>
+              <div className="p-4">
+                <p className="font-display text-2xl uppercase leading-none">Falcons vs Northside</p>
+                <p className="mt-3 text-xs font-semibold text-[#11181c]/60">4:30 PM · Eastside Field</p>
+                <div className="mt-4 inline-flex items-center gap-2 bg-[#11181c] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-white">
+                  <MapPin className="h-3 w-3 text-primary" /> Game day
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {kind === 'stat-tracker' && (
+          <div className="border border-primary/30 bg-[#172922] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live game</p>
+                <p className="mt-1 font-display text-2xl uppercase text-white">Maya / #12</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary"><span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Tracking</span>
+            </div>
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              {[
+                ['H', '2'],
+                ['RBI', '1'],
+                ['RUNS', '2'],
+              ].map(([label, value]) => (
+                <div key={label} className="border border-white/10 bg-[#10181b]/70 px-3 py-4 text-center">
+                  <p className="font-display text-3xl text-white">{value}</p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 border-t border-white/10 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Tap a play · build the season total</p>
+          </div>
+        )}
+
+        {kind === 'checklist' && (
+          <div className="border border-primary/30 bg-[#f5f0e3] p-5 text-[#11181c]">
+            <div className="flex items-center justify-between border-b border-[#11181c]/15 pb-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#087a48]">Before first whistle</p>
+                <p className="mt-1 font-display text-2xl uppercase">Game day ready</p>
+              </div>
+              <ClipboardCheck className="h-6 w-6 text-[#087a48]" />
+            </div>
+            <div className="mt-4 space-y-2">
+              {['Uniform + cleats', 'Water bottle', 'Arrive by 4:00 PM'].map((item) => (
+                <div key={item} className="flex items-center gap-3 border-b border-[#11181c]/10 pb-2 text-xs font-bold">
+                  <span className="grid h-5 w-5 place-items-center bg-[#087a48] text-white"><Check className="h-3 w-3" /></span>
+                  {item}
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-[#087a48]">8 / 8 complete</p>
+          </div>
+        )}
+
+        {kind === 'roster' && (
+          <div className="border border-primary/30 bg-[#253a39] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Saturday lineup</p>
+                <p className="mt-1 font-display text-2xl uppercase text-white">Starting nine</p>
+              </div>
+              <UsersRound className="h-6 w-6 text-primary" />
+            </div>
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              {['MAYA 12', 'JORDAN 04', 'RILEY 21', 'SAM 08', 'NOAH 15', 'AVA 02'].map((player, index) => (
+                <div key={player} className={`border px-2 py-3 text-center text-[9px] font-bold uppercase tracking-wider ${index < 3 ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-white/55'}`}>{player}</div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-4 border-t border-[#f5f0e3]/10 px-5 py-4 sm:px-6">
+        <p className="text-xs font-medium leading-relaxed text-[#f5f0e3]/55">
+          {kind === 'hype' ? 'Turn a real moment into something worth sharing.' : tool.description}
+        </p>
+        <Link href={toolHref} className="inline-flex shrink-0 items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary hover:text-white" data-testid={`link-walkthrough-${kind}`}>
+          Try it <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </article>
   );
 }
 
