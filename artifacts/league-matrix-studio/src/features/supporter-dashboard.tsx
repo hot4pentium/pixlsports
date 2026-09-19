@@ -1,9 +1,10 @@
-import { type FormEvent } from 'react';
-import { Link } from 'wouter';
+import { type FormEvent, useState } from 'react';
+import { Link, useLocation } from 'wouter';
 import {
-  CalendarDays, Zap, MapPin, Clock, Trophy, ChevronRight, User, ClipboardCheck,
-  Users, Activity, Image as ImageIcon, Unlink, ShieldCheck,
-  CalendarX2, ArrowRight, PenSquare, Lock, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw
+  CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
+  Users, Activity, Image as ImageIcon, ShieldCheck,
+  CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw,
+  Video, Shuffle, CheckCircle2
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import { getCalendarViewState } from './supporter-dashboard-model';
@@ -140,6 +141,52 @@ function getEventDateParts(dateStr: string) {
   return { month: 'TBD', day: '-', dayOfWeek: '' };
 }
 
+type GameStage = 'upcoming' | 'live' | 'completed';
+
+function getGameStage(event: SupporterEvent | undefined, fallbackUpcoming: boolean): GameStage {
+  if (!event || !event.date) return fallbackUpcoming ? 'upcoming' : 'completed';
+  const today = new Date();
+  const eventDate = parseISO(event.date);
+  if (!isValid(eventDate)) return fallbackUpcoming ? 'upcoming' : 'completed';
+
+  const todayKey = format(today, 'yyyy-MM-dd');
+  if (event.date > todayKey) return 'upcoming';
+  if (event.date < todayKey) return 'completed';
+
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(event.time.trim());
+  if (!timeMatch) return fallbackUpcoming ? 'upcoming' : 'live';
+  const start = new Date(today);
+  start.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
+  if (start.getTime() > today.getTime()) return 'upcoming';
+  return today.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
+}
+
+const stageCopy: Record<GameStage, {
+  label: string;
+  kicker: string;
+  description: string;
+  accent: string;
+}> = {
+  upcoming: {
+    label: 'Get ready',
+    kicker: 'Next up',
+    description: 'Pack the details now so game day feels easy.',
+    accent: 'Preparation',
+  },
+  live: {
+    label: 'Capture the game',
+    kicker: 'Happening now',
+    description: 'Keep the game moving and save the moments worth replaying.',
+    accent: 'Live',
+  },
+  completed: {
+    label: 'Send the hype',
+    kicker: 'After the whistle',
+    description: 'Turn the best part of the game into something worth sharing.',
+    accent: 'Celebrate',
+  },
+};
+
 function QuickActionSportBackground() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden bg-gradient-to-br from-[#07130d] via-[#0b1511] to-[#050807]">
@@ -175,6 +222,8 @@ export function SupporterDashboardView({
   onOpenStatTracker,
   onOpenChecklist,
 }: SupporterDashboardViewProps) {
+  const [, setLocation] = useLocation();
+  const [captureNotice, setCaptureNotice] = useState('');
   const hasAthlete = Boolean(profile.athleteName);
   const calendarState = getCalendarViewState({
     calendarCode: connected || loadingCalendar || calendarError || calendarConnectionInvalid ? 'connected-calendar' : '',
@@ -184,7 +233,47 @@ export function SupporterDashboardView({
     calendar: connected ? { events } : undefined,
     customSchedule: scheduleSource === 'custom' ? { events } : undefined,
   });
-  const nextGame = events.find((event) => event.type === 'game');
+  const gameEvents = events.filter((event) => event.type === 'game');
+  const nextGame = gameEvents.find((event) => getGameStage(event, true) !== 'completed')
+    ?? gameEvents[gameEvents.length - 1];
+  const gameStage: GameStage = nextGame ? getGameStage(nextGame, nextGameIsUpcoming) : 'upcoming';
+  const currentStage = stageCopy[gameStage];
+  const gameTitle = nextGame
+    ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
+    : 'Your next game';
+  const statTrackerHref = nextGame
+    ? `/studio/stat-tracker?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
+    : '/studio/stat-tracker';
+
+  const handleSurpriseMe = () => {
+    if (!nextGame) {
+      setLocation('/studio/schedule');
+      return;
+    }
+    if (gameStage === 'upcoming') {
+      onOpenChecklist();
+      return;
+    }
+    if (gameStage === 'live') {
+      setLocation(statTrackerHref);
+      return;
+    }
+    setLocation('/studio/hype-card');
+  };
+
+  const handleCapture = (kind: 'photo' | 'video', file?: File) => {
+    if (!file) {
+      setCaptureNotice('No media selected. You can try again whenever you are ready.');
+      return;
+    }
+    setCaptureNotice(
+      `${kind === 'photo' ? 'Photo' : 'Video'} ready for ${gameTitle}. It stays in your camera roll; Pixl Sports does not upload or store it here.`,
+    );
+  };
+
+  const scrollToTools = () => {
+    document.getElementById('all-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
@@ -198,9 +287,94 @@ export function SupporterDashboardView({
           GAME DAY <span className="text-primary">HUB.</span>
         </h1>
         <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
-          Everything you need to celebrate, prepare, and show up ready.
+          One clear path from the next game to the moment you send around.
         </p>
+        <button type="button" onClick={scrollToTools} aria-controls="all-tools" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-choose-task">
+          Choose a task / all tools <ArrowRight className="h-4 w-4" />
+        </button>
       </header>
+
+      <section
+        className="animate-slide-up delay-100 relative overflow-hidden border border-foreground/10 bg-[#111316] text-white clip-angled"
+        data-testid="section-next-game-context"
+        aria-labelledby="next-game-heading"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" />
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
+        <div className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:gap-12 lg:p-10">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+              {currentStage.kicker}
+              {scheduleSource && <span className="text-white/45">· {scheduleSource === 'team' ? 'Team calendar' : 'Your schedule'}</span>}
+            </div>
+            <h2 id="next-game-heading" className="mt-3 max-w-2xl font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl">
+              {nextGame ? gameTitle : 'Make the next game count.'}
+            </h2>
+            {nextGame ? (
+              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-white/65">
+                <span>{formatDateDisplay(nextGame.date)}</span>
+                <span className="text-white/30">·</span>
+                <span>{formatTimeDisplay(nextGame.time)}</span>
+                {nextGame.location && <><span className="text-white/30">·</span><span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-primary" />{nextGame.location}</span></>}
+              </div>
+            ) : (
+              <p className="mt-5 max-w-lg text-sm font-medium leading-relaxed text-white/65">
+                Add a game to the schedule and Pixl Sports will put the right action front and center.
+              </p>
+            )}
+            <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              {gameStage === 'upcoming' && <button type="button" onClick={onOpenChecklist} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
+              {gameStage === 'live' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
+              {gameStage === 'completed' && <Link href="/studio/hype-card" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
+              {!nextGame && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add a game</Link>}
+              <button type="button" onClick={handleSurpriseMe} className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/25 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-surprise-me"><Shuffle className="h-4 w-4" /> Surprise me</button>
+            </div>
+          </div>
+          <div className="flex flex-col justify-end">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your game-day path</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+              {([
+                ['upcoming', '01', 'Get ready', ClipboardCheck],
+                ['live', '02', 'Capture the game', Activity],
+                ['completed', '03', 'Send the hype', Zap],
+              ] as const).map(([stage, number, label, Icon]) => (
+                <div key={stage} className={`flex items-center gap-3 border px-3 py-3 transition-colors ${stage === gameStage ? 'border-primary/60 bg-primary/10 text-white' : 'border-white/10 bg-white/[0.03] text-white/45'}`} data-testid={`stage-${stage}`}>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${stage === gameStage ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>{number}</span>
+                  <Icon className={`h-4 w-4 shrink-0 ${stage === gameStage ? 'text-primary' : 'text-white/35'}`} />
+                  <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
+                  {stage === gameStage && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-primary" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {nextGame && (
+        <section className="animate-slide-up delay-200 border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-7" data-testid="section-capture-moment" aria-labelledby="capture-heading">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Camera className="h-4 w-4" /> Capture from this game</div>
+              <h2 id="capture-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">{gameStage === 'live' ? 'Keep the moment close.' : gameStage === 'completed' ? 'Pick the moment to send.' : 'Be ready to capture.'}</h2>
+              <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">Use your device camera or media picker. Nothing is uploaded, stored, or turned into a media record here.</p>
+              {captureNotice && <p className="mt-3 text-sm font-bold text-primary" role="status" data-testid="status-capture-notice">{captureNotice}</p>}
+            </div>
+            <div className="grid w-full gap-3 sm:grid-cols-2 lg:max-w-md">
+              <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-capture-photo">
+                <Camera className="h-5 w-5" /> Take a photo
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('photo', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Take a photo of this game" data-testid="input-capture-photo" />
+              </label>
+              <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-capture-video">
+                <Video className="h-5 w-5" /> Record a video
+                <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-capture-video" />
+              </label>
+              <p className="col-span-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">If camera capture is unavailable, your device picker can still choose a file.</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ATHLETE HERO */}
       <section className="athlete-hero-depth animate-slide-up delay-100 relative bg-foreground text-background overflow-hidden clip-angled p-1 border border-border/20">
@@ -323,10 +497,13 @@ export function SupporterDashboardView({
       </section>
 
       {/* QUICK CREATE */}
-      <section className="animate-slide-up delay-200">
+      <section id="all-tools" className="animate-slide-up delay-200">
         <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-          <h3 className="font-display text-3xl uppercase tracking-wide">Quick Create</h3>
-          <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Turn moments into lasting memories.</span>
+          <div>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</p>
+            <h3 className="font-display text-3xl uppercase tracking-wide">All tools</h3>
+          </div>
+          <span className="hidden text-sm font-medium text-muted-foreground sm:inline">The next best move is always close.</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <Link href="/studio/hype-card" className="group relative grid min-h-[148px] grid-cols-[42%_1fr] overflow-hidden border border-border bg-[#07130d] text-white transition-all hover:border-primary clip-angled-sm" data-testid="link-quick-hype">
