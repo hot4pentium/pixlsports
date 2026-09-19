@@ -2641,9 +2641,9 @@ function ScheduleEditor() {
           data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
         });
         cloudRevision.current = created.revision;
-        await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
         setLocation(`/studio/schedule/${created.id}`);
       }
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       setSaved(true);
       setNoticeFor('SCHEDULE SAVED');
     } catch (error: any) {
