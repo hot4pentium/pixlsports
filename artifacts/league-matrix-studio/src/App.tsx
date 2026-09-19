@@ -309,13 +309,13 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
             </Link>
           )}
         </nav>
-         <button type="button" className={`grid h-10 w-10 place-items-center md:hidden ${dark ? 'text-white' : 'text-foreground'}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} data-testid="button-mobile-menu">
+        <button type="button" className={`grid h-10 w-10 place-items-center md:hidden ${dark ? 'text-white' : 'text-foreground'}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} data-testid="button-mobile-menu">
           {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
       {menuOpen && (
-         <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#172024]' : 'border-border bg-card'}`} data-testid="menu-mobile">
+        <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#172024]' : 'border-border bg-card'}`} data-testid="menu-mobile">
           <nav className="flex flex-col gap-2">
             <Link href="/studio" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
             <Link href="/help" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-help">HELP <ArrowRight className="h-5 w-5 text-primary" /></Link>
@@ -361,7 +361,7 @@ function HomePage() {
         <section className="relative overflow-hidden bg-[#11181c] text-[#f5f0e3] clip-angled pb-16 pt-12 sm:pb-24 sm:pt-20">
           <img
             src={heroBanner}
-            alt="Floodlit sports field at night"
+            alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-45"
           />
@@ -375,7 +375,7 @@ function HomePage() {
                 <Activity className="h-4 w-4" /> Your season, in one place
               </div>
               <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]">
-                Make room<br />for the <span className="text-primary">good</span><br />stuff.
+                Your week.<br />One <span className="text-primary">profile.</span><br />Game on.
               </h1>
               <p className="home-reveal home-reveal-delay-2 mt-8 max-w-xl text-base font-medium leading-relaxed text-[#f5f0e3]/72 sm:text-lg">
                 Create a profile for your athlete or team. Keep the week moving. Share the schedule, the lineup, and the moment everyone will remember.
@@ -469,6 +469,20 @@ function HomePage() {
               <Link href="/studio" className="group mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.12em] text-foreground transition-colors hover:text-primary" data-testid="link-week-open-studio">
                 Build a profile <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
               </Link>
+              <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <Link href="/studio" className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-supporter-path">
+                  <Heart className="h-5 w-5 text-primary" />
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">For families</p>
+                  <p className="mt-2 text-sm font-bold leading-snug text-foreground">Follow an athlete and keep the whole week in view.</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
+                </Link>
+                <Link href="/studio" className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-coach-path">
+                  <UsersRound className="h-5 w-5 text-primary" />
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">For coaches</p>
+                  <p className="mt-2 text-sm font-bold leading-snug text-foreground">Lead a team with one clear game-day home.</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary">Lead a team <ArrowUpRight className="h-3.5 w-3.5" /></span>
+                </Link>
+              </div>
             </div>
             <div className="relative">
               <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-border sm:block" />

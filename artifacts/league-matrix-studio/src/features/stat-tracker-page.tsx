@@ -800,8 +800,8 @@ export function StatTrackerPage() {
                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
              </label>
             {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
-            <button type="button" onClick={beginGame} className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
-              <Clock3 className="h-4 w-4" /> Start game
+            <button type="button" onClick={beginGame} data-testid="button-start-manual-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
+              <Clock3 className="h-4 w-4" /> Start manual game
             </button>
           </div>
           <section className="border border-border bg-foreground p-6 text-background clip-angled-sm sm:p-8">

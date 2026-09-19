@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw, X,
-  Video, Shuffle, CheckCircle2, ChevronDown
+  Video, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -294,22 +294,6 @@ export function SupporterDashboardView({
     setCaptureNotice('');
   };
 
-  const handleSurpriseMe = () => {
-    if (!nextGame) {
-      setLocation('/studio/schedule');
-      return;
-    }
-    if (gameStage === 'upcoming') {
-      setLocation(checklistHref);
-      return;
-    }
-    if (gameStage === 'live') {
-      setLocation(statTrackerHref);
-      return;
-    }
-    setLocation(hypeCardHref);
-  };
-
   const handleCapture = (kind: 'photo' | 'video', file?: File) => {
     if (!file) {
       setCaptureNotice('No media selected. You can try again whenever you are ready.');
@@ -517,8 +501,6 @@ export function SupporterDashboardView({
               {gameStage === 'live' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
               {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
               {!nextGame && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add a game</Link>}
-              {!nextGame && <button type="button" onClick={() => setLocation('/studio/stat-tracker')} className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/25 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-manual-game"><Activity className="h-4 w-4" /> Start manual game</button>}
-              <button type="button" onClick={handleSurpriseMe} className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/25 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="button-surprise-me"><Shuffle className="h-4 w-4" /> Surprise me</button>
             </div>
           </div>
           <div className="flex flex-col justify-end">
