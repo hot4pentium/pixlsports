@@ -489,7 +489,7 @@ function Footer() {
   );
 }
 
-function HomePage() {
+function LegacyHomePage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('fan');
   const roleCopy = landingRoleCopy[selectedRole];
   const heroCtaHref = roleSignupHref(selectedRole);
@@ -764,6 +764,116 @@ function HomePage() {
         </section>
       </main>
       <Footer />
+    </div>
+  );
+}
+
+const fanHubTabs: { label: string; kind: ToolKind }[] = [
+  { label: 'Calendar', kind: 'schedule' },
+  { label: 'Game Day', kind: 'checklist' },
+  { label: 'Stat Tracker', kind: 'stat-tracker' },
+  { label: 'Hype Card', kind: 'hype' },
+];
+
+function HomePage() {
+  const [selectedRole, setSelectedRole] = useState<UserRole>('fan');
+  const [activeFanTool, setActiveFanTool] = useState<ToolKind>('schedule');
+  const roleCopy = landingRoleCopy[selectedRole];
+
+  return (
+    <div className="noise min-h-dvh overflow-hidden bg-[#11181c] text-[#f5f0e3]">
+      <SiteNav dark />
+      <main>
+        <section className="relative overflow-hidden px-5 pb-16 pt-16 sm:px-8 sm:pb-24 sm:pt-24">
+          <img src={heroBanner} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-20" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#11181c]/80 via-[#11181c]/95 to-[#11181c]" />
+          <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-20" />
+          <div className="relative mx-auto max-w-5xl">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm">
+                <Activity className="h-4 w-4" /> Your season, in one place
+              </div>
+              <h1 className="home-display mt-7 max-w-4xl text-[clamp(4rem,9vw,8rem)] leading-[0.84]" data-testid="text-landing-headline">
+                One week.<br /><span className="text-primary">One hub.</span><br />Game on.
+              </h1>
+              <p className="mt-7 max-w-xl text-base font-medium leading-relaxed text-[#f5f0e3]/70 sm:text-lg">
+                Choose how you show up for the season. Pixl gives fans and coaches a clear place to start, then puts the right tool in front of you.
+              </p>
+            </div>
+
+            <div className="mt-10 max-w-3xl" data-testid="landing-role-selector">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5f0e3]/50">Choose your home base</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Choose a Pixl Sports home base">
+                {(['fan', 'coach'] as UserRole[]).map((role) => {
+                  const isSelected = selectedRole === role;
+                  const Icon = role === 'fan' ? Heart : ShieldCheck;
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => setSelectedRole(role)}
+                      className={`group flex min-h-20 items-center gap-4 border-2 px-6 py-5 text-left transition-all clip-angled-sm ${isSelected ? 'border-primary bg-primary text-primary-foreground shadow-[0_0_0_4px_rgba(0,247,118,0.14)]' : 'border-white/20 bg-white/[0.03] text-white/65 hover:border-primary hover:text-white'}`}
+                      data-testid={`button-landing-role-${role}`}
+                    >
+                      <Icon className="h-6 w-6 shrink-0" />
+                      <span className="font-display text-3xl uppercase tracking-wide">{role === 'fan' ? 'Fan Hub' : 'Coach Hub'}</span>
+                      {isSelected && <Check className="ml-auto h-5 w-5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {selectedRole === 'fan' ? (
+              <section className="mt-14 max-w-5xl" aria-labelledby="fan-tools-heading" data-testid="section-fan-hub-tools">
+                <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Fan Hub / Your week</p>
+                    <h2 id="fan-tools-heading" className="home-display mt-3 text-5xl leading-[0.88] sm:text-7xl">Pick a tool.<br /><span className="text-primary">See the moment.</span></h2>
+                  </div>
+                  <p className="max-w-xs text-sm font-medium leading-relaxed text-white/55">Tap through the tools you will use as the week moves from calendar to celebration.</p>
+                </div>
+                <div className="mt-8 overflow-x-auto border border-white/15 bg-white/[0.03] p-2" role="tablist" aria-label="Fan Hub tools">
+                  <div className="flex min-w-max gap-2">
+                    {fanHubTabs.map(({ label, kind }) => {
+                      const isActive = activeFanTool === kind;
+                      const Icon = toolData[kind].icon;
+                      return (
+                        <button
+                          key={kind}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          aria-controls={`fan-tool-panel-${kind}`}
+                          onClick={() => setActiveFanTool(kind)}
+                          className={`inline-flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] transition-colors clip-angled-sm sm:px-6 ${isActive ? 'bg-primary text-primary-foreground' : 'text-white/55 hover:bg-white/10 hover:text-white'}`}
+                          data-testid={`tab-fan-tool-${kind}`}
+                        >
+                          <Icon className="h-4 w-4" /> {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div id={`fan-tool-panel-${activeFanTool}`} role="tabpanel" className="mt-4" data-testid={`panel-fan-tool-${activeFanTool}`}>
+                  <ToolWalkthroughCard kind={activeFanTool} step={fanHubTabs.findIndex(({ kind }) => kind === activeFanTool) + 1} role="fan" />
+                </div>
+              </section>
+            ) : (
+              <section className="mt-14 max-w-3xl border border-white/15 bg-white/[0.03] p-6 sm:p-8" aria-label="Coach Hub preview" data-testid="section-coach-hub-tools">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Coach Hub</p>
+                <h2 className="home-display mt-3 text-5xl leading-[0.88] sm:text-7xl">Run the week.<br /><span className="text-primary">Lead the team.</span></h2>
+                <p className="mt-5 max-w-xl text-sm font-medium leading-relaxed text-white/60">Schedules, rosters, and game-day checklists will live here. Choose Fan Hub to walk through the supporter tools now.</p>
+                <Link href={roleSignupHref('coach')} className="mt-7 inline-flex items-center gap-3 bg-primary px-6 py-4 text-xs font-bold uppercase tracking-[0.14em] text-primary-foreground clip-angled-sm">
+                  Build my coach workspace <ArrowRight className="h-4 w-4" />
+                </Link>
+              </section>
+            )}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
