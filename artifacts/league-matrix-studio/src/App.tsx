@@ -3337,6 +3337,14 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[.16em] text-primary">{event.type}</span>
+                     {event.type === 'game' && event.status && (
+                       <span
+                         className="border border-primary/30 bg-background px-2 py-1 text-[10px] font-bold uppercase tracking-[.16em] text-foreground"
+                         data-testid={`public-schedule-game-status-${event.id}`}
+                       >
+                         {event.status}
+                       </span>
+                     )}
                     <h2 className="font-display text-2xl leading-none text-foreground">
                       {event.type === 'game' ? `VS ${event.opponent || 'OPPONENT TBD'}` : event.type === 'practice' ? 'TEAM PRACTICE' : 'TEAM MEETING'}
                     </h2>
