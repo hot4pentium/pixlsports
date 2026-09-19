@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
@@ -11,6 +11,8 @@ import {
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
+  acknowledgeSupporterGameStage,
+  hasAcknowledgedSupporterGameStage,
   readSupporterActiveGame,
   saveSupporterActiveGame,
   type SupporterGameStage,
@@ -20,6 +22,14 @@ import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export interface SupporterProfile {
   displayName: string;
@@ -154,24 +164,28 @@ const stageCopy: Record<SupporterGameStage, {
   kicker: string;
   description: string;
   accent: string;
+  nextMove: string;
 }> = {
   upcoming: {
     label: 'Get ready',
     kicker: 'Next up',
     description: 'Pack the details now so game day feels easy.',
     accent: 'Preparation',
+    nextMove: 'Open checklist',
   },
   live: {
     label: 'Capture the game',
     kicker: 'Happening now',
     description: 'Keep the game moving and save the moments worth replaying.',
     accent: 'Live',
+    nextMove: 'Track the game',
   },
   completed: {
     label: 'Send the hype',
     kicker: 'After the whistle',
     description: 'Turn the best part of the game into something worth sharing.',
     accent: 'Celebrate',
+    nextMove: 'Make a Hype Card',
   },
 };
 
@@ -198,6 +212,8 @@ export function SupporterDashboardView({
   const [, setLocation] = useLocation();
   const [captureNotice, setCaptureNotice] = useState('');
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [stageReminderOpen, setStageReminderOpen] = useState(false);
+  const [stageNow, setStageNow] = useState(() => new Date());
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
@@ -211,9 +227,9 @@ export function SupporterDashboardView({
     customSchedule: scheduleSource === 'custom' ? { events } : undefined,
   });
   const gameEvents = events.filter((event) => event.type === 'game');
-  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, stageNow);
   const gameStage: SupporterGameStage = nextGame
-    ? getSupporterGameStage(nextGame)
+    ? getSupporterGameStage(nextGame, stageNow)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const currentStage = stageCopy[gameStage];
   const gameTitle = nextGame
@@ -228,6 +244,20 @@ export function SupporterDashboardView({
   const hypeCardHref = nextGame
     ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(nextGame.id)}&date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
     : '/studio/hype-card';
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setStageNow(new Date()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!nextGame) {
+      setStageReminderOpen(false);
+      return;
+    }
+
+    setStageReminderOpen(!hasAcknowledgedSupporterGameStage(window.localStorage, nextGame.id, gameStage));
+  }, [nextGame?.id, gameStage]);
 
   const selectGame = (gameId: string) => {
     setSelectedGameId(gameId);
@@ -265,6 +295,13 @@ export function SupporterDashboardView({
     );
   };
 
+  const dismissStageReminder = () => {
+    if (nextGame) {
+      acknowledgeSupporterGameStage(window.localStorage, nextGame.id, gameStage);
+    }
+    setStageReminderOpen(false);
+  };
+
   const openTools = () => {
     setToolsOpen(true);
     window.requestAnimationFrame(() => {
@@ -274,6 +311,52 @@ export function SupporterDashboardView({
 
   return (
     <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
+      {nextGame && (
+        <Dialog
+          open={stageReminderOpen}
+          onOpenChange={(open) => {
+            if (!open) dismissStageReminder();
+          }}
+        >
+          <DialogContent
+            className="w-[calc(100%-2rem)] overflow-hidden border-primary/40 bg-[#111316] p-0 text-white sm:max-w-lg"
+            data-testid="stage-reminder-dialog"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" />
+            <DialogHeader className="relative border-b border-white/10 bg-foreground p-5 text-left sm:p-7">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{currentStage.accent}</p>
+              <DialogTitle className="mt-2 font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
+                {currentStage.label}
+              </DialogTitle>
+              <DialogDescription className="mt-3 max-w-md text-left text-sm font-medium leading-relaxed text-white/65">
+                {currentStage.description}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="relative space-y-4 p-5 sm:p-7">
+              <div className="border border-primary/30 bg-primary/10 p-4 clip-angled-sm">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Your active game</p>
+                <p className="mt-2 font-display text-2xl uppercase leading-none tracking-wide">{gameTitle}</p>
+                <p className="mt-2 text-xs font-bold uppercase tracking-widest text-white/55">
+                  {formatDateDisplay(nextGame.date)} · {formatTimeDisplay(nextGame.time)}
+                </p>
+              </div>
+              <p className="text-sm font-bold uppercase tracking-widest text-white/75">
+                Next move: <span className="text-primary">{currentStage.nextMove}</span>
+              </p>
+            </div>
+            <DialogFooter className="relative border-t border-white/10 bg-black/10 p-5 sm:p-7">
+              <button
+                type="button"
+                onClick={dismissStageReminder}
+                className="inline-flex min-h-12 w-full items-center justify-center bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm"
+                data-testid="button-stage-reminder-got-it"
+              >
+                Got it
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {/* HEADER */}
       <header className="animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
         <div>

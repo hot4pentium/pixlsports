@@ -122,6 +122,38 @@ export type SupporterGameLike = {
 };
 
 export const supporterActiveGameStorageKey = 'pixlsports-supporter-active-game';
+export const supporterStageAcknowledgmentStoragePrefix = 'pixlsports-supporter-stage-ack';
+
+export function getSupporterStageAcknowledgmentKey(
+  gameId: string,
+  stage: SupporterGameStage,
+): string {
+  return `${supporterStageAcknowledgmentStoragePrefix}:${encodeURIComponent(gameId)}:${stage}`;
+}
+
+export function hasAcknowledgedSupporterGameStage(
+  storage: Pick<Storage, 'getItem'>,
+  gameId: string,
+  stage: SupporterGameStage,
+): boolean {
+  try {
+    return storage.getItem(getSupporterStageAcknowledgmentKey(gameId, stage)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function acknowledgeSupporterGameStage(
+  storage: Pick<Storage, 'setItem'>,
+  gameId: string,
+  stage: SupporterGameStage,
+): void {
+  try {
+    storage.setItem(getSupporterStageAcknowledgmentKey(gameId, stage), '1');
+  } catch {
+    // The reminder remains available for this session when storage is unavailable.
+  }
+}
 
 export function getSupporterGameStage(
   game: Pick<SupporterGameLike, 'date' | 'time' | 'status'>,

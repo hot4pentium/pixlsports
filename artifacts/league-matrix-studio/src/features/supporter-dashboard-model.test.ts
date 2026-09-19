@@ -3,9 +3,11 @@ import test from 'node:test';
 
 import {
   createSupporterProfileSavePlan,
+  acknowledgeSupporterGameStage,
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
+  hasAcknowledgedSupporterGameStage,
   getSupporterScheduleSelection,
   getStudioDestination,
   getUserRole,
@@ -54,6 +56,37 @@ test('keeps a valid selected game and otherwise chooses the next relevant game',
   assert.equal(getActiveSupporterGame(games, 'future', now)?.id, 'future');
   assert.equal(getActiveSupporterGame(games, 'missing', now)?.id, 'today');
   assert.equal(getActiveSupporterGame([games[0]], null, now)?.id, 'past');
+});
+
+test('remembers stage reminders independently for each game and stage', () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+  };
+
+  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'upcoming'), false);
+
+  acknowledgeSupporterGameStage(storage, 'game-1', 'upcoming');
+
+  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'upcoming'), true);
+  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'live'), false);
+  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-2', 'upcoming'), false);
+});
+
+test('does not make unavailable storage block the stage reminder', () => {
+  const storage = {
+    getItem: () => {
+      throw new Error('storage unavailable');
+    },
+    setItem: () => {
+      throw new Error('storage unavailable');
+    },
+  };
+
+  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'live'), false);
+  acknowledgeSupporterGameStage(storage, 'game-1', 'live');
+  assert.equal(hasAcknowledgedSupporterGameStage(storage, 'game-1', 'live'), false);
 });
 
 test('routes fan and coach accounts to their correct /studio experiences', () => {
