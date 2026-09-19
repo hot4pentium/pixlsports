@@ -244,6 +244,40 @@ export function SupporterDashboardView({
   const hypeCardHref = nextGame
     ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(nextGame.id)}&date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
     : supporterToolRoutes.hypeCard;
+  const weeklyPath = [
+    {
+      id: 'plan',
+      number: '01',
+      label: 'Plan the week',
+      Icon: CalendarDays,
+      href: supporterToolRoutes.schedule,
+      active: !nextGame,
+    },
+    {
+      id: 'upcoming',
+      number: '02',
+      label: 'Get ready',
+      Icon: ClipboardCheck,
+      href: checklistHref,
+      active: Boolean(nextGame && gameStage === 'upcoming'),
+    },
+    {
+      id: 'live',
+      number: '03',
+      label: 'Capture the game',
+      Icon: Activity,
+      href: statTrackerHref,
+      active: Boolean(nextGame && gameStage === 'live'),
+    },
+    {
+      id: 'completed',
+      number: '04',
+      label: 'Send the hype',
+      Icon: Zap,
+      href: hypeCardHref,
+      active: Boolean(nextGame && gameStage === 'completed'),
+    },
+  ] as const;
 
   useEffect(() => {
     if (!showStageReminder || !nextGame || !stageReminderKey) return;
@@ -375,7 +409,7 @@ export function SupporterDashboardView({
             GAME DAY <span className="text-primary studio-textured-accent">HUB.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
-            One clear path from the next game to the moment you send around.
+            Plan the week, get ready for game day, capture what happens, and send the moment around.
           </p>
           <button
             type="button"
@@ -504,19 +538,22 @@ export function SupporterDashboardView({
             </div>
           </div>
           <div className="flex flex-col justify-end">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your game-day path</p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              {([
-                ['upcoming', '01', 'Get ready', ClipboardCheck],
-                ['live', '02', 'Capture the game', Activity],
-                ['completed', '03', 'Send the hype', Zap],
-              ] as const).map(([stage, number, label, Icon]) => (
-                <div key={stage} className={`flex items-center gap-3 border px-3 py-3 transition-colors ${stage === gameStage ? 'border-primary/60 bg-primary/10 text-white' : 'border-white/10 bg-white/[0.03] text-white/45'}`} data-testid={`stage-${stage}`}>
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${stage === gameStage ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>{number}</span>
-                  <Icon className={`h-4 w-4 shrink-0 ${stage === gameStage ? 'text-primary' : 'text-white/35'}`} />
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
+            <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as game day moves.</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              {weeklyPath.map(({ id, number, label, Icon, href, active }) => (
+                <Link
+                  key={id}
+                  href={href}
+                  aria-current={active ? 'step' : undefined}
+                  className={`flex items-center gap-3 border px-3 py-3 transition-colors hover:border-primary/60 hover:text-white ${active ? 'border-primary/60 bg-primary/10 text-white' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
+                  data-testid={`stage-${id}`}
+                >
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${active ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>{number}</span>
+                  <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-primary' : 'text-white/35'}`} />
                   <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
-                  {stage === gameStage && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-primary" />}
-                </div>
+                  {active && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-primary" />}
+                </Link>
               ))}
             </div>
           </div>
