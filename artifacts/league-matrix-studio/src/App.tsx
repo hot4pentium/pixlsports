@@ -566,17 +566,17 @@ function HomePage() {
               <p className="mt-7 max-w-md text-base font-medium leading-relaxed text-muted-foreground">
                 Start with who you are. Then let Pixl hold the details that usually live in five different group chats.
               </p>
-              <Link href="/studio" className="group mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.12em] text-foreground transition-colors hover:text-primary" data-testid="link-week-open-studio">
-                Build a profile <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+               <Link href={heroCtaHref} className="group mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.12em] text-foreground transition-colors hover:text-primary" data-testid="link-week-open-studio">
+                 {roleCopy?.cta ?? 'Build a profile'} <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
               </Link>
               <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                <Link href="/studio" className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-supporter-path">
+                 <Link href={roleSignupHref('fan')} onClick={() => setSelectedRole('fan')} className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-supporter-path">
                   <Heart className="h-5 w-5 text-primary-ink" />
                   <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-ink">For families</p>
                   <p className="mt-2 text-sm font-bold leading-snug text-foreground">Follow an athlete and keep the whole week in view.</p>
                   <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary-ink">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
                 </Link>
-                <Link href="/studio" className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-coach-path">
+                 <Link href={roleSignupHref('coach')} onClick={() => setSelectedRole('coach')} className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-coach-path">
                   <UsersRound className="h-5 w-5 text-primary-ink" />
                   <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-ink">For coaches</p>
                   <p className="mt-2 text-sm font-bold leading-snug text-foreground">Lead a team with one clear game-day home.</p>
@@ -587,12 +587,7 @@ function HomePage() {
             <div className="relative">
               <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-border sm:block" />
               <div className="space-y-4">
-                {[
-                  [CalendarDays, '01 / Set the week', 'Add practices, games, and the places everyone needs to know.', 'Schedule maker'],
-                  [UsersRound, '02 / Get game-day clear', 'Give every family the same clean view of who is playing and when.', 'Roster + lineup'],
-                  [Zap, '03 / Catch the moment', 'Turn a photo or short video into the post the group chat actually wants.', 'Hype card creator'],
-                  [Share2, '04 / Send it around', 'Export a polished graphic. Keep the memory moving long after the whistle.', 'Ready to share'],
-                ].map(([Icon, title, body, label], index) => {
+                 {journey.map(([Icon, title, body, label], index) => {
                   const IconComponent = Icon as typeof CalendarDays;
                   return (
                     <div key={title as string} className="group relative grid gap-4 border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
@@ -625,16 +620,18 @@ function HomePage() {
             </div>
 
             <div className="mt-14 grid gap-4 lg:grid-cols-[1.1fr_.9fr_.9fr]">
-              <ToolFeatureCard kind="hype" large />
+                 <ToolFeatureCard kind={showcaseTools[0]} large />
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                <ToolFeatureCard kind="schedule" />
-                <ToolFeatureCard kind="roster" />
+                   <ToolFeatureCard kind={showcaseTools[1]} />
+                   <ToolFeatureCard kind={showcaseTools[2]} />
               </div>
               <div className="flex flex-col justify-between border border-[#f5f0e3]/15 bg-[#f5f0e3]/5 p-6 clip-angled-sm sm:p-8">
                 <div>
                   <span className="grid h-12 w-12 place-items-center bg-primary text-primary-foreground clip-angled-sm"><ShieldCheck className="h-5 w-5" /></span>
-                  <p className="home-display mt-12 text-4xl">Private<br />by default.</p>
-                  <p className="mt-4 text-sm font-medium leading-relaxed text-[#f5f0e3]/55">Sign in to sync reusable design settings. {LANDING_MEDIA_DETAIL}</p>
+                   <p className="home-display mt-12 text-4xl">{roleCopy ? <>{roleCopy.eyebrow}<br /><span className="text-primary">by default.</span></> : <>Private<br />by default.</>}</p>
+                   <p className="mt-4 text-sm font-medium leading-relaxed text-[#f5f0e3]/55">
+                     {roleCopy ? `Your path includes ${roleToolKinds[selectedRole!].map((kind) => toolData[kind].label.replace(' Creator', '')).join(', ')}.` : `Sign in to sync reusable design settings. ${LANDING_MEDIA_DETAIL}`}
+                   </p>
                 </div>
                 <Link href="/privacy" className="group mt-10 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary" data-testid="link-tools-privacy">Read the privacy promise <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" /></Link>
               </div>
@@ -676,8 +673,8 @@ function HomePage() {
                 Give it<br /><span className="text-primary">a home.</span>
               </h2>
             </div>
-            <Link href="/studio" className="group relative inline-flex shrink-0 items-center gap-3 bg-primary px-7 py-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-bottom-open-studio">
-              Start with Pixl <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+             <Link href={heroCtaHref} className="group relative inline-flex shrink-0 items-center gap-3 bg-primary px-7 py-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-bottom-open-studio">
+               {roleCopy?.cta ?? 'Start with Pixl'} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
         </section>
@@ -4292,12 +4289,18 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  const requestedRole = getRoleIntent(window.location.search);
+  const roleRedirect = requestedRole ? `${basePath}/studio?role=${requestedRole}` : `${basePath}/studio`;
+  const signInUrl = requestedRole
+    ? `${basePath}/sign-in?redirect_url=${encodeURIComponent(roleRedirect)}`
+    : `${basePath}/sign-in`;
+
   return (
     <AuthLayout
       title={<>CREATE<br/><span className="text-primary">CALLSIGN.</span></>}
        subtitle="Join Pixl Sports to save your custom templates and broadcast settings securely in the cloud."
     >
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/studio`} />
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={roleRedirect} />
     </AuthLayout>
   );
 }
@@ -4306,7 +4309,8 @@ function RoleSelectionPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded } = useUser();
   const existingProfile = getUserProfile(user);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(existingProfile.role);
+  const requestedRole = getRoleIntent(window.location.search);
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(requestedRole ?? existingProfile.role);
   const selectedAccessMode: AccessMode = existingProfile.accessMode ?? 'full';
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
   const [teamName, setTeamName] = useState(existingProfile.teamName);
