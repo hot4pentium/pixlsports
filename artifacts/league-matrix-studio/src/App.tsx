@@ -108,6 +108,7 @@ import {
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
+import { getRoleIntent, roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import { SupporterScheduleSelector } from '@/features/supporter-schedule-selector';
 import {
@@ -199,12 +200,6 @@ function stripBase(path: string): string {
     : path;
 }
 
-type ToolKind = 'hype' | 'schedule' | 'roster' | 'stat-tracker' | 'checklist';
-const roleToolKinds: Record<UserRole, ToolKind[]> = {
-  coach: ['schedule', 'roster', 'checklist'],
-  fan: ['hype', 'schedule', 'stat-tracker', 'checklist'],
-};
-
 const toolData: Record<ToolKind, {
   slug: string;
   label: string;
@@ -266,6 +261,74 @@ const toolData: Record<ToolKind, {
     templateNames: [],
   },
 };
+
+type LandingRoleCopy = {
+  eyebrow: string;
+  headline: string;
+  accent: string;
+  description: string;
+  cta: string;
+  previewLabel: string;
+  previewTitle: string;
+  previewMetric: string;
+  previewAccent: string;
+  previewItems: [string, string, string][];
+  journey: [typeof CalendarDays, string, string, string][];
+};
+
+const landingRoleCopy: Record<UserRole, LandingRoleCopy> = {
+  coach: {
+    eyebrow: 'Coach playbook',
+    headline: 'Build the week.',
+    accent: 'Lead the team.',
+    description: 'Set the schedule, shape the lineup, and keep every family ready for game day.',
+    cta: 'Build my coach workspace',
+    previewLabel: 'Coach command',
+    previewTitle: 'Eastside / 12U',
+    previewMetric: '3 tools',
+    previewAccent: 'ready to run.',
+    previewItems: [
+      ['SCHEDULE', '4 events mapped', 'READY'],
+      ['ROSTER + LINEUP', '12 players set', 'READY'],
+      ['GAMEDAY CHECKLIST', '8 of 8 items', 'READY'],
+    ],
+    journey: [
+      [CalendarDays, '01 / Set the week', 'Add practices, games, and the places everyone needs to know.', 'Schedule maker'],
+      [UsersRound, '02 / Set the lineup', 'Give every family one clear view of who is playing and when.', 'Roster + lineup'],
+      [ClipboardCheck, '03 / Be ready', 'Keep uniforms, equipment, timing, and game details together.', 'Gameday checklist'],
+      [Share2, '04 / Send it around', 'Share the details once so the team can focus on the game.', 'Ready to share'],
+    ],
+  },
+  fan: {
+    eyebrow: 'Fan playbook',
+    headline: 'Celebrate the play.',
+    accent: 'Follow the season.',
+    description: 'Keep the schedule close, track the game, and make the moment everyone wants to share.',
+    cta: 'Build my fan workspace',
+    previewLabel: 'Fan game day',
+    previewTitle: 'Maya / 12U',
+    previewMetric: '4 plays',
+    previewAccent: 'to celebrate.',
+    previewItems: [
+      ['HYPE CARD', 'Moment ready to share', 'SHARE'],
+      ['SCHEDULE', 'Next game / Saturday', '4:30 PM'],
+      ['STAT TRACKER', 'Season totals building', 'LIVE'],
+    ],
+    journey: [
+      [CalendarDays, '01 / Follow the week', 'Keep practices, games, and the next place to be in view.', 'Schedule maker'],
+      [Activity, '02 / Track the game', 'Tap live plays and build a season total for your athlete.', 'Stat tracker'],
+      [Zap, '03 / Catch the moment', 'Turn a photo or short video into the post the group chat wants.', 'Hype card creator'],
+      [Share2, '04 / Send it around', 'Export a polished graphic and keep friends and family in the loop.', 'Ready to share'],
+    ],
+  },
+};
+
+const defaultLandingJourney: LandingRoleCopy['journey'] = [
+  [CalendarDays, '01 / Set the week', 'Add practices, games, and the places everyone needs to know.', 'Schedule maker'],
+  [UsersRound, '02 / Get game-day clear', 'Give every family the same clean view of who is playing and when.', 'Roster + lineup'],
+  [Zap, '03 / Catch the moment', 'Turn a photo or short video into the post the group chat actually wants.', 'Hype card creator'],
+  [Share2, '04 / Send it around', 'Export a polished graphic. Keep the memory moving long after the whistle.', 'Ready to share'],
+];
 
 function BrandMark({ inverse = false }: { inverse?: boolean }) {
   return (
@@ -354,6 +417,14 @@ function Footer() {
 }
 
 function HomePage() {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const roleCopy = selectedRole ? landingRoleCopy[selectedRole] : null;
+  const heroCtaHref = selectedRole ? roleSignupHref(selectedRole) : '/sign-up';
+  const showcaseTools: ToolKind[] = selectedRole
+    ? roleToolKinds[selectedRole]
+    : ['hype', 'schedule', 'roster'];
+  const journey = roleCopy?.journey ?? defaultLandingJourney;
+
   return (
     <div className="noise home-shell min-h-dvh overflow-hidden">
       <SiteNav dark />
@@ -375,15 +446,43 @@ function HomePage() {
               <div className="home-reveal inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm">
                 <Activity className="h-4 w-4" /> Your season, in one place
               </div>
-              <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]">
-                Your week.<br />One <span className="text-primary">profile.</span><br />Game on.
+              <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]" data-testid="text-landing-headline">
+                {roleCopy ? (
+                  <>{roleCopy.headline}<br /><span className="text-primary">{roleCopy.accent}</span><br />Game on.</>
+                ) : (
+                  <>Your week.<br />One <span className="text-primary">profile.</span><br />Game on.</>
+                )}
               </h1>
               <p className="home-reveal home-reveal-delay-2 mt-8 max-w-xl text-base font-medium leading-relaxed text-[#f5f0e3]/72 sm:text-lg">
-                Create a profile for your athlete or team. Keep the week moving. Share the schedule, the lineup, and the moment everyone will remember.
+                {roleCopy?.description ?? 'Create a profile for your athlete or team. Keep the week moving. Share the schedule, the lineup, and the moment everyone will remember.'}
               </p>
-              <div className="home-reveal home-reveal-delay-3 mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Link href="/studio" className="group inline-flex items-center justify-center gap-3 bg-primary px-7 py-4 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-hero-open-studio">
-                  Start your home base <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              <div className="home-reveal home-reveal-delay-3 mt-8" data-testid="landing-role-selector">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5f0e3]/48">Show me the flow for</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row" role="radiogroup" aria-label="Choose a Pixl Sports path">
+                  {(['coach', 'fan'] as UserRole[]).map((role) => {
+                    const isSelected = selectedRole === role;
+                    const Icon = role === 'coach' ? ShieldCheck : Heart;
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => setSelectedRole(role)}
+                        className={`group inline-flex items-center gap-3 border px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.14em] transition-colors clip-angled-sm ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-[#f5f0e3]/20 bg-[#f5f0e3]/5 text-[#f5f0e3]/70 hover:border-primary hover:text-primary'}`}
+                        data-testid={`button-landing-role-${role}`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{role === 'coach' ? 'Coach tools' : 'Fan tools'}</span>
+                        {isSelected && <Check className="ml-auto h-4 w-4" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="home-reveal home-reveal-delay-3 mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Link href={heroCtaHref} className="group inline-flex items-center justify-center gap-3 bg-primary px-7 py-4 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-hero-open-studio">
+                  {roleCopy?.cta ?? 'Choose your path'} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <a href="#week" className="group inline-flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-[0.12em] text-[#f5f0e3]/70 transition-colors hover:text-primary" data-testid="link-hero-see-week">
                   See the weekly rhythm <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -405,8 +504,8 @@ function HomePage() {
                   <div className="flex items-center gap-3">
                     <span className="grid h-11 w-11 place-items-center bg-primary text-primary-foreground clip-angled-sm"><Zap className="h-5 w-5" /></span>
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Pixl profile</p>
-                      <p className="home-display text-2xl">Maya / 12U</p>
+                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{roleCopy?.previewLabel ?? 'Pixl profile'}</p>
+                       <p className="home-display text-2xl">{roleCopy?.previewTitle ?? 'Maya / 12U'}</p>
                     </div>
                   </div>
                   <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/.14)]" />
@@ -415,8 +514,8 @@ function HomePage() {
                   <div className="absolute right-0 top-0 h-28 w-28 bg-primary/10 [clip-path:polygon(100%_0,100%_100%,0_0)]" />
                   <div className="relative flex items-start justify-between">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f5f0e3]/50">This week</p>
-                      <p className="home-display mt-2 text-5xl leading-none">4 plays<br /><span className="text-primary">to go.</span></p>
+                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f5f0e3]/50">{roleCopy ? 'Your playbook' : 'This week'}</p>
+                       <p className="home-display mt-2 text-5xl leading-none">{roleCopy?.previewMetric ?? '4 plays'}<br /><span className="text-primary">{roleCopy?.previewAccent ?? 'to go.'}</span></p>
                     </div>
                     <div className="text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
                       <p>Eastside Falcons</p>
@@ -424,15 +523,15 @@ function HomePage() {
                     </div>
                   </div>
                   <div className="mt-7 space-y-2">
-                    {[
-                      ['MON', 'Practice', '5:15 PM'],
-                      ['WED', 'Falcons vs Northside', '6:00 PM'],
-                      ['SAT', 'GAME DAY', '4:30 PM'],
-                    ].map(([day, title, time], index) => (
-                      <div key={day} className={`flex items-center gap-3 border-t border-[#f5f0e3]/10 py-3 ${index === 2 ? 'text-primary' : 'text-[#f5f0e3]/72'}`} data-testid={`text-profile-week-${day.toLowerCase()}`}>
-                        <span className="w-9 text-[10px] font-bold tracking-[0.16em]">{day}</span>
-                        <span className="flex-1 text-sm font-semibold">{title}</span>
-                        <span className="text-xs font-bold tracking-[0.08em]">{time}</span>
+                     {(roleCopy?.previewItems ?? [
+                       ['MON', 'Practice', '5:15 PM'],
+                       ['WED', 'Falcons vs Northside', '6:00 PM'],
+                       ['SAT', 'GAME DAY', '4:30 PM'],
+                     ]).map(([day, title, time], index) => (
+                       <div key={day} className={`flex items-center gap-3 border-t border-[#f5f0e3]/10 py-3 ${index === 2 ? 'text-primary' : 'text-[#f5f0e3]/72'}`} data-testid={`text-profile-week-${index + 1}`}>
+                         <span className="w-9 text-[10px] font-bold tracking-[0.16em]">{day}</span>
+                         <span className="flex-1 text-sm font-semibold">{title}</span>
+                         <span className="text-xs font-bold tracking-[0.08em]">{time}</span>
                       </div>
                     ))}
                   </div>
