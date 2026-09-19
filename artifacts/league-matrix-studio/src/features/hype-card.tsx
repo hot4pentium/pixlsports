@@ -2177,13 +2177,26 @@ export function HypeCardEditor() {
       )}
 
       {notice && (
-        <div className={`flex shrink-0 items-center justify-between border-b px-4 py-2 text-sm font-bold ${
+        <div className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-2 text-sm font-bold ${
           isShareSuccessNotice
             ? 'border-primary/30 bg-primary text-primary-foreground'
             : 'border-border bg-destructive text-destructive-foreground'
         }`}>
           {notice}
-          <button type="button" onClick={() => setNotice('')}><X className="h-4 w-4" /></button>
+          <div className="flex shrink-0 items-center gap-2">
+            {isShareSuccessNotice && existingShare && (
+              <a
+                href={shareUrlFor(existingShare)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                data-testid="link-preview-recipient-success"
+              >
+                <Eye className="h-3.5 w-3.5" /> Preview recipient view
+              </a>
+            )}
+            <button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X className="h-4 w-4" /></button>
+          </div>
         </div>
       )}
 
@@ -2192,6 +2205,15 @@ export function HypeCardEditor() {
           <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Player page</span>
           <input readOnly value={shareUrlFor(existingShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Hype Card player page link" />
           <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingShare)).then(() => setNotice('Share link copied.')).catch(() => setNotice('Select and copy the link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
+           <a
+             href={shareUrlFor(existingShare)}
+             target="_blank"
+             rel="noreferrer"
+             className="inline-flex min-h-9 items-center gap-2 border border-border bg-background px-3 text-xs font-bold uppercase tracking-wider hover:border-primary hover:bg-muted"
+             data-testid="link-preview-recipient"
+           >
+             <Eye className="h-4 w-4" /> Preview
+           </a>
           <Button type="button" size="sm" variant="outline" className="relative rounded-none" onClick={() => setReplyDialogOpen(true)}>
             <MessageCircle className="mr-2 h-4 w-4" /> Replies
             {Boolean(shareReplies?.unreadCount) && <span className="ml-2 bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{shareReplies?.unreadCount}</span>}
