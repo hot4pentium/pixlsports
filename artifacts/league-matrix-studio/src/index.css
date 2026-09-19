@@ -56,9 +56,9 @@
   
   --border: 43 23% 86%;
   --input: 43 23% 86%;
-  --ring: 76 100% 48%;
+  --ring: 148 100% 48%;
 
-  --primary: 76 100% 48%; 
+  --primary: 148 100% 48%;
   --primary-foreground: 221 21% 12%;
 
   --secondary: 221 21% 12%;
@@ -99,9 +99,9 @@
   
   --border: 220 14% 25%;
   --input: 220 14% 25%;
-  --ring: 76 100% 48%;
+  --ring: 148 100% 48%;
 
-  --primary: 76 100% 48%;
+  --primary: 148 100% 48%;
   --primary-foreground: 221 21% 12%;
 
   --secondary: 48 43% 96%;
@@ -153,8 +153,8 @@
   }
   .bg-tech-grid-green {
     background-image: 
-      linear-gradient(to right, hsl(145 100% 45% / 0.15) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(145 100% 45% / 0.15) 1px, transparent 1px);
+      linear-gradient(to right, hsl(var(--primary) / 0.15) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.15) 1px, transparent 1px);
     background-size: 32px 32px;
   }
   .studio-page-background {

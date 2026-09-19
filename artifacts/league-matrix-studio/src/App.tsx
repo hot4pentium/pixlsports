@@ -1773,7 +1773,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
             <div className="relative z-10">
               <p className="mb-4 text-xs font-bold uppercase tracking-widest text-foreground">Team Colors</p>
               <div className="flex gap-3">
-                {['#00ff66', '#111827', '#ffffff', '#2563eb'].map((color) => (
+                {['#00F776', '#111827', '#ffffff', '#2563eb'].map((color) => (
                   <button type="button" key={color} onClick={() => setNotice('COLOR THEME UPDATED')} className="h-10 w-10 border-2 border-background ring-2 ring-border transition-transform hover:scale-110 clip-angled-sm" style={{ backgroundColor: color }} aria-label={`Choose ${color} color`} data-testid={`button-color-${color.slice(1)}`} />
                 ))}
               </div>
@@ -4087,7 +4087,7 @@ const clerkAppearance = {
     logoImageUrl: `${appOrigin}${basePath}/logo.svg`,
   },
   variables: {
-    colorPrimary: "hsl(145 100% 45%)",
+    colorPrimary: "hsl(148 100% 48%)",
     colorForeground: "hsl(210 20% 98%)",
     colorMutedForeground: "hsl(215 14% 65%)",
     colorDanger: "hsl(0 84% 60%)",
@@ -4312,7 +4312,7 @@ function RoleSelectionPage() {
                 disabled={savingProfile}
                 role="radio"
                 aria-checked={selectedRole === 'coach'}
-                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'coach' ? 'border-primary bg-primary/10 shadow-[0_0_0_4px_rgba(0,232,120,0.2)]' : 'border-border bg-background'}`}
+                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'coach' ? 'border-primary bg-primary/10 shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-border bg-background'}`}
                 data-testid="button-role-coach"
               >
                 <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'coach' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
@@ -4331,7 +4331,7 @@ function RoleSelectionPage() {
                 disabled={savingProfile}
                 role="radio"
                 aria-checked={selectedRole === 'fan'}
-                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background shadow-[0_0_0_4px_rgba(0,232,120,0.2)]' : 'border-white/15 bg-foreground text-background'}`}
+                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-white/15 bg-foreground text-background'}`}
                 data-testid="button-role-fan"
               >
                 <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'fan' ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>
