@@ -341,7 +341,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4 sm:px-8 bg-background/80 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-4">
           <BrandMark />
-          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Premium local-first sports graphics <span className="mx-1 text-primary">·</span> Built for your team account.</p>
+          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Premium local-first sports graphics <span className="mx-1 text-primary-ink">·</span> Built for your team account.</p>
         </div>
         <div className="flex shrink-0 items-center gap-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
@@ -461,7 +461,7 @@ function HomePage() {
                 The weekly rhythm
               </div>
               <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">
-                One profile.<br /><span className="text-primary">Seven days.</span>
+                One profile.<br /><span className="text-primary-ink">Seven days.</span>
               </h2>
               <p className="mt-7 max-w-md text-base font-medium leading-relaxed text-muted-foreground">
                 Start with who you are. Then let Pixl hold the details that usually live in five different group chats.
@@ -471,16 +471,16 @@ function HomePage() {
               </Link>
               <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 <Link href="/studio" className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-supporter-path">
-                  <Heart className="h-5 w-5 text-primary" />
-                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">For families</p>
+                  <Heart className="h-5 w-5 text-primary-ink" />
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-ink">For families</p>
                   <p className="mt-2 text-sm font-bold leading-snug text-foreground">Follow an athlete and keep the whole week in view.</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
+                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary-ink">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
                 </Link>
                 <Link href="/studio" className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-coach-path">
-                  <UsersRound className="h-5 w-5 text-primary" />
-                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">For coaches</p>
+                  <UsersRound className="h-5 w-5 text-primary-ink" />
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-ink">For coaches</p>
                   <p className="mt-2 text-sm font-bold leading-snug text-foreground">Lead a team with one clear game-day home.</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary">Lead a team <ArrowUpRight className="h-3.5 w-3.5" /></span>
+                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary-ink">Lead a team <ArrowUpRight className="h-3.5 w-3.5" /></span>
                 </Link>
               </div>
             </div>
@@ -500,7 +500,7 @@ function HomePage() {
                         <IconComponent className="h-5 w-5" />
                       </span>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{title as string}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-ink">{title as string}</p>
                         <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{body as string}</p>
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-right">{label as string}</span>
@@ -551,15 +551,15 @@ function HomePage() {
             <p className="relative mt-6 max-w-sm text-sm font-semibold leading-relaxed text-primary-foreground/72">Pixl helps you make and share the right thing without asking your family archive to leave home.</p>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">Built for the in-between moments</p>
-            <h2 className="home-display mt-5 text-6xl leading-[0.86] sm:text-8xl">Less admin.<br /><span className="text-primary">More living.</span></h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-ink">Built for the in-between moments</p>
+            <h2 className="home-display mt-5 text-6xl leading-[0.86] sm:text-8xl">Less admin.<br /><span className="text-primary-ink">More living.</span></h2>
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
               <div className="border-t border-border pt-4">
-                <SquarePen className="h-5 w-5 text-primary" />
+                <SquarePen className="h-5 w-5 text-primary-ink" />
                 <p className="mt-4 text-sm font-bold">Fast enough between practice and pickup.</p>
               </div>
               <div className="border-t border-border pt-4">
-                <MapPin className="h-5 w-5 text-primary" />
+                <MapPin className="h-5 w-5 text-primary-ink" />
                 <p className="mt-4 text-sm font-bold">Clear enough that nobody asks, “Where is it again?”</p>
               </div>
             </div>

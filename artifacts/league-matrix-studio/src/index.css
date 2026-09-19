@@ -21,6 +21,7 @@
   --color-popover-border: hsl(var(--popover-border));
 
   --color-primary: hsl(var(--primary));
+  --color-primary-ink: hsl(var(--primary-ink));
   --color-primary-foreground: hsl(var(--primary-foreground));
 
   --color-secondary: hsl(var(--secondary));
@@ -59,6 +60,7 @@
   --ring: 148 100% 48%;
 
   --primary: 148 100% 48%;
+  --primary-ink: 151 100% 24%;
   --primary-foreground: 221 21% 12%;
 
   --secondary: 221 21% 12%;
@@ -102,6 +104,7 @@
   --ring: 148 100% 48%;
 
   --primary: 148 100% 48%;
+  --primary-ink: 151 100% 24%;
   --primary-foreground: 221 21% 12%;
 
   --secondary: 48 43% 96%;
