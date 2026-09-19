@@ -1,8 +1,10 @@
 export type ScheduleEventType = 'game' | 'practice' | 'meeting';
+export type ScheduleEventStatus = 'upcoming' | 'live' | 'final';
 
 export type ScheduleEvent = {
   id: string;
   type: ScheduleEventType;
+  status?: ScheduleEventStatus;
   date: string;
   time: string;
   location: string;
@@ -53,6 +55,7 @@ export function createBlankScheduleEvent(type: ScheduleEventType = 'game'): Sche
   return {
     id: `schedule-event-${scheduleEventCounter}`,
     type,
+    ...(type === 'game' ? { status: 'upcoming' as const } : {}),
     date: '',
     time: '',
     location: '',
@@ -104,6 +107,11 @@ export function normalizeScheduleEvent(
   return {
     id: stringValue(input.id) || fallbackId,
     type,
+    ...(type === 'game' && (
+      input.status === 'upcoming'
+      || input.status === 'live'
+      || input.status === 'final'
+    ) ? { status: input.status } : {}),
     date: stringValue(input.date),
     time: stringValue(input.time),
     location: stringValue(input.location),
@@ -225,16 +233,33 @@ export function updateScheduleEvent(
     if (event.id !== id) return event;
 
     if (patch.type && isScheduleEventType(patch.type)) {
+      const nextType = patch.type;
       return {
         ...event,
         ...patch,
-        type: patch.type,
-        opponent: patch.type === 'game' ? (patch.opponent ?? event.opponent) : '',
+        type: nextType,
+        ...(nextType === 'game'
+          ? (patch.status ?? event.status ? { status: patch.status ?? event.status } : {})
+          : {}),
+        ...(nextType !== 'game' ? { status: undefined } : {}),
+        opponent: nextType === 'game' ? (patch.opponent ?? event.opponent) : '',
       };
     }
 
     return { ...event, ...patch };
   });
+}
+
+export function updateScheduleEventStatus(
+  events: ScheduleEvent[],
+  id: string,
+  status: ScheduleEventStatus,
+) {
+  return events.map((event) => (
+    event.id === id && event.type === 'game'
+      ? { ...event, status }
+      : event
+  ));
 }
 
 export function addScheduleEvent(events: ScheduleEvent[], type: ScheduleEventType) {

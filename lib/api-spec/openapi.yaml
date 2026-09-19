@@ -1208,6 +1208,7 @@ components:
       properties:
         id: { type: string, minLength: 1, maxLength: 100 }
         type: { type: string, enum: [game, practice, meeting] }
+        status: { type: string, enum: [upcoming, live, final] }
         date: { type: string, maxLength: 30 }
         time: { type: string, maxLength: 30 }
         location: { type: string, maxLength: 300 }

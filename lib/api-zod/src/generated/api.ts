@@ -51,6 +51,7 @@ export const CreateScheduleShareBody = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(createScheduleShareBodyEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(createScheduleShareBodyEventsItemDateMax),
   "time": zod.string().max(createScheduleShareBodyEventsItemTimeMax),
   "location": zod.string().max(createScheduleShareBodyEventsItemLocationMax),
@@ -86,6 +87,7 @@ export const CreateScheduleShareResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(createScheduleShareResponseEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(createScheduleShareResponseEventsItemDateMax),
   "time": zod.string().max(createScheduleShareResponseEventsItemTimeMax),
   "location": zod.string().max(createScheduleShareResponseEventsItemLocationMax),
@@ -131,6 +133,7 @@ export const GetScheduleShareResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(getScheduleShareResponseEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(getScheduleShareResponseEventsItemDateMax),
   "time": zod.string().max(getScheduleShareResponseEventsItemTimeMax),
   "location": zod.string().max(getScheduleShareResponseEventsItemLocationMax),
@@ -181,6 +184,7 @@ export const UpdateScheduleShareBody = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(updateScheduleShareBodyEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(updateScheduleShareBodyEventsItemDateMax),
   "time": zod.string().max(updateScheduleShareBodyEventsItemTimeMax),
   "location": zod.string().max(updateScheduleShareBodyEventsItemLocationMax),
@@ -216,6 +220,7 @@ export const UpdateScheduleShareResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(updateScheduleShareResponseEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(updateScheduleShareResponseEventsItemDateMax),
   "time": zod.string().max(updateScheduleShareResponseEventsItemTimeMax),
   "location": zod.string().max(updateScheduleShareResponseEventsItemLocationMax),
@@ -701,7 +706,7 @@ export const GetHypeCardReplyInboxResponse = zod.object({
 
 
 /**
- * @summary Mark all replies for active owned Hype Card shares as read
+ * @summary Mark all replies for recent owned Hype Card shares as read
  */
 export const MarkHypeCardReplyInboxReadResponse = zod.void()
 
@@ -863,6 +868,7 @@ export const GetConnectedCoachCalendarBySubscriptionResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(getConnectedCoachCalendarBySubscriptionResponseEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemDateMax),
   "time": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemTimeMax),
   "location": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemLocationMax),
@@ -916,6 +922,7 @@ export const ConnectToCoachCalendarResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(connectToCoachCalendarResponseEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(connectToCoachCalendarResponseEventsItemDateMax),
   "time": zod.string().max(connectToCoachCalendarResponseEventsItemTimeMax),
   "location": zod.string().max(connectToCoachCalendarResponseEventsItemLocationMax),
@@ -979,6 +986,7 @@ export const GetConnectedCoachCalendarResponse = zod.object({
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(getConnectedCoachCalendarResponseEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string().max(getConnectedCoachCalendarResponseEventsItemDateMax),
   "time": zod.string().max(getConnectedCoachCalendarResponseEventsItemTimeMax),
   "location": zod.string().max(getConnectedCoachCalendarResponseEventsItemLocationMax),

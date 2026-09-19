@@ -1328,7 +1328,7 @@ export const getMarkHypeCardReplyInboxReadUrl = () => {
 }
 
 /**
- * @summary Mark all replies for active owned Hype Card shares as read
+ * @summary Mark all replies for recent owned Hype Card shares as read
  */
 export const markHypeCardReplyInboxRead = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
@@ -1380,7 +1380,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
     /**
- * @summary Mark all replies for active owned Hype Card shares as read
+ * @summary Mark all replies for recent owned Hype Card shares as read
  */
 export const useMarkHypeCardReplyInboxRead = <TError = ErrorType<UnauthorizedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markHypeCardReplyInboxRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}

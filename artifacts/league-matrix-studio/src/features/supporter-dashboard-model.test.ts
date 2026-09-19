@@ -21,6 +21,29 @@ test('models upcoming, live, and completed supporter game phases', () => {
   assert.equal(getSupporterGameStage({ date: '2026-09-18', time: '18:00' }, now), 'completed');
 });
 
+test('explicit schedule status wins over the clock fallback', () => {
+  const now = new Date(2026, 8, 19, 15, 0, 0);
+
+  assert.equal(getSupporterGameStage({
+    id: 'delayed',
+    date: '2026-09-18',
+    time: '08:00',
+    status: 'live',
+  }, now), 'live');
+  assert.equal(getSupporterGameStage({
+    id: 'short-game',
+    date: '2026-09-19',
+    time: '14:00',
+    status: 'final',
+  }, now), 'completed');
+  assert.equal(getSupporterGameStage({
+    id: 'rescheduled',
+    date: '2026-09-19',
+    time: '14:00',
+    status: 'upcoming',
+  }, now), 'upcoming');
+});
+
 test('keeps a valid selected game and otherwise chooses the next relevant game', () => {
   const now = new Date(2026, 8, 19, 15, 0, 0);
   const games = [

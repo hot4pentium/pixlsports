@@ -97,6 +97,7 @@ export * from './projectUpdate';
 export * from './projectUpdateProject';
 export * from './projectVisibility';
 export * from './scheduleEvent';
+export * from './scheduleEventStatus';
 export * from './scheduleEventType';
 export * from './scheduleShare';
 export * from './scheduleShareInput';

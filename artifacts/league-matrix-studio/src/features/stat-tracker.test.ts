@@ -30,7 +30,7 @@ import {
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
-import { LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
+import { getNextScheduledGame, LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
 import { GameReportView } from './stat-tracker-game-report';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -124,6 +124,16 @@ test('profile sport controls the tracker while accounts without one resume their
   assert.equal(getTrackerSportForProfile(history, 'soccer'), 'soccer');
   assert.equal(getTrackerSportForProfile(history, null), 'volleyball');
   assert.equal(getPreferredTrackerSport({ version: 1, games: [] }, 'baseball'), 'baseball');
+});
+
+test('tracker prefers a connected live game and skips explicit finals', () => {
+  const selected = getNextScheduledGame([
+    { id: 'final', type: 'game', date: '2026-09-19', time: '08:00', opponent: 'Early', status: 'final' },
+    { id: 'upcoming', type: 'game', date: '2026-09-19', time: '18:00', opponent: 'Later', status: 'upcoming' },
+    { id: 'live', type: 'game', date: '2026-09-18', time: '18:00', opponent: 'Delayed', status: 'live' },
+  ]);
+
+  assert.equal(selected?.id, 'live');
 });
 
 test('long live tracker names cannot push score or featured stat controls off-screen', () => {

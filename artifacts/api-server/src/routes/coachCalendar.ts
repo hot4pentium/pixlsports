@@ -85,9 +85,15 @@ function normalizeEvents(value: unknown): ScheduleEvent[] {
     .filter((event): event is Record<string, unknown> => typeof event === "object" && event !== null)
     .map((event, index) => {
       const type: ScheduleEvent["type"] = event.type === "practice" || event.type === "meeting" ? event.type : "game";
+      const status: ScheduleEvent["status"] = event.status === "upcoming"
+        || event.status === "live"
+        || event.status === "final"
+        ? event.status
+        : undefined;
       return {
         id: asString(event.id) || `schedule-event-${index + 1}`,
         type,
+        ...(type === "game" && status ? { status } : {}),
         date: asString(event.date),
         time: asString(event.time),
         location: asString(event.location),

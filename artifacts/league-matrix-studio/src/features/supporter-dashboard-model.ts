@@ -1,5 +1,6 @@
 import type { SupporterProfile, SupporterProject } from './supporter-dashboard';
 import { isSport, type Sport } from './stat-tracker';
+import type { ScheduleEventStatus } from './schedule-draft';
 
 export type UserRole = 'coach' | 'fan';
 export type AccessMode = 'full' | 'guest';
@@ -117,14 +118,19 @@ export type SupporterGameLike = {
   id: string;
   date: string;
   time: string;
+  status?: ScheduleEventStatus;
 };
 
 export const supporterActiveGameStorageKey = 'pixlsports-supporter-active-game';
 
 export function getSupporterGameStage(
-  game: Pick<SupporterGameLike, 'date' | 'time'>,
+  game: Pick<SupporterGameLike, 'date' | 'time' | 'status'>,
   now = new Date(),
 ): SupporterGameStage {
+  if (game.status === 'upcoming') return 'upcoming';
+  if (game.status === 'live') return 'live';
+  if (game.status === 'final') return 'completed';
+
   const todayKey = [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, '0'),

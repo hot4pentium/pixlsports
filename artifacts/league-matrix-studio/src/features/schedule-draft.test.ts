@@ -19,6 +19,7 @@ import {
   clearSupporterScheduleSelection,
   readSupporterScheduleSelection,
   saveSupporterScheduleSelection,
+  updateScheduleEventStatus,
   type ScheduleEvent,
   type ScheduleDraft,
 } from './schedule-draft';
@@ -109,6 +110,28 @@ test('empty and partially filled saved events normalize into safe preview data',
   assert.equal(draft.events[2].location, '');
   assert.equal(draft.teamName, 'Wolves');
   assert.equal(draft.season, '2026');
+});
+
+test('schedule statuses survive normalization and update only game events', () => {
+  const draft = normalizeScheduleDraft({
+    events: [
+      { id: 'live-game', type: 'game', status: 'live' },
+      { id: 'practice', type: 'practice', status: 'final' },
+      { id: 'invalid-status', type: 'game', status: 'finished' },
+    ],
+  });
+
+  assert.equal(draft?.events[0]?.status, 'live');
+  assert.equal(draft?.events[1]?.status, undefined);
+  assert.equal(draft?.events[2]?.status, undefined);
+  assert.equal(
+    updateScheduleEventStatus(draft!.events, 'live-game', 'final')[0]?.status,
+    'final',
+  );
+  assert.equal(
+    updateScheduleEventStatus(draft!.events, 'practice', 'live')[1]?.status,
+    undefined,
+  );
 });
 
 test('new identity fields take precedence over legacy combined schedule text', () => {

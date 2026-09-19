@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ScheduleEventStatus } from './scheduleEventStatus';
 import type { ScheduleEventType } from './scheduleEventType';
 
 export interface ScheduleEvent {
@@ -14,6 +15,7 @@ export interface ScheduleEvent {
      */
   id: string;
   type: ScheduleEventType;
+  status?: ScheduleEventStatus;
   /** @maxLength 30 */
   date: string;
   /** @maxLength 30 */

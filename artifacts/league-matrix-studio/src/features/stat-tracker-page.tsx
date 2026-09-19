@@ -20,7 +20,13 @@ import {
 } from './calendar-connection';
 import { getGuestUsageKey } from './guest-access';
 import { getUserProfile } from './supporter-dashboard-model';
-import { readScheduleDraft } from './schedule-draft';
+import {
+  readScheduleDraft,
+  saveScheduleDraft,
+  updateScheduleEventStatus,
+  type ScheduleEvent,
+  type ScheduleEventStatus,
+} from './schedule-draft';
 import {
   addStatEvent,
   adjustScore,
@@ -66,17 +72,34 @@ function saveLocalTracker(data: StatTrackerData, accountId: string) {
 }
 
 type ScheduledGame = {
+  id: string;
   type: string;
   date: string;
   time: string;
   opponent: string;
+  status?: ScheduleEventStatus;
 };
 
-function getNextScheduledGame(events: readonly ScheduledGame[] = (readScheduleDraft()?.events ?? [])) {
+export function getNextScheduledGame(events: readonly ScheduledGame[] = (readScheduleDraft()?.events ?? [])) {
   const today = new Date().toISOString().slice(0, 10);
   return [...events]
-    .filter((event) => event.type === 'game' && event.date >= today)
-    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))[0];
+    .filter((event) => (
+      event.type === 'game'
+      && event.status !== 'final'
+      && (Boolean(event.status) || event.date >= today)
+    ))
+    .sort((a, b) => {
+      const statusOrder = (status?: ScheduleEventStatus) => status === 'live' ? 0 : 1;
+      return statusOrder(a.status) - statusOrder(b.status)
+        || `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`);
+    })[0];
+}
+
+function isScheduleProject(value: unknown): value is { tool: 'schedule'; events: ScheduleEvent[] } {
+  return typeof value === 'object'
+    && value !== null
+    && (value as { tool?: unknown }).tool === 'schedule'
+    && Array.isArray((value as { events?: unknown }).events);
 }
 
 function formatDate(value: string) {
@@ -275,6 +298,9 @@ export function StatTrackerPage() {
     opponent: searchParams.has('opponent'),
   });
   const connectedPrefillApplied = useRef(false);
+  const activeScheduledGame = useRef<ScheduledGame | undefined>(undefined);
+  const scheduleRevision = useRef<{ id: string; revision: number } | null>(null);
+  const scheduledStatusUpdate = useRef(Promise.resolve());
   const guestUsageKey = useRef(getGuestUsageKey('lineup', 'stat-tracker')).current;
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
@@ -291,6 +317,18 @@ export function StatTrackerPage() {
       queryKey: [...getListProjectsQueryKey(), accountId],
     },
   });
+
+  const ownedScheduleProject = useMemo(
+    () => (projects ?? []).find((project) => isScheduleProject(project.project)),
+    [projects],
+  );
+  const ownedSchedule = ownedScheduleProject && isScheduleProject(ownedScheduleProject.project)
+    ? ownedScheduleProject.project
+    : null;
+  const ownedScheduleNextGame = useMemo(
+    () => getNextScheduledGame(ownedSchedule?.events),
+    [ownedSchedule?.events],
+  );
 
   useEffect(() => {
     initializedCloud.current = false;
@@ -370,7 +408,7 @@ export function StatTrackerPage() {
   const rule = getSportRule(sport);
   const totals = seasonTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => showAllStats || item.featured);
-  const nextGame = connectedNextGame ?? localNextGame;
+  const nextGame = connectedNextGame ?? ownedScheduleNextGame ?? localNextGame;
   const report = useMemo(() => {
     if (!selectedReportGameId) return null;
     return buildGameReport(data.games, sport, selectedReportGameId);
@@ -388,6 +426,64 @@ export function StatTrackerPage() {
     window.setTimeout(() => setNotice(''), 2600);
   };
 
+  const updateOwnedScheduledGameStatus = (
+    scheduledGame: ScheduledGame | undefined,
+    status: ScheduleEventStatus,
+  ) => {
+    if (!scheduledGame || profile.role !== 'fan' || calendarConnection) return;
+
+    scheduledStatusUpdate.current = scheduledStatusUpdate.current
+      .catch(() => undefined)
+      .then(async () => {
+        const localDraft = readScheduleDraft();
+        if (localDraft) {
+          const localEvent = localDraft.events.find((event) => (
+            event.id === scheduledGame.id
+            || (
+              event.type === 'game'
+              && event.date === scheduledGame.date
+              && event.opponent === scheduledGame.opponent
+            )
+          ));
+          if (localEvent) {
+            saveScheduleDraft(window.localStorage, {
+              ...localDraft,
+              events: updateScheduleEventStatus(localDraft.events, localEvent.id, status),
+            });
+          }
+        }
+
+        const project = ownedScheduleProject;
+        if (!project || !isScheduleProject(project.project)) return;
+        const revision = scheduleRevision.current?.id === project.id
+          ? scheduleRevision.current.revision
+          : project.revision;
+        const event = project.project.events.find((candidate) => (
+          candidate.id === scheduledGame.id
+          || (
+            candidate.type === 'game'
+            && candidate.date === scheduledGame.date
+            && candidate.opponent === scheduledGame.opponent
+          )
+        ));
+        if (!event) return;
+
+        const updated = await updateProject.mutateAsync({
+          projectId: project.id,
+          data: {
+            project: {
+              ...project.project,
+              events: updateScheduleEventStatus(project.project.events, event.id, status),
+            },
+            expectedRevision: revision,
+          },
+        });
+        scheduleRevision.current = { id: project.id, revision: updated.revision };
+        await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      })
+      .catch(() => undefined);
+  };
+
   if (!isLoaded || (isSignedIn && storageAccountId !== accountId)) return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading tracker…</div>;
   if (!isSignedIn) {
     setLocation('/sign-in?redirect_url=%2Fstudio%2Fstat-tracker');
@@ -400,7 +496,13 @@ export function StatTrackerPage() {
     setRevisionConflict(false);
     setTrackerConflict(null);
     setSelectedConflictResolution(null);
+    activeScheduledGame.current = nextGame
+      && nextGame.date === date
+      && nextGame.opponent === opponent
+      ? nextGame
+      : undefined;
     setCurrentGame(createGameSession(sport, { date, opponent, notes }));
+    updateOwnedScheduledGameStatus(activeScheduledGame.current, 'live');
     announce('GAME STARTED — LIVE STATS ARE READY');
   };
 
@@ -428,6 +530,7 @@ export function StatTrackerPage() {
   const saveCompletedGame = async () => {
     if (!currentGame) return;
     const completed = endGame(currentGame);
+    updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final');
     const nextData = { ...data, games: [...data.games, completed] };
     setData(nextData);
     setCurrentGame(null);

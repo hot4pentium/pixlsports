@@ -15,6 +15,7 @@ import {
   saveSupporterActiveGame,
   type SupporterGameStage,
 } from './supporter-dashboard-model';
+import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import heroBanner from '@/assets/hero-banner.webp';
@@ -37,6 +38,7 @@ export interface SupporterEvent {
   type: 'game' | 'practice' | 'meeting';
   date: string;
   time: string;
+  status?: ScheduleEventStatus;
   location: string;
   opponent?: string;
   notes?: string;

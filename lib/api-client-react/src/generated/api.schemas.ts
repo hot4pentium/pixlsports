@@ -126,6 +126,15 @@ export const ScheduleEventType = {
   meeting: 'meeting',
 } as const;
 
+export type ScheduleEventStatus = typeof ScheduleEventStatus[keyof typeof ScheduleEventStatus];
+
+
+export const ScheduleEventStatus = {
+  upcoming: 'upcoming',
+  live: 'live',
+  final: 'final',
+} as const;
+
 export interface ScheduleEvent {
   /**
      * @minLength 1
@@ -133,6 +142,7 @@ export interface ScheduleEvent {
      */
   id: string;
   type: ScheduleEventType;
+  status?: ScheduleEventStatus;
   /** @maxLength 30 */
   date: string;
   /** @maxLength 30 */
