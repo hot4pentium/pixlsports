@@ -908,6 +908,34 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
   const tool = toolData[kind];
   const Icon = tool.icon;
   const toolHref = `/studio/${tool.slug}`;
+  const walkthroughCopy: Record<ToolKind, { what: string; next: string; steps: string[] }> = {
+    schedule: {
+      what: 'Turn the season plan into one event families can actually follow.',
+      next: 'Add a game, practice, or place. Pixl turns the details into a clean calendar card.',
+      steps: ['Add the event', 'Share the details', 'Keep the week current'],
+    },
+    checklist: {
+      what: 'Replace the game-day group chat with one shared list of what needs to happen next.',
+      next: 'Check off equipment, timing, lineup, and arrival details as the team gets ready.',
+      steps: ['Set the essentials', 'Check items off', 'Arrive ready'],
+    },
+    'stat-tracker': {
+      what: 'Capture the game as it happens, then keep the season total growing after the final play.',
+      next: 'Tap a play, see the live line change, and finish with a simple game report.',
+      steps: ['Tap live plays', 'Watch the line update', 'Build the season total'],
+    },
+    hype: {
+      what: 'Turn a photo or short video into a polished moment card without leaving the sideline.',
+      next: 'Choose the media, pick a look, and share the finished celebration with your people.',
+      steps: ['Choose the moment', 'Add the Pixl look', 'Share the card'],
+    },
+    roster: {
+      what: 'Make the team board clear before the game starts and keep the lineup in one place.',
+      next: 'Add players, mark the starters, and share the game-day view with families.',
+      steps: ['Add players', 'Set the starters', 'Share the lineup'],
+    },
+  };
+  const copy = walkthroughCopy[kind];
 
   return (
     <article className="group overflow-hidden border border-[#f5f0e3]/15 bg-[#f5f0e3]/5 clip-angled-sm" data-testid={`card-tool-walkthrough-${kind}`}>
@@ -940,6 +968,23 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
                 </div>
               </div>
             </div>
+          </div>
+        )}
+        {kind === 'hype' && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              [FileImage, 'Choose media'],
+              [Palette, 'Pick a look'],
+              [Share2, 'Send it out'],
+            ].map(([StepIcon, label]) => {
+              const SmallIcon = StepIcon as typeof FileImage;
+              return (
+                <div key={label as string} className="border border-white/10 bg-white/[0.04] px-2 py-3 text-center">
+                  <SmallIcon className="mx-auto h-4 w-4 text-primary" />
+                  <p className="mt-2 text-[9px] font-bold uppercase tracking-wider text-white/55">{label as string}</p>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -988,6 +1033,18 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
               ))}
             </div>
             <p className="mt-4 border-t border-white/10 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Tap a play · build the season total</p>
+          </div>
+        )}
+        {kind === 'stat-tracker' && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Live game</p>
+              <p className="mt-2 text-xs font-bold text-white">Falcons 5 · Northside 3</p>
+            </div>
+            <div className="border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Season total</p>
+              <p className="mt-2 text-xs font-bold text-white">12 hits · 8 RBIs</p>
+            </div>
           </div>
         )}
 
