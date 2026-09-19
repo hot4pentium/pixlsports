@@ -157,6 +157,7 @@ import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
 import hypecardPlayerPhoto from '@/assets/hypecard-player-photo.png';
 import statTrackerLive from '@/assets/stat-tracker-live.png';
 import statTrackerTapStat from '@/assets/stat-tracker-tap-stat.png';
+import gameDayChecklist from '@/assets/game-day-checklist.png';
 
 const HypeCardEditor = lazy(() =>
   import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
@@ -1030,60 +1031,25 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
         )}
 
         {kind === 'stat-tracker' && (
-          <div className="border border-primary/30 bg-[#172922] p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live game</p>
-                <p className="mt-1 font-display text-2xl uppercase text-white">Maya / #12</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary"><span className="h-2 w-2 animate-pulse rounded-full bg-primary" /> Tracking</span>
-            </div>
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              {[
-                ['H', '2'],
-                ['RBI', '1'],
-                ['RUNS', '2'],
-              ].map(([label, value]) => (
-                <div key={label} className="border border-white/10 bg-[#10181b]/70 px-3 py-4 text-center">
-                  <p className="font-display text-3xl text-white">{value}</p>
-                  <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 border-t border-white/10 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Tap a play · build the season total</p>
-          </div>
-        )}
-        {kind === 'stat-tracker' && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Live game</p>
-              <p className="mt-2 text-xs font-bold text-white">Falcons 5 · Northside 3</p>
-            </div>
-            <div className="border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-primary">Season total</p>
-              <p className="mt-2 text-xs font-bold text-white">12 hits · 8 RBIs</p>
-            </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+              <img src={statTrackerLive} alt="Stat Tracker live game score controls" className="h-auto w-full" />
+              <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">1 / Track the live game</figcaption>
+            </figure>
+            <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+              <img src={statTrackerTapStat} alt="Stat Tracker tap-a-stat detail screen" className="h-auto w-full" />
+              <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">2 / Tap a stat and build the report</figcaption>
+            </figure>
           </div>
         )}
 
         {kind === 'checklist' && (
-          <div className="border border-primary/30 bg-[#f5f0e3] p-5 text-[#11181c]">
-            <div className="flex items-center justify-between border-b border-[#11181c]/15 pb-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#087a48]">Before first whistle</p>
-                <p className="mt-1 font-display text-2xl uppercase">Game day ready</p>
-              </div>
-              <ClipboardCheck className="h-6 w-6 text-[#087a48]" />
-            </div>
-            <div className="mt-4 space-y-2">
-              {['Uniform + cleats', 'Water bottle', 'Arrive by 4:00 PM'].map((item) => (
-                <div key={item} className="flex items-center gap-3 border-b border-[#11181c]/10 pb-2 text-xs font-bold">
-                  <span className="grid h-5 w-5 place-items-center bg-[#087a48] text-white"><Check className="h-3 w-3" /></span>
-                  {item}
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-[#087a48]">8 / 8 complete</p>
+          <div className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+            <img
+              src={gameDayChecklist}
+              alt="Game Day checklist with saved game selection, equipment tasks, and team details"
+              className="h-auto w-full"
+            />
           </div>
         )}
 
