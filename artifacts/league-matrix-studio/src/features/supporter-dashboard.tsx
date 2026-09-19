@@ -277,6 +277,43 @@ export function SupporterDashboardView({
       active: Boolean(nextGame && gameStage === 'completed'),
     },
   ] as const;
+  type WeeklyPathId = typeof weeklyPath[number]['id'];
+  const [selectedPathId, setSelectedPathId] = useState<WeeklyPathId | null>(null);
+  const selectedPath = weeklyPath.find(({ id }) => id === selectedPathId)
+    ?? weeklyPath.find(({ active }) => active)
+    ?? weeklyPath[0];
+  const weeklyPathDetails: Record<WeeklyPathId, {
+    eyebrow: string;
+    title: string;
+    description: string;
+    action: string;
+  }> = {
+    plan: {
+      eyebrow: '01 / Schedule',
+      title: 'Set the week up.',
+      description: 'Connect your team calendar or add the games you want to follow so Pixl can keep the next move in view.',
+      action: 'Open schedule',
+    },
+    upcoming: {
+      eyebrow: '02 / Preparation',
+      title: 'Get ready for game day.',
+      description: 'Use the checklist to get the essentials in place before the first whistle.',
+      action: 'Open checklist',
+    },
+    live: {
+      eyebrow: '03 / Live game',
+      title: 'Capture the game as it happens.',
+      description: 'Track the score and key plays in one place while the game is live.',
+      action: 'Open stat tracker',
+    },
+    completed: {
+      eyebrow: '04 / Celebration',
+      title: 'Send the moment around.',
+      description: 'Turn the best part of the game into a Hype Card with optional season stats.',
+      action: 'Make a Hype Card',
+    },
+  };
+  const selectedPathDetails = weeklyPathDetails[selectedPath.id];
 
   useEffect(() => {
     if (!showStageReminder || !nextGame || !stageReminderKey) return;
@@ -528,21 +565,35 @@ export function SupporterDashboardView({
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
             <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as game day moves.</p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {weeklyPath.map(({ id, number, label, Icon, href, active }) => (
-                <Link
+              {weeklyPath.map(({ id, number, label, Icon, active }) => (
+                <button
+                  type="button"
                   key={id}
-                  href={href}
                   aria-current={active ? 'step' : undefined}
-                  className={`flex items-center gap-3 border px-3 py-3 transition-colors hover:border-primary/60 hover:text-white ${active ? 'border-primary/60 bg-primary/10 text-white' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
+                  aria-pressed={selectedPath.id === id}
+                  onClick={() => setSelectedPathId(id)}
+                  className={`flex items-center gap-3 border px-3 py-3 text-left transition-colors hover:border-primary/60 hover:text-white ${selectedPath.id === id ? 'border-primary/60 bg-primary/10 text-white' : active ? 'border-primary/30 bg-primary/5 text-white/80' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
                   data-testid={`stage-${id}`}
                 >
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${active ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>{number}</span>
-                  <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-primary' : 'text-white/35'}`} />
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selectedPath.id === id ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>{number}</span>
+                  <Icon className={`h-4 w-4 shrink-0 ${selectedPath.id === id || active ? 'text-primary' : 'text-white/35'}`} />
                   <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
                   {active && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-primary" />}
-                </Link>
+                </button>
               ))}
             </div>
+          </div>
+        </div>
+        <div id="week-path-content" className="relative border-t border-white/10 px-5 py-5 sm:px-8 sm:py-7" data-testid="week-path-content">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{selectedPathDetails.eyebrow}</p>
+              <h3 className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">{selectedPathDetails.title}</h3>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-white/60">{selectedPathDetails.description}</p>
+            </div>
+            <Link href={selectedPath.href} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm">
+              {selectedPathDetails.action} <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
