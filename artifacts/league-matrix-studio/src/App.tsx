@@ -262,6 +262,16 @@ const toolData: Record<ToolKind, {
   },
 };
 
+type LandingJourneyStep = {
+  icon: typeof CalendarDays;
+  title: string;
+  body: string;
+  label: string;
+  hub: string;
+  notification: string;
+  notificationMeta: string;
+};
+
 type LandingRoleCopy = {
   eyebrow: string;
   headline: string;
@@ -273,7 +283,9 @@ type LandingRoleCopy = {
   previewMetric: string;
   previewAccent: string;
   previewItems: [string, string, string][];
-  journey: [typeof CalendarDays, string, string, string][];
+  hubGreeting: string;
+  hubDescription: string;
+  journey: LandingJourneyStep[];
 };
 
 const landingRoleCopy: Record<UserRole, LandingRoleCopy> = {
@@ -292,11 +304,45 @@ const landingRoleCopy: Record<UserRole, LandingRoleCopy> = {
       ['ROSTER + LINEUP', '12 players set', 'READY'],
       ['GAMEDAY CHECKLIST', '8 of 8 items', 'READY'],
     ],
+    hubGreeting: 'Your team week is ready.',
+    hubDescription: 'A single command center for the details families need before the whistle.',
     journey: [
-      [CalendarDays, '01 / Set the week', 'Add practices, games, and the places everyone needs to know.', 'Schedule maker'],
-      [UsersRound, '02 / Set the lineup', 'Give every family one clear view of who is playing and when.', 'Roster + lineup'],
-      [ClipboardCheck, '03 / Be ready', 'Keep uniforms, equipment, timing, and game details together.', 'Gameday checklist'],
-      [Share2, '04 / Send it around', 'Share the details once so the team can focus on the game.', 'Ready to share'],
+      {
+        icon: CalendarDays,
+        title: '01 / Set the week',
+        body: 'Add practices, games, and the places everyone needs to know.',
+        label: 'Schedule maker',
+        hub: 'Team schedule is up to date.',
+        notification: 'Schedule updated',
+        notificationMeta: 'Eastside Falcons · 4 events',
+      },
+      {
+        icon: UsersRound,
+        title: '02 / Set the lineup',
+        body: 'Give every family one clear view of who is playing and when.',
+        label: 'Roster + lineup',
+        hub: 'Saturday lineup is ready to share.',
+        notification: 'Lineup posted',
+        notificationMeta: '12 players · Saturday 4:30 PM',
+      },
+      {
+        icon: ClipboardCheck,
+        title: '03 / Be ready',
+        body: 'Keep uniforms, equipment, timing, and game details together.',
+        label: 'Gameday checklist',
+        hub: 'Game-day checklist is complete.',
+        notification: 'Game day is almost here',
+        notificationMeta: 'Eastside Falcons · Checklist ready',
+      },
+      {
+        icon: Share2,
+        title: '04 / Send it around',
+        body: 'Share the details once so the team can focus on the game.',
+        label: 'Ready to share',
+        hub: 'Your team has the same clear view.',
+        notification: 'Team hub is ready',
+        notificationMeta: 'Share the latest details',
+      },
     ],
   },
   fan: {
@@ -314,21 +360,48 @@ const landingRoleCopy: Record<UserRole, LandingRoleCopy> = {
       ['SCHEDULE', 'Next game / Saturday', '4:30 PM'],
       ['STAT TRACKER', 'Season totals building', 'LIVE'],
     ],
+    hubGreeting: 'Welcome back, Maya.',
+    hubDescription: 'Your Game Day Hub keeps the next game, live stats, and best moments together.',
     journey: [
-      [CalendarDays, '01 / Follow the week', 'Keep practices, games, and the next place to be in view.', 'Schedule maker'],
-      [Activity, '02 / Track the game', 'Tap live plays and build a season total for your athlete.', 'Stat tracker'],
-      [Zap, '03 / Catch the moment', 'Turn a photo or short video into the post the group chat wants.', 'Hype card creator'],
-      [Share2, '04 / Send it around', 'Export a polished graphic and keep friends and family in the loop.', 'Ready to share'],
+      {
+        icon: CalendarDays,
+        title: '01 / Follow the week',
+        body: 'Keep practices, games, and the next place to be in view.',
+        label: 'Schedule maker',
+        hub: 'Next up: Falcons vs Northside.',
+        notification: 'Game added to your week',
+        notificationMeta: 'Saturday · 4:30 PM',
+      },
+      {
+        icon: Activity,
+        title: '02 / Track the game',
+        body: 'Tap live plays and build a season total for your athlete.',
+        label: 'Stat tracker',
+        hub: 'Maya is at bat. Follow the live line.',
+        notification: 'Game update',
+        notificationMeta: 'Maya · 2 hits · 1 RBI',
+      },
+      {
+        icon: Zap,
+        title: '03 / Catch the moment',
+        body: 'Turn a photo or short video into the post the group chat wants.',
+        label: 'Hype card creator',
+        hub: 'Your best moment is ready to share.',
+        notification: 'Your Hype Card is ready',
+        notificationMeta: 'Maya · Slugger template',
+      },
+      {
+        icon: Share2,
+        title: '04 / Send it around',
+        body: 'Export a polished graphic and keep friends and family in the loop.',
+        label: 'Ready to share',
+        hub: 'The season story keeps building.',
+        notification: 'Moment shared',
+        notificationMeta: 'Send it to your family group',
+      },
     ],
   },
 };
-
-const defaultLandingJourney: LandingRoleCopy['journey'] = [
-  [CalendarDays, '01 / Set the week', 'Add practices, games, and the places everyone needs to know.', 'Schedule maker'],
-  [UsersRound, '02 / Get game-day clear', 'Give every family the same clean view of who is playing and when.', 'Roster + lineup'],
-  [Zap, '03 / Catch the moment', 'Turn a photo or short video into the post the group chat actually wants.', 'Hype card creator'],
-  [Share2, '04 / Send it around', 'Export a polished graphic. Keep the memory moving long after the whistle.', 'Ready to share'],
-];
 
 function BrandMark({ inverse = false }: { inverse?: boolean }) {
   return (
@@ -417,13 +490,11 @@ function Footer() {
 }
 
 function HomePage() {
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const roleCopy = selectedRole ? landingRoleCopy[selectedRole] : null;
-  const heroCtaHref = selectedRole ? roleSignupHref(selectedRole) : '/sign-up';
-  const showcaseTools: ToolKind[] = selectedRole
-    ? roleToolKinds[selectedRole]
-    : ['hype', 'schedule', 'roster'];
-  const journey = roleCopy?.journey ?? defaultLandingJourney;
+  const [selectedRole, setSelectedRole] = useState<UserRole>('fan');
+  const roleCopy = landingRoleCopy[selectedRole];
+  const heroCtaHref = roleSignupHref(selectedRole);
+  const showcaseTools: ToolKind[] = roleToolKinds[selectedRole];
+  const journey = roleCopy.journey;
 
   return (
     <div className="noise home-shell min-h-dvh overflow-hidden">
@@ -447,19 +518,15 @@ function HomePage() {
                 <Activity className="h-4 w-4" /> Your season, in one place
               </div>
               <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]" data-testid="text-landing-headline">
-                {roleCopy ? (
-                  <>{roleCopy.headline}<br /><span className="text-primary">{roleCopy.accent}</span><br />Game on.</>
-                ) : (
-                  <>Your week.<br />One <span className="text-primary">profile.</span><br />Game on.</>
-                )}
+                <>{roleCopy.headline}<br /><span className="text-primary">{roleCopy.accent}</span><br />Game on.</>
               </h1>
               <p className="home-reveal home-reveal-delay-2 mt-8 max-w-xl text-base font-medium leading-relaxed text-[#f5f0e3]/72 sm:text-lg">
-                {roleCopy?.description ?? 'Create a profile for your athlete or team. Keep the week moving. Share the schedule, the lineup, and the moment everyone will remember.'}
+                {roleCopy.description}
               </p>
               <div className="home-reveal home-reveal-delay-3 mt-8" data-testid="landing-role-selector">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5f0e3]/48">Show me the flow for</p>
+                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5f0e3]/48">Choose your home base</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row" role="radiogroup" aria-label="Choose a Pixl Sports path">
-                  {(['coach', 'fan'] as UserRole[]).map((role) => {
+                  {(['fan', 'coach'] as UserRole[]).map((role) => {
                     const isSelected = selectedRole === role;
                     const Icon = role === 'coach' ? ShieldCheck : Heart;
                     return (
@@ -473,7 +540,7 @@ function HomePage() {
                         data-testid={`button-landing-role-${role}`}
                       >
                         <Icon className="h-4 w-4" />
-                        <span>{role === 'coach' ? 'Coach tools' : 'Fan tools'}</span>
+                        <span>{role === 'coach' ? 'Coach hub' : 'Fan hub'}</span>
                         {isSelected && <Check className="ml-auto h-4 w-4" />}
                       </button>
                     );
@@ -482,7 +549,7 @@ function HomePage() {
               </div>
               <div className="home-reveal home-reveal-delay-3 mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Link href={heroCtaHref} className="group inline-flex items-center justify-center gap-3 bg-primary px-7 py-4 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-hero-open-studio">
-                  {roleCopy?.cta ?? 'Choose your path'} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  {roleCopy.cta} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <a href="#week" className="group inline-flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-[0.12em] text-[#f5f0e3]/70 transition-colors hover:text-primary" data-testid="link-hero-see-week">
                   See the weekly rhythm <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -504,8 +571,8 @@ function HomePage() {
                   <div className="flex items-center gap-3">
                     <span className="grid h-11 w-11 place-items-center bg-primary text-primary-foreground clip-angled-sm"><Zap className="h-5 w-5" /></span>
                     <div>
-                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{roleCopy?.previewLabel ?? 'Pixl profile'}</p>
-                       <p className="home-display text-2xl">{roleCopy?.previewTitle ?? 'Maya / 12U'}</p>
+                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{roleCopy.previewLabel}</p>
+                       <p className="home-display text-2xl">{roleCopy.previewTitle}</p>
                     </div>
                   </div>
                   <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/.14)]" />
@@ -514,8 +581,8 @@ function HomePage() {
                   <div className="absolute right-0 top-0 h-28 w-28 bg-primary/10 [clip-path:polygon(100%_0,100%_100%,0_0)]" />
                   <div className="relative flex items-start justify-between">
                     <div>
-                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f5f0e3]/50">{roleCopy ? 'Your playbook' : 'This week'}</p>
-                       <p className="home-display mt-2 text-5xl leading-none">{roleCopy?.previewMetric ?? '4 plays'}<br /><span className="text-primary">{roleCopy?.previewAccent ?? 'to go.'}</span></p>
+                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f5f0e3]/50">Your week</p>
+                       <p className="home-display mt-2 text-5xl leading-none">{roleCopy.previewMetric}<br /><span className="text-primary">{roleCopy.previewAccent}</span></p>
                     </div>
                     <div className="text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
                       <p>Eastside Falcons</p>
@@ -523,11 +590,7 @@ function HomePage() {
                     </div>
                   </div>
                   <div className="mt-7 space-y-2">
-                     {(roleCopy?.previewItems ?? [
-                       ['MON', 'Practice', '5:15 PM'],
-                       ['WED', 'Falcons vs Northside', '6:00 PM'],
-                       ['SAT', 'GAME DAY', '4:30 PM'],
-                     ]).map(([day, title, time], index) => (
+                     {roleCopy.previewItems.map(([day, title, time], index) => (
                        <div key={day} className={`flex items-center gap-3 border-t border-[#f5f0e3]/10 py-3 ${index === 2 ? 'text-primary' : 'text-[#f5f0e3]/72'}`} data-testid={`text-profile-week-${index + 1}`}>
                          <span className="w-9 text-[10px] font-bold tracking-[0.16em]">{day}</span>
                          <span className="flex-1 text-sm font-semibold">{title}</span>
@@ -560,14 +623,29 @@ function HomePage() {
               <div className="inline-flex items-center gap-2 border border-border bg-card px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-foreground clip-angled-sm">
                 The weekly rhythm
               </div>
-              <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">
-                One profile.<br /><span className="text-primary-ink">Seven days.</span>
+               <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">
+                 One hub.<br /><span className="text-primary-ink">A better week.</span>
               </h2>
               <p className="mt-7 max-w-md text-base font-medium leading-relaxed text-muted-foreground">
-                Start with who you are. Then let Pixl hold the details that usually live in five different group chats.
+                 Start with the moment you need most. Then follow the tools in order, with a clear place to land after every update.
               </p>
+               <div className="mt-8 border border-border bg-foreground p-5 text-background clip-angled-sm" data-testid="card-landing-hub-welcome">
+                 <div className="flex items-start justify-between gap-4">
+                   <div>
+                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">What your hub says hello with</p>
+                     <p className="mt-3 font-display text-2xl uppercase tracking-wide">{roleCopy.hubGreeting}</p>
+                   </div>
+                   <span className="grid h-10 w-10 shrink-0 place-items-center bg-primary text-primary-foreground clip-angled-sm">
+                     {selectedRole === 'fan' ? <Heart className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                   </span>
+                 </div>
+                 <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-white/60">{roleCopy.hubDescription}</p>
+                 <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">
+                   {showcaseTools.map((kind) => <span key={kind} className="border border-white/15 px-2.5 py-2">{toolData[kind].label.replace(' Creator', '')}</span>)}
+                 </div>
+               </div>
                <Link href={heroCtaHref} className="group mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.12em] text-foreground transition-colors hover:text-primary" data-testid="link-week-open-studio">
-                 {roleCopy?.cta ?? 'Build a profile'} <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+                 {roleCopy.cta} <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
               </Link>
               <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                  <Link href={roleSignupHref('fan')} onClick={() => setSelectedRole('fan')} className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-supporter-path">
@@ -587,18 +665,36 @@ function HomePage() {
             <div className="relative">
               <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-border sm:block" />
               <div className="space-y-4">
-                 {journey.map(([Icon, title, body, label], index) => {
-                  const IconComponent = Icon as typeof CalendarDays;
+                 {journey.map((step, index) => {
+                   const IconComponent = step.icon;
                   return (
-                    <div key={title as string} className="group relative grid gap-4 border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
+                     <div key={step.title} className="group relative border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
+                       <div className="grid gap-4 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6">
                       <span className="relative z-10 grid h-12 w-12 place-items-center bg-foreground text-background clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <IconComponent className="h-5 w-5" />
                       </span>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-ink">{title as string}</p>
-                        <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{body as string}</p>
+                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-ink">{step.title}</p>
+                         <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{step.body}</p>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-right">{label as string}</span>
+                       <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-right">{step.label}</span>
+                       </div>
+                       <div className="mt-5 grid gap-2 border-t border-border pt-4 sm:grid-cols-2">
+                         <div className="bg-muted/60 px-3 py-3">
+                           <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">In your hub</p>
+                           <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{step.hub}</p>
+                         </div>
+                         <div className="flex items-start gap-3 border border-border bg-background px-3 py-3">
+                           <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-foreground text-background">
+                             <Bell className="h-3.5 w-3.5" />
+                           </span>
+                           <div className="min-w-0">
+                             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary-ink">Phone notification</p>
+                             <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{step.notification}</p>
+                             <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground">{step.notificationMeta}</p>
+                           </div>
+                         </div>
+                       </div>
                     </div>
                   );
                 })}
