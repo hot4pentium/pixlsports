@@ -153,6 +153,8 @@ import soccerFieldAsset from '@/assets/soccer-field.svg';
 import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
 import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
+import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
+import youthFootballPlayer from '@/assets/youth-football-player-cutout.png';
 
 const HypeCardEditor = lazy(() =>
   import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
@@ -954,19 +956,14 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
 
       <div className="min-h-[250px] bg-[#10181b] p-5 sm:p-6">
         {kind === 'hype' && (
-          <div className="relative min-h-[214px] overflow-hidden border border-primary/40 bg-[#263236] p-5">
-            <img src={heroBanner} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover opacity-45" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#11181c] via-[#11181c]/50 to-transparent" />
-            <div className="relative flex h-full min-h-[174px] flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
-                <span>Moment captured</span><span>01 / 04</span>
-              </div>
-              <div>
-                <p className="font-display text-5xl uppercase leading-[0.85] text-white">Maya<br /><span className="text-primary">came to play.</span></p>
-                <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white/65">
-                  <span>Slugger / Eastside Falcons</span><span>Share</span>
-                </div>
-              </div>
+          <div className="relative mx-auto aspect-[760/1036] max-w-[270px] overflow-hidden border border-primary/40 bg-[#10181b]">
+            <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
+              <img
+                src={youthFootballPlayer}
+                alt="Youth football player media in the Hype Card"
+                className="h-full w-full object-contain object-bottom drop-shadow-[0_8px_10px_rgba(0,0,0,0.45)]"
+              />
             </div>
           </div>
         )}
