@@ -286,7 +286,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
   const { signOut } = useClerk();
 
   return (
-    <header className={`relative z-30 border-b ${dark ? 'bg-[#70757b] border-white/25' : 'bg-[#d9dcdf] border-black/10'}`}>
+    <header className={`relative z-30 border-b ${dark ? 'bg-[#11181c]/95 border-white/15 backdrop-blur-md' : 'bg-background border-border'}`}>
       <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
         <Link href="/" className="shrink-0 transition-opacity hover:opacity-80 focus-visible:opacity-80" data-testid="link-logo-home">
           <BrandMark inverse={dark} />
@@ -309,13 +309,13 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
             </Link>
           )}
         </nav>
-        <button type="button" className={`grid h-10 w-10 place-items-center md:hidden ${dark ? 'text-white' : 'text-foreground'}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} data-testid="button-mobile-menu">
+         <button type="button" className={`grid h-10 w-10 place-items-center md:hidden ${dark ? 'text-white' : 'text-foreground'}`} onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} data-testid="button-mobile-menu">
           {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
 
       {menuOpen && (
-        <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#1a1c23]' : 'border-border bg-card'}`} data-testid="menu-mobile">
+         <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#172024]' : 'border-border bg-card'}`} data-testid="menu-mobile">
           <nav className="flex flex-col gap-2">
             <Link href="/studio" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
             <Link href="/help" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-help">HELP <ArrowRight className="h-5 w-5 text-primary" /></Link>
@@ -354,160 +354,216 @@ function Footer() {
 
 function HomePage() {
   return (
-    <div className="noise min-h-dvh overflow-hidden bg-background">
+    <div className="noise home-shell min-h-dvh overflow-hidden">
       <SiteNav dark />
       <main>
-        {/* HERO */}
-        <section className="relative overflow-hidden bg-foreground text-background clip-angled pb-24 pt-16 sm:pb-32 sm:pt-24">
+        {/* HERO — profile first, then the week. */}
+        <section className="relative overflow-hidden bg-[#11181c] text-[#f5f0e3] clip-angled pb-16 pt-12 sm:pb-24 sm:pt-20">
           <img
             src={heroBanner}
-            alt=""
+            alt="Floodlit sports field at night"
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-70"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-45"
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#070a0d]/95 via-[#070a0d]/75 to-[#070a0d]/45" />
-          <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
-          <div className="pointer-events-none absolute inset-0 bg-primary/5 mix-blend-screen" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#11181c] via-[#11181c]/90 to-[#11181c]/50" />
+          <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-25" />
+          <div className="pointer-events-none absolute inset-0 home-scanline opacity-20" />
 
-          <div className="relative z-10 mx-auto grid max-w-[1400px] items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.1fr_.9fr] lg:gap-20">
-            <div>
-              <div className="animate-slide-up mb-6 inline-flex items-center gap-2 bg-primary/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
-                <Activity className="h-4 w-4" /> Live Broadcast Booth
+          <div className="relative z-10 mx-auto grid max-w-[1400px] items-center gap-14 px-5 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:gap-20">
+            <div className="max-w-3xl">
+              <div className="home-reveal inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm">
+                <Activity className="h-4 w-4" /> Your season, in one place
               </div>
-              <h1 className="animate-slide-up delay-100 font-display text-[clamp(4rem,9vw,9rem)] leading-[0.85] tracking-tight">
-                MAKE YOUR<br /><span className="text-primary">MOMENT</span> COUNT.
+              <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]">
+                Make room<br />for the <span className="text-primary">good</span><br />stuff.
               </h1>
-              <p className="animate-slide-up delay-200 mt-8 max-w-xl text-lg font-medium leading-relaxed text-white/70 sm:text-xl">
-                Pixl Sports turns the little wins, big games, and long Saturdays into graphics worth sharing. Professional sports aesthetic. Local privacy. Zero friction.
+              <p className="home-reveal home-reveal-delay-2 mt-8 max-w-xl text-base font-medium leading-relaxed text-[#f5f0e3]/72 sm:text-lg">
+                Create a profile for your athlete or team. Keep the week moving. Share the schedule, the lineup, and the moment everyone will remember.
               </p>
-              <div className="animate-slide-up delay-300 mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Link href="/studio" className="group inline-flex items-center justify-center gap-3 bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm transition-transform hover:scale-105" data-testid="link-hero-open-studio">
-                  Enter The Studio <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              <div className="home-reveal home-reveal-delay-3 mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Link href="/studio" className="group inline-flex items-center justify-center gap-3 bg-primary px-7 py-4 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-hero-open-studio">
+                  Start your home base <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
+                <a href="#week" className="group inline-flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-[0.12em] text-[#f5f0e3]/70 transition-colors hover:text-primary" data-testid="link-hero-see-week">
+                  See the weekly rhythm <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </a>
+              </div>
+              <div className="home-reveal home-reveal-delay-4 mt-12 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
+                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Media stays local</span>
+                <span className="inline-flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Made for real life</span>
               </div>
             </div>
 
-            <div className="relative mx-auto w-full max-w-[500px] animate-slide-up delay-200">
-              <div className="absolute -left-6 -top-6 z-20 hidden bg-white text-foreground p-4 shadow-2xl clip-angled-sm sm:block border-l-4 border-primary">
-                <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
-                  <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> Live Preview
-                </div>
-                <p className="font-display text-xl">NO RENDERING DELAY.</p>
+            <div className="home-reveal home-reveal-delay-2 relative mx-auto w-full max-w-[530px]">
+              <div className="home-float absolute -right-3 -top-7 z-20 hidden rotate-3 bg-primary px-4 py-3 text-primary-foreground home-lime-shadow sm:block">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em]">Next up</p>
+                <p className="home-display mt-1 text-2xl">Saturday / 4:30</p>
               </div>
-
-              <div className="relative -rotate-2 bg-primary p-1 shadow-2xl transition-transform duration-500 hover:rotate-0 clip-angled">
-                <div className="relative flex aspect-[0.8] flex-col justify-between overflow-hidden bg-[#181a1f] p-6 text-white sm:p-8 clip-angled">
-                  <div className="absolute inset-0 bg-tech-grid-dark opacity-10" />
-                  <div className="absolute -right-20 -top-20 h-64 w-64 bg-primary/20 blur-3xl rounded-full" />
-
-                  <div className="relative flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/60">
-                    <span>Eastside Falcons</span>
-                    <span className="bg-white text-foreground px-3 py-1 clip-angled-sm">Sat / 10.12</span>
-                  </div>
-
-                  <div className="relative mt-auto mb-10">
-                    <p className="font-display text-7xl leading-[0.8] tracking-tight sm:text-8xl">
-                      GAME<br /><span className="text-primary">DAY.</span>
-                    </p>
-                    <div className="mt-6 flex items-center gap-4">
-                      <span className="h-1 w-12 bg-primary" />
-                      <span className="text-sm font-bold uppercase tracking-widest text-white/80">Home court energy</span>
-                    </div>
-                  </div>
-
-                  <div className="relative flex items-end justify-between border-t border-white/10 pt-4">
+              <div className="relative overflow-hidden border border-[#f5f0e3]/20 bg-[#1c2528]/90 p-4 home-card-shadow clip-angled">
+                <div className="flex items-center justify-between border-b border-[#f5f0e3]/15 pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-11 w-11 place-items-center bg-primary text-primary-foreground clip-angled-sm"><Zap className="h-5 w-5" /></span>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-primary">Falcons vs. Northside</p>
-                      <p className="mt-1 font-display text-2xl tracking-wide">Tip-off 4:30 PM</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Pixl profile</p>
+                      <p className="home-display text-2xl">Maya / 12U</p>
                     </div>
-                    <Zap className="h-10 w-10 text-primary" />
+                  </div>
+                  <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/.14)]" />
+                </div>
+                <div className="relative mt-4 overflow-hidden bg-[#131b1f] p-5">
+                  <div className="absolute right-0 top-0 h-28 w-28 bg-primary/10 [clip-path:polygon(100%_0,100%_100%,0_0)]" />
+                  <div className="relative flex items-start justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f5f0e3]/50">This week</p>
+                      <p className="home-display mt-2 text-5xl leading-none">4 plays<br /><span className="text-primary">to go.</span></p>
+                    </div>
+                    <div className="text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
+                      <p>Eastside Falcons</p>
+                      <p className="mt-2 text-primary">Fall / 2024</p>
+                    </div>
+                  </div>
+                  <div className="mt-7 space-y-2">
+                    {[
+                      ['MON', 'Practice', '5:15 PM'],
+                      ['WED', 'Falcons vs Northside', '6:00 PM'],
+                      ['SAT', 'GAME DAY', '4:30 PM'],
+                    ].map(([day, title, time], index) => (
+                      <div key={day} className={`flex items-center gap-3 border-t border-[#f5f0e3]/10 py-3 ${index === 2 ? 'text-primary' : 'text-[#f5f0e3]/72'}`} data-testid={`text-profile-week-${day.toLowerCase()}`}>
+                        <span className="w-9 text-[10px] font-bold tracking-[0.16em]">{day}</span>
+                        <span className="flex-1 text-sm font-semibold">{title}</span>
+                        <span className="text-xs font-bold tracking-[0.08em]">{time}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FEATURES GRID */}
-        <section className="border-b border-border bg-background bg-tech-grid">
-          <div className="mx-auto grid max-w-[1400px] gap-8 px-5 py-12 sm:grid-cols-3 sm:px-8 bg-background/90 backdrop-blur-sm">
-            {[
-              ['01', 'CHOOSE YOUR PLAY', 'Templates with enough technical personality to get you moving fast.'],
-              ['02', 'RUN THE DRILL', 'Names, colors, stats — customize the details instantly in the browser.'],
-              ['03', 'SECURE THE WIN', 'Local editing is the default. Account saves sync design settings only — never photos or videos.'],
-            ].map(([number, title, body], index) => (
-              <div key={number} className={`flex gap-5 ${index > 0 ? 'border-t border-border pt-8 sm:border-l sm:border-t-0 sm:pl-8 sm:pt-0' : ''}`} data-testid={`feature-step-${number}`}>
-                <span className="font-display text-4xl text-muted-foreground/30 leading-none">{number}</span>
-                <div>
-                  <p className="font-display text-2xl tracking-wide text-foreground">{title}</p>
-                  <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{body}</p>
+                <div className="flex items-center justify-between pt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/42">
+                  <span className="inline-flex items-center gap-2"><Share2 className="h-3.5 w-3.5" /> Ready to share</span>
+                  <span>Updated just now</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* TOOLS */}
-        <section className="mx-auto max-w-[1400px] px-5 py-24 sm:px-8">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 border border-border bg-muted px-3 py-1 text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm">
-              Creative Arsenal
-            </div>
-            <h2 className="mt-6 font-display text-5xl leading-[0.9] tracking-tight sm:text-7xl uppercase">
-              Pro tools.<br />Local <span className="text-primary">Execution.</span>
-            </h2>
-          </div>
-
-          <div className="mt-16 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
-            <ToolFeatureCard kind="hype" large />
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
-              <ToolFeatureCard kind="schedule" />
-              <ToolFeatureCard kind="roster" />
             </div>
           </div>
         </section>
 
-        {/* WORKFLOW */}
-        <section className="bg-foreground text-background clip-angled py-24 sm:py-32 relative overflow-hidden">
-          <div className="absolute inset-0 bg-tech-grid-green opacity-[0.03]" />
-          <div className="relative mx-auto grid max-w-[1400px] items-center gap-16 px-5 sm:px-8 lg:grid-cols-[1fr_1.2fr]">
+        {/* SIGNAL STRIP */}
+        <section className="overflow-hidden border-b border-border bg-primary text-primary-foreground">
+          <div className="home-marquee flex w-max items-center gap-8 py-3 text-xs font-bold uppercase tracking-[0.22em]" aria-label="Pixl Sports features">
+            <span>Profile first</span><span className="text-primary-foreground/40">/</span><span>Week ready</span><span className="text-primary-foreground/40">/</span><span>Game-day clear</span><span className="text-primary-foreground/40">/</span><span>Share the good stuff</span><span className="text-primary-foreground/40">/</span>
+            <span>Profile first</span><span className="text-primary-foreground/40">/</span><span>Week ready</span><span className="text-primary-foreground/40">/</span><span>Game-day clear</span><span className="text-primary-foreground/40">/</span><span>Share the good stuff</span>
+          </div>
+        </section>
+
+        {/* WEEKLY RHYTHM */}
+        <section id="week" className="mx-auto max-w-[1400px] px-5 py-20 sm:px-8 sm:py-28">
+          <div className="grid gap-12 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
             <div>
-              <div className="mb-8 flex h-16 w-16 items-center justify-center bg-primary text-primary-foreground clip-angled-sm">
-                <Activity className="h-8 w-8" />
+              <div className="inline-flex items-center gap-2 border border-border bg-card px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-foreground clip-angled-sm">
+                The weekly rhythm
               </div>
-              <h2 className="font-display text-5xl leading-[0.9] tracking-tight sm:text-7xl uppercase">
-                Zero Friction.<br />Max <span className="text-primary">Impact.</span>
+              <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">
+                One profile.<br /><span className="text-primary">Seven days.</span>
               </h2>
+              <p className="mt-7 max-w-md text-base font-medium leading-relaxed text-muted-foreground">
+                Start with who you are. Then let Pixl hold the details that usually live in five different group chats.
+              </p>
+              <Link href="/studio" className="group mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.12em] text-foreground transition-colors hover:text-primary" data-testid="link-week-open-studio">
+                Build a profile <ArrowUpRight className="h-5 w-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
+              </Link>
+            </div>
+            <div className="relative">
+              <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-border sm:block" />
+              <div className="space-y-4">
+                {[
+                  [CalendarDays, '01 / Set the week', 'Add practices, games, and the places everyone needs to know.', 'Schedule maker'],
+                  [UsersRound, '02 / Get game-day clear', 'Give every family the same clean view of who is playing and when.', 'Roster + lineup'],
+                  [Zap, '03 / Catch the moment', 'Turn a photo or short video into the post the group chat actually wants.', 'Hype card creator'],
+                  [Share2, '04 / Send it around', 'Export a polished graphic. Keep the memory moving long after the whistle.', 'Ready to share'],
+                ].map(([Icon, title, body, label], index) => {
+                  const IconComponent = Icon as typeof CalendarDays;
+                  return (
+                    <div key={title as string} className="group relative grid gap-4 border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
+                      <span className="relative z-10 grid h-12 w-12 place-items-center bg-foreground text-background clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                        <IconComponent className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{title as string}</p>
+                        <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{body as string}</p>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-right">{label as string}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CREATIVE DESK */}
+        <section id="tools" className="relative overflow-hidden bg-[#172024] py-20 text-[#f5f0e3] clip-angled sm:py-28">
+          <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-20" />
+          <div className="relative mx-auto max-w-[1400px] px-5 sm:px-8">
+            <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+              <div>
+                <div className="inline-flex items-center gap-2 border border-[#f5f0e3]/20 bg-[#f5f0e3]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm">Your creative desk</div>
+                <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">Make the week<br /><span className="text-primary">look like yours.</span></h2>
+              </div>
+              <p className="max-w-xs text-sm font-medium leading-relaxed text-[#f5f0e3]/55">The right tool is waiting at the exact moment you need it.</p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[
-                [Palette, 'No blank canvas', 'Start with a sharp point of view, then make the details yours.'],
-                [ShieldCheck, 'Media stays local', 'Sign in to sync reusable designs. Your attached photos and videos stay on your device.'],
-                [SquarePen, 'Made for real life', 'Fast enough between practice and pickup, polished enough to post.'],
-                [Heart, 'Celebrate more', 'The good stuff deserves more than a group-chat text.'],
-              ].map(([Icon, title, body]) => {
-                const IconComponent = Icon as typeof Palette;
-                return (
-                  <div key={title as string} className="bg-white/5 border border-white/10 p-6 clip-angled-sm transition-colors hover:bg-white/10">
-                    <IconComponent className="h-6 w-6 text-primary" />
-                    <p className="mt-6 font-display text-2xl tracking-wide">{title as string}</p>
-                    <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">{body as string}</p>
-                  </div>
-                );
-              })}
+            <div className="mt-14 grid gap-4 lg:grid-cols-[1.1fr_.9fr_.9fr]">
+              <ToolFeatureCard kind="hype" large />
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                <ToolFeatureCard kind="schedule" />
+                <ToolFeatureCard kind="roster" />
+              </div>
+              <div className="flex flex-col justify-between border border-[#f5f0e3]/15 bg-[#f5f0e3]/5 p-6 clip-angled-sm sm:p-8">
+                <div>
+                  <span className="grid h-12 w-12 place-items-center bg-primary text-primary-foreground clip-angled-sm"><ShieldCheck className="h-5 w-5" /></span>
+                  <p className="home-display mt-12 text-4xl">Private<br />by default.</p>
+                  <p className="mt-4 text-sm font-medium leading-relaxed text-[#f5f0e3]/55">Sign in to sync reusable design settings. Your attached photos and videos stay on your device.</p>
+                </div>
+                <Link href="/privacy" className="group mt-10 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary" data-testid="link-tools-privacy">Read the privacy promise <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" /></Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* LOCAL-FIRST PROMISE */}
+        <section className="mx-auto grid max-w-[1400px] gap-10 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+          <div className="relative overflow-hidden bg-primary p-7 text-primary-foreground home-lime-shadow clip-angled sm:p-10">
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full border-[18px] border-primary-foreground/15" />
+            <Heart className="relative h-9 w-9" />
+            <p className="home-display relative mt-12 text-5xl leading-[0.88]">The good stuff<br />stays yours.</p>
+            <p className="relative mt-6 max-w-sm text-sm font-semibold leading-relaxed text-primary-foreground/72">Pixl helps you make and share the right thing without asking your family archive to leave home.</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">Built for the in-between moments</p>
+            <h2 className="home-display mt-5 text-6xl leading-[0.86] sm:text-8xl">Less admin.<br /><span className="text-primary">More living.</span></h2>
+            <div className="mt-8 grid gap-5 sm:grid-cols-2">
+              <div className="border-t border-border pt-4">
+                <SquarePen className="h-5 w-5 text-primary" />
+                <p className="mt-4 text-sm font-bold">Fast enough between practice and pickup.</p>
+              </div>
+              <div className="border-t border-border pt-4">
+                <MapPin className="h-5 w-5 text-primary" />
+                <p className="mt-4 text-sm font-bold">Clear enough that nobody asks, “Where is it again?”</p>
+              </div>
             </div>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="bg-primary bg-tech-grid-dark py-20 sm:py-28 clip-angled-tl mt-12 mb-12 mx-5 sm:mx-8 max-w-[1400px] xl:mx-auto">
-          <div className="flex flex-col items-center justify-center text-center px-5">
-            <h2 className="max-w-2xl font-display text-5xl leading-[0.9] tracking-tight text-primary-foreground sm:text-7xl uppercase">
-              Ready To Make The Call?
-            </h2>
-            <Link href="/studio" className="mt-10 group inline-flex items-center gap-3 bg-foreground px-8 py-5 text-base font-bold uppercase tracking-wider text-background clip-angled-sm transition-transform hover:scale-105 shadow-2xl" data-testid="link-bottom-open-studio">
-              Enter The Studio <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+        <section className="mx-5 mb-12 overflow-hidden bg-foreground text-background clip-angled-tl sm:mx-8">
+          <div className="relative mx-auto flex max-w-[1100px] flex-col items-start justify-between gap-10 px-6 py-16 sm:flex-row sm:items-end sm:px-12 sm:py-20">
+            <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-10" />
+            <div className="relative">
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">Your next good week starts here</p>
+              <h2 className="home-display mt-5 max-w-2xl text-6xl leading-[0.84] sm:text-8xl">
+                Give it<br /><span className="text-primary">a home.</span>
+              </h2>
+            </div>
+            <Link href="/studio" className="group relative inline-flex shrink-0 items-center gap-3 bg-primary px-7 py-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-bottom-open-studio">
+              Start with Pixl <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
         </section>
