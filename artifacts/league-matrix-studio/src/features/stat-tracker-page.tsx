@@ -102,6 +102,70 @@ function isScheduleProject(value: unknown): value is { tool: 'schedule'; events:
     && Array.isArray((value as { events?: unknown }).events);
 }
 
+type OwnedScheduleProject = {
+  id: string;
+  revision: number;
+  project: { tool: 'schedule'; events: ScheduleEvent[] };
+};
+
+export async function persistScheduledGameStatus({
+  scheduledGame,
+  status,
+  canWrite,
+  storage,
+  ownedScheduleProject,
+  expectedRevision,
+  updateCloudProject,
+}: {
+  scheduledGame: ScheduledGame | undefined;
+  status: ScheduleEventStatus;
+  canWrite: boolean;
+  storage: Storage;
+  ownedScheduleProject?: OwnedScheduleProject;
+  expectedRevision?: number;
+  updateCloudProject: (input: {
+    projectId: string;
+    data: {
+      project: OwnedScheduleProject['project'];
+      expectedRevision: number;
+    };
+  }) => Promise<{ revision: number }>;
+}) {
+  if (!scheduledGame || !canWrite) return null;
+
+  const matchesScheduledGame = (event: ScheduleEvent) => (
+    event.id === scheduledGame.id
+    || (
+      event.type === 'game'
+      && event.date === scheduledGame.date
+      && event.opponent === scheduledGame.opponent
+    )
+  );
+  const localDraft = readScheduleDraft(storage);
+  const localEvent = localDraft?.events.find(matchesScheduledGame);
+  if (localDraft && localEvent) {
+    saveScheduleDraft(storage, {
+      ...localDraft,
+      events: updateScheduleEventStatus(localDraft.events, localEvent.id, status),
+    });
+  }
+
+  if (!ownedScheduleProject) return null;
+  const cloudEvent = ownedScheduleProject.project.events.find(matchesScheduledGame);
+  if (!cloudEvent) return null;
+
+  return updateCloudProject({
+    projectId: ownedScheduleProject.id,
+    data: {
+      project: {
+        ...ownedScheduleProject.project,
+        events: updateScheduleEventStatus(ownedScheduleProject.project.events, cloudEvent.id, status),
+      },
+      expectedRevision: expectedRevision ?? ownedScheduleProject.revision,
+    },
+  });
+}
+
 function formatDate(value: string) {
   if (!value) return 'Date not set';
   const date = new Date(`${value}T12:00:00`);
@@ -430,54 +494,28 @@ export function StatTrackerPage() {
     scheduledGame: ScheduledGame | undefined,
     status: ScheduleEventStatus,
   ) => {
-    if (!scheduledGame || profile.role !== 'fan' || calendarConnection) return;
-
     scheduledStatusUpdate.current = scheduledStatusUpdate.current
       .catch(() => undefined)
       .then(async () => {
-        const localDraft = readScheduleDraft();
-        if (localDraft) {
-          const localEvent = localDraft.events.find((event) => (
-            event.id === scheduledGame.id
-            || (
-              event.type === 'game'
-              && event.date === scheduledGame.date
-              && event.opponent === scheduledGame.opponent
-            )
-          ));
-          if (localEvent) {
-            saveScheduleDraft(window.localStorage, {
-              ...localDraft,
-              events: updateScheduleEventStatus(localDraft.events, localEvent.id, status),
-            });
-          }
-        }
-
-        const project = ownedScheduleProject;
-        if (!project || !isScheduleProject(project.project)) return;
-        const revision = scheduleRevision.current?.id === project.id
-          ? scheduleRevision.current.revision
-          : project.revision;
-        const event = project.project.events.find((candidate) => (
-          candidate.id === scheduledGame.id
-          || (
-            candidate.type === 'game'
-            && candidate.date === scheduledGame.date
-            && candidate.opponent === scheduledGame.opponent
-          )
-        ));
-        if (!event) return;
-
-        const updated = await updateProject.mutateAsync({
-          projectId: project.id,
-          data: {
-            project: {
-              ...project.project,
-              events: updateScheduleEventStatus(project.project.events, event.id, status),
-            },
-            expectedRevision: revision,
-          },
+        const project = ownedScheduleProject && isScheduleProject(ownedScheduleProject.project)
+          ? {
+              id: ownedScheduleProject.id,
+              revision: ownedScheduleProject.revision,
+              project: ownedScheduleProject.project,
+            }
+          : undefined;
+        const updated = await persistScheduledGameStatus({
+          scheduledGame,
+          status,
+          canWrite: profile.role === 'fan' && !calendarConnection,
+          storage: window.localStorage,
+          ownedScheduleProject: project,
+          expectedRevision: project && scheduleRevision.current?.id === project.id
+            ? scheduleRevision.current.revision
+            : undefined,
+          updateCloudProject: (input) => updateProject.mutateAsync(input),
         });
+        if (!project || !updated) return;
         scheduleRevision.current = { id: project.id, revision: updated.revision };
         await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       })

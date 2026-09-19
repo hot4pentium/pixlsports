@@ -30,8 +30,14 @@ import {
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
-import { getNextScheduledGame, LiveTrackerGame, readLocalTrackerSession } from './stat-tracker-page';
+import {
+  getNextScheduledGame,
+  LiveTrackerGame,
+  persistScheduledGameStatus,
+  readLocalTrackerSession,
+} from './stat-tracker-page';
 import { GameReportView } from './stat-tracker-game-report';
+import { readScheduleDraft, scheduleStorageKey, type ScheduleDraft } from './schedule-draft';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -134,6 +140,161 @@ test('tracker prefers a connected live game and skips explicit finals', () => {
   ]);
 
   assert.equal(selected?.id, 'live');
+});
+
+test('fan-owned game start and end persist locally and to the owned schedule in order', async () => {
+  const scheduledGame = {
+    id: 'game-1',
+    type: 'game',
+    date: '2026-09-19',
+    time: '18:00',
+    opponent: 'Northside',
+    location: 'Central Field',
+    snacks: '',
+    drinks: '',
+    notes: '',
+    status: 'upcoming' as const,
+  };
+  const draft: ScheduleDraft = {
+    teamName: 'Falcons',
+    season: 'Fall 2026',
+    events: [scheduledGame],
+    template: 0,
+  };
+  const storage = createMemoryStorage({
+    [scheduleStorageKey]: JSON.stringify(draft),
+  }) as unknown as Storage;
+  const cloudWrites: Array<{ status: string | undefined; expectedRevision: number }> = [];
+  let revision = 4;
+  const updateCloudProject = async (input: {
+    data: { project: { events: typeof draft.events }; expectedRevision: number };
+  }) => {
+    cloudWrites.push({
+      status: input.data.project.events[0]?.status,
+      expectedRevision: input.data.expectedRevision,
+    });
+    revision += 1;
+    return { revision };
+  };
+  const ownedScheduleProject = {
+    id: 'schedule-1',
+    revision: 4,
+    project: { tool: 'schedule' as const, events: draft.events },
+  };
+
+  let queued = Promise.resolve();
+  let latestRevision = ownedScheduleProject.revision;
+  const queueStatus = (status: 'live' | 'final') => {
+    queued = queued
+      .catch(() => undefined)
+      .then(async () => {
+        const updated = await persistScheduledGameStatus({
+          scheduledGame,
+          status,
+          canWrite: true,
+          storage,
+          ownedScheduleProject,
+          expectedRevision: latestRevision,
+          updateCloudProject,
+        });
+        if (updated) latestRevision = updated.revision;
+      });
+  };
+
+  queueStatus('live');
+  queueStatus('final');
+  await queued;
+
+  assert.equal(readScheduleDraft(storage)?.events[0]?.status, 'final');
+  assert.deepEqual(cloudWrites, [
+    { status: 'live', expectedRevision: 4 },
+    { status: 'final', expectedRevision: 5 },
+  ]);
+});
+
+test('ending a fan-owned game stays final locally when its cloud write fails', async () => {
+  const scheduledGame = {
+    id: 'game-1',
+    type: 'game',
+    date: '2026-09-19',
+    time: '18:00',
+    opponent: 'Northside',
+    location: '',
+    snacks: '',
+    drinks: '',
+    notes: '',
+    status: 'live' as const,
+  };
+  const draft: ScheduleDraft = {
+    teamName: 'Falcons',
+    season: 'Fall 2026',
+    events: [scheduledGame],
+    template: 0,
+  };
+  const storage = createMemoryStorage({
+    [scheduleStorageKey]: JSON.stringify(draft),
+  }) as unknown as Storage;
+
+  await assert.rejects(persistScheduledGameStatus({
+    scheduledGame,
+    status: 'final',
+    canWrite: true,
+    storage,
+    ownedScheduleProject: {
+      id: 'schedule-1',
+      revision: 8,
+      project: { tool: 'schedule', events: draft.events },
+    },
+    updateCloudProject: async () => {
+      throw new Error('cloud unavailable');
+    },
+  }));
+
+  assert.equal(readScheduleDraft(storage)?.events[0]?.status, 'final');
+});
+
+test('connected coach schedules remain read-only when tracker actions request phase changes', async () => {
+  const scheduledGame = {
+    id: 'connected-game',
+    type: 'game',
+    date: '2026-09-19',
+    time: '18:00',
+    opponent: 'Westview',
+    location: '',
+    snacks: '',
+    drinks: '',
+    notes: '',
+    status: 'upcoming' as const,
+  };
+  const draft: ScheduleDraft = {
+    teamName: 'Falcons',
+    season: 'Fall 2026',
+    events: [scheduledGame],
+    template: 0,
+  };
+  const storage = createMemoryStorage({
+    [scheduleStorageKey]: JSON.stringify(draft),
+  }) as unknown as Storage;
+  let cloudWriteCount = 0;
+
+  await persistScheduledGameStatus({
+    scheduledGame,
+    status: 'live',
+    canWrite: false,
+    storage,
+    ownedScheduleProject: {
+      id: 'schedule-1',
+      revision: 2,
+      project: { tool: 'schedule', events: draft.events },
+    },
+    updateCloudProject: async () => {
+      cloudWriteCount += 1;
+      return { revision: 3 };
+    },
+  });
+
+  assert.equal(readScheduleDraft(storage)?.events[0]?.status, 'upcoming');
+  assert.equal(cloudWriteCount, 0);
 });
 
 test('long live tracker names cannot push score or featured stat controls off-screen', () => {
