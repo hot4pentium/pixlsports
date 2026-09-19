@@ -69,9 +69,7 @@ import type {
 import {
   createBlankScheduleEvent,
   clearSupporterScheduleSelection,
-  defaultScheduleEvents,
   getCloudScheduleProjects,
-  getDefaultScheduleEvents,
   getLatestCloudScheduleProject,
   getSelectedCloudScheduleProject,
   moveScheduleEvent,
@@ -2337,16 +2335,16 @@ function ScheduleEditor() {
   const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [notice, setNotice] = useState('');
-  const [teamName, setTeamName] = useState(storedDraft?.teamName ?? 'Eastside Falcons');
-  const [season, setSeason] = useState(storedDraft?.season ?? 'Fall 2024');
+  const [teamName, setTeamName] = useState(storedDraft?.teamName ?? '');
+  const [season, setSeason] = useState(storedDraft?.season ?? '');
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
-    storedDraft ? storedDraft.events : defaultScheduleEvents
+    storedDraft?.events ?? []
   ));
   const [selectedWeekKey, setSelectedWeekKey] = useState(
-    () => getScheduleWeekKey(storedDraft?.events[0]?.date ?? defaultScheduleEvents[0]?.date ?? ''),
+    () => getScheduleWeekKey(storedDraft?.events[0]?.date ?? ''),
   );
   const [selectedEventId, setSelectedEventId] = useState(
-    () => storedDraft?.events[0]?.id ?? defaultScheduleEvents[0]?.id ?? '',
+    () => storedDraft?.events[0]?.id ?? '',
   );
   const [eventForm, setEventForm] = useState<ScheduleEvent | null>(null);
   const [shareToken, setShareToken] = useState(storedDraft?.shareToken ?? '');

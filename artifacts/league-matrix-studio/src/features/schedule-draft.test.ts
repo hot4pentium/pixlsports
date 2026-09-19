@@ -11,6 +11,8 @@ import {
   removeScheduleEvent,
   saveScheduleEvent,
   saveScheduleDraft,
+  scheduleLegacyDefaultsMigrationKey,
+  scheduleStorageKey,
   updateScheduleEvent,
   createBlankScheduleEvent,
   getCloudScheduleProjects,
@@ -260,6 +262,82 @@ test('a saved draft with no events stays empty after reload', () => {
   saveScheduleDraft(storage as Storage, draft);
 
   assert.deepEqual(readScheduleDraft(storage as Storage)?.events, []);
+});
+
+test('new schedules do not seed example events, and old untouched examples are cleared once', () => {
+  assert.deepEqual(getDefaultScheduleEvents(), []);
+
+  const storage = new MemoryStorage();
+  storage.setItem(scheduleStorageKey, JSON.stringify({
+    teamName: 'Eastside Falcons',
+    season: 'Fall 2024',
+    events: [
+      {
+        id: 'schedule-event-default-1',
+        type: 'game',
+        date: '2024-10-12',
+        time: '16:30',
+        location: 'Central Field',
+        opponent: 'Northside',
+        snacks: 'Maya family',
+        drinks: 'Jordan family',
+        notes: '',
+      },
+      {
+        id: 'schedule-event-default-2',
+        type: 'practice',
+        date: '2024-10-13',
+        time: '10:00',
+        location: 'Eastside Field',
+        opponent: '',
+        snacks: '',
+        drinks: '',
+        notes: 'Bring cleats and a water bottle.',
+      },
+    ],
+    template: 0,
+  }));
+
+  assert.equal(readScheduleDraft(storage as Storage), null);
+  assert.equal(storage.getItem(scheduleStorageKey), null);
+  assert.equal(storage.getItem(scheduleLegacyDefaultsMigrationKey), '1');
+});
+
+test('the legacy cleanup preserves an edited version of the example schedule', () => {
+  const storage = new MemoryStorage();
+  const editedDraft: ScheduleDraft = {
+    teamName: 'Eastside Falcons',
+    season: 'Fall 2024',
+    events: [
+      {
+        id: 'schedule-event-default-1',
+        type: 'game',
+        date: '2024-10-12',
+        time: '16:30',
+        location: 'Central Field',
+        opponent: 'Northside',
+        snacks: 'Maya family',
+        drinks: 'Jordan family',
+        notes: 'Arrive early.',
+      },
+      {
+        id: 'schedule-event-default-2',
+        type: 'practice',
+        date: '2024-10-13',
+        time: '10:00',
+        location: 'Eastside Field',
+        opponent: '',
+        snacks: '',
+        drinks: '',
+        notes: 'Bring cleats and a water bottle.',
+      },
+    ],
+    template: 0,
+  };
+  saveScheduleDraft(storage as Storage, editedDraft);
+
+  assert.deepEqual(readScheduleDraft(storage as Storage), editedDraft);
+  assert.equal(storage.getItem(scheduleStorageKey) !== null, true);
 });
 
 test('the latest valid cloud schedule is shared by dashboard and schedule maker', () => {

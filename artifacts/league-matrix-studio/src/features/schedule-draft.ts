@@ -31,26 +31,12 @@ export type CloudScheduleProject = {
 };
 
 export const scheduleStorageKey = 'leaguematrix-schedule-draft';
+export const scheduleLegacyDefaultsMigrationKey = 'leaguematrix-schedule-defaults-migrated';
 export const supporterScheduleSelectionStorageKey = 'leaguematrix-supporter-schedule-selection';
 
 let scheduleEventCounter = 0;
 
 export function createScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
-  scheduleEventCounter += 1;
-  return {
-    id: `schedule-event-${scheduleEventCounter}`,
-    type,
-    date: type === 'game' ? '2024-10-12' : '',
-    time: type === 'game' ? '16:30' : '',
-    location: type === 'game' ? 'Central Field' : '',
-    opponent: type === 'game' ? 'Northside' : '',
-    snacks: '',
-    drinks: '',
-    notes: '',
-  };
-}
-
-export function createBlankScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
   scheduleEventCounter += 1;
   return {
     id: `schedule-event-${scheduleEventCounter}`,
@@ -66,22 +52,36 @@ export function createBlankScheduleEvent(type: ScheduleEventType = 'game'): Sche
   };
 }
 
-export const defaultScheduleEvents: ScheduleEvent[] = [
+export function createBlankScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
+  return createScheduleEvent(type);
+}
+
+const legacyDefaultScheduleEvents: ScheduleEvent[] = [
   {
-    ...createScheduleEvent('game'),
     id: 'schedule-event-default-1',
+    type: 'game',
+    date: '2024-10-12',
+    time: '16:30',
+    location: 'Central Field',
+    opponent: 'Northside',
     snacks: 'Maya family',
     drinks: 'Jordan family',
+    notes: '',
   },
   {
-    ...createScheduleEvent('practice'),
     id: 'schedule-event-default-2',
+    type: 'practice',
     date: '2024-10-13',
     time: '10:00',
     location: 'Eastside Field',
+    opponent: '',
+    snacks: '',
+    drinks: '',
     notes: 'Bring cleats and a water bottle.',
   },
 ];
+
+export const defaultScheduleEvents: ScheduleEvent[] = [];
 
 export function getDefaultScheduleEvents() {
   return defaultScheduleEvents.map((event) => ({ ...event }));
@@ -141,8 +141,8 @@ export function normalizeScheduleDraft(value: unknown): ScheduleDraft | null {
   const shareToken = stringValue(input.shareToken);
 
   return {
-    teamName: stringValue(input.teamName) || legacyTeamName || stringValue(input.title) || 'Eastside Falcons',
-    season: stringValue(input.season) || legacySeason || (legacyTeamSeason ? '' : 'Fall 2024'),
+    teamName: stringValue(input.teamName) || legacyTeamName || stringValue(input.title) || '',
+    season: stringValue(input.season) || legacySeason || '',
     events: input.events.map((event, index) => (
       normalizeScheduleEvent(event, `schedule-event-restored-${index + 1}`)
     )),
@@ -213,11 +213,48 @@ export function clearSupporterScheduleSelection(
 export function readScheduleDraft(storage: Storage = window.localStorage): ScheduleDraft | null {
   try {
     const stored = storage.getItem(scheduleStorageKey);
+    if (storage.getItem(scheduleLegacyDefaultsMigrationKey) !== '1') {
+      storage.setItem(scheduleLegacyDefaultsMigrationKey, '1');
+      if (stored) {
+        const draft = normalizeScheduleDraft(JSON.parse(stored));
+        if (draft && isLegacyDefaultScheduleDraft(draft)) {
+          storage.removeItem(scheduleStorageKey);
+          return null;
+        }
+        return draft;
+      }
+      return null;
+    }
     if (!stored) return null;
     return normalizeScheduleDraft(JSON.parse(stored));
   } catch {
     return null;
   }
+}
+
+function isLegacyDefaultScheduleDraft(draft: ScheduleDraft) {
+  if (
+    draft.teamName !== 'Eastside Falcons'
+    || draft.season !== 'Fall 2024'
+    || draft.events.length !== legacyDefaultScheduleEvents.length
+  ) {
+    return false;
+  }
+
+  return draft.events.every((event, index) => {
+    const legacyEvent = legacyDefaultScheduleEvents[index];
+    return Boolean(legacyEvent)
+      && event.id === legacyEvent.id
+      && event.type === legacyEvent.type
+      && event.date === legacyEvent.date
+      && event.time === legacyEvent.time
+      && event.location === legacyEvent.location
+      && event.opponent === legacyEvent.opponent
+      && event.snacks === legacyEvent.snacks
+      && event.drinks === legacyEvent.drinks
+      && event.notes === legacyEvent.notes
+      && event.status === legacyEvent.status;
+  });
 }
 
 export function saveScheduleDraft(storage: Storage, draft: ScheduleDraft) {
