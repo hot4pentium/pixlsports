@@ -155,6 +155,7 @@ import volleyballCourtAsset from '@/assets/volleyball-court.svg';
 import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
 import hypecardPlayerPhoto from '@/assets/hypecard-player-photo.png';
+import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
 import hypecardPlayerPhoto320 from '@/assets/hypecard-player-photo-320.webp';
 import hypecardPlayerPhoto640 from '@/assets/hypecard-player-photo-640.webp';
 import hypecardPlayerPhoto1024 from '@/assets/hypecard-player-photo-1024.webp';
@@ -978,8 +979,8 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
     },
     hype: {
       what: 'Turn a photo or short video into a polished moment card without leaving the sideline.',
-      next: 'Choose the media, pick a look, and share the finished celebration with your people.',
-      steps: ['Choose the moment', 'Add the Pixl look', 'Share the card'],
+      next: 'Choose the media, pick a look, attach optional season stats, and share the finished celebration with your people.',
+      steps: ['Choose the moment', 'Attach season stats', 'Share the card'],
     },
     roster: {
       what: 'Make the team board clear before the game starts and keep the lineup in one place.',
@@ -1018,26 +1019,38 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
         </div>
 
         {kind === 'hype' && (
-          <div className="relative mx-auto aspect-[760/1036] max-w-[230px] overflow-hidden border border-primary/40 bg-[#10181b] sm:max-w-[250px]">
-            <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
-              <img
-                src={footballFieldAsset}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-cover opacity-90"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#102d1e]/35 via-transparent to-[#102d1e]/20" />
-              <ResponsiveLandingImage
-                fallback={hypecardPlayerPhoto}
-                srcSet={`${hypecardPlayerPhoto320} 320w, ${hypecardPlayerPhoto640} 640w, ${hypecardPlayerPhoto1024} 1024w`}
-                sizes="(min-width: 640px) 170px, 156px"
-                alt="Youth football player running with a football"
-                className="relative h-full w-full object-cover object-center"
-                width={1024}
-                height={1536}
-              />
+          <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)]">
+            <div className="relative mx-auto aspect-[760/1036] w-full max-w-[250px] overflow-hidden border border-primary/40 bg-[#10181b]">
+              <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
+                <img
+                  src={footballFieldAsset}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover opacity-90"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#102d1e]/35 via-transparent to-[#102d1e]/20" />
+                <ResponsiveLandingImage
+                  fallback={hypecardPlayerPhoto}
+                  srcSet={`${hypecardPlayerPhoto320} 320w, ${hypecardPlayerPhoto640} 640w, ${hypecardPlayerPhoto1024} 1024w`}
+                  sizes="(min-width: 640px) 170px, 156px"
+                  alt="Youth football player running with a football"
+                  className="relative h-full w-full object-cover object-center"
+                  width={1024}
+                  height={1536}
+                />
+              </div>
             </div>
+            <figure className="mx-auto w-full max-w-[190px] overflow-hidden border border-white/15 bg-[#080a0f]">
+              <img
+                src={hypeCardRecipientPreview}
+                alt="Recipient view of a shared Hype Card with reactions and a reply box"
+                className="h-auto w-full"
+              />
+              <figcaption className="border-t border-white/10 px-3 py-2 text-center text-[9px] font-bold uppercase tracking-wider text-white/55">
+                Recipient view · add season stats
+              </figcaption>
+            </figure>
           </div>
         )}
         {kind === 'hype' && (
