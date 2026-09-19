@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Image as ImageIcon, Loader2, Minus, Plus, RotateCcw, Save, Trophy, Video } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy, Video } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -746,10 +746,6 @@ export function StatTrackerPage() {
             <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-capture-video">
               <Video className="h-5 w-5" /> Record a video
               <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
-            </label>
-            <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-choose-existing-media">
-              <ImageIcon className="h-5 w-5" /> Choose existing
-              <input type="file" accept="image/*,video/*" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; handleCapture(file?.type.startsWith('video/') ? 'video' : 'photo', file); event.currentTarget.value = ''; }} aria-label="Choose an existing photo or video" data-testid="input-stat-tracker-choose-existing-media" />
             </label>
             <p className="col-span-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">If camera capture is unavailable, your device picker can still choose a file.</p>
           </div>
