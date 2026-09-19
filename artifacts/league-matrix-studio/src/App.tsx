@@ -884,9 +884,9 @@ function HomePage() {
                 <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Fan Hub / Your week</p>
-                    <h2 id="fan-tools-heading" className="home-display mt-3 text-5xl leading-[0.88] sm:text-7xl">Pick a tool.<br /><span className="text-primary">See the moment.</span></h2>
+                    <h2 id="fan-tools-heading" className="home-display mt-3 text-5xl leading-[0.88] sm:text-7xl">We guide the week.<br /><span className="text-primary">You enjoy the moments.</span></h2>
                   </div>
-                  <p className="max-w-xs text-sm font-medium leading-relaxed text-white/55">Tap through the tools you will use as the week moves from calendar to celebration.</p>
+                  <p className="max-w-xs text-sm font-medium leading-relaxed text-white/55">Move from calendar to game day to celebration with one clear next step at every turn.</p>
                 </div>
                 <div className="mt-8 overflow-x-auto border border-white/15 bg-white/[0.03] p-2" role="tablist" aria-label="Fan Hub tools">
                   <div className="flex min-w-max gap-2">
