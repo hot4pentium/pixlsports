@@ -1206,7 +1206,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
   );
 }
 
-function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole }) {
+function StudioLayout({ children, role, landingBackground = false }: { children: ReactNode; role?: UserRole; landingBackground?: boolean }) {
   const [location] = useLocation();
   const { user } = useUser();
   const activeRole = role ?? getUserRole(user) ?? 'coach';
@@ -1234,7 +1234,7 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
           )}
         </div>
       </div>
-      <div className="studio-page-background flex-1 flex flex-col">
+      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''}`}>
         {children}
       </div>
       <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
@@ -2694,7 +2694,7 @@ function RosterEditor() {
   }
 
   return (
-    <StudioLayout>
+    <StudioLayout landingBackground>
       <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-8 lg:py-10">
         <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div>

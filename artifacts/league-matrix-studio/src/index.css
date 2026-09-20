@@ -178,6 +178,12 @@
   .studio-page-background > main {
     background-color: transparent;
   }
+  .studio-page-background.landing-page-background {
+    background-color: #F7F5EF;
+  }
+  .studio-page-background.landing-page-background::before {
+    background: #F7F5EF;
+  }
   .studio-textured-accent {
     text-shadow:
       -1px -1px 0 rgb(5 8 7 / 0.88),
