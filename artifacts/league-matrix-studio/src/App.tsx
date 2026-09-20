@@ -3328,14 +3328,14 @@ function ScheduleEditor() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink">
                 <CalendarDays className="h-4 w-4" /> Schedule Maker
               </div>
               <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Put the season in motion.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 self-end sm:gap-4 sm:self-auto">
-            <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
+            <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
               <Check className="h-4 w-4" /> Auto-saved
             </span>
             <button type="button" onClick={publishSchedule} disabled={createCloudProject.isPending || updateCloudProject.isPending || sharePending} className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-publish-schedule">
@@ -3413,7 +3413,7 @@ function ScheduleEditor() {
 
             {shareUrl && (
               <div className="relative z-10 mt-3 border border-primary/30 bg-primary/5 p-3 clip-angled-sm" data-testid="schedule-share-link">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Public parent link</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink">Public parent link</p>
                 <div className="mt-2 flex items-center gap-2">
                   <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-foreground outline-none" aria-label="Public parent schedule link" />
                   <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('PARENT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-foreground hover:bg-muted" aria-label="Copy parent schedule link" data-testid="button-copy-schedule-link">
@@ -3427,7 +3427,7 @@ function ScheduleEditor() {
               </div>
             )}
 
-            {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
+            {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary-ink animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
           </aside>
         </div>
 
@@ -3439,7 +3439,7 @@ function ScheduleEditor() {
         >
           <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] gap-5 overflow-y-auto border-primary/40 bg-card p-4 sm:max-w-2xl sm:p-6" data-testid="schedule-event-dialog">
             <DialogHeader className="pr-8">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Team calendar</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary-ink">Team calendar</p>
               <DialogTitle className="font-display text-3xl uppercase tracking-wide">
                 {eventForm && events.some((event) => event.id === eventForm.id) ? 'Edit event' : 'Add event'}
               </DialogTitle>
