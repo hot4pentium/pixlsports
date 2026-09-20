@@ -611,16 +611,16 @@ export function SupporterDashboardView({
               {currentStage.kicker}
               {scheduleSource && <span className="text-white/45">· {scheduleSource === 'team' ? 'Team calendar' : 'Your schedule'}</span>}
             </div>
-            <h2 id="next-game-heading" className="mt-3 max-w-2xl font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl">
+            <h2 id="next-game-heading" className="mt-3 max-w-2xl break-words font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl" data-testid="next-game-heading">
               {contextEvent ? contextTitle : 'Make the next game count.'}
             </h2>
             {isViewingPastGame && (
               <div
-                className="mt-5 max-w-2xl border-l-2 border-fuchsia-300 bg-fuchsia-300/[0.08] px-4 py-3"
+                className="mt-5 max-w-2xl break-words border-l-2 border-fuchsia-300 bg-fuchsia-300/[0.08] px-4 py-3"
                 data-testid="past-game-notice"
               >
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-200">Completed game</p>
-                <p className="mt-1 text-sm font-medium leading-relaxed text-white/70">
+                <p className="mt-1 break-words text-sm font-medium leading-relaxed text-white/70">
                   You&apos;re viewing a past game. The newer game marked Next in your week path is still your recommended next step.
                 </p>
                 <button
@@ -628,7 +628,7 @@ export function SupporterDashboardView({
                   onClick={() => {
                     if (recommendedGame) selectGame(recommendedGame.id);
                   }}
-                  className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 border border-fuchsia-200/50 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-fuchsia-100 transition-colors hover:border-fuchsia-100 hover:bg-fuchsia-200/10"
+                  className="mt-4 inline-flex min-h-10 max-w-full flex-wrap items-center justify-center gap-2 border border-fuchsia-200/50 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-fuchsia-100 transition-colors hover:border-fuchsia-100 hover:bg-fuchsia-200/10"
                   data-testid="button-return-to-recommended-game"
                 >
                   Return to recommended game <ArrowRight className="h-3.5 w-3.5" />

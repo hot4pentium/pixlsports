@@ -608,12 +608,117 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     assert.match(await connection.evaluate<string>('document.body.innerText', page.sessionId), /Alexandria Montgomery-Williams/);
     assert.match(await connection.evaluate<string>('document.body.innerText', page.sessionId), /The Northside Comets Select Travel Club/);
 
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'ChampionshipOpponentWithAnUnreasonablyLongName', status: 'final' },
+      { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'RegionalTournamentVisitorsWithAnUnreasonablyLongName', status: 'upcoming' }
+    ])`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-2"',
+      Boolean,
+    );
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-active-supporter-game"]');
+      if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector is missing');
+      select.value = 'game-1';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"past-game-notice\\"]") !== null',
+      Boolean,
+    );
+    const narrowPastGameLayout = await connection.evaluate<{
+      contextOverflow: boolean;
+      noticeOverflow: boolean;
+      titleVisible: boolean;
+      hypeCardVisible: boolean;
+      nextMarkerVisible: boolean;
+    }>(`(() => {
+      const context = document.querySelector('[data-testid="section-next-game-context"]');
+      const notice = document.querySelector('[data-testid="past-game-notice"]');
+      const title = document.querySelector('[data-testid="next-game-heading"]');
+      const hypeCard = document.querySelector('[data-testid="link-context-hype-card"]');
+      const nextMarker = document.querySelector('[data-testid="stage-upcoming-next"]');
+      const viewportWidth = document.documentElement.clientWidth;
+      const isVisible = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= viewportWidth;
+      };
+      return {
+        contextOverflow: Boolean(context && context.scrollWidth > context.clientWidth),
+        noticeOverflow: Boolean(notice && notice.scrollWidth > notice.clientWidth),
+        titleVisible: isVisible(title),
+        hypeCardVisible: isVisible(hypeCard),
+        nextMarkerVisible: isVisible(nextMarker),
+      };
+    })()`, page.sessionId);
+    assert.deepEqual(narrowPastGameLayout, {
+      contextOverflow: false,
+      noticeOverflow: false,
+      titleVisible: true,
+      hypeCardVisible: true,
+      nextMarkerVisible: true,
+    });
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-completed-next"]\'))', page.sessionId),
+      false,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="next-game-heading"]\')?.textContent || ""', page.sessionId),
+      /ChampionshipOpponentWithAnUnreasonablyLongName/,
+    );
+
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 1000,
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
+    const desktopPastGameLayout = await connection.evaluate<{
+      contextOverflow: boolean;
+      noticeOverflow: boolean;
+      titleVisible: boolean;
+      hypeCardVisible: boolean;
+      nextMarkerVisible: boolean;
+    }>(`(() => {
+      const context = document.querySelector('[data-testid="section-next-game-context"]');
+      const notice = document.querySelector('[data-testid="past-game-notice"]');
+      const title = document.querySelector('[data-testid="next-game-heading"]');
+      const hypeCard = document.querySelector('[data-testid="link-context-hype-card"]');
+      const nextMarker = document.querySelector('[data-testid="stage-upcoming-next"]');
+      const viewportWidth = document.documentElement.clientWidth;
+      const isVisible = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= viewportWidth;
+      };
+      return {
+        contextOverflow: Boolean(context && context.scrollWidth > context.clientWidth),
+        noticeOverflow: Boolean(notice && notice.scrollWidth > notice.clientWidth),
+        titleVisible: isVisible(title),
+        hypeCardVisible: isVisible(hypeCard),
+        nextMarkerVisible: isVisible(nextMarker),
+      };
+    })()`, page.sessionId);
+    assert.deepEqual(desktopPastGameLayout, {
+      contextOverflow: false,
+      noticeOverflow: false,
+      titleVisible: true,
+      hypeCardVisible: true,
+      nextMarkerVisible: true,
+    });
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-completed-next"]\'))', page.sessionId),
+      false,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="next-game-heading"]\')?.textContent || ""', page.sessionId),
+      /ChampionshipOpponentWithAnUnreasonablyLongName/,
+    );
     const desktopLayout = await connection.evaluate<{ summaryOverflow: boolean; heroToolCards: number }>(`(() => {
       const summary = document.querySelector('[data-testid="athlete-summary"]');
       return {
