@@ -58,7 +58,7 @@ import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
 import { prepareHypeCardShareMedia } from './hype-card-share';
 import { sports, getSportRule, normalizeTrackerData, type GameSession } from './stat-tracker';
-import { getUserProfile } from './supporter-dashboard-model';
+import { getUserProfile, seedHypeCardFromSupporterProfile } from './supporter-dashboard-model';
 import { LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from './privacy-copy';
 
 
@@ -1262,13 +1262,7 @@ export function HypeCardEditor() {
       return;
     }
     if (!profilePrefillAppliedRef.current) {
-      setProject((current) => ({
-        ...current,
-        playerName: profile.athleteName || current.playerName,
-        jerseyNumber: profile.jerseyNumber || current.jerseyNumber,
-        position: profile.position || current.position,
-        teamName: profile.teamName || current.teamName,
-      }));
+      setProject((current) => seedHypeCardFromSupporterProfile(current, profile));
       profilePrefillAppliedRef.current = true;
     }
     if (!gameDayPrefill || gameDayPrefillAppliedRef.current || !projects) return;

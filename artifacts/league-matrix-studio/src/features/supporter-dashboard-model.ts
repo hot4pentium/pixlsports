@@ -69,6 +69,12 @@ export function supporterProfileFromUser(user: UserLike): SupporterProfile {
   };
 }
 
+export type ProfileSeededHypeCard = {
+  playerName: string;
+  jerseyNumber: string;
+  position: string;
+  teamName: string;
+};
 export function cleanSupporterProfile(profile: SupporterProfile): Omit<SupporterProfile, 'accessMode'> {
   return {
     displayName: profile.displayName.trim(),
@@ -381,5 +387,18 @@ export function mapLocalSupporterHypeCard(
     updatedAt,
     href: '/studio/hype-card',
     thumbnailProject: { tool: 'hype-card', project },
+  };
+}
+
+export function seedHypeCardFromSupporterProfile<T extends ProfileSeededHypeCard>(
+  project: T,
+  profile: Pick<SupporterProfile, 'athleteName' | 'jerseyNumber' | 'position' | 'teamName'>,
+): T {
+  return {
+    ...project,
+    playerName: profile.athleteName || project.playerName,
+    jerseyNumber: profile.jerseyNumber || project.jerseyNumber,
+    position: profile.position || project.position,
+    teamName: profile.teamName || project.teamName,
   };
 }

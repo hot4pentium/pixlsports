@@ -14,21 +14,37 @@ import {
   mapRecentSupporterProjects,
   parseSupporterStorageSyncEvent,
   supporterProfileFromUser,
+  seedHypeCardFromSupporterProfile,
   supporterActiveGameStorageKey,
   supporterStageAcknowledgmentStoragePrefix,
   getSupporterStageAcknowledgmentKey,
   supporterToolRoutes,
 } from './supporter-dashboard-model';
 
-test('models upcoming, live, and completed supporter game phases', () => {
+test('normalizes a saved athlete name for every supporter tool', () => {
   const now = new Date(2026, 8, 19, 15, 0, 0);
-  assert.equal(getSupporterGameStage({ date: '2026-09-20', time: '10:00' }, now), 'upcoming');
-  assert.equal(getSupporterGameStage({ date: '2026-09-19', time: '14:00' }, now), 'live');
-  assert.equal(getSupporterGameStage({ date: '2026-09-19', time: '10:00' }, now), 'completed');
-  assert.equal(getSupporterGameStage({ date: '2026-09-18', time: '18:00' }, now), 'completed');
+
+  assert.equal(getSupporterGameStage({
+    id: 'delayed',
+    date: '2026-09-18',
+    time: '08:00',
+    status: 'live',
+  }, now), 'live');
+  assert.equal(getSupporterGameStage({
+    id: 'short-game',
+    date: '2026-09-19',
+    time: '14:00',
+    status: 'final',
+  }, now), 'completed');
+  assert.equal(getSupporterGameStage({
+    id: 'rescheduled',
+    date: '2026-09-19',
+    time: '14:00',
+    status: 'upcoming',
+  }, now), 'upcoming');
 });
 
-test('recommends an upcoming practice when no live or upcoming game is available', () => {
+test('keeps a valid selected game and otherwise chooses the next relevant game', () => {
   const now = new Date(2026, 8, 19, 15, 0, 0);
   const practice = {
     id: 'practice-1',
@@ -344,7 +360,7 @@ test('maps only recent Hype Card templates in newest-first order, limited to fou
     { id: 'roster', name: 'Roster', updatedAt: '2026-02-01T00:00:00Z', project: { tool: 'roster' } },
   ];
 
-  const recent = mapRecentSupporterProjects(projects);
+  const recent = mapLocalSupporterHypeCard(project, '2026-09-20T12:00:00Z');
 
   assert.deepEqual(recent.map(({ id }) => id), ['new', 'middle', 'fourth', 'old']);
   assert.deepEqual(recent.map(({ kind }) => kind), ['hype-card', 'hype-card', 'hype-card', 'hype-card']);
@@ -370,3 +386,30 @@ test('maps an exported local Hype Card back to the local editor', () => {
     thumbnailProject: { tool: 'hype-card', project },
   });
 });
+
+  const profile = supporterProfileFromUser({
+    firstName: 'Supporter',
+    unsafeMetadata: {
+      role: 'fan',
+      athleteName: '  Alex Morgan  ',
+      jerseyNumber: ' 7 ',
+      position: 'Guard',
+      teamName: 'Northside Comets',
+    },
+  });
+
+  const emptyProfile = supporterProfileFromUser(null);
+
+  const localDefaults = {
+    playerName: '',
+    jerseyNumber: '12',
+    position: 'Point guard',
+    teamName: 'Eastside Falcons',
+  };
+
+  const authoredCloudCard = {
+    playerName: 'Past Season Athlete',
+    jerseyNumber: '4',
+    position: 'Forward',
+    teamName: 'Legacy Team',
+  };

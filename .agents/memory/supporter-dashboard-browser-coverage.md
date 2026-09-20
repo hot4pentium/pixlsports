@@ -14,3 +14,9 @@ Stable `data-testid` hooks are preferable to reusing semantic IDs when browser c
 **Why:** A responsive assertion can otherwise fail because its selector finds nothing, obscuring the actual layout result.
 
 **How to apply:** Add a focused test hook for elements whose presence, dimensions, or visibility are part of browser coverage, while keeping the semantic `id` for accessibility relationships.
+
+When multiple browser tests generate the same fixture files, serialize their Chromium runs or give each run unique fixture paths.
+
+**Why:** Node can start top-level tests concurrently, and one test's cleanup can remove or replace the other test's live Vite page.
+
+**How to apply:** Protect shared generated harness and HTML paths with a test-file lock before starting the Vite server; keep the lock release in `finally`.
