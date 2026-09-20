@@ -679,88 +679,11 @@ export function SupporterDashboardView({
         </div>
       </section>
 
-      {/* TOOL CHOOSER */}
-      <section id="all-tools" className="animate-slide-up delay-200">
-        <div className="border-b border-border pb-4">
-          <button
-            type="button"
-            onClick={toggleTools}
-            aria-controls="all-tools-panel"
-            aria-expanded={toolsOpen}
-            className="flex w-full items-center justify-between gap-4 text-left"
-            data-testid="button-choose-task"
-            ref={toolsTriggerRef}
-          >
-              <span id="all-tools-heading">
-               <span className="studio-textured-accent mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
-              <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm">
-              {toolsOpen ? 'Hide tools' : 'View tools'}
-              <ChevronDown className={`h-4 w-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
-            </span>
-          </button>
-          <p className="mt-3 text-sm font-medium text-muted-foreground">The next best move is always close.</p>
-        </div>
-        {toolsOpen && (
-          <div
-            id="all-tools-panel"
-            className="mt-4 grid gap-2 sm:grid-cols-2"
-            data-testid="all-tools-panel"
-            aria-labelledby="all-tools-heading"
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') closeTools();
-            }}
-          >
-            <Link href={supporterToolRoutes.hypeCard} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
-              <span className="flex min-w-0 items-center gap-3">
-                <Zap className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Hype Card</span>
-                  <span className="block text-xs font-medium text-muted-foreground">Celebrate a big moment.</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </Link>
-            <Link href={supporterToolRoutes.schedule} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-schedule">
-              <span className="flex min-w-0 items-center gap-3">
-                <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Game Day</span>
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </Link>
-            <button type="button" onClick={onOpenStatTracker} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-stat-tracker">
-              <span className="flex min-w-0 items-center gap-3">
-                <Activity className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Stat Tracker</span>
-                  <span className="block text-xs font-medium text-muted-foreground">Track the game as it happens.</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </button>
-            <button type="button" onClick={onOpenChecklist} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-checklist">
-              <span className="flex min-w-0 items-center gap-3">
-                <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Checklist</span>
-                  <span className="block text-xs font-medium text-muted-foreground">Prepare with the whole team.</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </button>
-          </div>
-        )}
-      </section>
-
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-8 animate-slide-up delay-300">
         
         {/* TEAM SCHEDULE */}
-        <section>
+        <section data-testid="section-upcoming">
           <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
             <div className="flex items-center gap-3">
               <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
@@ -948,7 +871,7 @@ export function SupporterDashboardView({
         </section>
 
         {/* RECENT DESIGNS */}
-        <section>
+        <section data-testid="section-recent-designs">
           <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
             <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Recent Designs</h3>
             <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-view-all-designs">
@@ -985,6 +908,83 @@ export function SupporterDashboardView({
         </section>
 
       </div>
+
+      {/* TOOL CHOOSER */}
+      <section id="all-tools" className="animate-slide-up delay-200">
+        <div className="border-b border-border pb-4">
+          <button
+            type="button"
+            onClick={toggleTools}
+            aria-controls="all-tools-panel"
+            aria-expanded={toolsOpen}
+            className="flex w-full items-center justify-between gap-4 text-left"
+            data-testid="button-choose-task"
+            ref={toolsTriggerRef}
+          >
+            <span id="all-tools-heading">
+              <span className="studio-textured-accent mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
+              <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm">
+              {toolsOpen ? 'Hide tools' : 'View tools'}
+              <ChevronDown className={`h-4 w-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
+            </span>
+          </button>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">The next best move is always close.</p>
+        </div>
+        {toolsOpen && (
+          <div
+            id="all-tools-panel"
+            className="mt-4 grid gap-2 sm:grid-cols-2"
+            data-testid="all-tools-panel"
+            aria-labelledby="all-tools-heading"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') closeTools();
+            }}
+          >
+            <Link href={supporterToolRoutes.hypeCard} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
+              <span className="flex min-w-0 items-center gap-3">
+                <Zap className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Hype Card</span>
+                  <span className="block text-xs font-medium text-muted-foreground">Celebrate a big moment.</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+            <Link href={supporterToolRoutes.schedule} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-schedule">
+              <span className="flex min-w-0 items-center gap-3">
+                <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Game Day</span>
+                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </Link>
+            <button type="button" onClick={onOpenStatTracker} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-stat-tracker">
+              <span className="flex min-w-0 items-center gap-3">
+                <Activity className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Stat Tracker</span>
+                  <span className="block text-xs font-medium text-muted-foreground">Track the game as it happens.</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </button>
+            <button type="button" onClick={onOpenChecklist} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-checklist">
+              <span className="flex min-w-0 items-center gap-3">
+                <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block font-display text-xl uppercase tracking-wide">Checklist</span>
+                  <span className="block text-xs font-medium text-muted-foreground">Prepare with the whole team.</span>
+                </span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

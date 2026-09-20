@@ -288,6 +288,17 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/supporter-dashboard-test.html`);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
+     assert.equal(
+       await connection.evaluate<boolean>(`(() => {
+         const upcoming = document.querySelector('[data-testid="section-upcoming"]');
+         const recent = document.querySelector('[data-testid="section-recent-designs"]');
+         const tools = document.querySelector('#all-tools');
+         return Boolean(upcoming && recent && tools
+           && (upcoming.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING)
+           && (recent.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING));
+       })()`, page.sessionId),
+       true,
+     );
 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
     assert.match(
