@@ -76,6 +76,8 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
       displayStats: rule.stats.filter((item) => item.featured),
       showAllStats: false,
       saving: false,
+      captureNotice: '',
+      onCapture: () => {},
       onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
       onToggleShowAllStats: () => {},
       onLeaveGame: () => {},
@@ -111,6 +113,44 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   const threePointStat = renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' });
   act(() => threePointStat.props.onClick());
   assert.equal(changedGame.stats['three-point'], 1);
+});
+
+test('live scoreboard keeps camera actions compact, labeled, and attached to the scoreboard', () => {
+  const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('basketball');
+  const captures: Array<{ kind: string; file?: File }> = [];
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: 'Photo ready for Falcons vs Northside.',
+      onCapture: (kind, file) => captures.push({ kind, file }),
+      onGameChange: () => {},
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const scoreboard = renderer.root.findByProps({ 'data-testid': 'live-tracker-scoreboard' });
+  const captureControls = renderer.root.findByProps({ 'data-testid': 'live-tracker-capture-controls' });
+  assert.equal(captureControls.parent, scoreboard);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'status-stat-tracker-capture-notice' }).props.role, 'status');
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-stat-tracker-capture-photo' }).props.accept, 'image/*');
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-stat-tracker-capture-video' }).props.accept, 'video/*');
+
+  const file = { name: 'moment.jpg' } as File;
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-stat-tracker-capture-photo' }).props.onChange({
+    currentTarget: { files: [file], value: 'selected' },
+  }));
+  assert.deepEqual(captures, [{ kind: 'photo', file }]);
 });
 
 test('profile sport controls the tracker while accounts without one resume their latest sport', () => {
@@ -313,6 +353,8 @@ test('long live tracker names cannot push score or featured stat controls off-sc
       displayStats: rule.stats.filter((item) => item.featured),
       showAllStats: false,
       saving: false,
+      captureNotice: '',
+      onCapture: () => {},
       onGameChange: () => {},
       onToggleShowAllStats: () => {},
       onLeaveGame: () => {},
@@ -608,6 +650,8 @@ test('signed-in tracker reload restores the active game into the live scoreboard
       displayStats: rule.stats.filter((item) => item.featured),
       showAllStats: false,
       saving: false,
+      captureNotice: '',
+      onCapture: () => {},
       onGameChange: () => {},
       onToggleShowAllStats: () => {},
       onLeaveGame: () => {},

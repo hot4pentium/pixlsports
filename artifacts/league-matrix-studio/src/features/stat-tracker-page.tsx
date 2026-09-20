@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy, Video } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy, Video, X } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -222,6 +222,8 @@ type LiveTrackerGameProps = {
   displayStats: StatDefinition[];
   showAllStats: boolean;
   saving: boolean;
+  captureNotice: string;
+  onCapture: (kind: 'photo' | 'video', file?: File) => void;
   onGameChange: (game: GameSession) => void;
   onToggleShowAllStats: () => void;
   onLeaveGame: () => void;
@@ -236,6 +238,8 @@ export function LiveTrackerGame({
   displayStats,
   showAllStats,
   saving,
+  captureNotice,
+  onCapture,
   onGameChange,
   onToggleShowAllStats,
   onLeaveGame,
@@ -247,7 +251,7 @@ export function LiveTrackerGame({
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
-        <div data-testid="live-tracker-scoreboard" className="min-w-0 border border-primary/40 bg-foreground p-3 text-background clip-angled-sm sm:p-6" aria-live="polite">
+        <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 bg-foreground p-3 pb-16 text-background clip-angled-sm sm:p-6 sm:pb-20" aria-live="polite">
           <div className="flex min-w-0 items-center justify-between gap-3"><span className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
           <p data-testid="live-tracker-matchup" className="mt-3 min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
           <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
@@ -273,6 +277,21 @@ export function LiveTrackerGame({
             <button type="button" onClick={() => onGameChange({ ...currentGame, status: currentGame.status === 'paused' ? 'live' : 'paused' })} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
             <button type="button" onClick={() => onGameChange({ ...currentGame, period: currentGame.period + 1 })} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {rule.phaseLabel}</button>
           </div>
+          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 sm:bottom-5 sm:right-5" data-testid="live-tracker-capture-controls">
+            <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 border border-white/20 bg-white/5 px-2.5 py-2 text-[10px] font-bold uppercase tracking-widest text-white/75 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-within:border-primary focus-within:text-primary sm:min-h-11 sm:px-3" data-testid="label-stat-tracker-capture-photo">
+              <Camera className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Take a photo</span>
+              <span className="sr-only sm:hidden">Take a photo</span>
+              <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { onCapture('photo', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Take a photo of this game" data-testid="input-stat-tracker-capture-photo" />
+            </label>
+            <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 border border-white/20 bg-white/5 px-2.5 py-2 text-[10px] font-bold uppercase tracking-widest text-white/75 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-within:border-primary focus-within:text-primary sm:min-h-11 sm:px-3" data-testid="label-stat-tracker-capture-video">
+              <Video className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Record a video</span>
+              <span className="sr-only sm:hidden">Record a video</span>
+              <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { onCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
+            </label>
+          </div>
+          {captureNotice && <p className="absolute bottom-0 left-3 right-3 truncate pb-1 text-right text-[10px] font-bold uppercase tracking-widest text-primary sm:left-6 sm:right-6 sm:pb-2" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
         </div>
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -346,6 +365,7 @@ export function StatTrackerPage() {
   const [notes, setNotes] = useState('');
   const [captureNotice, setCaptureNotice] = useState('');
   const [notice, setNotice] = useState('');
+  const [showUpcomingNotice, setShowUpcomingNotice] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [retryAvailable, setRetryAvailable] = useState(false);
@@ -362,7 +382,9 @@ export function StatTrackerPage() {
     date: searchParams.has('date'),
     opponent: searchParams.has('opponent'),
   });
-  const connectedPrefillApplied = useRef(false);
+  const setupSectionRef = useRef<HTMLElement | null>(null);
+  const historySectionRef = useRef<HTMLElement | null>(null);
+  const upcomingNoticeGameId = useRef<string | null>(null);
   const activeScheduledGame = useRef<ScheduledGame | undefined>(undefined);
   const scheduleRevision = useRef<{ id: string; revision: number } | null>(null);
   const scheduledStatusUpdate = useRef(Promise.resolve());
@@ -463,13 +485,6 @@ export function StatTrackerPage() {
     else window.localStorage.removeItem(key);
   }, [accountId, currentGame, storageAccountId]);
 
-  useEffect(() => {
-    if (!connectedNextGame || connectedPrefillApplied.current) return;
-    connectedPrefillApplied.current = true;
-    if (!manuallyEditedSetup.current.date) setDate(connectedNextGame.date);
-    if (!manuallyEditedSetup.current.opponent) setOpponent(connectedNextGame.opponent);
-  }, [connectedNextGame]);
-
   const rule = getSportRule(sport);
   const totals = seasonTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => showAllStats || item.featured);
@@ -486,6 +501,20 @@ export function StatTrackerPage() {
     else url.searchParams.delete('reportGame');
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
   }, [selectedReportGameId]);
+
+  useEffect(() => {
+    if (!nextGame) {
+      upcomingNoticeGameId.current = null;
+      setShowUpcomingNotice(false);
+      return;
+    }
+    if (!manuallyEditedSetup.current.date) setDate(nextGame.date);
+    if (!manuallyEditedSetup.current.opponent) setOpponent(nextGame.opponent);
+    if (upcomingNoticeGameId.current !== nextGame.id) {
+      upcomingNoticeGameId.current = nextGame.id;
+      setShowUpcomingNotice(true);
+    }
+  }, [nextGame]);
   const announce = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2600);
@@ -496,7 +525,8 @@ export function StatTrackerPage() {
       setCaptureNotice('No media selected. You can try again whenever you are ready.');
       return;
     }
-    const gameTitle = opponent ? `${profile.teamName || 'Your team'} vs ${opponent}` : 'this game';
+    const captureOpponent = currentGame?.opponent ?? opponent;
+    const gameTitle = captureOpponent ? `${profile.teamName || 'Your team'} vs ${captureOpponent}` : 'this game';
     setCaptureNotice(
       `${kind === 'photo' ? 'Photo' : 'Video'} ready for ${gameTitle}. It stays in your camera roll; Pixl Sports does not upload or store it here.`,
     );
@@ -552,8 +582,27 @@ export function StatTrackerPage() {
       ? nextGame
       : undefined;
     setCurrentGame(createGameSession(sport, { date, opponent, notes }));
+    setShowUpcomingNotice(false);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'live');
     announce('GAME STARTED — LIVE STATS ARE READY');
+  };
+
+  const useNextGameForSetup = () => {
+    if (!nextGame) return;
+    manuallyEditedSetup.current.date = true;
+    manuallyEditedSetup.current.opponent = true;
+    setDate(nextGame.date);
+    setOpponent(nextGame.opponent);
+    setShowUpcomingNotice(false);
+    setupSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      setupSectionRef.current?.querySelector<HTMLInputElement>('[data-testid="input-stat-tracker-date"]')?.focus();
+    }, 350);
+  };
+
+  const reviewPreviousGames = () => {
+    historySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => historySectionRef.current?.focus(), 350);
   };
 
   const updateCurrentGame = (next: GameSession) => {
@@ -730,27 +779,22 @@ export function StatTrackerPage() {
         ))}
       </div>
 
-      <section className="mb-6 border border-primary/30 bg-primary/5 p-5 clip-angled-sm sm:p-7" data-testid="section-stat-tracker-capture" aria-labelledby="stat-tracker-capture-heading">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="studio-textured-accent flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Camera className="h-4 w-4" /> Capture from this game</div>
-            <h2 id="stat-tracker-capture-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">Keep the moment close.</h2>
-            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">Use your device camera or media picker while you track the game. Nothing is uploaded, stored, or turned into a media record here.</p>
-            {captureNotice && <p className="studio-textured-accent mt-3 text-sm font-bold text-primary" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
+      {nextGame && !currentGame && showUpcomingNotice && (
+        <section className="mb-6 flex flex-col gap-4 border border-primary/40 bg-primary/5 px-4 py-4 clip-angled-sm sm:flex-row sm:items-center sm:justify-between sm:px-5" data-testid="stat-tracker-upcoming-notice" aria-live="polite">
+          <div className="flex min-w-0 items-start gap-3">
+            <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Next game scheduled</p>
+              <p className="mt-1 truncate text-sm font-bold uppercase">{formatDate(nextGame.date)} · {nextGame.opponent || 'Opponent TBD'}</p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Your tracker is ready to use this game’s details.</p>
+            </div>
           </div>
-          <div className="grid w-full gap-3 sm:grid-cols-3 lg:max-w-2xl">
-            <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-capture-photo">
-              <Camera className="h-5 w-5" /> Take a photo
-              <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('photo', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Take a photo of this game" data-testid="input-stat-tracker-capture-photo" />
-            </label>
-            <label className="group flex min-h-14 cursor-pointer items-center justify-center gap-3 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm" data-testid="label-stat-tracker-capture-video">
-              <Video className="h-5 w-5" /> Record a video
-              <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { handleCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
-            </label>
-            <p className="col-span-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">If camera capture is unavailable, your device picker can still choose a file.</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={useNextGameForSetup} data-testid="button-use-upcoming-game" className="inline-flex min-h-10 items-center justify-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110">Use this game</button>
+            <button type="button" onClick={() => setShowUpcomingNotice(false)} aria-label="Dismiss upcoming game notification" data-testid="button-dismiss-upcoming-notice" className="inline-flex min-h-10 min-w-10 items-center justify-center border border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground"><X className="h-4 w-4" /></button>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {error && (
         <div className="mb-5 flex flex-col gap-3 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive sm:flex-row sm:items-center sm:justify-between" role="alert">
@@ -816,15 +860,19 @@ export function StatTrackerPage() {
       )}
 
       {!currentGame ? (
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <section ref={setupSectionRef} className="grid scroll-mt-6 gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="stat-tracker-setup">
           <div className="border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
             <div className="mb-8 flex items-start justify-between gap-4">
-              <div><p className="text-xs font-bold uppercase tracking-widest text-primary">New game</p><h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{rule.label}</h2></div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
+                <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{rule.label}</h2>
+                {!nextGame && <p className="mt-2 max-w-md text-sm font-medium leading-relaxed text-muted-foreground" data-testid="stat-tracker-blank-state">No game is scheduled yet. Start with a blank template, or review a previous game below.</p>}
+              </div>
               <Trophy className="h-7 w-7 text-primary" />
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
-                 <input type="date" value={date} onChange={(event) => { manuallyEditedSetup.current.date = true; setDate(event.target.value); }} className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+                  <input type="date" value={date} onChange={(event) => { manuallyEditedSetup.current.date = true; setDate(event.target.value); }} data-testid="input-stat-tracker-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
               </label>
                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
                  <input value={opponent} onChange={(event) => { manuallyEditedSetup.current.opponent = true; setOpponent(event.target.value); }} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
@@ -833,7 +881,12 @@ export function StatTrackerPage() {
              <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes
                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
              </label>
-            {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
+             {nextGame
+               ? <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>
+               : <div className="mt-5 flex flex-col gap-3 border-l-2 border-border pl-3 sm:flex-row sm:items-center sm:justify-between">
+                   <p className="text-xs font-medium text-muted-foreground">No scheduled game details to prefill.</p>
+                   <button type="button" onClick={reviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
+                 </div>}
             <button type="button" onClick={beginGame} data-testid="button-start-manual-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
               <Clock3 className="h-4 w-4" /> Start manual game
             </button>
@@ -859,14 +912,16 @@ export function StatTrackerPage() {
           displayStats={displayStats}
           showAllStats={showAllStats}
           saving={saving}
-          onGameChange={(next) => { setCurrentGame(next); announce('STAT UPDATED'); }}
+           captureNotice={captureNotice}
+           onCapture={handleCapture}
+           onGameChange={(next) => { setCurrentGame(next); announce('STAT UPDATED'); }}
           onToggleShowAllStats={() => setShowAllStats((value) => !value)}
-          onLeaveGame={() => setCurrentGame(null)}
+          onLeaveGame={() => { setCurrentGame(null); setShowUpcomingNotice(false); }}
           onEndGame={() => void saveCompletedGame()}
         />
       )}
 
-      <section className="mt-10 border border-border bg-card p-5 clip-angled-sm sm:p-7">
+      <section ref={historySectionRef} id="tracker-game-history" tabIndex={-1} className="mt-10 scroll-mt-6 border border-border bg-card p-5 clip-angled-sm outline-none sm:p-7" data-testid="stat-tracker-history">
         <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
          {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
