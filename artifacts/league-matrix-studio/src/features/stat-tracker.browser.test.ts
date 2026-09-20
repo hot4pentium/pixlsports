@@ -60,10 +60,18 @@ function TrackerHarness() {
   const footballMode = new URLSearchParams(window.location.search).get('sport') === 'football';
   const persistenceMode = new URLSearchParams(window.location.search).get('persistence') === '1';
   const trackerHistoryStorageKey = 'stat-tracker-browser-history';
+  const trackerActiveStorageKey = 'stat-tracker-browser-active-game';
   const [nextGame, setNextGame] = useState(scheduledGame);
   const [showNotice, setShowNotice] = useState(true);
   const [showManualSetup, setShowManualSetup] = useState(false);
-  const [currentGame, setCurrentGame] = useState(null);
+  const [currentGame, setCurrentGame] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(trackerActiveStorageKey);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [savedGames, setSavedGames] = useState(() => {
     try {
       return normalizeTrackerData(JSON.parse(window.localStorage.getItem(trackerHistoryStorageKey) || 'null')).games;
@@ -77,6 +85,11 @@ function TrackerHarness() {
   const [notes, setNotes] = useState('');
   const [reviewed, setReviewed] = useState(false);
   const historyRef = useRef(null);
+  const persistActiveGame = (game) => {
+    if (game) window.localStorage.setItem(trackerActiveStorageKey, JSON.stringify(game));
+    else window.localStorage.removeItem(trackerActiveStorageKey);
+    setCurrentGame(game);
+  };
 
   useEffect(() => {
     setShowNotice(Boolean(nextGame));
@@ -109,16 +122,16 @@ function TrackerHarness() {
           saving: false,
           captureNotice: '',
           onCapture: () => {},
-          onGameChange: setCurrentGame,
+           onGameChange: persistActiveGame,
           onToggleShowAllStats: () => {},
-          onLeaveGame: () => setCurrentGame(null),
+           onLeaveGame: () => persistActiveGame(null),
            onEndGame: () => {
              if (!persistenceMode || !currentGame) return;
              const completed = endGame(currentGame);
              const nextGames = [...savedGames, completed];
              window.localStorage.setItem(trackerHistoryStorageKey, JSON.stringify({ version: 1, games: nextGames }));
              setSavedGames(nextGames);
-             setCurrentGame(null);
+             persistActiveGame(null);
            },
         })
       : createElement(StatTrackerStartPanel, {
@@ -134,7 +147,7 @@ function TrackerHarness() {
           onNotesChange: setNotes,
           onStartGame: footballMode
             ? () => {
-                setCurrentGame(createGameSession('football', { date, opponent, notes }));
+                 persistActiveGame(createGameSession('football', { date, opponent, notes }));
                 setShowManualSetup(false);
               }
             : () => {},
@@ -358,6 +371,9 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       ),
       true,
     );
+
+    await connection.evaluate('window.location.reload()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"live-tracker-score-card-athlete\\"]")?.textContent.includes("8") && document.querySelector("[data-testid=\\"live-tracker-score-card-opponent\\"]")?.textContent.includes("2")', Boolean);
 
     await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);

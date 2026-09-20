@@ -1020,6 +1020,51 @@ test('signed-in tracker reload restores the active game into the live scoreboard
   assert.match(renderedText(renderer), /Quarter 3/);
 });
 
+test('a score tap survives tracker refresh and remains in the next sync payload', () => {
+  const accountId = 'user_score_refresh';
+  const activeGame = createGameSession('basketball', {
+    date: '2026-09-17',
+    opponent: 'Northside',
+  }, new Date('2026-09-17T12:00:00Z'));
+  const activeKey = getTrackerStorageKeys(accountId).activeGame;
+  const storage = createMemoryStorage({ [activeKey]: JSON.stringify(activeGame) });
+  let currentGame = readLocalTrackerSession(storage, accountId).currentGame!;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame,
+      rule: getSportRule('basketball'),
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: getSportRule('basketball').stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof currentGame) => {
+        currentGame = nextGame;
+        storage.setItem(activeKey, JSON.stringify(nextGame));
+      },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-opponent-increase' }).props.onClick();
+  });
+
+  const refreshed = readLocalTrackerSession(storage, accountId).currentGame;
+  assert.equal(refreshed?.score, 1);
+  assert.equal(refreshed?.opponentScore, 1);
+  const payload = trackerPayload({ version: 1, games: [endGame(refreshed!)] });
+  assert.equal(payload.games[0]?.score, 1);
+  assert.equal(payload.games[0]?.opponentScore, 1);
+});
+
 test('selected conflict history survives reload until cloud sync succeeds', () => {
   const localGame = endGame(createGameSession('soccer', { opponent: 'Northside' }));
   const cloudGame = endGame(createGameSession('soccer', { opponent: 'Westview' }));
