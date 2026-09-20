@@ -15,7 +15,11 @@ import splitLightArena from '../assets/hype-cards/split-light-arena.webp?url&inl
 
 export function getPhotoFrame(format: HypeFormat) {
   const { width, height } = getDimensions(format);
-  if (format === 'landscape') return { x: 70, y: 90, width: width * 0.48, height: height - 180, radius: 38 };
+  if (format === 'landscape') {
+    const frameWidth = width * 0.48;
+    const frameHeight = frameWidth * 9 / 16;
+    return { x: 70, y: (height - frameHeight) / 2, width: frameWidth, height: frameHeight, radius: 38 };
+  }
   if (format === 'story') return { x: 70, y: 135, width: width - 140, height: height * 0.43, radius: 38 };
   if (format === 'card') return { x: 60, y: 95, width: width - 120, height: height * 0.42, radius: 34 };
   return { x: 60, y: 90, width: width - 120, height: height * 0.47, radius: 38 };

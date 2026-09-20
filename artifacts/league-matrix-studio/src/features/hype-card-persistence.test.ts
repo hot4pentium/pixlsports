@@ -142,15 +142,36 @@ test('legacy lower third visibility preferences are ignored during normalization
   assert.equal('showLowerThird' in normalized, false);
 });
 
-test('saved projects always reopen in the portrait card format', () => {
+test('legacy saved projects always reopen in the portrait card format', () => {
   for (const legacyFormat of ['square', 'story', 'landscape']) {
     const reopened = normalizeHypeCardProject({
       ...defaultProject(),
+      version: 2,
       format: legacyFormat,
     });
 
     assert.equal(reopened.format, 'card');
   }
+});
+
+test('new landscape video projects round trip their selected output format', () => {
+  const project = normalizeHypeCardProject({
+    ...defaultProject(),
+    mediaType: 'video',
+    format: 'landscape',
+    videoMeta: {
+      name: 'highlight.mp4',
+      type: 'video/mp4',
+      size: 2048,
+      duration: 8,
+    },
+  });
+
+  const reopened = parseHypeCardTemplate(serializeHypeCardTemplate(project));
+
+  assert.ok(reopened);
+  assert.equal(reopened.format, 'landscape');
+  assert.equal(reopened.version, 3);
 });
 
 test('empty projects stay media-free and missing local media can be cleared safely', () => {

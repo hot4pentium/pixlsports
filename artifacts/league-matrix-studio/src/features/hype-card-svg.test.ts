@@ -3,12 +3,20 @@ import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
 import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
+import { getDimensions } from './hype-card-types';
 
 test('portrait stadium cards fill the full output height', () => {
   assert.match(
     buildStadiumCardClipMarkup('full-height'),
     /<clipPath id="stadiumCardClip-full-height"><rect x="8" y="8" width="984" height="1384" rx="46"\/><\/clipPath>/,
   );
+});
+
+test('landscape output preserves a wide video frame and its canvas ratio', () => {
+  const dimensions = getDimensions('landscape');
+
+  assert.deepEqual(dimensions, { width: 1920, height: 1080 });
+  assert.equal(dimensions.width / dimensions.height, 16 / 9);
 });
 
 test('lower third keeps player details without the graphic panel', () => {

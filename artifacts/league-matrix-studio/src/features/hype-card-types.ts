@@ -5,7 +5,7 @@ export type PaletteId = 'coral' | 'teal' | 'gold' | 'midnight';
 export type CardFinishId = 'classic' | 'cosmic-clash' | 'gold-spotlight' | 'neon-prism' | 'paint-impact';
 
 export type HypeCardProject = {
-  version: 2;
+  version: 3;
   headline: string;
   mediaType: 'image' | 'video' | null;
   mediaId: string | null;
@@ -94,7 +94,7 @@ export const cardFinishes: Array<{ id: CardFinishId; name: string; summary: stri
 ];
 
 export const defaultProject = (): HypeCardProject => ({
-  version: 2,
+  version: 3,
   headline: '',
   mediaType: null,
   mediaId: null,
@@ -152,6 +152,7 @@ export function clearHypeCardMedia(project: HypeCardProject): HypeCardProject {
   const defaults = defaultProject();
   return {
     ...project,
+    format: 'card',
     mediaType: null,
     mediaId: null,
     downloadMediaId: null,
@@ -188,8 +189,8 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
   return {
     ...defaults,
     ...projectWithoutGrade,
-    version: 2,
-    format: 'card',
+    version: 3,
+    format: project.version >= 3 && project.format === 'landscape' ? 'landscape' : 'card',
     headline: typeof project.headline === 'string' && project.headline.trim()
       ? project.headline.trim().slice(0, 42)
       : defaults.headline,

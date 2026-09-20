@@ -617,6 +617,57 @@ function MediaImageDownloadControls({
   );
 }
 
+function OutputFormatControls({
+  project,
+  onFormatChange,
+}: {
+  project: HypeCardProject;
+  onFormatChange: (format: HypeFormat) => void;
+}) {
+  const options: Array<{ format: HypeFormat; title: string; dimensions: string; description: string }> = [
+    {
+      format: 'card',
+      title: 'Portrait card',
+      dimensions: '1000 × 1400',
+      description: 'The standard vertical Hype Card layout.',
+    },
+  ];
+
+  if (project.mediaType === 'video' || project.format === 'landscape') {
+    options.push({
+      format: 'landscape',
+      title: 'Landscape video',
+      dimensions: '1920 × 1080',
+      description: 'Shows the full wide video frame in a horizontal card.',
+    });
+  }
+
+  return (
+    <div className="space-y-3" role="group" aria-label="Output format">
+      {options.map((option) => (
+        <button
+          key={option.format}
+          type="button"
+          data-testid={`format-option-${option.format}`}
+          aria-pressed={project.format === option.format}
+          onClick={() => onFormatChange(option.format)}
+          className={`w-full rounded-xl border p-4 text-left transition-colors ${
+            project.format === option.format
+              ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+              : 'border-border bg-background hover:border-primary/60 hover:bg-muted'
+          }`}
+        >
+          <span className="block text-xs font-bold">{option.title}</span>
+          <span className="mt-1 block text-[10px] text-muted-foreground">{option.dimensions} · {option.description}</span>
+        </button>
+      ))}
+      <p className="text-[10px] font-medium text-muted-foreground">
+        Fit keeps the complete video visible. Fill uses more of the frame but may crop the sides.
+      </p>
+    </div>
+  );
+}
+
 export function PreviewArtwork({
   project,
   videoUrl,
@@ -1728,6 +1779,7 @@ export function HypeCardEditor() {
         setProject(curr => ({
           ...curr,
           mediaType: 'image',
+            format: 'card',
            mediaId: savedId,
           videoMeta: null,
           photo: res,
@@ -2478,21 +2530,21 @@ export function HypeCardEditor() {
             </Section>}
 
             {walkthroughStep === 3 && <Section title="Format" icon={SlidersHorizontal}>
-              <div className="rounded-xl border border-primary bg-primary/5 p-4 ring-1 ring-primary/30" data-testid="portrait-format">
-                <span className="block text-xs font-bold">Portrait card</span>
-                <span className="mt-1 block text-[10px] text-muted-foreground">1000 × 1400 · Fixed output</span>
-              </div>
-              <p className="mt-2 text-[10px] font-medium text-muted-foreground">
-                Hype Cards use the portrait layout for every export.
-              </p>
+              <OutputFormatControls project={project} onFormatChange={(format) => updateProject('format', format)} />
             </Section>}
 
             {walkthroughStep === 4 && <Section title="Layout" icon={LayoutGrid}>
-              <div className="grid grid-cols-1 gap-3">
-                {cardLayouts.map((l) => (
-                  <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id && project.format === 'card'} onSelect={() => { updateProject('layout', l.id); updateProject('format', 'card'); }} />
-                ))}
-              </div>
+              {project.format === 'landscape' ? (
+                <div className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-medium text-muted-foreground" data-testid="landscape-layout-note">
+                  Landscape video uses the dedicated wide layout so the full frame and player details stay visible. Choose a palette next.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {cardLayouts.map((l) => (
+                    <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id && project.format === 'card'} onSelect={() => { updateProject('layout', l.id); updateProject('format', 'card'); }} />
+                  ))}
+                </div>
+              )}
             </Section>}
 
             {walkthroughStep === 5 && <Section title="Palette" icon={Palette}>
@@ -2521,7 +2573,7 @@ export function HypeCardEditor() {
                     ['Moment', project.headline || 'Not added'],
                     ['Player', project.playerName || 'Your player'],
                     ['Team', project.teamName || 'Your team'],
-                    ['Output', 'Portrait card'],
+                    ['Output', project.format === 'landscape' ? 'Landscape video' : 'Portrait card'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between gap-4 border-b border-border py-2">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
