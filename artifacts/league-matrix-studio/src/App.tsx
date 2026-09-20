@@ -186,6 +186,9 @@ const PublicHypeCardPage = lazy(() =>
 const StatTrackerPage = lazy(() =>
   import('@/features/stat-tracker-page').then(({ StatTrackerPage }) => ({ default: StatTrackerPage })),
 );
+const PublicStatTrackerPage = lazy(() =>
+  import('@/features/stat-tracker-spectator').then(({ PublicStatTrackerPage }) => ({ default: PublicStatTrackerPage })),
+);
 const SupporterDashboardView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterDashboardView }) => ({ default: SupporterDashboardView })),
 );
@@ -5010,6 +5013,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     || location.startsWith('/schedule/')
     || location.startsWith('/checklist/')
     || location.startsWith('/watch/')
+    || location.startsWith('/live/')
     || location.startsWith('/h/')
     || location.startsWith('/sign-in')
     || location.startsWith('/sign-up');
@@ -5107,6 +5111,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
+              <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
               <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card" component={HypeCardEditor} />

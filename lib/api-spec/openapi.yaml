@@ -18,6 +18,8 @@ tags:
     description: Public schedule sharing operations
   - name: checklist-shares
     description: Collaborative Gameday Checklist sharing operations
+  - name: stat-tracker-shares
+    description: Live stat tracker spectator sharing operations
   - name: hype-card-shares
     description: Interactive Hype Card sharing operations
   - name: coach-calendars
@@ -195,6 +197,115 @@ paths:
           description: Checklist link revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stat-tracker-shares:
+    get:
+      operationId: listStatTrackerShares
+      tags: [stat-tracker-shares]
+      summary: List active stat tracker shares owned by the authenticated user
+      responses:
+        "200":
+          description: Active owned shares, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StatTrackerShare"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Create a live stat tracker spectator share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatTrackerShareInput"
+      responses:
+        "201":
+          description: Live spectator share created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /stat-tracker-shares/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/StatTrackerShareToken"
+    get:
+      operationId: getStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Get a live stat tracker spectator share
+      responses:
+        "200":
+          description: Sanitized live game snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerShare"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Update a live stat tracker spectator share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatTrackerShareUpdate"
+      responses:
+        "200":
+          description: Updated live spectator share
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerShare"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatTrackerConflict"
+    delete:
+      operationId: deleteStatTrackerShare
+      tags: [stat-tracker-shares]
+      summary: Revoke a live stat tracker spectator share
+      responses:
+        "204":
+          description: Spectator link revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stat-tracker-shares/{shareToken}/events:
+    parameters:
+      - $ref: "#/components/parameters/StatTrackerShareToken"
+    get:
+      operationId: getStatTrackerShareEvents
+      tags: [stat-tracker-shares]
+      summary: Subscribe to live stat tracker updates
+      responses:
+        "200":
+          description: Server-sent spectator updates
+          content:
+            text/event-stream:
+              schema:
+                type: string
         "404":
           $ref: "#/components/responses/NotFound"
   /hype-card-shares:
@@ -1075,6 +1186,13 @@ components:
       schema:
         type: string
         format: uuid
+    StatTrackerShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     CoachCalendarCodeParam:
       name: code
       in: path
@@ -1302,6 +1420,81 @@ components:
         error: { type: string }
         current:
           $ref: "#/components/schemas/ChecklistShare"
+    StatTrackerEvent:
+      type: object
+      required: [id, statId, createdAt, period, yards]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        statId: { type: string, minLength: 1, maxLength: 80 }
+        createdAt: { type: string, format: date-time }
+        period: { type: integer, minimum: 1 }
+        yards: { type: ["integer", "null"], minimum: 0 }
+    StatTrackerGameSnapshot:
+      type: object
+      required: [id, sport, status, date, opponent, period, score, opponentScore, stats, trackYards, yardStats, events]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, softball, volleyball]
+        status:
+          type: string
+          enum: [setup, live, paused, final]
+        date: { type: string, maxLength: 30 }
+        opponent: { type: string, maxLength: 240 }
+        period: { type: integer, minimum: 1 }
+        score: { type: integer, minimum: 0 }
+        opponentScore: { type: integer, minimum: 0 }
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        trackYards: { type: boolean }
+        yardStats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        events:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/StatTrackerEvent"
+    StatTrackerShareInput:
+      type: object
+      required: [athleteName, teamName, game]
+      properties:
+        athleteName: { type: string, maxLength: 160 }
+        teamName: { type: string, maxLength: 160 }
+        game:
+          $ref: "#/components/schemas/StatTrackerGameSnapshot"
+    StatTrackerShareUpdate:
+      allOf:
+        - $ref: "#/components/schemas/StatTrackerShareInput"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision: { type: integer, minimum: 1 }
+    StatTrackerShare:
+      allOf:
+        - $ref: "#/components/schemas/StatTrackerShareInput"
+        - type: object
+          required: [shareToken, revision, createdAt, updatedAt, expiresAt, canManage]
+          properties:
+            shareToken: { type: string, format: uuid }
+            revision: { type: integer, minimum: 1 }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            expiresAt: { type: string, format: date-time }
+            canManage: { type: boolean }
+    StatTrackerConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error: { type: string }
+        current:
+          $ref: "#/components/schemas/StatTrackerShare"
     HypeCardShareUploadInput:
       type: object
       required: [mediaKind, contentType]

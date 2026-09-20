@@ -10,6 +10,7 @@ import {
   projectMediaTable,
   projectMediaUploadClaimsTable,
   scheduleSharesTable,
+  statTrackerSharesTable,
   supporterPhotosTable,
   supporterPhotoUploadClaimsTable,
 } from "@workspace/db";
@@ -135,6 +136,7 @@ async function purgeAccount(
     await tx.delete(projectMediaUploadClaimsTable).where(eq(projectMediaUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(coachCalendarCodesTable).where(eq(coachCalendarCodesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, account.ownerClerkUserId));

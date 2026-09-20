@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Trophy, Video, X } from 'lucide-react';
+import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Trophy, Video, X } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -11,6 +11,12 @@ import {
   useUpdateProject,
   getGetAccountAccessQueryKey,
   getListProjectsQueryKey,
+  useCreateStatTrackerShare,
+  useDeleteStatTrackerShare,
+  useListStatTrackerShares,
+  useUpdateStatTrackerShare,
+  getListStatTrackerSharesQueryKey,
+  type StatTrackerShare,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -69,6 +75,16 @@ import {
 } from './stat-tracker';
 import { GameReportView } from './stat-tracker-game-report';
 import { trackEvent } from '../lib/analytics';
+import { toStatTrackerShareInput } from './stat-tracker-share';
+
+const trackerBasePath = (
+  (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
+).replace(/\/$/, '');
+const trackerAppOrigin = typeof window === 'undefined'
+  ? ''
+  : ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
+    ? 'https://pixlsports.com'
+    : window.location.origin;
 
 export function readLocalTrackerSession(storage: TrackerStorage, accountId: string) {
   return {
@@ -347,6 +363,66 @@ export function StatTrackerStartPanel({
 function formatEventTime(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+export function StatTrackerSharePanel({
+  share,
+  shareUrl,
+  game,
+  athleteName,
+  teamName,
+  busy,
+  error,
+  notice,
+  onCreate,
+  onRevoke,
+  onCopy,
+}: {
+  share: StatTrackerShare | null;
+  shareUrl: string;
+  game: GameSession;
+  athleteName: string;
+  teamName: string;
+  busy: boolean;
+  error: string;
+  notice: string;
+  onCreate: () => void;
+  onRevoke: () => void;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="mb-6 border border-primary/40 bg-primary/5 p-4 clip-angled-sm sm:p-5" data-testid="stat-tracker-share-panel">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink"><Share2 className="h-4 w-4" /> Live supporter link</p>
+          <h2 className="mt-1 font-display text-2xl uppercase tracking-wide">Share the scoreboard</h2>
+          <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">Read-only view for this game. It shows the live score and recent plays, never private notes or editing controls. The link expires in 24 hours.</p>
+        </div>
+        {share && <span className="shrink-0 border border-primary/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Active · rev {share.revision}</span>}
+      </div>
+      {!share ? (
+        <button type="button" disabled={busy} onClick={onCreate} data-testid="button-create-stat-tracker-share" className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
+          <Share2 className="h-4 w-4" /> {busy ? 'Creating link…' : 'Create supporter link'}
+        </button>
+      ) : (
+        <div className="mt-4 flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+            <input readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} data-testid="input-stat-tracker-share-url" aria-label="Live supporter link" className="min-h-11 min-w-0 flex-1 border border-border bg-background px-3 py-2 text-xs font-medium text-foreground outline-none focus:border-primary" />
+            <div className="flex shrink-0 gap-2">
+              <button type="button" onClick={onCopy} data-testid="button-copy-stat-tracker-share" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-background px-3 py-2 text-xs font-bold uppercase tracking-widest hover:border-primary"><Copy className="h-4 w-4" /> Copy</button>
+              <a href={shareUrl} target="_blank" rel="noreferrer" data-testid="link-open-stat-tracker-share" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-background px-3 py-2 text-xs font-bold uppercase tracking-widest hover:border-primary"><ExternalLink className="h-4 w-4" /> Open</a>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Expires {new Date(share.expiresAt).toLocaleString()}</p>
+            <button type="button" disabled={busy} onClick={onRevoke} data-testid="button-revoke-stat-tracker-share" className="inline-flex min-h-10 items-center justify-center gap-2 border border-destructive/50 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-50">Revoke link</button>
+          </div>
+        </div>
+      )}
+      {notice && <p className="mt-3 text-xs font-bold text-primary-ink" role="status" data-testid="status-stat-tracker-share">{notice}</p>}
+      {error && <p className="mt-3 text-xs font-bold text-destructive" role="alert" data-testid="error-stat-tracker-share">{error}</p>}
+    </section>
+  );
 }
 
 function ConflictHistoryPreview({
@@ -818,6 +894,20 @@ export function StatTrackerPage() {
       queryKey: [...getListProjectsQueryKey(), accountId],
     },
   });
+  const { data: trackerShares } = useListStatTrackerShares({
+    query: {
+      enabled: Boolean(accountId && accountAccess && currentGame),
+      staleTime: 10000,
+      queryKey: getListStatTrackerSharesQueryKey(),
+    },
+  });
+  const createTrackerShare = useCreateStatTrackerShare();
+  const updateTrackerShare = useUpdateStatTrackerShare();
+  const deleteTrackerShare = useDeleteStatTrackerShare();
+  const [shareNotice, setShareNotice] = useState('');
+  const [shareError, setShareError] = useState('');
+  const shareUpdateTimer = useRef<number | null>(null);
+  const shareUpdateQueue = useRef(Promise.resolve());
 
   const ownedScheduleProject = useMemo(
     () => (projects ?? []).find((project) => isScheduleProject(project.project)),
@@ -830,6 +920,57 @@ export function StatTrackerPage() {
     () => getNextScheduledGame(ownedSchedule?.events),
     [ownedSchedule?.events],
   );
+  const activeTrackerShare = useMemo(
+    () => (currentGame ? trackerShares?.find((share) => share.game.id === currentGame.id) ?? null : null),
+    [currentGame, trackerShares],
+  );
+  const shareUrl = activeTrackerShare
+    ? `${trackerAppOrigin}${trackerBasePath}/live/${encodeURIComponent(activeTrackerShare.shareToken)}`
+    : '';
+  const publishTrackerShare = (game: GameSession, share: StatTrackerShare | null | undefined = activeTrackerShare): Promise<void> => {
+    if (!share) return Promise.resolve();
+    const input = toStatTrackerShareInput(game, profile.athleteName, profile.teamName);
+    shareUpdateQueue.current = shareUpdateQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          const updated = await updateTrackerShare.mutateAsync({
+            shareToken: share.shareToken,
+            data: { ...input, expectedRevision: share.revision },
+          });
+          await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+          setShareError('');
+          setShareNotice(updated.revision === share.revision ? '' : 'Live link updated');
+        } catch {
+          await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+          const latest = queryClient.getQueryData<StatTrackerShare[]>(getListStatTrackerSharesQueryKey())
+            ?.find((item) => item.shareToken === share.shareToken);
+          if (latest && latest.revision !== share.revision) {
+            try {
+              await updateTrackerShare.mutateAsync({
+                shareToken: latest.shareToken,
+                data: { ...input, expectedRevision: latest.revision },
+              });
+              setShareError('');
+              return;
+            } catch {
+              // The bounded retry below reports the durable failure.
+            }
+          }
+          setShareError('Private game is safe, but the supporter link could not sync. Try again.');
+        }
+      });
+    return shareUpdateQueue.current;
+  };
+
+  useEffect(() => {
+    if (!currentGame || !activeTrackerShare || createTrackerShare.isPending) return;
+    if (shareUpdateTimer.current) window.clearTimeout(shareUpdateTimer.current);
+    shareUpdateTimer.current = window.setTimeout(() => publishTrackerShare(currentGame), 450);
+    return () => {
+      if (shareUpdateTimer.current) window.clearTimeout(shareUpdateTimer.current);
+    };
+  }, [currentGame, activeTrackerShare?.shareToken]);
 
   useEffect(() => {
     initializedCloud.current = false;
@@ -1047,6 +1188,11 @@ export function StatTrackerPage() {
   const saveCompletedGame = async () => {
     if (!currentGame) return;
     const completed = endGame(currentGame);
+    if (shareUpdateTimer.current) {
+      window.clearTimeout(shareUpdateTimer.current);
+      shareUpdateTimer.current = null;
+    }
+    await publishTrackerShare(completed, activeTrackerShare ?? undefined);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final');
     const nextData = { ...data, games: [...data.games, completed] };
     setData(nextData);
@@ -1200,6 +1346,43 @@ export function StatTrackerPage() {
     }
   };
 
+  const createSupporterLink = async () => {
+    if (!currentGame) return;
+    setShareError('');
+    setShareNotice('');
+    try {
+      await createTrackerShare.mutateAsync({
+        data: toStatTrackerShareInput(currentGame, profile.athleteName, profile.teamName),
+      });
+      await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+      setShareNotice('Link ready — copy it for supporters.');
+    } catch {
+      setShareError('Could not create the supporter link. Your private tracker is unchanged.');
+    }
+  };
+
+  const revokeSupporterLink = async () => {
+    if (!activeTrackerShare) return;
+    setShareError('');
+    try {
+      await deleteTrackerShare.mutateAsync({ shareToken: activeTrackerShare.shareToken });
+      await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+      setShareNotice('Supporter link revoked.');
+    } catch {
+      setShareError('Could not revoke the supporter link. Try again.');
+    }
+  };
+
+  const copySupporterLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareNotice('Link copied.');
+    } catch {
+      setShareNotice('Clipboard unavailable — select the link above to copy it.');
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
       <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -1319,6 +1502,20 @@ export function StatTrackerPage() {
           </section>
         </section>
       ) : (
+        <>
+        <StatTrackerSharePanel
+          share={activeTrackerShare}
+          shareUrl={shareUrl}
+          game={currentGame}
+          athleteName={profile.athleteName}
+          teamName={profile.teamName}
+          busy={createTrackerShare.isPending || deleteTrackerShare.isPending || updateTrackerShare.isPending}
+          error={shareError}
+          notice={shareNotice}
+          onCreate={() => void createSupporterLink()}
+          onRevoke={() => void revokeSupporterLink()}
+          onCopy={() => void copySupporterLink()}
+        />
         <LiveTrackerGame
           currentGame={currentGame}
           rule={rule}
@@ -1334,6 +1531,7 @@ export function StatTrackerPage() {
           onLeaveGame={() => { setCurrentGame(null); setShowUpcomingNotice(false); }}
           onEndGame={() => void saveCompletedGame()}
         />
+        </>
       )}
 
       <section ref={historySectionRef} id="tracker-game-history" tabIndex={-1} className="mt-10 scroll-mt-6 border border-border bg-card p-5 clip-angled-sm outline-none sm:p-7" data-testid="stat-tracker-history">

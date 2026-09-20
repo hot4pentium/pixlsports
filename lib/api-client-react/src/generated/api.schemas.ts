@@ -254,6 +254,106 @@ export interface ChecklistConflict {
   current: ChecklistShare;
 }
 
+export interface StatTrackerEvent {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  statId: string;
+  createdAt: string;
+  /** @minimum 1 */
+  period: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  yards: number | null;
+}
+
+export type StatTrackerGameSnapshotSport = typeof StatTrackerGameSnapshotSport[keyof typeof StatTrackerGameSnapshotSport];
+
+
+export const StatTrackerGameSnapshotSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  softball: 'softball',
+  volleyball: 'volleyball',
+} as const;
+
+export type StatTrackerGameSnapshotStatus = typeof StatTrackerGameSnapshotStatus[keyof typeof StatTrackerGameSnapshotStatus];
+
+
+export const StatTrackerGameSnapshotStatus = {
+  setup: 'setup',
+  live: 'live',
+  paused: 'paused',
+  final: 'final',
+} as const;
+
+export type StatTrackerGameSnapshotStats = {[key: string]: number};
+
+export type StatTrackerGameSnapshotYardStats = {[key: string]: number};
+
+export interface StatTrackerGameSnapshot {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  sport: StatTrackerGameSnapshotSport;
+  status: StatTrackerGameSnapshotStatus;
+  /** @maxLength 30 */
+  date: string;
+  /** @maxLength 240 */
+  opponent: string;
+  /** @minimum 1 */
+  period: number;
+  /** @minimum 0 */
+  score: number;
+  /** @minimum 0 */
+  opponentScore: number;
+  stats: StatTrackerGameSnapshotStats;
+  trackYards: boolean;
+  yardStats: StatTrackerGameSnapshotYardStats;
+  /** @maxItems 10 */
+  events: StatTrackerEvent[];
+}
+
+export interface StatTrackerShareInput {
+  /** @maxLength 160 */
+  athleteName: string;
+  /** @maxLength 160 */
+  teamName: string;
+  game: StatTrackerGameSnapshot;
+}
+
+export type StatTrackerShareUpdate = StatTrackerShareInput & {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type StatTrackerShare = StatTrackerShareInput & {
+  shareToken: string;
+  /** @minimum 1 */
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+  canManage: boolean;
+};
+
+export interface StatTrackerConflict {
+  error: string;
+  current: StatTrackerShare;
+}
+
 export type HypeCardShareUploadInputMediaKind = typeof HypeCardShareUploadInputMediaKind[keyof typeof HypeCardShareUploadInputMediaKind];
 
 

@@ -63,6 +63,10 @@ import type {
   ProjectUpdate,
   ScheduleShare,
   ScheduleShareInput,
+  StatTrackerConflict,
+  StatTrackerShare,
+  StatTrackerShareInput,
+  StatTrackerShareUpdate,
   SupporterPhoto,
   SupporterPhotoSave,
   SupporterPhotoUpload,
@@ -837,6 +841,488 @@ export const useDeleteChecklistShare = <TError = ErrorType<UnauthorizedResponse 
       > => {
       return useMutation(getDeleteChecklistShareMutationOptions(options));
     }
+
+export const getListStatTrackerSharesUrl = () => {
+
+
+
+
+  return `/api/stat-tracker-shares`
+}
+
+/**
+ * @summary List active stat tracker shares owned by the authenticated user
+ */
+export const listStatTrackerShares = async ( options?: Parameters<typeof customFetch>[1]): Promise<StatTrackerShare[]> => {
+
+  return customFetch<StatTrackerShare[]>(getListStatTrackerSharesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStatTrackerSharesQueryKey = () => {
+    return [
+    `/api/stat-tracker-shares`
+    ] as const;
+    }
+
+
+export const getListStatTrackerSharesQueryOptions = <TData = Awaited<ReturnType<typeof listStatTrackerShares>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatTrackerShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStatTrackerSharesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStatTrackerShares>>> = ({ signal }) => listStatTrackerShares({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStatTrackerShares>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStatTrackerSharesQueryResult = NonNullable<Awaited<ReturnType<typeof listStatTrackerShares>>>
+export type ListStatTrackerSharesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List active stat tracker shares owned by the authenticated user
+ */
+
+export function useListStatTrackerShares<TData = Awaited<ReturnType<typeof listStatTrackerShares>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatTrackerShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStatTrackerSharesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateStatTrackerShareUrl = () => {
+
+
+
+
+  return `/api/stat-tracker-shares`
+}
+
+/**
+ * @summary Create a live stat tracker spectator share
+ */
+export const createStatTrackerShare = async (statTrackerShareInput: StatTrackerShareInput, options?: Parameters<typeof customFetch>[1]): Promise<StatTrackerShare> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StatTrackerShare>(getCreateStatTrackerShareUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(statTrackerShareInput)
+  }
+);}
+
+
+
+
+
+export const getCreateStatTrackerShareMutationKey = () => ['createStatTrackerShare'] as const;
+
+export const getCreateStatTrackerShareMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStatTrackerShare>>, TError,CreateStatTrackerShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStatTrackerShare>>, TError,CreateStatTrackerShareMutationVariables, TContext> => {
+
+const mutationKey = getCreateStatTrackerShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStatTrackerShare>>, CreateStatTrackerShareMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createStatTrackerShare(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStatTrackerShareMutationResult = NonNullable<Awaited<ReturnType<typeof createStatTrackerShare>>>
+    export type CreateStatTrackerShareMutationBody = BodyType<StatTrackerShareInput>
+    export type CreateStatTrackerShareMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type CreateStatTrackerShareMutationVariables = {data: BodyType<StatTrackerShareInput>}
+
+    /**
+ * @summary Create a live stat tracker spectator share
+ */
+export const useCreateStatTrackerShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStatTrackerShare>>, TError,CreateStatTrackerShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStatTrackerShare>>,
+        TError,
+        CreateStatTrackerShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateStatTrackerShareMutationOptions(options));
+    }
+
+export const getGetStatTrackerShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/stat-tracker-shares/${shareToken}`
+}
+
+/**
+ * @summary Get a live stat tracker spectator share
+ */
+export const getStatTrackerShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<StatTrackerShare> => {
+
+  return customFetch<StatTrackerShare>(getGetStatTrackerShareUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStatTrackerShareQueryKey = (shareToken: string,) => {
+    return [
+    `/api/stat-tracker-shares/${shareToken}`
+    ] as const;
+    }
+
+
+export const getGetStatTrackerShareQueryOptions = <TData = Awaited<ReturnType<typeof getStatTrackerShare>>, TError = ErrorType<NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatTrackerShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStatTrackerShareQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStatTrackerShare>>> = ({ signal }) => getStatTrackerShare(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStatTrackerShare>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStatTrackerShareQueryResult = NonNullable<Awaited<ReturnType<typeof getStatTrackerShare>>>
+export type GetStatTrackerShareQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a live stat tracker spectator share
+ */
+
+export function useGetStatTrackerShare<TData = Awaited<ReturnType<typeof getStatTrackerShare>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatTrackerShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStatTrackerShareQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateStatTrackerShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/stat-tracker-shares/${shareToken}`
+}
+
+/**
+ * @summary Update a live stat tracker spectator share
+ */
+export const updateStatTrackerShare = async (shareToken: string,
+    statTrackerShareUpdate: StatTrackerShareUpdate, options?: Parameters<typeof customFetch>[1]): Promise<StatTrackerShare> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StatTrackerShare>(getUpdateStatTrackerShareUrl(shareToken),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(statTrackerShareUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateStatTrackerShareMutationKey = () => ['updateStatTrackerShare'] as const;
+
+export const getUpdateStatTrackerShareMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | StatTrackerConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStatTrackerShare>>, TError,UpdateStatTrackerShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStatTrackerShare>>, TError,UpdateStatTrackerShareMutationVariables, TContext> => {
+
+const mutationKey = getUpdateStatTrackerShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStatTrackerShare>>, UpdateStatTrackerShareMutationVariables> = (props) => {
+          const {shareToken,data} = props ?? {};
+
+          return  updateStatTrackerShare(shareToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStatTrackerShareMutationResult = NonNullable<Awaited<ReturnType<typeof updateStatTrackerShare>>>
+    export type UpdateStatTrackerShareMutationBody = BodyType<StatTrackerShareUpdate>
+    export type UpdateStatTrackerShareMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | StatTrackerConflict>
+    export type UpdateStatTrackerShareMutationVariables = {shareToken: string;data: BodyType<StatTrackerShareUpdate>}
+
+    /**
+ * @summary Update a live stat tracker spectator share
+ */
+export const useUpdateStatTrackerShare = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | StatTrackerConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStatTrackerShare>>, TError,UpdateStatTrackerShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateStatTrackerShare>>,
+        TError,
+        UpdateStatTrackerShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateStatTrackerShareMutationOptions(options));
+    }
+
+export const getDeleteStatTrackerShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/stat-tracker-shares/${shareToken}`
+}
+
+/**
+ * @summary Revoke a live stat tracker spectator share
+ */
+export const deleteStatTrackerShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteStatTrackerShareUrl(shareToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteStatTrackerShareMutationKey = () => ['deleteStatTrackerShare'] as const;
+
+export const getDeleteStatTrackerShareMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStatTrackerShare>>, TError,DeleteStatTrackerShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteStatTrackerShare>>, TError,DeleteStatTrackerShareMutationVariables, TContext> => {
+
+const mutationKey = getDeleteStatTrackerShareMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteStatTrackerShare>>, DeleteStatTrackerShareMutationVariables> = (props) => {
+          const {shareToken} = props ?? {};
+
+          return  deleteStatTrackerShare(shareToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteStatTrackerShareMutationResult = NonNullable<Awaited<ReturnType<typeof deleteStatTrackerShare>>>
+
+    export type DeleteStatTrackerShareMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteStatTrackerShareMutationVariables = {shareToken: string}
+
+    /**
+ * @summary Revoke a live stat tracker spectator share
+ */
+export const useDeleteStatTrackerShare = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStatTrackerShare>>, TError,DeleteStatTrackerShareMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteStatTrackerShare>>,
+        TError,
+        DeleteStatTrackerShareMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteStatTrackerShareMutationOptions(options));
+    }
+
+export const getGetStatTrackerShareEventsUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/stat-tracker-shares/${shareToken}/events`
+}
+
+/**
+ * @summary Subscribe to live stat tracker updates
+ */
+export const getStatTrackerShareEvents = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetStatTrackerShareEventsUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStatTrackerShareEventsQueryKey = (shareToken: string,) => {
+    return [
+    `/api/stat-tracker-shares/${shareToken}/events`
+    ] as const;
+    }
+
+
+export const getGetStatTrackerShareEventsQueryOptions = <TData = Awaited<ReturnType<typeof getStatTrackerShareEvents>>, TError = ErrorType<NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatTrackerShareEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStatTrackerShareEventsQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStatTrackerShareEvents>>> = ({ signal }) => getStatTrackerShareEvents(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStatTrackerShareEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStatTrackerShareEventsQueryResult = NonNullable<Awaited<ReturnType<typeof getStatTrackerShareEvents>>>
+export type GetStatTrackerShareEventsQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Subscribe to live stat tracker updates
+ */
+
+export function useGetStatTrackerShareEvents<TData = Awaited<ReturnType<typeof getStatTrackerShareEvents>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatTrackerShareEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStatTrackerShareEventsQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListHypeCardSharesUrl = () => {
 

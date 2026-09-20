@@ -10,6 +10,7 @@ import billingRouter from "./billing";
 import hypeCardSharesRouter from "./hypeCardShares";
 import supporterPhotoRouter from "./supporterPhoto";
 import checklistSharesRouter from "./checklistShares";
+import statTrackerSharesRouter from "./statTrackerShares";
 import webPushRouter from "./webPush";
 
 const router: IRouter = Router();
@@ -25,6 +26,7 @@ router.use(storageRouter);
 router.use(accountAccessRouter);
 router.use(supporterPhotoRouter);
 router.use(checklistSharesRouter);
+router.use(statTrackerSharesRouter);
   router.use(webPushRouter);
 
 export default router;
