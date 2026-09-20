@@ -105,7 +105,7 @@ export function PublicLandingPage() {
                 YOUR SEASON, GUIDED
               </span>
               <h1 className="font-display text-5xl sm:text-6xl lg:text-[76px] font-extrabold leading-[0.92] text-landing-text mb-6">
-                We guide your week.<br />
+                <span className="landing-hero-slam inline-block">We guide your week.</span><br />
                 <span className="text-landing-primary">You capture the moments.</span>
               </h1>
               <p className="text-lg sm:text-[21px] leading-[1.6] text-landing-text/75 mb-10 max-w-xl mx-auto lg:mx-0 font-medium">
