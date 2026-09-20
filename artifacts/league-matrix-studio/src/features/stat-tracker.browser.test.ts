@@ -40,12 +40,14 @@ import { createElement, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   LiveTrackerGame,
+  StatTrackerSaveRecoveryAlert,
+  StatTrackerSaveStatus,
   StatTrackerStartPanel,
   StatTrackerUpcomingNotice,
   type ScheduledGame,
 } from './src/features/stat-tracker-page';
 import { GameReportView } from './src/features/stat-tracker-game-report';
-import { buildGameReport, createGameSession, endGame, getSportRule, normalizeTrackerData } from './src/features/stat-tracker';
+import { buildGameReport, createGameSession, endGame, getSportRule, normalizeTrackerData, trackerSaveErrorMessage } from './src/features/stat-tracker';
 import './src/index.css';
 
 const scheduledGame = {
@@ -56,7 +58,75 @@ const scheduledGame = {
   opponent: 'Northside',
 };
 
+function SaveFeedbackHarness() {
+  const [status, setStatus] = useState(null);
+  const [message, setMessage] = useState('');
+  const [retryAvailable, setRetryAvailable] = useState(false);
+  const [revisionConflict, setRevisionConflict] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const finish = (outcome) => {
+    window.setTimeout(() => {
+      setSaving(false);
+      if (outcome === 'success') {
+        setStatus('cloud-saved');
+        return;
+      }
+      setStatus('local-saved');
+      const conflict = outcome === 'conflict';
+      setRevisionConflict(conflict);
+      setRetryAvailable(!conflict);
+      setMessage(trackerSaveErrorMessage(conflict ? { status: 409 } : { status: 503 }));
+    }, 250);
+  };
+  const start = (outcome) => {
+    setStatus('saving');
+    setMessage('');
+    setRetryAvailable(false);
+    setRevisionConflict(false);
+    setSaving(true);
+    finish(outcome);
+  };
+  const retry = () => {
+    setStatus('saving');
+    setMessage('');
+    setSaving(true);
+    window.setTimeout(() => {
+      setSaving(false);
+      setRetryAvailable(false);
+      setStatus('cloud-saved');
+    }, 250);
+  };
+
+  return createElement('main', { className: 'mx-auto w-full max-w-[390px] px-5 py-6' },
+    createElement('div', { className: 'flex flex-wrap gap-2' },
+      createElement('button', { type: 'button', 'data-testid': 'save-outcome-success', onClick: () => start('success') }, 'Save success'),
+      createElement('button', { type: 'button', 'data-testid': 'save-outcome-local', onClick: () => start('local') }, 'Save local'),
+      createElement('button', { type: 'button', 'data-testid': 'save-outcome-conflict', onClick: () => start('conflict') }, 'Save conflict'),
+    ),
+    createElement('div', { className: 'mt-5 flex min-w-0 justify-start' },
+      status && createElement(StatTrackerSaveStatus, { status }),
+    ),
+    createElement('div', { className: 'mt-5' },
+      createElement(StatTrackerSaveRecoveryAlert, {
+        message,
+        retryAvailable,
+        revisionConflict,
+        hasConflict: revisionConflict,
+        saving,
+        onRetry: retry,
+        onRefresh: () => {},
+      }),
+    ),
+    revisionConflict && createElement('section', {
+      'data-testid': 'stat-tracker-conflict',
+      className: 'border border-primary/50 bg-card p-5',
+    }, 'History needs a choice. Newer cloud copy found.'),
+  );
+}
+
 function TrackerHarness() {
+  const saveFeedbackMode = new URLSearchParams(window.location.search).get('saveFeedback') === '1';
   const footballMode = new URLSearchParams(window.location.search).get('sport') === 'football';
   const persistenceMode = new URLSearchParams(window.location.search).get('persistence') === '1';
   const trackerHistoryStorageKey = 'stat-tracker-browser-history';
@@ -104,6 +174,8 @@ function TrackerHarness() {
   const report = selectedReportGameId
     ? buildGameReport(savedGames, 'football', selectedReportGameId)
     : null;
+
+  if (saveFeedbackMode) return createElement(SaveFeedbackHarness);
 
   return createElement('main', null,
     createElement('output', {
@@ -444,6 +516,50 @@ test('stat tracker protects scheduled, live football, and completed-game states 
         'document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.querySelector("[data-testid=\\"game-report-overlay\\"]").scrollWidth <= document.querySelector("[data-testid=\\"game-report-overlay\\"]").clientWidth && ["pass-yard", "rush-yard", "receiving-yard"].every((id) => { const element = document.querySelector(`[data-testid="report-yard-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
         page.sessionId,
       ),
+      true,
+    );
+
+    await connection.evaluate('window.location.search = "?saveFeedback=1"', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"save-outcome-success\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]") === null', page.sessionId),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('!document.body.textContent.includes("Cloud sync active")', page.sessionId),
+      true,
+    );
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"save-outcome-success\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saving game to cloud")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Game saved to cloud")', Boolean);
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"save-outcome-local\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saving game to cloud")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saved on this device") && document.querySelector("[data-testid=\\"stat-tracker-save-recovery\\"]")?.textContent.includes("cloud sync failed") && document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '["stat-tracker-save-status", "stat-tracker-save-recovery"].every((id) => { const element = document.querySelector(`[data-testid="${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth && element.scrollWidth <= element.clientWidth); }) && document.documentElement.scrollWidth <= document.documentElement.clientWidth',
+        page.sessionId,
+      ),
+      true,
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saving game to cloud")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Game saved to cloud") && document.querySelector("[data-testid=\\"stat-tracker-save-recovery\\"]") === null', Boolean);
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"save-outcome-conflict\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saving game to cloud")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saved on this device") && document.querySelector("[data-testid=\\"stat-tracker-save-recovery\\"]")?.textContent.includes("changed elsewhere") && document.querySelector("[data-testid=\\"stat-tracker-conflict\\"]")?.textContent.includes("Newer cloud copy found")', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]") === null && document.documentElement.scrollWidth <= document.documentElement.clientWidth && ["stat-tracker-save-status", "stat-tracker-save-recovery", "stat-tracker-conflict"].every((id) => { const element = document.querySelector(`[data-testid="${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
+        page.sessionId,
+      ),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('!document.body.textContent.includes("Cloud sync active")', page.sessionId),
       true,
     );
   } finally {

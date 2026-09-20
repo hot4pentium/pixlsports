@@ -193,6 +193,65 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+export function StatTrackerSaveStatus({ status }: { status: TrackerSaveStatus }) {
+  return (
+    <div
+      className={`inline-flex max-w-full min-w-0 items-start gap-2 border px-4 py-3 text-xs font-bold uppercase leading-5 tracking-widest clip-angled-sm ${
+        status === 'local-saved'
+          ? 'border-destructive/50 bg-destructive/5 text-destructive'
+          : status === 'saving'
+            ? 'border-primary/50 bg-primary/5 text-primary-ink'
+            : 'border-primary/40 bg-primary/5 text-primary-ink'
+      }`}
+      role="status"
+      aria-live="polite"
+      data-testid="stat-tracker-save-status"
+    >
+      {status === 'saving'
+        ? <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+        : status === 'cloud-saved'
+          ? <CloudUpload className="mt-0.5 h-4 w-4 shrink-0" />
+          : <Save className="mt-0.5 h-4 w-4 shrink-0" />}
+      <span className="min-w-0 whitespace-normal break-words">{trackerSaveStatusMessage(status)}</span>
+    </div>
+  );
+}
+
+export function StatTrackerSaveRecoveryAlert({
+  message,
+  retryAvailable,
+  revisionConflict,
+  hasConflict,
+  saving,
+  onRetry,
+  onRefresh,
+}: {
+  message: string;
+  retryAvailable: boolean;
+  revisionConflict: boolean;
+  hasConflict: boolean;
+  saving: boolean;
+  onRetry: () => void;
+  onRefresh: () => void;
+}) {
+  if (!message) return null;
+  return (
+    <div className="mb-5 flex min-w-0 flex-col gap-3 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive sm:flex-row sm:items-center sm:justify-between" role="alert" data-testid="stat-tracker-save-recovery">
+      <p className="min-w-0 break-words leading-5">{message}</p>
+      {retryAvailable && (
+        <button type="button" disabled={saving} onClick={onRetry} data-testid="button-retry-stat-tracker-save" className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50">
+          <RotateCcw className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} /> {saving ? 'Retrying…' : 'Retry cloud sync'}
+        </button>
+      )}
+      {revisionConflict && !hasConflict && (
+        <button type="button" onClick={onRefresh} data-testid="button-refresh-stat-tracker-conflict" className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground">
+          <RotateCcw className="h-4 w-4" /> Refresh to merge
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function StatTrackerUpcomingNotice({
   nextGame,
   onUseUpcomingGame,
@@ -1152,27 +1211,7 @@ export function StatTrackerPage() {
           <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary-ink studio-textured-heading-accent">TRACKER.</span></h1>
           <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Tap each play as it happens. Finish the game to add it to your season history.</p>
         </div>
-        {saveStatus && (
-          <div
-            className={`inline-flex items-center gap-2 border px-4 py-3 text-xs font-bold uppercase tracking-widest clip-angled-sm ${
-              saveStatus === 'local-saved'
-                ? 'border-destructive/50 bg-destructive/5 text-destructive'
-                : saveStatus === 'saving'
-                  ? 'border-primary/50 bg-primary/5 text-primary-ink'
-                  : 'border-primary/40 bg-primary/5 text-primary-ink'
-            }`}
-            role="status"
-            aria-live="polite"
-            data-testid="stat-tracker-save-status"
-          >
-            {saveStatus === 'saving'
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : saveStatus === 'cloud-saved'
-                ? <CloudUpload className="h-4 w-4" />
-                : <Save className="h-4 w-4" />}
-            {trackerSaveStatusMessage(saveStatus)}
-          </div>
-        )}
+        {saveStatus && <StatTrackerSaveStatus status={saveStatus} />}
       </div>
 
       <div className="mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">
@@ -1191,24 +1230,18 @@ export function StatTrackerPage() {
         />
       )}
 
-      {error && (
-        <div className="mb-5 flex flex-col gap-3 border-l-4 border-destructive bg-destructive/10 px-4 py-3 text-sm font-bold text-destructive sm:flex-row sm:items-center sm:justify-between" role="alert">
-          <p>{error}</p>
-          {retryAvailable && (
-            <button type="button" disabled={saving} onClick={() => void retryCloudSync()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50">
-              <RotateCcw className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} /> {saving ? 'Retrying…' : 'Retry cloud sync'}
-            </button>
-          )}
-          {revisionConflict && !trackerConflict && (
-            <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-destructive px-3 py-2 text-xs font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground">
-              <RotateCcw className="h-4 w-4" /> Refresh to merge
-            </button>
-          )}
-        </div>
-      )}
+      <StatTrackerSaveRecoveryAlert
+        message={error}
+        retryAvailable={retryAvailable}
+        revisionConflict={revisionConflict}
+        hasConflict={Boolean(trackerConflict)}
+        saving={saving}
+        onRetry={() => void retryCloudSync()}
+        onRefresh={() => window.location.reload()}
+      />
 
       {revisionConflict && trackerConflict && (
-        <section className="mb-6 border border-primary/50 bg-card p-5 clip-angled-sm sm:p-7" aria-labelledby="tracker-conflict-heading">
+        <section className="mb-6 border border-primary/50 bg-card p-5 clip-angled-sm sm:p-7" aria-labelledby="tracker-conflict-heading" data-testid="stat-tracker-conflict">
           <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">History needs a choice</p>
