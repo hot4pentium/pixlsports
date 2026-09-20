@@ -851,12 +851,28 @@ function HomePage() {
               <span className="pixl-landing-pill"><Activity /> Your season, in one place</span>
               <span className="pixl-landing-live"><span aria-hidden="true">●</span> LIVE STUDIO</span>
             </div>
-            <div className="pixl-landing-hero-copy">
-              <small>PIXL SPORTS / HOME BASE</small>
-               <h1 id="landing-overview-heading" data-testid="text-landing-headline">
-                 We guide<br />the week.<br /><em><span className="pixl-landing-hero-line">You capture</span><br /><span className="pixl-landing-hero-line">the moments.</span></em>
-               </h1>
-              <p>Choose how you show up for the season. Pixl gives fans and coaches a clear place to start, then puts the right tool in front of you.</p>
+            <div className="pixl-landing-overview-main">
+              <div className="pixl-landing-hero-copy">
+                <small>PIXL SPORTS / HOME BASE</small>
+                  <h1 id="landing-overview-heading" data-testid="text-landing-headline">
+                    We guide<br />the week.<br /><em><span className="pixl-landing-hero-line">You capture</span><br /><span className="pixl-landing-hero-line">the moments.</span></em>
+                  </h1>
+                <p>Choose how you show up for the season. Pixl gives fans and coaches a clear place to start, then puts the right tool in front of you.</p>
+              </div>
+              <aside className="pixl-landing-overview-context" aria-label="This week preview">
+                <div className="pixl-landing-side-label">THIS WEEK <CalendarDays /></div>
+                <div className="pixl-landing-week-event">
+                  <small>NEXT UP · SATURDAY</small>
+                  <h2>{nextPreview[1]}</h2>
+                  <span><MapPin /> {nextPreview[2]}</span>
+                </div>
+                <Link href="/studio/schedule" className="pixl-landing-open-schedule" data-testid="link-landing-open-schedule">Open schedule <ArrowRight /></Link>
+                <div className="pixl-landing-principle">
+                  <small>THE PIXL PRINCIPLE</small>
+                  <strong>Less chasing.<br />More cheering.</strong>
+                  <span>FOR EVERY SIDELINE <Heart /></span>
+                </div>
+              </aside>
             </div>
             <div className="pixl-landing-role-row" data-testid="landing-role-selector">
               <div>
@@ -879,20 +895,6 @@ function HomePage() {
             </div>
           </section>
 
-          <aside className="pixl-landing-week" aria-label="This week preview">
-            <div className="pixl-landing-side-label">THIS WEEK <CalendarDays /></div>
-            <div className="pixl-landing-week-event">
-              <small>NEXT UP · SATURDAY</small>
-              <h2>{nextPreview[1]}</h2>
-              <span><MapPin /> {nextPreview[2]}</span>
-            </div>
-            <Link href="/studio/schedule" className="pixl-landing-open-schedule" data-testid="link-landing-open-schedule">Open schedule <ArrowRight /></Link>
-            <div className="pixl-landing-principle">
-              <small>THE PIXL PRINCIPLE</small>
-              <strong>Less chasing.<br />More cheering.</strong>
-              <span>FOR EVERY SIDELINE <Heart /></span>
-            </div>
-          </aside>
         </section>
 
         <section className="pixl-landing-tools" aria-labelledby="landing-tools-heading">
