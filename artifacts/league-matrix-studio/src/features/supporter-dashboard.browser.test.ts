@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -23,6 +23,15 @@ function fixturePaths(prefix: string) {
     harnessPath: resolve(appDirectory, `${prefix}-${suffix}.tsx`),
     htmlPath: resolve(appDirectory, `${prefix}-${suffix}.html`),
   };
+}
+
+async function pathExists(path: string) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function acquireBrowserTestLock() {
@@ -295,6 +304,128 @@ async function waitFor<T>(
   }));
   throw new Error(`Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; body=${diagnostic.body.slice(0, 700)}`);
 }
+
+test('supporter browser assertion failures still clean up Chromium and generated state', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-dashboard-cleanup-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  let forcedAssertionError: unknown;
+  const cleanupErrors: unknown[] = [];
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-dashboard-cleanup-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
+
+    assert.equal(await pathExists(fixtures.harnessPath), true);
+    assert.equal(await pathExists(fixtures.htmlPath), true);
+    assert.equal(await pathExists(tempDirectory), true);
+
+    try {
+      assert.equal(
+        await connection.evaluate<string>('document.title', page.sessionId),
+        'This assertion is intentionally wrong',
+        'forced supporter browser assertion',
+      );
+    } catch (error) {
+      forcedAssertionError = error;
+    }
+  } finally {
+    try {
+      if (page && connection) {
+        await connection.send('Target.closeTarget', { targetId: page.targetId });
+      }
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      connection?.close();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      if (browser && browserMonitor) {
+        if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+        await browserMonitor.waitForExit();
+      }
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      if (devServer && devServerMonitor) {
+        if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+        await devServerMonitor.waitForExit();
+      }
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      await rm(fixtures.harnessPath, { force: true });
+      await rm(fixtures.htmlPath, { force: true });
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    releaseBrowserTestLock();
+  }
+
+  assert.ok(forcedAssertionError instanceof Error, 'the forced browser assertion must fail');
+  assert.match((forcedAssertionError as Error).message, /forced supporter browser assertion/);
+  assert.deepEqual(
+    cleanupErrors,
+    [],
+    `browser cleanup must not fail: ${cleanupErrors.map((error) => String(error)).join('; ')}`,
+  );
+  assert.equal(browserMonitor?.hasExited(), true, 'Chromium must exit after the assertion failure');
+  assert.equal(await pathExists(tempDirectory!), false, 'the temporary Chromium profile must be removed');
+  assert.equal(await pathExists(fixtures.harnessPath), false, 'the generated harness fixture must be removed');
+  assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
+});
 
 function harnessSource() {
   return `
