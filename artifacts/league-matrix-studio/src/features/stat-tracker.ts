@@ -435,22 +435,26 @@ export function updateStatEventYards(
   if (!event || !yardMetricId) return game;
 
   const nextYards = Math.max(0, Math.floor(Number.isFinite(yards) ? yards : 0));
-  const previousYards = event.yards ?? 0;
+  const events = game.events.map((item) => {
+    if (item.id !== eventId) return item;
+    if (nextYards > 0) return { ...item, yards: nextYards };
+    const nextEvent = { ...item };
+    delete nextEvent.yards;
+    return nextEvent;
+  });
   const yardStats = { ...(game.yardStats ?? {}) };
-  const nextTotal = Math.max(0, (yardStats[yardMetricId] ?? 0) + nextYards - previousYards);
+  const nextTotal = events.reduce((total, item) => (
+    getFootballYardMetricId(item.statId) === yardMetricId
+      ? total + (item.yards ?? 0)
+      : total
+  ), 0);
   if (nextTotal === 0) delete yardStats[yardMetricId];
   else yardStats[yardMetricId] = nextTotal;
 
   return {
     ...game,
     yardStats,
-    events: game.events.map((item) => {
-      if (item.id !== eventId) return item;
-      return nextYards > 0 ? { ...item, yards: nextYards } : (() => {
-        const { yards: _yards, ...withoutYards } = item;
-        return withoutYards;
-      })();
-    }),
+    events,
   };
 }
 

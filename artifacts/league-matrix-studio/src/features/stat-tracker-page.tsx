@@ -381,7 +381,7 @@ export function LiveTrackerGame({
       0,
     );
     updateCurrentGame(nextGame);
-    if (yardMetricId) {
+    if (yardMetricId && nextGame.events.length > currentGame.events.length) {
       const eventId = nextGame.events.at(-1)?.id;
       if (eventId) {
         setActiveYardEventIds((current) => ({ ...current, [item.id]: eventId }));
@@ -451,7 +451,7 @@ export function LiveTrackerGame({
               <span>
                 Track yards for this game
                 <span className="mt-1 block text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
-                  {yardTrackingEnabled ? 'Use the yard controls before recording a pass, rush, or reception.' : 'Play counts stay one tap each; yard entry is off.'}
+                  {yardTrackingEnabled ? 'Tap a pass, rush, or reception first, then enter yards for that recorded play.' : 'Play counts stay one tap each; yard entry is off.'}
                 </span>
               </span>
             </label>
@@ -512,7 +512,7 @@ export function LiveTrackerGame({
                             }
                           }}
                           aria-disabled={!yardControlEnabled}
-                          aria-label={`${item.label} for next play`}
+                          aria-label={`${item.label} yards for recorded play`}
                           aria-valuemin={0}
                           aria-valuenow={yardDraft}
                           data-testid={`input-yard-${item.id}`}

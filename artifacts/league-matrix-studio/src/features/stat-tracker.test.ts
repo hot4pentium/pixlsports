@@ -32,6 +32,7 @@ import {
   trackerPayload,
   trackerSaveStatusMessage,
   trackerSaveErrorMessage,
+  updateStatEventYards,
   undoLastStatEvent,
 } from './stat-tracker';
 import {
@@ -158,43 +159,80 @@ test('football yard controls use asymmetric five-forward and one-back steps', ()
   assert.equal(adjustYardValue(8, 5), 13);
 });
 
-test('football live controls expose accessible yard entry and record reception yards', () => {
+test('yard adjustments update one recorded football event without adding another play', () => {
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'reception', new Date('2026-09-17T12:01:00Z'));
+  const eventId = game.events[0]?.id;
+  assert.ok(eventId);
+
+  game = updateStatEventYards(game, eventId, 12);
+  assert.equal(game.events.length, 1);
+  assert.equal(game.stats.reception, 1);
+  assert.equal(game.events[0]?.yards, 12);
+  assert.equal(game.yardStats?.['receiving-yard'], 12);
+
+  game = updateStatEventYards(game, eventId, 7);
+  assert.equal(game.events.length, 1);
+  assert.equal(game.events[0]?.yards, 7);
+  assert.equal(game.yardStats?.['receiving-yard'], 7);
+
+  game = updateStatEventYards(game, eventId, 0);
+  assert.equal(game.events[0]?.yards, undefined);
+  assert.equal(game.yardStats?.['receiving-yard'], undefined);
+});
+
+test('football live controls stay disabled until the stat card records one play', () => {
   const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('football');
   let changedGame = game;
   let renderer!: ReturnType<typeof create>;
+  const renderGame = (currentGame: typeof game) => createElement(LiveTrackerGame, {
+    currentGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
 
   act(() => {
-    renderer = create(createElement(LiveTrackerGame, {
-      currentGame: game,
-      rule,
-      athleteName: 'Jordan',
-      teamName: 'Falcons',
-      displayStats: rule.stats.filter((item) => item.featured),
-      showAllStats: false,
-      saving: false,
-      captureNotice: '',
-      onCapture: () => {},
-      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
-      onToggleShowAllStats: () => {},
-      onLeaveGame: () => {},
-      onEndGame: () => {},
-    }));
+    renderer = create(renderGame(game));
   });
 
   const toggle = renderer.root.findByProps({ 'data-testid': 'toggle-football-yard-tracking' });
   assert.equal(toggle.props.checked, true);
-  const receptionInput = renderer.root.findByProps({ 'data-testid': 'input-yard-reception' });
-  act(() => receptionInput.props.onWheel({ deltaY: -1, preventDefault: () => {} }));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-adjust-reception-increase' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-control-reception' }).props['aria-disabled'], true);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-reception' }).props.onClick());
+  assert.equal(changedGame.events.length, 1);
+  assert.equal(changedGame.stats.reception, 1);
+  assert.equal(changedGame.events[0]?.yards, undefined);
+
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-adjust-reception-increase' }).props.disabled, false);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onWheel({ deltaY: -1, preventDefault: () => {} }));
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.value, 5);
   act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onWheel({ deltaY: 1, preventDefault: () => {} }));
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.value, 4);
   act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onChange({ currentTarget: { value: '12' } }));
-  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-reception' }).props.onClick());
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onKeyDown({ key: 'Enter', preventDefault: () => {} }));
 
   assert.equal(changedGame.stats.reception, 1);
+  assert.equal(changedGame.events.length, 1);
+  assert.equal(changedGame.events[0]?.yards, 12);
   assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props['aria-valuenow'], 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props['aria-valuenow'], 12);
 });
 
 test('softball is available with inning-based game tracking', () => {
