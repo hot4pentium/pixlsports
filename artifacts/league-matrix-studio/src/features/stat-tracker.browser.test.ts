@@ -44,7 +44,8 @@ import {
   StatTrackerUpcomingNotice,
   type ScheduledGame,
 } from './src/features/stat-tracker-page';
-import { createGameSession, getSportRule } from './src/features/stat-tracker';
+import { GameReportView } from './src/features/stat-tracker-game-report';
+import { buildGameReport, createGameSession, endGame, getSportRule, normalizeTrackerData } from './src/features/stat-tracker';
 import './src/index.css';
 
 const scheduledGame = {
@@ -57,10 +58,20 @@ const scheduledGame = {
 
 function TrackerHarness() {
   const footballMode = new URLSearchParams(window.location.search).get('sport') === 'football';
+  const persistenceMode = new URLSearchParams(window.location.search).get('persistence') === '1';
+  const trackerHistoryStorageKey = 'stat-tracker-browser-history';
   const [nextGame, setNextGame] = useState(scheduledGame);
   const [showNotice, setShowNotice] = useState(true);
   const [showManualSetup, setShowManualSetup] = useState(false);
   const [currentGame, setCurrentGame] = useState(null);
+  const [savedGames, setSavedGames] = useState(() => {
+    try {
+      return normalizeTrackerData(JSON.parse(window.localStorage.getItem(trackerHistoryStorageKey) || 'null')).games;
+    } catch {
+      return [];
+    }
+  });
+  const [selectedReportGameId, setSelectedReportGameId] = useState(null);
   const [date, setDate] = useState(scheduledGame.date);
   const [opponent, setOpponent] = useState(scheduledGame.opponent);
   const [notes, setNotes] = useState('');
@@ -77,6 +88,9 @@ function TrackerHarness() {
   }, [nextGame]);
 
   window.__setTrackerNextGame = (game) => setNextGame(game || undefined);
+  const report = selectedReportGameId
+    ? buildGameReport(savedGames, 'football', selectedReportGameId)
+    : null;
 
   return createElement('main', null,
     !currentGame && nextGame && showNotice && createElement(StatTrackerUpcomingNotice, {
@@ -98,7 +112,14 @@ function TrackerHarness() {
           onGameChange: setCurrentGame,
           onToggleShowAllStats: () => {},
           onLeaveGame: () => setCurrentGame(null),
-          onEndGame: () => {},
+           onEndGame: () => {
+             if (!persistenceMode || !currentGame) return;
+             const completed = endGame(currentGame);
+             const nextGames = [...savedGames, completed];
+             window.localStorage.setItem(trackerHistoryStorageKey, JSON.stringify({ version: 1, games: nextGames }));
+             setSavedGames(nextGames);
+             setCurrentGame(null);
+           },
         })
       : createElement(StatTrackerStartPanel, {
           nextGame,
@@ -127,7 +148,22 @@ function TrackerHarness() {
       tabIndex: -1,
       'data-testid': 'stat-tracker-history',
       'data-reviewed': reviewed ? 'true' : 'false',
-    }, 'Previous games'),
+    }, persistenceMode
+      ? savedGames.length
+        ? savedGames.map((game) => createElement('button', {
+            key: game.id,
+            type: 'button',
+            'data-testid': 'history-card-' + game.id,
+            onClick: () => setSelectedReportGameId(game.id),
+          }, 'vs ' + game.opponent + ' ' + game.events.length + ' plays'))
+        : 'No completed football games yet.'
+      : 'Previous games'),
+    report && createElement(GameReportView, {
+      report,
+      rule: getSportRule('football'),
+      onClose: () => setSelectedReportGameId(null),
+      onSelectGame: setSelectedReportGameId,
+    }),
   );
 }
 
@@ -147,7 +183,7 @@ function htmlSource() {
 `;
 }
 
-test('stat tracker protects scheduled and unscheduled start states in the browser', async () => {
+test('stat tracker protects scheduled, live football, and completed-game states in the browser', async () => {
   const viteProbe = createServer();
   const { port: vitePort } = await listen(viteProbe);
   await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
@@ -252,7 +288,7 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
       false,
     );
 
-    await connection.evaluate('window.location.search = "?sport=football"', page.sessionId);
+    await connection.evaluate('window.location.search = "?sport=football&persistence=1"', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-dismiss-upcoming-notice\\"]")?.click()', page.sessionId);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-start-manual-game\\"]")?.click()', page.sessionId);
@@ -300,6 +336,8 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
 
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-reception\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.disabled === false', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-reception-increase\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.value === "5"', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1")', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
@@ -307,6 +345,43 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
     assert.equal(
       await connection.evaluate<boolean>(
         '["pass-yard", "rush-yard", "reception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
+        page.sessionId,
+      ),
+      true,
+    );
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid^=\\"history-card-\\"]")?.textContent || ""', page.sessionId),
+      'vs Northside 5 plays',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.querySelector("[data-testid=\\"stat-tracker-history\\"]").scrollWidth <= document.querySelector("[data-testid=\\"stat-tracker-history\\"]").clientWidth',
+        page.sessionId,
+      ),
+      true,
+    );
+
+    await connection.evaluate('window.location.reload()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"live-tracker-layout\\"]"))', page.sessionId),
+      false,
+    );
+    await connection.evaluate('document.querySelector("[data-testid^=\\"history-card-\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-report-overlay\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '["pass-yard", "rush-yard", "receiving-yard"].every((id) => document.querySelector(`[data-testid="report-yard-${id}"]`)?.textContent?.includes(id === "pass-yard" ? "10" : "5"))',
+        page.sessionId,
+      ),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.querySelector("[data-testid=\\"game-report-overlay\\"]").scrollWidth <= document.querySelector("[data-testid=\\"game-report-overlay\\"]").clientWidth && ["pass-yard", "rush-yard", "receiving-yard"].every((id) => { const element = document.querySelector(`[data-testid="report-yard-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
         page.sessionId,
       ),
       true,

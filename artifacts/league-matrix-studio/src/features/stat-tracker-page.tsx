@@ -608,7 +608,7 @@ export function LiveTrackerGame({
         </label>
         <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
           <button type="button" onClick={onLeaveGame} className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /> Leave game open</button>
-          <button type="button" disabled={saving} onClick={onEndGame} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50"><CircleStop className="h-4 w-4" /> {saving ? 'Saving…' : 'End & save game'}</button>
+          <button type="button" disabled={saving} onClick={onEndGame} data-testid="button-end-live-game" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50"><CircleStop className="h-4 w-4" /> {saving ? 'Saving…' : 'End & save game'}</button>
         </div>
       </div>
       <div data-testid="live-tracker-recent-activity" className="order-3 border border-border bg-card p-4 clip-angled-sm sm:p-5 lg:col-start-1 lg:row-start-2">
