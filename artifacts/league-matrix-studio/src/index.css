@@ -383,6 +383,15 @@
 .home-marquee {
   animation: home-marquee 28s linear infinite;
 }
+
+.stat-tracker-light-text .text-primary,
+[data-testid="stat-tracker-history"] .text-primary,
+[data-testid="live-tracker-stat-controls"] .text-primary,
+[data-testid="live-tracker-recent-activity"] .text-primary,
+[data-testid="game-report-overlay"] .text-primary {
+  color: hsl(var(--primary-ink)) !important;
+}
+
 .landing-hero-slam {
   animation: landing-hero-slam 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
   transform-origin: 50% 100%;

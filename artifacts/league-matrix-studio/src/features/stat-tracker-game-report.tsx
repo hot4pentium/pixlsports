@@ -38,7 +38,7 @@ class ChartErrorBoundary extends Component<ChartErrorBoundaryProps, ChartErrorBo
         <div className="border border-destructive/50 bg-destructive/5 p-5 clip-angled-sm" data-testid="report-charts-error" role="alert">
           <p className="text-sm font-bold text-foreground">Charts couldn’t load.</p>
           <p className="mt-1 text-sm text-muted-foreground">Check your connection, then try again. Your selected report is still open.</p>
-          <button type="button" onClick={this.props.onRetry} data-testid="report-charts-retry" className="mt-4 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:border-primary hover:text-primary clip-angled-sm">
+          <button type="button" onClick={this.props.onRetry} data-testid="report-charts-retry" className="mt-4 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:border-primary hover:text-primary-ink clip-angled-sm">
             <RotateCcw className="h-4 w-4" /> Retry charts
           </button>
         </div>
@@ -116,7 +116,7 @@ export function GameReportView({
     <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md" data-testid="game-report-overlay" role="dialog" aria-modal="true" aria-labelledby="game-report-title">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-5 py-4 backdrop-blur-md sm:px-8">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Game Report</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Game Report</p>
           <h2 id="game-report-title" className="font-display text-2xl uppercase tracking-wide">{selectedGame.opponent ? `vs ${selectedGame.opponent}` : 'Game'}</h2>
         </div>
         <button type="button" autoFocus onClick={onClose} data-testid="game-report-close" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-muted clip-angled-sm"><ArrowLeft className="h-4 w-4" /> Back to Tracker</button>
@@ -125,8 +125,8 @@ export function GameReportView({
       <div className="flex-1 overflow-y-auto p-5 sm:p-8">
         <div className="mx-auto max-w-[1200px] space-y-6 sm:space-y-8">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="border border-primary/40 bg-primary/5 p-5 clip-angled-sm" data-testid="report-score-box"><p className="text-[10px] font-bold uppercase tracking-widest text-primary">Final Score</p><p className="mt-2 font-display text-5xl text-foreground sm:text-6xl">{selectedGame.score}<span className="text-muted-foreground">–</span><span className="text-muted-foreground">{selectedGame.opponentScore}</span></p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(selectedGame.date)}</p></div>
-            <div className="border border-border bg-card p-5 clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season to Date (thru this game)</p><p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{seasonToDate.score} PTS</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary">{seasonToDate.gamesPlayed} GAMES</p></div>
+            <div className="border border-primary/40 bg-primary/5 p-5 clip-angled-sm" data-testid="report-score-box"><p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink">Final Score</p><p className="mt-2 font-display text-5xl text-foreground sm:text-6xl">{selectedGame.score}<span className="text-muted-foreground">–</span><span className="text-muted-foreground">{selectedGame.opponentScore}</span></p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(selectedGame.date)}</p></div>
+            <div className="border border-border bg-card p-5 clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season to Date (thru this game)</p><p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{seasonToDate.score} PTS</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary-ink">{seasonToDate.gamesPlayed} GAMES</p></div>
             <div className="border border-border bg-card p-5 clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season Average</p><p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{averages.score.toFixed(1)} <span className="text-xl">PTS/G</span></p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">OVER {seasonToDate.gamesPlayed} GAMES</p></div>
           </div>
 
@@ -138,10 +138,10 @@ export function GameReportView({
                   const count = selectedGame.stats[stat.id] || 0;
                   const previous = previousGame ? (previousGame.stats[stat.id] || 0) : 0;
                   const average = averages.stats[stat.id] || 0;
-                  return <div key={stat.id} className="border border-border/50 bg-background p-3 clip-angled-sm" data-testid={`report-stat-${stat.id}`}><p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p><p className="mt-1 font-display text-3xl">{count}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary">Season: {seasonToDate.stats[stat.id] ?? 0}</p>{previousGame && <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${count > previous ? 'text-primary' : count < previous ? 'text-destructive' : 'text-muted-foreground'}`}>{count > previous ? '+' : ''}{count - previous} vs last</p>}{!isOneGame && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg: {average.toFixed(1)}</p>}</div>;
+                  return <div key={stat.id} className="border border-border/50 bg-background p-3 clip-angled-sm" data-testid={`report-stat-${stat.id}`}><p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p><p className="mt-1 font-display text-3xl">{count}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Season: {seasonToDate.stats[stat.id] ?? 0}</p>{previousGame && <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${count > previous ? 'text-primary-ink' : count < previous ? 'text-destructive' : 'text-muted-foreground'}`}>{count > previous ? '+' : ''}{count - previous} vs last</p>}{!isOneGame && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg: {average.toFixed(1)}</p>}</div>;
                 })}</div>
                 {!hasStats && <div className="mt-6 border border-border/50 bg-background p-6 text-center clip-angled-sm"><p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">No stats recorded for this game.</p></div>}
-                {selectedGame.notes && <div className="mt-6 border-t border-border pt-4"><p className="text-[10px] font-bold uppercase tracking-widest text-primary"><FileText className="mr-1 inline h-3 w-3" /> Game Notes</p><p className="mt-2 text-sm font-medium text-foreground">{selectedGame.notes}</p></div>}
+                {selectedGame.notes && <div className="mt-6 border-t border-border pt-4"><p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink"><FileText className="mr-1 inline h-3 w-3" /> Game Notes</p><p className="mt-2 text-sm font-medium text-foreground">{selectedGame.notes}</p></div>}
               </div>
 
                {isOneGame ? (
@@ -151,14 +151,14 @@ export function GameReportView({
                  </>
                ) : (
                  <ChartErrorBoundary key={chartLoadAttempt} onRetry={retryCharts}>
-                   <Suspense fallback={<div className="border border-border bg-card p-5 clip-angled-sm sm:p-7" data-testid="report-charts-loading" role="status" aria-live="polite"><p className="text-sm font-bold uppercase tracking-widest text-primary">Loading charts…</p></div>}>
+                   <Suspense fallback={<div className="border border-border bg-card p-5 clip-angled-sm sm:p-7" data-testid="report-charts-loading" role="status" aria-live="polite"><p className="text-sm font-bold uppercase tracking-widest text-primary-ink">Loading charts…</p></div>}>
                      <ReportCharts report={report} rule={rule} trendStats={trendStats} onSelectGame={onSelectGame} />
                    </Suspense>
                  </ChartErrorBoundary>
                )}
             </div>
 
-            <div className="border border-border bg-card p-5 clip-angled-sm"><h3 className="font-display text-xl uppercase tracking-wide text-foreground">Season Log</h3><div className="mt-5 space-y-2">{report.games.map((game, index) => <button type="button" key={game.id} onClick={() => onSelectGame(game.id)} data-testid={`history-nav-${game.id}`} className={`flex w-full items-center justify-between border p-3 text-left transition-colors clip-angled-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${game.id === selectedGame.id ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/50'}`}><div className="min-w-0"><p className={`truncate font-display uppercase ${game.id === selectedGame.id ? 'text-primary' : 'text-foreground'}`}>G{index + 1} <span className="ml-1 text-sm opacity-60">vs {game.opponent || 'TBD'}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)}</p></div><div className="shrink-0 text-right"><p className={`font-display text-xl ${game.id === selectedGame.id ? 'text-primary' : 'text-foreground'}`}>{game.score} <span className="text-xs opacity-60">PTS</span></p></div></button>)}</div></div>
+            <div className="border border-border bg-card p-5 clip-angled-sm"><h3 className="font-display text-xl uppercase tracking-wide text-foreground">Season Log</h3><div className="mt-5 space-y-2">{report.games.map((game, index) => <button type="button" key={game.id} onClick={() => onSelectGame(game.id)} data-testid={`history-nav-${game.id}`} className={`flex w-full items-center justify-between border p-3 text-left transition-colors clip-angled-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${game.id === selectedGame.id ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/50'}`}><div className="min-w-0"><p className={`truncate font-display uppercase ${game.id === selectedGame.id ? 'text-primary-ink' : 'text-foreground'}`}>G{index + 1} <span className="ml-1 text-sm opacity-60">vs {game.opponent || 'TBD'}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)}</p></div><div className="shrink-0 text-right"><p className={`font-display text-xl ${game.id === selectedGame.id ? 'text-primary-ink' : 'text-foreground'}`}>{game.score} <span className="text-xs opacity-60">PTS</span></p></div></button>)}</div></div>
           </div>
         </div>
       </div>

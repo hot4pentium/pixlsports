@@ -184,9 +184,9 @@ export function StatTrackerUpcomingNotice({
   return (
     <section className="mb-6 flex flex-col gap-4 border border-primary/40 bg-primary/5 px-4 py-4 clip-angled-sm sm:flex-row sm:items-center sm:justify-between sm:px-5" data-testid="stat-tracker-upcoming-notice" aria-live="polite">
       <div className="flex min-w-0 items-start gap-3">
-        <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary-ink" />
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Next game scheduled</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary-ink">Next game scheduled</p>
           <p className="mt-1 truncate text-sm font-bold uppercase">{formatDate(nextGame.date)} · {nextGame.opponent || 'Opponent TBD'}</p>
           <p className="mt-1 text-xs font-medium text-muted-foreground">Your tracker is ready to use this game’s details.</p>
         </div>
@@ -227,17 +227,17 @@ export function StatTrackerStartPanel({
   onReviewPreviousGames: () => void;
 }) {
   return (
-    <div className="border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
+    <div className="stat-tracker-light-text border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
           <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{label}</h2>
           {!nextGame && <p className="mt-2 max-w-md text-sm font-medium leading-relaxed text-muted-foreground" data-testid="stat-tracker-blank-state">No game is scheduled yet. Start with a blank template, or review a previous game below.</p>}
         </div>
-        <Trophy className="h-7 w-7 text-primary" />
+        <Trophy className="h-7 w-7 text-primary-ink" />
       </div>
       <button type="button" onClick={onToggleManualSetup} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid="button-start-manual-game" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-primary bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-primary/20">
-        <Clock3 className="h-4 w-4 text-primary" /> Start manual game <ChevronDown className={`h-4 w-4 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
+        <Clock3 className="h-4 w-4 text-primary-ink" /> Start manual game <ChevronDown className={`h-4 w-4 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
       </button>
       {showManualSetup && <div id="manual-game-setup" className="mt-6 border-t border-border pt-6">
         <div className="grid gap-5 sm:grid-cols-2">
@@ -258,7 +258,7 @@ export function StatTrackerStartPanel({
       </div>}
       {!nextGame && <div className="mt-5 flex flex-col gap-3 border-l-2 border-border pl-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-medium text-muted-foreground">No scheduled game details to prefill.</p>
-        <button type="button" onClick={onReviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
+        <button type="button" onClick={onReviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary-ink hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
       </div>}
     </div>
   );
@@ -284,10 +284,10 @@ function ConflictHistoryPreview({
     <div className={`border p-4 ${accent ? 'border-primary/60 bg-primary/5' : 'border-border bg-background'}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className={`text-[10px] font-bold uppercase tracking-widest ${accent ? 'text-primary' : 'text-muted-foreground'}`}>{label}</p>
+          <p className={`text-[10px] font-bold uppercase tracking-widest ${accent ? 'text-primary-ink' : 'text-muted-foreground'}`}>{label}</p>
           <p className="mt-1 font-display text-2xl uppercase">{data.games.length} {data.games.length === 1 ? 'game' : 'games'}</p>
         </div>
-        {accent && <span className="border border-primary/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">On this device</span>}
+        {accent && <span className="border border-primary/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-ink">On this device</span>}
       </div>
       <div className="mt-4 space-y-2">
         {games.slice(0, 4).map((game) => (
@@ -296,7 +296,7 @@ function ConflictHistoryPreview({
               <p className="truncate font-bold">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.sport}</p>
             </div>
-            <span className="shrink-0 font-display text-xl text-primary">{game.score}–{game.opponentScore}</span>
+            <span className="shrink-0 font-display text-xl text-primary-ink">{game.score}–{game.opponentScore}</span>
           </div>
         ))}
         {!games.length && <p className="border-t border-border/70 pt-2 text-sm text-muted-foreground">No completed games in this copy.</p>}
@@ -387,12 +387,12 @@ export function LiveTrackerGame({
         </div>
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-primary">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
+        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
         <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
-          {displayStats.map((item) => <button key={item.id} type="button" data-testid={`live-stat-${item.id}`} onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] min-w-0 overflow-hidden border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary">{item.label}</span><span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block truncate text-xs font-bold text-primary">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
+          {displayStats.map((item) => <button key={item.id} type="button" data-testid={`live-stat-${item.id}`} onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] min-w-0 overflow-hidden border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary-ink">{item.label}</span><span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block truncate text-xs font-bold text-primary-ink">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
         </div>
         <button type="button" onClick={onToggleShowAllStats} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
-        <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Game notes</span>
+        <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary-ink" /> Game notes</span>
           <textarea value={currentGame.notes} onChange={(event) => onGameChange({ ...currentGame, notes: event.target.value })} placeholder="Add a note to look back on later." rows={4} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
         </label>
         <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
@@ -401,7 +401,7 @@ export function LiveTrackerGame({
         </div>
       </div>
       <div data-testid="live-tracker-recent-activity" className="order-3 border border-border bg-card p-4 clip-angled-sm sm:p-5 lg:col-start-1 lg:row-start-2">
-        <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
+        <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
         <div className="space-y-2">
           {currentGame.events.slice(-5).reverse().map((event) => <div key={event.id} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm"><span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}</span><span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span></div>)}
           {!currentGame.events.length && <p className="text-sm text-muted-foreground">Your taps will appear here.</p>}
@@ -856,8 +856,8 @@ export function StatTrackerPage() {
           <Link href="/studio" className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
           </Link>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Live numbers</p>
-          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary studio-textured-heading-accent">TRACKER.</span></h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Live numbers</p>
+          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary-ink studio-textured-heading-accent">TRACKER.</span></h1>
           <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Tap each play as it happens. Finish the game to add it to your season history.</p>
         </div>
         <div className="border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground clip-angled-sm">
@@ -901,11 +901,11 @@ export function StatTrackerPage() {
         <section className="mb-6 border border-primary/50 bg-card p-5 clip-angled-sm sm:p-7" aria-labelledby="tracker-conflict-heading">
           <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">History needs a choice</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">History needs a choice</p>
               <h2 id="tracker-conflict-heading" className="mt-1 font-display text-3xl uppercase tracking-wide">Newer cloud copy found</h2>
               <p className="mt-2 max-w-3xl text-sm font-medium text-muted-foreground">Your local history is preserved. Choose a copy or merge games that only exist in one history, then sync the selected result without leaving this page.</p>
             </div>
-            <GitMerge className="hidden h-7 w-7 shrink-0 text-primary sm:block" />
+            <GitMerge className="hidden h-7 w-7 shrink-0 text-primary-ink sm:block" />
           </div>
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
             <ConflictHistoryPreview label="Local copy" data={trackerConflict.localData} accent />
@@ -991,7 +991,7 @@ export function StatTrackerPage() {
       )}
 
       <section ref={historySectionRef} id="tracker-game-history" tabIndex={-1} className="mt-10 scroll-mt-6 border border-border bg-card p-5 clip-angled-sm outline-none sm:p-7" data-testid="stat-tracker-history">
-        <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-primary">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
          {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
       {report && (

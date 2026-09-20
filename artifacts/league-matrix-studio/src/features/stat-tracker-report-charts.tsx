@@ -46,7 +46,7 @@ export default function ReportCharts({
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const data = payload[0].payload;
-    return <div className="border border-border bg-card p-3 shadow-lg clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{data.date}</p><p className="mt-1 font-display text-xl uppercase">vs {data.opponent}</p><p className="font-display text-2xl text-primary">{data.score} PTS</p></div>;
+    return <div className="border border-border bg-card p-3 shadow-lg clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{data.date}</p><p className="mt-1 font-display text-xl uppercase">vs {data.opponent}</p><p className="font-display text-2xl text-primary-ink">{data.score} PTS</p></div>;
   };
 
   return (
