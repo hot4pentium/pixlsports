@@ -9,9 +9,16 @@ import test from 'node:test';
 
 const chromiumPath = process.env.CHROMIUM_PATH || 'chromium';
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const harnessPath = resolve(appDirectory, 'supporter-dashboard-test-harness.tsx');
-const htmlPath = resolve(appDirectory, 'supporter-dashboard-test.html');
 let browserTestLock = Promise.resolve();
+let browserRunSequence = 0;
+
+function fixturePaths(prefix: string) {
+  const suffix = `${process.pid}-${++browserRunSequence}`;
+  return {
+    harnessPath: resolve(appDirectory, `${prefix}-${suffix}.tsx`),
+    htmlPath: resolve(appDirectory, `${prefix}-${suffix}.html`),
+  };
+}
 
 async function acquireBrowserTestLock() {
   const previous = browserTestLock;
@@ -37,9 +44,12 @@ function listen(server: Server) {
   });
 }
 
-async function waitForUrl(url: string, timeoutMs = 20_000) {
+async function waitForUrl(url: string, timeoutMs = 20_000, processMonitor?: ProcessMonitor) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (processMonitor?.hasExited()) {
+      throw new Error(processFailure(processMonitor, `Timed out waiting for ${url}`));
+    }
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -47,11 +57,52 @@ async function waitForUrl(url: string, timeoutMs = 20_000) {
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
   }
-  throw new Error(`Timed out waiting for ${url}`);
+  throw new Error(processFailure(processMonitor, `Timed out waiting for ${url}`));
 }
 
-function waitForExit(process: ChildProcess) {
-  return new Promise<void>((resolveExit) => process.once('exit', () => resolveExit()));
+type ProcessMonitor = {
+  hasExited: () => boolean;
+  diagnostics: () => string;
+  waitForExit: () => Promise<void>;
+};
+
+function monitorProcess(child: ChildProcess, label: string): ProcessMonitor {
+  let output = '';
+  let exitDescription = '';
+  let resolveExit!: () => void;
+  const exitPromise = new Promise<void>((resolve) => {
+    resolveExit = resolve;
+  });
+
+  const appendOutput = (chunk: Buffer | string) => {
+    output = `${output}${String(chunk)}`.slice(-4_000);
+  };
+  child.stdout?.on('data', appendOutput);
+  child.stderr?.on('data', appendOutput);
+  child.once('error', (error) => {
+    exitDescription = `${label} emitted an error: ${error.message}`;
+    resolveExit();
+  });
+  child.once('exit', (code, signal) => {
+    exitDescription = `${label} exited with ${signal ? `signal ${signal}` : `code ${code ?? 'unknown'}`}`;
+    resolveExit();
+  });
+
+  return {
+    hasExited: () => child.exitCode !== null || child.signalCode !== null || Boolean(exitDescription),
+    diagnostics: () => [
+      exitDescription || `${label} is still running`,
+      output.trim() ? `${label} output:\n${output.trim()}` : `${label} produced no captured output`,
+    ].join('; '),
+    waitForExit: async () => {
+      if (child.exitCode !== null || child.signalCode !== null) return;
+      await exitPromise;
+    },
+  };
+}
+
+function processFailure(monitor: ProcessMonitor | undefined, description: string) {
+  return `${description}${monitor ? `; ${monitor.diagnostics()}` : ''}`;
 }
 
 class DevToolsConnection {
@@ -60,16 +111,39 @@ class DevToolsConnection {
   private readonly pending = new Map<number, {
     resolve: (value: any) => void;
     reject: (reason: unknown) => void;
+    sessionId?: string;
+  }>();
+  private readonly sessionErrors = new Map<string, Error>();
+  private readonly targetSessions = new Map<string, string>();
+  private readonly lifecycleDiagnostics: string[] = [];
+  private readonly eventWaiters = new Set<{
+    method: string;
+    sessionId?: string;
+    resolve: () => void;
+    timer: ReturnType<typeof setTimeout>;
   }>();
 
-  private constructor(socket: WebSocket) {
+  private constructor(
+    socket: WebSocket,
+    private readonly processDiagnostics?: () => string,
+  ) {
     this.socket = socket;
     socket.addEventListener('message', (event) => {
-      const message = JSON.parse(String(event.data)) as {
+      let message: {
         id?: number;
         result?: unknown;
         error?: { message?: string };
+        method?: string;
+        params?: Record<string, any>;
+        sessionId?: string;
       };
+      try {
+        message = JSON.parse(String(event.data));
+      } catch (error) {
+        this.recordLifecycleDiagnostic(`Could not parse a Chromium DevTools message: ${String(error)}`);
+        return;
+      }
+      this.handleLifecycleEvent(message);
       if (message.id === undefined) return;
       const pending = this.pending.get(message.id);
       if (!pending) return;
@@ -77,23 +151,130 @@ class DevToolsConnection {
       if (message.error) pending.reject(new Error(message.error.message || 'DevTools command failed'));
       else pending.resolve(message.result);
     });
+    socket.addEventListener('error', () => {
+      this.rejectPending(this.connectionError('Chromium DevTools reported a socket error'));
+    });
+    socket.addEventListener('close', () => {
+      this.rejectPending(this.connectionError('Chromium DevTools connection closed'));
+    });
   }
 
-  static async connect(url: string) {
+  private connectionError(description: string) {
+    return new Error(this.processDiagnostics
+      ? `${description}; ${this.processDiagnostics()}`
+      : description);
+  }
+
+  private recordLifecycleDiagnostic(description: string) {
+    this.lifecycleDiagnostics.push(description);
+    if (this.lifecycleDiagnostics.length > 8) this.lifecycleDiagnostics.shift();
+  }
+
+  private rejectPending(error: Error, sessionId?: string) {
+    for (const [id, pending] of this.pending) {
+      if (sessionId && pending.sessionId !== sessionId) continue;
+      this.pending.delete(id);
+      pending.reject(error);
+    }
+  }
+
+  private failSession(sessionId: string | undefined, description: string) {
+    if (!sessionId) return;
+    const error = new Error(this.processDiagnostics
+      ? `${description}; ${this.processDiagnostics()}`
+      : description);
+    this.sessionErrors.set(sessionId, error);
+    this.rejectPending(error, sessionId);
+  }
+
+  private handleLifecycleEvent(message: {
+    method?: string;
+    params?: Record<string, any>;
+    sessionId?: string;
+  }) {
+    if (message.method) {
+      for (const waiter of this.eventWaiters) {
+        if (waiter.method !== message.method || (waiter.sessionId && waiter.sessionId !== message.sessionId)) continue;
+        clearTimeout(waiter.timer);
+        this.eventWaiters.delete(waiter);
+        waiter.resolve();
+      }
+    }
+    if (message.method === 'Page.crash') {
+      const reason = message.params?.reason || 'unknown reason';
+      this.recordLifecycleDiagnostic(`Chromium page crashed: ${reason}`);
+      this.failSession(message.sessionId, `Chromium page crashed (${reason})`);
+    } else if (message.method === 'Target.targetCrashed') {
+      const targetId = message.params?.targetId;
+      const status = message.params?.status || 'unknown status';
+      const errorCode = message.params?.errorCode;
+      const sessionId = targetId ? this.targetSessions.get(targetId) : undefined;
+      const description = `Chromium target crashed (${status}${errorCode === undefined ? '' : `, error code ${errorCode}`})`;
+      this.recordLifecycleDiagnostic(description);
+      this.failSession(sessionId, description);
+    } else if (message.method === 'Target.detachedFromTarget') {
+      const sessionId = message.params?.sessionId;
+      const reason = message.params?.reason || 'unknown reason';
+      const description = `Chromium detached the inspected target (${reason})`;
+      this.recordLifecycleDiagnostic(description);
+      this.failSession(sessionId, description);
+    } else if (message.method === 'Inspector.detached') {
+      const reason = message.params?.reason || 'unknown reason';
+      const description = `Chromium inspector detached from the page (${reason})`;
+      this.recordLifecycleDiagnostic(description);
+      this.failSession(message.sessionId, description);
+    }
+  }
+
+  static async connect(url: string, processDiagnostics?: () => string) {
     const socket = new WebSocket(url);
     await new Promise<void>((resolveOpen, reject) => {
       socket.addEventListener('open', () => resolveOpen());
       socket.addEventListener('error', () => reject(new Error('Could not connect to Chromium DevTools')));
     });
-    return new DevToolsConnection(socket);
+    return new DevToolsConnection(socket, processDiagnostics);
   }
 
   send<T = any>(method: string, params: Record<string, unknown> = {}, sessionId?: string) {
+    const sessionError = sessionId ? this.sessionErrors.get(sessionId) : undefined;
+    if (sessionError) return Promise.reject(sessionError);
+    if (this.socket.readyState !== WebSocket.OPEN) {
+      return Promise.reject(this.connectionError('Cannot send a Chromium DevTools command because the socket is closed'));
+    }
     const id = ++this.nextId;
     return new Promise<T>((resolveResult, rejectResult) => {
-      this.pending.set(id, { resolve: resolveResult, reject: rejectResult });
+      this.pending.set(id, { resolve: resolveResult, reject: rejectResult, sessionId });
       this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
     });
+  }
+
+  registerTarget(targetId: string, sessionId: string) {
+    this.targetSessions.set(targetId, sessionId);
+  }
+
+  waitForEvent(method: string, sessionId?: string, timeoutMs = 10_000) {
+    return new Promise<void>((resolve, reject) => {
+      let waiter!: {
+        method: string;
+        sessionId?: string;
+        resolve: () => void;
+        timer: ReturnType<typeof setTimeout>;
+      };
+      const timer = setTimeout(() => {
+        this.eventWaiters.delete(waiter);
+        reject(new Error(this.processDiagnostics
+          ? `Timed out waiting for Chromium DevTools event ${method}; ${this.processDiagnostics()}`
+          : `Timed out waiting for Chromium DevTools event ${method}`));
+      }, timeoutMs);
+      waiter = { method, sessionId, resolve, timer };
+      this.eventWaiters.add(waiter);
+    });
+  }
+
+  diagnostics() {
+    return this.lifecycleDiagnostics.length > 0
+      ? this.lifecycleDiagnostics.join(' | ')
+      : 'no Chromium page lifecycle events were captured';
   }
 
   async evaluate<T>(expression: string, sessionId: string): Promise<T> {
@@ -129,8 +310,18 @@ async function openPage(connection: DevToolsConnection, url: string) {
   const { sessionId } = attached;
   await connection.send('Page.enable', {}, sessionId);
   await connection.send('Runtime.enable', {}, sessionId);
+  connection.registerTarget(target.targetId, sessionId);
   await connection.send('Page.navigate', { url }, sessionId);
   return { sessionId, targetId: target.targetId };
+}
+
+async function reloadPage(
+  connection: DevToolsConnection,
+  page: { sessionId: string; targetId: string },
+) {
+  const loadEvent = connection.waitForEvent('Page.loadEventFired', page.sessionId);
+  await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+  await loadEvent;
 }
 
 async function waitFor<T>(
@@ -142,14 +333,22 @@ async function waitFor<T>(
 ) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const value = await page.evaluate<T>(expression, sessionId);
+    let value: T;
+    try {
+      value = await page.evaluate<T>(expression, sessionId);
+    } catch (error) {
+      throw new Error(`Browser condition failed: ${expression}; ${error instanceof Error ? error.message : String(error)}; ${page.diagnostics()}`);
+    }
     if (predicate(value)) return value;
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
   }
   const diagnostic = await page.evaluate<{ body: string; testError?: string }>(
     '({ body: document.body?.innerText || "", testError: document.body?.dataset.testError })',
     sessionId,
-  );
+  ).catch((error) => ({
+    body: `unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    testError: undefined,
+  }));
   throw new Error(`Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; body=${diagnostic.body.slice(0, 700)}`);
 }
 
@@ -366,12 +565,12 @@ export function mount() {
 `;
 }
 
-function htmlSource() {
+function htmlSource(harnessFilename: string) {
   return `
 <!doctype html>
 <html>
   <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Supporter dashboard browser test</title></head>
-  <body><div id="test-root"></div><script type="module">import('/supporter-dashboard-test-harness.tsx?browser-test=' + Date.now()).then(({ mount }) => mount()).catch((error) => { document.body.dataset.testError = String(error); });</script></body>
+  <body><div id="test-root"></div><script type="module">import('/${harnessFilename}?browser-test=' + Date.now()).then(({ mount }) => mount()).catch((error) => { document.body.dataset.testError = String(error); });</script></body>
 </html>
 `;
 }
@@ -396,30 +595,36 @@ async function pressKey(connection: DevToolsConnection, sessionId: string, key: 
 
 test('supporter dashboard tools stay keyboard reachable and compact at phone and desktop widths', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
-  const viteProbe = createServer();
-  const { port: vitePort } = await listen(viteProbe);
-  await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
-  await writeFile(harnessPath, harnessSource(), 'utf8');
-  await writeFile(htmlPath, htmlSource(), 'utf8');
-
-  const devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
-    cwd: appDirectory,
-    env: {
-      ...process.env,
-      PORT: String(vitePort),
-      BASE_PATH: '/',
-      VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
-    },
-    stdio: 'ignore',
-  });
-  const tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-dashboard-browser-'));
-
+  const fixtures = fixturePaths('supporter-dashboard-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
   let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
   let connection: DevToolsConnection | undefined;
   let page: { sessionId: string; targetId: string } | undefined;
 
   try {
-    await waitForUrl(`http://127.0.0.1:${vitePort}/`);
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-dashboard-browser-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
     const debugProbe = createServer();
     const { port: debugPort } = await listen(debugProbe);
     await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
@@ -431,11 +636,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       `--remote-debugging-port=${debugPort}`,
       `--user-data-dir=${tempDirectory}`,
       'about:blank',
-    ], { stdio: 'ignore' });
-    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`);
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
-    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
-    page = await openPage(connection, `http://127.0.0.1:${vitePort}/supporter-dashboard-test.html`);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 1000,
@@ -494,7 +700,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       /Next/,
     );
 
-    await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+    await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
@@ -502,7 +708,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
 
     await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:upcoming")', page.sessionId);
-    await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+    await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
@@ -511,7 +717,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await connection.evaluate(`document.querySelector('[data-testid="button-choose-task"]')?.click()`, page.sessionId);
 
     await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:upcoming")', page.sessionId);
-    await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
+    await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-close\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-close"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
@@ -1047,42 +1253,53 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     }
     connection?.close();
-    browser?.kill('SIGTERM');
-    if (browser) await waitForExit(browser);
-    devServer.kill('SIGTERM');
-    await waitForExit(devServer);
-    await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    await rm(harnessPath, { force: true });
-    await rm(htmlPath, { force: true });
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
     releaseBrowserTestLock();
   }
 });
 
 test('saved athlete profile names reach every fan tool without rewriting cloud cards', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
-  const viteProbe = createServer();
-  const { port: vitePort } = await listen(viteProbe);
-  await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
-  await writeFile(harnessPath, harnessSource(), 'utf8');
-  await writeFile(htmlPath, htmlSource(), 'utf8');
-
-  const devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
-    cwd: appDirectory,
-    env: {
-      ...process.env,
-      PORT: String(vitePort),
-      BASE_PATH: '/',
-      VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
-    },
-    stdio: 'ignore',
-  });
-  const tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-profile-propagation-browser-'));
+  const fixtures = fixturePaths('supporter-dashboard-profile-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
   let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
   let connection: DevToolsConnection | undefined;
   let page: { sessionId: string; targetId: string } | undefined;
 
   try {
-    await waitForUrl(`http://127.0.0.1:${vitePort}/`);
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-profile-propagation-browser-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
     const debugProbe = createServer();
     const { port: debugPort } = await listen(debugProbe);
     await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
@@ -1094,11 +1311,12 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       `--remote-debugging-port=${debugPort}`,
       `--user-data-dir=${tempDirectory}`,
       'about:blank',
-    ], { stdio: 'ignore' });
-    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`);
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
-    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
-    page = await openPage(connection, `http://127.0.0.1:${vitePort}/supporter-dashboard-test.html?profile-propagation`);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?profile-propagation`);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-profile-save\\"]") !== null', Boolean);
 
     await connection.evaluate(`(() => {
@@ -1177,13 +1395,17 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
-    browser?.kill('SIGTERM');
-    if (browser) await waitForExit(browser);
-    devServer.kill('SIGTERM');
-    await waitForExit(devServer);
-    await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    await rm(harnessPath, { force: true });
-    await rm(htmlPath, { force: true });
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
     releaseBrowserTestLock();
   }
 });
