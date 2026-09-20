@@ -279,7 +279,7 @@ test('baseball hit waits for a single, double, or triple choice before recording
   assert.match(renderedText(renderer), /HIT1 · tracked/);
 });
 
-test('baseball pitch waits for a fastball or changeup choice before recording', () => {
+test('baseball pitch expands its choices without expanding the walk card', () => {
   const game = createGameSession('baseball', { opponent: 'Northside' }, new Date('2026-09-20T12:00:00Z'));
   const rule = getSportRule('baseball');
   let changedGame = game;
@@ -306,18 +306,29 @@ test('baseball pitch waits for a fastball or changeup choice before recording', 
 
   assert.equal(rule.stats.find((item) => item.id === 'strikeout')?.liveHidden, true);
   assert.deepEqual(
-    rule.stats.filter((item) => item.liveHidden).map((item) => item.id),
-    ['single', 'double', 'triple', 'strikeout', 'four-seam-fastball', 'two-seam-fastball', 'changeup'],
+    rule.stats.filter((item) => item.liveHidden && ['fastball', 'changeup', 'slider', 'strikeout', 'curveball'].includes(item.id)).map((item) => item.id),
+    ['strikeout', 'fastball', 'changeup', 'slider', 'curveball'],
   );
   act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-pitch' }).props.onClick());
   assert.equal(changedGame.events.length, 0);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'baseball-pitch-choices' }).children.length, 3);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'baseball-pitch-choices' }).children.length, 5);
+  for (const choiceId of ['fastball', 'changeup', 'slider', 'strikeout', 'curveball']) {
+    assert.ok(renderer.root.findByProps({ 'data-testid': `baseball-pitch-${choiceId}` }));
+  }
+  assert.match(renderedText(renderer), /Fastball/);
+  assert.match(renderedText(renderer), /Changeup/);
+  assert.match(renderedText(renderer), /Slider/);
+  assert.match(renderedText(renderer), /Strike \(K\)/);
+  assert.match(renderedText(renderer), /Curveball/);
 
-  act(() => renderer.root.findByProps({ 'data-testid': 'baseball-pitch-four-seam-fastball' }).props.onClick());
+  const walkCard = renderer.root.findByProps({ 'data-testid': 'live-stat-card-walk' });
+  assert.equal(walkCard.findByProps({ 'data-testid': 'live-stat-walk' }).props['aria-expanded'], undefined);
+  assert.equal(walkCard.findAll((node) => node.props['data-testid'] === 'baseball-pitch-choices').length, 0);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'baseball-pitch-strikeout' }).props.onClick());
   assert.equal(changedGame.events.length, 1);
-  assert.equal(changedGame.events[0]?.statId, 'four-seam-fastball');
-  assert.equal(changedGame.stats['four-seam-fastball'], 1);
-  assert.equal(changedGame.stats.strikeout, undefined);
+  assert.equal(changedGame.events[0]?.statId, 'strikeout');
+  assert.equal(changedGame.stats.strikeout, 1);
 });
 
 test('softball is available with inning-based game tracking', () => {

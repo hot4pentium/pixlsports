@@ -216,9 +216,11 @@ export const baseballHitChoices = [
 ] as const;
 
 export const baseballPitchChoices = [
-  { id: 'four-seam-fastball', label: 'Four-seam fastball', shortLabel: '4SFB' },
-  { id: 'two-seam-fastball', label: 'Two-seam fastball', shortLabel: '2SFB' },
+  { id: 'fastball', label: 'Fastball', shortLabel: 'FB' },
   { id: 'changeup', label: 'Changeup', shortLabel: 'CHG' },
+  { id: 'slider', label: 'Slider', shortLabel: 'SL' },
+  { id: 'strikeout', label: 'Strike (K)', shortLabel: 'K' },
+  { id: 'curveball', label: 'Curveball', shortLabel: 'CB' },
 ] as const;
 
 export const footballYardMetricDefinitions = [
@@ -329,9 +331,13 @@ export const sportRules: Record<Sport, SportRule> = {
       stat('walk', 'Walk', 'BB', 0),
       stat('stolen-base', 'Stolen base', 'SB', 0, false),
       stat('pitch', 'Pitch', 'PITCH', 0),
+      stat('fastball', 'Fastball', 'FB', 0, false, true),
+      stat('changeup', 'Changeup', 'CHG', 0, false, true),
+      stat('slider', 'Slider', 'SL', 0, false, true),
+      stat('curveball', 'Curveball', 'CB', 0, false, true),
+      // Keep older pitch classifications readable without offering them as new choices.
       stat('four-seam-fastball', 'Four-seam fastball', '4SFB', 0, false, true),
       stat('two-seam-fastball', 'Two-seam fastball', '2SFB', 0, false, true),
-      stat('changeup', 'Changeup', 'CHG', 0, false, true),
     ],
   },
   softball: {
