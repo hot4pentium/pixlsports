@@ -624,6 +624,7 @@ function OutputFormatControls({
   project: HypeCardProject;
   onFormatChange: (format: HypeFormat) => void;
 }) {
+  const landscapeAvailable = project.mediaType === 'video' || project.format === 'landscape';
   const options: Array<{ format: HypeFormat; title: string; dimensions: string; description: string }> = [
     {
       format: 'card',
@@ -633,14 +634,14 @@ function OutputFormatControls({
     },
   ];
 
-  if (project.mediaType === 'video' || project.format === 'landscape') {
-    options.push({
-      format: 'landscape',
-      title: 'Landscape video',
-      dimensions: '1920 × 1080',
-      description: 'Shows the full wide video frame in a horizontal card.',
-    });
-  }
+  options.push({
+    format: 'landscape',
+    title: 'Landscape video',
+    dimensions: '1920 × 1080',
+    description: landscapeAvailable
+      ? 'Shows the full wide video frame in a horizontal card.'
+      : 'Add a video to enable the horizontal card.',
+  });
 
   return (
     <div className="space-y-3" role="group" aria-label="Output format">
@@ -650,11 +651,14 @@ function OutputFormatControls({
           type="button"
           data-testid={`format-option-${option.format}`}
           aria-pressed={project.format === option.format}
+          disabled={option.format === 'landscape' && !landscapeAvailable}
           onClick={() => onFormatChange(option.format)}
           className={`w-full rounded-xl border p-4 text-left transition-colors ${
             project.format === option.format
               ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-              : 'border-border bg-background hover:border-primary/60 hover:bg-muted'
+              : option.format === 'landscape' && !landscapeAvailable
+                ? 'cursor-not-allowed border-border bg-muted/50 opacity-65'
+                : 'border-border bg-background hover:border-primary/60 hover:bg-muted'
           }`}
         >
           <span className="block text-xs font-bold">{option.title}</span>
