@@ -3796,7 +3796,7 @@ function SchedulePreview({
   onAddEvent: () => void;
 }) {
   return (
-    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-[#DCE3EC] bg-[#E8F1FF] px-3 py-4 sm:min-h-[760px] sm:px-8 sm:py-8 clip-angled-sm">
+    <div className="relative mx-auto w-full max-w-[976px] overflow-hidden border border-[#DCE3EC] bg-[#E8F1FF] p-2 sm:p-3 clip-angled-sm">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,107,53,.16),transparent_26%),radial-gradient(circle_at_85%_85%,rgba(36,116,245,.16),transparent_30%)]" />
       <div className="relative w-full max-w-[960px] overflow-hidden rounded-[28px] bg-[#12213A] p-5 text-[#F7F5EF] shadow-[0_25px_70px_-24px_rgba(18,33,58,.65)] sm:p-8" data-testid="preview-canvas">
         <div className="pointer-events-none absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] border-[#FF6B35]/80" />

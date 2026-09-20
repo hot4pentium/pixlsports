@@ -19,6 +19,8 @@ const schedulePreview = appSource.slice(
 test('calendar preview uses the landing-page card and keeps creation controls inside it', () => {
   assert.match(schedulePreview, /bg-\[#12213A\]/);
   assert.match(schedulePreview, /bg-\[#FF6B35\]/);
+  assert.match(schedulePreview, /max-w-\[976px\].*bg-\[#E8F1FF\].*p-2.*sm:p-3/);
+  assert.doesNotMatch(schedulePreview, /min-h-\[600px\]|min-h-\[760px\]/);
   assert.match(
     schedulePreview,
     /data-testid="button-add-event"/,
