@@ -8,9 +8,9 @@ import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
 import gameDayChecklist from '@/assets/game-day-checklist-768.webp';
 import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
 import sidelineParents from '../../../../attached_assets/generated_images/sideline-parents.jpg';
-import soccerField from '../../../../attached_assets/Soccer_1789318034545.svg';
-import footballField from '../../../../attached_assets/Football_1789319561486.svg';
-import basketballCourt from '../../../../attached_assets/basketball_1789319561486.svg';
+import soccerAthlete from '../../../../attached_assets/generated_images/landing-soccer-athlete.jpg';
+import footballAthlete from '../../../../attached_assets/generated_images/landing-football-athlete.jpg';
+import basketballAthlete from '../../../../attached_assets/generated_images/landing-basketball-athlete.jpg';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -99,19 +99,19 @@ const landingSports = [
     id: 'soccer',
     label: 'Soccer',
     kicker: 'Find your shape',
-    image: soccerField,
+    image: soccerAthlete,
   },
   {
     id: 'football',
     label: 'Football',
     kicker: 'Own the field',
-    image: footballField,
+    image: footballAthlete,
   },
   {
     id: 'basketball',
     label: 'Basketball',
     kicker: 'Run the floor',
-    image: basketballCourt,
+    image: basketballAthlete,
   },
 ] as const;
 
@@ -165,7 +165,7 @@ function LandingSportShowcase() {
               <div className="landing-sport-card-face">
                 <img
                   src={sport.image}
-                  alt={`${sport.label} field`}
+                  alt={`Youth ${sport.label.toLowerCase()} athlete in action`}
                   className="h-full w-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}
                 />
