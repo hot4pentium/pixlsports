@@ -457,6 +457,37 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"select-active-supporter-game\\"]"))', page.sessionId),
       false,
     );
+    assert.equal(
+      await connection.evaluate<string>('document.body.innerText', page.sessionId).then((text) => text.includes('No Scheduled Events')),
+      true,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(\'[data-testid="week-path-content"]\')?.getAttribute("data-selected-path") === "plan"',
+      Boolean,
+    );
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'practice-1', type: 'practice', date: '2026-09-22', time: '18:30', location: 'Northside Gym', notes: 'Bring water' }])`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"]\')?.textContent || ""', page.sessionId),
+      /practice/i,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+      /Get ready for practice/,
+    );
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'practice-1', type: 'practice', date: '2026-09-22', time: '18:30', location: 'Northside Gym', notes: 'Bring water' },
+      { id: 'game-1', type: 'game', date: '2026-09-23', time: '18:30', location: 'Eastside Gym', opponent: 'Rivals', status: 'upcoming' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"]\')?.textContent || ""', page.sessionId),
+      /Rivals/,
+    );
 
     assert.equal(await connection.evaluate<boolean>(
       'Boolean(document.querySelector(\'[data-testid="button-choose-task"]\'))',
@@ -478,10 +509,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       'document.querySelector("[data-testid=\\"button-choose-task\\"]")?.getAttribute("aria-expanded")',
       page.sessionId,
     ), 'true');
-    assert.equal(await connection.evaluate<string>(
-      'document.activeElement?.getAttribute("data-testid")',
+    await waitFor(
+      connection,
       page.sessionId,
-    ), 'link-quick-hype');
+      'document.activeElement?.getAttribute("data-testid") === "link-quick-hype"',
+      Boolean,
+    );
 
     const toolRoutes = await connection.evaluate<Record<string, string>>(`Object.fromEntries(
       [...document.querySelectorAll('[data-testid^="link-quick-"]')].map((element) => [

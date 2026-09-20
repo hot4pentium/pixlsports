@@ -11,6 +11,7 @@ import {
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
+  getSupporterWeekRecommendation,
   getSupporterStageAcknowledgmentKey,
   hasAcknowledgedSupporterGameStage,
   acknowledgeSupporterGameStage,
@@ -119,7 +120,7 @@ function formatTimeDisplay(time: string) {
 
 function formatDaysUntil(dateStr: string) {
   const date = parseISO(dateStr);
-  if (!isValid(date)) return 'Next game';
+  if (!isValid(date)) return 'Next event';
   const days = differenceInCalendarDays(date, new Date());
   if (days <= 0) return 'Today';
   if (days === 1) return 'Tomorrow';
@@ -217,33 +218,54 @@ export function SupporterDashboardView({
   });
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null);
+  const weekRecommendation = getSupporterWeekRecommendation(events);
+  const recommendedPractice = weekRecommendation?.kind === 'practice'
+    ? weekRecommendation.event
+    : undefined;
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
-  const gameStage: SupporterGameStage = nextGame
-    ? getSupporterGameStage(nextGame)
+  const showPracticeContext = Boolean(
+    recommendedPractice
+    && (!selectedGameId || !gameEvents.some((game) => game.id === selectedGameId))
+    && (!nextGame || (!selectedGameId && recommendedGame && getSupporterGameStage(recommendedGame) === 'completed')),
+  );
+  const contextEvent = showPracticeContext ? recommendedPractice : nextGame;
+  const gameStage: SupporterGameStage = contextEvent
+    ? getSupporterGameStage(contextEvent)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const recommendedGameStage = recommendedGame
     ? getSupporterGameStage(recommendedGame)
     : null;
   const isViewingPastGame = Boolean(
     nextGame
+    && contextEvent === nextGame
     && recommendedGame
     && nextGame.id !== recommendedGame.id
     && gameStage === 'completed',
   );
-  const currentStage = stageCopy[gameStage];
-  const stageReminderKey = nextGame
-    ? getSupporterStageAcknowledgmentKey(nextGame.id, gameStage)
+  const currentStage = contextEvent?.type === 'practice' && gameStage === 'upcoming'
+    ? {
+      ...stageCopy[gameStage],
+      kicker: 'Practice next',
+      description: 'Pack the essentials now so practice feels easy.',
+    }
+    : stageCopy[gameStage];
+  const stageReminderGame = contextEvent?.type === 'game' ? contextEvent : undefined;
+  const stageReminderKey = stageReminderGame
+    ? getSupporterStageAcknowledgmentKey(stageReminderGame.id, gameStage)
     : null;
   const [, setReminderVersion] = useState(0);
   const showStageReminder = Boolean(
-    nextGame
+    stageReminderGame
     && stageReminderKey
     && typeof window !== 'undefined'
-    && !hasAcknowledgedSupporterGameStage(window.localStorage, nextGame.id, gameStage),
+    && !hasAcknowledgedSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage),
   );
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
+  const contextTitle = contextEvent?.type === 'practice'
+    ? `${profile.teamName || 'Your team'} practice`
+    : gameTitle;
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
     ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.statTracker;
@@ -254,10 +276,10 @@ export function SupporterDashboardView({
     ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(game.id)}&date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.hypeCard;
   const statTrackerHref = statTrackerHrefForGame(nextGame);
-  const checklistHref = checklistHrefForGame(nextGame);
+  const contextChecklistHref = checklistHrefForGame(contextEvent);
   const hypeCardHref = hypeCardHrefForGame(nextGame);
   const recommendedStatTrackerHref = statTrackerHrefForGame(recommendedGame);
-  const recommendedChecklistHref = checklistHrefForGame(recommendedGame);
+  const recommendedChecklistHref = checklistHrefForGame(weekRecommendation?.event);
   const weeklyPath = [
     {
       id: 'plan',
@@ -265,7 +287,7 @@ export function SupporterDashboardView({
       label: 'Plan the week',
       Icon: CalendarDays,
       href: supporterToolRoutes.schedule,
-      active: !recommendedGame,
+      active: !weekRecommendation,
     },
     {
       id: 'upcoming',
@@ -273,7 +295,7 @@ export function SupporterDashboardView({
       label: 'Get ready',
       Icon: ClipboardCheck,
       href: recommendedChecklistHref,
-      active: Boolean(recommendedGame && recommendedGameStage === 'upcoming'),
+      active: Boolean(weekRecommendation && weekRecommendation.stage === 'upcoming'),
     },
     {
       id: 'live',
@@ -281,7 +303,7 @@ export function SupporterDashboardView({
       label: 'Capture the game',
       Icon: Activity,
       href: recommendedStatTrackerHref,
-      active: Boolean(recommendedGame && recommendedGameStage === 'live'),
+      active: Boolean(weekRecommendation && weekRecommendation.stage === 'live'),
     },
     {
       id: 'completed',
@@ -289,7 +311,7 @@ export function SupporterDashboardView({
       label: 'Send the hype',
       Icon: Zap,
       href: hypeCardHref,
-      active: Boolean(recommendedGame && recommendedGameStage === 'completed'),
+      active: Boolean(weekRecommendation && weekRecommendation.stage === 'completed'),
     },
   ] as const;
   type WeeklyPathId = typeof weeklyPath[number]['id'];
@@ -368,8 +390,10 @@ export function SupporterDashboardView({
     },
     upcoming: {
       eyebrow: '02 / Preparation',
-      title: 'Get ready for game day.',
-      description: 'Use the checklist to get the essentials in place before the first whistle.',
+      title: weekRecommendation?.kind === 'practice' ? 'Get ready for practice.' : 'Get ready for game day.',
+      description: weekRecommendation?.kind === 'practice'
+        ? 'Use the checklist to get the essentials in place before practice.'
+        : 'Use the checklist to get the essentials in place before the first whistle.',
       action: 'Open checklist',
     },
     live: {
@@ -388,15 +412,21 @@ export function SupporterDashboardView({
   const selectedPathDetails = weeklyPathDetails[selectedPath.id];
 
   useEffect(() => {
-    if (!showStageReminder || !nextGame || !stageReminderKey) return;
+    if (!weekRecommendation && selectedPathId !== null) {
+      setSelectedPathId(null);
+    }
+  }, [selectedPathId, weekRecommendation]);
+
+  useEffect(() => {
+    if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      acknowledgeSupporterGameStage(window.localStorage, nextGame.id, gameStage);
+      acknowledgeSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage);
       setReminderVersion((version) => version + 1);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameStage, nextGame, showStageReminder, stageReminderKey]);
+  }, [gameStage, showStageReminder, stageReminderGame, stageReminderKey]);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -420,8 +450,8 @@ export function SupporterDashboardView({
   }, [gameEvents, stageReminderKey]);
 
   const dismissStageReminder = () => {
-    if (!nextGame) return;
-    acknowledgeSupporterGameStage(window.localStorage, nextGame.id, gameStage);
+    if (!stageReminderGame) return;
+    acknowledgeSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage);
     setReminderVersion((version) => version + 1);
   };
 
@@ -442,7 +472,7 @@ export function SupporterDashboardView({
     setToolsOpen(true);
     window.requestAnimationFrame(() => {
       document.getElementById('all-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      focusFirstTool();
+      window.requestAnimationFrame(focusFirstTool);
     });
   };
 
@@ -582,7 +612,7 @@ export function SupporterDashboardView({
               {scheduleSource && <span className="text-white/45">· {scheduleSource === 'team' ? 'Team calendar' : 'Your schedule'}</span>}
             </div>
             <h2 id="next-game-heading" className="mt-3 max-w-2xl font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl">
-              {nextGame ? gameTitle : 'Make the next game count.'}
+              {contextEvent ? contextTitle : 'Make the next game count.'}
             </h2>
             {isViewingPastGame && (
               <div
@@ -595,16 +625,16 @@ export function SupporterDashboardView({
                 </p>
               </div>
             )}
-            {nextGame ? (
+            {contextEvent ? (
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-white/65">
-                <span>{formatDateDisplay(nextGame.date)}</span>
+                <span>{formatDateDisplay(contextEvent.date)}</span>
                 <span className="text-white/30">·</span>
-                <span>{formatTimeDisplay(nextGame.time)}</span>
-                {nextGame.location && <><span className="text-white/30">·</span><span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-primary" />{nextGame.location}</span></>}
+                <span>{formatTimeDisplay(contextEvent.time)}</span>
+                {contextEvent.location && <><span className="text-white/30">·</span><span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-primary" />{contextEvent.location}</span></>}
               </div>
             ) : (
               <p className="mt-5 max-w-lg text-sm font-medium leading-relaxed text-white/65">
-                Add a game to the schedule and Pixl Sports will put the right action front and center.
+                Add a game or practice to the schedule and Pixl Sports will put the right action front and center.
               </p>
             )}
             {gameEvents.length > 1 && (
@@ -627,15 +657,15 @@ export function SupporterDashboardView({
             )}
             <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {gameStage === 'upcoming' && nextGame && <button type="button" onClick={() => setLocation(checklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
+              {gameStage === 'upcoming' && contextEvent && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
               {gameStage === 'live' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
               {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
-              {!nextGame && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add a game</Link>}
+              {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
             </div>
           </div>
           <div className="flex flex-col justify-end">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
-            <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as game day moves. The calendar marks what comes next.</p>
+            <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as the week moves. The calendar marks what comes next.</p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               {weeklyPath.map(({ id, number, label, Icon, active }) => {
                 const theme = weeklyPathThemes[id];
@@ -956,8 +986,8 @@ export function SupporterDashboardView({
               <span className="flex min-w-0 items-center gap-3">
                 <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
                 <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Game Day</span>
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}</span>
+                  <span className="block font-display text-xl uppercase tracking-wide">{recommendedPractice && !nextGame ? 'Practice' : 'Game Day'}</span>
+                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : recommendedPractice ? `${formatDateDisplay(recommendedPractice.date)} · Practice` : scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}</span>
                 </span>
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />

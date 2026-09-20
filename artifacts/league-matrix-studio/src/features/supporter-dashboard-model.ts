@@ -127,6 +127,16 @@ export type SupporterGameLike = {
   status?: ScheduleEventStatus;
 };
 
+export type SupporterWeekEventLike = SupporterGameLike & {
+  type: 'game' | 'practice' | 'meeting';
+};
+
+export type SupporterWeekRecommendation<T extends SupporterWeekEventLike = SupporterWeekEventLike> = {
+  event: T;
+  kind: 'game' | 'practice';
+  stage: SupporterGameStage;
+};
+
 export const supporterActiveGameStorageKey = 'pixlsports-supporter-active-game';
 export const supporterStageAcknowledgmentStoragePrefix = 'pixlsports-supporter-stage-ack';
 
@@ -233,6 +243,44 @@ export function getActiveSupporterGame<T extends SupporterGameLike>(
   if (selected) return selected;
   return games.find((game) => getSupporterGameStage(game, now) !== 'completed')
     ?? games.at(-1);
+}
+
+export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>(
+  events: readonly T[],
+  now = new Date(),
+): SupporterWeekRecommendation<T> | null {
+  const games = events.filter((event) => event.type === 'game');
+  const liveGame = games.find((game) => getSupporterGameStage(game, now) === 'live');
+  const upcomingGame = games.find((game) => getSupporterGameStage(game, now) === 'upcoming');
+  const prioritizedGame = liveGame ?? upcomingGame;
+
+  if (prioritizedGame) {
+    return {
+      event: prioritizedGame,
+      kind: 'game',
+      stage: getSupporterGameStage(prioritizedGame, now),
+    };
+  }
+
+  const upcomingPractice = events.find((event) => (
+    event.type === 'practice' && getSupporterGameStage(event, now) === 'upcoming'
+  ));
+  if (upcomingPractice) {
+    return {
+      event: upcomingPractice,
+      kind: 'practice',
+      stage: 'upcoming',
+    };
+  }
+
+  const completedGame = games.at(-1);
+  return completedGame
+    ? {
+      event: completedGame,
+      kind: 'game',
+      stage: 'completed',
+    }
+    : null;
 }
 
 export function readSupporterActiveGame(storage: Pick<Storage, 'getItem'>): string | null {

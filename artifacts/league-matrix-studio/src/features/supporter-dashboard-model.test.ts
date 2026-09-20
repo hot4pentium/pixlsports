@@ -6,6 +6,7 @@ import {
   getActiveSupporterGame,
   getCalendarViewState,
   getSupporterGameStage,
+  getSupporterWeekRecommendation,
   getSupporterScheduleSelection,
   getStudioDestination,
   getUserRole,
@@ -24,6 +25,51 @@ test('models upcoming, live, and completed supporter game phases', () => {
   assert.equal(getSupporterGameStage({ date: '2026-09-19', time: '14:00' }, now), 'live');
   assert.equal(getSupporterGameStage({ date: '2026-09-19', time: '10:00' }, now), 'completed');
   assert.equal(getSupporterGameStage({ date: '2026-09-18', time: '18:00' }, now), 'completed');
+});
+
+test('recommends an upcoming practice when no live or upcoming game is available', () => {
+  const now = new Date(2026, 8, 19, 15, 0, 0);
+  const practice = {
+    id: 'practice-1',
+    type: 'practice' as const,
+    date: '2026-09-20',
+    time: '10:00',
+  };
+
+  assert.deepEqual(getSupporterWeekRecommendation([
+    { id: 'game-past', type: 'game' as const, date: '2026-09-18', time: '18:00', status: 'final' },
+    practice,
+  ], now), {
+    event: practice,
+    kind: 'practice',
+    stage: 'upcoming',
+  });
+});
+
+test('keeps live and upcoming games ahead of practice recommendations', () => {
+  const now = new Date(2026, 8, 19, 15, 0, 0);
+  const practice = {
+    id: 'practice-1',
+    type: 'practice' as const,
+    date: '2026-09-20',
+    time: '10:00',
+  };
+  const upcomingGame = {
+    id: 'game-upcoming',
+    type: 'game' as const,
+    date: '2026-09-21',
+    time: '18:00',
+  };
+  const liveGame = {
+    id: 'game-live',
+    type: 'game' as const,
+    date: '2026-09-19',
+    time: '14:00',
+  };
+
+  assert.equal(getSupporterWeekRecommendation([practice, upcomingGame], now)?.event.id, 'game-upcoming');
+  assert.equal(getSupporterWeekRecommendation([practice, upcomingGame, liveGame], now)?.event.id, 'game-live');
+  assert.equal(getSupporterWeekRecommendation([{ id: 'meeting-1', type: 'meeting' as const, date: '2026-09-20', time: '10:00' }], now), null);
 });
 
 test('explicit schedule status wins over the clock fallback', () => {
