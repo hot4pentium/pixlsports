@@ -68,6 +68,7 @@ import {
   type TrackerSaveStatus,
 } from './stat-tracker';
 import { GameReportView } from './stat-tracker-game-report';
+import { trackEvent } from '../lib/analytics';
 
 export function readLocalTrackerSession(storage: TrackerStorage, accountId: string) {
   return {
@@ -78,6 +79,17 @@ export function readLocalTrackerSession(storage: TrackerStorage, accountId: stri
 
 function saveLocalTracker(data: StatTrackerData, accountId: string) {
   window.localStorage.setItem(getTrackerStorageKeys(accountId).history, JSON.stringify(data));
+}
+
+type TrackerSyncOutcome = 'cloud_success' | 'local_only_failure' | 'retry_success' | 'revision_conflict';
+type TrackerSyncOperation = 'initial_save' | 'retry' | 'conflict_resolution';
+
+function trackTrackerSyncOutcome(
+  outcome: TrackerSyncOutcome,
+  operation: TrackerSyncOperation,
+  sport: Sport,
+) {
+  trackEvent('stat_tracker_sync_outcome', { outcome, operation, sport });
 }
 
 export type ScheduledGame = {
@@ -940,11 +952,17 @@ export function StatTrackerPage() {
     try {
       await syncTrackerData(nextData);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
+      trackTrackerSyncOutcome('cloud_success', 'initial_save', completed.sport);
       setSaveStatus('cloud-saved');
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
       const conflict = getTrackerConflict(saveError, nextData);
+      trackTrackerSyncOutcome(
+        recovery.revisionConflict ? 'revision_conflict' : 'local_only_failure',
+        'initial_save',
+        completed.sport,
+      );
       setError(recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
@@ -964,6 +982,7 @@ export function StatTrackerPage() {
     try {
       await syncTrackerData(data);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
+      trackTrackerSyncOutcome('retry_success', 'retry', sport);
       setRetryAvailable(false);
       setRevisionConflict(false);
       setTrackerConflict(null);
@@ -973,6 +992,11 @@ export function StatTrackerPage() {
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
       const conflict = getTrackerConflict(saveError, data);
+      trackTrackerSyncOutcome(
+        recovery.revisionConflict ? 'revision_conflict' : 'local_only_failure',
+        'retry',
+        sport,
+      );
       setError(recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
@@ -1024,6 +1048,7 @@ export function StatTrackerPage() {
     try {
       await syncTrackerData(selectedData);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
+      trackTrackerSyncOutcome('retry_success', 'conflict_resolution', sport);
       setRevisionConflict(false);
       setTrackerConflict(null);
       setSelectedConflictResolution(null);
@@ -1032,6 +1057,11 @@ export function StatTrackerPage() {
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
       const nextConflict = getTrackerConflict(saveError, selectedData);
+      trackTrackerSyncOutcome(
+        recovery.revisionConflict ? 'revision_conflict' : 'local_only_failure',
+        'conflict_resolution',
+        sport,
+      );
       setError(recovery.message);
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
