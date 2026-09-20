@@ -378,3 +378,10 @@ mtime_ms = 1789348138607
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/bdf63d9c-b061-4371-9cac-2d5e8d9f7352/943406d1-21e1-4dae-bbc9-ac2ab694f2c8"
 storage_version_token = "1789348148597607"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "NtMFrxXr6dxXc6_dFPNdj"
+uri = "file://artifacts/before-game-day-phone-demo/public/audio/bg_music.mp3"
+type = "audio"
+title = "background music"
+description = "Generated music: Funk and nu-disco instrumental background music scoring a fast mobile sports product demo. Tight muted bass, crisp hand claps, bright plucked synth, light percussive accents, 112 BPM…"
