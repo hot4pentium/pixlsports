@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'node:fs/promises';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
@@ -67,6 +68,41 @@ function dashboardHeroAssetGuard(): Plugin {
   };
 }
 
+function offlineShellPrecache(): Plugin {
+  const outputDirectory = path.resolve(import.meta.dirname, 'dist/public');
+  const placeholder = '__PIXL_PRECACHE_MANIFEST__';
+
+  async function listFiles(directory: string, prefix = ''): Promise<string[]> {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    const files = await Promise.all(entries.map(async (entry) => {
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      return entry.isDirectory()
+        ? listFiles(path.join(directory, entry.name), relativePath)
+        : [relativePath];
+    }));
+    return files.flat();
+  }
+
+  return {
+    name: 'offline-shell-precache',
+    apply: 'build',
+    async closeBundle() {
+      const workerPath = path.join(outputDirectory, 'sw.js');
+      const worker = await fs.readFile(workerPath, 'utf8');
+      if (!worker.includes(placeholder)) {
+        throw new Error('Offline service worker precache placeholder was not found.');
+      }
+      const files = (await listFiles(outputDirectory))
+        .filter((file) => file !== 'sw.js')
+        .sort();
+      await fs.writeFile(
+        workerPath,
+        worker.replace(placeholder, JSON.stringify(files)),
+      );
+    },
+  };
+}
+
 if (!basePath) {
   throw new Error(
     'BASE_PATH environment variable is required but was not provided.',
@@ -80,6 +116,7 @@ export default defineConfig({
     tailwindcss(),
     runtimeErrorOverlay(),
     dashboardHeroAssetGuard(),
+    offlineShellPrecache(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined
       ? [

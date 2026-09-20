@@ -129,6 +129,16 @@ export const defaultProject = (): HypeCardProject => ({
 });
 
 export const hypeCardProjectStorageKey = 'leaguematrix-hype-card-project-v2';
+const hypeCardCloudDraftStoragePrefix = 'leaguematrix-hype-card-cloud-draft-v1:';
+
+export type HypeCardLocalSyncState = 'pending' | 'synced';
+
+export type HypeCardLocalDraft = {
+  project: HypeCardProject;
+  syncState: HypeCardLocalSyncState;
+  cloudRevision: number | null;
+  savedAt: number;
+};
 
 export function isSafeRasterDataUrl(url: unknown): url is string {
   return typeof url === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
@@ -252,6 +262,61 @@ export function saveHypeCardProject(storage: Storage, project: HypeCardProject) 
     hypeCardProjectStorageKey,
     JSON.stringify({ tool: 'hype-card', project }),
   );
+}
+
+export function getHypeCardCloudDraftStorageKey(projectId: string) {
+  return `${hypeCardCloudDraftStoragePrefix}${encodeURIComponent(projectId)}`;
+}
+
+export function readHypeCardCloudDraft(
+  projectId: string,
+  storage: Storage = window.localStorage,
+): HypeCardLocalDraft | null {
+  try {
+    const stored = storage.getItem(getHypeCardCloudDraftStorageKey(projectId));
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    if (!parsed.project || typeof parsed.project !== 'object') return null;
+    return {
+      project: normalizeHypeCardProject(parsed.project),
+      syncState: parsed.syncState === 'synced' ? 'synced' : 'pending',
+      cloudRevision: Number.isSafeInteger(parsed.cloudRevision) ? Number(parsed.cloudRevision) : null,
+      savedAt: Number.isFinite(Number(parsed.savedAt)) ? Number(parsed.savedAt) : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveHypeCardCloudDraft(
+  projectId: string,
+  storage: Storage,
+  draft: Omit<HypeCardLocalDraft, 'savedAt'> & { savedAt?: number },
+) {
+  storage.setItem(
+    getHypeCardCloudDraftStorageKey(projectId),
+    JSON.stringify({
+      ...draft,
+      savedAt: draft.savedAt ?? Date.now(),
+    }),
+  );
+}
+
+export function persistCompletedHypeCardCloudSave(
+  projectId: string,
+  storage: Storage,
+  savedProject: HypeCardProject,
+  cloudRevision: number,
+  newerPendingProject: HypeCardProject | null,
+) {
+  const project = newerPendingProject ?? savedProject;
+  const syncState: HypeCardLocalSyncState = newerPendingProject ? 'pending' : 'synced';
+  saveHypeCardCloudDraft(projectId, storage, {
+    project,
+    syncState,
+    cloudRevision,
+  });
+  return { project, syncState, cloudRevision };
 }
 
 export function getDimensions(format: HypeFormat) {

@@ -5054,7 +5054,13 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn } = useUser();
-   const bypassLifecycle = location.startsWith('/schedule/') || location.startsWith('/checklist/') || location.startsWith('/watch/') || location.startsWith('/h/') || location.startsWith('/sign-in') || location.startsWith('/sign-up');
+  const bypassLifecycle = location === '/studio/hype-card'
+    || location.startsWith('/schedule/')
+    || location.startsWith('/checklist/')
+    || location.startsWith('/watch/')
+    || location.startsWith('/h/')
+    || location.startsWith('/sign-in')
+    || location.startsWith('/sign-up');
   const { data: lifecycle, isLoading } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
@@ -5064,7 +5070,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     },
   });
 
-  if (!isLoaded || (isSignedIn && !bypassLifecycle && isLoading)) {
+  if (!bypassLifecycle && (!isLoaded || (isSignedIn && isLoading))) {
     return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Checking account access…</div>;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
@@ -5151,7 +5157,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
               <Route path="/studio" component={StudioPortal} />
-              <Route path="/studio/hype-card"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
+              <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
               <Route path="/studio/roster/:id?"><ProtectedEditor kind="roster"><RosterEditor /></ProtectedEditor></Route>

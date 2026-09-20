@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v2`;
+const CACHE_NAME = `${CACHE_PREFIX}-v3`;
+const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 
 function getScopePath() {
   return new URL(self.registration.scope).pathname;
@@ -20,7 +21,10 @@ function resolveAppUrl(value) {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.add(getScopePath()))
+      .then((cache) => cache.addAll([
+        getScopePath(),
+        ...PRECACHE_URLS.map(resolveAppUrl),
+      ]))
       .then(() => self.skipWaiting()),
   );
 });
@@ -84,16 +88,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (['script', 'style', 'font', 'image'].includes(request.destination)) {
+  if (['script', 'style', 'font', 'image', 'manifest'].includes(request.destination)) {
     event.respondWith(
       caches.match(request)
-        .then((cached) => cached ?? fetch(request).then((response) => {
+        .then((cached) => {
+          const refreshed = fetch(request).then((response) => {
           if (response.ok) {
             const copy = response.clone();
             void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           }
           return response;
-        })),
+          });
+          if (cached) {
+            event.waitUntil(refreshed.catch(() => undefined));
+            return cached;
+          }
+          return refreshed;
+        }),
     );
   }
 });

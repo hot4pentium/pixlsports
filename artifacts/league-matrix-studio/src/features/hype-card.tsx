@@ -1,4 +1,4 @@
-type SaveStatus = 'Saved locally' | 'Saving' | 'Saved design' | 'Offline' | 'Save failed' | 'Conflict';
+type SaveStatus = 'Saved locally' | 'Saving' | 'Saved design' | 'Waiting to sync' | 'Offline' | 'Save failed' | 'Conflict';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
@@ -48,7 +48,8 @@ import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
   templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
   normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject, clearHypeCardMedia,
-  serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE
+  serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE,
+  persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
@@ -196,6 +197,75 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 function isCloudMediaId(value: string | null | undefined): value is string {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value));
+}
+
+function hasDeviceOnlyMedia(project: HypeCardProject) {
+  return [project.mediaId, project.downloadMediaId, project.posterMediaId, project.logoMediaId]
+    .some((id) => Boolean(id && !isCloudMediaId(id)));
+}
+
+function projectForLocalSave(project: HypeCardProject) {
+  return project.mediaType === 'image' && project.mediaId
+    ? { ...project, photo: null }
+    : project;
+}
+
+function mergeDeviceMedia(serverProject: HypeCardProject, localProject: HypeCardProject) {
+  const localPhoto = localProject.mediaId && !isCloudMediaId(localProject.mediaId);
+  const localLogo = localProject.logoMediaId && !isCloudMediaId(localProject.logoMediaId);
+  return {
+    ...serverProject,
+    ...(localPhoto ? {
+      mediaType: localProject.mediaType,
+      mediaId: localProject.mediaId,
+      downloadMediaId: localProject.downloadMediaId,
+      posterMediaId: localProject.posterMediaId,
+      videoPrepared: localProject.videoPrepared,
+      videoMeta: localProject.videoMeta,
+      photo: localProject.photo,
+    } : {}),
+    ...(localLogo ? {
+      logoMediaId: localProject.logoMediaId,
+      logo: localProject.logo,
+    } : {}),
+  };
+}
+
+function hydrateCloudHypeCard(cloudProject: Project) {
+  const source = normalizeHypeCardProject(cloudProject.project);
+  const photo = cloudProject.media.find((item) => item.mediaRole === 'photo');
+  const logo = cloudProject.media.find((item) => item.mediaRole === 'logo');
+  const poster = cloudProject.media.find((item) => item.mediaRole === 'poster');
+  const preview = cloudProject.media.find((item) => item.mediaRole === 'video_preview');
+  const download = cloudProject.media.find((item) => item.mediaRole === 'video_download');
+  return normalizeHypeCardProject({
+    ...source,
+    mediaType: preview || download ? 'video' : photo ? 'image' : null,
+    mediaId: preview?.id ?? photo?.id ?? null,
+    downloadMediaId: download?.id ?? null,
+    posterMediaId: poster?.id ?? null,
+    logoMediaId: logo?.id ?? null,
+  });
+}
+
+async function cacheCloudStaticMedia(cloudProject: Project) {
+  const hydrated = hydrateCloudHypeCard(cloudProject);
+  const load = async (mediaRole: 'photo' | 'logo' | 'poster') => {
+    const media = cloudProject.media.find((item) => item.mediaRole === mediaRole);
+    if (!media) return null;
+    const blob = await serveProjectMedia(media.id);
+    await saveMediaBlob(media.id, blob);
+    return blobToDataUrl(blob);
+  };
+  const [photo, logo, poster] = await Promise.all([
+    load('photo'),
+    load('logo'),
+    load('poster'),
+  ]);
+  return {
+    photo: hydrated.mediaType === 'video' ? poster : photo,
+    logo,
+  };
 }
 
 async function uploadProjectMedia(
@@ -1045,10 +1115,14 @@ export function HypeCardEditor() {
   const profile = getUserProfile(user);
   const gameDayPrefill = useMemo(readGameDayHypePrefill, []);
   const queryClient = useQueryClient();
+  const initialCloudDraft = useMemo(
+    () => cloudProjectId ? readHypeCardCloudDraft(cloudProjectId) : null,
+    [cloudProjectId],
+  );
 
   const [project, setProject] = useState<HypeCardProject>(() => {
     try {
-      if (cloudProjectId) return defaultProject(); 
+      if (cloudProjectId) return initialCloudDraft?.project ?? defaultProject();
       return readHypeCardProject() ?? defaultProject();
     } catch {
       return defaultProject();
@@ -1057,7 +1131,14 @@ export function HypeCardEditor() {
 
   const [notice, setNotice] = useState('');
   const [templateMediaNotice, setTemplateMediaNotice] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>(cloudProjectId ? 'Saving' : 'Saved locally');
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(
+    cloudProjectId
+      ? initialCloudDraft
+        ? navigator.onLine ? initialCloudDraft.syncState === 'pending' ? 'Waiting to sync' : 'Saved design' : 'Offline'
+        : navigator.onLine ? 'Saving' : 'Offline'
+      : 'Saved locally',
+  );
   const [conflictData, setConflictData] = useState<Project | null>(null);
   
   const [autosaveWarning, setAutosaveWarning] = useState('');
@@ -1081,15 +1162,18 @@ export function HypeCardEditor() {
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
+  const [syncRetry, setSyncRetry] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
   const mediaPreparationAbortRef = useRef<AbortController | null>(null);
   const cloudPreviewLoadingRef = useRef(false);
+  const mediaSyncRef = useRef(false);
   const gameDayPrefillAppliedRef = useRef(false);
 
-  const initializedForId = useRef<string | null>(null);
+  const initializedForId = useRef<string | null>(initialCloudDraft ? cloudProjectId ?? null : null);
+  const hydratedServerForId = useRef<string | null>(null);
   const lastSaved = useRef<HypeCardProject>(project);
-  const currentRevision = useRef<number>(1);
+  const currentRevision = useRef<number>(initialCloudDraft?.cloudRevision ?? 1);
   const guestUsageKey = useRef(getGuestUsageKey('hype_card', 'hype-editor', false)).current;
   const shareKey = cloudProjectId || guestUsageKey;
   const mutateFnRef = useRef<any>(null);
@@ -1097,12 +1181,27 @@ export function HypeCardEditor() {
   const nextSaveDataRef = useRef<HypeCardProject | null>(null);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn && cloudProjectId) {
+    const onOnline = () => setIsOnline(true);
+    const onOffline = () => setIsOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOnline && cloudProjectId) setSaveStatus('Offline');
+  }, [cloudProjectId, isOnline]);
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn && cloudProjectId && isOnline && !initialCloudDraft) {
       setLocation('/sign-in');
     }
-  }, [isLoaded, isSignedIn, cloudProjectId, setLocation]);
+  }, [isLoaded, isSignedIn, cloudProjectId, initialCloudDraft, isOnline, setLocation]);
 
-  if (isLoaded && !isSignedIn && cloudProjectId) {
+  if (isLoaded && !isSignedIn && cloudProjectId && isOnline && !initialCloudDraft) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-muted">
         <p className="font-bold uppercase tracking-wider text-muted-foreground">Redirecting to sign in...</p>
@@ -1111,11 +1210,11 @@ export function HypeCardEditor() {
   }
 
   const { data: cloudProjectData } = useGetProject(cloudProjectId || '', {
-    query: { enabled: !!cloudProjectId && !!isSignedIn, queryKey: getGetProjectQueryKey(cloudProjectId || '') }
+    query: { enabled: !!cloudProjectId && !!isSignedIn && isOnline, queryKey: getGetProjectQueryKey(cloudProjectId || '') }
   });
   const { data: accountAccess } = useGetAccountAccess({
     query: {
-      enabled: Boolean(isSignedIn),
+      enabled: Boolean(isSignedIn && isOnline),
       staleTime: 15000,
       queryKey: getGetAccountAccessQueryKey(),
     },
@@ -1125,7 +1224,6 @@ export function HypeCardEditor() {
     mutation: {
       onSuccess: (data) => {
         currentRevision.current = data.revision;
-        setSaveStatus('Saved design');
         queryClient.setQueryData(getGetProjectQueryKey(cloudProjectId || ''), data);
       },
       onError: (err: any) => {
@@ -1147,7 +1245,7 @@ export function HypeCardEditor() {
   const deleteHypeShare = useDeleteHypeCardShare();
   const { data: projects } = useListProjects({
     query: {
-      enabled: Boolean(isSignedIn),
+      enabled: Boolean(isSignedIn && isOnline),
       queryKey: getListProjectsQueryKey(),
       staleTime: 10_000,
     },
@@ -1204,7 +1302,7 @@ export function HypeCardEditor() {
 
   const { data: hypeShares } = useListHypeCardShares({
     query: {
-      enabled: Boolean(isSignedIn),
+      enabled: Boolean(isSignedIn && isOnline),
       queryKey: getListHypeCardSharesQueryKey(),
       staleTime: 10_000,
     },
@@ -1213,7 +1311,7 @@ export function HypeCardEditor() {
     publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
   const { data: shareReplies } = useListHypeCardShareReplies(existingShare?.shareToken ?? '', {
     query: {
-      enabled: Boolean(isSignedIn && existingShare),
+      enabled: Boolean(isSignedIn && existingShare && isOnline),
       queryKey: getListHypeCardShareRepliesQueryKey(existingShare?.shareToken ?? ''),
       refetchInterval: 15_000,
     },
@@ -1249,49 +1347,75 @@ export function HypeCardEditor() {
   }, [replyDialogOpen, existingShare?.shareToken, shareReplies?.unreadCount]);
 
   useEffect(() => {
-    if (cloudProjectId && cloudProjectData && initializedForId.current !== cloudProjectId) {
+    if (cloudProjectId && cloudProjectData && hydratedServerForId.current !== cloudProjectId) {
+      hydratedServerForId.current = cloudProjectId;
       initializedForId.current = cloudProjectId;
-      const source = normalizeHypeCardProject(cloudProjectData.project);
       const photo = cloudProjectData.media.find((item) => item.mediaRole === 'photo');
       const logo = cloudProjectData.media.find((item) => item.mediaRole === 'logo');
       const poster = cloudProjectData.media.find((item) => item.mediaRole === 'poster');
-      const preview = cloudProjectData.media.find((item) => item.mediaRole === 'video_preview');
-      const download = cloudProjectData.media.find((item) => item.mediaRole === 'video_download');
-      const p = normalizeHypeCardProject({
-        ...source,
-        mediaType: preview || download ? 'video' : photo ? 'image' : null,
-        mediaId: preview?.id ?? photo?.id ?? null,
-        downloadMediaId: download?.id ?? null,
-        posterMediaId: poster?.id ?? null,
-        logoMediaId: logo?.id ?? null,
-      });
-      setProject(p);
-      lastSaved.current = p;
+      const p = hydrateCloudHypeCard(cloudProjectData);
       currentRevision.current = cloudProjectData.revision;
-      setSaveStatus('Saved design');
+      const localDraft = readHypeCardCloudDraft(cloudProjectId);
+      const revisionChanged = localDraft?.cloudRevision !== null
+        && localDraft?.cloudRevision !== cloudProjectData.revision;
+      const pendingConflict = Boolean(
+        localDraft?.syncState === 'pending'
+        && revisionChanged,
+      );
+      const keepPendingLocal = Boolean(
+        localDraft?.syncState === 'pending'
+        && !revisionChanged,
+      );
+      const mergeSyncedDeviceMedia = Boolean(
+        localDraft?.syncState === 'synced'
+        && hasDeviceOnlyMedia(localDraft.project),
+      );
+      if (pendingConflict && localDraft) {
+        setProject(localDraft.project);
+        lastSaved.current = localDraft.project;
+        setConflictData(cloudProjectData);
+        setSaveStatus('Conflict');
+      } else if (keepPendingLocal && localDraft) {
+        setProject(localDraft.project);
+        lastSaved.current = p;
+        setSaveStatus(isOnline ? 'Waiting to sync' : 'Offline');
+        nextSaveDataRef.current = localDraft.project;
+      } else if (mergeSyncedDeviceMedia && localDraft) {
+        const merged = mergeDeviceMedia(p, localDraft.project);
+        setProject(merged);
+        lastSaved.current = merged;
+        saveHypeCardCloudDraft(cloudProjectId, window.localStorage, {
+          project: projectForLocalSave(merged),
+          syncState: 'synced',
+          cloudRevision: cloudProjectData.revision,
+        });
+        setSaveStatus('Saved design');
+      } else {
+        setProject(p);
+        lastSaved.current = p;
+        saveHypeCardCloudDraft(cloudProjectId, window.localStorage, {
+          project: p,
+          syncState: 'synced',
+          cloudRevision: cloudProjectData.revision,
+        });
+        setSaveStatus('Saved design');
+      }
       void (async () => {
-        const loadStatic = async (id: string, kind: 'photo' | 'logo' | 'poster') => {
-          const blob = await serveProjectMedia(id);
-          await saveMediaBlob(id, blob);
-          const dataUrl = await blobToDataUrl(blob);
-          setProject((current) => kind === 'logo'
-            ? { ...current, logo: dataUrl }
-            : current.mediaType === (kind === 'poster' ? 'video' : 'image')
-              ? { ...current, photo: dataUrl }
-              : current);
-        };
+        if (pendingConflict || keepPendingLocal || mergeSyncedDeviceMedia) return;
         try {
-          await Promise.all([
-            photo && loadStatic(photo.id, 'photo'),
-            logo && loadStatic(logo.id, 'logo'),
-            poster && loadStatic(poster.id, 'poster'),
-          ]);
+          if (!photo && !logo && !poster) return;
+          const staticMedia = await cacheCloudStaticMedia(cloudProjectData);
+          setProject((current) => ({
+            ...current,
+            photo: staticMedia.photo ?? current.photo,
+            logo: staticMedia.logo ?? current.logo,
+          }));
         } catch {
           setNotice('Some saved images could not be loaded. Check your connection and try again.');
         }
       })();
     }
-  }, [cloudProjectData, cloudProjectId]);
+  }, [cloudProjectData, cloudProjectId, isOnline]);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -1316,7 +1440,7 @@ export function HypeCardEditor() {
     let cancelled = false;
     
     const loadMedia = async () => {
-      if (cloudProjectId || (project.mediaType === 'image' && project.photo) || !project.mediaId || !project.mediaType) {
+      if ((project.mediaType === 'image' && project.photo) || !project.mediaId || !project.mediaType) {
         if (project.mediaType !== 'image') setVideoUrl(undefined);
         return;
       }
@@ -1326,6 +1450,12 @@ export function HypeCardEditor() {
       if (!blob) {
         if (!cancelled) {
           if (project.mediaType === 'video') setVideoUrl(undefined);
+          if (cloudProjectId && isCloudMediaId(project.mediaId)) {
+            setNotice(isOnline
+              ? 'The saved media is not on this device yet. Press Play to load it.'
+              : 'This media is saved in the cloud but not on this phone. Reconnect to load it.');
+            return;
+          }
           setNotice('The attached media is no longer available on this device. Please add it again.');
           setProject((current) => (
             current.mediaId === project.mediaId
@@ -1359,10 +1489,14 @@ export function HypeCardEditor() {
     loadMedia();
 
     return () => { cancelled = true; };
-  }, [project.mediaId, project.mediaType, project.photo]);
+  }, [cloudProjectId, isOnline, project.mediaId, project.mediaType, project.photo]);
 
   const loadPreviewForPlay = async () => {
     if (videoUrl || !cloudProjectId || !project.mediaId || cloudPreviewLoadingRef.current) return;
+    if (!isOnline) {
+      setNotice('Reconnect to load this cloud video onto your phone.');
+      return;
+    }
     cloudPreviewLoadingRef.current = true;
     try {
       const blob = await serveProjectMedia(project.mediaId);
@@ -1415,17 +1549,25 @@ export function HypeCardEditor() {
   }, []);
 
   const processNextSave = async () => {
-    if (isSavingRef.current || !nextSaveDataRef.current || !cloudProjectId || saveStatus === 'Conflict') return;
+    if (
+      isSavingRef.current
+      || !nextSaveDataRef.current
+      || !cloudProjectId
+      || saveStatus === 'Conflict'
+      || !isOnline
+      || !isSignedIn
+    ) return;
 
     const dataToSave = nextSaveDataRef.current;
     nextSaveDataRef.current = null;
     isSavingRef.current = true;
     setSaveStatus('Saving');
+    let savedSuccessfully = false;
 
     try {
       const savedProject = projectForCloudSave(dataToSave, Boolean(accountAccess?.paid));
 
-      await mutateFnRef.current({
+      const saved = await mutateFnRef.current({
         projectId: cloudProjectId,
         data: {
           project: savedProject,
@@ -1433,13 +1575,24 @@ export function HypeCardEditor() {
         }
       });
       lastSaved.current = dataToSave;
+      const newerPendingProject = nextSaveDataRef.current;
+      persistCompletedHypeCardCloudSave(
+        cloudProjectId,
+        window.localStorage,
+        projectForLocalSave(dataToSave),
+        saved.revision,
+        newerPendingProject ? projectForLocalSave(newerPendingProject) : null,
+      );
+      setSaveStatus(newerPendingProject ? 'Waiting to sync' : 'Saved design');
+      savedSuccessfully = true;
     } catch (e: any) {
       if (e?.status !== 409 && !e?.message?.includes('409') && !e?.error?.includes('conflict')) {
-         setSaveStatus('Save failed');
+         if (!nextSaveDataRef.current) nextSaveDataRef.current = dataToSave;
+         setSaveStatus(navigator.onLine ? 'Save failed' : 'Offline');
       }
     } finally {
       isSavingRef.current = false;
-      if (nextSaveDataRef.current) {
+      if (savedSuccessfully && nextSaveDataRef.current) {
         processNextSave();
       }
     }
@@ -1447,6 +1600,15 @@ export function HypeCardEditor() {
 
   const processNextSaveRef = useRef(processNextSave);
   processNextSaveRef.current = processNextSave;
+
+  useEffect(() => {
+    if (!cloudProjectId || !isOnline || !isSignedIn || initializedForId.current !== cloudProjectId) return;
+    const localDraft = readHypeCardCloudDraft(cloudProjectId);
+    if (localDraft?.syncState !== 'pending') return;
+    nextSaveDataRef.current = project;
+    setSaveStatus('Waiting to sync');
+    void processNextSaveRef.current();
+  }, [cloudProjectId, isOnline, isSignedIn]);
 
   useEffect(() => {
     if (cloudProjectId && initializedForId.current !== cloudProjectId) return;
@@ -1470,15 +1632,36 @@ export function HypeCardEditor() {
           setAutosaveWarning('Autosave is unavailable in this browser. Download the project file to keep a backup.');
         }
       } else {
-        nextSaveDataRef.current = project;
-        processNextSaveRef.current();
+        try {
+          const localProject = projectForLocalSave(project);
+          saveHypeCardCloudDraft(cloudProjectId, window.localStorage, {
+            project: localProject,
+            syncState: 'pending',
+            cloudRevision: currentRevision.current,
+          });
+          setAutosaveWarning('');
+          if (!isOnline || !isSignedIn) {
+            setSaveStatus('Offline');
+            return;
+          }
+          setSaveStatus('Waiting to sync');
+          nextSaveDataRef.current = project;
+          void processNextSaveRef.current();
+        } catch {
+          setAutosaveWarning('Local autosave is unavailable in this browser. Export now to avoid losing your work.');
+          setSaveStatus('Save failed');
+        }
       }
     }, 400);
 
     return () => window.clearTimeout(timeout);
-  }, [project, cloudProjectId, saveStatus]);
+  }, [project, cloudProjectId, isOnline, isSignedIn]);
 
   const saveToCloud = async () => {
+    if (!isOnline) {
+      setNotice('This design is saved on this phone. Reconnect when you want to save it to the cloud.');
+      return;
+    }
     if (!isSignedIn) {
       setLocation('/sign-in');
       return;
@@ -1494,6 +1677,11 @@ export function HypeCardEditor() {
       });
       queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
       lastSaved.current = project;
+      saveHypeCardCloudDraft(created.id, window.localStorage, {
+        project: projectForLocalSave(project),
+        syncState: 'synced',
+        cloudRevision: created.revision,
+      });
       if (accountAccess?.paid) {
         try {
           const uploads: Promise<unknown>[] = [];
@@ -1530,18 +1718,160 @@ export function HypeCardEditor() {
     }
   };
 
+  useEffect(() => {
+    if (
+      !cloudProjectId
+      || !isOnline
+      || !accountAccess?.paid
+      || !hasDeviceOnlyMedia(project)
+      || mediaSyncRef.current
+      || initializedForId.current !== cloudProjectId
+    ) return;
+
+    let cancelled = false;
+    mediaSyncRef.current = true;
+
+    void (async () => {
+      let next = project;
+      const obsoleteLocalIds: string[] = [];
+
+      try {
+        if (next.mediaType === 'image' && next.mediaId && !isCloudMediaId(next.mediaId)) {
+          const blob = await loadMediaBlob(next.mediaId);
+          if (blob) {
+            const media = await uploadProjectMedia(cloudProjectId, 'photo', blob, next.videoMeta?.name || 'photo');
+            await saveMediaBlob(media.id, blob);
+            const obsoleteCloudVideo = cloudProjectData?.media.filter((item) =>
+              item.mediaRole === 'video_preview'
+              || item.mediaRole === 'video_download'
+              || item.mediaRole === 'poster'
+            ) ?? [];
+            await Promise.all(obsoleteCloudVideo.map(async (item) => {
+              try {
+                await deleteProjectMedia(item.id);
+              } catch (error: any) {
+                if (error?.status !== 404) throw error;
+              }
+            }));
+            obsoleteLocalIds.push(next.mediaId);
+            next = {
+              ...next,
+              mediaId: media.id,
+              downloadMediaId: null,
+              posterMediaId: null,
+              videoPrepared: false,
+              videoMeta: null,
+            };
+          }
+        }
+
+        if (next.logoMediaId && !isCloudMediaId(next.logoMediaId)) {
+          const blob = await loadMediaBlob(next.logoMediaId);
+          if (blob) {
+            const media = await uploadProjectMedia(cloudProjectId, 'logo', blob, 'logo');
+            await saveMediaBlob(media.id, blob);
+            obsoleteLocalIds.push(next.logoMediaId);
+            next = { ...next, logoMediaId: media.id };
+          }
+        }
+
+        const localVideoReady = next.mediaType === 'video'
+          && next.videoPrepared
+          && next.mediaId
+          && next.downloadMediaId
+          && !isCloudMediaId(next.mediaId)
+          && !isCloudMediaId(next.downloadMediaId);
+        if (localVideoReady) {
+          const [preview, download, poster] = await Promise.all([
+            loadMediaBlob(next.mediaId!),
+            loadMediaBlob(next.downloadMediaId!),
+            next.photo ? fetch(next.photo).then((response) => response.blob()) : Promise.resolve(undefined),
+          ]);
+          if (preview && download && poster) {
+            const [previewMedia, downloadMedia, posterMedia] = await Promise.all([
+              uploadProjectMedia(cloudProjectId, 'video_preview', preview, `${next.videoMeta?.name || 'video'}.preview`),
+              uploadProjectMedia(cloudProjectId, 'video_download', download, `${next.videoMeta?.name || 'video'}.download`),
+              uploadProjectMedia(cloudProjectId, 'poster', poster, `${next.videoMeta?.name || 'video'}.jpg`),
+            ]);
+            await Promise.all([
+              saveMediaBlob(previewMedia.id, preview),
+              saveMediaBlob(downloadMedia.id, download),
+              saveMediaBlob(posterMedia.id, poster),
+            ]);
+            const obsoleteCloudPhotos = cloudProjectData?.media.filter((item) => item.mediaRole === 'photo') ?? [];
+            await Promise.all(obsoleteCloudPhotos.map(async (item) => {
+              try {
+                await deleteProjectMedia(item.id);
+              } catch (error: any) {
+                if (error?.status !== 404) throw error;
+              }
+            }));
+            obsoleteLocalIds.push(next.mediaId!, next.downloadMediaId!);
+            next = {
+              ...next,
+              mediaId: previewMedia.id,
+              downloadMediaId: downloadMedia.id,
+              posterMediaId: posterMedia.id,
+            };
+          }
+        }
+
+        if (!cancelled && next !== project) {
+          await Promise.all(obsoleteLocalIds.map((id) => deleteMediaBlob(id).catch(() => undefined)));
+          setProject(next);
+          setNotice('This design and its prepared media are now saved to the cloud.');
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
+          queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+        }
+      } catch {
+        if (!cancelled) {
+          setNotice('The design is safe on this phone, but its media did not sync. You can retry without choosing it again.');
+        }
+      } finally {
+        mediaSyncRef.current = false;
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [accountAccess?.paid, cloudProjectData, cloudProjectId, isOnline, project, queryClient, syncRetry]);
+
   const resolveConflict = async (action: 'server' | 'new') => {
     if (action === 'server') {
        if (conflictData) {
-          setProject(normalizeHypeCardProject(conflictData.project));
+         let accepted = hydrateCloudHypeCard(conflictData);
+         try {
+           const staticMedia = await cacheCloudStaticMedia(conflictData);
+           accepted = {
+             ...accepted,
+             photo: staticMedia.photo,
+             logo: staticMedia.logo,
+           };
+         } catch {
+           setNotice('The newest cloud media could not be loaded. Reconnect and try loading the server version again.');
+           return;
+         }
+         saveHypeCardCloudDraft(conflictData.id, window.localStorage, {
+           project: projectForLocalSave(accepted),
+           syncState: 'synced',
+           cloudRevision: conflictData.revision,
+         });
+         setProject(accepted);
          currentRevision.current = conflictData.revision;
-          lastSaved.current = normalizeHypeCardProject(conflictData.project);
+         lastSaved.current = accepted;
+         hydratedServerForId.current = null;
+         queryClient.setQueryData(getGetProjectQueryKey(conflictData.id), conflictData);
          setConflictData(null);
          setSaveStatus('Saved design');
        } else if (cloudProjectData) {
-          setProject(normalizeHypeCardProject(cloudProjectData.project));
+         const accepted = hydrateCloudHypeCard(cloudProjectData);
+         saveHypeCardCloudDraft(cloudProjectData.id, window.localStorage, {
+           project: projectForLocalSave(accepted),
+           syncState: 'synced',
+           cloudRevision: cloudProjectData.revision,
+         });
+         setProject(accepted);
          currentRevision.current = cloudProjectData.revision;
-          lastSaved.current = normalizeHypeCardProject(cloudProjectData.project);
+         lastSaved.current = accepted;
          setSaveStatus('Saved design');
        }
     } else {
@@ -1557,6 +1887,11 @@ export function HypeCardEditor() {
          });
           queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
           lastSaved.current = p;
+          saveHypeCardCloudDraft(created.id, window.localStorage, {
+            project: projectForLocalSave(p),
+            syncState: 'synced',
+            cloudRevision: created.revision,
+          });
          
          setConflictData(null);
          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
@@ -1688,48 +2023,21 @@ export function HypeCardEditor() {
         v.currentTime = Math.min(0.05, v.duration / 2);
         await waitForVideoEvent(v, 'seeked', 5_000, false);
         let poster: string | null = null;
-        let posterBlob: Blob | null = null;
         try {
           const cv = document.createElement('canvas');
           cv.width = v.videoWidth || 640;
           cv.height = v.videoHeight || 640;
           cv.getContext('2d')?.drawImage(v, 0, 0, cv.width, cv.height);
           poster = cv.toDataURL('image/jpeg', 0.8);
-          posterBlob = await new Promise<Blob | null>((resolve) => cv.toBlob(resolve, 'image/jpeg', 0.8));
         } catch (e) {}
-
-        let cloudPreviewId: string | null = null;
-        let cloudDownloadId: string | null = null;
-        let cloudPosterId: string | null = null;
-        let uploadWarning = '';
-        if (cloudProjectId && accountAccess?.paid && posterBlob && conversionSucceeded) {
-          try {
-            const [previewMedia, downloadMedia, posterMedia] = await Promise.all([
-              uploadProjectMedia(cloudProjectId, 'video_preview', preparedPreview, `${file.name}.preview.mp4`),
-              uploadProjectMedia(cloudProjectId, 'video_download', preparedDownload, `${file.name}.download.mp4`),
-              uploadProjectMedia(cloudProjectId, 'poster', posterBlob, `${file.name}.jpg`),
-            ]);
-            cloudPreviewId = previewMedia.id;
-            cloudDownloadId = downloadMedia.id;
-            cloudPosterId = posterMedia.id;
-            queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
-            queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
-          } catch (uploadError) {
-            uploadWarning = uploadError instanceof Error
-              ? uploadError.message
-              : 'Media upload failed. Your local copy is still available.';
-          }
-        } else if (cloudProjectId && accountAccess?.paid && !conversionSucceeded) {
-          uploadWarning = 'This browser could not prepare the two private video qualities. The video remains local; try Chrome or Safari again before saving it to the cloud.';
-        }
 
         setProject(curr => ({
           ...curr,
           mediaType: 'video',
-            mediaId: cloudPreviewId ?? previewId,
-            downloadMediaId: cloudDownloadId ?? downloadId,
-            posterMediaId: cloudPosterId,
-            videoPrepared: conversionSucceeded,
+          mediaId: previewId,
+          downloadMediaId: downloadId,
+          posterMediaId: null,
+          videoPrepared: conversionSucceeded,
           videoMeta: {
             name: preparedVideo.type.includes('mp4')
               ? file.name.replace(/\.[^.]+$/, '') + '.mp4'
@@ -1747,7 +2055,11 @@ export function HypeCardEditor() {
          setTemplateMediaNotice(false);
         setValidation('');
         setAutosaveWarning('');
-         setNotice(uploadWarning || conversionWarning);
+        setNotice(conversionWarning || (cloudProjectId
+          ? conversionSucceeded
+            ? 'Video attached on this phone. Cloud sync can continue in the background.'
+            : 'The original video is attached on this phone and remains available for local export.'
+          : ''));
         if (playbackUrl !== url) URL.revokeObjectURL(url);
       } catch (err) {
         URL.revokeObjectURL(url);
@@ -1769,14 +2081,7 @@ export function HypeCardEditor() {
         }
         const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
         await saveMediaBlob(id, file);
-        let savedId = id;
-        if (cloudProjectId && accountAccess?.paid) {
-          const media = await uploadProjectMedia(cloudProjectId, 'photo', file, file.name);
-          savedId = media.id;
-          if (isCloudMediaId(project.mediaId)) await deleteProjectMedia(project.mediaId).catch(() => undefined);
-          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
-          queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
-        } else if (project.mediaId) {
+        if (project.mediaId && !isCloudMediaId(project.mediaId)) {
           await deleteMediaBlob(project.mediaId).catch(console.warn);
         }
         setVideoUrl(undefined);
@@ -1784,7 +2089,10 @@ export function HypeCardEditor() {
           ...curr,
           mediaType: 'image',
             format: 'card',
-           mediaId: savedId,
+          mediaId: id,
+          downloadMediaId: null,
+          posterMediaId: null,
+          videoPrepared: false,
           videoMeta: null,
           photo: res,
           photoTransform: defaultProject().photoTransform,
@@ -1793,6 +2101,7 @@ export function HypeCardEditor() {
          setTemplateMediaNotice(false);
         setValidation('');
         setAutosaveWarning('');
+        if (cloudProjectId) setNotice('Photo attached on this phone. Cloud sync can continue in the background.');
       } catch (error) {
         console.error('Failed to save image media', error);
         setNotice('That image could not be saved in this browser. Try another image or browser.');
@@ -1812,18 +2121,13 @@ export function HypeCardEditor() {
     try {
       const logo = await blobToDataUrl(file);
       if (!isSafeRasterDataUrl(logo)) throw new Error('Invalid logo');
-      let logoId = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const logoId = `logo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       await saveMediaBlob(logoId, file);
-      if (cloudProjectId && accountAccess?.paid) {
-        const media = await uploadProjectMedia(cloudProjectId, 'logo', file, file.name);
-        logoId = media.id;
-        if (isCloudMediaId(project.logoMediaId)) await deleteProjectMedia(project.logoMediaId).catch(() => undefined);
-        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
-        queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
-      } else if (project.logoMediaId) {
+      if (project.logoMediaId && !isCloudMediaId(project.logoMediaId)) {
         await deleteMediaBlob(project.logoMediaId).catch(() => undefined);
       }
       setProject((current) => ({ ...current, logo, logoMediaId: logoId }));
+      if (cloudProjectId) setNotice('Logo attached on this phone. Cloud sync can continue in the background.');
     } catch {
       setNotice('That logo could not be saved. Try a smaller PNG, JPG, or WebP.');
     }
@@ -1835,7 +2139,7 @@ export function HypeCardEditor() {
     }
     if (project.downloadMediaId) await deleteMediaBlob(project.downloadMediaId).catch(console.warn);
     for (const id of [project.mediaId, project.downloadMediaId, project.posterMediaId]) {
-      if (isCloudMediaId(id)) await deleteProjectMedia(id).catch(() => undefined);
+      if (isOnline && isCloudMediaId(id)) await deleteProjectMedia(id).catch(() => undefined);
     }
     setVideoUrl(undefined);
     setTemplateMediaNotice(false);
@@ -2000,6 +2304,10 @@ export function HypeCardEditor() {
   const handleShareClick = () => {
     setValidation('');
     setNotice('');
+    if (!isOnline) {
+      setNotice('Your Hype Card is ready on this phone. Reconnect to publish a player page.');
+      return;
+    }
     if (!isSignedIn) {
       setLocation('/sign-in');
       return;
@@ -2026,6 +2334,11 @@ export function HypeCardEditor() {
 
   const handlePublishShare = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) {
+      setShareDialogOpen(false);
+      setNotice('Reconnect to publish this Hype Card player page.');
+      return;
+    }
     setShareDialogOpen(false);
     setSharing(true);
     setShareProgress(0);
@@ -2143,6 +2456,14 @@ export function HypeCardEditor() {
     }
   };
 
+  const deviceOnlyMedia = hasDeviceOnlyMedia(project);
+  const deviceMediaMessage = !isOnline
+    ? 'Media is attached on this phone. Reconnect only if you want a cloud copy or player page.'
+    : project.mediaType === 'video' && !project.videoPrepared
+      ? 'The original video is attached on this phone and remains available for local export.'
+      : accountAccess?.paid
+        ? 'Media is attached on this phone and waiting for its cloud copy.'
+        : 'Media is attached on this phone. Your downloadable Hype Card stays fully local.';
 
   return (
     <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
@@ -2153,8 +2474,8 @@ export function HypeCardEditor() {
           </Link>
            <h1 className="min-w-0 truncate font-display text-lg tracking-wide text-foreground sm:text-xl">Hype Cards</h1>
            <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-4">
-             <div className={`hidden items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-bold uppercase tracking-widest clip-angled-sm border sm:flex ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : 'bg-muted text-muted-foreground border-border'}`}>
-               {saveStatus === 'Saving' ? <RotateCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+             <div className={`hidden items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-bold uppercase tracking-widest clip-angled-sm border sm:flex ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : saveStatus === 'Offline' || saveStatus === 'Waiting to sync' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'bg-muted text-muted-foreground border-border'}`}>
+               {saveStatus === 'Saving' || saveStatus === 'Waiting to sync' ? <RotateCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                {saveStatus}
              </div>
               {!cloudProjectId && (
@@ -2225,6 +2546,21 @@ export function HypeCardEditor() {
            </div>
         </div>
       </header>
+
+      {deviceOnlyMedia && (
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/25 bg-primary/10 px-4 py-2 text-xs font-medium text-foreground" role="status" aria-live="polite">
+          <span><strong className="uppercase tracking-wider text-primary">On this device:</strong> {deviceMediaMessage}</span>
+          {cloudProjectId && isOnline && accountAccess?.paid && !(project.mediaType === 'video' && !project.videoPrepared) && (
+            <button
+              type="button"
+              className="font-bold uppercase tracking-wide text-primary underline underline-offset-2"
+              onClick={() => setSyncRetry((value) => value + 1)}
+            >
+              Retry cloud sync
+            </button>
+          )}
+        </div>
+      )}
 
       {validation && (
         <div className="flex shrink-0 items-start gap-2 border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-xs font-bold leading-relaxed text-destructive" role="alert">

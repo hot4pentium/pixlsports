@@ -7,8 +7,11 @@ import {
   designOnlyProject,
   normalizeHypeCardProject,
   parseHypeCardTemplate,
+  persistCompletedHypeCardCloudSave,
   readHypeCardProject,
+  readHypeCardCloudDraft,
   saveHypeCardProject,
+  saveHypeCardCloudDraft,
   serializeHypeCardTemplate,
   type HypeCardProject,
 } from './hype-card-types';
@@ -207,4 +210,100 @@ test('a saved image with an embedded preview does not retain a separate media re
   assert.equal(project.mediaType, 'image');
   assert.equal(project.mediaId, null);
   assert.equal(project.photo, 'data:image/png;base64,embedded-photo');
+});
+
+test('cloud-backed drafts retain device media and pending sync state per project', () => {
+  const storage = new MemoryStorage();
+  const project = normalizeHypeCardProject({
+    ...defaultProject(),
+    headline: 'OFFLINE WINNER',
+    mediaType: 'video',
+    mediaId: 'video-local-preview',
+    downloadMediaId: 'video-local-download',
+    videoMeta: {
+      name: 'winner.mov',
+      type: 'video/quicktime',
+      size: 4096,
+      duration: 9,
+    },
+  });
+
+  saveHypeCardCloudDraft('cloud-one', storage as Storage, {
+    project,
+    syncState: 'pending',
+    cloudRevision: 4,
+  });
+
+  const reopened = readHypeCardCloudDraft('cloud-one', storage as Storage);
+  assert.ok(reopened);
+  assert.equal(reopened.project.headline, 'OFFLINE WINNER');
+  assert.equal(reopened.project.mediaId, 'video-local-preview');
+  assert.equal(reopened.project.downloadMediaId, 'video-local-download');
+  assert.equal(reopened.syncState, 'pending');
+  assert.equal(reopened.cloudRevision, 4);
+  assert.equal(readHypeCardCloudDraft('cloud-two', storage as Storage), null);
+});
+
+test('cloud draft normalization rejects unsafe embedded media while retaining local ids', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(
+    'leaguematrix-hype-card-cloud-draft-v1:cloud-project',
+    JSON.stringify({
+      project: {
+        ...defaultProject(),
+        mediaType: 'image',
+        mediaId: 'local-image-id',
+        photo: 'data:text/html;base64,bad',
+      },
+      syncState: 'synced',
+      cloudRevision: 7,
+      savedAt: 10,
+    }),
+  );
+
+  const reopened = readHypeCardCloudDraft('cloud-project', storage as Storage);
+  assert.ok(reopened);
+  assert.equal(reopened.project.mediaId, 'local-image-id');
+  assert.equal(reopened.project.photo, null);
+  assert.equal(reopened.syncState, 'synced');
+});
+
+test('an older cloud save never overwrites a newer pending local edit', () => {
+  const storage = new MemoryStorage();
+  const older = normalizeHypeCardProject({
+    ...defaultProject(),
+    headline: 'EDIT A',
+  });
+  const newer = normalizeHypeCardProject({
+    ...older,
+    headline: 'EDIT B',
+  });
+
+  persistCompletedHypeCardCloudSave(
+    'cloud-race',
+    storage as Storage,
+    older,
+    8,
+    newer,
+  );
+
+  const pending = readHypeCardCloudDraft('cloud-race', storage as Storage);
+  assert.ok(pending);
+  assert.equal(pending.project.headline, 'EDIT B');
+  assert.equal(pending.syncState, 'pending');
+  assert.equal(pending.cloudRevision, 8);
+
+  persistCompletedHypeCardCloudSave(
+    'cloud-race',
+    storage as Storage,
+    newer,
+    9,
+    null,
+  );
+
+  const synced = readHypeCardCloudDraft('cloud-race', storage as Storage);
+  assert.ok(synced);
+  assert.equal(synced.project.headline, 'EDIT B');
+  assert.equal(synced.syncState, 'synced');
+  assert.equal(synced.cloudRevision, 9);
 });
