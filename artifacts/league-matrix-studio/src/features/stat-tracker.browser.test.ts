@@ -39,10 +39,12 @@ function harnessSource() {
 import { createElement, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
+  LiveTrackerGame,
   StatTrackerStartPanel,
   StatTrackerUpcomingNotice,
   type ScheduledGame,
 } from './src/features/stat-tracker-page';
+import { createGameSession, getSportRule } from './src/features/stat-tracker';
 import './src/index.css';
 
 const scheduledGame = {
@@ -54,9 +56,11 @@ const scheduledGame = {
 };
 
 function TrackerHarness() {
+  const footballMode = new URLSearchParams(window.location.search).get('sport') === 'football';
   const [nextGame, setNextGame] = useState(scheduledGame);
   const [showNotice, setShowNotice] = useState(true);
   const [showManualSetup, setShowManualSetup] = useState(false);
+  const [currentGame, setCurrentGame] = useState(null);
   const [date, setDate] = useState(scheduledGame.date);
   const [opponent, setOpponent] = useState(scheduledGame.opponent);
   const [notes, setNotes] = useState('');
@@ -75,28 +79,49 @@ function TrackerHarness() {
   window.__setTrackerNextGame = (game) => setNextGame(game || undefined);
 
   return createElement('main', null,
-    nextGame && showNotice && createElement(StatTrackerUpcomingNotice, {
+    !currentGame && nextGame && showNotice && createElement(StatTrackerUpcomingNotice, {
       nextGame,
       onUseUpcomingGame: () => setShowManualSetup(true),
       onDismiss: () => setShowNotice(false),
     }),
-    createElement(StatTrackerStartPanel, {
-      nextGame,
-      label: 'Basketball',
-      date,
-      opponent,
-      notes,
-      showManualSetup,
-      onToggleManualSetup: () => setShowManualSetup((value) => !value),
-      onDateChange: setDate,
-      onOpponentChange: setOpponent,
-      onNotesChange: setNotes,
-      onStartGame: () => {},
-      onReviewPreviousGames: () => {
-        setReviewed(true);
-        historyRef.current?.focus();
-      },
-    }),
+    currentGame
+      ? createElement(LiveTrackerGame, {
+          currentGame,
+          rule: getSportRule('football'),
+          athleteName: 'Maya',
+          teamName: 'Falcons',
+          displayStats: getSportRule('football').stats.filter((item) => !item.liveHidden && item.featured),
+          showAllStats: false,
+          saving: false,
+          captureNotice: '',
+          onCapture: () => {},
+          onGameChange: setCurrentGame,
+          onToggleShowAllStats: () => {},
+          onLeaveGame: () => setCurrentGame(null),
+          onEndGame: () => {},
+        })
+      : createElement(StatTrackerStartPanel, {
+          nextGame,
+          label: footballMode ? 'Football' : 'Basketball',
+          date,
+          opponent,
+          notes,
+          showManualSetup,
+          onToggleManualSetup: () => setShowManualSetup((value) => !value),
+          onDateChange: setDate,
+          onOpponentChange: setOpponent,
+          onNotesChange: setNotes,
+          onStartGame: footballMode
+            ? () => {
+                setCurrentGame(createGameSession('football', { date, opponent, notes }));
+                setShowManualSetup(false);
+              }
+            : () => {},
+          onReviewPreviousGames: () => {
+            setReviewed(true);
+            historyRef.current?.focus();
+          },
+        }),
     createElement('section', {
       id: 'tracker-game-history',
       tabIndex: -1,
@@ -166,6 +191,12 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/stat-tracker-test.html`);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
 
     const noticeText = await connection.evaluate<string>(
@@ -214,16 +245,71 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
       await connection.evaluate<boolean>('Boolean(document.querySelector("#manual-game-setup"))', page.sessionId),
       false,
     );
-    assert.equal(
-      await connection.evaluate<string>('document.querySelector("[data-testid=\\"button-start-manual-game\\"]")?.getAttribute("aria-expanded") || ""', page.sessionId),
-      'false',
-    );
-
     await connection.evaluate('document.querySelector("[data-testid=\\"button-review-previous-games\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-history\\"]")?.dataset.reviewed === "true"', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("#manual-game-setup"))', page.sessionId),
       false,
+    );
+
+    await connection.evaluate('window.location.search = "?sport=football"', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-dismiss-upcoming-notice\\"]")?.click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-start-manual-game\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("#manual-game-setup") !== null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-confirm-start-game\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
+
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"toggle-football-yard-tracking\\"]")?.checked === true', page.sessionId),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '["pass-yard", "rush-yard", "reception"].every((id) => document.querySelector(`[data-testid="input-yard-${id}"]`) !== null)',
+        page.sessionId,
+      ),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '["touchdown", "tackle"].every((id) => document.querySelector(`[data-testid="live-stat-${id}"]`) !== null)',
+        page.sessionId,
+      ),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.querySelector("[data-testid=\\"live-tracker-stat-controls\\"]").scrollWidth <= document.querySelector("[data-testid=\\"live-tracker-stat-controls\\"]").clientWidth',
+        page.sessionId,
+      ),
+      true,
+    );
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-pass-yard\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.disabled === false', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.focus(); document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }))', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.value === "5"', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true }))', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.value === "10"', Boolean);
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-rush-yard\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-rush-yard\\"]")?.disabled === false', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-rush-yard-increase\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-rush-yard\\"]")?.value === "5"', Boolean);
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-reception\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.disabled === false', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1")', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1") && document.querySelector("[data-testid=\\"live-stat-card-tackle\\"]")?.textContent.includes("1")', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '["pass-yard", "rush-yard", "reception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
+        page.sessionId,
+      ),
+      true,
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
