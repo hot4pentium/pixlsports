@@ -3000,6 +3000,7 @@ function ScheduleEditor() {
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
+  const profileTeamName = getUserProfile(user).teamName;
   const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
   const consumeAccountUsage = useConsumeAccountUsage();
   const queryClient = useQueryClient();
@@ -3010,7 +3011,7 @@ function ScheduleEditor() {
     storedDraft ? 'device' : null,
   );
   const [notice, setNotice] = useState('');
-  const [teamName, setTeamName] = useState(storedDraft?.teamName ?? '');
+  const [teamName, setTeamName] = useState(storedDraft?.teamName || profileTeamName);
   const [season, setSeason] = useState(storedDraft?.season ?? '');
   const [events, setEvents] = useState<ScheduleEvent[]>(() => (
     storedDraft?.events ?? []
@@ -3092,11 +3093,16 @@ function ScheduleEditor() {
   }, [cloudProjectId, isLoaded, isSignedIn, setLocation]);
 
   useEffect(() => {
+    if (!profileTeamName) return;
+    setTeamName((current) => current.trim() ? current : profileTeamName);
+  }, [profileTeamName]);
+
+  useEffect(() => {
     if (!selectedCloudProject || initializedCloudId.current === selectedCloudProject.id) return;
     const loadedDraft = normalizeScheduleDraft(selectedCloudProject.project);
     if (!loadedDraft) return;
     initializedCloudId.current = selectedCloudProject.id;
-    setTeamName(loadedDraft.teamName);
+    setTeamName(loadedDraft.teamName || profileTeamName);
     setSeason(loadedDraft.season);
     setEvents(loadedDraft.events);
     setShareToken(loadedDraft.shareToken ?? '');
@@ -3105,7 +3111,7 @@ function ScheduleEditor() {
     setSelectedWeekKey(getScheduleWeekKey(loadedDraft.events[0]?.date ?? ''));
     setSaved(true);
     cloudRevision.current = selectedCloudProject.revision;
-  }, [selectedCloudProject]);
+  }, [selectedCloudProject, profileTeamName]);
 
   useEffect(() => {
     if (events.length === 0) {
