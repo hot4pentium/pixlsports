@@ -278,10 +278,67 @@ export function SupporterDashboardView({
     },
   ] as const;
   type WeeklyPathId = typeof weeklyPath[number]['id'];
+  const weeklyPathThemes: Record<WeeklyPathId, {
+    accent: string;
+    border: string;
+    activeBorder: string;
+    surface: string;
+    number: string;
+    icon: string;
+    contentBorder: string;
+    contentSurface: string;
+    action: string;
+  }> = {
+    plan: {
+      accent: 'text-sky-300',
+      border: 'border-sky-300/70',
+      activeBorder: 'border-sky-300/35',
+      surface: 'bg-sky-300/10',
+      number: 'bg-sky-300 text-slate-950',
+      icon: 'text-sky-300',
+      contentBorder: 'border-sky-300/60',
+      contentSurface: 'bg-sky-300/[0.04]',
+      action: 'bg-sky-300 text-slate-950 hover:bg-sky-200',
+    },
+    upcoming: {
+      accent: 'text-amber-300',
+      border: 'border-amber-300/70',
+      activeBorder: 'border-amber-300/35',
+      surface: 'bg-amber-300/10',
+      number: 'bg-amber-300 text-slate-950',
+      icon: 'text-amber-300',
+      contentBorder: 'border-amber-300/60',
+      contentSurface: 'bg-amber-300/[0.04]',
+      action: 'bg-amber-300 text-slate-950 hover:bg-amber-200',
+    },
+    live: {
+      accent: 'text-emerald-300',
+      border: 'border-emerald-300/70',
+      activeBorder: 'border-emerald-300/35',
+      surface: 'bg-emerald-300/10',
+      number: 'bg-emerald-300 text-slate-950',
+      icon: 'text-emerald-300',
+      contentBorder: 'border-emerald-300/60',
+      contentSurface: 'bg-emerald-300/[0.04]',
+      action: 'bg-emerald-300 text-slate-950 hover:bg-emerald-200',
+    },
+    completed: {
+      accent: 'text-fuchsia-300',
+      border: 'border-fuchsia-300/70',
+      activeBorder: 'border-fuchsia-300/35',
+      surface: 'bg-fuchsia-300/10',
+      number: 'bg-fuchsia-300 text-slate-950',
+      icon: 'text-fuchsia-300',
+      contentBorder: 'border-fuchsia-300/60',
+      contentSurface: 'bg-fuchsia-300/[0.04]',
+      action: 'bg-fuchsia-300 text-slate-950 hover:bg-fuchsia-200',
+    },
+  };
   const [selectedPathId, setSelectedPathId] = useState<WeeklyPathId | null>(null);
   const selectedPath = weeklyPath.find(({ id }) => id === selectedPathId)
     ?? weeklyPath.find(({ active }) => active)
     ?? weeklyPath[0];
+  const selectedPathTheme = weeklyPathThemes[selectedPath.id];
   const weeklyPathDetails: Record<WeeklyPathId, {
     eyebrow: string;
     title: string;
@@ -565,33 +622,37 @@ export function SupporterDashboardView({
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
             <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as game day moves.</p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {weeklyPath.map(({ id, number, label, Icon, active }) => (
-                <button
-                  type="button"
-                  key={id}
-                  aria-current={active ? 'step' : undefined}
-                  aria-pressed={selectedPath.id === id}
-                  onClick={() => setSelectedPathId(id)}
-                  className={`flex items-center gap-3 border px-3 py-3 text-left transition-colors hover:border-primary/60 hover:text-white ${selectedPath.id === id ? 'border-primary/60 bg-primary/10 text-white' : active ? 'border-primary/30 bg-primary/5 text-white/80' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
-                  data-testid={`stage-${id}`}
-                >
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selectedPath.id === id ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>{number}</span>
-                  <Icon className={`h-4 w-4 shrink-0 ${selectedPath.id === id || active ? 'text-primary' : 'text-white/35'}`} />
-                  <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
-                  {active && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-primary" />}
-                </button>
-              ))}
+              {weeklyPath.map(({ id, number, label, Icon, active }) => {
+                const theme = weeklyPathThemes[id];
+                const selected = selectedPath.id === id;
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    aria-current={active ? 'step' : undefined}
+                    aria-pressed={selected}
+                    onClick={() => setSelectedPathId(id)}
+                    className={`flex items-center gap-3 border px-3 py-3 text-left transition-colors hover:border-white/50 hover:text-white ${selected ? `${theme.border} ${theme.surface} text-white` : active ? `${theme.activeBorder} ${theme.surface} text-white/80` : 'border-white/10 bg-white/[0.03] text-white/45'}`}
+                    data-testid={`stage-${id}`}
+                  >
+                    <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selected ? theme.number : active ? `${theme.activeBorder} ${theme.surface} ${theme.accent} border` : 'bg-white/10 text-white/60'}`}>{number}</span>
+                    <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
+                    <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
+                    {active && <CheckCircle2 className={`ml-auto h-4 w-4 shrink-0 ${theme.icon}`} />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
-        <div id="week-path-content" className="relative border-t border-white/10 px-5 py-5 sm:px-8 sm:py-7" data-testid="week-path-content">
+        <div id="week-path-content" className={`relative border-t-2 ${selectedPathTheme.contentBorder} ${selectedPathTheme.contentSurface} px-5 py-5 sm:px-8 sm:py-7`} data-testid="week-path-content" data-selected-path={selectedPath.id}>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{selectedPathDetails.eyebrow}</p>
-              <h3 className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">{selectedPathDetails.title}</h3>
+              <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${selectedPathTheme.accent}`}>{selectedPathDetails.eyebrow}</p>
+              <h3 className={`mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl ${selectedPathTheme.accent}`}>{selectedPathDetails.title}</h3>
               <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-white/60">{selectedPathDetails.description}</p>
             </div>
-            <Link href={selectedPath.href} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm">
+            <Link href={selectedPath.href} className={`inline-flex min-h-12 shrink-0 items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-transform hover:-translate-y-0.5 clip-angled-sm ${selectedPathTheme.action}`}>
               {selectedPathDetails.action} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
