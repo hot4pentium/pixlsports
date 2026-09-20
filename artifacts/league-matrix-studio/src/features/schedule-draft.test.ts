@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   addScheduleEvent,
+  createScheduleAutosaveQueue,
   defaultScheduleEvents,
   getDefaultScheduleEvents,
   moveScheduleEvent,
@@ -265,6 +266,56 @@ test('a saved draft with no events stays empty after reload', () => {
   saveScheduleDraft(storage as Storage, draft);
 
   assert.deepEqual(readScheduleDraft(storage as Storage)?.events, []);
+});
+
+test('a failed cloud save leaves the newly saved event recoverable after reload', async () => {
+  const storage = new MemoryStorage();
+  const draft: ScheduleDraft = {
+    teamName: 'Wolves',
+    season: 'Fall 2026',
+    events: [completeEvents[0]],
+    template: 0,
+  };
+  const autosaveQueue = createScheduleAutosaveQueue();
+
+  saveScheduleDraft(storage as Storage, draft);
+  await autosaveQueue.enqueue(async () => {
+    throw new Error('cloud unavailable');
+  }).catch(() => undefined);
+
+  assert.deepEqual(readScheduleDraft(storage as Storage), draft);
+});
+
+test('cloud autosaves run in order so an older request cannot finish after a newer edit', async () => {
+  const autosaveQueue = createScheduleAutosaveQueue();
+  const calls: string[] = [];
+  let releaseFirstSave!: () => void;
+  const firstSave = new Promise<void>((resolve) => {
+    releaseFirstSave = resolve;
+  });
+
+  const first = autosaveQueue.enqueue(async () => {
+    calls.push('first-start');
+    await firstSave;
+    calls.push('first-finish');
+  });
+  const second = autosaveQueue.enqueue(async () => {
+    calls.push('second-start');
+    calls.push('second-finish');
+  });
+
+  await Promise.resolve();
+  assert.deepEqual(calls, ['first-start']);
+
+  releaseFirstSave();
+  await Promise.all([first, second]);
+
+  assert.deepEqual(calls, [
+    'first-start',
+    'first-finish',
+    'second-start',
+    'second-finish',
+  ]);
 });
 
 test('new schedules do not seed example events, and old untouched examples are cleared once', () => {

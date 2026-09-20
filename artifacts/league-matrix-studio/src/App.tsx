@@ -68,6 +68,7 @@ import type {
 } from '@/features/supporter-dashboard';
 import {
   createBlankScheduleEvent,
+  createScheduleAutosaveQueue,
   getActiveCloudScheduleProject,
   getCloudScheduleProjects,
   getCloudScheduleProjectForIdentity,
@@ -2989,6 +2990,9 @@ function ScheduleEditor() {
   const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [storedDraft] = useState(() => readScheduleDraft());
   const [saved, setSaved] = useState(Boolean(storedDraft));
+  const [saveStatus, setSaveStatus] = useState<'cloud' | 'device' | null>(
+    storedDraft ? 'device' : null,
+  );
   const [notice, setNotice] = useState('');
   const [teamName, setTeamName] = useState(storedDraft?.teamName ?? '');
   const [season, setSeason] = useState(storedDraft?.season ?? '');
@@ -3010,6 +3014,7 @@ function ScheduleEditor() {
   ));
   const cloudRevision = useRef(1);
   const initializedCloudId = useRef<string | null>(null);
+  const autosaveQueue = useRef(createScheduleAutosaveQueue()).current;
 
   const createShare = useCreateScheduleShare();
   const updateShare = useUpdateScheduleShare();
@@ -3115,6 +3120,7 @@ function ScheduleEditor() {
 
   const updateEvent = (id: string, patch: Partial<ScheduleEvent>) => {
     setSaved(false);
+    setSaveStatus(null);
     setEventForm((current) => (
       current?.id === id
         ? updateScheduleEvent([current], id, patch)[0]
@@ -3124,6 +3130,7 @@ function ScheduleEditor() {
 
   const openNewEventForm = () => {
     setSaved(false);
+    setSaveStatus(null);
     setSelectedEventId('');
     setEventForm(createBlankScheduleEvent('game'));
   };
@@ -3237,8 +3244,12 @@ function ScheduleEditor() {
 
   const persistSchedule = async (nextEvents: ScheduleEvent[], successNotice: string) => {
     saveCurrentDraft(nextEvents);
-    const cloudSaved = isSignedIn ? await saveToCloud(nextEvents) : false;
+    setSaveStatus('device');
+    const cloudSaved = isSignedIn
+      ? await autosaveQueue.enqueue(() => saveToCloud(nextEvents))
+      : false;
     setSaved(true);
+    setSaveStatus(isSignedIn && cloudSaved ? 'cloud' : 'device');
     setNoticeFor(isSignedIn && cloudSaved ? `${successNotice} TO CLOUD` : `${successNotice} ON THIS DEVICE`);
   };
 
@@ -3335,8 +3346,8 @@ function ScheduleEditor() {
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 self-end sm:gap-4 sm:self-auto">
-            <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
-              <Check className="h-4 w-4" /> Auto-saved
+            <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`} data-testid="status-schedule-save">
+              <Check className="h-4 w-4" /> {saveStatus === 'cloud' ? 'Auto-saved to cloud' : 'Auto-saved on this device'}
             </span>
             <button type="button" onClick={publishSchedule} disabled={createCloudProject.isPending || updateCloudProject.isPending || sharePending} className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-publish-schedule">
               <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish to All'}

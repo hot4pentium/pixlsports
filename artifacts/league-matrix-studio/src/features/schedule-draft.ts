@@ -298,6 +298,21 @@ export function saveScheduleDraft(storage: Storage, draft: ScheduleDraft) {
   storage.setItem(scheduleStorageKey, JSON.stringify(draft));
 }
 
+export function createScheduleAutosaveQueue() {
+  let previousSave: Promise<unknown> = Promise.resolve();
+
+  return {
+    enqueue<T>(save: () => Promise<T>): Promise<T> {
+      const nextSave = previousSave.then(save, save);
+      previousSave = nextSave.then(
+        () => undefined,
+        () => undefined,
+      );
+      return nextSave;
+    },
+  };
+}
+
 export function updateScheduleEvent(
   events: ScheduleEvent[],
   id: string,
