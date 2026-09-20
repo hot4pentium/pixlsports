@@ -26,6 +26,13 @@ class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
   }
 }
 
+test('new Hype Card projects leave the moment blank for custom entry', () => {
+  const project = defaultProject();
+
+  assert.equal(project.headline, '');
+  assert.equal(normalizeHypeCardProject({}).headline, '');
+});
+
 test('custom position labels survive local save, reload, and exported badge markup', () => {
   const labels = [
     'GK',
