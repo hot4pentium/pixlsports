@@ -142,6 +142,8 @@ test('live scoreboard keeps camera actions compact, labeled, and attached to the
   const scoreboard = renderer.root.findByProps({ 'data-testid': 'live-tracker-scoreboard' });
   const captureControls = renderer.root.findByProps({ 'data-testid': 'live-tracker-capture-controls' });
   assert.equal(captureControls.parent, scoreboard);
+  assert.match(captureControls.props.className, /top-3/);
+  assert.doesNotMatch(captureControls.props.className, /bottom-/);
   assert.equal(renderer.root.findByProps({ 'data-testid': 'status-stat-tracker-capture-notice' }).props.role, 'status');
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-stat-tracker-capture-photo' }).props.accept, 'image/*');
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-stat-tracker-capture-video' }).props.accept, 'video/*');
