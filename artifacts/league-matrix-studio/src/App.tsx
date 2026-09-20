@@ -1,3 +1,4 @@
+import { PublicLandingPage } from '@/features/landing-home';
 import { HypeCardReplyInboxTrigger } from '@/features/hype-card-reply-inbox';
 import {
   useCreateScheduleShare,
@@ -5076,7 +5077,7 @@ function HomeRedirect() {
         <Redirect to="/studio" />
       </Show>
       <Show when="signed-out">
-        <HomePage />
+        <PublicLandingPage />
       </Show>
     </>
   );

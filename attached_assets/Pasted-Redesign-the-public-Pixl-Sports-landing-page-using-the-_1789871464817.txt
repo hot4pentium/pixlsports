@@ -1,0 +1,482 @@
+Redesign the public Pixl Sports landing page using the attached visual as the primary design reference.
+
+The attached image establishes the intended composition, visual hierarchy, spacing, color palette, and overall feeling. Do not place the reference image on the page or recreate it as one flattened image. Build the design as a responsive, production-quality webpage using the existing project’s framework, components, and styling system.
+
+Before editing code:
+
+1. Review the current landing-page implementation.
+2. Identify the files and components that need to change.
+3. Briefly explain the planned changes.
+4. Preserve all working routes, authentication, tools, and application logic.
+
+## PRODUCT POSITIONING
+
+Pixl Sports is a modern youth-sports platform for parents, supporters, coaches, and athletes.
+
+Pixl does more than provide individual tools. It guides visitors through the sports week—from planning and preparation to game day and celebration—so families can spend less time chasing information and more time supporting their athletes.
+
+The central brand promise is:
+
+“We guide your week. You capture the moments.”
+
+The supporting brand statement is:
+
+“Less chasing. More cheering.”
+
+The landing page should communicate this promise clearly and emotionally within the first screen.
+
+## TARGET AUDIENCE
+
+Design primarily for parents and supporters.
+
+Coaches may use Pixl Sports, but the landing page should not feel like coaching software, league administration software, or a technical operations dashboard.
+
+A parent visiting the page should immediately understand:
+
+* Pixl helps organize the sports week.
+* Pixl makes game day easier to follow.
+* Pixl helps preserve and share meaningful moments.
+* The platform is simple and welcoming.
+* The tools are made for people supporting an athlete.
+
+## OVERALL DESIGN DIRECTION
+
+Create a modern sports-editorial experience.
+
+The site should feel:
+
+* Energetic
+* Emotional
+* Clean
+* Bright
+* Approachable
+* Family-focused
+* Sports-centered
+* Premium but not corporate
+* Modern but not futuristic
+
+Use large sports photography, generous white space, bold editorial typography, clear calls to action, and polished product previews.
+
+The photography should provide most of the sports energy. Avoid filling the interface with generic sports decorations.
+
+## REMOVE THE CURRENT INDUSTRIAL STYLE
+
+Do not reuse the current visual language.
+
+Avoid:
+
+* Dark navy covering the entire page
+* Technical grids
+* Fine background lines
+* HUD or control-room styling
+* Labels such as “LIVE STUDIO,” “HOME BASE,” or “SELECTED TOOL”
+* Excessive uppercase copy
+* Small technical labels
+* Numerous outlined panels
+* Dashboard information inside the main hero
+* Neon-green esports styling
+* Metallic effects
+* Hexagonal decorations
+* Stadium-light effects
+* Shields or generic team crests
+* Dense, compartmentalized layouts
+* Excessive cards
+* Excessive borders
+* Futuristic or industrial textures
+
+This must feel like a genuine change in the site’s visual language, not merely a rearrangement of the existing components.
+
+## COLOR PALETTE
+
+Use this palette:
+
+* Warm off-white background: #F7F5EF
+* Deep navy typography: #12213A
+* Athletic blue primary accent: #2474F5
+* Warm orange secondary accent: #FF6B35
+* Pale blue supporting background: #E8F1FF
+* White: #FFFFFF
+* Soft neutral gray for secondary text and dividers
+
+Use athletic blue for primary actions and important emphasis.
+
+Use warm orange sparingly for personality, handwritten accents, small highlights, or directional details.
+
+Do not use neon green as a dominant landing-page color.
+
+## TYPOGRAPHY
+
+Use a bold, slightly condensed sports-editorial typeface for major headings.
+
+Use a clean, highly readable sans-serif typeface for body text, navigation, buttons, and supporting content.
+
+Typography should feel athletic but not like an esports logo or industrial poster.
+
+Use sentence case for most interface copy. Reserve uppercase text for short eyebrow labels only.
+
+Headlines should be bold and expressive, while body copy should remain friendly and easy to read.
+
+## NAVIGATION
+
+Create a clean white navigation bar.
+
+Place the existing Pixl Sports logo on the left.
+
+Include these navigation links:
+
+* Tools
+* How It Works
+* Pricing
+* Sign In
+
+Add a prominent athletic-blue button:
+
+“Get Started”
+
+Keep the navigation spacious and uncomplicated.
+
+The navigation should remain easy to use on mobile. Use an accessible mobile menu when necessary.
+
+## HERO SECTION
+
+Create a large editorial hero section using a two-part composition.
+
+On desktop:
+
+* Place the message and actions on the left.
+* Place a large youth-sports photograph on the right.
+* Allow the photograph to feel integrated into the hero rather than contained inside a small card.
+* Keep the primary message visible without scrolling at a typical desktop height.
+
+On mobile:
+
+* Stack the message, actions, and image naturally.
+* Keep the headline readable.
+* Preserve both calls to action.
+* Avoid horizontal overflow.
+
+Use this exact hero copy:
+
+Eyebrow:
+
+“YOUR SEASON, GUIDED”
+
+Primary headline:
+
+“We guide your week. You capture the moments.”
+
+Keep “We guide your week.” in deep navy.
+
+Emphasize “You capture the moments.” using athletic blue.
+
+Supporting copy:
+
+“From planning the week to following game day and celebrating the final whistle, Pixl puts the right tool in front of you at every step.”
+
+Primary button:
+
+“Get started free”
+
+Secondary action:
+
+“Explore the tools”
+
+Add this supporting brand statement near the photograph:
+
+“Less chasing. More cheering.”
+
+This statement may use a warm-orange handwritten or italic display style, provided it remains accessible and readable.
+
+The hero should communicate that Pixl actively guides the visitor through the week. It should not look like a collection of unrelated utilities.
+
+## HERO PHOTOGRAPHY
+
+Use an emotionally engaging youth-sports photograph showing an athlete in motion during a real game or competition.
+
+Whenever possible, include parents, teammates, or supporters softly visible near the sideline.
+
+The photography should feel:
+
+* Natural
+* Candid
+* Energetic
+* Aspirational
+* Community-oriented
+* Appropriate for families
+* Representative of real youth sports
+
+Use warm natural light and believable sports action.
+
+Do not use:
+
+* Obvious stock-photo poses
+* Professional stadium imagery
+* Empty stadiums
+* Artificial neon lighting
+* Esports imagery
+* Technical overlays
+* Generic silhouettes
+* Decorative sports equipment floating around the page
+
+If a final licensed photograph is not currently available, create the correct layout using a clearly replaceable image asset or placeholder. Do not embed the supplied visual mockup itself as the hero image.
+
+## BENEFITS SECTION
+
+Directly beneath the hero, create a bright, open section with three simple benefit columns.
+
+### Benefit 1
+
+Heading:
+
+“Plan the week”
+
+Description:
+
+“Keep schedules, locations, and team information together in one clear place.”
+
+Use a simple calendar-style line icon.
+
+### Benefit 2
+
+Heading:
+
+“Follow the game”
+
+Description:
+
+“Track live stats, scores, and important moments as they happen.”
+
+Use a simple stat or activity line icon.
+
+### Benefit 3
+
+Heading:
+
+“Celebrate the moment”
+
+Description:
+
+“Turn highlights into shareable graphics athletes and families are proud of.”
+
+Use a simple celebration or community line icon.
+
+Keep this section open and easy to scan.
+
+Avoid wrapping each benefit in a heavy bordered card. Light dividers are acceptable on desktop.
+
+## GUIDED-WEEK SECTION
+
+After the benefits, add a section that demonstrates how Pixl guides the visitor through the sports week.
+
+Use a heading such as:
+
+“Your week, guided from start to finish.”
+
+Supporting copy:
+
+“Pixl keeps the next step clear—from adding the schedule to following game day and sharing the moments afterward.”
+
+Present this as a simple three-step journey:
+
+### Step 1: Before game day
+
+* Build or import the schedule
+* Keep locations and times current
+* Prepare with the game-day checklist
+
+### Step 2: During the game
+
+* Follow the live action
+* Track stats and key moments
+* Keep supporters connected
+
+### Step 3: After the final whistle
+
+* Celebrate the performance
+* Create athlete graphics
+* Share highlights and memories
+
+This section should visually reinforce guidance and progression without resembling a technical workflow diagram.
+
+Use large numbers, friendly icons, photography, or subtle connecting elements.
+
+## PRODUCT PREVIEW SECTION
+
+Introduce the actual Pixl Sports tools using large, polished product previews.
+
+Feature:
+
+* Schedule Maker
+* Game-Day Checklist
+* Live Stat Tracker
+* Athlete Hype Card
+
+Show real interface previews whenever possible.
+
+The previews may overlap slightly or use staggered positioning to create visual depth.
+
+Do not present every tool as an identical small card in a rigid grid.
+
+Each product preview should connect to a clear benefit:
+
+* Schedule Maker → Know what is happening next
+* Game-Day Checklist → Arrive prepared
+* Live Stat Tracker → Follow the action
+* Athlete Hype Card → Celebrate and share the moment
+
+Include appropriate links to the corresponding existing tools.
+
+## AUDIENCE SECTION
+
+Add a section speaking directly to parents and supporters.
+
+Suggested eyebrow:
+
+“BUILT FOR THE PEOPLE ON THE SIDELINE”
+
+Suggested heading:
+
+“Stay connected without managing another complicated sports app.”
+
+Suggested supporting copy:
+
+“Pixl organizes the information you need and helps you turn the moments you love into something worth sharing.”
+
+Pair this section with warm sideline photography or a polished product-and-photography composition.
+
+Do not make the section sound like league-management or coaching software.
+
+## FINAL CALL TO ACTION
+
+End the page with one strong, uncluttered call-to-action section.
+
+Heading:
+
+“Let Pixl guide your next game week.”
+
+Supporting copy:
+
+“Bring the schedule, the action, and the celebration together in one place.”
+
+Primary button:
+
+“Get started free”
+
+Secondary action:
+
+“Explore the tools”
+
+Use a confident athletic-blue or deep-navy background while keeping the section brighter and simpler than the current website.
+
+## FOOTER
+
+Create a clean, minimal footer containing:
+
+* Pixl Sports logo
+* Short brand statement
+* Tools
+* Help / FAQ
+* Privacy
+* Sign In
+* Copyright information
+
+Suggested footer statement:
+
+“We guide the week. You capture the moments.”
+
+Do not turn the footer into another dashboard-style panel.
+
+## ROUTES AND FUNCTIONALITY
+
+Preserve all existing routes, authentication, tools, and application functionality.
+
+Connect calls to action to their appropriate existing destinations:
+
+* Get started free → existing signup flow
+* Get Started → existing signup flow
+* Explore the tools → Studio or tools section
+* Sign In → existing sign-in page
+* Schedule Maker preview → schedule tool
+* Game-Day Checklist preview → checklist tool
+* Live Stat Tracker preview → stat-tracking tool
+* Athlete Hype Card preview → hype-card tool
+
+Do not remove or rename routes without a functional reason.
+
+Do not make unrelated changes to authenticated pages, databases, account flows, or tool logic.
+
+## COMPONENT AND CODE REQUIREMENTS
+
+* Reuse the existing project framework and structure.
+* Create reusable components for repeated sections.
+* Keep the code maintainable.
+* Use existing design-system utilities where they support this direction.
+* Replace existing landing-page styles when they conflict with the new direction.
+* Avoid unnecessary dependencies.
+* Do not rebuild working functionality.
+* Keep images optimized for web delivery.
+* Prevent layout shifts.
+* Use responsive image behavior.
+* Use semantic HTML.
+* Maintain an accessible heading order.
+* Include descriptive alt text.
+* Maintain strong color contrast.
+* Include visible focus states.
+* Make all interactive elements keyboard accessible.
+
+## MOTION
+
+Keep animation restrained.
+
+Acceptable motion includes:
+
+* Subtle hero entrance
+* Gentle image reveal
+* Small button hover transitions
+* Slight product-preview movement on scroll
+* Soft card or image hover elevation
+
+Do not use:
+
+* Constant background animation
+* Glowing effects
+* Scanning lines
+* Aggressive parallax
+* Fast movement
+* Technical loading animations
+* Excessive animated elements
+
+## RESPONSIVE VERIFICATION
+
+After implementation, verify the redesigned page at:
+
+* Large desktop width
+* Standard laptop width
+* Tablet width
+* Mobile width
+
+Check:
+
+* Headline wrapping
+* Navigation behavior
+* Button sizing
+* Image cropping
+* Text contrast
+* Section spacing
+* Product-preview stacking
+* Horizontal overflow
+* Touch-target sizes
+
+## FINAL RESULT
+
+The completed landing page should closely capture the attached reference’s composition and emotional sports-media feeling while remaining faithful to the real Pixl Sports product.
+
+A visitor should understand within seconds:
+
+1. Pixl guides their sports week.
+2. Pixl helps them follow their athlete.
+3. Pixl brings schedules, game-day tools, and shareable moments together.
+4. The product is simple enough for parents and supporters.
+5. The next step is to get started or explore the tools.
+
+The page should feel like a modern sports brand built around the experience of supporting an athlete—not an industrial dashboard, technical studio, or collection of disconnected utilities.
