@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+.pixl-background {
+  --background: 48 43% 96%;
+  --foreground: 221 21% 12%;
+  --card: 45 38% 99%;
+  --border: 43 23% 86%;
+  --muted: 47 28% 91%;
+  --muted-foreground: 220 11% 43%;
+  --primary: 148 100% 48%;
+  --primary-foreground: 221 21% 12%;
+  color: hsl(var(--foreground));
+  font-family: 'Outfit', sans-serif;
+  background: hsl(var(--background));
+  background-image: linear-gradient(135deg, hsl(48 43% 96% / .94), hsl(47 32% 91% / .9)), repeating-linear-gradient(0deg, transparent 0 3px, hsl(221 21% 12% / .025) 4px);
+}
+.pixl-background .display { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+.pixl-background .grid-lines { background-image: linear-gradient(to right, hsl(var(--border) / .8) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / .8) 1px, transparent 1px); background-size: 32px 32px; }
+.pixl-background .dark-grid { background-image: linear-gradient(to right, hsl(210 20% 98% / .06) 1px, transparent 1px), linear-gradient(to bottom, hsl(210 20% 98% / .06) 1px, transparent 1px); background-size: 32px 32px; }
+.pixl-background .angle { clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1.5rem), calc(100% - 1.5rem) 100%, 0 100%); }
+.pixl-background .angle-sm { clip-path: polygon(0 0, 100% 0, 100% calc(100% - .75rem), calc(100% - .75rem) 100%, 0 100%); }
+.pixl-background .card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+.pixl-background .shadow-depth { filter: drop-shadow(0 14px 12px rgb(0 0 0 / .2)); }
+.pixl-background button, .pixl-background a { font: inherit; }
+@media (max-width: 640px) { .pixl-background .hero-title { font-size: 3.4rem; } }
