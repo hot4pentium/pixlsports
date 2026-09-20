@@ -393,8 +393,8 @@ const navigate = (path) => {
 };
 
 function ProfilePropagationHarness() {
-  const [route, setRoute] = useState('profile');
-  const [profile, setProfile] = useState({
+  const profileStorageKey = 'pixlsports-supporter-profile';
+  const defaultProfile = {
     displayName: 'Jamie Fan',
     teamName: 'Northside Comets',
     athleteName: '',
@@ -403,6 +403,17 @@ function ProfilePropagationHarness() {
     relationship: 'Parent',
     accessMode: 'full',
     sport: 'basketball',
+  };
+  const [route, setRoute] = useState(() => (
+    new URLSearchParams(window.location.search).get('route') === 'dashboard' ? 'dashboard' : 'profile'
+  ));
+  const [profile, setProfile] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(profileStorageKey);
+      return stored ? { ...defaultProfile, ...JSON.parse(stored) } : defaultProfile;
+    } catch {
+      return defaultProfile;
+    }
   });
   const [draft, setDraft] = useState(profile);
   const [savedCloudProject] = useState({
@@ -443,7 +454,14 @@ function ProfilePropagationHarness() {
         saving: false,
         error: '',
         onChange: (field, value) => setDraft((current) => ({ ...current, [field]: value })),
-        onSave: () => { setProfile(draft); setRoute('dashboard'); },
+        onSave: () => {
+          setProfile(draft);
+          window.localStorage.setItem(profileStorageKey, JSON.stringify(draft));
+          const search = new URLSearchParams(window.location.search);
+          search.set('route', 'dashboard');
+          window.history.replaceState({}, '', window.location.pathname + '?' + search.toString());
+          setRoute('dashboard');
+        },
         onCancel: () => setRoute('dashboard'),
         onPhotoChange: () => {},
         onPhotoCropChange: () => {},
@@ -1603,6 +1621,18 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       document.querySelector('[data-testid="btn-profile-save"]')?.click();
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.body?.innerText.includes("Taylor Morgan")', Boolean);
+
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"athlete-summary\\"]") !== null && document.body?.innerText.includes("Taylor Morgan")',
+      Boolean,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="athlete-summary"]\')?.textContent || ""', page.sessionId),
+      /Taylor Morgan/,
+    );
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
