@@ -909,7 +909,6 @@ function HomePage() {
             <div className="pixl-landing-tool-index">
               <div className="pixl-landing-tool-index-intro">
                 <small>YOUR {selectedRole === 'fan' ? 'FAN' : 'COACH'} TOOLKIT</small>
-                <strong>Pick your next move.</strong>
               </div>
               <div className="pixl-landing-tool-tabs" role="tablist" aria-label={`${selectedRole === 'fan' ? 'Fan' : 'Coach'} Hub tools`}>
                 {roleTools.map((kind, index) => {

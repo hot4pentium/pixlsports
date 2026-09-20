@@ -387,14 +387,6 @@
   letter-spacing: .18em;
 }
 
-.pixl-landing-tool-index-intro strong {
-  display: block;
-  margin-top: 9px;
-  color: var(--pixl-landing-paper);
-  font: 800 29px / .86 "Barlow Condensed", sans-serif;
-  text-transform: uppercase;
-}
-
 .pixl-landing-tool-tabs {
   display: grid;
   gap: 7px;
@@ -609,10 +601,6 @@
 
   .pixl-landing-tool-index-intro {
     padding: 0 0 14px;
-  }
-
-  .pixl-landing-tool-index-intro strong {
-    font-size: 25px;
   }
 
   .pixl-landing-tool-tabs {
