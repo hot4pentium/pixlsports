@@ -106,6 +106,10 @@ function TrackerHarness() {
     : null;
 
   return createElement('main', null,
+    createElement('output', {
+      hidden: true,
+      'data-testid': 'tracker-next-game-source',
+    }, nextGame?.id || 'none'),
     !currentGame && nextGame && showNotice && createElement(StatTrackerUpcomingNotice, {
       nextGame,
       onUseUpcomingGame: () => setShowManualSetup(true),
@@ -364,6 +368,26 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     assert.ok(recentActivityText.indexOf('Tackle') < recentActivityText.indexOf('Touchdown'));
     await connection.evaluate('document.querySelector("[data-testid=\\"score-adjust-athlete-increase\\"]")?.click(); document.querySelector("[data-testid=\\"score-adjust-athlete-increase\\"]")?.click(); document.querySelector("[data-testid=\\"score-adjust-opponent-increase\\"]")?.click(); document.querySelector("[data-testid=\\"score-adjust-opponent-increase\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-score-card-athlete\\"]")?.textContent.includes("8") && document.querySelector("[data-testid=\\"live-tracker-score-card-opponent\\"]")?.textContent.includes("2")', Boolean);
+    await connection.evaluate(`window.__setTrackerNextGame({
+      id: 'game-2',
+      type: 'game',
+      date: '2026-09-28',
+      time: '19:00',
+      opponent: 'Westview',
+    })`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"tracker-next-game-source\\"]")?.textContent === "game-2"', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"live-tracker-layout\\"]"))', page.sessionId),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"live-tracker-matchup\\"]")?.textContent || ""', page.sessionId),
+      'Falcons vs Northside',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"live-tracker-score-card-athlete\\"]")?.textContent.includes("8") && document.querySelector("[data-testid=\\"live-tracker-score-card-opponent\\"]")?.textContent.includes("2")', page.sessionId),
+      true,
+    );
     assert.equal(
       await connection.evaluate<boolean>(
         '["pass-yard", "rush-yard", "reception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
