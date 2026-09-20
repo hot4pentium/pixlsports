@@ -38,7 +38,7 @@ import {
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
-import { lazy, Suspense, type FormEvent, type PointerEvent, type ReactNode, useEffect, useState } from 'react';
+import { lazy, Suspense, type FormEvent, type PointerEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -105,11 +105,13 @@ import {
   getSupporterScheduleSelection,
   getUserProfile,
   getUserRole,
+  mapLocalSupporterHypeCard,
   mapRecentSupporterProjects,
   supporterProfileFromUser,
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
+import { readHypeCardProject } from '@/features/hype-card-types';
 import { getRoleIntent, roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import { SupporterScheduleSelector } from '@/features/supporter-schedule-selector';
@@ -1608,7 +1610,11 @@ function SupporterStudio() {
   const nextGame = events.find((event) => event.type === 'game' && event.date >= todayKey)
     ?? events.find((event) => event.type === 'game');
   const nextGameIsUpcoming = Boolean(nextGame?.date && nextGame.date >= todayKey);
-  const projects: SupporterProject[] = mapRecentSupporterProjects(cloudProjects ?? []);
+   const localHypeCard = useMemo(() => readHypeCardProject(), []);
+   const projects: SupporterProject[] = [
+     ...(localHypeCard ? [mapLocalSupporterHypeCard(localHypeCard)] : []),
+     ...mapRecentSupporterProjects(cloudProjects ?? []),
+   ];
   const connected = scheduleSelection.source === 'team';
   const scheduleSource = scheduleSelection.source;
   const scheduleLabel = scheduleSelection.source === 'team'

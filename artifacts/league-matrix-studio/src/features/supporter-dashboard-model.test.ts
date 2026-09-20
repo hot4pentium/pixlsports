@@ -10,6 +10,7 @@ import {
   getSupporterScheduleSelection,
   getStudioDestination,
   getUserRole,
+  mapLocalSupporterHypeCard,
   mapRecentSupporterProjects,
   parseSupporterStorageSyncEvent,
   supporterProfileFromUser,
@@ -351,4 +352,21 @@ test('maps only recent Hype Card templates in newest-first order, limited to fou
   assert.equal(recent[0]?.thumbnailProject, projects[2]?.project);
   assert.equal(recent.some(({ id }) => id === 'schedule'), false);
   assert.equal(recent.some(({ id }) => id === 'roster'), false);
+});
+
+test('maps an exported local Hype Card back to the local editor', () => {
+  const project = {
+    teamName: 'Northside Comets',
+    headline: 'Game Winner',
+  } as any;
+  const recent = mapLocalSupporterHypeCard(project, '2026-09-20T12:00:00Z');
+
+  assert.deepEqual(recent, {
+    id: 'local-hype-card',
+    name: 'Northside Comets - Game Winner',
+    kind: 'hype-card',
+    updatedAt: '2026-09-20T12:00:00Z',
+    href: '/studio/hype-card',
+    thumbnailProject: { tool: 'hype-card', project },
+  });
 });

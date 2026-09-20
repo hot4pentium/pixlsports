@@ -1,6 +1,7 @@
 import type { SupporterProfile, SupporterProject } from './supporter-dashboard';
 import { isSport, type Sport } from './stat-tracker';
 import type { ScheduleEventStatus } from './schedule-draft';
+import type { HypeCardProject } from './hype-card-types';
 
 export type UserRole = 'coach' | 'fan';
 export type AccessMode = 'full' | 'guest';
@@ -367,4 +368,18 @@ export function mapRecentSupporterProjects(projects: CloudProjectLike[]): Suppor
       href: `/studio/hype-card/${project.id}`,
       thumbnailProject: project.project,
     }));
+}
+
+export function mapLocalSupporterHypeCard(
+  project: HypeCardProject,
+  updatedAt: string | Date = new Date(),
+): SupporterProject {
+  return {
+    id: 'local-hype-card',
+    name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
+    kind: 'hype-card',
+    updatedAt,
+    href: '/studio/hype-card',
+    thumbnailProject: { tool: 'hype-card', project },
+  };
 }
