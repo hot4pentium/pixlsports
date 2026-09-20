@@ -2986,7 +2986,6 @@ function ScheduleEditor() {
   const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
   const consumeAccountUsage = useConsumeAccountUsage();
   const queryClient = useQueryClient();
-  const isFan = getUserRole(user) === 'fan';
   const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [storedDraft] = useState(() => readScheduleDraft());
   const [saved, setSaved] = useState(Boolean(storedDraft));
@@ -3303,52 +3302,6 @@ function ScheduleEditor() {
     }
   };
 
-  const shareSchedule = async () => {
-    if (!teamName.trim() || events.length === 0) {
-      setNoticeFor('ADD A TEAM NAME AND EVENT BEFORE SHARING');
-      return;
-    }
-
-    try {
-      const data = {
-        title: teamName.trim(),
-        teamSeason: season.trim(),
-        events,
-      };
-      const share = hasExistingShare
-        ? await updateShare.mutateAsync({ shareToken, data })
-        : await createShare.mutateAsync({ data });
-      const url = `${appOrigin}${basePath}/schedule/${share.shareToken}`;
-      setShareToken(share.shareToken);
-      setShareUrl(url);
-      saveCurrentDraft(events, share.shareToken);
-      setSaved(true);
-
-      if (!hasExistingShare && typeof navigator.share === 'function') {
-        try {
-          await navigator.share({
-            title: teamName.trim(),
-            text: `${teamName.trim()}${season.trim() ? ` · ${season.trim()}` : ''}`,
-            url,
-          });
-          setNoticeFor('SCHEDULE SHARED WITH PARENTS');
-          return;
-        } catch (error) {
-          if (error instanceof DOMException && error.name === 'AbortError') return;
-        }
-      }
-
-      if (!hasExistingShare) {
-        await navigator.clipboard?.writeText(url);
-        setNoticeFor('PARENT LINK COPIED TO CLIPBOARD');
-      } else {
-        setNoticeFor('PARENT LINK UPDATED');
-      }
-    } catch {
-      setNoticeFor(hasExistingShare ? 'LINK UPDATE FAILED — TRY AGAIN' : 'SHARING FAILED — TRY AGAIN');
-    }
-  };
-
   const revokeScheduleShare = async () => {
     if (!shareToken || !window.confirm('Revoke this parent link? Parents will no longer be able to open it.')) {
       return;
@@ -3456,14 +3409,6 @@ function ScheduleEditor() {
               <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Select an event to edit it
               </p>
-            </div>
-
-            <div className="relative z-10 mt-auto pt-8">
-              <button type="button" onClick={shareSchedule} disabled={sharePending || deleteShare.isPending} className="inline-flex w-full items-center justify-center gap-2 bg-foreground px-3 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-foreground/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-schedule">
-                <Share2 className="h-4 w-4" /> {sharePending
-                  ? (isFan ? 'Sharing…' : hasExistingShare ? 'Updating link…' : 'Creating link…')
-                  : isFan ? 'Share Calendar' : hasExistingShare ? 'Update parent link' : 'Share with parents'}
-              </button>
             </div>
 
             {shareUrl && (
