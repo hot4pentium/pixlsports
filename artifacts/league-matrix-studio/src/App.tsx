@@ -88,6 +88,7 @@ import {
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
 import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
+import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
 import {
   clearStoredCalendarConnection,
@@ -4287,6 +4288,19 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
     const completed = !item.completed;
     const feedback = getChecklistCompletionFeedback(latestChecklist.current.items, item.id, completed);
     updateItem(item.id, { completed });
+    if (completed) {
+      const completedCount = completedChecklistCount(latestChecklist.current.items) + 1;
+      const totalCount = latestChecklist.current.items.length;
+      const eventData = {
+        source: shared ? 'shared_checklist' : 'local_checklist',
+        completed_count: completedCount,
+        total_count: totalCount,
+      };
+      trackEvent('checklist_item_completed', eventData);
+      if (totalCount > 0 && completedCount === totalCount) {
+        trackEvent('checklist_completed', eventData);
+      }
+    }
     if (!feedback) return;
     if (completionTimer.current !== null) window.clearTimeout(completionTimer.current);
     setCompletionFeedback(feedback);
@@ -4533,7 +4547,16 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                       : 'Everything on the list is handled. You are ready for what comes next.'}
                   </p>
                 </div>
-                <Link href={trackerHref} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110">
+                <Link
+                  href={trackerHref}
+                  onClick={() => trackEvent('completion_next_action_clicked', {
+                    source: shared ? 'shared_checklist' : 'local_checklist',
+                    stage: 'live',
+                    completed_count: completed,
+                    total_count: checklist.items.length,
+                  })}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110"
+                >
                   Open Stat Tracker <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

@@ -26,6 +26,7 @@ import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
+import { trackEvent } from '../lib/analytics';
 import './supporter-dashboard-pixl.css';
 
 export interface SupporterProfile {
@@ -424,6 +425,12 @@ export function SupporterDashboardView({
     if (activePathIndex <= previousIndex || previousIndex < 0) return;
     const completedStep = weeklyPath[activePathIndex - 1];
     if (!completedStep) return;
+    trackEvent('weekly_path_advanced', {
+      source: 'supporter_dashboard',
+      from_stage: completedStep.id,
+      to_stage: activePath.id,
+      progress_count: activePathIndex,
+    });
     if (pathCelebrationTimer.current !== null) window.clearTimeout(pathCelebrationTimer.current);
     setPathCelebration(`${completedStep.label} complete. Next up: ${activePath.label}.`);
     pathCelebrationTimer.current = window.setTimeout(() => setPathCelebration(''), 4200);
@@ -644,7 +651,19 @@ export function SupporterDashboardView({
                <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{activePathDetails.title}</h2>
                <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{activePathDetails.description}</p>
 
-               <button type="button" onClick={() => setLocation(activePath.href)} className="w-full bg-[#2474F5] hover:bg-[#2474F5]/90 text-white font-bold text-base py-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors shadow-sm" data-testid="btn-mobile-recommendation-action">
+               <button
+                 type="button"
+                 onClick={() => {
+                   trackEvent('completion_next_action_clicked', {
+                     source: 'weekly_path_mobile',
+                     stage: activePath.id,
+                     progress_count: activePathIndex,
+                   });
+                   setLocation(activePath.href);
+                 }}
+                 className="w-full bg-[#2474F5] hover:bg-[#2474F5]/90 text-white font-bold text-base py-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors shadow-sm"
+                 data-testid="btn-mobile-recommendation-action"
+               >
                  <activePath.Icon className="w-5 h-5" />
                  {activePathDetails.action}
                </button>
@@ -960,7 +979,15 @@ export function SupporterDashboardView({
               <h3 className={`mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl ${selectedPathTheme.accent}`}>{selectedPathDetails.title}</h3>
               <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-white/60">{selectedPathDetails.description}</p>
             </div>
-            <Link href={selectedPath.href} className={`inline-flex min-h-12 shrink-0 items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-transform hover:-translate-y-0.5 clip-angled-sm ${selectedPathTheme.action}`}>
+            <Link
+              href={selectedPath.href}
+              onClick={() => trackEvent('completion_next_action_clicked', {
+                source: 'weekly_path_desktop',
+                stage: selectedPath.id,
+                progress_count: activePathIndex,
+              })}
+              className={`inline-flex min-h-12 shrink-0 items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-transform hover:-translate-y-0.5 clip-angled-sm ${selectedPathTheme.action}`}
+            >
               {selectedPathDetails.action} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
