@@ -71,7 +71,7 @@ function saveLocalTracker(data: StatTrackerData, accountId: string) {
   window.localStorage.setItem(getTrackerStorageKeys(accountId).history, JSON.stringify(data));
 }
 
-type ScheduledGame = {
+export type ScheduledGame = {
   id: string;
   type: string;
   date: string;
@@ -170,6 +170,98 @@ function formatDate(value: string) {
   if (!value) return 'Date not set';
   const date = new Date(`${value}T12:00:00`);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function StatTrackerUpcomingNotice({
+  nextGame,
+  onUseUpcomingGame,
+  onDismiss,
+}: {
+  nextGame: ScheduledGame;
+  onUseUpcomingGame: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <section className="mb-6 flex flex-col gap-4 border border-primary/40 bg-primary/5 px-4 py-4 clip-angled-sm sm:flex-row sm:items-center sm:justify-between sm:px-5" data-testid="stat-tracker-upcoming-notice" aria-live="polite">
+      <div className="flex min-w-0 items-start gap-3">
+        <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Next game scheduled</p>
+          <p className="mt-1 truncate text-sm font-bold uppercase">{formatDate(nextGame.date)} · {nextGame.opponent || 'Opponent TBD'}</p>
+          <p className="mt-1 text-xs font-medium text-muted-foreground">Your tracker is ready to use this game’s details.</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <button type="button" onClick={onUseUpcomingGame} data-testid="button-use-upcoming-game" className="inline-flex min-h-10 items-center justify-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110">Use this game</button>
+        <button type="button" onClick={onDismiss} aria-label="Dismiss upcoming game notification" data-testid="button-dismiss-upcoming-notice" className="inline-flex min-h-10 min-w-10 items-center justify-center border border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground"><X className="h-4 w-4" /></button>
+      </div>
+    </section>
+  );
+}
+
+export function StatTrackerStartPanel({
+  nextGame,
+  label,
+  date,
+  opponent,
+  notes,
+  showManualSetup,
+  onToggleManualSetup,
+  onDateChange,
+  onOpponentChange,
+  onNotesChange,
+  onStartGame,
+  onReviewPreviousGames,
+}: {
+  nextGame?: ScheduledGame;
+  label: string;
+  date: string;
+  opponent: string;
+  notes: string;
+  showManualSetup: boolean;
+  onToggleManualSetup: () => void;
+  onDateChange: (value: string) => void;
+  onOpponentChange: (value: string) => void;
+  onNotesChange: (value: string) => void;
+  onStartGame: () => void;
+  onReviewPreviousGames: () => void;
+}) {
+  return (
+    <div className="border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
+          <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{label}</h2>
+          {!nextGame && <p className="mt-2 max-w-md text-sm font-medium leading-relaxed text-muted-foreground" data-testid="stat-tracker-blank-state">No game is scheduled yet. Start with a blank template, or review a previous game below.</p>}
+        </div>
+        <Trophy className="h-7 w-7 text-primary" />
+      </div>
+      <button type="button" onClick={onToggleManualSetup} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid="button-start-manual-game" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-primary bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-primary/20">
+        <Clock3 className="h-4 w-4 text-primary" /> Start manual game <ChevronDown className={`h-4 w-4 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
+      </button>
+      {showManualSetup && <div id="manual-game-setup" className="mt-6 border-t border-border pt-6">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
+            <input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} data-testid="input-stat-tracker-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+          </label>
+          <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
+            <input value={opponent} onChange={(event) => onOpponentChange(event.target.value)} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+          </label>
+        </div>
+        <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes
+          <textarea value={notes} onChange={(event) => onNotesChange(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+        </label>
+        {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
+        <button type="button" onClick={onStartGame} data-testid="button-confirm-start-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
+          <Clock3 className="h-4 w-4" /> Start game
+        </button>
+      </div>}
+      {!nextGame && <div className="mt-5 flex flex-col gap-3 border-l-2 border-border pl-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-medium text-muted-foreground">No scheduled game details to prefill.</p>
+        <button type="button" onClick={onReviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
+      </div>}
+    </div>
+  );
 }
 
 function formatEventTime(value: string) {
@@ -782,20 +874,11 @@ export function StatTrackerPage() {
       </div>
 
       {nextGame && !currentGame && showUpcomingNotice && (
-        <section className="mb-6 flex flex-col gap-4 border border-primary/40 bg-primary/5 px-4 py-4 clip-angled-sm sm:flex-row sm:items-center sm:justify-between sm:px-5" data-testid="stat-tracker-upcoming-notice" aria-live="polite">
-          <div className="flex min-w-0 items-start gap-3">
-            <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Next game scheduled</p>
-              <p className="mt-1 truncate text-sm font-bold uppercase">{formatDate(nextGame.date)} · {nextGame.opponent || 'Opponent TBD'}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Your tracker is ready to use this game’s details.</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button type="button" onClick={useNextGameForSetup} data-testid="button-use-upcoming-game" className="inline-flex min-h-10 items-center justify-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110">Use this game</button>
-            <button type="button" onClick={() => setShowUpcomingNotice(false)} aria-label="Dismiss upcoming game notification" data-testid="button-dismiss-upcoming-notice" className="inline-flex min-h-10 min-w-10 items-center justify-center border border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground"><X className="h-4 w-4" /></button>
-          </div>
-        </section>
+        <StatTrackerUpcomingNotice
+          nextGame={nextGame}
+          onUseUpcomingGame={useNextGameForSetup}
+          onDismiss={() => setShowUpcomingNotice(false)}
+        />
       )}
 
       {error && (
@@ -863,40 +946,20 @@ export function StatTrackerPage() {
 
       {!currentGame ? (
         <section ref={setupSectionRef} className="grid scroll-mt-6 gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="stat-tracker-setup">
-          <div className="border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
-                <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{rule.label}</h2>
-                {!nextGame && <p className="mt-2 max-w-md text-sm font-medium leading-relaxed text-muted-foreground" data-testid="stat-tracker-blank-state">No game is scheduled yet. Start with a blank template, or review a previous game below.</p>}
-              </div>
-              <Trophy className="h-7 w-7 text-primary" />
-            </div>
-            <button type="button" onClick={() => setShowManualSetup((value) => !value)} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid="button-start-manual-game" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-primary bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-primary/20">
-              <Clock3 className="h-4 w-4 text-primary" /> Start manual game <ChevronDown className={`h-4 w-4 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
-            </button>
-            {showManualSetup && <div id="manual-game-setup" className="mt-6 border-t border-border pt-6">
-              <div className="grid gap-5 sm:grid-cols-2">
-                 <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
-                    <input type="date" value={date} onChange={(event) => { manuallyEditedSetup.current.date = true; setDate(event.target.value); }} data-testid="input-stat-tracker-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
-                 </label>
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
-                    <input value={opponent} onChange={(event) => { manuallyEditedSetup.current.opponent = true; setOpponent(event.target.value); }} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
-                 </label>
-              </div>
-               <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes
-                 <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
-               </label>
-              {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
-              <button type="button" onClick={beginGame} data-testid="button-confirm-start-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
-                <Clock3 className="h-4 w-4" /> Start game
-              </button>
-            </div>}
-            {!nextGame && <div className="mt-5 flex flex-col gap-3 border-l-2 border-border pl-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs font-medium text-muted-foreground">No scheduled game details to prefill.</p>
-              <button type="button" onClick={reviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
-            </div>}
-          </div>
+          <StatTrackerStartPanel
+            nextGame={nextGame}
+            label={rule.label}
+            date={date}
+            opponent={opponent}
+            notes={notes}
+            showManualSetup={showManualSetup}
+            onToggleManualSetup={() => setShowManualSetup((value) => !value)}
+            onDateChange={(value) => { manuallyEditedSetup.current.date = true; setDate(value); }}
+            onOpponentChange={(value) => { manuallyEditedSetup.current.opponent = true; setOpponent(value); }}
+            onNotesChange={setNotes}
+            onStartGame={beginGame}
+            onReviewPreviousGames={reviewPreviousGames}
+          />
           <section className="border border-border bg-foreground p-6 text-background clip-angled-sm sm:p-8">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Season snapshot</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
