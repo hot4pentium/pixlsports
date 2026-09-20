@@ -15,8 +15,11 @@ import {
   scheduleStorageKey,
   updateScheduleEvent,
   createBlankScheduleEvent,
+  getActiveCloudScheduleProject,
+  getCloudScheduleProjectForIdentity,
   getCloudScheduleProjects,
   getLatestCloudScheduleProject,
+  getScheduleIdentity,
   getSelectedCloudScheduleProject,
   clearSupporterScheduleSelection,
   readSupporterScheduleSelection,
@@ -368,6 +371,58 @@ test('the latest valid cloud schedule is shared by dashboard and schedule maker'
   ];
 
   assert.equal(getLatestCloudScheduleProject(projects)?.id, 'latest');
+});
+
+test('the newest valid project is the active schedule for an exact team and season', () => {
+  const projects = [
+    {
+      id: 'different-team',
+      revision: 4,
+      updatedAt: '2026-09-20T12:00:00Z',
+      project: { tool: 'schedule', events: [], teamName: 'Other Team', season: 'Fall 2026' },
+    },
+    {
+      id: 'older-copy',
+      revision: 2,
+      updatedAt: '2026-09-10T12:00:00Z',
+      project: { tool: 'schedule', events: [], teamName: ' Wildcats ', season: 'Fall 2026' },
+    },
+    {
+      id: 'newer-copy',
+      revision: 3,
+      updatedAt: '2026-09-15T12:00:00Z',
+      project: { tool: 'schedule', events: [], teamName: 'WILDCATS', season: '  Fall   2026 ' },
+    },
+  ];
+
+  assert.equal(getScheduleIdentity({ teamName: ' Wildcats ', season: 'Fall 2026' }), 'wildcats::fall 2026');
+  assert.equal(getCloudScheduleProjectForIdentity(projects, {
+    teamName: 'wildcats',
+    season: 'fall 2026',
+  })?.id, 'newer-copy');
+  assert.equal(getActiveCloudScheduleProject(projects, {
+    teamName: 'wildcats',
+    season: 'fall 2026',
+  })?.id, 'newer-copy');
+});
+
+test('a complete identity with no cloud match does not select another season', () => {
+  const projects = [{
+    id: 'other-season',
+    revision: 1,
+    updatedAt: '2026-09-20T12:00:00Z',
+    project: { tool: 'schedule', events: [], teamName: 'Wildcats', season: 'Spring 2026' },
+  }];
+
+  assert.equal(getCloudScheduleProjectForIdentity(projects, {
+    teamName: 'Wildcats',
+    season: 'Fall 2026',
+  }), null);
+  assert.equal(getScheduleIdentity({ teamName: 'Wildcats', season: '' }), null);
+  assert.equal(getActiveCloudScheduleProject(projects, {
+    teamName: 'Wildcats',
+    season: '',
+  })?.id, 'other-season');
 });
 
 test('supporters can select an older valid cloud schedule instead of the newest one', () => {

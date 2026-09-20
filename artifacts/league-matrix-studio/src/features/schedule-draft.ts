@@ -159,6 +159,18 @@ export function getLatestCloudScheduleProject(
   return getCloudScheduleProjects(projects)[0] ?? null;
 }
 
+export function normalizeScheduleIdentityPart(value: unknown): string {
+  return stringValue(value).trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+export function getScheduleIdentity(
+  draft: Pick<ScheduleDraft, 'teamName' | 'season'>,
+): string | null {
+  const teamName = normalizeScheduleIdentityPart(draft.teamName);
+  const season = normalizeScheduleIdentityPart(draft.season);
+  return teamName && season ? `${teamName}::${season}` : null;
+}
+
 export function getCloudScheduleProjects(
   projects: readonly CloudScheduleProject[],
 ): CloudScheduleProject[] {
@@ -173,6 +185,31 @@ export function getCloudScheduleProjects(
     .sort((left, right) => (
       new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
     ));
+}
+
+export function getCloudScheduleProjectForIdentity(
+  projects: readonly CloudScheduleProject[],
+  identity: Pick<ScheduleDraft, 'teamName' | 'season'>,
+): CloudScheduleProject | null {
+  const targetIdentity = getScheduleIdentity(identity);
+  if (!targetIdentity) return null;
+
+  return getCloudScheduleProjects(projects).find((project) => {
+    const draft = normalizeScheduleDraft(project.project);
+    return draft ? getScheduleIdentity(draft) === targetIdentity : false;
+  }) ?? null;
+}
+
+export function getActiveCloudScheduleProject(
+  projects: readonly CloudScheduleProject[],
+  identity?: Pick<ScheduleDraft, 'teamName' | 'season'> | null,
+): CloudScheduleProject | null {
+  if (identity && getScheduleIdentity(identity)) {
+    return getCloudScheduleProjectForIdentity(projects, identity)
+      ?? getLatestCloudScheduleProject(projects);
+  }
+
+  return getLatestCloudScheduleProject(projects);
 }
 
 export function getSelectedCloudScheduleProject(
