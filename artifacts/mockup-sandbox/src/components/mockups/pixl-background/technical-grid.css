@@ -1,0 +1,65 @@
+.technical-grid-surface {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: hsl(48 43% 96%);
+  background-image:
+    radial-gradient(circle at 8% 10%, hsl(148 100% 48% / .055), transparent 19rem),
+    radial-gradient(circle at 94% 83%, hsl(210 45% 56% / .045), transparent 24rem);
+}
+
+.technical-grid-surface::before,
+.technical-grid-surface::after {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  content: '';
+}
+
+/* A drafting grid that fades before it reaches the content column. */
+.technical-grid-surface::before {
+  inset: 0;
+  opacity: .42;
+  background-image:
+    linear-gradient(to right, hsl(221 21% 12% / .055) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(221 21% 12% / .055) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image:
+    radial-gradient(ellipse 64% 74% at 0% 50%, #000 0%, transparent 74%),
+    radial-gradient(ellipse 38% 45% at 100% 100%, #000 0%, transparent 76%);
+  mask-image:
+    radial-gradient(ellipse 64% 74% at 0% 50%, #000 0%, transparent 74%),
+    radial-gradient(ellipse 38% 45% at 100% 100%, #000 0%, transparent 76%);
+}
+
+/* Quiet field geometry: arcs and a center line read as coaching-paper marks. */
+.technical-grid-surface::after {
+  top: 8rem;
+  right: -7rem;
+  width: min(47vw, 39rem);
+  height: min(47vw, 39rem);
+  border: 1px solid hsl(221 21% 12% / .06);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3rem hsl(221 21% 12% / .018),
+    0 0 0 6rem hsl(221 21% 12% / .014);
+}
+
+.technical-grid-surface > div {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .technical-grid-surface::before {
+    background-size: 36px 36px;
+    opacity: .28;
+  }
+
+  .technical-grid-surface::after {
+    top: 24rem;
+    right: -14rem;
+    width: 30rem;
+    height: 30rem;
+  }
+}

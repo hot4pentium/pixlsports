@@ -1,0 +1,13 @@
+.pixl-background {
+  /*
+   * Quiet Depth: a cool studio surface with barely-there tonal falloff.
+   * Unlike the baseline, there is no repeat pattern competing with the game
+   * context; the depth comes from broad, low-contrast light and edge shade.
+   */
+  background-color: hsl(210 24% 95%);
+  background-image:
+    radial-gradient(ellipse 92% 68% at 50% 2%, hsl(0 0% 100% / .72), transparent 70%),
+    radial-gradient(ellipse 74% 52% at 50% 46%, hsl(210 30% 98% / .34), transparent 76%),
+    linear-gradient(90deg, hsl(216 24% 83% / .22), transparent 17%, transparent 83%, hsl(216 24% 83% / .22));
+  background-attachment: fixed;
+}
