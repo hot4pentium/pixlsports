@@ -343,6 +343,14 @@ type LiveTrackerGameProps = {
   onEndGame: () => void;
 };
 
+function latestYardEventIds(game: GameSession) {
+  if (game.sport !== 'football' || game.trackYards !== true) return {};
+  return game.events.reduce<Record<string, string>>((eventIds, event) => {
+    if (getFootballYardMetricId(event.statId)) eventIds[event.statId] = event.id;
+    return eventIds;
+  }, {});
+}
+
 export function LiveTrackerGame({
   currentGame,
   rule,
@@ -360,7 +368,7 @@ export function LiveTrackerGame({
 }: LiveTrackerGameProps) {
   const currentGameRef = useRef(currentGame);
   const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
-  const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>({});
+  const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>(() => latestYardEventIds(currentGame));
   const [showBaseballHitChoices, setShowBaseballHitChoices] = useState(false);
   const [showBaseballPitchChoices, setShowBaseballPitchChoices] = useState(false);
   const updateCurrentGame = (next: GameSession | ((game: GameSession) => GameSession)) => {
@@ -377,7 +385,7 @@ export function LiveTrackerGame({
 
   useEffect(() => {
     setYardDrafts({});
-    setActiveYardEventIds({});
+    setActiveYardEventIds(latestYardEventIds(currentGame));
     setShowBaseballHitChoices(false);
     setShowBaseballPitchChoices(false);
   }, [currentGame.id]);
@@ -391,12 +399,23 @@ export function LiveTrackerGame({
   };
 
   const updateYardDraft = (statId: string, delta: number) => {
-    updateYardValue(statId, adjustYardValue(yardDrafts[statId] ?? 0, delta));
+    const eventId = activeYardEventIds[statId];
+    const event = eventId
+      ? currentGameRef.current.events.find((item) => item.id === eventId)
+      : undefined;
+    if (!event) return;
+    updateYardValue(statId, adjustYardValue(event.yards ?? 0, delta));
   };
 
   const setYardDraft = (statId: string, value: string) => {
     const parsed = Number.parseInt(value, 10);
     updateYardValue(statId, Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
+  };
+
+  const selectYardEvent = (event: GameSession['events'][number]) => {
+    if (!getFootballYardMetricId(event.statId)) return;
+    setActiveYardEventIds((current) => ({ ...current, [event.statId]: event.id }));
+    setYardDrafts((current) => ({ ...current, [event.statId]: event.yards ?? 0 }));
   };
 
   const recordStat = (item: StatDefinition) => {
@@ -623,7 +642,29 @@ export function LiveTrackerGame({
       <div data-testid="live-tracker-recent-activity" className="order-3 border border-border bg-card p-4 clip-angled-sm sm:p-5 lg:col-start-1 lg:row-start-2">
         <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
         <div className="space-y-2">
-          {currentGame.events.slice(-5).reverse().map((event) => <div key={event.id} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm"><span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{event.yards ? ` · ${event.yards} yds` : ''}</span><span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span></div>)}
+          {currentGame.events.slice(-5).reverse().map((event) => {
+            const yardMetricId = currentGame.sport === 'football' ? getFootballYardMetricId(event.statId) : null;
+            const isSelectedYardEvent = activeYardEventIds[event.statId] === event.id;
+            return (
+              <div key={event.id} className={`border-b pb-2 text-sm ${isSelectedYardEvent ? 'border-primary/60 bg-primary/5 px-2 pt-2' : 'border-border/60'}`} data-testid={`recent-activity-${event.id}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{yardMetricId ? ` · ${event.yards ?? 0} yds` : ''}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span>
+                </div>
+                {yardMetricId && yardTrackingEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => selectYardEvent(event)}
+                    aria-pressed={isSelectedYardEvent}
+                    data-testid={`button-correct-yards-${event.id}`}
+                    className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink hover:text-foreground"
+                  >
+                    {isSelectedYardEvent ? 'Editing this play' : 'Correct yards'}
+                  </button>
+                )}
+              </div>
+            );
+          })}
           {!currentGame.events.length && <p className="text-sm text-muted-foreground">Your taps will appear here.</p>}
         </div>
         <button type="button" onClick={() => updateCurrentGame(undoLastStatEvent(currentGame))} disabled={!currentGame.events.length} className="mt-5 inline-flex min-h-11 items-center gap-2 border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40"><RotateCcw className="h-4 w-4" /> Undo last</button>

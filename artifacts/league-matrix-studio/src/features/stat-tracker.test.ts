@@ -373,6 +373,60 @@ test('football live controls stay disabled until the stat card records one play'
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props['aria-valuenow'], 12);
 });
 
+test('a restored football game can correct an earlier yard play without changing unrelated plays', () => {
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:01:00Z'), 5);
+  game = addStatEvent(game, 'tackle', new Date('2026-09-17T12:02:00Z'));
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:03:00Z'), 10);
+  const firstPassId = game.events[0]?.id;
+  const secondPassId = game.events[2]?.id;
+  assert.ok(firstPassId);
+  assert.ok(secondPassId);
+
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = () => createElement(LiveTrackerGame, {
+    currentGame: changedGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof changedGame) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame());
+  });
+
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-yard' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-yard' }).props.value, 10);
+  assert.match(renderedText(renderer), /Passing yards · 5 yds/);
+  assert.match(renderedText(renderer), /Passing yards · 10 yds/);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': `button-correct-yards-${firstPassId}` }).props.onClick();
+  });
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-yard' }).props.value, 5);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-yard-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-yard-decrease' }).props.onClick();
+  });
+
+  assert.deepEqual(changedGame.events.map((event) => event.id), [firstPassId, game.events[1]?.id, secondPassId]);
+  assert.deepEqual(changedGame.events.map((event) => event.yards), [9, undefined, 10]);
+  assert.deepEqual(changedGame.stats, { 'pass-yard': 2, tackle: 1 });
+  assert.equal(changedGame.yardStats?.['pass-yard'], 19);
+});
+
 test('baseball hit waits for a single, double, or triple choice before recording', () => {
   const game = createGameSession('baseball', { opponent: 'Northside' }, new Date('2026-09-20T12:00:00Z'));
   const rule = getSportRule('baseball');
