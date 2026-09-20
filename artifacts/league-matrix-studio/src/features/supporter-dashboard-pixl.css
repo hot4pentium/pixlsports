@@ -245,3 +245,64 @@
     padding: 16px;
   }
 }
+/* Mobile Dashboard */
+.supporter-dashboard-mobile-shell {
+  display: flex;
+}
+
+.supporter-dashboard-desktop-shell {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .supporter-dashboard-mobile-shell {
+    display: none;
+  }
+
+  .supporter-dashboard-desktop-shell {
+    display: block;
+  }
+}
+
+.pixl-dashboard-mobile {
+  --m-bg: #F7F5EF;
+  --m-surface: #FFFFFF;
+  --m-text: #12213A;
+  --m-blue: #2474F5;
+  --m-orange: #FF6B35;
+  --m-pale-blue: #E8F1FF;
+
+  background-color: var(--m-bg);
+  color: var(--m-text);
+  font-family: "DM Sans", ui-sans-serif, sans-serif;
+}
+
+.pixl-dashboard-mobile h1,
+.pixl-dashboard-mobile h2,
+.pixl-dashboard-mobile h3,
+.pixl-dashboard-mobile .athletic-heading {
+  font-family: "Barlow Condensed", ui-sans-serif, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.mobile-notification-trigger {
+  width: 44px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--m-text) !important;
+}
+.mobile-notification-trigger span {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border-width: 0 !important;
+}

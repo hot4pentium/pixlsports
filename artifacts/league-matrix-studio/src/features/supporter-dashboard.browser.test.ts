@@ -145,6 +145,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router } from 'wouter';
 import { SupporterDashboardView } from './src/features/supporter-dashboard';
+import './src/index.css';
 
 const profile = {
   displayName: 'Jamie Fan',
@@ -222,7 +223,7 @@ function htmlSource() {
   return `
 <!doctype html>
 <html>
-  <head><meta charset="UTF-8"><title>Supporter dashboard browser test</title></head>
+  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Supporter dashboard browser test</title></head>
   <body><div id="test-root"></div><script type="module">import('/supporter-dashboard-test-harness.tsx?browser-test=' + Date.now()).then(({ mount }) => mount()).catch((error) => { document.body.dataset.testError = String(error); });</script></body>
 </html>
 `;
@@ -287,6 +288,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/supporter-dashboard-test.html`);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
      assert.equal(
        await connection.evaluate<boolean>(`(() => {
@@ -328,7 +335,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-      /Open stat tracker/,
+      /Start game day/,
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-upcoming"]\')?.className || ""', page.sessionId),
@@ -489,7 +496,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       false,
     );
     assert.equal(
-      await connection.evaluate<string>('document.body.innerText', page.sessionId).then((text) => text.includes('No Scheduled Events')),
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-upcoming"]\')?.textContent || ""', page.sessionId).then((text) => text.includes('No Scheduled Events')),
       true,
     );
     await waitFor(
@@ -607,6 +614,70 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     });
     assert.match(await connection.evaluate<string>('document.body.innerText', page.sessionId), /Alexandria Montgomery-Williams/);
     assert.match(await connection.evaluate<string>('document.body.innerText', page.sessionId), /The Northside Comets Select Travel Club/);
+
+    for (const width of [320, 375, 390, 430, 768]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width,
+        height: width === 768 ? 1024 : 844,
+        deviceScaleFactor: 1,
+        mobile: true,
+      }, page.sessionId);
+      const mobileDashboard = await connection.evaluate<{
+        visible: boolean;
+        desktopHidden: boolean;
+        viewportOverflow: boolean;
+        dashboardOverflow: boolean;
+        stepCount: number;
+        recommendationVisible: boolean;
+        bottomNavVisible: boolean;
+        diagnostics: string[];
+      }>(`(() => {
+        const mobileRoot = document.querySelector('.pixl-dashboard-mobile');
+        const desktopRoot = document.querySelector('.pixl-dashboard');
+        const recommendation = document.querySelector('[data-testid="btn-mobile-recommendation-action"]');
+        const bottomNav = document.querySelector('[data-testid="btn-mobile-nav-home"]')?.parentElement;
+        const isVisible = (element) => {
+          if (!(element instanceof HTMLElement)) return false;
+          const rect = element.getBoundingClientRect();
+          return getComputedStyle(element).display !== 'none' && rect.width > 0 && rect.height > 0;
+        };
+        return {
+          visible: isVisible(mobileRoot),
+          desktopHidden: desktopRoot instanceof HTMLElement && getComputedStyle(desktopRoot.parentElement).display === 'none',
+          viewportOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          dashboardOverflow: mobileRoot instanceof HTMLElement && mobileRoot.scrollWidth > mobileRoot.clientWidth,
+          stepCount: document.querySelectorAll('[data-testid="section-mobile-weekly-path"] li').length,
+          recommendationVisible: isVisible(recommendation),
+          bottomNavVisible: isVisible(bottomNav),
+          diagnostics: Array.from(document.querySelectorAll('.pixl-dashboard-mobile *'))
+            .filter((element) => element instanceof HTMLElement
+              && element.clientWidth > 1
+              && (element.getBoundingClientRect().left < 0 || element.getBoundingClientRect().right > document.documentElement.clientWidth))
+            .slice(0, 8)
+            .map((element) => {
+              const rect = element.getBoundingClientRect();
+              return [element.tagName, element.className, element.scrollWidth, element.clientWidth, Math.round(rect.right)].join(' | ');
+            }),
+        };
+      })()`, page.sessionId);
+      assert.deepEqual(mobileDashboard, {
+        visible: true,
+        desktopHidden: true,
+        viewportOverflow: false,
+        dashboardOverflow: false,
+        stepCount: 4,
+        recommendationVisible: true,
+        bottomNavVisible: true,
+        diagnostics: [],
+      }, `mobile dashboard layout at ${width}px`);
+    }
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'ChampionshipOpponentWithAnUnreasonablyLongName', status: 'final' },

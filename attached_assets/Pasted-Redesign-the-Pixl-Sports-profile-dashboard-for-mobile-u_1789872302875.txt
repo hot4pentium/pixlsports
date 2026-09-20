@@ -1,0 +1,495 @@
+Redesign the Pixl Sports profile dashboard for mobile using the attached visual as the primary design reference.
+
+Do not shrink the desktop dashboard into a narrow screen. Create a purpose-built mobile experience with a simpler hierarchy and fewer competing elements.
+
+The mobile dashboard should answer one primary question:
+
+“What should I do next?”
+
+Pixl Sports guides the user through four stages of their sports week. Based on the next scheduled event and its date, the dashboard recommends the most logical task to complete now.
+
+Preserve the existing recommendation logic, routes, user data, athlete data, schedules, and tool functionality.
+
+## MOBILE DESIGN GOAL
+
+The mobile dashboard should feel:
+
+* Simple
+* Bright
+* Sports-focused
+* Personal
+* Easy to scan
+* Comfortable to use with one hand
+* Consistent with the new Pixl Sports landing page
+* Like a guide rather than an administrative dashboard
+
+The recommendation must be the primary focus.
+
+Do not give the athlete profile, schedule, quick actions, and weekly path equal visual weight.
+
+## MOBILE CONTENT PRIORITY
+
+Display content in this order:
+
+1. Compact app header
+2. Short personal greeting
+3. Selected athlete
+4. Next event
+5. Four-step weekly path
+6. Recommended next action
+7. Upcoming event
+8. Persistent bottom navigation
+
+Secondary content should appear farther down the page or be available through navigation.
+
+## VISUAL DIRECTION
+
+Use the established Pixl Sports sports-editorial design system:
+
+* Warm off-white background: #F7F5EF
+* White content surfaces
+* Deep navy typography: #12213A
+* Athletic blue primary accent: #2474F5
+* Warm orange recommendation accent: #FF6B35
+* Pale blue supporting color: #E8F1FF
+
+Use:
+
+* Generous spacing
+* Bold athletic headings
+* Friendly sans-serif body copy
+* Minimal borders
+* Restrained rounded corners
+* Large touch targets
+* Simple line icons
+* Clear visual hierarchy
+
+Avoid:
+
+* Dark full-page backgrounds
+* Neon green
+* Technical grids
+* HUD styling
+* Industrial panels
+* Tiny technical labels
+* Multiple equal-weight cards
+* Desktop columns compressed onto mobile
+* Horizontal page overflow
+* Excessive uppercase text
+* Duplicate calls to action
+* Decorative clutter
+* Large slogans inside the working dashboard
+
+## APP HEADER
+
+Create a compact white mobile header.
+
+Left:
+
+* Small Pixl Sports logo
+
+Right:
+
+* Notification button
+* User avatar
+
+Keep the header short. Do not allow it to consume a large portion of the viewport.
+
+## GREETING AND ATHLETE SWITCHER
+
+Use a compact greeting:
+
+“Good afternoon, Brian.”
+
+Directly beneath it, show the selected athlete as one interactive row or chip:
+
+* Circular athlete photo
+* Randal
+* #30
+* Tigers
+* Small chevron indicating the athlete can be changed
+
+Tapping this row should use the existing athlete-switching behavior.
+
+Do not create a large profile hero or repeat all athlete details.
+
+Do not show position, role, replies, or other secondary profile information above the primary recommendation.
+
+## NEXT EVENT
+
+Show the next scheduled event in one concise card.
+
+Use this content structure:
+
+Eyebrow:
+
+“NEXT EVENT”
+
+Event:
+
+“Tigers Practice”
+
+Details:
+
+“Sep 21 · 3:17 PM”
+
+Location:
+
+“Loriella Park”
+
+Include a small calendar icon and location icon.
+
+The event card should provide the context needed to understand the recommendation. It should not become the largest element on the screen.
+
+Use live event data from the existing application rather than hard-coded sample values.
+
+## FOUR-STEP WEEKLY PATH
+
+Display the four stages as one compact horizontal progress indicator:
+
+1. Plan
+2. Prepare
+3. Capture
+4. Share
+
+Use four connected numbered circles.
+
+States:
+
+* Completed steps use a checkmark.
+* The currently recommended step uses athletic blue.
+* Add a small warm-orange label reading “NOW” above the recommended step.
+* Future steps remain muted.
+* The stages must visually read as one connected journey, not four separate cards.
+
+Use these mappings:
+
+* Plan → Schedule and organize the week
+* Prepare → Complete the game-day or practice checklist
+* Capture → Track stats, photos, video, or key moments
+* Share → Create and send the hype card or game recap
+
+Keep the labels short on mobile.
+
+The user should understand their place in the week within a few seconds.
+
+## RECOMMENDATION LOGIC
+
+Determine the recommended step using the existing next-event data and completion state.
+
+Use this general behavior:
+
+### Recommend Plan when:
+
+* No upcoming event exists
+* The schedule is incomplete
+* Required event details are missing
+* The user needs to add or confirm the next event
+
+### Recommend Prepare when:
+
+* An upcoming event has been scheduled
+* The event is approaching
+* The preparation checklist is incomplete
+* The event has not started
+
+### Recommend Capture when:
+
+* The event is happening today or is currently active
+* The event start time is approaching
+* The user should begin recording stats, photos, video, or key moments
+
+### Recommend Share when:
+
+* The event has ended
+* Captured information is available
+* A hype card, recap, or shareable graphic has not yet been created
+
+If the current application already has more specific recommendation rules, preserve those rules while presenting the result through this interface.
+
+Do not expose internal date calculations or technical logic to the user.
+
+## PRIMARY RECOMMENDATION CARD
+
+The recommendation card must be the most visually important dashboard element.
+
+Use:
+
+Eyebrow:
+
+“YOUR NEXT BEST STEP”
+
+Dynamic headline example:
+
+“Get ready for practice.”
+
+Dynamic supporting copy example:
+
+“Practice is coming up. Check what you need before you leave.”
+
+Primary button example:
+
+“Open checklist”
+
+Supporting explanation:
+
+“Suggested from your next event”
+
+The headline, description, and button must change based on the recommended stage.
+
+Examples:
+
+### Plan
+
+Headline:
+
+“Put the week in motion.”
+
+Description:
+
+“Add or confirm your next event so Pixl can guide what comes next.”
+
+Button:
+
+“Open schedule”
+
+### Prepare
+
+Headline:
+
+“Get ready for practice.”
+
+Description:
+
+“Practice is coming up. Check what you need before you leave.”
+
+Button:
+
+“Open checklist”
+
+### Capture
+
+Headline:
+
+“Capture today’s game.”
+
+Description:
+
+“The event is here. Track the action and save the moments that matter.”
+
+Button:
+
+“Start game day”
+
+### Share
+
+Headline:
+
+“Celebrate the moment.”
+
+Description:
+
+“Turn the game’s highlights into something your athlete can share.”
+
+Button:
+
+“Create hype card”
+
+Only one primary CTA should appear in this card.
+
+Connect the CTA to the appropriate existing tool and route.
+
+## RECOMMENDATION IMAGE
+
+A small editorial sports image may appear in the recommendation card, but it is secondary to the message and action.
+
+On smaller screens:
+
+* Place the image below the CTA, or
+* Use a short, wide image crop, or
+* Hide the image when vertical space is limited
+
+The dashboard must remain complete and understandable without the image.
+
+Do not let the image push the recommended action too far below the fold.
+
+## UPCOMING SECTION
+
+Below the recommendation, show:
+
+Heading:
+
+“Coming up”
+
+Link:
+
+“View schedule”
+
+Initially display only the next event after the current featured event.
+
+Example:
+
+“Match vs Northside”
+
+“Sep 24 · 5:00 PM”
+
+“Riverside Complex”
+
+Use one simple interactive row.
+
+Do not show a multi-column schedule grid on mobile.
+
+Allow “View schedule” to open the existing complete schedule.
+
+## QUICK ACTIONS
+
+Do not place a large Quick Actions grid above the fold.
+
+The persistent bottom navigation already provides access to the main areas.
+
+If additional quick actions are required, place them lower on the page as a horizontally scrollable list or compact rows.
+
+They must remain visually secondary to the recommended action.
+
+## BOTTOM NAVIGATION
+
+Create a persistent mobile bottom navigation bar with four destinations:
+
+* Home
+* Schedule
+* Game Day
+* Create
+
+Use simple line icons with text labels.
+
+Highlight the active destination using athletic blue.
+
+Respect mobile safe-area spacing.
+
+Keep touch targets at least 44 pixels tall and wide.
+
+Map each destination to the existing application routes.
+
+## RESPONSIVE BEHAVIOR
+
+Use a mobile-first layout.
+
+At narrow widths:
+
+* Use one content column.
+* Avoid horizontal overflow.
+* Keep page padding consistent.
+* Use full-width primary buttons.
+* Keep body text readable without zooming.
+* Allow headline text to wrap naturally.
+* Prevent the four-stage progress indicator from clipping.
+* Keep interactive controls easy to tap.
+* Account for the fixed bottom navigation.
+
+Suggested behavior:
+
+* Under 480px: use the fully simplified mobile layout.
+* Between 480px and 767px: maintain the single-column structure with slightly wider spacing.
+* At tablet and desktop breakpoints: progressively introduce additional schedule information, but preserve the same content priority.
+
+Do not switch immediately back to the crowded desktop layout at tablet width.
+
+## ABOVE-THE-FOLD PRIORITY
+
+On a typical mobile screen, aim to show:
+
+* Header
+* Greeting
+* Selected athlete
+* Next event
+* Weekly progress indicator
+* At least the beginning of the recommendation card
+
+The primary CTA should appear as early as reasonably possible.
+
+If space becomes limited, reduce or remove decorative imagery before reducing text readability or touch-target size.
+
+## ACCESSIBILITY
+
+* Maintain strong text contrast.
+* Use semantic headings.
+* Add descriptive labels to icons.
+* Do not communicate status through color alone.
+* Include text such as “NOW” or “Recommended.”
+* Ensure the progress path is understandable to screen readers.
+* Provide visible keyboard focus states.
+* Use accessible buttons and links.
+* Keep touch targets at least 44 by 44 pixels.
+* Ensure the fixed bottom navigation does not cover page content.
+
+## FUNCTIONAL REQUIREMENTS
+
+Preserve:
+
+* User authentication
+* Profile data
+* Athlete switching
+* Next-event calculations
+* Weekly recommendation logic
+* Event details
+* Schedule routes
+* Checklist routes
+* Game-day tools
+* Stat tracking
+* Hype-card creation
+* Existing databases and API behavior
+
+Do not replace real application data with permanently hard-coded sample data.
+
+Do not modify unrelated authenticated pages unless a shared component must be updated for mobile consistency.
+
+## IMPLEMENTATION PROCESS
+
+Before editing code:
+
+1. Review the current mobile dashboard implementation.
+2. Identify the relevant components and styles.
+3. Explain which elements will be removed, condensed, or moved below the fold.
+4. Confirm how the existing recommendation logic will populate the new interface.
+
+Then implement the redesign.
+
+After implementation, verify the page at approximately:
+
+* 320px wide
+* 375px wide
+* 390px wide
+* 430px wide
+* Tablet width
+
+Test:
+
+* Headline wrapping
+* Step-label spacing
+* Long team and event names
+* Missing athlete photographs
+* Missing event locations
+* No upcoming events
+* Completed preparation steps
+* Active event state
+* Post-event recommendation state
+* Bottom-navigation safe areas
+* Vertical scrolling
+* Touch-target sizes
+* Horizontal overflow
+
+## FINAL RESULT
+
+The mobile dashboard should not feel like a compressed desktop dashboard.
+
+It should feel like a personal sports-week guide.
+
+Within seconds, the user should understand:
+
+1. Which athlete they are viewing
+2. What event is next
+3. Where they are in the four-step weekly journey
+4. What Pixl recommends doing now
+5. Which button moves them forward
+
+The recommendation—not the surrounding interface—should be the star of the mobile dashboard.

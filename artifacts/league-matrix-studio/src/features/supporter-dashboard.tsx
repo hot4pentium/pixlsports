@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw, X,
-  CheckCircle2, ChevronDown
+  CheckCircle2, ChevronDown, Home, PlusSquare, Check
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -385,29 +385,29 @@ export function SupporterDashboardView({
   }> = {
     plan: {
       eyebrow: '01 / Schedule',
-      title: 'Set the week up.',
-      description: 'Connect your team calendar or add the games you want to follow so Pixl can keep the next move in view.',
+      title: 'Put the week in motion.',
+      description: 'Add or confirm your next event so Pixl can guide what comes next.',
       action: 'Open schedule',
     },
     upcoming: {
       eyebrow: '02 / Preparation',
       title: weekRecommendation?.kind === 'practice' ? 'Get ready for practice.' : 'Get ready for game day.',
       description: weekRecommendation?.kind === 'practice'
-        ? 'Use the checklist to get the essentials in place before practice.'
-        : 'Use the checklist to get the essentials in place before the first whistle.',
+        ? 'Practice is coming up. Check what you need before you leave.'
+        : 'Game day is coming up. Check what you need before you leave.',
       action: 'Open checklist',
     },
     live: {
       eyebrow: '03 / Live game',
-      title: 'Capture the game as it happens.',
-      description: 'Track the score and key plays in one place while the game is live.',
-      action: 'Open stat tracker',
+      title: 'Capture today’s game.',
+      description: 'The event is here. Track the action and save the moments that matter.',
+      action: 'Start game day',
     },
     completed: {
       eyebrow: '04 / Celebration',
-      title: 'Send the moment around.',
-      description: 'Turn the best part of the game into a Hype Card with optional season stats.',
-      action: 'Make a Hype Card',
+      title: 'Celebrate the moment.',
+      description: 'Turn the game’s highlights into something your athlete can share.',
+      action: 'Create hype card',
     },
   };
   const selectedPathDetails = weeklyPathDetails[selectedPath.id];
@@ -490,7 +490,216 @@ export function SupporterDashboardView({
     }
   };
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const firstName = profile.displayName ? profile.displayName.split(' ')[0] : 'Supporter';
+  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  const activePath = weeklyPath.find(p => p.active) ?? weeklyPath[0];
+  const activePathDetails = weeklyPathDetails[activePath.id];
+
+  const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? events[0];
+  const mobileFeaturedTitle = mobileFeaturedEvent?.type === 'practice'
+    ? `${profile.teamName || 'Your team'} practice`
+    : `${profile.teamName || 'Your team'}${mobileFeaturedEvent?.opponent ? ` vs ${mobileFeaturedEvent.opponent}` : ''}`;
+
   return (
+    <>
+      {/* MOBILE VIEW */}
+      <div className="supporter-dashboard-mobile-shell fixed inset-0 z-0 pixl-dashboard-mobile overflow-y-auto overflow-x-hidden pb-28 flex-col">
+        {/* Mobile Header */}
+        <header className="bg-white flex items-center justify-between px-5 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
+          <div className="flex items-center gap-2">
+            <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-6 w-auto object-contain" />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="relative w-11 h-11 flex items-center justify-center">
+              <HypeCardReplyInboxTrigger variant="coach" className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-[#12213A] shadow-none hover:bg-transparent" />
+            </div>
+            <button type="button" onClick={onOpenProfile} className="w-11 h-11 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center border border-black/10 text-lg font-bold text-slate-700" aria-label="Supporter profile" data-testid="btn-mobile-open-profile">
+               {profile.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S'}
+            </button>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="px-4 py-6 flex flex-col gap-6 flex-1">
+          {/* Greeting */}
+          <div>
+            <h1 className="text-[34px] font-black font-display tracking-tight text-[#12213A] leading-none" data-testid="text-mobile-greeting">Good {greeting}, {firstName}.</h1>
+          </div>
+
+          {/* Athlete Switcher Row */}
+          <button type="button" onClick={onOpenProfile} className="flex items-center justify-between bg-transparent w-full text-left" aria-label="Change athlete" data-testid="btn-mobile-athlete-switcher">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-14 h-14 rounded-full overflow-hidden border border-black/10 shrink-0 bg-white flex items-center justify-center shadow-sm">
+                 {athletePhotoUrl ? (
+                    <div className="h-full w-full overflow-hidden rounded-full">
+                       <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
+                    </div>
+                  ) : hasAthlete ? (
+                    <User className="h-6 w-6 opacity-20" />
+                  ) : (
+                    <Users className="h-6 w-6 opacity-20" />
+                  )}
+              </div>
+              <div className="text-lg font-bold text-[#12213A] flex items-center flex-wrap gap-1.5 leading-none min-w-0">
+                <span className="truncate">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
+                {profile.jerseyNumber && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold shrink-0">#{profile.jerseyNumber}</span></>}
+                {profile.teamName && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold break-words">{profile.teamName}</span></>}
+              </div>
+            </div>
+            <ChevronRight className="w-6 h-6 text-black/30 shrink-0" />
+          </button>
+
+          {/* Next Event Card */}
+          <div className="bg-white rounded-[20px] p-5 shadow-sm border border-black/5" data-testid="card-mobile-featured-event">
+            <div className="flex items-center gap-2 mb-3 text-[11px] font-bold uppercase tracking-widest text-black/40">
+              <span>NEXT EVENT</span>
+            </div>
+            {mobileFeaturedEvent ? (
+              <div className="flex items-start gap-4">
+                <CalendarDays className="w-7 h-7 text-[#2474F5] shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-[22px] font-bold font-display tracking-tight text-[#12213A] leading-tight mb-1.5 break-words">{mobileFeaturedTitle}</h2>
+                  <div className="text-[15px] font-medium text-black/60 flex items-center gap-1.5 flex-wrap mb-1">
+                    <span className="whitespace-nowrap">{formatDateDisplay(mobileFeaturedEvent.date)}</span>
+                    <span className="text-black/30 font-bold">•</span>
+                    <span className="whitespace-nowrap">{formatTimeDisplay(mobileFeaturedEvent.time)}</span>
+                  </div>
+                  {mobileFeaturedEvent.location && (
+                    <div className="text-[15px] font-medium text-black/60 flex items-start gap-1.5 mt-1.5">
+                      <MapPin className="w-4 h-4 text-black/40 shrink-0 mt-0.5" />
+                      <span className="break-words min-w-0">{mobileFeaturedEvent.location}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+               <p className="text-sm font-medium text-black/60">No upcoming events. Add a game to get recommendations.</p>
+            )}
+          </div>
+
+          {/* Four-Step Weekly Path */}
+          <section className="mt-2 px-1" data-testid="section-mobile-weekly-path" aria-label="Weekly progress">
+             <div className="flex flex-col gap-6 relative">
+                {/* Connecting Line */}
+                <div className="absolute top-6 left-6 right-6 h-[2px] bg-black/5 z-0" aria-hidden="true"></div>
+
+                <ol className="flex items-center justify-between m-0 p-0 list-none">
+                  {/* Steps */}
+                  {weeklyPath.map((step, index) => {
+                    const isActive = activePath.id === step.id;
+                    const isCompleted = index < weeklyPath.findIndex(s => s.id === activePath.id);
+
+                    return (
+                      <li key={step.id} className="relative z-10 flex flex-col items-center gap-2.5" aria-current={isActive ? 'step' : undefined}>
+                        {isActive && (
+                          <div className="absolute -top-7 bg-[#FF6B35] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">NOW</div>
+                        )}
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors shadow-sm ${isActive ? 'bg-[#2474F5] border-2 border-[#2474F5] text-white' : isCompleted ? 'bg-[#2474F5] border-2 border-[#2474F5] text-white' : 'bg-white border-2 border-black/5 text-black/40'}`} aria-hidden="true">
+                          {isCompleted ? <Check className="w-6 h-6 text-white" strokeWidth={3} /> : index + 1}
+                        </div>
+                        <span className={`text-[12px] font-bold uppercase tracking-wider ${isActive ? 'text-[#12213A]' : 'text-black/40'}`}>
+                           <span className="sr-only">Step {index + 1}: </span>
+                           {step.label.split(' ')[0]}
+                           {isCompleted && <span className="sr-only"> (Completed)</span>}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+             </div>
+          </section>
+
+          {/* Recommendation Card */}
+          <section className="bg-white rounded-[24px] overflow-hidden shadow-sm border border-black/5 mt-3" data-testid="card-mobile-recommendation" aria-labelledby="mobile-recommendation-heading">
+             <div className="p-6">
+               <p className="text-[11px] font-bold uppercase tracking-widest text-[#2474F5] mb-3">YOUR NEXT BEST STEP</p>
+               <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{activePathDetails.title}</h2>
+               <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{activePathDetails.description}</p>
+
+               <button type="button" onClick={() => setLocation(activePath.href)} className="w-full bg-[#2474F5] hover:bg-[#2474F5]/90 text-white font-bold text-base py-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors shadow-sm" data-testid="btn-mobile-recommendation-action">
+                 <activePath.Icon className="w-5 h-5" />
+                 {activePathDetails.action}
+               </button>
+
+               <p className="text-center text-[13px] font-medium text-black/40 mt-4">{mobileFeaturedEvent ? "Suggested from your next event" : "Add an event to get a recommendation"}</p>
+             </div>
+          </section>
+
+          {/* Upcoming Section */}
+          {(() => {
+             const futureEvents = events
+                .filter(e => mobileFeaturedEvent && e.id !== mobileFeaturedEvent.id && e.date >= mobileFeaturedEvent.date)
+                .sort((a,b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+             if (futureEvents.length === 0) return null;
+             const nextUp = futureEvents[0];
+             return (
+              <section className="mt-2 mb-4" data-testid="section-mobile-coming-up" aria-labelledby="mobile-coming-up-heading">
+                <div className="flex items-center justify-between mb-4 px-1">
+                  <h3 id="mobile-coming-up-heading" className="text-[28px] font-display font-black tracking-tight text-[#12213A]">Coming up</h3>
+                  <button type="button" onClick={() => setLocation(supporterToolRoutes.schedule)} className="text-[#2474F5] text-[15px] font-bold flex items-center gap-1" data-testid="btn-mobile-view-schedule">View schedule <ArrowRight className="w-4 h-4" /></button>
+                </div>
+
+                <button type="button" onClick={() => setLocation(supporterToolRoutes.schedule)} className="w-full text-left bg-white rounded-[20px] p-5 shadow-sm border border-black/5 flex items-center justify-between" aria-label="View upcoming event details" data-testid="btn-mobile-coming-up-action">
+                   <div className="flex items-center gap-4 min-w-0">
+                     <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black/40 shrink-0 border border-black/5">
+                       <CalendarDays className="w-6 h-6" />
+                     </div>
+                     <div className="min-w-0 flex-1">
+                       <div className="text-[17px] font-bold text-[#12213A] break-words">{nextUp.type === 'game' ? `${profile.teamName || 'Team'} vs ${nextUp.opponent || 'TBD'}` : `${profile.teamName || 'Team'} ${nextUp.type}`}</div>
+                       <div className="text-[13px] font-medium text-black/50 flex items-center gap-1.5 flex-wrap mt-1">
+                         <span className="whitespace-nowrap">{formatDateDisplay(nextUp.date)}</span>
+                         <span className="text-black/30">•</span>
+                         <span className="whitespace-nowrap">{formatTimeDisplay(nextUp.time)}</span>
+                       </div>
+                       {nextUp.location && (
+                          <div className="text-[13px] font-medium text-black/50 flex items-start gap-1.5 mt-1">
+                            <MapPin className="w-3.5 h-3.5 text-black/30 shrink-0 mt-0.5" />
+                            <span className="break-words min-w-0">{nextUp.location}</span>
+                          </div>
+                       )}
+                     </div>
+                   </div>
+                   <ChevronRight className="w-6 h-6 text-black/20 shrink-0 ml-2" />
+                </button>
+              </section>
+             );
+          })()}
+        </div>
+
+        {/* Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 h-[88px] bg-white border-t border-black/5 flex items-start justify-around px-2 pt-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.04)] z-50">
+           <button type="button" onClick={() => setLocation('/studio')} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-[#2474F5]" aria-label="Home" data-testid="btn-mobile-nav-home">
+             <div className="w-8 h-8 rounded-full bg-[#2474F5]/10 flex items-center justify-center">
+               <Home className="w-[20px] h-[20px] fill-current" />
+             </div>
+             <span className="text-[10px] font-bold">Home</span>
+           </button>
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.schedule)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
+             <div className="w-8 h-8 rounded-full flex items-center justify-center">
+               <CalendarDays className="w-[20px] h-[20px]" />
+             </div>
+             <span className="text-[10px] font-bold">Schedule</span>
+           </button>
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Game Day" data-testid="btn-mobile-nav-stat-tracker">
+             <div className="w-8 h-8 rounded-full flex items-center justify-center">
+               <Users className="w-[20px] h-[20px]" />
+             </div>
+             <span className="text-[10px] font-bold">Game Day</span>
+           </button>
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.hypeCard)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
+             <div className="w-8 h-8 rounded-full flex items-center justify-center">
+               <PlusSquare className="w-[20px] h-[20px]" />
+             </div>
+             <span className="text-[10px] font-bold">Create</span>
+           </button>
+        </nav>
+      </div>
+
+      {/* DESKTOP VIEW (hidden on mobile) */}
+      <div className="supporter-dashboard-desktop-shell w-full">
     <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
       {showStageReminder && (
         <div
@@ -1027,6 +1236,8 @@ export function SupporterDashboardView({
         )}
       </section>
     </div>
+      </div>
+    </>
   );
 }
 
@@ -1094,7 +1305,7 @@ export function SupporterProfileView({
 
       <div className="bg-card border border-border p-6 sm:p-8 clip-angled-tl relative">
         <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-        
+
         <form onSubmit={handleSubmit} className="relative space-y-8">
           {error && (
             <div className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 text-sm font-medium flex items-start gap-3 clip-angled-sm">
@@ -1217,7 +1428,7 @@ export function SupporterProfileView({
             <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border/50 pb-2">
               <Trophy className="w-4 h-4" /> Athlete & Team
             </h3>
-            
+
             <div className="space-y-2">
               <label htmlFor="athleteName" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">
                 Athlete Name
