@@ -47,6 +47,7 @@ import {
   seasonTotals,
   sports,
   syncTrackerDataToCloud,
+  trackerSaveStatusMessage,
   undoLastStatEvent,
   buildGameReport,
   type GameSession,
@@ -57,6 +58,7 @@ import {
   type TrackerStorage,
   type TrackerConflict,
   type TrackerConflictResolution,
+  type TrackerSaveStatus,
 } from './stat-tracker';
 import { GameReportView } from './stat-tracker-game-report';
 
@@ -461,6 +463,7 @@ export function StatTrackerPage() {
   const [showManualSetup, setShowManualSetup] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<TrackerSaveStatus | null>(null);
   const [retryAvailable, setRetryAvailable] = useState(false);
   const [revisionConflict, setRevisionConflict] = useState(false);
   const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
@@ -516,6 +519,7 @@ export function StatTrackerPage() {
     setStorageAccountId(null);
     setTrackerConflict(null);
     setSelectedConflictResolution(null);
+    setSaveStatus(null);
     if (!accountId) {
       setData(normalizeTrackerData(null));
       setCurrentGame(null);
@@ -669,6 +673,7 @@ export function StatTrackerPage() {
     setRevisionConflict(false);
     setTrackerConflict(null);
     setSelectedConflictResolution(null);
+    setSaveStatus(null);
     activeScheduledGame.current = nextGame
       && nextGame.date === date
       && nextGame.opponent === opponent
@@ -728,6 +733,7 @@ export function StatTrackerPage() {
     setData(nextData);
     setCurrentGame(null);
     setSaving(true);
+    setSaveStatus('saving');
     setError('');
     setRetryAvailable(false);
     setRevisionConflict(false);
@@ -736,6 +742,7 @@ export function StatTrackerPage() {
     try {
       await syncTrackerData(nextData);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
+      setSaveStatus('cloud-saved');
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
@@ -744,6 +751,7 @@ export function StatTrackerPage() {
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
       setTrackerConflict(conflict);
+      setSaveStatus('local-saved');
       announce('LOCAL COPY SAVED — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
@@ -753,6 +761,7 @@ export function StatTrackerPage() {
   const retryCloudSync = async () => {
     if (saving || !retryAvailable) return;
     setSaving(true);
+    setSaveStatus('saving');
     setError('');
     try {
       await syncTrackerData(data);
@@ -761,6 +770,7 @@ export function StatTrackerPage() {
       setRevisionConflict(false);
       setTrackerConflict(null);
       setSelectedConflictResolution(null);
+      setSaveStatus('cloud-saved');
       announce('CLOUD SYNC RESTORED — SEASON HISTORY IS SAFE');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
@@ -769,6 +779,7 @@ export function StatTrackerPage() {
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
       setTrackerConflict(conflict ?? trackerConflict);
+      setSaveStatus('local-saved');
       announce('LOCAL COPY STILL SAFE — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
@@ -808,6 +819,7 @@ export function StatTrackerPage() {
   const syncSelectedConflict = async () => {
     if (!trackerConflict || !selectedConflictResolution || saving) return;
     setSaving(true);
+    setSaveStatus('saving');
     setError('');
     setRetryAvailable(false);
     const selectedData = data;
@@ -817,6 +829,7 @@ export function StatTrackerPage() {
       setRevisionConflict(false);
       setTrackerConflict(null);
       setSelectedConflictResolution(null);
+      setSaveStatus('cloud-saved');
       announce('HISTORY RESOLVED — CLOUD SYNC RESTORED');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
@@ -825,6 +838,7 @@ export function StatTrackerPage() {
       setRevisionConflict(recovery.revisionConflict);
       setRetryAvailable(recovery.retryAvailable);
       setTrackerConflict(nextConflict ?? { ...trackerConflict, localData: selectedData });
+      setSaveStatus('local-saved');
       if (nextConflict) {
         setSelectedConflictResolution(null);
         if (accountId) {
@@ -860,9 +874,27 @@ export function StatTrackerPage() {
           <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary-ink studio-textured-heading-accent">TRACKER.</span></h1>
           <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Tap each play as it happens. Finish the game to add it to your season history.</p>
         </div>
-        <div className="border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground clip-angled-sm">
-          {saving ? 'Saving to cloud…' : cloudProject ? 'Cloud sync active' : 'Local copy ready'}
-        </div>
+        {saveStatus && (
+          <div
+            className={`inline-flex items-center gap-2 border px-4 py-3 text-xs font-bold uppercase tracking-widest clip-angled-sm ${
+              saveStatus === 'local-saved'
+                ? 'border-destructive/50 bg-destructive/5 text-destructive'
+                : saveStatus === 'saving'
+                  ? 'border-primary/50 bg-primary/5 text-primary-ink'
+                  : 'border-primary/40 bg-primary/5 text-primary-ink'
+            }`}
+            role="status"
+            aria-live="polite"
+            data-testid="stat-tracker-save-status"
+          >
+            {saveStatus === 'saving'
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : saveStatus === 'cloud-saved'
+                ? <CloudUpload className="h-4 w-4" />
+                : <Save className="h-4 w-4" />}
+            {trackerSaveStatusMessage(saveStatus)}
+          </div>
+        )}
       </div>
 
       <div className="mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">

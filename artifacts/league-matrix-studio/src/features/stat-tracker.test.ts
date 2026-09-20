@@ -27,6 +27,7 @@ import {
   seasonTotals,
   syncTrackerDataToCloud,
   trackerPayload,
+  trackerSaveStatusMessage,
   trackerSaveErrorMessage,
   undoLastStatEvent,
 } from './stat-tracker';
@@ -804,6 +805,15 @@ test('ordinary sync failures remain retryable instead of looking like conflicts'
   assert.match(trackerSaveErrorMessage({ status: 503 }), /Try saving again/);
   assert.equal(recovery.revisionConflict, false);
   assert.equal(recovery.retryAvailable, true);
+});
+
+test('completed-game save statuses explain cloud and local outcomes', () => {
+  assert.equal(trackerSaveStatusMessage('saving'), 'Saving game to cloud…');
+  assert.equal(trackerSaveStatusMessage('cloud-saved'), 'Game saved to cloud');
+  assert.equal(
+    trackerSaveStatusMessage('local-saved'),
+    'Saved on this device — cloud sync needs attention',
+  );
 });
 
 test('retry resends the complete local history and stores the returned cloud revision', async () => {

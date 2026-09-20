@@ -69,6 +69,8 @@ export type TrackerConflict = {
 
 export type TrackerConflictResolution = 'local' | 'cloud' | 'merge';
 
+export type TrackerSaveStatus = 'saving' | 'cloud-saved' | 'local-saved';
+
 export type StoredTrackerConflict = {
   resolution: TrackerConflictResolution | null;
   data: StatTrackerData;
@@ -556,6 +558,17 @@ export function trackerSaveErrorMessage(error: unknown): string {
   return isTrackerRevisionConflict(error)
     ? 'This tracker changed elsewhere. Your local history is safe; choose which history to keep before syncing again.'
     : 'Game saved on this device, but cloud sync failed. Try saving again.';
+}
+
+export function trackerSaveStatusMessage(status: TrackerSaveStatus): string {
+  switch (status) {
+    case 'saving':
+      return 'Saving game to cloud…';
+    case 'cloud-saved':
+      return 'Game saved to cloud';
+    case 'local-saved':
+      return 'Saved on this device — cloud sync needs attention';
+  }
 }
 
 export function getTrackerSyncRecovery(error: unknown) {
