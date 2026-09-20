@@ -845,20 +845,6 @@ function HomePage() {
       <SiteNav dark />
       <main className="pixl-landing-shell">
         <section className="pixl-landing-content" aria-label="Pixl Sports overview">
-          <aside className="pixl-landing-sidebar" aria-label="Season navigation">
-            <div>
-              <div className="pixl-landing-side-label">SEASON 24 <span aria-hidden="true">•••</span></div>
-              <button type="button" className="pixl-landing-side-item" onClick={() => selectLandingRole('fan')}>Overview</button>
-              <button type="button" className={`pixl-landing-side-item ${selectedRole === 'fan' ? 'is-selected' : ''}`} onClick={() => selectLandingRole('fan')}>
-                Fan hub <ArrowRight />
-              </button>
-              <button type="button" className={`pixl-landing-side-item ${selectedRole === 'coach' ? 'is-selected' : ''}`} onClick={() => selectLandingRole('coach')}>
-                Coach hub <ArrowRight />
-              </button>
-            </div>
-            <div className="pixl-landing-side-foot">BUILT FOR THE SIDELINE<br /><span>Less chasing. More cheering.</span></div>
-          </aside>
-
           <section className="pixl-landing-overview" aria-labelledby="landing-overview-heading">
             <div className="pixl-landing-grid-lines" aria-hidden="true" />
             <div className="pixl-landing-overview-top">
