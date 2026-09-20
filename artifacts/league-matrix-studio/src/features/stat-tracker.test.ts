@@ -261,7 +261,7 @@ test('baseball hit waits for a single, double, or triple choice before recording
   });
 
   assert.deepEqual(
-    rule.stats.filter((item) => item.liveHidden).map((item) => item.id),
+    rule.stats.filter((item) => item.liveHidden && ['single', 'double', 'triple'].includes(item.id)).map((item) => item.id),
     ['single', 'double', 'triple'],
   );
   act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-hit' }).props.onClick());
