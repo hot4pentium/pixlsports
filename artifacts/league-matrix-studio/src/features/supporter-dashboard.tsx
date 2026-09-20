@@ -501,17 +501,6 @@ export function SupporterDashboardView({
           <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
             Plan the week, get ready for game day, capture what happens, and send the moment around.
           </p>
-          <button
-            type="button"
-            onClick={toggleTools}
-            aria-controls="all-tools-panel"
-            aria-expanded={toolsOpen}
-            className="mt-6 inline-flex min-h-11 items-center gap-2 border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:text-primary clip-angled-sm"
-            data-testid="button-choose-task"
-            ref={toolsTriggerRef}
-          >
-            Choose a task / all tools <ArrowRight className="h-4 w-4" />
-          </button>
         </div>
 
         <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading" data-testid="athlete-summary">
@@ -682,7 +671,8 @@ export function SupporterDashboardView({
             aria-controls="all-tools-panel"
             aria-expanded={toolsOpen}
             className="flex w-full items-center justify-between gap-4 text-left"
-            data-testid="button-all-tools-toggle"
+            data-testid="button-choose-task"
+            ref={toolsTriggerRef}
           >
               <span id="all-tools-heading">
                <span className="studio-textured-accent mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
