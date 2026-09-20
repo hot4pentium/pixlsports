@@ -65,23 +65,6 @@ export type HypeCardTemplateFile = {
 
 export const PORTABLE_TEMPLATE_MEDIA_NOTE =
   'Portable templates include design settings and text only. Uploaded photos, logos, and videos are not included.';
-export const HEADLINES = [
-  'BIG PLAY',
-  'CLUTCH',
-  'THUNDER',
-  'GAME CHANGER',
-  'WALK-OFF',
-  'GAME WINNER',
-  'BIG SAVE',
-  'HOME RUN',
-  'TOUCHDOWN',
-  'GOOOAL',
-  'BUZZER BEATER',
-  'ACE',
-  'STRIKEOUT',
-  'UNSTOPPABLE'
-];
-
 export const templates: Array<{ id: TemplateId; name: string; summary: string }> = [
   { id: 'spotlight', name: 'Spotlight', summary: 'Dramatic lights and a player-first frame.' },
   { id: 'impact', name: 'Impact', summary: 'A bold number with motion and team color.' },
@@ -112,7 +95,7 @@ export const cardFinishes: Array<{ id: CardFinishId; name: string; summary: stri
 
 export const defaultProject = (): HypeCardProject => ({
   version: 2,
-  headline: 'BIG PLAY',
+  headline: '',
   mediaType: null,
   mediaId: null,
   downloadMediaId: null,

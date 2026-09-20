@@ -269,7 +269,7 @@ function getFinishForeground(project: HypeCardProject, ns: string) {
 }
 
 function cardContent(project: HypeCardProject) {
-  const headlineStr = escapeXml(project.headline || 'BIG PLAY').toUpperCase();
+  const headlineStr = escapeXml(project.headline).toUpperCase();
   const player = escapeXml((project.playerName || 'YOUR PLAYER').toUpperCase());
   const number = escapeXml(project.jerseyNumber || '00');
   const team = escapeXml((project.teamName || 'YOUR TEAM').toUpperCase());
@@ -296,7 +296,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const hypeRailWidth = 58;
   const hypeRailCenterX = (frame.x + frame.width + 1000) / 2;
   const hypeRailX = hypeRailCenterX - hypeRailWidth / 2;
-  const stadiumHeadline = `${content.headline.replace(/!+$/, '')}!`;
+  const stadiumHeadline = content.headline ? `${content.headline.replace(/!+$/, '')}!` : '';
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
   const photoWidth = frame.width * project.photoTransform.zoom;
@@ -764,7 +764,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   const playerLine = project.position;
   const achievementLine = '';
   
-  const headlineStr = escapeXml(project.headline || 'BIG PLAY');
+  const headlineStr = escapeXml(project.headline);
   const playerText = escapeXml((project.playerName || 'YOUR PLAYER').toUpperCase());
   const jersey = escapeXml(project.jerseyNumber || '00');
   const team = escapeXml(project.teamName || 'YOUR TEAM');

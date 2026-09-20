@@ -46,7 +46,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
-  HEADLINES, templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
+  templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
   normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject, clearHypeCardMedia,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE
 } from './hype-card-types';
@@ -330,7 +330,7 @@ function Section({
 }
 
 const hypeWalkthroughSteps = [
-  { label: 'Moment', hint: 'Choose the headline' },
+  { label: 'Moment', hint: 'Write your own moment' },
   { label: 'Media', hint: 'Add player media' },
   { label: 'Details', hint: 'Add player info' },
   { label: 'Format', hint: 'Choose the output' },
@@ -2271,27 +2271,14 @@ export function HypeCardEditor() {
             </div>
 
             {walkthroughStep === 0 && <Section title="Moment" icon={Lightbulb}>
-              <div className="flex flex-wrap gap-2">
-                {HEADLINES.map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    data-testid={`button-moment-${slugify(h)}`}
-                    onClick={() => updateProject('headline', h)}
-                    className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all ${project.headline === h ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background hover:border-primary/60 hover:bg-muted'}`}
-                  >
-                    {h}!
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4">
+              <div>
                 <HypeField
                   label="Custom moment"
                   value={project.headline}
                   onChange={(value) => updateProject('headline', value)}
-                  placeholder="e.g. GAME WINNER"
+                  placeholder="Big Play!"
                 />
-                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Use your own moment text or choose a preset above.</p>
+                <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Type the moment you want on your card. For example: Big Play!</p>
               </div>
             </Section>}
 
@@ -2531,7 +2518,7 @@ export function HypeCardEditor() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    ['Moment', project.headline || 'BIG PLAY'],
+                    ['Moment', project.headline || 'Not added'],
                     ['Player', project.playerName || 'Your player'],
                     ['Team', project.teamName || 'Your team'],
                     ['Output', 'Portrait card'],
