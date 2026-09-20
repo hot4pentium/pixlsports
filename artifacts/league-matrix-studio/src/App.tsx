@@ -904,33 +904,48 @@ function HomePage() {
             <p>Move from calendar to game day to celebration with one clear next step at every turn.</p>
           </div>
           <div className="pixl-landing-tools-body">
-            <div className="pixl-landing-tool-tabs" role="tablist" aria-label={`${selectedRole === 'fan' ? 'Fan' : 'Coach'} Hub tools`}>
-              {roleTools.map((kind, index) => {
-                const isActive = activeFanTool === kind;
-                const Icon = toolData[kind].icon;
-                return (
-                  <button key={kind} type="button" role="tab" aria-selected={isActive} aria-controls={`landing-tool-panel-${kind}`} className={isActive ? 'is-selected' : ''} onClick={() => setActiveFanTool(kind)} data-testid={`tab-fan-tool-${kind}`}>
-                    <Icon /> {toolData[kind].label.replace(' Creator', '')}
-                    <span className="sr-only">Tool {index + 1}</span>
-                  </button>
-                );
-              })}
+            <div className="pixl-landing-tool-index">
+              <div className="pixl-landing-tool-index-intro">
+                <small>YOUR {selectedRole === 'fan' ? 'FAN' : 'COACH'} TOOLKIT</small>
+                <strong>Pick your next move.</strong>
+              </div>
+              <div className="pixl-landing-tool-tabs" role="tablist" aria-label={`${selectedRole === 'fan' ? 'Fan' : 'Coach'} Hub tools`}>
+                {roleTools.map((kind, index) => {
+                  const isActive = activeFanTool === kind;
+                  const Icon = toolData[kind].icon;
+                  return (
+                    <button
+                      key={kind}
+                      id={`landing-tool-tab-${kind}`}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      aria-controls={`landing-tool-panel-${kind}`}
+                      className={isActive ? 'is-selected' : ''}
+                      onClick={() => setActiveFanTool(kind)}
+                      data-testid={`tab-fan-tool-${kind}`}
+                    >
+                      <span className="pixl-landing-tool-number">0{index + 1}</span>
+                      <span className="pixl-landing-tool-tab-copy">
+                        <small>{toolData[kind].kicker}</small>
+                        <strong>{toolData[kind].label.replace(' Creator', '')}</strong>
+                      </span>
+                      <Icon />
+                      <span className="sr-only">Tool {index + 1}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="pixl-landing-tool-index-foot">Every tool keeps the next step clear.</p>
             </div>
             <div className="pixl-landing-tool-detail">
-              <div className="pixl-landing-detail-heading">
-                <span>
-                  <i><span className="pixl-landing-detail-icon">{(() => { const Icon = toolData[activeFanTool].icon; return <Icon />; })()}</span></i>
-                  <small>0{Math.max(1, roleTools.indexOf(activeFanTool) + 1)} / {selectedRole === 'fan' ? 'Fan Hub' : 'Coach Hub'}</small>
-                  <h3>{toolData[activeFanTool].label.replace(' Creator', '')}</h3>
-                </span>
+              <div className="pixl-landing-feature-label">
+                <span>SELECTED TOOL</span>
+                <strong>{selectedRole === 'fan' ? 'FAN HUB' : 'COACH HUB'} / {toolData[activeFanTool].label.replace(' Creator', '')}</strong>
               </div>
-              <p className="pixl-landing-description">{toolData[activeFanTool].description}</p>
-              <div id={`landing-tool-panel-${activeFanTool}`} role="tabpanel" data-testid={`panel-fan-tool-${activeFanTool}`}>
+              <div id={`landing-tool-panel-${activeFanTool}`} role="tabpanel" aria-labelledby={`landing-tool-tab-${activeFanTool}`} data-testid={`panel-fan-tool-${activeFanTool}`}>
                 <ToolWalkthroughCard kind={activeFanTool} step={Math.max(1, roleTools.indexOf(activeFanTool) + 1)} role={selectedRole} />
               </div>
-              <Link href={`/studio/${toolData[activeFanTool].slug}`} className="pixl-landing-text-link pixl-landing-tool-link">
-                Try {toolData[activeFanTool].label.replace(' Creator', '')} <ArrowRight />
-              </Link>
             </div>
           </div>
         </section>
