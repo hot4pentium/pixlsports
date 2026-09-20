@@ -31,6 +31,7 @@ import {
   addStatEvent,
   adjustYardValue,
   adjustScore,
+  baseballHitChoices,
   clearStoredTrackerConflict,
   createGameSession,
   endGame,
@@ -346,6 +347,7 @@ export function LiveTrackerGame({
 }: LiveTrackerGameProps) {
   const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
   const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>({});
+  const [showBaseballHitChoices, setShowBaseballHitChoices] = useState(false);
   const updateCurrentGame = (next: GameSession) => onGameChange(next);
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
   const yardTrackingEnabled = currentGame.sport === 'football' && currentGame.trackYards === true;
@@ -353,6 +355,7 @@ export function LiveTrackerGame({
   useEffect(() => {
     setYardDrafts({});
     setActiveYardEventIds({});
+    setShowBaseballHitChoices(false);
   }, [currentGame.id]);
 
   const updateYardValue = (statId: string, value: number) => {
@@ -373,6 +376,10 @@ export function LiveTrackerGame({
   };
 
   const recordStat = (item: StatDefinition) => {
+    if (currentGame.sport === 'baseball' && item.id === 'hit') {
+      setShowBaseballHitChoices((current) => !current);
+      return;
+    }
     const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
     const nextGame = addStatEvent(
       currentGame,
@@ -388,6 +395,11 @@ export function LiveTrackerGame({
       }
       setYardDrafts((current) => ({ ...current, [item.id]: 0 }));
     }
+  };
+
+  const recordBaseballHit = (statId: string) => {
+    updateCurrentGame(addStatEvent(currentGame, statId));
+    setShowBaseballHitChoices(false);
   };
 
   return (
@@ -469,16 +481,35 @@ export function LiveTrackerGame({
             const yardDraft = yardControlEnabled
               ? yardDrafts[item.id] ?? activeYardEvent?.yards ?? 0
               : 0;
+            const statCount = currentGame.sport === 'baseball' && item.id === 'hit'
+              ? (currentGame.stats.hit ?? 0) + baseballHitChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
+              : currentGame.stats[item.id] ?? 0;
             return (
               <div key={item.id} data-testid={`live-stat-card-${item.id}`} className="min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
-                <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item)} className="group block min-h-[72px] w-full min-w-0 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item)} aria-expanded={currentGame.sport === 'baseball' && item.id === 'hit' ? showBaseballHitChoices : undefined} className="group block min-h-[72px] w-full min-w-0 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
                   <span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary-ink">{item.label}</span>
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
                   <span className="mt-1 block truncate text-xs font-bold text-primary-ink">
-                    {currentGame.stats[item.id] ?? 0}
+                    {statCount}
                     {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardTotal} yds` : ' · tracked'}
                   </span>
                 </button>
+                {currentGame.sport === 'baseball' && item.id === 'hit' && showBaseballHitChoices && (
+                  <div className="mt-3 grid grid-cols-3 gap-1.5 border-t border-border/70 pt-3" data-testid="baseball-hit-choices">
+                    {baseballHitChoices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        onClick={() => recordBaseballHit(choice.id)}
+                        data-testid={`baseball-hit-${choice.id}`}
+                        className="min-h-10 border border-primary/30 bg-primary/5 px-1.5 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-primary hover:bg-primary/15"
+                      >
+                        <span className="block font-display text-lg text-primary-ink">{choice.shortLabel}</span>
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {yardMetricId && (
                   <div className={`mt-3 border-t border-border/70 pt-3 ${yardControlEnabled ? '' : 'opacity-50'}`} data-testid={`yard-control-${item.id}`} aria-disabled={!yardControlEnabled}>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground" htmlFor={`yard-input-${item.id}`}>
@@ -721,7 +752,7 @@ export function StatTrackerPage() {
   const rule = getSportRule(sport);
   const totals = seasonTotals(data.games, sport);
   const yardTotals = seasonYardTotals(data.games, sport);
-  const displayStats = rule.stats.filter((item) => showAllStats || item.featured);
+  const displayStats = rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
   const nextGame = connectedNextGame ?? ownedScheduleNextGame ?? localNextGame;
   const report = useMemo(() => {
     if (!selectedReportGameId) return null;

@@ -7,6 +7,7 @@ export type StatDefinition = {
   shortLabel: string;
   points: number;
   featured?: boolean;
+  liveHidden?: boolean;
 };
 
 export type SportRule = {
@@ -205,7 +206,14 @@ const stat = (
   shortLabel: string,
   points: number,
   featured = true,
-): StatDefinition => ({ id, label, shortLabel, points, featured });
+  liveHidden = false,
+): StatDefinition => ({ id, label, shortLabel, points, featured, liveHidden });
+
+export const baseballHitChoices = [
+  { id: 'single', label: 'Single', shortLabel: '1B' },
+  { id: 'double', label: 'Double', shortLabel: '2B' },
+  { id: 'triple', label: 'Triple', shortLabel: '3B' },
+] as const;
 
 export const footballYardMetricDefinitions = [
   { id: 'pass-yard', label: 'Passing yards', shortLabel: 'PASS YDS' },
@@ -306,6 +314,9 @@ export const sportRules: Record<Sport, SportRule> = {
     stats: [
       stat('run', 'Run', 'RUN', 1),
       stat('hit', 'Hit', 'HIT', 0),
+      stat('single', 'Single', '1B', 0, false, true),
+      stat('double', 'Double', '2B', 0, false, true),
+      stat('triple', 'Triple', '3B', 0, false, true),
       stat('rbi', 'Run batted in', 'RBI', 1),
       stat('home-run', 'Home run', 'HR', 4),
       stat('strikeout', 'Strikeout', 'K', 0),

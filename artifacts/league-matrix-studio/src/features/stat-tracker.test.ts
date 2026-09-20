@@ -235,6 +235,50 @@ test('football live controls stay disabled until the stat card records one play'
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props['aria-valuenow'], 12);
 });
 
+test('baseball hit waits for a single, double, or triple choice before recording', () => {
+  const game = createGameSession('baseball', { opponent: 'Northside' }, new Date('2026-09-20T12:00:00Z'));
+  const rule = getSportRule('baseball');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = (currentGame: typeof game) => createElement(LiveTrackerGame, {
+    currentGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => !item.liveHidden && item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame(game));
+  });
+
+  assert.deepEqual(
+    rule.stats.filter((item) => item.liveHidden).map((item) => item.id),
+    ['single', 'double', 'triple'],
+  );
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-hit' }).props.onClick());
+  assert.equal(changedGame.events.length, 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'baseball-hit-choices' }).children.length, 3);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'baseball-hit-double' }).props.onClick());
+  assert.equal(changedGame.events.length, 1);
+  assert.equal(changedGame.events[0]?.statId, 'double');
+  assert.equal(changedGame.stats.double, 1);
+  assert.equal(changedGame.stats.hit, undefined);
+
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'baseball-hit-choices' }).length, 0);
+  assert.match(renderedText(renderer), /HIT1 · tracked/);
+});
+
 test('softball is available with inning-based game tracking', () => {
   const rule = getSportRule('softball');
   const game = createGameSession('softball', { opponent: 'Westview' }, new Date('2026-09-20T12:00:00Z'));
