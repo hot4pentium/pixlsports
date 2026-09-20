@@ -9,7 +9,10 @@
   --pixl-landing-mint: #9af9b1;
   --pixl-landing-muted: rgba(232, 241, 229, .5);
   min-height: 100dvh;
-  background: #d5e2d8;
+  width: 100%;
+  background:
+    radial-gradient(circle at 70% 10%, rgba(0, 247, 118, .09), transparent 36rem),
+    var(--pixl-landing-deep);
   color: var(--pixl-landing-paper);
   font-family: "DM Sans", ui-sans-serif, sans-serif;
 }
@@ -26,9 +29,10 @@
 }
 
 .pixl-landing-shell {
-  max-width: 1500px;
+  width: 100%;
+  max-width: none;
   min-height: 100dvh;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 28px 28px;
   overflow: hidden;
   background:
@@ -36,8 +40,10 @@
     var(--pixl-landing-deep);
 }
 
-.pixl-landing-shell > header {
-  border-color: rgba(232, 241, 229, .1);
+.pixl-landing > header > div {
+  width: 100%;
+  max-width: none;
+  padding-inline: 28px;
 }
 
 .pixl-landing-content {
