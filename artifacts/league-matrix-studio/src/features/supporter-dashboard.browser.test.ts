@@ -418,6 +418,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       await connection.evaluate<string>('document.querySelector(\'[data-testid="link-context-hype-card"]\')?.getAttribute("href") || ""', page.sessionId),
       /gameId=game-1/,
     );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-return-to-recommended-game"]\'))', page.sessionId),
+      true,
+    );
     await connection.evaluate(`document.querySelector('[data-testid="stage-completed"]')?.click()`, page.sessionId);
     await waitFor(
       connection,
@@ -428,6 +432,33 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"] a\')?.getAttribute("href") || ""', page.sessionId),
       /gameId=game-1/,
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="button-return-to-recommended-game"]')?.click()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-2"',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="past-game-notice"]\'))', page.sessionId),
+      false,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-return-to-recommended-game"]\'))', page.sessionId),
+      false,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-upcoming-next"]\'))', page.sessionId),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-completed-next"]\'))', page.sessionId),
+      false,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"] a\')?.getAttribute("href") || ""', page.sessionId),
+      /gameId=game-2/,
     );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
