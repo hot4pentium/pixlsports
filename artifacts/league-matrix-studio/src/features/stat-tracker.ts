@@ -1,4 +1,4 @@
-export type Sport = 'baseball' | 'basketball' | 'football' | 'soccer' | 'volleyball';
+export type Sport = 'baseball' | 'basketball' | 'football' | 'soccer' | 'softball' | 'volleyball';
 export type GameStatus = 'setup' | 'live' | 'paused' | 'final';
 
 export type StatDefinition = {
@@ -247,6 +247,21 @@ export const sportRules: Record<Sport, SportRule> = {
   baseball: {
     id: 'baseball',
     label: 'Baseball',
+    phaseLabel: 'Inning',
+    stats: [
+      stat('run', 'Run', 'RUN', 1),
+      stat('hit', 'Hit', 'HIT', 0),
+      stat('rbi', 'Run batted in', 'RBI', 1),
+      stat('home-run', 'Home run', 'HR', 4),
+      stat('strikeout', 'Strikeout', 'K', 0),
+      stat('walk', 'Walk', 'BB', 0),
+      stat('stolen-base', 'Stolen base', 'SB', 0, false),
+      stat('pitch', 'Pitch thrown', 'PITCH', 0, false),
+    ],
+  },
+  softball: {
+    id: 'softball',
+    label: 'Softball',
     phaseLabel: 'Inning',
     stats: [
       stat('run', 'Run', 'RUN', 1),

@@ -115,6 +115,16 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   assert.equal(changedGame.stats['three-point'], 1);
 });
 
+test('softball is available with inning-based game tracking', () => {
+  const rule = getSportRule('softball');
+  const game = createGameSession('softball', { opponent: 'Westview' }, new Date('2026-09-20T12:00:00Z'));
+
+  assert.equal(rule.label, 'Softball');
+  assert.equal(rule.phaseLabel, 'Inning');
+  assert.deepEqual(rule.stats.slice(0, 4).map((item) => item.id), ['run', 'hit', 'rbi', 'home-run']);
+  assert.equal(game.sport, 'softball');
+});
+
 test('live scoreboard keeps camera actions compact, labeled, and attached to the scoreboard', () => {
   const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('basketball');

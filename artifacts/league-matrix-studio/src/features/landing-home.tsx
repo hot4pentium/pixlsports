@@ -13,6 +13,7 @@ import footballAthlete from '../../../../attached_assets/generated_images/landin
 import basketballAthlete from '../../../../attached_assets/generated_images/landing-basketball-athlete.jpg';
 import volleyballAthlete from '../../../../attached_assets/generated_images/landing-volleyball-athlete-girl.jpg';
 import baseballAthlete from '../../../../attached_assets/generated_images/landing-baseball-athlete-black.jpg';
+import softballAthlete from '../../../../attached_assets/generated_images/landing-softball-athlete-girl.jpg';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -132,6 +133,13 @@ const landingSports = [
     image: baseballAthlete,
     alt: 'Black youth baseball athlete at bat',
   },
+  {
+    id: 'softball',
+    label: 'Softball',
+    kicker: 'Swing big',
+    image: softballAthlete,
+    alt: 'Girls softball athlete hitting the ball',
+  },
 ] as const;
 
 function LandingSportShowcase() {
@@ -167,7 +175,7 @@ function LandingSportShowcase() {
       <div className="absolute left-0 top-0 z-10 rotate-[-6deg] sm:left-2">
         <p className="font-handwritten text-3xl font-bold text-landing-orange drop-shadow-sm sm:text-5xl">Less chasing.<br />More cheering.</p>
       </div>
-      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         {landingSports.map((sport, index) => {
           const isVisible = visibleCards.has(sport.id);
           return (

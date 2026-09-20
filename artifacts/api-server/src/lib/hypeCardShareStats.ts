@@ -3,6 +3,7 @@ export const HYPE_CARD_SPORTS = [
   "basketball",
   "football",
   "soccer",
+  "softball",
   "volleyball",
 ] as const;
 
