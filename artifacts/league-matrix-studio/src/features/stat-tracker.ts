@@ -424,6 +424,36 @@ export function addStatEvent(
   };
 }
 
+export function updateStatEventYards(
+  game: GameSession,
+  eventId: string,
+  yards: number,
+): GameSession {
+  if (game.status !== 'live' || game.sport !== 'football' || game.trackYards !== true) return game;
+  const event = game.events.find((item) => item.id === eventId);
+  const yardMetricId = event ? getFootballYardMetricId(event.statId) : null;
+  if (!event || !yardMetricId) return game;
+
+  const nextYards = Math.max(0, Math.floor(Number.isFinite(yards) ? yards : 0));
+  const previousYards = event.yards ?? 0;
+  const yardStats = { ...(game.yardStats ?? {}) };
+  const nextTotal = Math.max(0, (yardStats[yardMetricId] ?? 0) + nextYards - previousYards);
+  if (nextTotal === 0) delete yardStats[yardMetricId];
+  else yardStats[yardMetricId] = nextTotal;
+
+  return {
+    ...game,
+    yardStats,
+    events: game.events.map((item) => {
+      if (item.id !== eventId) return item;
+      return nextYards > 0 ? { ...item, yards: nextYards } : (() => {
+        const { yards: _yards, ...withoutYards } = item;
+        return withoutYards;
+      })();
+    }),
+  };
+}
+
 export function undoLastStatEvent(game: GameSession): GameSession {
   const event = game.events.at(-1);
   if (!event || game.status === 'final') return game;

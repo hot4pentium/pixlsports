@@ -52,6 +52,7 @@ import {
   sports,
   syncTrackerDataToCloud,
   trackerSaveStatusMessage,
+  updateStatEventYards,
   undoLastStatEvent,
   buildGameReport,
   type GameSession,
@@ -344,38 +345,47 @@ export function LiveTrackerGame({
   onEndGame,
 }: LiveTrackerGameProps) {
   const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
+  const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>({});
   const updateCurrentGame = (next: GameSession) => onGameChange(next);
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
   const yardTrackingEnabled = currentGame.sport === 'football' && currentGame.trackYards === true;
 
   useEffect(() => {
     setYardDrafts({});
+    setActiveYardEventIds({});
   }, [currentGame.id]);
 
+  const updateYardValue = (statId: string, value: number) => {
+    const eventId = activeYardEventIds[statId];
+    if (!eventId) return;
+    const nextYards = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+    setYardDrafts((current) => ({ ...current, [statId]: nextYards }));
+    updateCurrentGame(updateStatEventYards(currentGame, eventId, nextYards));
+  };
+
   const updateYardDraft = (statId: string, delta: number) => {
-    setYardDrafts((current) => ({
-      ...current,
-      [statId]: adjustYardValue(current[statId] ?? 0, delta),
-    }));
+    updateYardValue(statId, adjustYardValue(yardDrafts[statId] ?? 0, delta));
   };
 
   const setYardDraft = (statId: string, value: string) => {
     const parsed = Number.parseInt(value, 10);
-    setYardDrafts((current) => ({
-      ...current,
-      [statId]: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
-    }));
+    updateYardValue(statId, Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
   };
 
   const recordStat = (item: StatDefinition) => {
     const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
-    updateCurrentGame(addStatEvent(
+    const nextGame = addStatEvent(
       currentGame,
       item.id,
       new Date(),
-      yardMetricId ? yardDrafts[item.id] ?? 0 : 0,
-    ));
+      0,
+    );
+    updateCurrentGame(nextGame);
     if (yardMetricId) {
+      const eventId = nextGame.events.at(-1)?.id;
+      if (eventId) {
+        setActiveYardEventIds((current) => ({ ...current, [item.id]: eventId }));
+      }
       setYardDrafts((current) => ({ ...current, [item.id]: 0 }));
     }
   };
@@ -449,9 +459,16 @@ export function LiveTrackerGame({
         )}
         <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
           {displayStats.map((item) => {
-            const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
+            const yardMetricId = currentGame.sport === 'football' ? getFootballYardMetricId(item.id) : null;
             const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
-            const yardDraft = yardDrafts[item.id] ?? 0;
+            const activeYardEventId = yardMetricId ? activeYardEventIds[item.id] : undefined;
+            const activeYardEvent = activeYardEventId
+              ? currentGame.events.find((event) => event.id === activeYardEventId)
+              : undefined;
+            const yardControlEnabled = yardTrackingEnabled && Boolean(activeYardEvent);
+            const yardDraft = yardControlEnabled
+              ? yardDrafts[item.id] ?? activeYardEvent?.yards ?? 0
+              : 0;
             return (
               <div key={item.id} data-testid={`live-stat-card-${item.id}`} className="min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
                 <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item)} className="group block min-h-[72px] w-full min-w-0 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
@@ -463,13 +480,13 @@ export function LiveTrackerGame({
                   </span>
                 </button>
                 {yardMetricId && (
-                  <div className="mt-3 border-t border-border/70 pt-3">
+                  <div className={`mt-3 border-t border-border/70 pt-3 ${yardControlEnabled ? '' : 'opacity-50'}`} data-testid={`yard-control-${item.id}`} aria-disabled={!yardControlEnabled}>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground" htmlFor={`yard-input-${item.id}`}>
-                      Yards for next play
+                      {yardControlEnabled ? 'Yards for recorded play' : 'Yards locked until play is recorded'}
                     </label>
                     {yardTrackingEnabled ? (
                       <div className="mt-2 flex items-center gap-1.5">
-                        <button type="button" onClick={() => updateYardDraft(item.id, -1)} aria-label={`Decrease ${item.label} yards by one`} data-testid={`yard-adjust-${item.id}-decrease`} className="flex min-h-10 min-w-10 shrink-0 items-center justify-center border border-border text-foreground hover:border-primary hover:text-primary-ink"><Minus className="h-4 w-4" /></button>
+                        <button type="button" disabled={!yardControlEnabled} onClick={() => updateYardDraft(item.id, -1)} aria-label={`Decrease ${item.label} yards by one`} data-testid={`yard-adjust-${item.id}-decrease`} className="flex min-h-10 min-w-10 shrink-0 items-center justify-center border border-border text-foreground hover:border-primary hover:text-primary-ink disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"><Minus className="h-4 w-4" /></button>
                         <input
                           id={`yard-input-${item.id}`}
                           type="number"
@@ -477,6 +494,7 @@ export function LiveTrackerGame({
                           step="1"
                           inputMode="numeric"
                           value={yardDraft}
+                          disabled={!yardControlEnabled}
                           onChange={(event) => setYardDraft(item.id, event.currentTarget.value)}
                           onWheel={(event) => {
                             event.preventDefault();
@@ -491,16 +509,16 @@ export function LiveTrackerGame({
                               updateYardDraft(item.id, -1);
                             } else if (event.key === 'Enter') {
                               event.preventDefault();
-                              recordStat(item);
                             }
                           }}
+                          aria-disabled={!yardControlEnabled}
                           aria-label={`${item.label} for next play`}
                           aria-valuemin={0}
                           aria-valuenow={yardDraft}
                           data-testid={`input-yard-${item.id}`}
-                          className="min-w-0 flex-1 border border-border bg-background px-2 py-2 text-center text-sm font-bold text-foreground outline-none focus:border-primary"
+                          className="min-w-0 flex-1 border border-border bg-background px-2 py-2 text-center text-sm font-bold text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                         />
-                        <button type="button" onClick={() => updateYardDraft(item.id, 5)} aria-label={`Increase ${item.label} yards by five`} data-testid={`yard-adjust-${item.id}-increase`} className="flex min-h-10 min-w-10 shrink-0 items-center justify-center border border-border text-foreground hover:border-primary hover:text-primary-ink"><Plus className="h-4 w-4" /></button>
+                        <button type="button" disabled={!yardControlEnabled} onClick={() => updateYardDraft(item.id, 5)} aria-label={`Increase ${item.label} yards by five`} data-testid={`yard-adjust-${item.id}-increase`} className="flex min-h-10 min-w-10 shrink-0 items-center justify-center border border-border text-foreground hover:border-primary hover:text-primary-ink disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"><Plus className="h-4 w-4" /></button>
                       </div>
                     ) : (
                       <p className="mt-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">Yard entry is off for this game.</p>
