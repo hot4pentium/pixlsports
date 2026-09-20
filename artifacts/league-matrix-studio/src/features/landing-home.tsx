@@ -9,8 +9,10 @@ import gameDayChecklist from '@/assets/game-day-checklist-768.webp';
 import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
 import sidelineParents from '../../../../attached_assets/generated_images/sideline-parents.jpg';
 import soccerAthlete from '../../../../attached_assets/generated_images/landing-soccer-athlete.jpg';
-import footballAthlete from '../../../../attached_assets/generated_images/landing-football-athlete.jpg';
+import footballAthlete from '../../../../attached_assets/generated_images/landing-football-athlete-black.jpg';
 import basketballAthlete from '../../../../attached_assets/generated_images/landing-basketball-athlete.jpg';
+import volleyballAthlete from '../../../../attached_assets/generated_images/landing-volleyball-athlete-girl.jpg';
+import baseballAthlete from '../../../../attached_assets/generated_images/landing-baseball-athlete-black.jpg';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -100,18 +102,35 @@ const landingSports = [
     label: 'Soccer',
     kicker: 'Find your shape',
     image: soccerAthlete,
+    alt: 'Youth soccer athlete in action',
   },
   {
     id: 'football',
     label: 'Football',
     kicker: 'Own the field',
     image: footballAthlete,
+    alt: 'Black youth football athlete running with the ball',
   },
   {
     id: 'basketball',
     label: 'Basketball',
     kicker: 'Run the floor',
     image: basketballAthlete,
+    alt: 'Youth basketball athlete driving toward the basket',
+  },
+  {
+    id: 'volleyball',
+    label: 'Volleyball',
+    kicker: 'Rise together',
+    image: volleyballAthlete,
+    alt: 'Girls volleyball athlete jumping for a spike',
+  },
+  {
+    id: 'baseball',
+    label: 'Baseball',
+    kicker: 'Step up',
+    image: baseballAthlete,
+    alt: 'Black youth baseball athlete at bat',
   },
 ] as const;
 
@@ -148,7 +167,7 @@ function LandingSportShowcase() {
       <div className="absolute left-0 top-0 z-10 rotate-[-6deg] sm:left-2">
         <p className="font-handwritten text-3xl font-bold text-landing-orange drop-shadow-sm sm:text-5xl">Less chasing.<br />More cheering.</p>
       </div>
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 sm:gap-3">
         {landingSports.map((sport, index) => {
           const isVisible = visibleCards.has(sport.id);
           return (
@@ -165,13 +184,13 @@ function LandingSportShowcase() {
               <div className="landing-sport-card-face">
                 <img
                   src={sport.image}
-                  alt={`Youth ${sport.label.toLowerCase()} athlete in action`}
+                  alt={sport.alt}
                   className="h-full w-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}
                 />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/75 to-transparent px-2 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/65">{sport.kicker}</p>
-                  <p className="mt-1 font-display text-base font-extrabold uppercase leading-none tracking-tight text-white sm:text-3xl sm:tracking-normal">{sport.label}</p>
+                  <p className="mt-1 font-display text-[15px] font-extrabold uppercase leading-none tracking-tight text-white sm:text-base lg:text-lg">{sport.label}</p>
                 </div>
               </div>
             </div>
