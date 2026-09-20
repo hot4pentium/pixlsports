@@ -2535,13 +2535,14 @@ function RosterEditor() {
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
+  const profile = getUserProfile(user);
   const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
   const consumeAccountUsage = useConsumeAccountUsage();
   const queryClient = useQueryClient();
   const lineupUsageKey = useRef(getGuestUsageKey('lineup', 'roster-editor')).current;
   const claimedLineup = useRef(false);
   const [storedDraft] = useState(() => readRosterDraft());
-  const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster());
+  const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster(profile.athleteName));
   const [notice, setNotice] = useState('');
   const [guestLineupBlocked, setGuestLineupBlocked] = useState(false);
   const [saved, setSaved] = useState(Boolean(storedDraft));
@@ -2592,7 +2593,7 @@ function RosterEditor() {
     announce('ROSTER SAVED ON THIS DEVICE');
   };
   const resetDraft = () => {
-    const nextDraft = getDefaultRoster();
+    const nextDraft = getDefaultRoster(profile.athleteName);
     setDraft(nextDraft);
     saveRosterDraft(window.localStorage, nextDraft);
     setSaved(true);

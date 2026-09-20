@@ -18,3 +18,4 @@
 - [Supporter dashboard browser coverage](supporter-dashboard-browser-coverage.md) — isolate Chromium dashboard tests from the live shell and mock unrelated inbox data at its generated route.
 - [Offline installed editor](offline-installed-editor.md) — keep standalone Hype Card creation unauthenticated, locally durable, and backed by a build-time shell precache.
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
+- [Supporter profile propagation](supporter-profile-propagation.md) — profile athlete details seed new local work, while saved cloud designs and published snapshots remain authored independently.

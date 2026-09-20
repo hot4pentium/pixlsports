@@ -64,13 +64,17 @@ const defaultFormationPositions: RosterFormationPosition[] = [
   { x: 62, y: 22 },
 ];
 
-export function getDefaultRoster(): RosterDraft {
+export function getDefaultRoster(athleteName = ''): RosterDraft {
   return {
     teamName: 'Eastside Falcons',
     season: 'Fall 2024',
     layout: 'roster',
     boardStyle: 'classic',
-    players: defaultPlayers.map((player) => ({ ...player, formationPosition: { ...player.formationPosition } })),
+    players: defaultPlayers.map((player, index) => ({
+      ...player,
+      name: index === 0 && athleteName.trim() ? athleteName.trim() : player.name,
+      formationPosition: { ...player.formationPosition },
+    })),
   };
 }
 

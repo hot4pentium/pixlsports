@@ -56,6 +56,12 @@ test('roster draft round trips through local persistence', () => {
   assert.deepEqual(readRosterDraft(storage as Storage), draft);
 });
 
+test('uses the supporter athlete name for a fresh roster starter', () => {
+  const draft = getDefaultRoster('Taylor Fan');
+  assert.equal(draft.players[0]?.name, 'Taylor Fan');
+  assert.equal(getDefaultRoster('  ').players[0]?.name, 'Maya Chen');
+});
+
 test('board styles normalize safely and legacy drafts use the classic treatment', () => {
   assert.deepEqual(rosterBoardStyles.map((style) => style.id), ['classic', 'soccer', 'basketball', 'baseball', 'football', 'volleyball']);
   assert.equal(normalizeRosterBoardStyle('soccer'), 'soccer');

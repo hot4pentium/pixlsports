@@ -1168,6 +1168,7 @@ export function HypeCardEditor() {
   const mediaPreparationAbortRef = useRef<AbortController | null>(null);
   const cloudPreviewLoadingRef = useRef(false);
   const mediaSyncRef = useRef(false);
+  const profilePrefillAppliedRef = useRef(false);
   const gameDayPrefillAppliedRef = useRef(false);
 
   const initializedForId = useRef<string | null>(initialCloudDraft ? cloudProjectId ?? null : null);
@@ -1254,13 +1255,24 @@ export function HypeCardEditor() {
 
   useEffect(() => {
     if (
-      !gameDayPrefill
-      || cloudProjectId
+      cloudProjectId
       || !isLoaded
-      || gameDayPrefillAppliedRef.current
+      || profilePrefillAppliedRef.current
     ) {
       return;
     }
+    if (!profilePrefillAppliedRef.current) {
+      setProject((current) => ({
+        ...current,
+        playerName: profile.athleteName || current.playerName,
+        jerseyNumber: profile.jerseyNumber || current.jerseyNumber,
+        position: profile.position || current.position,
+        teamName: profile.teamName || current.teamName,
+      }));
+      profilePrefillAppliedRef.current = true;
+    }
+    if (!gameDayPrefill || gameDayPrefillAppliedRef.current || !projects) return;
+
     const completedGames = trackerProjects.flatMap((trackerProject) => (
       normalizeTrackerData(trackerProject.project).games
     ));
@@ -1278,17 +1290,15 @@ export function HypeCardEditor() {
 
     setProject((current) => ({
       ...current,
-      playerName: profile.athleteName || current.playerName,
-      jerseyNumber: profile.jerseyNumber || current.jerseyNumber,
-      position: profile.position || current.position,
-      teamName: profile.teamName || current.teamName,
       achievement: context || current.achievement,
       stat: statSummary || current.stat,
     }));
     gameDayPrefillAppliedRef.current = true;
-    setNotice(statSummary
-      ? 'Game details and finished stats are ready. Choose media from your camera roll.'
-      : 'Game details are ready. Choose media from your camera roll.');
+    if (gameDayPrefill) {
+      setNotice(statSummary
+        ? 'Game details and finished stats are ready. Choose media from your camera roll.'
+        : 'Game details are ready. Choose media from your camera roll.');
+    }
   }, [
     cloudProjectId,
     gameDayPrefill,
@@ -1297,6 +1307,7 @@ export function HypeCardEditor() {
     profile.jerseyNumber,
     profile.position,
     profile.teamName,
+    projects,
     trackerProjects,
   ]);
 
