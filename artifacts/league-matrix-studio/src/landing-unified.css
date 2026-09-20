@@ -1,20 +1,30 @@
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@500;600;700&display=swap");
 
 .pixl-landing {
-  --pixl-landing-ink: #10201e;
-  --pixl-landing-deep: #10191d;
-  --pixl-landing-panel: #172629;
-  --pixl-landing-paper: #e8f1e5;
-  --pixl-landing-acid: #00f776;
-  --pixl-landing-mint: #9af9b1;
-  --pixl-landing-muted: rgba(232, 241, 229, .5);
+  --pixl-landing-ink: #061427;
+  --pixl-landing-deep: #071a33;
+  --pixl-landing-panel: #0d2747;
+  --pixl-landing-paper: #edf4ff;
+  --pixl-landing-blue: #2f8fff;
+  --pixl-landing-blue-soft: #8bc8ff;
+  --pixl-landing-muted: rgba(237, 244, 255, .5);
   min-height: 100dvh;
   width: 100%;
   background:
-    radial-gradient(circle at 70% 10%, rgba(0, 247, 118, .09), transparent 36rem),
+    radial-gradient(circle at 70% 10%, rgba(47, 143, 255, .12), transparent 36rem),
     var(--pixl-landing-deep);
   color: var(--pixl-landing-paper);
   font-family: "DM Sans", ui-sans-serif, sans-serif;
+}
+
+.pixl-landing > header {
+  background: rgba(7, 26, 51, .95) !important;
+  border-color: rgba(237, 244, 255, .15) !important;
+}
+
+.pixl-landing > header [data-testid="menu-mobile"] {
+  background: var(--pixl-landing-panel) !important;
+  border-color: rgba(237, 244, 255, .1) !important;
 }
 
 .pixl-landing button,
@@ -24,7 +34,7 @@
 
 .pixl-landing button:focus-visible,
 .pixl-landing a:focus-visible {
-  outline: 2px solid var(--pixl-landing-mint);
+  outline: 2px solid var(--pixl-landing-blue-soft);
   outline-offset: 3px;
 }
 
@@ -36,7 +46,7 @@
   padding: 0 28px 28px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 70% 10%, rgba(0, 247, 118, .09), transparent 28rem),
+    radial-gradient(circle at 70% 10%, rgba(47, 143, 255, .1), transparent 28rem),
     var(--pixl-landing-deep);
 }
 
@@ -63,7 +73,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  border-left: 1px solid rgba(232, 241, 229, .12);
+  border-left: 1px solid rgba(237, 244, 255, .12);
   padding: 86px 0 0 24px;
 }
 
@@ -71,7 +81,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: rgba(232, 241, 229, .4);
+  color: rgba(237, 244, 255, .4);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .2em;
@@ -86,8 +96,8 @@
   min-height: 620px;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(232, 241, 229, .1);
-  background: linear-gradient(110deg, rgba(238, 244, 229, .02), transparent 48%), #142126;
+  border: 1px solid rgba(237, 244, 255, .1);
+  background: linear-gradient(110deg, rgba(237, 244, 255, .025), transparent 48%), var(--pixl-landing-panel);
   padding: 25px 44px;
 }
 
@@ -96,8 +106,8 @@
   inset: 0;
   opacity: .4;
   background-image:
-    linear-gradient(90deg, rgba(0, 247, 118, .06) 1px, transparent 1px),
-    linear-gradient(rgba(0, 247, 118, .06) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(47, 143, 255, .08) 1px, transparent 1px),
+    linear-gradient(rgba(47, 143, 255, .08) 1px, transparent 1px);
   background-size: 42px 42px;
   pointer-events: none;
 }
@@ -117,10 +127,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(0, 247, 118, .4);
-  background: rgba(0, 247, 118, .08);
+  border: 1px solid rgba(47, 143, 255, .55);
+  background: rgba(47, 143, 255, .12);
   padding: 9px 12px;
-  color: var(--pixl-landing-acid);
+  color: var(--pixl-landing-blue-soft);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .17em;
@@ -132,14 +142,14 @@
 }
 
 .pixl-landing-live {
-  color: rgba(232, 241, 229, .35);
+  color: rgba(237, 244, 255, .35);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .17em;
 }
 
 .pixl-landing-live span {
-  color: var(--pixl-landing-acid);
+  color: var(--pixl-landing-blue-soft);
 }
 
 .pixl-landing-hero-copy {
@@ -149,7 +159,7 @@
 .pixl-landing-hero-copy small,
 .pixl-landing-role-row small,
 .pixl-landing-tools-heading small {
-  color: rgba(232, 241, 229, .42);
+  color: rgba(237, 244, 255, .42);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .2em;
@@ -171,14 +181,14 @@
 
 .pixl-landing-hero-copy h1 em,
 .pixl-landing-tools h2 em {
-  color: var(--pixl-landing-acid);
+  color: var(--pixl-landing-blue);
   font-style: normal;
 }
 
 .pixl-landing-hero-copy p {
   max-width: 385px;
   margin-top: 25px;
-  color: rgba(232, 241, 229, .6);
+  color: rgba(237, 244, 255, .6);
   font-size: 14px;
   line-height: 1.7;
 }
@@ -189,7 +199,7 @@
   justify-content: space-between;
   gap: 18px;
   margin-top: 95px;
-  border-top: 1px solid rgba(232, 241, 229, .1);
+  border-top: 1px solid rgba(237, 244, 255, .1);
   padding-top: 17px;
 }
 
