@@ -1208,6 +1208,7 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
   const activeRole = role ?? getUserRole(user) ?? 'coach';
   const visibleTools = roleToolKinds[activeRole];
   const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
+  const isFanDashboard = activeRole === 'fan' && location === '/studio';
   return (
     <div className="noise min-h-dvh bg-background flex flex-col">
       <SiteNav dark />
@@ -1232,7 +1233,9 @@ function StudioLayout({ children, role }: { children: ReactNode; role?: UserRole
       <div className="studio-page-background flex-1 flex flex-col">
         {children}
       </div>
-      <Footer />
+      <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
+        <Footer />
+      </div>
     </div>
   );
 }
