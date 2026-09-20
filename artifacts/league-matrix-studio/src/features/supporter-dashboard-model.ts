@@ -1,7 +1,7 @@
 import type { SupporterProfile, SupporterProject } from './supporter-dashboard';
 import { isSport, type Sport } from './stat-tracker';
 import type { ScheduleEventStatus } from './schedule-draft';
-import type { HypeCardProject } from './hype-card-types';
+import { hypeCardProjectStorageKey, type HypeCardProject } from './hype-card-types';
 
 export type UserRole = 'coach' | 'fan';
 export type AccessMode = 'full' | 'guest';
@@ -150,6 +150,7 @@ export const supporterStageAcknowledgmentStoragePrefix = 'pixlsports-supporter-s
 export type SupporterStorageSyncEvent =
   | { type: 'active-game'; gameId: string }
   | { type: 'stage-acknowledgment'; gameId: string; stage: SupporterGameStage; key: string }
+  | { type: 'local-hype-card' }
   | null;
 
 export function getSupporterStageAcknowledgmentKey(
@@ -163,6 +164,10 @@ export function parseSupporterStorageSyncEvent(event: {
   key: string | null;
   newValue: string | null;
 }): SupporterStorageSyncEvent {
+  if (event.key === hypeCardProjectStorageKey) {
+    return { type: 'local-hype-card' };
+  }
+
   if (event.key === supporterActiveGameStorageKey) {
     const gameId = event.newValue?.trim();
     return gameId ? { type: 'active-game', gameId } : null;

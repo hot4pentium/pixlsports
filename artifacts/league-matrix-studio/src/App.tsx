@@ -106,11 +106,12 @@ import {
   getUserRole,
   mapLocalSupporterHypeCard,
   mapRecentSupporterProjects,
+  parseSupporterStorageSyncEvent,
   supporterProfileFromUser,
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
-import { readHypeCardProject } from '@/features/hype-card-types';
+import { readHypeCardProject, type HypeCardProject } from '@/features/hype-card-types';
 import { getRoleIntent, roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import {
@@ -1602,7 +1603,19 @@ function SupporterStudio() {
   const nextGame = events.find((event) => event.type === 'game' && event.date >= todayKey)
     ?? events.find((event) => event.type === 'game');
   const nextGameIsUpcoming = Boolean(nextGame?.date && nextGame.date >= todayKey);
-   const localHypeCard = useMemo(() => readHypeCardProject(), []);
+  const [localHypeCard, setLocalHypeCard] = useState<HypeCardProject | null>(() => readHypeCardProject());
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      const syncEvent = parseSupporterStorageSyncEvent(event);
+      if (syncEvent?.type !== 'local-hype-card') return;
+      setLocalHypeCard(readHypeCardProject());
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
    const projects: SupporterProject[] = [
      ...(localHypeCard ? [mapLocalSupporterHypeCard(localHypeCard)] : []),
      ...mapRecentSupporterProjects(cloudProjects ?? []),

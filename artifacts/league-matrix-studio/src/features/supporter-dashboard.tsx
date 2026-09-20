@@ -469,7 +469,7 @@ export function SupporterDashboardView({
         return;
       }
 
-      if (syncEvent.key === stageReminderKey) {
+      if (syncEvent.type === 'stage-acknowledgment' && syncEvent.key === stageReminderKey) {
         setReminderVersion((version) => version + 1);
       }
     };

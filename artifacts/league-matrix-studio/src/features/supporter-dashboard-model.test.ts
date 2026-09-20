@@ -20,6 +20,7 @@ import {
   getSupporterStageAcknowledgmentKey,
   supporterToolRoutes,
 } from './supporter-dashboard-model';
+import { hypeCardProjectStorageKey } from './hype-card-types';
 
 test('normalizes a saved athlete name for every supporter tool', () => {
   const now = new Date(2026, 8, 19, 15, 0, 0);
@@ -163,6 +164,18 @@ test('parses only valid supporter storage synchronization events', () => {
     gameId: 'game:2',
     stage: 'live',
     key: getSupporterStageAcknowledgmentKey('game:2', 'live'),
+  });
+  assert.deepEqual(parseSupporterStorageSyncEvent({
+    key: hypeCardProjectStorageKey,
+    newValue: '{"tool":"hype-card"}',
+  }), {
+    type: 'local-hype-card',
+  });
+  assert.deepEqual(parseSupporterStorageSyncEvent({
+    key: hypeCardProjectStorageKey,
+    newValue: null,
+  }), {
+    type: 'local-hype-card',
   });
 
   for (const event of [
