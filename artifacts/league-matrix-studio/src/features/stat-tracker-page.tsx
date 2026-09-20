@@ -358,13 +358,22 @@ export function LiveTrackerGame({
   onLeaveGame,
   onEndGame,
 }: LiveTrackerGameProps) {
+  const currentGameRef = useRef(currentGame);
   const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
   const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>({});
   const [showBaseballHitChoices, setShowBaseballHitChoices] = useState(false);
   const [showBaseballPitchChoices, setShowBaseballPitchChoices] = useState(false);
-  const updateCurrentGame = (next: GameSession) => onGameChange(next);
+  const updateCurrentGame = (next: GameSession | ((game: GameSession) => GameSession)) => {
+    const resolved = typeof next === 'function' ? next(currentGameRef.current) : next;
+    currentGameRef.current = resolved;
+    onGameChange(resolved);
+  };
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
   const yardTrackingEnabled = currentGame.sport === 'football' && currentGame.trackYards === true;
+
+  useEffect(() => {
+    currentGameRef.current = currentGame;
+  }, [currentGame]);
 
   useEffect(() => {
     setYardDrafts({});
@@ -378,7 +387,7 @@ export function LiveTrackerGame({
     if (!eventId) return;
     const nextYards = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
     setYardDrafts((current) => ({ ...current, [statId]: nextYards }));
-    updateCurrentGame(updateStatEventYards(currentGame, eventId, nextYards));
+    updateCurrentGame((game) => updateStatEventYards(game, eventId, nextYards));
   };
 
   const updateYardDraft = (statId: string, delta: number) => {
@@ -401,7 +410,7 @@ export function LiveTrackerGame({
     }
     const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
     const nextGame = addStatEvent(
-      currentGame,
+      currentGameRef.current,
       item.id,
       new Date(),
       0,
@@ -417,12 +426,12 @@ export function LiveTrackerGame({
   };
 
   const recordBaseballHit = (statId: string) => {
-    updateCurrentGame(addStatEvent(currentGame, statId));
+    updateCurrentGame((game) => addStatEvent(game, statId));
     setShowBaseballHitChoices(false);
   };
 
   const recordBaseballPitch = (statId: string) => {
-    updateCurrentGame(addStatEvent(currentGame, statId));
+    updateCurrentGame((game) => addStatEvent(game, statId));
     setShowBaseballPitchChoices(false);
   };
 
@@ -441,8 +450,8 @@ export function LiveTrackerGame({
                 <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
                 <p className={`mt-1 font-display text-4xl leading-none sm:text-5xl ${side === 'athlete' ? 'text-primary' : 'text-white'}`}>{score}</p>
                 <div className="mt-2 flex flex-wrap gap-2 sm:mt-3">
-                  <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, -1))} aria-label={`Subtract one from ${label}`} data-testid={`score-adjust-${side}-decrease`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => updateCurrentGame(adjustScore(currentGame, side, 1))} aria-label={`Add one to ${label}`} data-testid={`score-adjust-${side}-increase`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => updateCurrentGame((game) => adjustScore(game, side, -1))} aria-label={`Subtract one from ${label}`} data-testid={`score-adjust-${side}-decrease`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => updateCurrentGame((game) => adjustScore(game, side, 1))} aria-label={`Add one to ${label}`} data-testid={`score-adjust-${side}-increase`} className="flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></button>
                 </div>
               </div>
             ))}

@@ -120,6 +120,40 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   assert.equal(changedGame.stats['three-point'], 1);
 });
 
+test('back-to-back live stat taps preserve both events from one render', () => {
+  const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => !item.liveHidden && item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'live-stat-touchdown' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'live-stat-tackle' }).props.onClick();
+  });
+
+  assert.deepEqual(changedGame.stats, { touchdown: 1, tackle: 1 });
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['touchdown', 'tackle']);
+  assert.equal(changedGame.score, 6);
+});
+
 test('football yard tracking keeps play counts while recording passing, rushing, and receiving yards', () => {
   const firstTime = new Date('2026-09-17T12:01:00Z');
   let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));

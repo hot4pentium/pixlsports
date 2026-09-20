@@ -338,10 +338,17 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.disabled === false', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-reception-increase\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.value === "5"', Boolean);
-    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1")', Boolean);
-    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click(); document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1") && document.querySelector("[data-testid=\\"live-stat-card-tackle\\"]")?.textContent.includes("1")', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"live-tracker-score-card-athlete\\"]")?.textContent.includes("6")', page.sessionId),
+      true,
+    );
+    const recentActivityText = await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"live-tracker-recent-activity\\"]")?.textContent || ""',
+      page.sessionId,
+    );
+    assert.ok(recentActivityText.indexOf('Tackle') < recentActivityText.indexOf('Touchdown'));
     assert.equal(
       await connection.evaluate<boolean>(
         '["pass-yard", "rush-yard", "reception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
