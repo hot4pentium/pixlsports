@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw, X,
-  CheckCircle2, ChevronDown, Home, PlusSquare, Check
+  CheckCircle2, ChevronDown, Home, PlusSquare, Check, Sparkles
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -373,6 +373,11 @@ export function SupporterDashboardView({
     },
   };
   const [selectedPathId, setSelectedPathId] = useState<WeeklyPathId | null>(null);
+  const activePath = weeklyPath.find((step) => step.active) ?? weeklyPath[0];
+  const activePathIndex = weeklyPath.findIndex((step) => step.id === activePath.id);
+  const [pathCelebration, setPathCelebration] = useState('');
+  const previousActivePathIndex = useRef(activePathIndex);
+  const pathCelebrationTimer = useRef<number | null>(null);
   const selectedPath = weeklyPath.find(({ id }) => id === selectedPathId)
     ?? weeklyPath.find(({ active }) => active)
     ?? weeklyPath[0];
@@ -411,6 +416,22 @@ export function SupporterDashboardView({
     },
   };
   const selectedPathDetails = weeklyPathDetails[selectedPath.id];
+  const activePathDetails = weeklyPathDetails[activePath.id];
+
+  useEffect(() => {
+    const previousIndex = previousActivePathIndex.current;
+    previousActivePathIndex.current = activePathIndex;
+    if (activePathIndex <= previousIndex || previousIndex < 0) return;
+    const completedStep = weeklyPath[activePathIndex - 1];
+    if (!completedStep) return;
+    if (pathCelebrationTimer.current !== null) window.clearTimeout(pathCelebrationTimer.current);
+    setPathCelebration(`${completedStep.label} complete. Next up: ${activePath.label}.`);
+    pathCelebrationTimer.current = window.setTimeout(() => setPathCelebration(''), 4200);
+  }, [activePath.id, activePathIndex]);
+
+  useEffect(() => () => {
+    if (pathCelebrationTimer.current !== null) window.clearTimeout(pathCelebrationTimer.current);
+  }, []);
 
   useEffect(() => {
     if (!weekRecommendation && selectedPathId !== null) {
@@ -494,9 +515,6 @@ export function SupporterDashboardView({
   const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
   const firstName = profile.displayName ? profile.displayName.split(' ')[0] : 'Supporter';
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-  const activePath = weeklyPath.find(p => p.active) ?? weeklyPath[0];
-  const activePathDetails = weeklyPathDetails[activePath.id];
 
   const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? events[0];
   const mobileFeaturedTitle = mobileFeaturedEvent?.type === 'practice'
@@ -590,14 +608,14 @@ export function SupporterDashboardView({
                   {/* Steps */}
                   {weeklyPath.map((step, index) => {
                     const isActive = activePath.id === step.id;
-                    const isCompleted = index < weeklyPath.findIndex(s => s.id === activePath.id);
+                    const isCompleted = index < activePathIndex;
 
                     return (
                       <li key={step.id} className="relative z-10 flex flex-col items-center gap-2.5" aria-current={isActive ? 'step' : undefined}>
                         {isActive && (
                           <div className="absolute -top-7 bg-[#FF6B35] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">NOW</div>
                         )}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-colors shadow-sm ${isActive ? 'bg-[#2474F5] border-2 border-[#2474F5] text-white' : isCompleted ? 'bg-[#2474F5] border-2 border-[#2474F5] text-white' : 'bg-white border-2 border-black/5 text-black/40'}`} aria-hidden="true">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all motion-reduce:transition-none shadow-sm ${isActive ? 'bg-[#2474F5] border-2 border-[#2474F5] text-white ring-4 ring-[#2474F5]/15' : isCompleted ? 'bg-[#17A673] border-2 border-[#17A673] text-white' : 'bg-white border-2 border-black/5 text-black/40'}`} aria-hidden="true">
                           {isCompleted ? <Check className="w-6 h-6 text-white" strokeWidth={3} /> : index + 1}
                         </div>
                         <span className={`text-[12px] font-bold uppercase tracking-wider ${isActive ? 'text-[#12213A]' : 'text-black/40'}`}>
@@ -611,6 +629,13 @@ export function SupporterDashboardView({
                 </ol>
              </div>
           </section>
+
+          {pathCelebration && (
+            <div className="mx-1 mt-3 flex items-center gap-3 rounded-[16px] border border-[#17A673]/20 bg-[#EAF8F2] px-4 py-3 text-[#0B6548] motion-safe:animate-pulse" role="status" aria-live="polite" data-testid="mobile-week-path-celebration">
+              <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <p className="text-sm font-bold">{pathCelebration}</p>
+            </div>
+          )}
 
           {/* Recommendation Card */}
           <section className="bg-white rounded-[24px] overflow-hidden shadow-sm border border-black/5 mt-3" data-testid="card-mobile-recommendation" aria-labelledby="mobile-recommendation-heading">
@@ -889,10 +914,17 @@ export function SupporterDashboardView({
           <div className="flex flex-col justify-end">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
             <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as the week moves. The calendar marks what comes next.</p>
+            {pathCelebration && (
+              <div className="mt-4 flex items-start gap-2 border border-emerald-300/35 bg-emerald-300/10 px-3 py-3 text-emerald-200 motion-safe:animate-pulse" role="status" aria-live="polite" data-testid="desktop-week-path-celebration">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <p className="text-xs font-bold leading-relaxed">{pathCelebration}</p>
+              </div>
+            )}
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {weeklyPath.map(({ id, number, label, Icon, active }) => {
+              {weeklyPath.map(({ id, number, label, Icon, active }, index) => {
                 const theme = weeklyPathThemes[id];
                 const selected = selectedPath.id === id;
+                const completed = index < activePathIndex;
                 return (
                   <button
                     type="button"
@@ -900,10 +932,10 @@ export function SupporterDashboardView({
                     aria-current={active ? 'step' : undefined}
                     aria-pressed={selected}
                     onClick={() => setSelectedPathId(id)}
-                    className={`flex items-center gap-3 border px-3 py-3 text-left transition-colors hover:border-white/50 hover:text-white ${selected ? `${theme.border} ${theme.surface} text-white` : active ? `${theme.activeBorder} ${theme.surface} text-white/80` : 'border-white/10 bg-white/[0.03] text-white/45'}`}
+                    className={`flex items-center gap-3 border px-3 py-3 text-left transition-all motion-reduce:transition-none hover:border-white/50 hover:text-white ${selected ? `${theme.border} ${theme.surface} text-white` : active ? `${theme.activeBorder} ${theme.surface} text-white/80` : completed ? 'border-emerald-300/25 bg-emerald-300/[0.06] text-white/70' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
                     data-testid={`stage-${id}`}
                   >
-                    <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selected ? theme.number : active ? `${theme.activeBorder} ${theme.surface} ${theme.accent} border` : 'bg-white/10 text-white/60'}`}>{number}</span>
+                    <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selected ? theme.number : active ? `${theme.activeBorder} ${theme.surface} ${theme.accent} border` : completed ? 'bg-emerald-300 text-slate-950' : 'bg-white/10 text-white/60'}`}>{completed ? <Check className="h-4 w-4" /> : number}</span>
                     <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
                     <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
                     {active && (
@@ -911,6 +943,9 @@ export function SupporterDashboardView({
                         <CheckCircle2 className="h-4 w-4" />
                         Next
                       </span>
+                    )}
+                    {completed && !active && (
+                      <span className="ml-auto text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-200">Done</span>
                     )}
                   </button>
                 );

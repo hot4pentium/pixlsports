@@ -17,3 +17,4 @@
 - [Supporter game-day media](supporter-game-day-media.md) — capture stays device-managed; the web journey passes game context between existing tools without creating a moment library.
 - [Supporter dashboard browser coverage](supporter-dashboard-browser-coverage.md) — isolate Chromium dashboard tests from the live shell and mock unrelated inbox data at its generated route.
 - [Offline installed editor](offline-installed-editor.md) — keep standalone Hype Card creation unauthenticated, locally durable, and backed by a build-time shell precache.
+- [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.

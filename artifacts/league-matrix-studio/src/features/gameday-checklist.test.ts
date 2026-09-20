@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   completedChecklistCount,
   createGamedayChecklist,
+  getChecklistCompletionFeedback,
   normalizeChecklist,
   resetGamedayChecklist,
 } from './gameday-checklist';
@@ -18,6 +19,34 @@ test('starts with practical template items and keeps tournament mode available',
     'Confirm arrival time and location',
   ]) assert.ok(labels.includes(label));
   assert.equal(normalizeChecklist({ ...checklist, mode: 'tournament' })?.mode, 'tournament');
+});
+
+test('describes item, final, and undo completion moments without changing checklist data', () => {
+  const items = [
+    { id: 'one', label: 'Pack shoes', completed: false },
+    { id: 'two', label: 'Fill water bottle', completed: true },
+  ];
+
+  assert.deepEqual(getChecklistCompletionFeedback(items, 'one', true), {
+    kind: 'complete',
+    itemId: 'one',
+    message: 'Game day ready — every task is complete.',
+  });
+  assert.deepEqual(getChecklistCompletionFeedback(items, 'two', false), {
+    kind: 'undo',
+    itemId: 'two',
+    message: 'Back in progress — Fill water bottle.',
+  });
+  assert.deepEqual(getChecklistCompletionFeedback([
+    ...items,
+    { id: 'three', label: 'Bring snacks', completed: false },
+  ], 'one', true), {
+    kind: 'item',
+    itemId: 'one',
+    message: 'Nice work — Pack shoes is done. 2 of 3 ready.',
+  });
+  assert.equal(getChecklistCompletionFeedback(items, 'missing', true), null);
+  assert.equal(items[0]?.completed, false);
 });
 
 test('normalizes malformed values and resets completion without dropping custom title', () => {

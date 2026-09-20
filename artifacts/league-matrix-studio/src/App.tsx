@@ -116,6 +116,7 @@ import {
   completedChecklistCount,
   createGamedayChecklist,
   gamedayChecklistStorageKey,
+  getChecklistCompletionFeedback,
   normalizeChecklist,
   readGamedayChecklist,
   resetGamedayChecklist,
@@ -4043,6 +4044,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const [hydrated, setHydrated] = useState(!shared);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [notice, setNotice] = useState('');
+  const [completionFeedback, setCompletionFeedback] = useState<ReturnType<typeof getChecklistCompletionFeedback>>(null);
   const [shareUrl, setShareUrl] = useState(shareToken ? `${appOrigin}${basePath}/checklist/${shareToken}` : '');
   const [revision, setRevision] = useState(1);
   const requestedGameId = useRef(
@@ -4053,6 +4055,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const requestedGameApplied = useRef(false);
   const [liveStatus, setLiveStatus] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const saveTimer = useRef<number | null>(null);
+  const completionTimer = useRef<number | null>(null);
   const latestChecklist = useRef(checklist);
   const revisionRef = useRef(revision);
   const saveQueue = useRef(Promise.resolve());
@@ -4193,6 +4196,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   useEffect(() => () => {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+    if (completionTimer.current !== null) window.clearTimeout(completionTimer.current);
   }, []);
 
   const setNoticeFor = (message: string) => {
@@ -4277,6 +4281,16 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
       ...latestChecklist.current,
       items: latestChecklist.current.items.map((item) => item.id === id ? { ...item, ...patch } : item),
     });
+  };
+
+  const toggleItemCompletion = (item: GamedayChecklistItem) => {
+    const completed = !item.completed;
+    const feedback = getChecklistCompletionFeedback(latestChecklist.current.items, item.id, completed);
+    updateItem(item.id, { completed });
+    if (!feedback) return;
+    if (completionTimer.current !== null) window.clearTimeout(completionTimer.current);
+    setCompletionFeedback(feedback);
+    completionTimer.current = window.setTimeout(() => setCompletionFeedback(null), feedback.kind === 'complete' ? 4200 : 2600);
   };
 
   const addItem = () => {
@@ -4380,6 +4394,10 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   const completed = completedChecklistCount(checklist.items);
   const progress = checklist.items.length ? Math.round((completed / checklist.items.length) * 100) : 0;
+  const isChecklistComplete = checklist.items.length > 0 && completed === checklist.items.length;
+  const trackerHref = displayedGame
+    ? `/studio/stat-tracker?date=${encodeURIComponent(displayedGame.date)}&opponent=${encodeURIComponent(displayedGame.opponent || '')}`
+    : '/studio/stat-tracker';
   const isSaving = createShare.isPending || updateShare.isPending;
   const canManageShare = shared ? Boolean(sharedChecklist?.canManage) : Boolean(checklist.shareToken && isSignedIn);
 
@@ -4489,7 +4507,38 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
             )}
           </div>
 
-          <div className="mt-5 h-2 overflow-hidden bg-muted" aria-label={`${progress}% complete`}><div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div>
+          <div className="mt-5 h-2 overflow-hidden bg-muted" aria-label={`${progress}% complete`}><div className="h-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div>
+
+          <div className="min-h-7 pt-3" aria-live="polite" aria-atomic="true" data-testid="checklist-completion-feedback">
+            {completionFeedback && (
+              <p className={`flex items-center gap-2 text-xs font-bold ${completionFeedback.kind === 'undo' ? 'text-muted-foreground' : 'text-primary'} motion-safe:animate-pulse`}>
+                {completionFeedback.kind !== 'undo' && <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                {completionFeedback.message}
+              </p>
+            )}
+          </div>
+
+          {isChecklistComplete && (
+            <section className={`relative mt-3 overflow-hidden border border-primary/50 bg-foreground px-5 py-5 text-background clip-angled-sm sm:px-6 ${completionFeedback?.kind === 'complete' ? 'motion-safe:animate-pulse' : ''}`} data-testid="checklist-ready-celebration" aria-labelledby="checklist-ready-heading">
+              <div className="pointer-events-none absolute -right-5 -top-7 text-primary/15" aria-hidden="true">
+                <Sparkles className="h-28 w-28" />
+              </div>
+              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Sparkles className="h-4 w-4" /> All tasks complete</p>
+                  <h2 id="checklist-ready-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">Game day ready.</h2>
+                  <p className="mt-2 max-w-xl text-sm font-medium text-white/65">
+                    {displayedGame?.opponent
+                      ? `Everything is set for the game against ${displayedGame.opponent}.`
+                      : 'Everything on the list is handled. You are ready for what comes next.'}
+                  </p>
+                </div>
+                <Link href={trackerHref} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110">
+                  Open Stat Tracker <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </section>
+          )}
 
           <div className="mt-6 space-y-6">
             {(Array.from(new Set(checklist.items.map((item) => item.section || 'Game day'))) as string[]).map((section) => (
@@ -4497,9 +4546,10 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">{section}</p>
                 <div className="space-y-2">
                   {checklist.items.filter((item) => (item.section || 'Game day') === section).map((item) => (
-                    <div key={item.id} className={`flex items-center gap-3 border px-3 py-3 transition-colors ${item.completed ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}>
-                      <button type="button" onClick={() => updateItem(item.id, { completed: !item.completed })} className={`grid h-7 w-7 shrink-0 place-items-center border ${item.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 text-transparent hover:border-primary'}`} aria-label={`${item.completed ? 'Uncheck' : 'Check'} ${item.label}`} data-testid={`button-checklist-toggle-${item.id}`}><Check className="h-4 w-4" /></button>
+                    <div key={item.id} data-completed={item.completed ? 'true' : 'false'} className={`flex items-center gap-3 border px-3 py-3 transition-all motion-reduce:transition-none ${item.completed ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'} ${completionFeedback?.itemId === item.id && completionFeedback.kind !== 'undo' ? 'ring-2 ring-primary/30 motion-safe:animate-pulse' : ''}`}>
+                      <button type="button" onClick={() => toggleItemCompletion(item)} className={`grid h-7 w-7 shrink-0 place-items-center border ${item.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 text-transparent hover:border-primary'}`} aria-label={`${item.completed ? 'Uncheck' : 'Check'} ${item.label}`} data-testid={`button-checklist-toggle-${item.id}`}><Check className="h-4 w-4" /></button>
                       <input value={item.label} onChange={(event) => updateItem(item.id, { label: event.target.value })} className={`min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none ${item.completed ? 'line-through opacity-60' : ''}`} aria-label={`Edit ${item.label}`} data-testid={`input-checklist-item-${item.id}`} />
+                      {item.completed && <span className="hidden text-[10px] font-bold uppercase tracking-widest text-primary sm:inline">Ready</span>}
                       <button type="button" onClick={() => updateChecklist({ ...latestChecklist.current, items: latestChecklist.current.items.filter((candidate) => candidate.id !== item.id) })} className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-destructive" aria-label={`Remove ${item.label}`}>×</button>
                     </div>
                   ))}

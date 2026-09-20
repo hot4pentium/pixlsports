@@ -316,6 +316,14 @@ test("two checklist collaborators recover a stale revision and keep it after rel
     await waitFor(
       connection,
       first.sessionId,
+      "({ feedback: document.querySelector('[data-testid=\"checklist-completion-feedback\"]')?.textContent ?? '', ready: document.querySelector('[data-testid=\"checklist-ready-celebration\"]')?.textContent ?? '' })",
+      ({ feedback, ready }) => feedback.includes("Game day ready")
+        && ready.includes("Game day ready")
+        && ready.includes("Open Stat Tracker"),
+    );
+    await waitFor(
+      connection,
+      first.sessionId,
       "document.body?.innerText ?? ''",
       (body) => body.includes("Saving latest changes…") || share.revision === 2,
       2_000,

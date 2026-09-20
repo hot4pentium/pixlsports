@@ -120,3 +120,41 @@ export function resetGamedayChecklist(current: LocalGamedayChecklist): LocalGame
 export function completedChecklistCount(items: readonly GamedayChecklistItem[]) {
   return items.filter((item) => item.completed).length;
 }
+
+export type ChecklistCompletionFeedback = {
+  kind: 'item' | 'complete' | 'undo';
+  itemId: string;
+  message: string;
+};
+
+export function getChecklistCompletionFeedback(
+  items: readonly GamedayChecklistItem[],
+  itemId: string,
+  completed: boolean,
+): ChecklistCompletionFeedback | null {
+  const item = items.find((candidate) => candidate.id === itemId);
+  if (!item) return null;
+  const completedCount = items.reduce(
+    (count, candidate) => count + (candidate.id === itemId ? (completed ? 1 : 0) : candidate.completed ? 1 : 0),
+    0,
+  );
+  if (!completed) {
+    return {
+      kind: 'undo',
+      itemId,
+      message: `Back in progress — ${item.label}.`,
+    };
+  }
+  if (items.length > 0 && completedCount === items.length) {
+    return {
+      kind: 'complete',
+      itemId,
+      message: 'Game day ready — every task is complete.',
+    };
+  }
+  return {
+    kind: 'item',
+    itemId,
+    message: `Nice work — ${item.label} is done. ${completedCount} of ${items.length} ready.`,
+  };
+}
