@@ -4,7 +4,7 @@ export type ToolKind = 'hype' | 'schedule' | 'roster' | 'stat-tracker' | 'checkl
 
 export const roleToolKinds: Record<UserRole, ToolKind[]> = {
   coach: ['schedule', 'roster', 'checklist'],
-  fan: ['hype', 'schedule', 'stat-tracker', 'checklist'],
+  fan: ['schedule', 'checklist', 'stat-tracker', 'hype'],
 };
 
 export function getRoleIntent(search: string): UserRole | null {

@@ -17,5 +17,5 @@ test('role signup links preserve onboarding intent', () => {
 
 test('landing role tools match the authenticated role tool sets', () => {
   assert.deepEqual(roleToolKinds.coach, ['schedule', 'roster', 'checklist']);
-  assert.deepEqual(roleToolKinds.fan, ['hype', 'schedule', 'stat-tracker', 'checklist']);
+  assert.deepEqual(roleToolKinds.fan, ['schedule', 'checklist', 'stat-tracker', 'hype']);
 });
