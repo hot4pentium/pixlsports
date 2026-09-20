@@ -21,6 +21,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import "./PixlSportsThumbDeckVariant.css";
 
 type Role = "fan" | "coach";
 type Tool = "schedule" | "checklist" | "tracker" | "hype" | "roster";
@@ -244,9 +245,9 @@ export function PixlSportsThumbDeckVariant() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#dce7dc] px-3 py-3 text-[#10201e] sm:px-6 sm:py-6">
+    <main className="pixl-thumb-focus min-h-[100dvh] bg-[#dce7dc] px-3 py-3 text-[#10201e] sm:px-6 sm:py-6">
       <div className="mx-auto flex h-[calc(100dvh-1.5rem)] max-w-[440px] flex-col overflow-hidden rounded-[2rem] border border-[#10201e]/15 bg-[#10201e] shadow-[0_24px_80px_rgba(16,32,30,0.24)] sm:h-[820px]">
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
           <div className="pointer-events-none absolute inset-0 opacity-30" style={{ backgroundImage: "linear-gradient(rgba(220,231,220,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(220,231,220,.08) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
           <header className="relative flex items-center justify-between px-5 pb-3 pt-5">
             <button type="button" onClick={() => setShowMenu(true)} aria-label="Open menu" className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e8f1e5]/15 text-[#e8f1e5]/75 transition-transform active:scale-95">

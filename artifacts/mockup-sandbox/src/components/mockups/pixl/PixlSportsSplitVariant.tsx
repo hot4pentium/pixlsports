@@ -22,6 +22,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import "./PixlSportsSplitVariant.css";
 
 type Role = "fan" | "coach";
 type Tool = "schedule" | "checklist" | "tracker" | "hype" | "roster";
@@ -188,7 +189,7 @@ export function PixlSportsSplitVariant() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#10191d] text-[#eef4e5]" style={{ fontFamily: "'Trebuchet MS', system-ui, sans-serif" }}>
+    <div className="pixl-split-focus min-h-screen overflow-x-hidden bg-[#10191d] text-[#eef4e5]" style={{ fontFamily: "'Trebuchet MS', system-ui, sans-serif" }}>
       <header className="sticky top-0 z-20 border-b border-[#eef4e5]/10 bg-[#10191d]/95 backdrop-blur-md">
         <div className="mx-auto flex h-[72px] max-w-[1480px] items-center justify-between px-5 sm:px-8">
           <button type="button" onClick={() => flash("Back to your Pixl home")} className="group flex items-center gap-3 text-left">

@@ -1,0 +1,33 @@
+.pixl-thumb-focus {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(154, 249, 177, 0.2), transparent 22rem),
+    #dce7dc;
+}
+
+.pixl-thumb-focus > div {
+  scrollbar-color: rgba(154, 249, 177, 0.4) transparent;
+  scrollbar-width: thin;
+}
+
+.pixl-thumb-focus > div::-webkit-scrollbar {
+  width: 5px;
+}
+
+.pixl-thumb-focus > div::-webkit-scrollbar-thumb {
+  background: rgba(154, 249, 177, 0.4);
+  border-radius: 999px;
+}
+
+.pixl-thumb-focus button:focus-visible {
+  outline: 2px solid #9af9b1;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixl-thumb-focus *,
+  .pixl-thumb-focus *::before,
+  .pixl-thumb-focus *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
