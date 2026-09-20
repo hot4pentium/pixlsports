@@ -19,3 +19,4 @@
 - [Offline installed editor](offline-installed-editor.md) — keep standalone Hype Card creation unauthenticated, locally durable, and backed by a build-time shell precache.
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
 - [Supporter profile propagation](supporter-profile-propagation.md) — profile athlete details seed new local work, while saved cloud designs and published snapshots remain authored independently.
+- [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -357,12 +357,14 @@ function harnessSource() {
 import { createElement, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Router } from 'wouter';
+import { Router, useLocation } from 'wouter';
+import { ClerkProvider } from '@clerk/react';
+import { HypeCardEditor } from './src/features/hype-card';
 import { SupporterDashboardView, SupporterProfileView } from './src/features/supporter-dashboard';
 import { LiveTrackerGame } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
-import { defaultProject } from './src/features/hype-card-types';
-import { seedHypeCardFromSupporterProfile } from './src/features/supporter-dashboard-model';
+import { defaultProject, readHypeCardProject } from './src/features/hype-card-types';
+import { mapLocalSupporterHypeCard, mapRecentSupporterProjects, seedHypeCardFromSupporterProfile } from './src/features/supporter-dashboard-model';
 import './src/index.css';
 
 const profile = {
@@ -510,6 +512,58 @@ function ProfilePropagationHarness() {
   );
 }
 
+function LocalHypeCardFlowHarness() {
+  const [location] = useLocation();
+  const localProject = readHypeCardProject();
+  const cloudProjects = [{
+    id: 'cloud-hype-card-1',
+    name: 'Cloud Championship',
+    updatedAt: '2026-09-19T12:00:00.000Z',
+    project: {
+      ...defaultProject(),
+      tool: 'hype-card',
+      headline: 'Cloud Championship',
+      playerName: 'Cloud Athlete',
+    },
+  }];
+
+  if (location === '/studio/hype-card') {
+    return createElement(HypeCardEditor);
+  }
+
+  if (location === '/studio/hype-card/cloud-hype-card-1') {
+    return createElement('main', { 'data-testid': 'cloud-hype-card-editor-route' },
+      createElement('h1', null, 'Cloud Hype Card editor'),
+    );
+  }
+
+  const projects = localProject
+    ? [
+      mapLocalSupporterHypeCard(localProject, '2026-09-20T12:00:00.000Z'),
+      ...mapRecentSupporterProjects(cloudProjects),
+    ]
+    : [];
+
+  return createElement(SupporterDashboardView, {
+    profile,
+    events: [],
+    nextGameIsUpcoming: false,
+    projects,
+    scheduleSource: null,
+    connected: false,
+    connectionLabel: '',
+    loadingCalendar: false,
+    calendarError: false,
+    calendarConnectionInvalid: false,
+    onOpenProfile: () => {},
+    onRetryCalendar: () => {},
+    onReconnectCalendar: () => {},
+    onDisconnect: () => {},
+    onOpenStatTracker: () => {},
+    onOpenChecklist: () => {},
+  });
+}
+
 export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
@@ -530,6 +584,17 @@ export function mount() {
         createElement(ProfilePropagationHarness),
       ),
     ));
+    return;
+  }
+  if (window.location.search.includes('local-hype-card-flow')) {
+    root.render(createElement(ClerkProvider, {
+      publishableKey: 'pk_test_ZXhhbXBsZS5jb20k',
+    },
+    createElement(Router, null,
+      createElement(QueryClientProvider, { client: queryClient },
+        createElement(LocalHypeCardFlowHarness),
+      ),
+    )));
     return;
   }
   const renderDashboard = () => root.render(
@@ -1248,6 +1313,210 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="link-quick-checklist"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
+  } finally {
+    if (page && connection) {
+      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('exported local Hype Cards reappear on the supporter hub and reopen correctly', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-dashboard-hype-card-flow-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-hype-card-flow-'));
+    const downloadDirectory = resolve(tempDirectory, 'downloads');
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    await connection.send('Browser.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath: downloadDirectory,
+    });
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?local-hype-card-flow`);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-recent-hype-cards\\"]") !== null', Boolean);
+
+    await connection.evaluate(`window.history.pushState({}, '', '/studio'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-recent-hype-cards\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="link-project-local-hype-card"]\'))', page.sessionId),
+      false,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-recent-hype-cards"]\')?.textContent || ""', page.sessionId),
+      /No Hype Cards Yet/,
+    );
+
+    await connection.evaluate(`window.history.pushState({}, '', '/studio/hype-card'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("input[placeholder=\\"Big Play!\\"]") !== null', Boolean);
+    const setInputByLabel = async (labelText: string, value: string) => {
+      await connection!.evaluate(`(() => {
+        const label = Array.from(document.querySelectorAll('label')).find((candidate) => candidate.textContent?.includes(${JSON.stringify(labelText)}));
+        const input = label?.querySelector('input');
+        if (!(input instanceof HTMLInputElement)) throw new Error(${JSON.stringify(`${labelText} input not found`)});
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(input, ${JSON.stringify(value)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`, page!.sessionId);
+    };
+    await setInputByLabel('Custom moment', 'HUB CHAMPIONSHIP');
+    await connection.evaluate(
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Next: Media')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('add media'));
+
+    const pngData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+    await connection.evaluate(`(() => {
+      const input = document.querySelector('input[type="file"][accept="image/*,video/*"]');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Media file input not found');
+      const bytes = Uint8Array.from(atob(${JSON.stringify(pngData)}), (value) => value.charCodeAt(0));
+      const file = new File([bytes], 'hub-photo.png', { type: 'image/png' });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('media added'), 20_000);
+    await connection.evaluate(
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Next: Details')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("input[placeholder=\\"e.g. Jordan Smith\\"]") !== null', Boolean);
+    await setInputByLabel('Player name', 'Jordan Hub');
+    await setInputByLabel('Jersey number', '11');
+    await setInputByLabel('Position', 'Forward');
+    await setInputByLabel('Team name', 'Northside Comets');
+    for (const nextStep of ['Next: Format', 'Next: Layout', 'Next: Palette', 'Next: Review']) {
+      await connection.evaluate(
+        `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === ${JSON.stringify(nextStep)})?.click()`,
+        page.sessionId,
+      );
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    }
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"walkthrough-export-card\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="walkthrough-export-card"]')?.click()`, page.sessionId);
+    const downloadDeadline = Date.now() + 20_000;
+    let downloads: string[] = [];
+    while (Date.now() < downloadDeadline) {
+      downloads = await readdir(downloadDirectory).catch(() => []);
+      if (downloads.some((file) => file.endsWith('.png'))) break;
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    }
+    assert.ok(downloads.some((file) => file.endsWith('.png')), 'Expected a local Hype Card export');
+    await waitFor(
+      connection,
+      page.sessionId,
+      `JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || '{}')?.project?.headline`,
+      (headline) => headline === 'HUB CHAMPIONSHIP',
+      10_000,
+    );
+
+    await connection.evaluate(`window.history.pushState({}, '', '/studio'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-project-local-hype-card\\"]") !== null', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-project-local-hype-card"]\')?.textContent || ""', page.sessionId),
+      /Northside Comets - HUB CHAMPIONSHIP/,
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="link-project-local-hype-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'location.pathname === "/studio/hype-card"', Boolean);
+    await connection.evaluate(
+      `Array.from(document.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent?.includes('3. Details'))?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("input[placeholder=\\"e.g. Jordan Smith\\"]") !== null', Boolean);
+    assert.deepEqual(
+      await connection.evaluate<{ headline: string; playerName: string; jerseyNumber: string; teamName: string }>(`(() => {
+        const field = (labelText) => Array.from(document.querySelectorAll('label'))
+          .find((label) => label.textContent?.includes(labelText))
+          ?.querySelector('input')?.value || '';
+        return {
+          headline: JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || '{}')?.project?.headline || '',
+          playerName: field('Player name'),
+          jerseyNumber: field('Jersey number'),
+          teamName: field('Team name'),
+        };
+      })()`, page.sessionId),
+      {
+        headline: 'HUB CHAMPIONSHIP',
+        playerName: 'Jordan Hub',
+        jerseyNumber: '11',
+        teamName: 'Northside Comets',
+      },
+    );
+
+    await connection.evaluate(`window.history.pushState({}, '', '/studio'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-project-cloud-hype-card-1\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-project-cloud-hype-card-1"]\')?.getAttribute("href") || ""', page.sessionId),
+      '/studio/hype-card/cloud-hype-card-1',
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="link-project-cloud-hype-card-1"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'location.pathname === "/studio/hype-card/cloud-hype-card-1"', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"cloud-hype-card-editor-route\\"]"))', page.sessionId),
+      true,
+    );
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

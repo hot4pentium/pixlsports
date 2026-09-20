@@ -360,7 +360,7 @@ test('maps only recent Hype Card templates in newest-first order, limited to fou
     { id: 'roster', name: 'Roster', updatedAt: '2026-02-01T00:00:00Z', project: { tool: 'roster' } },
   ];
 
-  const recent = mapLocalSupporterHypeCard(project, '2026-09-20T12:00:00Z');
+  const recent = mapRecentSupporterProjects(projects);
 
   assert.deepEqual(recent.map(({ id }) => id), ['new', 'middle', 'fourth', 'old']);
   assert.deepEqual(recent.map(({ kind }) => kind), ['hype-card', 'hype-card', 'hype-card', 'hype-card']);
