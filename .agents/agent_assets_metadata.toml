@@ -385,3 +385,18 @@ uri = "file://artifacts/before-game-day-phone-demo/public/audio/bg_music.mp3"
 type = "audio"
 title = "background music"
 description = "Generated music: Funk and nu-disco instrumental background music scoring a fast mobile sports product demo. Tight muted bass, crisp hand claps, bright plucked synth, light percussive accents, 112 BPM…"
+logical_id = "35db1474-693b-4241-933e-d1b7578c185c"
+
+[[outputs]]
+id = "MefOhLQLLGKRiHCEE0vCF"
+uri = "file://screenshots/live-stat-recipient-preview.jpg"
+type = "image"
+title = "Live Stat Share — Recipient View"
+description = "Mobile preview of the read-only live scoreboard supporters receive, including score, game phase, stats, and recent plays."
+logical_id = "e326fee0-349e-4e76-83f4-c4e5b07bedc7"
+content_hash = "sha256:e0e74b28101cc8b35a639da07d03a44a15942b7608dcba2780337e300eadd140"
+size = 33988
+mtime_ms = 1789946237527
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/e326fee0-349e-4e76-83f4-c4e5b07bedc7/aa0739dd-0544-4af6-8d03-1781f9acc293"
+storage_version_token = "1789946248078879"
+content_type = "image/jpeg"
