@@ -345,9 +345,10 @@
 }
 
 .pixl-landing-tools h2 {
-  max-width: 12ch;
+  max-width: none;
   font-size: 64px;
   line-height: .8;
+  white-space: nowrap;
 }
 
 .pixl-landing-tools-heading p {
@@ -534,9 +535,9 @@
   }
 
   .pixl-landing-tools h2 {
-    max-width: 12ch;
+    max-width: none;
     margin-top: 9px;
-    font-size: 43px;
+    font-size: clamp(1.2rem, 5.8vw, 43px);
   }
 
   .pixl-landing-tools-heading p {

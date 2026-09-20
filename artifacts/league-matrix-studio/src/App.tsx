@@ -897,7 +897,7 @@ function HomePage() {
           <div className="pixl-landing-tools-heading">
             <div>
               <small>{selectedRole === 'fan' ? 'FAN HUB' : 'COACH HUB'} / YOUR WEEK</small>
-              <h2 id="landing-tools-heading">We guide the week.<br /><em>{selectedRole === 'fan' ? 'You enjoy the moments.' : 'Lead the team.'}</em></h2>
+              <h2 id="landing-tools-heading">We guide the week. <em>{selectedRole === 'fan' ? 'You enjoy the moments.' : 'Lead the team.'}</em></h2>
             </div>
             <p>Move from calendar to game day to celebration with one clear next step at every turn.</p>
           </div>
