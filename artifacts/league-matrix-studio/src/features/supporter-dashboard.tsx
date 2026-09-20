@@ -620,7 +620,7 @@ export function SupporterDashboardView({
           </div>
           <div className="flex flex-col justify-end">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
-            <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as game day moves.</p>
+            <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as game day moves. The calendar marks what comes next.</p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               {weeklyPath.map(({ id, number, label, Icon, active }) => {
                 const theme = weeklyPathThemes[id];
@@ -638,7 +638,12 @@ export function SupporterDashboardView({
                     <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selected ? theme.number : active ? `${theme.activeBorder} ${theme.surface} ${theme.accent} border` : 'bg-white/10 text-white/60'}`}>{number}</span>
                     <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
                     <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
-                    {active && <CheckCircle2 className={`ml-auto h-4 w-4 shrink-0 ${theme.icon}`} />}
+                    {active && (
+                      <span className={`ml-auto inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] ${theme.accent}`} data-testid={`stage-${id}-next`}>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Next
+                      </span>
+                    )}
                   </button>
                 );
               })}

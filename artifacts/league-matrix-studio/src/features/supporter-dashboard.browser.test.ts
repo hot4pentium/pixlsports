@@ -323,6 +323,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-upcoming"]\')?.className || ""', page.sessionId),
       /border-amber-300/,
     );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-upcoming-next"]\')?.textContent || ""', page.sessionId),
+      /Next/,
+    );
 
     await connection.send('Page.reload', { ignoreCache: true }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-choose-task\\"]") !== null', Boolean);
