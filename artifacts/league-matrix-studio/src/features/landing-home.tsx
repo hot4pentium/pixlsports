@@ -66,9 +66,6 @@ function LandingNav() {
           ) : (
             <Link href="/sign-in" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-landing-text" data-testid="link-mobile-landing-sign-in">Sign In</Link>
           )}
-          <Link href="/sign-up" onClick={() => setMenuOpen(false)} className="mt-2 inline-flex justify-center rounded-sm bg-landing-primary px-6 py-3 text-lg font-bold text-landing-white" data-testid="link-mobile-landing-get-started">
-            Get Started
-          </Link>
         </div>
       )}
     </header>
