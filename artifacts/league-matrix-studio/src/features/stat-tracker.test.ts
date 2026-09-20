@@ -469,6 +469,73 @@ test('baseball pitch expands its choices without expanding the walk card', () =>
   assert.equal(changedGame.stats.strikeout, 1);
 });
 
+test('rapid baseball hit and pitch choices preserve both plays and recent activity order', () => {
+  const rule = getSportRule('baseball');
+
+  const verifyRapidChoices = ({
+    cardId,
+    choiceIds,
+    activityLabels,
+  }: {
+    cardId: 'hit' | 'pitch';
+    choiceIds: [string, string];
+    activityLabels: [string, string];
+  }) => {
+    let changedGame = createGameSession('baseball', { opponent: 'Northside' }, new Date('2026-09-20T12:00:00Z'));
+    let renderer!: ReturnType<typeof create>;
+    const renderGame = () => createElement(LiveTrackerGame, {
+      currentGame: changedGame,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => !item.liveHidden && item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof changedGame) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    });
+
+    act(() => {
+      renderer = create(renderGame());
+    });
+    act(() => {
+      renderer.root.findByProps({ 'data-testid': `live-stat-${cardId}` }).props.onClick();
+    });
+
+    const firstChoice = renderer.root.findByProps({ 'data-testid': `baseball-${cardId}-${choiceIds[0]}` });
+    const secondChoice = renderer.root.findByProps({ 'data-testid': `baseball-${cardId}-${choiceIds[1]}` });
+    act(() => {
+      firstChoice.props.onClick();
+      secondChoice.props.onClick();
+    });
+
+    assert.deepEqual(changedGame.events.map((event) => event.statId), choiceIds);
+    assert.equal(changedGame.stats[choiceIds[0]], 1);
+    assert.equal(changedGame.stats[choiceIds[1]], 1);
+
+    act(() => {
+      renderer.update(renderGame());
+    });
+    const recentActivity = renderedText(renderer);
+    assert.ok(recentActivity.indexOf(activityLabels[1]) < recentActivity.indexOf(activityLabels[0]));
+  };
+
+  verifyRapidChoices({
+    cardId: 'hit',
+    choiceIds: ['single', 'double'],
+    activityLabels: ['Single', 'Double'],
+  });
+  verifyRapidChoices({
+    cardId: 'pitch',
+    choiceIds: ['fastball', 'slider'],
+    activityLabels: ['Fastball', 'Slider'],
+  });
+});
+
 test('softball is available with inning-based game tracking', () => {
   const rule = getSportRule('softball');
   const game = createGameSession('softball', { opponent: 'Westview' }, new Date('2026-09-20T12:00:00Z'));
