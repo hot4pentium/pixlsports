@@ -26,6 +26,7 @@ import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
+import './supporter-dashboard-pixl.css';
 
 export interface SupporterProfile {
   displayName: string;
@@ -490,7 +491,7 @@ export function SupporterDashboardView({
   };
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
+    <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
       {showStageReminder && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-5 backdrop-blur-sm"

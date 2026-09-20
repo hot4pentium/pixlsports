@@ -1,0 +1,223 @@
+/*
+ * Pixl Sports translation for the production dashboard.
+ * Kept scoped to .pixl-dashboard so the rest of the studio retains its theme.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@500;600;700&display=swap");
+
+.pixl-dashboard {
+  --pixl-ink: #10191d;
+  --pixl-panel: #172629;
+  --pixl-panel-deep: #142126;
+  --pixl-paper: #e8f1e5;
+  --pixl-acid: #00f776;
+  --pixl-mint: #9af9b1;
+  --pixl-muted: rgba(232, 241, 229, .56);
+  max-width: 1500px;
+  color: var(--pixl-paper);
+  background:
+    radial-gradient(circle at 68% 10%, rgba(0, 247, 118, .09), transparent 30rem),
+    var(--pixl-ink);
+  font-family: "DM Sans", ui-sans-serif, sans-serif;
+  border-inline: 1px solid rgba(232, 241, 229, .08);
+  isolation: isolate;
+  position: relative;
+}
+
+.pixl-dashboard > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0;
+}
+
+.pixl-dashboard::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  opacity: .4;
+  background-image:
+    linear-gradient(90deg, rgba(0,247,118,.035) 1px, transparent 1px),
+    linear-gradient(rgba(0,247,118,.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+.pixl-dashboard > header {
+  grid-template-columns: 182px minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  border-bottom: 1px solid rgba(232, 241, 229, .1);
+  padding-bottom: 24px;
+}
+
+.pixl-dashboard > header > :first-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 17px;
+  background: var(--pixl-panel);
+  border: 1px solid rgba(232, 241, 229, .1);
+  border-left: 2px solid var(--pixl-acid);
+  clip-path: polygon(0 0, 100% 0, 100% 92%, 92% 100%, 0 100%);
+}
+
+.pixl-dashboard > header > :first-child > div {
+  margin-bottom: 18px;
+  padding: 0;
+  color: var(--pixl-acid);
+  background: transparent;
+  font-size: 9px;
+  letter-spacing: .2em;
+}
+
+.pixl-dashboard > header h1 {
+  font: 800 clamp(2.8rem, 6vw, 5.8rem)/.86 "Barlow Condensed", sans-serif;
+  letter-spacing: -.02em;
+}
+
+.pixl-dashboard > header h1 span { color: var(--pixl-acid); }
+.pixl-dashboard > header p { color: var(--pixl-muted); font-size: 13px; line-height: 1.5; }
+
+.pixl-dashboard [data-testid="athlete-summary"] {
+  min-height: 190px;
+  align-self: stretch;
+  background: var(--pixl-panel-deep);
+  border-color: rgba(232, 241, 229, .14);
+  clip-path: polygon(0 0, 100% 0, 100% 92%, 97% 100%, 0 100%);
+}
+
+.pixl-dashboard [data-testid="athlete-summary"] > .relative {
+  height: 100%;
+  background: transparent;
+}
+.pixl-dashboard [data-testid="athlete-summary"] h2,
+.pixl-dashboard [data-testid="section-next-game-context"] h2,
+.pixl-dashboard [data-testid^="section-"] h2,
+.pixl-dashboard [data-testid="all-tools-heading"] {
+  font-family: "Barlow Condensed", ui-sans-serif, sans-serif;
+  text-transform: uppercase;
+}
+
+.pixl-dashboard [data-testid="section-next-game-context"] {
+  grid-column: 2 / -1;
+  min-height: 470px;
+  background: var(--pixl-panel-deep);
+  border-color: rgba(232, 241, 229, .14);
+  clip-path: polygon(0 0, 100% 0, 100% 96%, 98% 100%, 0 100%);
+}
+.pixl-dashboard [data-testid="section-next-game-context"] > .relative {
+  min-height: 470px;
+  align-content: center;
+}
+.pixl-dashboard [data-testid="section-next-game-context"] h2 {
+  max-width: 14ch;
+  font-size: clamp(3.1rem, 7vw, 7rem);
+  line-height: .84;
+  letter-spacing: -.015em;
+}
+.pixl-dashboard [data-testid="section-next-game-context"] .bg-tech-grid-dark {
+  opacity: .35;
+  background-image:
+    linear-gradient(90deg, rgba(0,247,118,.06) 1px, transparent 1px),
+    linear-gradient(rgba(0,247,118,.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+.pixl-dashboard [data-testid="section-next-game-context"] a,
+.pixl-dashboard [data-testid="section-next-game-context"] button {
+  border-color: rgba(232, 241, 229, .16);
+}
+.pixl-dashboard [data-testid="section-next-game-context"] a:hover,
+.pixl-dashboard [data-testid="section-next-game-context"] button:hover {
+  border-color: var(--pixl-acid);
+}
+
+.pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) {
+  background: rgba(23, 38, 41, .72);
+  border: 1px solid rgba(232, 241, 229, .1);
+  padding: 22px;
+  clip-path: polygon(0 0, 100% 0, 100% 97%, 98% 100%, 0 100%);
+}
+.pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) h2 {
+  color: var(--pixl-paper);
+}
+.pixl-dashboard #all-tools {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(232, 241, 229, .12);
+  padding-top: 22px;
+}
+
+.pixl-dashboard [data-testid="section-upcoming"],
+.pixl-dashboard [data-testid="section-recent-designs"] {
+  grid-column: 1 / -1;
+}
+.pixl-dashboard #all-tools > div:first-child {
+  border-color: rgba(232, 241, 229, .12);
+}
+.pixl-dashboard #all-tools button,
+.pixl-dashboard #all-tools a {
+  border-color: rgba(232, 241, 229, .14);
+  background: var(--pixl-panel);
+}
+.pixl-dashboard #all-tools button:hover,
+.pixl-dashboard #all-tools a:hover {
+  border-color: var(--pixl-acid);
+  background: rgba(0, 247, 118, .08);
+}
+.pixl-dashboard .text-primary { color: var(--pixl-acid) !important; }
+.pixl-dashboard .bg-primary { background-color: var(--pixl-acid) !important; }
+.pixl-dashboard :is(button, a):focus-visible {
+  outline: 2px solid var(--pixl-mint);
+  outline-offset: 3px;
+}
+
+@media (min-width: 1024px) {
+  .pixl-dashboard {
+    display: grid;
+    grid-template-columns: 182px minmax(0, 1fr) 285px;
+    gap: 18px;
+    padding: 24px 28px 36px;
+  }
+  .pixl-dashboard > header {
+    display: contents;
+  }
+  .pixl-dashboard > header > :first-child {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .pixl-dashboard > header > [data-testid="athlete-summary"] {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+  .pixl-dashboard [data-testid="section-next-game-context"] {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 1023px) {
+  .pixl-dashboard {
+    background: var(--pixl-ink);
+    border: 0;
+  }
+  .pixl-dashboard > header { grid-template-columns: 1fr; }
+  .pixl-dashboard > header > :first-child { min-height: 210px; }
+  .pixl-dashboard [data-testid="section-next-game-context"] {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .pixl-dashboard { gap: 28px; padding: 18px 14px 30px; }
+  .pixl-dashboard > header > :first-child { padding: 15px; }
+  .pixl-dashboard > header p { font-size: 12px; }
+  .pixl-dashboard [data-testid="section-next-game-context"] { min-height: 0; }
+  .pixl-dashboard [data-testid="section-next-game-context"] > .relative {
+    min-height: 0;
+    padding: 24px 18px;
+  }
+  .pixl-dashboard [data-testid="section-next-game-context"] h2 {
+    max-width: none;
+    font-size: clamp(3rem, 16vw, 5.2rem);
+  }
+  .pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) {
+    padding: 16px;
+  }
+}
