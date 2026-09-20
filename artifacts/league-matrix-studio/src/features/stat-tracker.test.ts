@@ -1191,14 +1191,19 @@ test('completed-game save statuses explain cloud and local outcomes', () => {
   );
 });
 
-test('retry resends the complete local history and stores the returned cloud revision', async () => {
-  const firstGame = endGame(
-    addStatEvent(createGameSession('basketball', { opponent: 'Northside' }), 'three-point'),
-  );
+test('retry preserves locally saved scores and resends them after cloud failure', async () => {
+  let firstLiveGame = createGameSession('basketball', { opponent: 'Northside' });
+  firstLiveGame = adjustScore(firstLiveGame, 'athlete', 8);
+  firstLiveGame = adjustScore(firstLiveGame, 'opponent', 2);
+  const firstGame = endGame(firstLiveGame);
   const secondGame = endGame(
     addStatEvent(createGameSession('basketball', { opponent: 'Westview' }), 'two-point'),
   );
   const data = { version: 1 as const, games: [firstGame, secondGame] };
+  const accountId = 'user_retry_scores';
+  const storage = createMemoryStorage({
+    [getTrackerStorageKeys(accountId).history]: JSON.stringify(data),
+  });
   const requests: Array<{ projectId: string; data: { project: ReturnType<typeof trackerPayload>; expectedRevision: number } }> = [];
   let attempts = 0;
   const client = {
@@ -1224,8 +1229,15 @@ test('retry resends the complete local history and stores the returned cloud rev
     }),
     (error: unknown) => (error as { status?: number }).status === 503,
   );
+  const localAfterFailure = readLocalTrackerSession(storage, accountId).data;
+  assert.equal(localAfterFailure.games[0]?.score, 8);
+  assert.equal(localAfterFailure.games[0]?.opponentScore, 2);
+  const localReport = buildGameReport(localAfterFailure.games, 'basketball', firstGame.id);
+  assert.equal(localReport?.selectedGame.score, 8);
+  assert.equal(localReport?.selectedGame.opponentScore, 2);
+
   const saved = await syncTrackerDataToCloud({
-    data,
+    data: localAfterFailure,
     cloudProject,
     athleteName: 'Jordan',
     guestUsageKey: 'guest-key',
@@ -1233,8 +1245,10 @@ test('retry resends the complete local history and stores the returned cloud rev
   });
 
   assert.equal(requests.length, 2);
-  assert.deepEqual(requests[1]?.data.project, trackerPayload(data));
+  assert.deepEqual(requests[1]?.data.project, trackerPayload(localAfterFailure));
   assert.deepEqual(requests[1]?.data.project.games, [firstGame, secondGame]);
+  assert.equal(requests[1]?.data.project.games[0]?.score, 8);
+  assert.equal(requests[1]?.data.project.games[0]?.opponentScore, 2);
   assert.equal(requests[1]?.data.expectedRevision, 7);
   assert.deepEqual(saved, { id: 'tracker-1', revision: 8 });
 });
