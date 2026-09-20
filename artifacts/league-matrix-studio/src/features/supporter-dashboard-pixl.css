@@ -96,6 +96,10 @@
   text-transform: uppercase;
 }
 
+.pixl-dashboard #athlete-summary-heading {
+  text-transform: none;
+}
+
 .pixl-dashboard [data-testid="section-next-game-context"] {
   grid-column: 2 / -1;
   min-height: 470px;
@@ -112,6 +116,7 @@
   font-size: clamp(3.1rem, 7vw, 7rem);
   line-height: .84;
   letter-spacing: -.015em;
+  overflow-wrap: anywhere;
 }
 .pixl-dashboard [data-testid="section-next-game-context"] .bg-tech-grid-dark {
   opacity: .35;
@@ -201,6 +206,15 @@
   .pixl-dashboard > header > :first-child { min-height: 210px; }
   .pixl-dashboard [data-testid="section-next-game-context"] {
     grid-column: auto;
+    max-width: 100%;
+  }
+  .pixl-dashboard [data-testid="section-next-game-context"] > .relative,
+  .pixl-dashboard [data-testid="section-next-game-context"] > .relative > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .pixl-dashboard [data-testid="section-next-game-context"] h2 {
+    overflow-wrap: anywhere;
   }
 }
 
@@ -208,14 +222,24 @@
   .pixl-dashboard { gap: 28px; padding: 18px 14px 30px; }
   .pixl-dashboard > header > :first-child { padding: 15px; }
   .pixl-dashboard > header p { font-size: 12px; }
-  .pixl-dashboard [data-testid="section-next-game-context"] { min-height: 0; }
+  .pixl-dashboard [data-testid="section-next-game-context"] {
+    min-height: 0;
+    max-width: 100%;
+  }
   .pixl-dashboard [data-testid="section-next-game-context"] > .relative {
     min-height: 0;
+    min-width: 0;
     padding: 24px 18px;
+  }
+  .pixl-dashboard [data-testid="section-next-game-context"] > .relative > *,
+  .pixl-dashboard [data-testid="section-next-game-context"] select {
+    min-width: 0;
+    max-width: 100%;
   }
   .pixl-dashboard [data-testid="section-next-game-context"] h2 {
     max-width: none;
     font-size: clamp(3rem, 16vw, 5.2rem);
+    overflow-wrap: anywhere;
   }
   .pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) {
     padding: 16px;
