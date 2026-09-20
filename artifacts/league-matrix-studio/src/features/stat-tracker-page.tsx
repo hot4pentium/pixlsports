@@ -251,8 +251,8 @@ export function LiveTrackerGame({
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
-        <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 bg-foreground p-3 pb-16 text-background clip-angled-sm sm:p-6 sm:pb-20" aria-live="polite">
-          <div className="flex min-w-0 items-center justify-between gap-3"><span className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
+        <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 bg-foreground p-3 text-background clip-angled-sm sm:p-6" aria-live="polite">
+          <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
           <p data-testid="live-tracker-matchup" className="mt-3 min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
           <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
             {([
@@ -277,7 +277,7 @@ export function LiveTrackerGame({
             <button type="button" onClick={() => onGameChange({ ...currentGame, status: currentGame.status === 'paused' ? 'live' : 'paused' })} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
             <button type="button" onClick={() => onGameChange({ ...currentGame, period: currentGame.period + 1 })} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {rule.phaseLabel}</button>
           </div>
-          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 sm:bottom-5 sm:right-5" data-testid="live-tracker-capture-controls">
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 sm:right-5 sm:top-5" data-testid="live-tracker-capture-controls">
             <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 border border-white/20 bg-white/5 px-2.5 py-2 text-[10px] font-bold uppercase tracking-widest text-white/75 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-within:border-primary focus-within:text-primary sm:min-h-11 sm:px-3" data-testid="label-stat-tracker-capture-photo">
               <Camera className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Take a photo</span>
@@ -291,7 +291,7 @@ export function LiveTrackerGame({
               <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { onCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
             </label>
           </div>
-          {captureNotice && <p className="absolute bottom-0 left-3 right-3 truncate pb-1 text-right text-[10px] font-bold uppercase tracking-widest text-primary sm:left-6 sm:right-6 sm:pb-2" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
+          {captureNotice && <p className="mt-3 truncate text-[10px] font-bold uppercase tracking-widest text-primary" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}
         </div>
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -366,6 +366,7 @@ export function StatTrackerPage() {
   const [captureNotice, setCaptureNotice] = useState('');
   const [notice, setNotice] = useState('');
   const [showUpcomingNotice, setShowUpcomingNotice] = useState(false);
+  const [showManualSetup, setShowManualSetup] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [retryAvailable, setRetryAvailable] = useState(false);
@@ -594,6 +595,7 @@ export function StatTrackerPage() {
     setDate(nextGame.date);
     setOpponent(nextGame.opponent);
     setShowUpcomingNotice(false);
+    setShowManualSetup(true);
     setupSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.setTimeout(() => {
       setupSectionRef.current?.querySelector<HTMLInputElement>('[data-testid="input-stat-tracker-date"]')?.focus();
@@ -862,7 +864,7 @@ export function StatTrackerPage() {
       {!currentGame ? (
         <section ref={setupSectionRef} className="grid scroll-mt-6 gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="stat-tracker-setup">
           <div className="border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
-            <div className="mb-8 flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
                 <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{rule.label}</h2>
@@ -870,26 +872,30 @@ export function StatTrackerPage() {
               </div>
               <Trophy className="h-7 w-7 text-primary" />
             </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
-                  <input type="date" value={date} onChange={(event) => { manuallyEditedSetup.current.date = true; setDate(event.target.value); }} data-testid="input-stat-tracker-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
-              </label>
-               <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
-                 <input value={opponent} onChange={(event) => { manuallyEditedSetup.current.opponent = true; setOpponent(event.target.value); }} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
-              </label>
-            </div>
-             <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes
-               <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
-             </label>
-             {nextGame
-               ? <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>
-               : <div className="mt-5 flex flex-col gap-3 border-l-2 border-border pl-3 sm:flex-row sm:items-center sm:justify-between">
-                   <p className="text-xs font-medium text-muted-foreground">No scheduled game details to prefill.</p>
-                   <button type="button" onClick={reviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
-                 </div>}
-            <button type="button" onClick={beginGame} data-testid="button-start-manual-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
-              <Clock3 className="h-4 w-4" /> Start manual game
+            <button type="button" onClick={() => setShowManualSetup((value) => !value)} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid="button-start-manual-game" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-primary bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-primary/20">
+              <Clock3 className="h-4 w-4 text-primary" /> Start manual game <ChevronDown className={`h-4 w-4 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
             </button>
+            {showManualSetup && <div id="manual-game-setup" className="mt-6 border-t border-border pt-6">
+              <div className="grid gap-5 sm:grid-cols-2">
+                 <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
+                    <input type="date" value={date} onChange={(event) => { manuallyEditedSetup.current.date = true; setDate(event.target.value); }} data-testid="input-stat-tracker-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+                 </label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
+                    <input value={opponent} onChange={(event) => { manuallyEditedSetup.current.opponent = true; setOpponent(event.target.value); }} placeholder="Opponent name" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+                 </label>
+              </div>
+               <label className="mt-5 block text-xs font-bold uppercase tracking-widest text-muted-foreground">Game notes
+                 <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+               </label>
+              {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
+              <button type="button" onClick={beginGame} data-testid="button-confirm-start-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
+                <Clock3 className="h-4 w-4" /> Start game
+              </button>
+            </div>}
+            {!nextGame && <div className="mt-5 flex flex-col gap-3 border-l-2 border-border pl-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-medium text-muted-foreground">No scheduled game details to prefill.</p>
+              <button type="button" onClick={reviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
+            </div>}
           </div>
           <section className="border border-border bg-foreground p-6 text-background clip-angled-sm sm:p-8">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Season snapshot</p>
