@@ -169,9 +169,9 @@ function LandingSportShowcase() {
                   className="h-full w-full object-cover"
                   loading={index === 0 ? 'eager' : 'lazy'}
                 />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/75 to-transparent px-3 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/75 to-transparent px-2 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/65">{sport.kicker}</p>
-                  <p className="mt-1 font-display text-2xl font-extrabold uppercase leading-none text-white sm:text-3xl">{sport.label}</p>
+                  <p className="mt-1 font-display text-base font-extrabold uppercase leading-none tracking-tight text-white sm:text-3xl sm:tracking-normal">{sport.label}</p>
                 </div>
               </div>
             </div>
@@ -218,35 +218,35 @@ export function PublicLandingPage() {
         </section>
 
         {/* BENEFITS SECTION */}
-        <section className="bg-landing-white py-20 border-y border-landing-gray/15">
+        <section className="bg-landing-white py-12 sm:py-20 border-y border-landing-gray/15">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 divide-y md:divide-y-0 md:divide-x divide-landing-gray/15">
-              <div className="flex flex-col items-center md:items-start text-center md:text-left md:pr-12 pt-8 md:pt-0 first:pt-0">
-                <div className="h-16 w-16 rounded-2xl bg-landing-pale-blue flex items-center justify-center mb-6 text-landing-primary">
-                  <CalendarDays className="h-8 w-8" strokeWidth={1.5} />
+            <div className="grid grid-cols-3 divide-x divide-landing-gray/15">
+              <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:pr-12">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
+                  <CalendarDays className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
                 </div>
-                <h3 className="font-display text-[28px] font-bold text-landing-text mb-3">Plan the week</h3>
-                <p className="text-landing-text/70 text-[17px] leading-relaxed">
+                <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Plan the week</h3>
+                <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
                   Keep schedules, locations, and team information together in one clear place.
                 </p>
               </div>
               
-              <div className="flex flex-col items-center md:items-start text-center md:text-left md:px-12 pt-8 md:pt-0">
-                <div className="h-16 w-16 rounded-2xl bg-landing-pale-blue flex items-center justify-center mb-6 text-landing-primary">
-                  <Activity className="h-8 w-8" strokeWidth={1.5} />
+              <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:px-12">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
+                  <Activity className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
                 </div>
-                <h3 className="font-display text-[28px] font-bold text-landing-text mb-3">Follow the game</h3>
-                <p className="text-landing-text/70 text-[17px] leading-relaxed">
+                <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Follow the game</h3>
+                <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
                   Track live stats, scores, and important moments as they happen.
                 </p>
               </div>
 
-              <div className="flex flex-col items-center md:items-start text-center md:text-left md:pl-12 pt-8 md:pt-0">
-                <div className="h-16 w-16 rounded-2xl bg-landing-pale-blue flex items-center justify-center mb-6 text-landing-primary">
-                  <Zap className="h-8 w-8" strokeWidth={1.5} />
+              <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:pl-12">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
+                  <Zap className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
                 </div>
-                <h3 className="font-display text-[28px] font-bold text-landing-text mb-3">Celebrate the moment</h3>
-                <p className="text-landing-text/70 text-[17px] leading-relaxed">
+                <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Celebrate the moment</h3>
+                <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
                   Turn highlights into shareable graphics athletes and families are proud of.
                 </p>
               </div>
