@@ -1049,8 +1049,8 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
         </div>
 
         {kind === 'hype' && (
-          <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)]">
-            <div className="relative mx-auto aspect-[760/1036] w-full max-w-[250px] overflow-hidden border border-primary/40 bg-[#10181b]">
+          <div className="grid grid-cols-2 items-start gap-2 sm:gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)]">
+            <div className="relative mx-auto min-w-0 aspect-[760/1036] w-full max-w-[250px] overflow-hidden border border-primary/40 bg-[#10181b]">
               <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
                 <img
@@ -1071,7 +1071,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
                 />
               </div>
             </div>
-            <figure className="mx-auto w-full max-w-[190px] overflow-hidden border border-white/15 bg-[#080a0f]">
+            <figure className="mx-auto min-w-0 w-full max-w-[190px] overflow-hidden border border-white/15 bg-[#080a0f]">
               <img
                 src={hypeCardRecipientPreview}
                 alt="Recipient view of a shared Hype Card with reactions and a reply box"
