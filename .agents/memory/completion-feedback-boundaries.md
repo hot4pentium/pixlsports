@@ -7,4 +7,4 @@ Celebrate a completion transiently only when it comes from the current user’s 
 
 **Why:** Replaying celebrations for background synchronization or restored data makes guidance feel noisy and can incorrectly imply the current user caused the change.
 
-**How to apply:** Keep transient feedback in local interaction handlers, derive persistent completed visuals from saved state, respect reduced-motion preferences, and pair visual feedback with concise accessible status text.
+**How to apply:** Keep transient feedback in local interaction handlers, derive persistent completed visuals from saved state, respect reduced-motion preferences, and pair visual feedback with concise accessible status text. On the supporter dashboard, weekly-path progress follows the recommended event; selecting a historical game changes context without advancing or rewinding that path.

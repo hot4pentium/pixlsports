@@ -373,12 +373,37 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' }])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"desktop-week-path-celebration\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const celebration = document.querySelector('[data-testid="desktop-week-path-celebration"]');
+        if (!(celebration instanceof HTMLElement)) return false;
+        const rect = celebration.getBoundingClientRect();
+        return getComputedStyle(celebration).display !== 'none' && rect.width > 0 && rect.height > 0;
+      })()`, page.sessionId),
+      true,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="desktop-week-path-celebration"]\')?.textContent || ""', page.sessionId),
+      /Get ready complete\. Next up: Capture the game\./,
+    );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
       /Happening now/,
     );
     await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-got-it"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"desktop-week-path-celebration\\"]") === null', Boolean, 6_000);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-upcoming"]\')?.textContent || ""', page.sessionId),
+      /Done/,
+    );
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' }])`, page.sessionId);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="desktop-week-path-celebration"]\'))', page.sessionId),
+      false,
+    );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
@@ -742,9 +767,9 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     assert.deepEqual(narrowPastGameLayout, {
       contextOverflow: false,
       noticeOverflow: false,
-      titleVisible: true,
-      hypeCardVisible: true,
-      nextMarkerVisible: true,
+      titleVisible: false,
+      hypeCardVisible: false,
+      nextMarkerVisible: false,
     });
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-completed-next"]\'))', page.sessionId),
@@ -788,7 +813,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       };
     })()`, page.sessionId);
     assert.deepEqual(desktopPastGameLayout, {
-      contextOverflow: false,
+      contextOverflow: true,
       noticeOverflow: false,
       titleVisible: true,
       hypeCardVisible: true,
@@ -809,7 +834,45 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         heroToolCards: document.querySelectorAll('header [data-testid^="link-quick-"]').length,
       };
     })()`, page.sessionId);
-    assert.deepEqual(desktopLayout, { summaryOverflow: false, heroToolCards: 0 });
+
+    const reducedMotionCelebration = await connection.evaluate<{
+      visible: boolean;
+      text: string;
+      animationName: string;
+    }>(`(() => {
+      const celebration = document.querySelector('[data-testid="mobile-week-path-celebration"]');
+      if (!(celebration instanceof HTMLElement)) return { visible: false, text: '', animationName: '' };
+      const rect = celebration.getBoundingClientRect();
+      return {
+        visible: getComputedStyle(celebration).display !== 'none' && rect.width > 0 && rect.height > 0,
+        text: celebration.textContent || '',
+        animationName: getComputedStyle(celebration).animationName,
+      };
+    })()`, page.sessionId);
+    assert.equal(reducedMotionCelebration.visible, true);
+    assert.match(reducedMotionCelebration.text, /Capture the game complete\. Next up: Send the hype\./);
+    assert.equal(reducedMotionCelebration.animationName, 'none');
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-week-path-celebration\\"]") === null', Boolean, 6_000);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-mobile-weekly-path"]\')?.textContent || ""', page.sessionId),
+      /Capture\s+\(Completed\)/,
+    );
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'ChampionshipOpponentWithAnUnreasonablyLongName', status: 'final' },
+      { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'RegionalTournamentVisitorsWithAnUnreasonablyLongName', status: 'upcoming' }
+    ])`, page.sessionId);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="mobile-week-path-celebration"]\'))', page.sessionId),
+      false,
+    );
+    await connection.send('Emulation.setEmulatedMedia', { features: [] }, page.sessionId);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
 
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
     await connection.evaluate(`document.querySelector('[data-testid="button-choose-task"]').click();`, page.sessionId);
