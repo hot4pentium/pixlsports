@@ -224,6 +224,12 @@ export function SupporterDashboardView({
   const recommendedGameStage = recommendedGame
     ? getSupporterGameStage(recommendedGame)
     : null;
+  const isViewingPastGame = Boolean(
+    nextGame
+    && recommendedGame
+    && nextGame.id !== recommendedGame.id
+    && gameStage === 'completed',
+  );
   const currentStage = stageCopy[gameStage];
   const stageReminderKey = nextGame
     ? getSupporterStageAcknowledgmentKey(nextGame.id, gameStage)
@@ -578,6 +584,17 @@ export function SupporterDashboardView({
             <h2 id="next-game-heading" className="mt-3 max-w-2xl font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl">
               {nextGame ? gameTitle : 'Make the next game count.'}
             </h2>
+            {isViewingPastGame && (
+              <div
+                className="mt-5 max-w-2xl border-l-2 border-fuchsia-300 bg-fuchsia-300/[0.08] px-4 py-3"
+                data-testid="past-game-notice"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-200">Completed game</p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-white/70">
+                  You&apos;re viewing a past game. The newer game marked Next in your week path is still your recommended next step.
+                </p>
+              </div>
+            )}
             {nextGame ? (
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-white/65">
                 <span>{formatDateDisplay(nextGame.date)}</span>
