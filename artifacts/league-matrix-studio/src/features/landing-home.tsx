@@ -1,14 +1,16 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { CalendarDays, Activity, Zap, ArrowRight, Check, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Using responsive images
 import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
 import gameDayChecklist from '@/assets/game-day-checklist-768.webp';
 import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
-import landingHero from '../../../../attached_assets/generated_images/landing-hero.jpg';
 import sidelineParents from '../../../../attached_assets/generated_images/sideline-parents.jpg';
+import soccerField from '../../../../attached_assets/Soccer_1789318034545.svg';
+import footballField from '../../../../attached_assets/Football_1789319561486.svg';
+import basketballCourt from '../../../../attached_assets/basketball_1789319561486.svg';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -92,6 +94,94 @@ function LandingFooter() {
   );
 }
 
+const landingSports = [
+  {
+    id: 'soccer',
+    label: 'Soccer',
+    kicker: 'Find your shape',
+    image: soccerField,
+  },
+  {
+    id: 'football',
+    label: 'Football',
+    kicker: 'Own the field',
+    image: footballField,
+  },
+  {
+    id: 'basketball',
+    label: 'Basketball',
+    kicker: 'Run the floor',
+    image: basketballCourt,
+  },
+] as const;
+
+function LandingSportShowcase() {
+  const [visibleCards, setVisibleCards] = useState<Set<string>>(() => new Set());
+  const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  useEffect(() => {
+    const cards = cardRefs.current.filter((card): card is HTMLDivElement => Boolean(card));
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisibleCards(new Set(landingSports.map((sport) => sport.id)));
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const entering = entries
+        .filter((entry) => entry.isIntersecting)
+        .map((entry) => entry.target.getAttribute('data-sport-id'))
+        .filter((id): id is string => Boolean(id));
+      if (entering.length === 0) return;
+      setVisibleCards((current) => {
+        const next = new Set(current);
+        entering.forEach((id) => next.add(id));
+        return next;
+      });
+    }, { threshold: 0.28 });
+
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="relative pt-9 sm:pt-12" data-testid="landing-sport-showcase">
+      <div className="absolute left-0 top-0 z-10 rotate-[-6deg] sm:left-2">
+        <p className="font-handwritten text-3xl font-bold text-landing-orange drop-shadow-sm sm:text-5xl">Less chasing.<br />More cheering.</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
+        {landingSports.map((sport, index) => {
+          const isVisible = visibleCards.has(sport.id);
+          return (
+            <div
+              key={sport.id}
+              ref={(node) => {
+                cardRefs.current[index] = node;
+              }}
+              data-sport-id={sport.id}
+              data-testid={`landing-sport-card-${sport.id}`}
+              className={`landing-sport-card ${isVisible ? 'is-visible' : ''}`}
+              style={{ '--landing-sport-delay': `${index * 110}ms` } as React.CSSProperties}
+            >
+              <div className="landing-sport-card-face">
+                <img
+                  src={sport.image}
+                  alt={`${sport.label} field`}
+                  className="h-full w-full object-cover"
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/75 to-transparent px-3 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/65">{sport.kicker}</p>
+                  <p className="mt-1 font-display text-2xl font-extrabold uppercase leading-none text-white sm:text-3xl">{sport.label}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function PublicLandingPage() {
   return (
     <div className="new-landing">
@@ -122,20 +212,7 @@ export function PublicLandingPage() {
             </div>
             
             <div className="flex-1 w-full relative pt-8 lg:pt-0">
-              <div className="absolute left-3 top-12 z-10 rotate-[-6deg] sm:left-8 sm:top-16 lg:-left-16 lg:top-24">
-                 <p className="font-handwritten text-3xl text-landing-orange drop-shadow-sm font-bold sm:text-5xl">Less chasing.<br/>More cheering.</p>
-              </div>
-              <div className="relative rounded-2xl overflow-hidden shadow-xl bg-landing-white">
-                 <img 
-                   src={landingHero} 
-                   alt="Youth sports game with parents cheering"
-                   width={1024}
-                   height={1024}
-                   loading="eager"
-                   fetchPriority="high"
-                   className="w-full h-auto object-cover aspect-[4/3] sm:aspect-[4/3] lg:aspect-[4/4.5]"
-                 />
-              </div>
+              <LandingSportShowcase />
             </div>
           </div>
         </section>
