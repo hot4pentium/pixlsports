@@ -294,7 +294,7 @@ export function SupporterDashboardView({
     {
       id: 'upcoming',
       number: '02',
-      label: 'Get ready',
+      label: 'Prep',
       Icon: ClipboardCheck,
       href: recommendedChecklistHref,
       active: Boolean(weekRecommendation && weekRecommendation.stage === 'upcoming'),
