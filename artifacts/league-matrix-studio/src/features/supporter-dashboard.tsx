@@ -1186,9 +1186,12 @@ export function SupporterDashboardView({
         </section>
 
         {/* RECENT DESIGNS */}
-        <section data-testid="section-recent-designs">
+        <section data-testid="section-recent-hype-cards">
           <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-            <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Recent Designs</h3>
+            <div>
+              <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Recent Hype Cards</h3>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">Open a saved template to keep editing.</p>
+            </div>
             <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-view-all-designs">
               View All <ChevronRight className="w-3 h-3" />
             </Link>
@@ -1198,8 +1201,8 @@ export function SupporterDashboardView({
             {projects.length === 0 ? (
               <div className="col-span-full w-full py-10 border border-border bg-card flex flex-col items-center justify-center text-muted-foreground gap-3 clip-angled-sm min-h-[180px]">
                 <ImageIcon className="w-10 h-10 opacity-50" />
-                <p className="font-bold uppercase tracking-widest text-sm">No Designs Yet</p>
-                <p className="text-xs max-w-xs text-center text-balance">Your saved graphics will appear here for quick access.</p>
+                <p className="font-bold uppercase tracking-widest text-sm">No Hype Cards Yet</p>
+                <p className="text-xs max-w-xs text-center text-balance">Your saved Hype Card templates will appear here for quick access.</p>
               </div>
             ) : (
               projects.slice(0, 4).map(project => (

@@ -333,13 +333,14 @@ test('an empty local draft keeps the disconnected empty state after reload', () 
   }), 'disconnected');
 });
 
-test('maps only recent designs in newest-first order, limited to four', () => {
+test('maps only recent Hype Card templates in newest-first order, limited to four', () => {
   const projects = [
-    { id: 'old', name: 'Old card', updatedAt: '2026-01-01T00:00:00Z', project: { tool: 'hype' } },
+    { id: 'old', name: 'Old card', updatedAt: '2026-01-01T00:00:00Z', project: { tool: 'hype-card' } },
     { id: 'schedule', name: 'Schedule', updatedAt: '2026-05-01T00:00:00Z', project: { tool: 'schedule' } },
-    { id: 'new', name: 'New card', updatedAt: '2026-06-01T00:00:00Z', project: {} },
-    { id: 'middle', name: 'Middle card', updatedAt: '2026-04-01T00:00:00Z', project: { tool: 'hype' } },
-    { id: 'fourth', name: 'Fourth card', updatedAt: '2026-03-01T00:00:00Z', project: { tool: 'hype' } },
+    { id: 'new', name: 'New card', updatedAt: '2026-06-01T00:00:00Z', project: { tool: 'hype-card' } },
+    { id: 'middle', name: 'Middle card', updatedAt: '2026-04-01T00:00:00Z', project: { tool: 'hype-card' } },
+    { id: 'fourth', name: 'Fourth card', updatedAt: '2026-03-01T00:00:00Z', project: { tool: 'hype-card' } },
+    { id: 'roster', name: 'Roster', updatedAt: '2026-02-01T00:00:00Z', project: { tool: 'roster' } },
   ];
 
   const recent = mapRecentSupporterProjects(projects);
@@ -349,4 +350,5 @@ test('maps only recent designs in newest-first order, limited to four', () => {
   assert.equal(recent[0]?.href, '/studio/hype-card/new');
   assert.equal(recent[0]?.thumbnailProject, projects[2]?.project);
   assert.equal(recent.some(({ id }) => id === 'schedule'), false);
+  assert.equal(recent.some(({ id }) => id === 'roster'), false);
 });

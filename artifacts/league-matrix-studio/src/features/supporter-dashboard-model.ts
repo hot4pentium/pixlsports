@@ -352,10 +352,10 @@ interface CloudProjectLike {
 
 export function mapRecentSupporterProjects(projects: CloudProjectLike[]): SupporterProject[] {
   return [...projects]
-    .filter((project) => !(
+    .filter((project) => (
       typeof project.project === 'object'
       && project.project !== null
-      && (project.project as { tool?: unknown }).tool === 'schedule'
+      && (project.project as { tool?: unknown }).tool === 'hype-card'
     ))
     .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
     .slice(0, 4)

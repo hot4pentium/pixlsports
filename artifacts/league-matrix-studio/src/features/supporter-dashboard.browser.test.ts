@@ -298,7 +298,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
      assert.equal(
        await connection.evaluate<boolean>(`(() => {
          const upcoming = document.querySelector('[data-testid="section-upcoming"]');
-         const recent = document.querySelector('[data-testid="section-recent-designs"]');
+          const recent = document.querySelector('[data-testid="section-recent-hype-cards"]');
          const tools = document.querySelector('#all-tools');
          return Boolean(upcoming && recent && tools
            && (upcoming.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING)
