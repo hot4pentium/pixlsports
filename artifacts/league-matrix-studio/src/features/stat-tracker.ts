@@ -21,7 +21,10 @@ export type StatEvent = {
   statId: string;
   createdAt: string;
   period: number;
+  yards?: number;
 };
+
+export type YardStats = Record<string, number>;
 
 export type GameSession = {
   id: string;
@@ -34,6 +37,8 @@ export type GameSession = {
   opponentScore: number;
   notes: string;
   stats: Record<string, number>;
+  trackYards?: boolean;
+  yardStats?: YardStats;
   events: StatEvent[];
   startedAt: string;
   endedAt?: string;
@@ -50,9 +55,11 @@ export type GameReport = {
   selectedIndex: number;
   previousGame: GameSession | null;
   seasonToDate: ReturnType<typeof seasonTotals>;
+  seasonToDateYards: YardStats;
   averages: {
     score: number;
     stats: Record<string, number>;
+    yards: YardStats;
   };
 };
 
@@ -144,7 +151,9 @@ export function readStoredActiveGame(storage: TrackerStorage, accountId: string)
   migrateLegacyTrackerStorage(storage, accountId);
   try {
     const value = JSON.parse(storage.getItem(getTrackerStorageKeys(accountId).activeGame) ?? 'null');
-    return value && typeof value === 'object' && isSport(value.sport) ? value as GameSession : null;
+    return value && typeof value === 'object' && isSport(value.sport)
+      ? normalizeGameSession(value as GameSession)
+      : null;
   } catch {
     return null;
   }
@@ -197,6 +206,50 @@ const stat = (
   points: number,
   featured = true,
 ): StatDefinition => ({ id, label, shortLabel, points, featured });
+
+export const footballYardMetricDefinitions = [
+  { id: 'pass-yard', label: 'Passing yards', shortLabel: 'PASS YDS' },
+  { id: 'rush-yard', label: 'Rushing yards', shortLabel: 'RUSH YDS' },
+  { id: 'receiving-yard', label: 'Receiving yards', shortLabel: 'REC YDS' },
+] as const;
+
+export type FootballYardMetricId = typeof footballYardMetricDefinitions[number]['id'];
+
+export function getFootballYardMetricId(statId: string): FootballYardMetricId | null {
+  if (statId === 'pass-yard' || statId === 'rush-yard') return statId;
+  if (statId === 'reception') return 'receiving-yard';
+  return null;
+}
+
+export function adjustYardValue(value: number, delta: number): number {
+  const current = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  return Math.max(0, current + delta);
+}
+
+function normalizeYardStats(value: unknown): YardStats {
+  if (typeof value !== 'object' || value === null) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, amount]) => typeof amount === 'number' && Number.isFinite(amount))
+      .map(([statId, amount]) => [statId, Math.max(0, Math.floor(amount as number))]),
+  );
+}
+
+function normalizeGameSession(game: GameSession): GameSession {
+  return {
+    ...game,
+    trackYards: game.sport === 'football' && game.trackYards === true,
+    yardStats: normalizeYardStats(game.yardStats),
+    events: Array.isArray(game.events)
+      ? game.events.map((event) => ({
+        ...event,
+        ...(typeof event.yards === 'number' && Number.isFinite(event.yards)
+          ? { yards: Math.max(0, Math.floor(event.yards)) }
+          : {}),
+      }))
+      : [],
+  };
+}
 
 export const sportRules: Record<Sport, SportRule> = {
   basketball: {
@@ -318,6 +371,8 @@ export function createGameSession(
     opponentScore: 0,
     notes: input.notes?.trim() ?? '',
     stats: {},
+    trackYards: sport === 'football',
+    yardStats: {},
     events: [],
     startedAt: now.toISOString(),
   };
@@ -335,18 +390,35 @@ export function adjustScore(
     : { ...game, opponentScore: nextScore };
 }
 
-export function addStatEvent(game: GameSession, statId: string, now = new Date()): GameSession {
+export function addStatEvent(
+  game: GameSession,
+  statId: string,
+  now = new Date(),
+  yards = 0,
+): GameSession {
   const definition = getSportRule(game.sport).stats.find((item) => item.id === statId);
   if (!definition || game.status !== 'live') return game;
+  const yardMetricId = game.sport === 'football' && game.trackYards
+    ? getFootballYardMetricId(statId)
+    : null;
+  const eventYards = yardMetricId
+    ? Math.max(0, Math.floor(Number.isFinite(yards) ? yards : 0))
+    : 0;
   const event: StatEvent = {
     id: `tracker-event-${now.getTime()}-${game.events.length}`,
     statId,
     createdAt: now.toISOString(),
     period: game.period,
+    ...(eventYards > 0 ? { yards: eventYards } : {}),
   };
+  const yardStats = { ...(game.yardStats ?? {}) };
+  if (yardMetricId && eventYards > 0) {
+    yardStats[yardMetricId] = (yardStats[yardMetricId] ?? 0) + eventYards;
+  }
   return {
     ...game,
     stats: { ...game.stats, [statId]: (game.stats[statId] ?? 0) + 1 },
+    yardStats,
     score: game.score + definition.points,
     events: [...game.events, event],
   };
@@ -360,9 +432,17 @@ export function undoLastStatEvent(game: GameSession): GameSession {
   const stats = { ...game.stats };
   if (nextCount === 0) delete stats[event.statId];
   else stats[event.statId] = nextCount;
+  const yardMetricId = game.sport === 'football' ? getFootballYardMetricId(event.statId) : null;
+  const yardStats = { ...(game.yardStats ?? {}) };
+  if (yardMetricId && event.yards) {
+    const nextYards = Math.max(0, (yardStats[yardMetricId] ?? 0) - event.yards);
+    if (nextYards === 0) delete yardStats[yardMetricId];
+    else yardStats[yardMetricId] = nextYards;
+  }
   return {
     ...game,
     stats,
+    yardStats,
     score: Math.max(0, game.score - (definition?.points ?? 0)),
     events: game.events.slice(0, -1),
   };
@@ -387,7 +467,7 @@ export function normalizeTrackerData(value: unknown): StatTrackerData {
       && Array.isArray((game as GameSession).events)
     ))
     .map((game) => ({
-      ...game,
+      ...normalizeGameSession(game),
       opponentScore: typeof game.opponentScore === 'number' ? Math.max(0, game.opponentScore) : 0,
       notes: typeof game.notes === 'string' ? game.notes : '',
     }))
@@ -515,6 +595,17 @@ export function seasonTotals(games: GameSession[], sport: Sport) {
   return { gamesPlayed, score, stats: totals };
 }
 
+export function seasonYardTotals(games: GameSession[], sport: Sport): YardStats {
+  const totals: YardStats = {};
+  for (const game of games) {
+    if (game.sport !== sport || game.status !== 'final') continue;
+    for (const [statId, yards] of Object.entries(game.yardStats ?? {})) {
+      totals[statId] = (totals[statId] ?? 0) + yards;
+    }
+  }
+  return totals;
+}
+
 export function buildGameReport(
   games: GameSession[],
   sport: Sport,
@@ -536,9 +627,13 @@ export function buildGameReport(
 
   const selectedGame = completedGames[selectedIndex];
   const seasonToDate = seasonTotals(completedGames.slice(0, selectedIndex + 1), sport);
+  const seasonToDateYards = seasonYardTotals(completedGames.slice(0, selectedIndex + 1), sport);
   const divisor = Math.max(1, seasonToDate.gamesPlayed);
   const averageStats = Object.fromEntries(
     Object.entries(seasonToDate.stats).map(([statId, total]) => [statId, total / divisor]),
+  );
+  const averageYards = Object.fromEntries(
+    Object.entries(seasonToDateYards).map(([statId, total]) => [statId, total / divisor]),
   );
 
   return {
@@ -547,9 +642,11 @@ export function buildGameReport(
     selectedIndex,
     previousGame: completedGames[selectedIndex - 1] ?? null,
     seasonToDate,
+    seasonToDateYards,
     averages: {
       score: seasonToDate.score / divisor,
       stats: averageStats,
+      yards: averageYards,
     },
   };
 }

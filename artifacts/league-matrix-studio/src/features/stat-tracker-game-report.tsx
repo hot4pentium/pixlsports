@@ -1,7 +1,7 @@
 import React, { Component, lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 import { ArrowLeft, FileText, RotateCcw } from 'lucide-react';
 
-import type { GameReport, SportRule } from './stat-tracker';
+import { footballYardMetricDefinitions, type GameReport, type SportRule } from './stat-tracker';
 
 type ReportChartsProps = {
   report: GameReport;
@@ -140,6 +140,22 @@ export function GameReportView({
                   const average = averages.stats[stat.id] || 0;
                   return <div key={stat.id} className="border border-border/50 bg-background p-3 clip-angled-sm" data-testid={`report-stat-${stat.id}`}><p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p><p className="mt-1 font-display text-3xl">{count}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Season: {seasonToDate.stats[stat.id] ?? 0}</p>{previousGame && <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${count > previous ? 'text-primary-ink' : count < previous ? 'text-destructive' : 'text-muted-foreground'}`}>{count > previous ? '+' : ''}{count - previous} vs last</p>}{!isOneGame && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg: {average.toFixed(1)}</p>}</div>;
                 })}</div>
+                {selectedGame.sport === 'football' && (
+                  <div className="mt-6 border-t border-border pt-6" data-testid="report-yardage">
+                    <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Yardage</h3>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {footballYardMetricDefinitions.map((metric) => (
+                        <div key={metric.id} className="border border-primary/20 bg-primary/5 p-3 clip-angled-sm" data-testid={`report-yard-${metric.id}`}>
+                          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-primary-ink">{metric.label}</p>
+                          <p className="mt-1 font-display text-3xl">{selectedGame.yardStats?.[metric.id] ?? 0}</p>
+                          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Game yards</p>
+                          <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season: {report.seasonToDateYards[metric.id] ?? 0}</p>
+                          {!isOneGame && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg: {(averages.yards[metric.id] ?? 0).toFixed(1)}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!hasStats && <div className="mt-6 border border-border/50 bg-background p-6 text-center clip-angled-sm"><p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">No stats recorded for this game.</p></div>}
                 {selectedGame.notes && <div className="mt-6 border-t border-border pt-4"><p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink"><FileText className="mr-1 inline h-3 w-3" /> Game Notes</p><p className="mt-2 text-sm font-medium text-foreground">{selectedGame.notes}</p></div>}
               </div>

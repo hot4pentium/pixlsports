@@ -5,6 +5,7 @@ import { createElement } from 'react';
 
 import {
   addStatEvent,
+  adjustYardValue,
   adjustScore,
   buildGameReport,
   clearStoredTrackerConflict,
@@ -15,6 +16,7 @@ import {
   getTrackerConflict,
   getTrackerSyncRecovery,
   getTrackerStorageKeys,
+  getFootballYardMetricId,
   getSportRule,
   isTrackerRevisionConflict,
   migrateLegacyTrackerStorage,
@@ -25,6 +27,7 @@ import {
   readStoredTrackerData,
   saveStoredTrackerConflict,
   seasonTotals,
+  seasonYardTotals,
   syncTrackerDataToCloud,
   trackerPayload,
   trackerSaveStatusMessage,
@@ -114,6 +117,84 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   const threePointStat = renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' });
   act(() => threePointStat.props.onClick());
   assert.equal(changedGame.stats['three-point'], 1);
+});
+
+test('football yard tracking keeps play counts while recording passing, rushing, and receiving yards', () => {
+  const firstTime = new Date('2026-09-17T12:01:00Z');
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'pass-yard', firstTime, 15);
+  game = addStatEvent(game, 'rush-yard', new Date('2026-09-17T12:02:00Z'), 7);
+  game = addStatEvent(game, 'reception', new Date('2026-09-17T12:03:00Z'), 12);
+
+  assert.equal(game.trackYards, true);
+  assert.deepEqual(game.stats, { 'pass-yard': 1, 'rush-yard': 1, reception: 1 });
+  assert.deepEqual(game.yardStats, {
+    'pass-yard': 15,
+    'rush-yard': 7,
+    'receiving-yard': 12,
+  });
+  assert.equal(game.events.at(-1)?.yards, 12);
+  assert.equal(getFootballYardMetricId('reception'), 'receiving-yard');
+
+  game = undoLastStatEvent(game);
+  assert.equal(game.stats.reception, undefined);
+  assert.equal(game.yardStats?.['receiving-yard'], undefined);
+});
+
+test('football yard tracking can be ignored while preserving one-tap play counts', () => {
+  let game = createGameSession('football', {}, new Date('2026-09-17T12:00:00Z'));
+  game = { ...game, trackYards: false };
+  game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:01:00Z'), 40);
+
+  assert.deepEqual(game.stats, { 'pass-yard': 1 });
+  assert.deepEqual(game.yardStats, {});
+  assert.equal(game.events[0]?.yards, undefined);
+});
+
+test('football yard controls use asymmetric five-forward and one-back steps', () => {
+  assert.equal(adjustYardValue(0, 5), 5);
+  assert.equal(adjustYardValue(5, -1), 4);
+  assert.equal(adjustYardValue(0, -1), 0);
+  assert.equal(adjustYardValue(8, 5), 13);
+});
+
+test('football live controls expose accessible yard entry and record reception yards', () => {
+  const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const toggle = renderer.root.findByProps({ 'data-testid': 'toggle-football-yard-tracking' });
+  assert.equal(toggle.props.checked, true);
+  const receptionInput = renderer.root.findByProps({ 'data-testid': 'input-yard-reception' });
+  act(() => receptionInput.props.onWheel({ deltaY: -1, preventDefault: () => {} }));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.value, 5);
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onWheel({ deltaY: 1, preventDefault: () => {} }));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.value, 4);
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onChange({ currentTarget: { value: '12' } }));
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-reception' }).props.onClick());
+
+  assert.equal(changedGame.stats.reception, 1);
+  assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props['aria-valuenow'], 0);
 });
 
 test('softball is available with inning-based game tracking', () => {
@@ -495,6 +576,36 @@ test('game reports calculate season-to-date values through the selected game', (
   assert.equal(report.averages.stats.assist, 1);
 });
 
+test('football reports calculate game, season, and average yard totals', () => {
+  let first = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-10T12:00:00Z'));
+  first = addStatEvent(first, 'pass-yard', new Date('2026-09-10T12:01:00Z'), 20);
+  first = addStatEvent(first, 'reception', new Date('2026-09-10T12:02:00Z'), 8);
+  first = endGame(first, new Date('2026-09-10T13:00:00Z'));
+
+  let second = createGameSession('football', { opponent: 'Westview' }, new Date('2026-09-12T12:00:00Z'));
+  second = addStatEvent(second, 'pass-yard', new Date('2026-09-12T12:01:00Z'), 10);
+  second = addStatEvent(second, 'rush-yard', new Date('2026-09-12T12:02:00Z'), 5);
+  second = addStatEvent(second, 'reception', new Date('2026-09-12T12:03:00Z'), 4);
+  second = endGame(second, new Date('2026-09-12T13:00:00Z'));
+
+  const report = buildGameReport([second, first], 'football', second.id);
+
+  assert.ok(report);
+  assert.deepEqual(report.selectedGame.yardStats, {
+    'pass-yard': 10,
+    'rush-yard': 5,
+    'receiving-yard': 4,
+  });
+  assert.deepEqual(report.seasonToDateYards, {
+    'pass-yard': 30,
+    'rush-yard': 5,
+    'receiving-yard': 12,
+  });
+  assert.equal(report.averages.yards['pass-yard'], 15);
+  assert.equal(report.averages.yards['receiving-yard'], 6);
+  assert.deepEqual(seasonYardTotals([second, first], 'football'), report.seasonToDateYards);
+});
+
 test('game reports safely reject missing and unfinished selections', () => {
   const live = createGameSession('soccer', {}, new Date('2026-09-10T12:00:00Z'));
   assert.equal(buildGameReport([live], 'soccer', live.id), null);
@@ -585,6 +696,20 @@ test('legacy saved games receive safe opponent score and notes defaults', () => 
 
   assert.equal(normalized.games[0]?.opponentScore, 0);
   assert.equal(normalized.games[0]?.notes, '');
+});
+
+test('football yard data survives normalization, local storage, and cloud payloads', () => {
+  let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = endGame(addStatEvent(game, 'reception', new Date('2026-09-17T12:01:00Z'), 11));
+  const storage = createMemoryStorage({
+    [getTrackerStorageKeys('yard_user').history]: JSON.stringify({ version: 1, games: [game] }),
+  });
+
+  const restored = readStoredTrackerData(storage, 'yard_user');
+  assert.equal(restored.games[0]?.trackYards, true);
+  assert.deepEqual(restored.games[0]?.yardStats, { 'receiving-yard': 11 });
+  assert.equal(restored.games[0]?.events[0]?.yards, 11);
+  assert.deepEqual(trackerPayload(restored).games[0]?.yardStats, { 'receiving-yard': 11 });
 });
 
 test('reload merges locally saved games with cloud history without replacing either copy', () => {

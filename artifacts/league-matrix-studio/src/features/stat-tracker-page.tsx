@@ -29,10 +29,13 @@ import {
 } from './schedule-draft';
 import {
   addStatEvent,
+  adjustYardValue,
   adjustScore,
   clearStoredTrackerConflict,
   createGameSession,
   endGame,
+  footballYardMetricDefinitions,
+  getFootballYardMetricId,
   getSportRule,
   getTrackerSportForProfile,
   getTrackerConflict,
@@ -45,6 +48,7 @@ import {
   readStoredTrackerData,
   saveStoredTrackerConflict,
   seasonTotals,
+  seasonYardTotals,
   sports,
   syncTrackerDataToCloud,
   trackerSaveStatusMessage,
@@ -339,8 +343,42 @@ export function LiveTrackerGame({
   onLeaveGame,
   onEndGame,
 }: LiveTrackerGameProps) {
+  const [yardDrafts, setYardDrafts] = useState<Record<string, number>>({});
   const updateCurrentGame = (next: GameSession) => onGameChange(next);
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
+  const yardTrackingEnabled = currentGame.sport === 'football' && currentGame.trackYards === true;
+
+  useEffect(() => {
+    setYardDrafts({});
+  }, [currentGame.id]);
+
+  const updateYardDraft = (statId: string, delta: number) => {
+    setYardDrafts((current) => ({
+      ...current,
+      [statId]: adjustYardValue(current[statId] ?? 0, delta),
+    }));
+  };
+
+  const setYardDraft = (statId: string, value: string) => {
+    const parsed = Number.parseInt(value, 10);
+    setYardDrafts((current) => ({
+      ...current,
+      [statId]: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
+    }));
+  };
+
+  const recordStat = (item: StatDefinition) => {
+    const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
+    updateCurrentGame(addStatEvent(
+      currentGame,
+      item.id,
+      new Date(),
+      yardMetricId ? yardDrafts[item.id] ?? 0 : 0,
+    ));
+    if (yardMetricId) {
+      setYardDrafts((current) => ({ ...current, [item.id]: 0 }));
+    }
+  };
 
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
@@ -390,8 +428,88 @@ export function LiveTrackerGame({
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
+        {currentGame.sport === 'football' && (
+          <div className="mb-5 border border-primary/30 bg-primary/5 p-3" data-testid="football-yard-tracking">
+            <label className="flex cursor-pointer items-start gap-3 text-xs font-bold uppercase tracking-widest text-foreground">
+              <input
+                type="checkbox"
+                checked={yardTrackingEnabled}
+                onChange={(event) => updateCurrentGame({ ...currentGame, trackYards: event.currentTarget.checked })}
+                data-testid="toggle-football-yard-tracking"
+                className="mt-0.5 h-4 w-4 accent-primary"
+              />
+              <span>
+                Track yards for this game
+                <span className="mt-1 block text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
+                  {yardTrackingEnabled ? 'Use the yard controls before recording a pass, rush, or reception.' : 'Play counts stay one tap each; yard entry is off.'}
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
         <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
-          {displayStats.map((item) => <button key={item.id} type="button" data-testid={`live-stat-${item.id}`} onClick={() => updateCurrentGame(addStatEvent(currentGame, item.id))} className="group min-h-[88px] min-w-0 overflow-hidden border border-border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"><span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary-ink">{item.label}</span><span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span><span className="mt-1 block truncate text-xs font-bold text-primary-ink">{currentGame.stats[item.id] ?? 0}{item.points ? ` · +${item.points}` : ' · tracked'}</span></button>)}
+          {displayStats.map((item) => {
+            const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
+            const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
+            const yardDraft = yardDrafts[item.id] ?? 0;
+            return (
+              <div key={item.id} data-testid={`live-stat-card-${item.id}`} className="min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
+                <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item)} className="group block min-h-[72px] w-full min-w-0 overflow-hidden text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                  <span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary-ink">{item.label}</span>
+                  <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
+                  <span className="mt-1 block truncate text-xs font-bold text-primary-ink">
+                    {currentGame.stats[item.id] ?? 0}
+                    {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardTotal} yds` : ' · tracked'}
+                  </span>
+                </button>
+                {yardMetricId && (
+                  <div className="mt-3 border-t border-border/70 pt-3">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground" htmlFor={`yard-input-${item.id}`}>
+                      Yards for next play
+                    </label>
+                    {yardTrackingEnabled ? (
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <button type="button" onClick={() => updateYardDraft(item.id, -1)} aria-label={`Decrease ${item.label} yards by one`} data-testid={`yard-adjust-${item.id}-decrease`} className="flex min-h-10 min-w-10 shrink-0 items-center justify-center border border-border text-foreground hover:border-primary hover:text-primary-ink"><Minus className="h-4 w-4" /></button>
+                        <input
+                          id={`yard-input-${item.id}`}
+                          type="number"
+                          min="0"
+                          step="1"
+                          inputMode="numeric"
+                          value={yardDraft}
+                          onChange={(event) => setYardDraft(item.id, event.currentTarget.value)}
+                          onWheel={(event) => {
+                            event.preventDefault();
+                            updateYardDraft(item.id, event.deltaY < 0 ? 5 : -1);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'ArrowUp') {
+                              event.preventDefault();
+                              updateYardDraft(item.id, 5);
+                            } else if (event.key === 'ArrowDown') {
+                              event.preventDefault();
+                              updateYardDraft(item.id, -1);
+                            } else if (event.key === 'Enter') {
+                              event.preventDefault();
+                              recordStat(item);
+                            }
+                          }}
+                          aria-label={`${item.label} for next play`}
+                          aria-valuemin={0}
+                          aria-valuenow={yardDraft}
+                          data-testid={`input-yard-${item.id}`}
+                          className="min-w-0 flex-1 border border-border bg-background px-2 py-2 text-center text-sm font-bold text-foreground outline-none focus:border-primary"
+                        />
+                        <button type="button" onClick={() => updateYardDraft(item.id, 5)} aria-label={`Increase ${item.label} yards by five`} data-testid={`yard-adjust-${item.id}-increase`} className="flex min-h-10 min-w-10 shrink-0 items-center justify-center border border-border text-foreground hover:border-primary hover:text-primary-ink"><Plus className="h-4 w-4" /></button>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">Yard entry is off for this game.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
         <button type="button" onClick={onToggleShowAllStats} className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">{showAllStats ? 'Show featured stats' : 'Show more stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showAllStats ? 'rotate-180' : ''}`} /></button>
         <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary-ink" /> Game notes</span>
@@ -405,7 +523,7 @@ export function LiveTrackerGame({
       <div data-testid="live-tracker-recent-activity" className="order-3 border border-border bg-card p-4 clip-angled-sm sm:p-5 lg:col-start-1 lg:row-start-2">
         <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
         <div className="space-y-2">
-          {currentGame.events.slice(-5).reverse().map((event) => <div key={event.id} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm"><span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}</span><span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span></div>)}
+          {currentGame.events.slice(-5).reverse().map((event) => <div key={event.id} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 text-sm"><span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{event.yards ? ` · ${event.yards} yds` : ''}</span><span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span></div>)}
           {!currentGame.events.length && <p className="text-sm text-muted-foreground">Your taps will appear here.</p>}
         </div>
         <button type="button" onClick={() => updateCurrentGame(undoLastStatEvent(currentGame))} disabled={!currentGame.events.length} className="mt-5 inline-flex min-h-11 items-center gap-2 border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40"><RotateCcw className="h-4 w-4" /> Undo last</button>
@@ -584,6 +702,7 @@ export function StatTrackerPage() {
 
   const rule = getSportRule(sport);
   const totals = seasonTotals(data.games, sport);
+  const yardTotals = seasonYardTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => showAllStats || item.featured);
   const nextGame = connectedNextGame ?? ownedScheduleNextGame ?? localNextGame;
   const report = useMemo(() => {
@@ -1000,6 +1119,9 @@ export function StatTrackerPage() {
             </div>
             <div className="mt-7 space-y-3">
               {rule.stats.filter((item) => totals.stats[item.id]).slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between border-b border-white/10 pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-white/70">{item.label}</span><span className="font-display text-2xl">{totals.stats[item.id]}</span></div>)}
+              {sport === 'football' && footballYardMetricDefinitions
+                .filter((metric) => yardTotals[metric.id])
+                .map((metric) => <div key={metric.id} className="flex items-center justify-between border-b border-white/10 pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-white/70">{metric.label}</span><span className="font-display text-2xl">{yardTotals[metric.id]} <span className="text-xs text-white/55">YDS</span></span></div>)}
               {!totals.gamesPlayed && <p className="text-sm text-white/60">Finish your first game to build the season view.</p>}
             </div>
           </section>
