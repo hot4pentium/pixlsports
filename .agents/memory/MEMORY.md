@@ -20,3 +20,4 @@
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
 - [Supporter profile propagation](supporter-profile-propagation.md) — profile athlete details seed new local work, while saved cloud designs and published snapshots remain authored independently.
 - [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.
+- [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.

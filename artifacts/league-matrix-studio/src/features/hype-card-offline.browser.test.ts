@@ -8,6 +8,14 @@ import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
+import {
+  DevToolsConnection,
+  monitorProcess,
+  openPage,
+  waitFor,
+  waitForUrl,
+  type ProcessMonitor,
+} from './browser-test-diagnostics';
 
 const execFileAsync = promisify(execFile);
 const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
@@ -27,23 +35,6 @@ function listen(server: Server) {
       resolveAddress({ address: `http://127.0.0.1:${address.port}`, port: address.port });
     });
   });
-}
-
-function waitForExit(process: ChildProcess) {
-  return new Promise<void>((resolveExit) => process.once('exit', () => resolveExit()));
-}
-
-async function waitForUrl(url: string, timeoutMs = 30_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      if ((await fetch(url)).ok) return;
-    } catch {
-      // The server is still starting.
-    }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-  throw new Error(`Timed out waiting for ${url}`);
 }
 
 function contentType(pathname: string) {
@@ -78,117 +69,6 @@ async function serveProductionBuild() {
   return { server, address: address.address };
 }
 
-class DevToolsConnection {
-  private readonly socket: WebSocket;
-  private nextId = 0;
-  private readonly pending = new Map<number, {
-    resolve: (value: any) => void;
-    reject: (reason: unknown) => void;
-  }>();
-
-  private constructor(socket: WebSocket) {
-    this.socket = socket;
-    socket.addEventListener('message', (event) => {
-      const message = JSON.parse(String(event.data)) as {
-        id?: number;
-        result?: unknown;
-        error?: { message?: string };
-      };
-      if (message.id === undefined) return;
-      const pending = this.pending.get(message.id);
-      if (!pending) return;
-      this.pending.delete(message.id);
-      if (message.error) pending.reject(new Error(message.error.message || 'DevTools command failed'));
-      else pending.resolve(message.result);
-    });
-  }
-
-  static async connect(url: string) {
-    const socket = new WebSocket(url);
-    await new Promise<void>((resolveOpen, reject) => {
-      socket.addEventListener('open', () => resolveOpen());
-      socket.addEventListener('error', () => reject(new Error('Could not connect to Chromium DevTools')));
-    });
-    return new DevToolsConnection(socket);
-  }
-
-  send<T = any>(method: string, params: Record<string, unknown> = {}, sessionId?: string) {
-    const id = ++this.nextId;
-    return new Promise<T>((resolveResult, rejectResult) => {
-      this.pending.set(id, { resolve: resolveResult, reject: rejectResult });
-      this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
-    });
-  }
-
-  async evaluate<T>(expression: string, sessionId: string): Promise<T> {
-    const result = await this.send<{
-      result?: { value?: T };
-      exceptionDetails?: { text?: string; exception?: { description?: string } };
-    }>('Runtime.evaluate', {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    }, sessionId);
-    if (result.exceptionDetails) {
-      throw new Error(
-        result.exceptionDetails.exception?.description
-        || result.exceptionDetails.text
-        || 'Browser evaluation failed',
-      );
-    }
-    return result.result?.value as T;
-  }
-
-  close() {
-    this.socket.close();
-  }
-}
-
-async function openPage(connection: DevToolsConnection, url: string, offline = false) {
-  const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
-  const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', {
-    targetId: target.targetId,
-    flatten: true,
-  });
-  const { sessionId } = attached;
-  await connection.send('Page.enable', {}, sessionId);
-  await connection.send('Runtime.enable', {}, sessionId);
-  await connection.send('Network.enable', {}, sessionId);
-  if (offline) {
-    await connection.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: "Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });",
-    }, sessionId);
-    await connection.send('Network.emulateNetworkConditions', {
-      offline: true,
-      latency: 0,
-      downloadThroughput: -1,
-      uploadThroughput: -1,
-    }, sessionId);
-  }
-  await connection.send('Page.navigate', { url }, sessionId);
-  return { sessionId, targetId: target.targetId };
-}
-
-async function waitFor<T>(
-  page: DevToolsConnection,
-  sessionId: string,
-  expression: string,
-  predicate: (value: T) => boolean,
-  timeoutMs = 15_000,
-) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const value = await page.evaluate<T>(expression, sessionId);
-    if (predicate(value)) return value;
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-  const diagnostic = await page.evaluate<{ href: string; body: string }>(
-    '({ href: location.href, body: document.body?.innerText ?? "" })',
-    sessionId,
-  ).catch(() => ({ href: 'unavailable', body: 'unavailable' }));
-  throw new Error(`Timed out waiting for browser condition (${diagnostic.href}; ${diagnostic.body.slice(0, 300)})`);
-}
-
 async function click(connection: DevToolsConnection, sessionId: string, selector: string) {
   await connection.evaluate(
     `document.querySelector(${JSON.stringify(selector)})?.click()`,
@@ -218,6 +98,7 @@ test('installed Hype Card editor restores and exports a local design offline', a
   await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
 
   let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
   let connection: DevToolsConnection | undefined;
   const pages: Array<{ sessionId: string; targetId: string }> = [];
   const editorUrl = `${address}${artifactBasePath}studio/hype-card`;
@@ -231,11 +112,12 @@ test('installed Hype Card editor restores and exports a local design offline', a
       `--remote-debugging-port=${debugPort}`,
       `--user-data-dir=${browserProfile}`,
       'about:blank',
-    ], { stdio: 'ignore' });
-    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`);
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
-    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     await connection.send('Browser.setDownloadBehavior', {
       behavior: 'allow',
       downloadPath: downloadDirectory,
@@ -323,7 +205,7 @@ test('installed Hype Card editor restores and exports a local design offline', a
 
     await connection.send('Target.closeTarget', { targetId: firstPage.targetId });
     pages.splice(0, 1);
-    const offlinePage = await openPage(connection, editorUrl, true);
+    const offlinePage = await openPage(connection, editorUrl, { offline: true });
     pages.push(offlinePage);
     await waitFor(connection, offlinePage.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('hype cards'), 20_000);
     await waitFor(
@@ -391,8 +273,10 @@ test('installed Hype Card editor restores and exports a local design offline', a
       await connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     }
     connection?.close();
-    browser?.kill('SIGTERM');
-    if (browser) await waitForExit(browser);
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
     await rm(tempDirectory, { recursive: true, force: true });
     await new Promise<void>((resolveClose, rejectClose) => server.close((error) => error ? rejectClose(error) : resolveClose()));
   }

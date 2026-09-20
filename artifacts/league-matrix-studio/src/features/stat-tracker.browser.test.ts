@@ -6,6 +6,14 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import {
+  DevToolsConnection,
+  monitorProcess,
+  openPage,
+  waitFor,
+  waitForUrl,
+  type ProcessMonitor,
+} from './browser-test-diagnostics';
 
 const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -24,122 +32,6 @@ function listen(server: Server) {
       resolveAddress({ port: address.port });
     });
   });
-}
-
-async function waitForUrl(url: string, timeoutMs = 20_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      if ((await fetch(url)).ok) return;
-    } catch {
-      // The server is still starting.
-    }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-  throw new Error(`Timed out waiting for ${url}`);
-}
-
-function waitForExit(process: ChildProcess) {
-  return new Promise<void>((resolveExit) => process.once('exit', () => resolveExit()));
-}
-
-class DevToolsConnection {
-  private readonly socket: WebSocket;
-  private nextId = 0;
-  private readonly pending = new Map<number, {
-    resolve: (value: any) => void;
-    reject: (reason: unknown) => void;
-  }>();
-
-  private constructor(socket: WebSocket) {
-    this.socket = socket;
-    socket.addEventListener('message', (event) => {
-      const message = JSON.parse(String(event.data)) as {
-        id?: number;
-        result?: unknown;
-        error?: { message?: string };
-      };
-      if (message.id === undefined) return;
-      const pending = this.pending.get(message.id);
-      if (!pending) return;
-      this.pending.delete(message.id);
-      if (message.error) pending.reject(new Error(message.error.message || 'DevTools command failed'));
-      else pending.resolve(message.result);
-    });
-  }
-
-  static async connect(url: string) {
-    const socket = new WebSocket(url);
-    await new Promise<void>((resolveOpen, reject) => {
-      socket.addEventListener('open', () => resolveOpen());
-      socket.addEventListener('error', () => reject(new Error('Could not connect to Chromium DevTools')));
-    });
-    return new DevToolsConnection(socket);
-  }
-
-  send<T = any>(method: string, params: Record<string, unknown> = {}, sessionId?: string) {
-    const id = ++this.nextId;
-    return new Promise<T>((resolveResult, rejectResult) => {
-      this.pending.set(id, { resolve: resolveResult, reject: rejectResult });
-      this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
-    });
-  }
-
-  async evaluate<T>(expression: string, sessionId: string): Promise<T> {
-    const result = await this.send<{
-      result?: { value?: T };
-      exceptionDetails?: { text?: string; exception?: { description?: string } };
-    }>('Runtime.evaluate', {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    }, sessionId);
-    if (result.exceptionDetails) {
-      throw new Error(
-        result.exceptionDetails.exception?.description
-        || result.exceptionDetails.text
-        || 'Browser evaluation failed',
-      );
-    }
-    return result.result?.value as T;
-  }
-
-  close() {
-    this.socket.close();
-  }
-}
-
-async function openPage(connection: DevToolsConnection, url: string) {
-  const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
-  const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', {
-    targetId: target.targetId,
-    flatten: true,
-  });
-  const { sessionId } = attached;
-  await connection.send('Page.enable', {}, sessionId);
-  await connection.send('Runtime.enable', {}, sessionId);
-  await connection.send('Page.navigate', { url }, sessionId);
-  return { sessionId, targetId: target.targetId };
-}
-
-async function waitFor<T>(
-  connection: DevToolsConnection,
-  sessionId: string,
-  expression: string,
-  predicate: (value: T) => boolean,
-  timeoutMs = 10_000,
-) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const value = await connection.evaluate<T>(expression, sessionId);
-    if (predicate(value)) return value;
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-  const diagnostic = await connection.evaluate<{ body: string; testError?: string }>(
-    '({ body: document.body?.innerText || "", testError: document.body?.dataset.testError })',
-    sessionId,
-  );
-  throw new Error(`Timed out waiting for browser condition: ${expression}; testError=${diagnostic.testError || 'none'}; body=${diagnostic.body.slice(0, 500)}`);
 }
 
 function harnessSource() {
@@ -245,15 +137,17 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
       BASE_PATH: '/',
       VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   const tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-stat-tracker-browser-'));
   let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  const devServerMonitor = monitorProcess(devServer, 'Vite dev server');
   let connection: DevToolsConnection | undefined;
   let page: { sessionId: string; targetId: string } | undefined;
 
   try {
-    await waitForUrl(`http://127.0.0.1:${vitePort}/`);
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
     const debugProbe = createServer();
     const { port: debugPort } = await listen(debugProbe);
     await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
@@ -265,11 +159,12 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
       `--remote-debugging-port=${debugPort}`,
       `--user-data-dir=${tempDirectory}`,
       'about:blank',
-    ], { stdio: 'ignore' });
-    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`);
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
-    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/stat-tracker-test.html`);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
 
@@ -333,10 +228,12 @@ test('stat tracker protects scheduled and unscheduled start states in the browse
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
-    browser?.kill('SIGTERM');
-    if (browser) await waitForExit(browser);
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
     devServer.kill('SIGTERM');
-    await waitForExit(devServer);
+    await devServerMonitor.waitForExit();
     await rm(tempDirectory, { recursive: true, force: true });
     await rm(harnessPath, { force: true });
     await rm(htmlPath, { force: true });

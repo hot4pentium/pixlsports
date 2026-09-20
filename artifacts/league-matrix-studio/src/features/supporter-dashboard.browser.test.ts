@@ -6,6 +6,11 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import {
+  monitorProcess,
+  waitForUrl,
+  type ProcessMonitor,
+} from './browser-test-diagnostics';
 
 const chromiumPath = process.env.CHROMIUM_PATH || 'chromium';
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -42,67 +47,6 @@ function listen(server: Server) {
       resolveAddress({ port: address.port });
     });
   });
-}
-
-async function waitForUrl(url: string, timeoutMs = 20_000, processMonitor?: ProcessMonitor) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    if (processMonitor?.hasExited()) {
-      throw new Error(processFailure(processMonitor, `Timed out waiting for ${url}`));
-    }
-    try {
-      if ((await fetch(url)).ok) return;
-    } catch {
-      // The server is still starting.
-    }
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-  }
-  throw new Error(processFailure(processMonitor, `Timed out waiting for ${url}`));
-}
-
-type ProcessMonitor = {
-  hasExited: () => boolean;
-  diagnostics: () => string;
-  waitForExit: () => Promise<void>;
-};
-
-function monitorProcess(child: ChildProcess, label: string): ProcessMonitor {
-  let output = '';
-  let exitDescription = '';
-  let resolveExit!: () => void;
-  const exitPromise = new Promise<void>((resolve) => {
-    resolveExit = resolve;
-  });
-
-  const appendOutput = (chunk: Buffer | string) => {
-    output = `${output}${String(chunk)}`.slice(-4_000);
-  };
-  child.stdout?.on('data', appendOutput);
-  child.stderr?.on('data', appendOutput);
-  child.once('error', (error) => {
-    exitDescription = `${label} emitted an error: ${error.message}`;
-    resolveExit();
-  });
-  child.once('exit', (code, signal) => {
-    exitDescription = `${label} exited with ${signal ? `signal ${signal}` : `code ${code ?? 'unknown'}`}`;
-    resolveExit();
-  });
-
-  return {
-    hasExited: () => child.exitCode !== null || child.signalCode !== null || Boolean(exitDescription),
-    diagnostics: () => [
-      exitDescription || `${label} is still running`,
-      output.trim() ? `${label} output:\n${output.trim()}` : `${label} produced no captured output`,
-    ].join('; '),
-    waitForExit: async () => {
-      if (child.exitCode !== null || child.signalCode !== null) return;
-      await exitPromise;
-    },
-  };
-}
-
-function processFailure(monitor: ProcessMonitor | undefined, description: string) {
-  return `${description}${monitor ? `; ${monitor.diagnostics()}` : ''}`;
 }
 
 class DevToolsConnection {
