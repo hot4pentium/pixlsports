@@ -216,10 +216,14 @@ export function SupporterDashboardView({
     customSchedule: scheduleSource === 'custom' ? { events } : undefined,
   });
   const gameEvents = events.filter((event) => event.type === 'game');
+  const recommendedGame = getActiveSupporterGame(gameEvents, null);
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
   const gameStage: SupporterGameStage = nextGame
     ? getSupporterGameStage(nextGame)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
+  const recommendedGameStage = recommendedGame
+    ? getSupporterGameStage(recommendedGame)
+    : null;
   const currentStage = stageCopy[gameStage];
   const stageReminderKey = nextGame
     ? getSupporterStageAcknowledgmentKey(nextGame.id, gameStage)
@@ -234,15 +238,20 @@ export function SupporterDashboardView({
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
-  const statTrackerHref = nextGame
-    ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
+  const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
+    ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.statTracker;
-  const checklistHref = nextGame
-    ? `/studio/checklist?gameId=${encodeURIComponent(nextGame.id)}`
+  const checklistHrefForGame = (game: SupporterEvent | undefined) => game
+    ? `/studio/checklist?gameId=${encodeURIComponent(game.id)}`
     : supporterToolRoutes.checklist;
-  const hypeCardHref = nextGame
-    ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(nextGame.id)}&date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
+  const hypeCardHrefForGame = (game: SupporterEvent | undefined) => game
+    ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(game.id)}&date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.hypeCard;
+  const statTrackerHref = statTrackerHrefForGame(nextGame);
+  const checklistHref = checklistHrefForGame(nextGame);
+  const hypeCardHref = hypeCardHrefForGame(nextGame);
+  const recommendedStatTrackerHref = statTrackerHrefForGame(recommendedGame);
+  const recommendedChecklistHref = checklistHrefForGame(recommendedGame);
   const weeklyPath = [
     {
       id: 'plan',
@@ -250,23 +259,23 @@ export function SupporterDashboardView({
       label: 'Plan the week',
       Icon: CalendarDays,
       href: supporterToolRoutes.schedule,
-      active: !nextGame,
+      active: !recommendedGame,
     },
     {
       id: 'upcoming',
       number: '02',
       label: 'Get ready',
       Icon: ClipboardCheck,
-      href: checklistHref,
-      active: Boolean(nextGame && gameStage === 'upcoming'),
+      href: recommendedChecklistHref,
+      active: Boolean(recommendedGame && recommendedGameStage === 'upcoming'),
     },
     {
       id: 'live',
       number: '03',
       label: 'Capture the game',
       Icon: Activity,
-      href: statTrackerHref,
-      active: Boolean(nextGame && gameStage === 'live'),
+      href: recommendedStatTrackerHref,
+      active: Boolean(recommendedGame && recommendedGameStage === 'live'),
     },
     {
       id: 'completed',
@@ -274,7 +283,7 @@ export function SupporterDashboardView({
       label: 'Send the hype',
       Icon: Zap,
       href: hypeCardHref,
-      active: Boolean(nextGame && gameStage === 'completed'),
+      active: Boolean(recommendedGame && recommendedGameStage === 'completed'),
     },
   ] as const;
   type WeeklyPathId = typeof weeklyPath[number]['id'];

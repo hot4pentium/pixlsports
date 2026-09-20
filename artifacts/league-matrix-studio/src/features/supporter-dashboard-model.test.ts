@@ -59,6 +59,14 @@ test('keeps a valid selected game and otherwise chooses the next relevant game',
   assert.equal(getActiveSupporterGame(games, 'future', now)?.id, 'future');
   assert.equal(getActiveSupporterGame(games, 'missing', now)?.id, 'today');
   assert.equal(getActiveSupporterGame([games[0]], null, now)?.id, 'past');
+  assert.equal(getActiveSupporterGame([
+    games[0],
+    { id: 'next', date: '2026-09-21', time: '18:00' },
+  ], null, now)?.id, 'next');
+  assert.equal(getActiveSupporterGame([
+    games[0],
+    { id: 'next', date: '2026-09-21', time: '18:00' },
+  ], 'past', now)?.id, 'past');
 });
 
 test('routes fan and coach accounts to their correct /studio experiences', () => {
