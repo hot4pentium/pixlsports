@@ -157,6 +157,73 @@ test('back-to-back scoreboard taps preserve both team scores from one render', (
   assert.equal(changedGame.opponentScore, 2);
 });
 
+test('score taps preserve live totals across pause and resume while ignoring paused taps', () => {
+  const rule = getSportRule('basketball');
+  let changedGame = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = () => createElement(LiveTrackerGame, {
+    currentGame: changedGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof changedGame) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame());
+  });
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-opponent-increase' }).props.onClick();
+  });
+  assert.equal(changedGame.score, 2);
+  assert.equal(changedGame.opponentScore, 1);
+
+  act(() => {
+    renderer.update(renderGame());
+  });
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-live-game-pause' }).props.onClick();
+  });
+  assert.equal(changedGame.status, 'paused');
+
+  act(() => {
+    renderer.update(renderGame());
+  });
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-opponent-increase' }).props.onClick();
+  });
+  assert.equal(changedGame.score, 2);
+  assert.equal(changedGame.opponentScore, 1);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-toggle-live-game-pause' }).props.onClick();
+  });
+  assert.equal(changedGame.status, 'live');
+
+  act(() => {
+    renderer.update(renderGame());
+  });
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'score-adjust-opponent-increase' }).props.onClick();
+  });
+  assert.equal(changedGame.score, 4);
+  assert.equal(changedGame.opponentScore, 2);
+});
+
 test('back-to-back live stat taps preserve both events from one render', () => {
   const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('football');

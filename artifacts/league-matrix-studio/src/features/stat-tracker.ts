@@ -409,7 +409,7 @@ export function adjustScore(
   side: 'athlete' | 'opponent',
   delta: number,
 ): GameSession {
-  if (game.status === 'final' || !Number.isFinite(delta) || delta === 0) return game;
+  if (game.status !== 'live' || !Number.isFinite(delta) || delta === 0) return game;
   const nextScore = Math.max(0, (side === 'athlete' ? game.score : game.opponentScore) + delta);
   return side === 'athlete'
     ? { ...game, score: nextScore }
