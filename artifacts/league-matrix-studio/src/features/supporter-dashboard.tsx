@@ -506,7 +506,7 @@ export function SupporterDashboardView({
   return (
     <>
       {/* MOBILE VIEW */}
-      <div className="supporter-dashboard-mobile-shell fixed inset-0 z-0 pixl-dashboard-mobile overflow-y-auto overflow-x-hidden pb-28 flex-col">
+      <div className="supporter-dashboard-mobile-shell fixed inset-0 z-0 pixl-dashboard-mobile overflow-y-auto overflow-x-hidden pb-[calc(7rem+env(safe-area-inset-bottom))] flex-col">
         {/* Mobile Header */}
         <header className="bg-white flex items-center justify-between px-5 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
           <div className="flex items-center gap-2">
@@ -670,7 +670,10 @@ export function SupporterDashboardView({
         </div>
 
         {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 h-[88px] bg-white border-t border-black/5 flex items-start justify-around px-2 pt-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.04)] z-50">
+        <nav
+          className="fixed inset-x-0 bottom-0 z-[60] box-border flex h-[calc(88px+env(safe-area-inset-bottom))] items-start justify-around border-t border-black/5 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]"
+          data-testid="mobile-bottom-nav"
+        >
            <button type="button" onClick={() => setLocation('/studio')} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-[#2474F5]" aria-label="Home" data-testid="btn-mobile-nav-home">
              <div className="w-8 h-8 rounded-full bg-[#2474F5]/10 flex items-center justify-center">
                <Home className="w-[20px] h-[20px] fill-current" />

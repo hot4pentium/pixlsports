@@ -630,12 +630,16 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         stepCount: number;
         recommendationVisible: boolean;
         bottomNavVisible: boolean;
+         bottomNavZIndex: string;
+         bottomNavBottom: number;
+         bottomNavHeight: number;
+         mobileContentPaddingBottom: string;
         diagnostics: string[];
       }>(`(() => {
         const mobileRoot = document.querySelector('.pixl-dashboard-mobile');
         const desktopRoot = document.querySelector('.pixl-dashboard');
         const recommendation = document.querySelector('[data-testid="btn-mobile-recommendation-action"]');
-        const bottomNav = document.querySelector('[data-testid="btn-mobile-nav-home"]')?.parentElement;
+         const bottomNav = document.querySelector('[data-testid="mobile-bottom-nav"]');
         const isVisible = (element) => {
           if (!(element instanceof HTMLElement)) return false;
           const rect = element.getBoundingClientRect();
@@ -649,6 +653,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
           stepCount: document.querySelectorAll('[data-testid="section-mobile-weekly-path"] li').length,
           recommendationVisible: isVisible(recommendation),
           bottomNavVisible: isVisible(bottomNav),
+           bottomNavZIndex: bottomNav instanceof HTMLElement ? getComputedStyle(bottomNav).zIndex : '',
+           bottomNavBottom: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().bottom) : -1,
+           bottomNavHeight: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().height) : -1,
+           mobileContentPaddingBottom: mobileRoot instanceof HTMLElement ? getComputedStyle(mobileRoot).paddingBottom : '',
           diagnostics: Array.from(document.querySelectorAll('.pixl-dashboard-mobile *'))
             .filter((element) => element instanceof HTMLElement
               && element.clientWidth > 1
@@ -668,6 +676,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         stepCount: 4,
         recommendationVisible: true,
         bottomNavVisible: true,
+         bottomNavZIndex: '60',
+         bottomNavBottom: width === 768 ? 1024 : 844,
+         bottomNavHeight: 88,
+         mobileContentPaddingBottom: '112px',
         diagnostics: [],
       }, `mobile dashboard layout at ${width}px`);
     }
