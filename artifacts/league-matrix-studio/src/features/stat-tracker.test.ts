@@ -120,6 +120,43 @@ test('mobile live game keeps scoreboard and stat controls ahead of recent activi
   assert.equal(changedGame.stats['three-point'], 1);
 });
 
+test('back-to-back scoreboard taps preserve both team scores from one render', () => {
+  const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('basketball');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const athleteIncrease = renderer.root.findByProps({ 'data-testid': 'score-adjust-athlete-increase' });
+  const opponentIncrease = renderer.root.findByProps({ 'data-testid': 'score-adjust-opponent-increase' });
+  act(() => {
+    athleteIncrease.props.onClick();
+    athleteIncrease.props.onClick();
+    opponentIncrease.props.onClick();
+    opponentIncrease.props.onClick();
+  });
+
+  assert.equal(changedGame.score, 2);
+  assert.equal(changedGame.opponentScore, 2);
+});
+
 test('back-to-back live stat taps preserve both events from one render', () => {
   const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const rule = getSportRule('football');
