@@ -55,7 +55,7 @@ export function RecipientView() {
           <div className="absolute bottom-0 left-0 h-1 w-full bg-[#d6f23b]" />
           <div className="relative flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d6f23b]">Pixl Sports / live view</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#d6f23b]">Pixl Sports / fan live view</p>
               <h1 className="mt-2 font-['Arial_Black'] text-[28px] uppercase leading-none tracking-[-0.04em]">Game day</h1>
             </div>
             <div className="flex items-center gap-1.5 border border-[#d6f23b]/40 bg-[#d6f23b]/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#d6f23b]">
@@ -135,13 +135,13 @@ export function RecipientView() {
           <div className="mt-4 flex items-start gap-3 border-l-2 border-[#d6f23b] bg-[#eef0e8] px-3 py-3">
             <Radio className="mt-0.5 h-4 w-4 shrink-0 text-[#5f7114]" />
             <p className="text-[10px] font-semibold leading-relaxed text-[#4d554c]">
-              This page refreshes in small batches so the scoreboard stays fast and reliable. Important game-state changes appear immediately.
+              This fan-shared page refreshes in small batches so the scoreboard stays fast and reliable. Important game-state changes appear immediately.
             </p>
           </div>
         </section>
 
         <footer className="flex items-center justify-between border-t border-[#d6d8cf] bg-[#eef0e8] px-5 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#777d74]"><ShieldCheck className="h-3.5 w-3.5 text-[#5f7114]" /> Shared by coach</span>
+          <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#777d74]"><ShieldCheck className="h-3.5 w-3.5 text-[#5f7114]" /> Shared by fan</span>
           <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#777d74]">No sign-in needed</span>
         </footer>
       </div>
