@@ -2694,7 +2694,7 @@ function RosterEditor() {
   }
 
   return (
-    <StudioLayout landingBackground>
+    <StudioLayout>
       <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-8 lg:py-10">
         <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -3383,7 +3383,7 @@ function ScheduleEditor() {
   };
 
   return (
-    <StudioLayout>
+    <StudioLayout landingBackground>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
