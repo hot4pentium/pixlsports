@@ -16,23 +16,17 @@ const schedulePreview = appSource.slice(
   appSource.indexOf('function PublicSchedulePage'),
 );
 
-test('calendar controls stay pinned to their current phone and desktop edges', () => {
-  assert.match(
-    schedulePreview,
-    /data-testid="schedule-bottom-actions"/,
-  );
-  assert.match(
-    schedulePreview,
-    /w-\[calc\(100%-2rem\)\].*max-w-\[960px\].*items-end.*justify-end.*sm:w-\[calc\(100%-4rem\)\]/,
-  );
+test('calendar preview uses the landing-page card and keeps creation controls inside it', () => {
+  assert.match(schedulePreview, /bg-\[#12213A\]/);
+  assert.match(schedulePreview, /bg-\[#FF6B35\]/);
   assert.match(
     schedulePreview,
     /data-testid="button-add-event"/,
   );
-  assert.match(
-    scheduleEditor,
-    /<FanCalendarConnectionPanel compact/,
-  );
+  assert.doesNotMatch(schedulePreview, /schedule-bottom-actions/);
+  assert.doesNotMatch(appSource, /schedule-template-picker/);
+  assert.doesNotMatch(scheduleEditor, /FanCalendarConnectionPanel compact/);
+  assert.match(appSource, /await persistSchedule\(/);
 });
 
 test('compact connection controls can shrink without overlapping', () => {

@@ -3003,7 +3003,6 @@ function ScheduleEditor() {
   const isFan = getUserRole(user) === 'fan';
   const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [storedDraft] = useState(() => readScheduleDraft());
-  const [selectedTemplate, setSelectedTemplate] = useState(storedDraft?.template ?? 0);
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [notice, setNotice] = useState('');
   const [teamName, setTeamName] = useState(storedDraft?.teamName ?? '');
@@ -3104,7 +3103,6 @@ function ScheduleEditor() {
     setTeamName(loadedDraft.teamName);
     setSeason(loadedDraft.season);
     setEvents(loadedDraft.events);
-    setSelectedTemplate(loadedDraft.template);
     setShareToken(loadedDraft.shareToken ?? '');
     setShareUrl(loadedDraft.shareToken ? `${appOrigin}${basePath}/schedule/${loadedDraft.shareToken}` : '');
     setSelectedEventId(loadedDraft.events[0]?.id ?? '');
@@ -3180,12 +3178,13 @@ function ScheduleEditor() {
     setSelectedEventId(eventForm.id);
     setSelectedWeekKey(getScheduleWeekKey(eventForm.date));
     setEventForm(null);
-    setSaved(false);
-    setNoticeFor(isNewEvent ? 'EVENT ADDED TO SCHEDULE' : 'EVENT CHANGES SAVED');
+    await persistSchedule(
+      nextEvents,
+      isNewEvent ? 'EVENT ADDED — SCHEDULE SAVED' : 'EVENT CHANGES SAVED',
+    );
   };
 
   const removeEvent = (id: string) => {
-    setSaved(false);
     const removedIndex = events.findIndex((event) => event.id === id);
     const nextEvents = removeScheduleEvent(events, id);
     setEvents(nextEvents);
@@ -3193,42 +3192,46 @@ function ScheduleEditor() {
     if (id === selectedEventId) {
       setSelectedEventId(nextEvents[Math.min(removedIndex, nextEvents.length - 1)]?.id ?? '');
     }
+    void persistSchedule(nextEvents, 'EVENT REMOVED — SCHEDULE SAVED');
   };
 
   const moveEvent = (id: string, direction: -1 | 1) => {
-    setSaved(false);
-    setEvents((current) => moveScheduleEvent(current, id, direction));
+    const nextEvents = moveScheduleEvent(events, id, direction);
+    setEvents(nextEvents);
+    void persistSchedule(nextEvents, 'SCHEDULE ORDER SAVED');
   };
 
-  const saveCurrentDraft = (nextShareToken = shareToken) => {
+  const saveCurrentDraft = (
+    nextEvents = events,
+    nextShareToken = shareToken,
+  ) => {
     window.localStorage.setItem('leaguematrix-project', 'true');
     saveScheduleDraft(window.localStorage, {
       teamName,
       season,
-      events,
-      template: selectedTemplate,
+      events: nextEvents,
+      template: 0,
       ...(nextShareToken ? { shareToken: nextShareToken } : {}),
     });
   };
 
-  const cloudSchedule = (): CloudProjectPayload => ({
+  const cloudSchedule = (nextEvents = events): CloudProjectPayload => ({
     tool: 'schedule',
     version: 1,
     teamName,
     season,
-    events,
-    template: selectedTemplate,
+    events: nextEvents,
+    template: 0,
     ...(shareToken ? { shareToken } : {}),
   });
 
-  const saveToCloud = async () => {
+  const saveToCloud = async (nextEvents = events) => {
     if (!isSignedIn) {
-      setLocation('/sign-in');
-      return;
+      return false;
     }
     try {
       const data = {
-        project: cloudSchedule(),
+        project: cloudSchedule(nextEvents),
         expectedRevision: cloudRevision.current,
       };
       if (activeCloudProjectId) {
@@ -3239,27 +3242,24 @@ function ScheduleEditor() {
         cloudRevision.current = updated.revision;
       } else {
         const created = await createCloudProject.mutateAsync({
-          data: { name: `${teamName.trim()} - Schedule`, project: cloudSchedule() },
+          data: { name: `${teamName.trim() || 'Team'} - Schedule`, project: cloudSchedule(nextEvents) },
         });
         cloudRevision.current = created.revision;
         setLocation(`/studio/schedule/${created.id}`);
       }
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      setSaved(true);
-      setNoticeFor('SCHEDULE SAVED');
+      return true;
     } catch (error: any) {
-       setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT' : 'CLOUD SAVE FAILED — TRY AGAIN');
+      setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — SAVED ON THIS DEVICE' : 'CLOUD SAVE FAILED — SAVED ON THIS DEVICE');
+      return false;
     }
   };
 
-  const saveSchedule = async () => {
-    saveCurrentDraft();
-    if (!isSignedIn) {
-      setSaved(true);
-      setNoticeFor('SCHEDULE SAVED ON THIS DEVICE');
-      return;
-    }
-    await saveToCloud();
+  const persistSchedule = async (nextEvents: ScheduleEvent[], successNotice: string) => {
+    saveCurrentDraft(nextEvents);
+    const cloudSaved = isSignedIn ? await saveToCloud(nextEvents) : false;
+    setSaved(true);
+    setNoticeFor(isSignedIn && cloudSaved ? `${successNotice} TO CLOUD` : `${successNotice} ON THIS DEVICE`);
   };
 
   const publishSchedule = async () => {
@@ -3308,7 +3308,7 @@ function ScheduleEditor() {
         cloudRevision.current = created.revision;
       }
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      saveCurrentDraft(nextShareToken);
+      saveCurrentDraft(events, nextShareToken);
       setSaved(true);
       setNoticeFor('CALENDAR PUBLISHED TO ALL');
       if (createdProjectId) {
@@ -3337,7 +3337,7 @@ function ScheduleEditor() {
       const url = `${appOrigin}${basePath}/schedule/${share.shareToken}`;
       setShareToken(share.shareToken);
       setShareUrl(url);
-      saveCurrentDraft(share.shareToken);
+      saveCurrentDraft(events, share.shareToken);
       setSaved(true);
 
       if (!hasExistingShare && typeof navigator.share === 'function') {
@@ -3374,41 +3374,13 @@ function ScheduleEditor() {
       await deleteShare.mutateAsync({ shareToken });
       setShareToken('');
       setShareUrl('');
-      saveCurrentDraft('');
+      saveCurrentDraft(events, '');
       setSaved(true);
       setNoticeFor('PARENT LINK REVOKED');
     } catch {
       setNoticeFor('LINK REVOKE FAILED — TRY AGAIN');
     }
   };
-
-  if (isFan && calendarConnection && !cloudProjectId) {
-    return (
-      <StudioLayout>
-        <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
-          <div className="mb-6 flex items-center gap-4">
-            <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
-                <CalendarDays className="h-4 w-4" /> Team Calendar
-              </div>
-              <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Your coach’s latest schedule.</p>
-            </div>
-          </div>
-           <SupporterScheduleSelector
-             schedules={savedCustomSchedules}
-             selectedScheduleId={selectedSavedScheduleId}
-             connected
-             onSelect={openSavedSchedule}
-             compact
-           />
-           <FanCalendarConnectionPanel onConnectionChange={setCalendarConnection} />
-        </main>
-      </StudioLayout>
-    );
-  }
 
   return (
     <StudioLayout>
@@ -3427,11 +3399,8 @@ function ScheduleEditor() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 self-end sm:gap-4 sm:self-auto">
             <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
-              <Check className="h-4 w-4" /> Saved
+              <Check className="h-4 w-4" /> Auto-saved
             </span>
-            <button type="button" onClick={() => { void saveSchedule(); }} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background transition-transform hover:scale-105 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-project">
-              <Save className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending ? 'Saving…' : 'Save'}
-            </button>
             <button type="button" onClick={publishSchedule} disabled={createCloudProject.isPending || updateCloudProject.isPending || sharePending} className="inline-flex items-center gap-2 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-publish-schedule">
               <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish to All'}
             </button>
@@ -3450,40 +3419,11 @@ function ScheduleEditor() {
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <section className="min-w-0 lg:sticky lg:top-6">
-            <div className="mb-2 flex flex-wrap items-center justify-end gap-1.5" data-testid="schedule-template-picker">
-              <span className="mr-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Template</span>
-              {toolData.schedule.templateNames.map((name, index) => (
-                <button
-                  type="button"
-                  key={name}
-                  onClick={() => { setSaved(false); setSelectedTemplate(index); }}
-                  className={`h-8 min-w-[76px] border px-2 text-center font-display text-[11px] uppercase leading-none tracking-wide transition-all clip-angled-sm ${selectedTemplate === index ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground'}`}
-                  data-testid={`button-template-${index}`}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
             <SchedulePreview
               teamName={teamName}
               season={season}
               events={events}
-              selectedTemplate={selectedTemplate}
               onAddEvent={openNewEventForm}
-              bottomActions={(
-                <>
-                  {!isFan && accountAccess?.accessMode !== 'guest' && (
-                    <div className="min-w-0 max-w-[420px]">
-                      <CoachCalendarCodePanel />
-                    </div>
-                  )}
-                  {isFan && (
-                    <div className="min-w-0 w-full max-w-[380px] flex-1">
-                      <FanCalendarConnectionPanel compact onConnectionChange={setCalendarConnection} />
-                    </div>
-                  )}
-                </>
-              )}
             />
           </section>
 
@@ -3848,54 +3788,46 @@ function SchedulePreview({
   teamName,
   season,
   events,
-  selectedTemplate,
   onAddEvent,
-  bottomActions,
 }: {
   teamName: string;
   season: string;
   events: ScheduleEvent[];
-  selectedTemplate: number;
   onAddEvent: () => void;
-  bottomActions: ReactNode;
 }) {
-  const templateClass = selectedTemplate === 1
-    ? 'bg-[#177d76] text-[#f9f3e8]'
-    : selectedTemplate === 2
-      ? 'bg-[#f5c94d] text-[#243248]'
-      : 'bg-[#f36f4c] text-[#f9f3e8]';
-  const eventClass = selectedTemplate === 1
-    ? 'border-white/25 bg-black/10'
-    : selectedTemplate === 2
-      ? 'border-[#243248]/20 bg-white/20'
-      : 'border-white/25 bg-black/10';
-
   return (
-    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-border bg-muted px-4 pb-24 pt-4 sm:min-h-[760px] sm:px-8 sm:pb-28 sm:pt-8 clip-angled-sm">
-      <div className="absolute inset-0 bg-tech-grid opacity-50" />
-      <div className={`relative w-full max-w-[960px] overflow-hidden rounded-[22px] ${templateClass} p-5 shadow-2xl sm:p-8`} data-testid="preview-canvas">
-        <div className={`absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] ${selectedTemplate === 2 ? 'border-[#f36f4c]/45' : 'border-[#f5c94d]/35'}`} />
-        <div className={`absolute -bottom-28 -left-20 h-72 w-72 rounded-full ${selectedTemplate === 1 ? 'bg-[#f5c94d]' : 'bg-[#177d76]'}`} />
+    <div className="relative flex min-h-[600px] items-center justify-center overflow-hidden border border-[#DCE3EC] bg-[#E8F1FF] px-3 py-4 sm:min-h-[760px] sm:px-8 sm:py-8 clip-angled-sm">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,107,53,.16),transparent_26%),radial-gradient(circle_at_85%_85%,rgba(36,116,245,.16),transparent_30%)]" />
+      <div className="relative w-full max-w-[960px] overflow-hidden rounded-[28px] bg-[#12213A] p-5 text-[#F7F5EF] shadow-[0_25px_70px_-24px_rgba(18,33,58,.65)] sm:p-8" data-testid="preview-canvas">
+        <div className="pointer-events-none absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] border-[#FF6B35]/80" />
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[#2474F5]/80" />
+        <div className="pointer-events-none absolute right-1/4 top-1/3 h-24 w-24 rotate-12 border-[10px] border-[#F7F5EF]/10" />
         <div className="relative">
-          <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.16em]">
+          <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.18em] text-[#F7F5EF]/70">
             <div className="min-w-0">
-               <p className="truncate opacity-80">Pixl Sports · Team schedule</p>
-              <p className="mt-2 max-w-[90%] font-display text-4xl leading-[.88] tracking-[-.04em] sm:text-6xl">{teamName || 'TEAM NAME'}</p>
+              <p className="truncate">PIXL SPORTS / YOUR WEEK</p>
+              <p className="mt-3 max-w-[90%] font-display text-5xl font-extrabold leading-[.82] tracking-[-.04em] text-[#F7F5EF] sm:text-7xl">
+                {teamName || 'TEAM NAME'}
+              </p>
             </div>
-            <span className="shrink-0 rounded-full border border-current px-2.5 py-1">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+            <span className="shrink-0 rounded-full bg-[#2474F5] px-3 py-1.5 text-[#FFFFFF]">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
           </div>
-          <p className="mt-5 text-sm font-bold uppercase tracking-[.12em] opacity-85 sm:text-base">{season || 'SEASON'}</p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <span className="h-1.5 w-16 bg-[#FF6B35]" />
+            <p className="text-sm font-bold uppercase tracking-[.16em] text-[#F7F5EF]/75 sm:text-base">{season || 'SEASON'}</p>
+          </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-7 flex items-center justify-between gap-3">
+            <p className="font-display text-2xl font-bold uppercase tracking-wide text-[#F7F5EF] sm:text-3xl">Next up</p>
             <button
               type="button"
               onClick={onAddEvent}
-              className="grid h-11 w-11 place-items-center rounded-full border-2 border-current bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-2 rounded-md bg-[#FF6B35] px-4 py-2.5 text-xs font-extrabold uppercase tracking-[.14em] text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7F5EF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#12213A]"
               aria-label="Add event"
               data-testid="button-add-event"
             >
-              <Plus className="h-6 w-6" strokeWidth={3} />
-              <span className="sr-only">Add event</span>
+              <Plus className="h-4 w-4" strokeWidth={3} />
+              Add event
             </button>
           </div>
 
@@ -3906,47 +3838,44 @@ function SchedulePreview({
             data-testid="preview-schedule-event-list"
           >
             {events.length === 0 ? (
-              <div className={`border border-dashed p-6 text-center text-sm font-bold uppercase tracking-widest opacity-75 ${eventClass}`}>
+              <div className="border border-dashed border-[#F7F5EF]/35 bg-[#F7F5EF]/[.06] p-8 text-center text-sm font-bold uppercase tracking-widest text-[#F7F5EF]/75">
                 Add an event to fill the schedule
               </div>
             ) : events.map((event, index) => (
-              <div key={event.id} className={`relative border p-3.5 ${eventClass} ${selectedTemplate === 2 ? 'rounded-2xl' : 'clip-angled-sm'} ${index === 0 && selectedTemplate === 1 ? 'border-primary/70' : ''}`}>
+              <div key={event.id} className="relative border border-[#F7F5EF]/20 bg-[#F7F5EF]/[.08] p-3.5 transition-colors hover:border-[#FF6B35]/70 hover:bg-[#F7F5EF]/[.12] clip-angled-sm">
                 <div className="flex gap-3 sm:gap-5">
-                  <div className="w-[86px] shrink-0 border-r border-current/20 pr-3 sm:w-[110px]">
-                    <p className="font-display text-lg leading-none sm:text-2xl">{formatScheduleDate(event.date)}</p>
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest opacity-75">{formatScheduleTime(event.time)}</p>
+                  <div className="w-[86px] shrink-0 border-r border-[#F7F5EF]/20 pr-3 sm:w-[110px]">
+                    <p className="font-display text-lg leading-none text-[#F7F5EF] sm:text-2xl">{formatScheduleDate(event.date)}</p>
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#FF6B35]">{formatScheduleTime(event.time)}</p>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-[.16em] opacity-75">{event.type}</span>
-                      {event.type === 'game' && <span className="font-display text-xl leading-none sm:text-2xl">VS {event.opponent || 'OPPONENT TBD'}</span>}
-                      {event.type === 'practice' && <span className="font-display text-xl leading-none sm:text-2xl">TEAM PRACTICE</span>}
-                      {event.type === 'meeting' && <span className="font-display text-xl leading-none sm:text-2xl">TEAM MEETING</span>}
+                      <span className="rounded-sm bg-[#2474F5] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[.16em] text-white">{event.type}</span>
+                      {event.type === 'game' && <span className="font-display text-xl font-bold leading-none text-[#F7F5EF] sm:text-2xl">VS {event.opponent || 'OPPONENT TBD'}</span>}
+                      {event.type === 'practice' && <span className="font-display text-xl font-bold leading-none text-[#F7F5EF] sm:text-2xl">TEAM PRACTICE</span>}
+                      {event.type === 'meeting' && <span className="font-display text-xl font-bold leading-none text-[#F7F5EF] sm:text-2xl">TEAM MEETING</span>}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold uppercase tracking-wider opacity-85">
-                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{event.location}</span>}
-                      {!event.location && <span className="opacity-60">Location TBD</span>}
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold uppercase tracking-wider text-[#F7F5EF]/75">
+                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-[#FF6B35]" />{event.location}</span>}
+                      {!event.location && <span className="text-[#F7F5EF]/50">Location TBD</span>}
                     </div>
                     {(event.snacks || event.drinks) && (
-                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider opacity-80">
-                        {event.snacks && <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3" /> Snacks: {event.snacks}</span>}
-                        {event.drinks && <span className="inline-flex items-center gap-1"><CupSoda className="h-3 w-3" /> Drinks: {event.drinks}</span>}
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-[#F7F5EF]/70">
+                        {event.snacks && <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3 text-[#FF6B35]" /> Snacks: {event.snacks}</span>}
+                        {event.drinks && <span className="inline-flex items-center gap-1"><CupSoda className="h-3 w-3 text-[#FF6B35]" /> Drinks: {event.drinks}</span>}
                       </div>
                     )}
-                    {event.notes && <p className="mt-2 text-xs font-medium leading-relaxed opacity-80">{event.notes}</p>}
+                    {event.notes && <p className="mt-2 text-xs font-medium leading-relaxed text-[#F7F5EF]/70">{event.notes}</p>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-8 flex items-center justify-between border-t border-current/25 pt-4 text-[10px] font-bold uppercase tracking-[.16em] opacity-75">
-            <span>Bring the energy</span>
-            <CalendarDays className="h-5 w-5" />
+          <div className="mt-8 flex items-center justify-between border-t border-[#F7F5EF]/20 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-[#F7F5EF]/60">
+            <span>Bring the energy / stay in the moment</span>
+            <CalendarDays className="h-5 w-5 text-[#FF6B35]" />
           </div>
         </div>
-      </div>
-      <div className="absolute bottom-4 left-1/2 z-20 flex w-[calc(100%-2rem)] max-w-[960px] -translate-x-1/2 items-end justify-end gap-3 sm:bottom-6 sm:w-[calc(100%-4rem)]" data-testid="schedule-bottom-actions">
-        {bottomActions}
       </div>
     </div>
   );
