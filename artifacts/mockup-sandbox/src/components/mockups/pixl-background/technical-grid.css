@@ -2,10 +2,11 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background-color: hsl(48 43% 96%);
+  background-color: hsl(163 28% 91%);
   background-image:
-    radial-gradient(circle at 8% 10%, hsl(148 100% 48% / .055), transparent 19rem),
-    radial-gradient(circle at 94% 83%, hsl(210 45% 56% / .045), transparent 24rem);
+    radial-gradient(circle at 8% 10%, hsl(148 100% 48% / .16), transparent 19rem),
+    radial-gradient(circle at 94% 83%, hsl(210 45% 56% / .14), transparent 24rem),
+    linear-gradient(115deg, hsl(163 32% 95% / .85), hsl(158 24% 86% / .7));
 }
 
 .technical-grid-surface::before,
@@ -19,11 +20,13 @@
 /* A drafting grid that fades before it reaches the content column. */
 .technical-grid-surface::before {
   inset: 0;
-  opacity: .42;
+  opacity: .82;
   background-image:
-    linear-gradient(to right, hsl(221 21% 12% / .055) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(221 21% 12% / .055) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(to right, hsl(176 35% 22% / .14) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(176 35% 22% / .14) 1px, transparent 1px),
+    linear-gradient(90deg, transparent 49.8%, hsl(176 35% 22% / .16) 50%, transparent 50.2%),
+    linear-gradient(0deg, transparent 49.8%, hsl(176 35% 22% / .16) 50%, transparent 50.2%);
+  background-size: 48px 48px, 48px 48px, 192px 192px, 192px 192px;
   -webkit-mask-image:
     radial-gradient(ellipse 64% 74% at 0% 50%, #000 0%, transparent 74%),
     radial-gradient(ellipse 38% 45% at 100% 100%, #000 0%, transparent 76%);
@@ -38,11 +41,12 @@
   right: -7rem;
   width: min(47vw, 39rem);
   height: min(47vw, 39rem);
-  border: 1px solid hsl(221 21% 12% / .06);
+  border: 2px solid hsl(176 35% 22% / .18);
   border-radius: 50%;
   box-shadow:
-    0 0 0 3rem hsl(221 21% 12% / .018),
-    0 0 0 6rem hsl(221 21% 12% / .014);
+    0 0 0 3rem hsl(176 35% 22% / .06),
+    0 0 0 6rem hsl(176 35% 22% / .045),
+    0 0 0 9rem hsl(176 35% 22% / .03);
 }
 
 .technical-grid-surface > div {
@@ -53,7 +57,7 @@
 @media (max-width: 640px) {
   .technical-grid-surface::before {
     background-size: 36px 36px;
-    opacity: .28;
+    opacity: .58;
   }
 
   .technical-grid-surface::after {

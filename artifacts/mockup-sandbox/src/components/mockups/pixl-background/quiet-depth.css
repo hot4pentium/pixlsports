@@ -4,10 +4,11 @@
    * Unlike the baseline, there is no repeat pattern competing with the game
    * context; the depth comes from broad, low-contrast light and edge shade.
    */
-  background-color: hsl(210 24% 95%);
+  background-color: hsl(215 34% 88%);
   background-image:
-    radial-gradient(ellipse 92% 68% at 50% 2%, hsl(0 0% 100% / .72), transparent 70%),
-    radial-gradient(ellipse 74% 52% at 50% 46%, hsl(210 30% 98% / .34), transparent 76%),
-    linear-gradient(90deg, hsl(216 24% 83% / .22), transparent 17%, transparent 83%, hsl(216 24% 83% / .22));
+    radial-gradient(ellipse 92% 68% at 50% 2%, hsl(210 60% 99% / .9), transparent 70%),
+    radial-gradient(ellipse 74% 52% at 50% 46%, hsl(210 58% 96% / .5), transparent 76%),
+    linear-gradient(90deg, hsl(220 38% 72% / .28), transparent 17%, transparent 83%, hsl(220 38% 72% / .28)),
+    linear-gradient(180deg, hsl(215 34% 92%), hsl(215 30% 84%));
   background-attachment: fixed;
 }
