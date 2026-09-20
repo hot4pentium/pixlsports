@@ -215,6 +215,12 @@ export const baseballHitChoices = [
   { id: 'triple', label: 'Triple', shortLabel: '3B' },
 ] as const;
 
+export const baseballPitchChoices = [
+  { id: 'four-seam-fastball', label: 'Four-seam fastball', shortLabel: '4SFB' },
+  { id: 'two-seam-fastball', label: 'Two-seam fastball', shortLabel: '2SFB' },
+  { id: 'changeup', label: 'Changeup', shortLabel: 'CHG' },
+] as const;
+
 export const footballYardMetricDefinitions = [
   { id: 'pass-yard', label: 'Passing yards', shortLabel: 'PASS YDS' },
   { id: 'rush-yard', label: 'Rushing yards', shortLabel: 'RUSH YDS' },
@@ -319,10 +325,13 @@ export const sportRules: Record<Sport, SportRule> = {
       stat('triple', 'Triple', '3B', 0, false, true),
       stat('rbi', 'Run batted in', 'RBI', 1),
       stat('home-run', 'Home run', 'HR', 4),
-      stat('strikeout', 'Strikeout', 'K', 0),
+      stat('strikeout', 'Strikeout', 'K', 0, false, true),
       stat('walk', 'Walk', 'BB', 0),
       stat('stolen-base', 'Stolen base', 'SB', 0, false),
-      stat('pitch', 'Pitch thrown', 'PITCH', 0, false),
+      stat('pitch', 'Pitch', 'PITCH', 0),
+      stat('four-seam-fastball', 'Four-seam fastball', '4SFB', 0, false, true),
+      stat('two-seam-fastball', 'Two-seam fastball', '2SFB', 0, false, true),
+      stat('changeup', 'Changeup', 'CHG', 0, false, true),
     ],
   },
   softball: {

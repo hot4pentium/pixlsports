@@ -279,6 +279,47 @@ test('baseball hit waits for a single, double, or triple choice before recording
   assert.match(renderedText(renderer), /HIT1 · tracked/);
 });
 
+test('baseball pitch waits for a fastball or changeup choice before recording', () => {
+  const game = createGameSession('baseball', { opponent: 'Northside' }, new Date('2026-09-20T12:00:00Z'));
+  const rule = getSportRule('baseball');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = (currentGame: typeof game) => createElement(LiveTrackerGame, {
+    currentGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => !item.liveHidden && item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame(game));
+  });
+
+  assert.equal(rule.stats.find((item) => item.id === 'strikeout')?.liveHidden, true);
+  assert.deepEqual(
+    rule.stats.filter((item) => item.liveHidden).map((item) => item.id),
+    ['single', 'double', 'triple', 'strikeout', 'four-seam-fastball', 'two-seam-fastball', 'changeup'],
+  );
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-pitch' }).props.onClick());
+  assert.equal(changedGame.events.length, 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'baseball-pitch-choices' }).children.length, 3);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'baseball-pitch-four-seam-fastball' }).props.onClick());
+  assert.equal(changedGame.events.length, 1);
+  assert.equal(changedGame.events[0]?.statId, 'four-seam-fastball');
+  assert.equal(changedGame.stats['four-seam-fastball'], 1);
+  assert.equal(changedGame.stats.strikeout, undefined);
+});
+
 test('softball is available with inning-based game tracking', () => {
   const rule = getSportRule('softball');
   const game = createGameSession('softball', { opponent: 'Westview' }, new Date('2026-09-20T12:00:00Z'));
