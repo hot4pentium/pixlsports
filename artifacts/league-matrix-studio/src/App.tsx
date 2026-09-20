@@ -853,7 +853,9 @@ function HomePage() {
             </div>
             <div className="pixl-landing-hero-copy">
               <small>PIXL SPORTS / HOME BASE</small>
-               <h1 id="landing-overview-heading" data-testid="text-landing-headline">We guide the week.<br /><em>You capture the moments.</em></h1>
+               <h1 id="landing-overview-heading" data-testid="text-landing-headline">
+                 We guide<br />the week.<br /><em><span className="pixl-landing-hero-line">You capture</span><br /><span className="pixl-landing-hero-line">the moments.</span></em>
+               </h1>
               <p>Choose how you show up for the season. Pixl gives fans and coaches a clear place to start, then puts the right tool in front of you.</p>
             </div>
             <div className="pixl-landing-role-row" data-testid="landing-role-selector">

@@ -150,12 +150,16 @@
 
 .pixl-landing-hero-copy h1,
 .pixl-landing-tools h2 {
-  max-width: 9ch;
+  max-width: none;
   margin: 16px 0 0;
   font: 800 clamp(68px, 8vw, 130px) / .77 "Barlow Condensed", sans-serif;
   letter-spacing: -.035em;
   text-transform: uppercase;
   overflow-wrap: anywhere;
+}
+
+.pixl-landing-hero-line {
+  white-space: nowrap;
 }
 
 .pixl-landing-hero-copy h1 em,
@@ -509,7 +513,6 @@
   }
 
   .pixl-landing-hero-copy h1 {
-    max-width: 8ch;
     font-size: clamp(68px, 18vw, 94px);
   }
 
@@ -614,7 +617,7 @@
   }
 
   .pixl-landing-hero-copy h1 {
-    font-size: clamp(64px, 19vw, 88px);
+    font-size: clamp(58px, 16vw, 88px);
   }
 
   .pixl-landing-pill {
