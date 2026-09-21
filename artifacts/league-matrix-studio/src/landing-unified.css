@@ -56,6 +56,8 @@
 .border-landing-pale-blue { border-color: var(--landing-pale-blue); }
 .border-landing-white { border-color: var(--landing-white); }
 .border-landing-gray { border-color: var(--landing-gray); }
+.border-landing-primary\/10 { border-color: color-mix(in srgb, var(--landing-primary) 10%, transparent); }
+.border-landing-orange\/15 { border-color: color-mix(in srgb, var(--landing-orange) 15%, transparent); }
 
 .hover\:text-landing-primary:hover { color: var(--landing-primary); }
 .hover\:text-landing-text:hover { color: var(--landing-text); }

@@ -299,96 +299,107 @@ export function PublicLandingPage() {
             </div>
 
             <div className="relative">
-              {/* Connecting line for desktop */}
-              <div className="hidden md:block absolute top-[68px] left-[10%] right-[10%] h-0.5 bg-landing-text/10" />
-              
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-16 lg:gap-12 relative z-10">
+              <div className="absolute bottom-24 left-[84px] top-24 hidden w-0.5 bg-landing-text/10 lg:block" aria-hidden="true" />
+
+              <div className="relative z-10 flex flex-col gap-8 sm:gap-10">
                 {/* Step 1 */}
-                <div className="flex flex-col gap-10 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
-                  <div className="flex flex-col">
-                    <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
-                      <div className="w-[116px] h-[116px] rounded-full bg-landing-white flex items-center justify-center">
+                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-gray/15 bg-landing-white p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10">
+                  <div className="relative flex justify-center lg:justify-start">
+                    <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-text/10 bg-landing-bg shadow-sm">
+                      <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-white">
                         <span className="font-display text-5xl font-extrabold text-landing-text">01</span>
                       </div>
                     </div>
-                    <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center" data-testid="landing-before-game-day-title">Before game day</h3>
-                    <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                        Build the schedule
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                        Share your event card to keep others up to date
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                        Prepare with the game day checklist
-                      </li>
-                    </ul>
                   </div>
-                  <div className="flex items-start justify-center lg:pt-[168px]">
-                    <video
-                      src={planChecklistVideo}
-                      autoPlay={!prefersReducedMotion}
-                      muted
-                      loop
-                      playsInline
-                      poster={planChecklistPoster}
-                      preload="metadata"
-                      aria-label="Plan and game day checklist video"
-                      data-testid="landing-checklist-video"
-                      className="landing-checklist-video w-full max-w-[300px] object-contain"
-                    />
+                  <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12">
+                    <div className="flex flex-col">
+                      <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left" data-testid="landing-before-game-day-title">Before game day</h3>
+                      <ul className="mx-auto w-full max-w-[420px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
+                        <li className="flex items-start gap-3">
+                          <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                          Build the schedule
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                          Share your event card to keep others up to date
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                          Prepare with the game day checklist
+                        </li>
+                      </ul>
+                    </div>
+                    <div className="flex items-start justify-center lg:pt-0">
+                      <video
+                        src={planChecklistVideo}
+                        autoPlay={!prefersReducedMotion}
+                        muted
+                        loop
+                        playsInline
+                        poster={planChecklistPoster}
+                        preload="metadata"
+                        aria-label="Plan and game day checklist video"
+                        data-testid="landing-checklist-video"
+                        className="landing-checklist-video w-full max-w-[300px] object-contain"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Step 2 */}
-                <div className="flex flex-col lg:col-span-1">
-                  <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
-                    <div className="w-[116px] h-[116px] rounded-full bg-landing-white flex items-center justify-center">
-                      <span className="font-display text-5xl font-extrabold text-landing-text">02</span>
+                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-primary/10 bg-landing-pale-blue p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10">
+                  <div className="relative flex justify-center lg:justify-start">
+                    <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-primary/15 bg-landing-white shadow-sm">
+                      <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-white">
+                        <span className="font-display text-5xl font-extrabold text-landing-text">02</span>
+                      </div>
                     </div>
                   </div>
-                  <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center">During the game</h3>
-                  <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Follow the live action
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Track stats and key moments
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Keep supporters connected
-                    </li>
-                  </ul>
+                  <div>
+                    <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left">During the game</h3>
+                    <ul className="mx-auto w-full max-w-[560px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Follow the live action
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Track stats and key moments
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Keep supporters connected
+                      </li>
+                    </ul>
+                  </div>
                 </div>
 
                 {/* Step 3 */}
-                <div className="flex flex-col lg:col-span-1">
-                  <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
-                    <div className="w-[116px] h-[116px] rounded-full bg-landing-primary flex items-center justify-center">
-                      <span className="font-display text-5xl font-extrabold text-landing-white">03</span>
+                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-orange/15 bg-[#FFF1EA] p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10">
+                  <div className="relative flex justify-center lg:justify-start">
+                    <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-orange/15 bg-landing-white shadow-sm">
+                      <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-primary">
+                        <span className="font-display text-5xl font-extrabold text-landing-white">03</span>
+                      </div>
                     </div>
                   </div>
-                  <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center">After the final whistle</h3>
-                  <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Celebrate the performance
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Create athlete graphics
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Share highlights and memories
-                    </li>
-                  </ul>
+                  <div>
+                    <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left">After the final whistle</h3>
+                    <ul className="mx-auto w-full max-w-[560px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Celebrate the performance
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Create athlete graphics
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Share highlights and memories
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>

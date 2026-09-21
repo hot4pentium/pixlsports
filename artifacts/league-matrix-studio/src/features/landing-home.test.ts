@@ -52,7 +52,9 @@ test('checklist video uses the phone crop without a native player shell', () => 
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 760 \/ 1080;/);
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*mix-blend-mode: multiply;/);
   assert.match(landingSource, /landing-before-game-day-title/);
-  assert.match(landingSource, /lg:pt-\[168px\]/);
+  assert.match(landingSource, /flex flex-col gap-8 sm:gap-10/);
+  assert.match(landingSource, /bg-landing-pale-blue/);
+  assert.match(landingSource, /bg-\[#FFF1EA\]/);
 });
 
 test('landing athlete ticker protects the page width and respects reduced motion', () => {
