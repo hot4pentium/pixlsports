@@ -78,6 +78,9 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
 
 test('public Athlete Hype Pages present direct videos in an accessible horizontal carousel', () => {
   assert.match(source, /data-testid="athlete-video-carousel"/);
+  assert.match(source, /athlete-highlights-panel/);
+  assert.match(source, /athlete-video-stage/);
+  assert.match(source, /data-testid="athlete-video-reflection"/);
   assert.match(source, /invite\.videos\.map\(\(video, index\)/);
   assert.match(source, /src=\{video\.videoUrl\}/);
   assert.match(source, /poster=\{video\.posterUrl \?\? undefined\}/);

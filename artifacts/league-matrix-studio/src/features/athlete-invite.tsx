@@ -545,24 +545,27 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           <p className="mt-4 text-sm font-bold uppercase tracking-widest text-white/45">{invite.teamName || 'Athlete season page'}</p>
         </header>
 
-        <section className="mt-10" aria-labelledby="athlete-video-highlights">
-          <div className="flex items-end justify-between gap-5">
+        <section className="athlete-highlights-panel mt-10 p-4 sm:p-6" aria-labelledby="athlete-video-highlights">
+          <div className="athlete-highlights-heading flex items-end justify-between gap-5">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Latest moments</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
               <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Video highlights</h2>
+              <p className="mt-3 max-w-md text-xs font-medium leading-relaxed text-white/55">The latest plays, captured and ready to replay.</p>
             </div>
-            {invite.videos.length > 1 && (
-              <div className="flex shrink-0 items-center gap-2">
-                <button type="button" onClick={() => moveToVideo(activeVideoIndex - 1)} disabled={activeVideoIndex === 0} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous video" data-testid="button-previous-athlete-video"><ChevronLeft className="h-5 w-5" /></button>
-                <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite.videos.length}</span>
-                <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
-              </div>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {invite.videos.length > 1 && (
+                <>
+                  <button type="button" onClick={() => moveToVideo(activeVideoIndex - 1)} disabled={activeVideoIndex === 0} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous video" data-testid="button-previous-athlete-video"><ChevronLeft className="h-5 w-5" /></button>
+                  <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite.videos.length}</span>
+                  <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
+                </>
+              )}
+            </div>
           </div>
           {invite.videos.length > 0 ? (
             <ol
               ref={videoCarouselRef}
-              className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+              className="athlete-video-carousel mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
               aria-label="Athlete video highlights"
               tabIndex={0}
               onScroll={updateActiveVideo}
@@ -583,17 +586,29 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 const details = [video.jerseyNumber ? `#${video.jerseyNumber}` : '', video.position].filter(Boolean).join(' · ');
                 return (
                   <li key={video.shareToken} className="w-[82%] shrink-0 snap-start sm:w-[58%] lg:w-[50%]" aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
-                    <video
-                      src={video.videoUrl}
-                      poster={video.posterUrl ?? undefined}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      aria-label={`Play ${video.title}`}
-                      className="aspect-video w-full bg-black object-contain"
-                      onPlay={(event) => keepOneVideoPlaying(event.currentTarget)}
-                      data-testid="athlete-video-player"
-                    />
+                    <div className="athlete-video-stage">
+                      <div className="athlete-video-frame">
+                        <video
+                          src={video.videoUrl}
+                          poster={video.posterUrl ?? undefined}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          aria-label={`Play ${video.title}`}
+                          className="aspect-video w-full bg-black object-contain"
+                          onPlay={(event) => keepOneVideoPlaying(event.currentTarget)}
+                          data-testid="athlete-video-player"
+                        />
+                      </div>
+                      {video.posterUrl && (
+                        <div
+                          aria-hidden="true"
+                          className="athlete-video-reflection"
+                          style={{ backgroundImage: `url("${video.posterUrl}")` }}
+                          data-testid="athlete-video-reflection"
+                        />
+                      )}
+                    </div>
                     <div className="border-l-2 border-primary px-4 py-4">
                       <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">Moment {String(index + 1).padStart(2, '0')}</p>
                       <h3 className="mt-2 font-display text-3xl uppercase leading-none">{video.title}</h3>
