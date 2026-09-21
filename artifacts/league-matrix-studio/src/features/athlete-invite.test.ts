@@ -5,6 +5,8 @@ import test from 'node:test';
 const source = readFileSync(new URL('./athlete-invite.tsx', import.meta.url), 'utf8');
 const hypeCardSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 
+const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
+
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
   assert.match(source, /HypeCardReplyComposer/);
   assert.match(source, /Choose a reaction and add an optional message without leaving this athlete page/);
@@ -38,6 +40,16 @@ test('posting a Hype Card returns owners to the hosted card manager', () => {
   assert.match(
     source,
     /invalidateQueries\(\{ queryKey: getListHypeCardSharesQueryKey\(\) \}\)/,
+  );
+  assert.match(source, /staleTime: 10_000,[\s\S]*?refetchOnMount: 'always'/);
+  assert.match(source, /data-testid="hosted-hype-card-title"/);
+  assert.match(source, /data-testid="button-download-hosted-hype-card"/);
+  assert.match(source, /data-testid="button-remove-hosted-hype-card"/);
+  assert.match(source, /data-testid="input-athlete-invite-url"/);
+  assert.match(source, /data-testid="section-visible-athlete-page"/);
+  assert.match(
+    apiSource,
+    /eq\(hypeCardSharesTable\.ownerClerkUserId, getRequiredClerkUserId\(res\)\),[\s\S]*?isNull\(hypeCardSharesTable\.revokedAt\),[\s\S]*?gt\(hypeCardSharesTable\.expiresAt, new Date\(\)\)/,
   );
   assert.match(source, /value=\{inviteUrl\(existing\.inviteToken\)\}/);
   assert.match(source, /Visible sections/);

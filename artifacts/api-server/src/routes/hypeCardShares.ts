@@ -160,7 +160,11 @@ router.get("/hype-card-shares", requireAuth, async (_req, res): Promise<void> =>
   const shares = await db
     .select()
     .from(hypeCardSharesTable)
-    .where(eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)))
+    .where(and(
+      eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+      isNull(hypeCardSharesTable.revokedAt),
+      gt(hypeCardSharesTable.expiresAt, new Date()),
+    ))
     .orderBy(desc(hypeCardSharesTable.createdAt))
     .limit(25);
   res.json(ListHypeCardSharesResponse.parse(await Promise.all(shares.map(ownedShareResponse))));

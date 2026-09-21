@@ -102,6 +102,7 @@ export function AthleteInviteManager() {
       enabled: Boolean(isSignedIn),
       queryKey: getListHypeCardSharesQueryKey(),
       staleTime: 10_000,
+      refetchOnMount: 'always',
     },
   });
   const hostedHypeCard = hypeCardShares?.find((share) =>
@@ -263,11 +264,11 @@ export function AthleteInviteManager() {
               className="flex w-full items-start justify-between gap-4 p-5 text-left"
               aria-expanded={hypeCardGuideOpen}
               aria-controls="hype-card-creation-guide"
-               onClick={() => {
-                 setSelectedPath('card');
-                 setHypeCardGuideOpen(true);
-               }}
-               aria-pressed={selectedPath === 'card'}
+              onClick={() => {
+                setSelectedPath('card');
+                setHypeCardGuideOpen(true);
+              }}
+              aria-pressed={selectedPath === 'card'}
               data-testid="button-toggle-hype-card-guide"
             >
               <span>
@@ -292,16 +293,16 @@ export function AthleteInviteManager() {
                   {hypeCardsLoading ? (
                     <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking hosted card…</p>
                   ) : hostedHypeCard ? (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3" data-testid="hosted-hype-card">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Hosted on Athlete Hype Page</p>
-                        <p className="mt-1 text-sm font-bold">{hostedHypeCard.title}</p>
+                        <p className="mt-1 text-sm font-bold" data-testid="hosted-hype-card-title">{hostedHypeCard.title}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedHypeCard()}>
+                        <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedHypeCard()} data-testid="button-download-hosted-hype-card">
                           <Download className="mr-2 h-4 w-4" />Download
                         </Button>
-                        <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedHypeCard()} disabled={deleteHypeCard.isPending}>
+                        <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedHypeCard()} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-hype-card">
                           <Trash2 className="mr-2 h-4 w-4" />Remove
                         </Button>
                       </div>
@@ -313,24 +314,24 @@ export function AthleteInviteManager() {
               </div>
             )}
           </div>
-           <button
-             type="button"
-             className={`border p-5 text-left transition-colors ${selectedPath === 'page' ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary'}`}
-             onClick={() => setSelectedPath('page')}
-             aria-pressed={selectedPath === 'page'}
-             data-testid="card-create-hype-page"
-           >
+          <button
+            type="button"
+            className={`border p-5 text-left transition-colors ${selectedPath === 'page' ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary'}`}
+            onClick={() => setSelectedPath('page')}
+            aria-pressed={selectedPath === 'page'}
+            data-testid="card-create-hype-page"
+          >
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
             <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
-           </button>
+          </button>
         </section>
 
-         {selectedPath === 'page' && existing && (
+        {selectedPath === 'page' && existing && (
           <section className="mt-8 border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="Active athlete invite">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link2 className="h-5 w-5 shrink-0 text-primary" />
-              <input readOnly value={inviteUrl(existing.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-border bg-background px-3 py-3 text-xs font-medium" aria-label="Athlete invite URL" />
+              <input readOnly value={inviteUrl(existing.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-border bg-background px-3 py-3 text-xs font-medium" aria-label="Athlete invite URL" data-testid="input-athlete-invite-url" />
               <Button type="button" variant="outline" className="rounded-none" onClick={copy}><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
               <Button type="button" className="rounded-none" onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button>
               <Link href={`/player/${existing.inviteToken}`} target="_blank" className="inline-flex min-h-10 items-center justify-center border border-border px-3 text-xs font-bold uppercase tracking-widest"><ExternalLink className="mr-2 h-4 w-4" />Open</Link>
@@ -347,20 +348,20 @@ export function AthleteInviteManager() {
           </section>
         )}
 
-         {selectedPath === 'page' && (
-           <form onSubmit={save} className="mt-8 max-w-xl">
-             <aside className="space-y-5">
-               <section className="border border-border bg-card p-5">
-                 <h2 className="font-display text-2xl uppercase">Visible sections</h2>
-                 <Toggle label="Latest Hype Card" detail="Shows the newest active hosted Hype Card." checked={showHypeCard} onChange={setShowHypeCard} />
-                 <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
-                 <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
-               </section>
-               <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
-               {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
-             </aside>
-           </form>
-         )}
+        {selectedPath === 'page' && (
+          <form onSubmit={save} className="mt-8 max-w-xl">
+            <aside className="space-y-5">
+              <section className="border border-border bg-card p-5" data-testid="section-visible-athlete-page">
+                <h2 className="font-display text-2xl uppercase">Visible sections</h2>
+                <Toggle label="Latest Hype Card" detail="Shows the newest active hosted Hype Card." checked={showHypeCard} onChange={setShowHypeCard} />
+                <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
+                <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
+              </section>
+              <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
+              {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
+            </aside>
+          </form>
+        )}
       </main>
     </InviteShell>
   );
