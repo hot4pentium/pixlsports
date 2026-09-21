@@ -2960,7 +2960,7 @@ export function HypeCardEditor() {
               <section className="border-t border-border pt-6">
                 <div className="mb-5 flex items-center gap-2">
                   <Check className="h-5 w-5 text-primary" />
-                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">Ready to export</h2>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">Ready to post</h2>
                 </div>
                 <div className="space-y-3">
                   {[
@@ -2976,20 +2976,11 @@ export function HypeCardEditor() {
                   ))}
                 </div>
                 <p className="mt-5 text-xs font-medium leading-relaxed text-muted-foreground">
-                  Your design updates instantly in the preview. You can go back to any step before exporting.
+                  Your design updates instantly in the preview. When it is ready, post it to the Athlete Hype Page.
                 </p>
-                <p className="mt-3 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-linked-export-note">
-                  Export with stats link prints a readable finalized-stats URL on the frame. It follows the selected expiration and stops working if you revoke the stats link.
-                </p>
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                  <Button type="button" onClick={() => void handleExport()} disabled={exporting || sharing} data-testid="walkthrough-export-card" className="min-w-0 gap-2 rounded-none bg-primary px-3 font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
-                    <Download className="h-4 w-4 shrink-0" /> <span className="truncate">{exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}</span>
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
-                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Update Hype Page' : 'Post Hype Page'}</span>
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleExportWithStatsLink} disabled={sharing || exporting} data-testid="walkthrough-export-stats-link" className="col-span-2 min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
-                    <Link2 className="h-4 w-4 shrink-0" /> <span className="truncate">Export with stats link</span>
+                <div className="mt-5">
+                  <Button type="button" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="w-full min-w-0 gap-2 rounded-none bg-primary px-3 font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
+                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : 'Post to Hype Page'}</span>
                   </Button>
                 </div>
               </section>

@@ -1544,8 +1544,16 @@ test('local Hype Cards stay fresh across supporter tabs and reopen correctly', {
       );
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
     }
-    await waitFor(connection, editorPage.sessionId, 'document.querySelector("[data-testid=\\"walkthrough-export-card\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="walkthrough-export-card"]')?.click()`, editorPage.sessionId);
+    await waitFor(
+      connection,
+      editorPage.sessionId,
+      `Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Export')`,
+      Boolean,
+    );
+    await connection.evaluate(
+      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Export')?.click()`,
+      editorPage.sessionId,
+    );
     const downloadDeadline = Date.now() + 20_000;
     let downloads: string[] = [];
     while (Date.now() < downloadDeadline) {
