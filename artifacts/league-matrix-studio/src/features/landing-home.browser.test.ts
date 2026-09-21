@@ -245,6 +245,31 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       reducedMotionAfter.tiles.map((tile) => [tile.width, tile.height, tile.labelBottom]),
       reducedMotionBefore.tiles.map((tile) => [tile.width, tile.height, tile.labelBottom]),
     );
+
+    const tickerEndpoints = await connection.evaluate<{
+      maxScrollLeft: number;
+      scrollLeft: number;
+      tickerRight: number;
+      firstLeft: number;
+      lastRight: number;
+    }>(`(() => {
+      const ticker = document.querySelector('.landing-sport-ticker');
+      const tiles = [...document.querySelectorAll('.landing-sport-tile')];
+      if (!ticker || tiles.length === 0) {
+        return { maxScrollLeft: -1, scrollLeft: -1, tickerRight: -1, firstLeft: -1, lastRight: -1 };
+      }
+      ticker.scrollLeft = ticker.scrollWidth;
+      const tickerRect = ticker.getBoundingClientRect();
+      return {
+        maxScrollLeft: Math.max(0, ticker.scrollWidth - ticker.clientWidth),
+        scrollLeft: ticker.scrollLeft,
+        tickerRight: tickerRect.right,
+        firstLeft: tiles[0].getBoundingClientRect().left,
+        lastRight: tiles[tiles.length - 1].getBoundingClientRect().right,
+      };
+    })()`, reducedMotionPage.sessionId);
+    assert.ok(tickerEndpoints.scrollLeft <= tickerEndpoints.maxScrollLeft + 1);
+    assert.ok(Math.abs(tickerEndpoints.lastRight - tickerEndpoints.tickerRight) <= 1);
   } finally {
     if (connection) {
       await Promise.all(pages.map((page) => connection?.send('Target.closeTarget', {

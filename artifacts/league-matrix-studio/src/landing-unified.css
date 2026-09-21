@@ -88,10 +88,9 @@
 .landing-sport-ticker {
   overflow-x: auto;
   overflow-y: hidden;
-  margin-inline: -0.25rem;
-  padding: 0.25rem;
-  overscroll-behavior-x: contain;
-  scroll-padding-inline: 0.25rem;
+  padding-block: 0.25rem;
+  overscroll-behavior-x: none;
+  scroll-padding-inline: 0;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }

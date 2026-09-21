@@ -161,6 +161,16 @@ function LandingSportShowcase() {
     </div>
   ));
 
+  const clampTickerScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const ticker = event.currentTarget;
+    const maxScrollLeft = Math.max(0, ticker.scrollWidth - ticker.clientWidth);
+    const clampedScrollLeft = Math.min(maxScrollLeft, Math.max(0, ticker.scrollLeft));
+
+    if (ticker.scrollLeft !== clampedScrollLeft) {
+      ticker.scrollLeft = clampedScrollLeft;
+    }
+  };
+
   return (
     <div className="landing-sport-ticker-wrap" data-testid="landing-sport-showcase">
       <div className="mb-4 flex items-end justify-between gap-4 px-1 sm:mb-5">
@@ -171,7 +181,11 @@ function LandingSportShowcase() {
           Every sport.<br />One clear week.
         </span>
       </div>
-      <div className="landing-sport-ticker" aria-label="Sports represented on Pixl Sports">
+      <div
+        className="landing-sport-ticker"
+        aria-label="Sports represented on Pixl Sports"
+        onScroll={clampTickerScroll}
+      >
         <div className="landing-sport-ticker-track">
           <div className="landing-sport-ticker-group">
             {renderSportTiles()}
