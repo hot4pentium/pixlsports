@@ -761,20 +761,7 @@ export function SupporterDashboardView({
       )}
       <div className="dashboard-hero-banner">
         {/* HEADER */}
-        <header className="dashboard-header animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
-          <div>
-            <div className="dashboard-welcome inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
-              <Activity className="w-4 h-4 text-primary" />
-              {profile.displayName ? `GOOD ${greeting.toUpperCase()}, ${firstName.toUpperCase()}` : 'YOUR SPORTS HOME'}
-            </div>
-            <h1 className="dashboard-heading font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-              {hasAthlete ? profile.athleteName : 'YOUR ATHLETE'} <span className="text-primary studio-textured-accent">{profile.teamName || 'GAME WEEK'}</span>
-            </h1>
-            <p className="dashboard-subtitle mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
-              Here&apos;s what&apos;s happening next. Plan the week, capture the moment, and keep the story moving.
-            </p>
-          </div>
-
+        <header className="dashboard-header animate-slide-up">
           <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading" data-testid="athlete-summary">
             <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
@@ -803,7 +790,10 @@ export function SupporterDashboardView({
                 </button>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">My athlete</p>
+                <div className="dashboard-welcome mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/65">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  {profile.displayName ? `GOOD ${greeting.toUpperCase()}, ${firstName.toUpperCase()}` : 'YOUR SPORTS HOME'}
+                </div>
                 <h2 id="athlete-summary-heading" className="mt-1 break-words font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
                   {hasAthlete ? profile.athleteName : 'Unassigned'}
                 </h2>
