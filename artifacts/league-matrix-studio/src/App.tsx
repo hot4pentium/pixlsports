@@ -2145,6 +2145,40 @@ function ScheduleEditor() {
     }
   };
 
+  const renderScheduleSharePanel = (testId: string) => shareUrl ? (
+    <div className="relative z-10 border border-primary/30 bg-primary/5 p-3 clip-angled-sm" data-testid={testId}>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-accent">Public parent link</p>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          readOnly
+          value={shareUrl}
+          onFocus={(event) => event.currentTarget.select()}
+          className="h-11 min-w-0 flex-1 bg-transparent text-xs font-medium text-foreground outline-none"
+          aria-label="Public parent schedule link"
+        />
+        <button
+          type="button"
+          onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('PARENT LINK COPIED TO CLIPBOARD'); }}
+          className="grid h-11 w-11 shrink-0 place-items-center border border-border bg-card text-foreground hover:bg-muted"
+          aria-label="Copy parent schedule link"
+          data-testid="button-copy-schedule-link"
+        >
+          <Clipboard className="h-4 w-4" />
+        </button>
+      </div>
+      <p className="mt-2 text-[10px] font-medium leading-relaxed text-muted-foreground">Update this link after changing the schedule. Parents keep the same URL.</p>
+      <button
+        type="button"
+        onClick={() => { void revokeScheduleShare(); }}
+        disabled={sharePending || deleteShare.isPending}
+        className="mt-2 inline-flex min-h-11 items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-destructive disabled:cursor-wait disabled:opacity-60"
+        data-testid="button-revoke-schedule-link"
+      >
+        <Link2Off className="h-3.5 w-3.5" /> {deleteShare.isPending ? 'Revoking link…' : 'Revoke parent link'}
+      </button>
+    </div>
+  ) : null;
+
   return (
     <StudioLayout landingBackground>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
@@ -2168,6 +2202,10 @@ function ScheduleEditor() {
               <CloudUpload className="h-4 w-4" /> {createCloudProject.isPending || updateCloudProject.isPending || sharePending ? 'Publishing…' : 'Publish to All'}
             </button>
           </div>
+        </div>
+
+        <div className="mb-6 lg:hidden">
+          {renderScheduleSharePanel('schedule-share-link-mobile')}
         </div>
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
@@ -2237,21 +2275,9 @@ function ScheduleEditor() {
               </p>
             </div>
 
-            {shareUrl && (
-              <div className="relative z-10 mt-3 border border-primary/30 bg-primary/5 p-3 clip-angled-sm" data-testid="schedule-share-link">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-accent">Public parent link</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-foreground outline-none" aria-label="Public parent schedule link" />
-                  <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('PARENT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-foreground hover:bg-muted" aria-label="Copy parent schedule link" data-testid="button-copy-schedule-link">
-                    <Clipboard className="h-4 w-4" />
-                  </button>
-                </div>
-                <p className="mt-2 text-[10px] font-medium leading-relaxed text-muted-foreground">Update this link after changing the schedule. Parents keep the same URL.</p>
-                <button type="button" onClick={() => { void revokeScheduleShare(); }} disabled={sharePending || deleteShare.isPending} className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-destructive disabled:cursor-wait disabled:opacity-60" data-testid="button-revoke-schedule-link">
-                  <Link2Off className="h-3.5 w-3.5" /> {deleteShare.isPending ? 'Revoking link…' : 'Revoke parent link'}
-                </button>
-              </div>
-            )}
+            <div className="hidden lg:block">
+              {renderScheduleSharePanel('schedule-share-link')}
+            </div>
 
             {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary-ink animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
           </aside>
