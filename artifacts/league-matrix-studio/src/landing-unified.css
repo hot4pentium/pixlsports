@@ -26,6 +26,13 @@
   line-height: .9;
 }
 
+.landing-checklist-video {
+  aspect-ratio: 600 / 910;
+  display: block;
+  filter: drop-shadow(0 18px 20px color-mix(in srgb, var(--landing-text) 18%, transparent));
+  mix-blend-mode: multiply;
+}
+
 /* Tailwind custom colors mapped for .new-landing context */
 .bg-landing-bg { background-color: var(--landing-bg); }
 .bg-landing-text { background-color: var(--landing-text); }

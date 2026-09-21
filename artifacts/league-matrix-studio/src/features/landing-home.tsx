@@ -1,7 +1,7 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { CalendarDays, Activity, Zap, ArrowRight, Check, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Using responsive images
 import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
@@ -14,9 +14,27 @@ import basketballAthlete from '../../../../attached_assets/generated_images/land
 import volleyballAthlete from '../../../../attached_assets/generated_images/landing-volleyball-athlete-girl.jpg';
 import baseballAthlete from '../../../../attached_assets/generated_images/landing-baseball-athlete-black.jpg';
 import softballAthlete from '../../../../attached_assets/generated_images/landing-softball-athlete-girl.jpg';
-import planChecklistVideo from '../../../../attached_assets/Plan-Checklist_1789955681318.mp4';
+import planChecklistVideo from '../../../../attached_assets/Plan-Checklist_phone_1789955681318.mp4';
+import planChecklistPoster from '../../../../attached_assets/Plan-Checklist_phone-poster_1789955681318.webp';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    updatePreference();
+    mediaQuery.addEventListener('change', updatePreference);
+    return () => mediaQuery.removeEventListener('change', updatePreference);
+  }, []);
+
+  return prefersReducedMotion;
+}
 
 function BrandMark() {
   return (
@@ -198,6 +216,8 @@ function LandingSportShowcase() {
 }
 
 export function PublicLandingPage() {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   return (
     <div className="new-landing">
       <LandingNav />
@@ -310,14 +330,15 @@ export function PublicLandingPage() {
                   <div className="flex items-start justify-center lg:pt-2">
                     <video
                       src={planChecklistVideo}
-                      autoPlay
+                      autoPlay={!prefersReducedMotion}
                       muted
                       loop
-                      controls
                       playsInline
+                      poster={planChecklistPoster}
                       preload="metadata"
                       aria-label="Plan and game day checklist video"
-                      className="aspect-square w-full max-w-[360px] rounded-3xl border-4 border-landing-white object-cover shadow-2xl"
+                      data-testid="landing-checklist-video"
+                      className="landing-checklist-video w-full max-w-[300px] object-contain"
                     />
                   </div>
                 </div>

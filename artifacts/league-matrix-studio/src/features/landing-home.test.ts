@@ -38,10 +38,19 @@ test('before-game-day guidance names the three intended actions', () => {
 });
 
 test('before-game-day guidance includes the uploaded checklist video', () => {
-  assert.match(landingSource, /Plan-Checklist_1789955681318\.mp4/);
+  assert.match(landingSource, /Plan-Checklist_phone_1789955681318\.mp4/);
+  assert.match(landingSource, /Plan-Checklist_phone-poster_1789955681318\.webp/);
   assert.match(landingSource, /<video/);
   assert.match(landingSource, /autoPlay/);
+  assert.match(landingSource, /autoPlay=\{!prefersReducedMotion\}/);
+  assert.doesNotMatch(landingSource, /\scontrols(?:\s|>|=)/);
   assert.match(landingSource, /playsInline/);
+  assert.match(landingSource, /usePrefersReducedMotion/);
+});
+
+test('checklist video uses the phone crop without a native player shell', () => {
+  assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 600 \/ 910;/);
+  assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*mix-blend-mode: multiply;/);
 });
 
 test('landing athlete ticker protects the page width and respects reduced motion', () => {

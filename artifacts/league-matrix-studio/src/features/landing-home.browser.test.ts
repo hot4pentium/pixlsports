@@ -88,6 +88,17 @@ type LandingLayout = {
     left: number;
     right: number;
   };
+  checklistVideo: {
+    left: number;
+    right: number;
+    width: number;
+    height: number;
+    controls: boolean;
+    muted: boolean;
+    loop: boolean;
+    playsInline: boolean;
+    autoplay: boolean;
+  };
   tiles: Array<{
     label: string;
     width: number;
@@ -119,6 +130,21 @@ async function readLandingLayout(
         left: ticker?.left ?? -1,
         right: ticker?.right ?? -1,
       },
+      checklistVideo: (() => {
+        const video = document.querySelector('[data-testid="landing-checklist-video"]');
+        const videoRect = video?.getBoundingClientRect();
+        return {
+          left: videoRect?.left ?? -1,
+          right: videoRect?.right ?? -1,
+          width: videoRect?.width ?? -1,
+          height: videoRect?.height ?? -1,
+          controls: video instanceof HTMLVideoElement ? video.controls : true,
+          muted: video instanceof HTMLVideoElement ? video.muted : false,
+          loop: video instanceof HTMLVideoElement ? video.loop : false,
+          playsInline: video instanceof HTMLVideoElement ? video.playsInline : false,
+          autoplay: video instanceof HTMLVideoElement ? video.autoplay : false,
+        };
+      })(),
       tiles: [...document.querySelectorAll('[data-testid^="landing-sport-tile-"]')].map((tile) => {
         const tileRect = tile.getBoundingClientRect();
         const label = tile.querySelector('p:last-child');
@@ -199,6 +225,12 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       assert.ok(layout.ticker.right <= width, `ticker ends outside the viewport at ${width}px`);
       assert.ok(layout.ticker.scrollWidth > layout.ticker.clientWidth, `ticker should scroll within ${width}px`);
       assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above ticker at ${width}px`);
+       assert.ok(layout.checklistVideo.width > 0, `checklist video is not rendered at ${width}px`);
+       assert.ok(layout.checklistVideo.right <= width, `checklist video overflows at ${width}px`);
+       assert.equal(layout.checklistVideo.controls, false);
+       assert.equal(layout.checklistVideo.muted, true);
+       assert.equal(layout.checklistVideo.loop, true);
+       assert.equal(layout.checklistVideo.playsInline, true);
       assert.deepEqual(layout.tiles.map((tile) => tile.label), [
         'Soccer',
         'Football',
@@ -224,6 +256,11 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     assert.ok(desktopLayout.ticker.right <= 1440);
     assert.ok(desktopLayout.ticker.scrollWidth >= desktopLayout.ticker.clientWidth);
     assert.ok(desktopLayout.ctaBottom <= desktopLayout.showcaseTop);
+    assert.ok(desktopLayout.checklistVideo.width > 0);
+    assert.ok(desktopLayout.checklistVideo.right <= 1440);
+    assert.ok(Math.abs(
+      desktopLayout.checklistVideo.width / desktopLayout.checklistVideo.height - 600 / 910,
+    ) < 0.01);
 
     const reducedMotionPage = await openLandingPage(connection, `http://127.0.0.1:${port}/`, {
       width: 320,
@@ -232,6 +269,7 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     pages.push(reducedMotionPage);
     const reducedMotionBefore = await readLandingLayout(connection, reducedMotionPage);
     assert.ok(reducedMotionBefore.tiles.every((tile) => tile.labelFontSize >= 14));
+    assert.equal(reducedMotionBefore.checklistVideo.autoplay, false);
     assert.deepEqual(
       await connection.evaluate<string[]>(
         '[...document.querySelectorAll(".landing-sport-tile")].map((tile) => getComputedStyle(tile).animationName)',
