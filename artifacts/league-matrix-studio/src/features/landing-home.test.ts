@@ -12,6 +12,8 @@ test('landing athlete photos render as visible entrance-animated tiles below the
   assert.match(landingSource, /landing-sport-tile/);
   assert.match(landingSource, /landing-tile-delay/);
   assert.doesNotMatch(landingSource, /isDuplicate/);
+  assert.match(landingSource, /kicker: 'Go for Goal'/);
+  assert.doesNotMatch(landingSource, /kicker: 'Find your shape'/);
   assert.deepEqual(
     [...landingSource.matchAll(/id: '([^']+)',\s+label: '([^']+)'/g)].map(([, id, label]) => [id, label]),
     [

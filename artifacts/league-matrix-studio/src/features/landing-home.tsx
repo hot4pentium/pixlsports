@@ -117,7 +117,7 @@ const landingSports = [
   {
     id: 'soccer',
     label: 'Soccer',
-    kicker: 'Find your shape',
+    kicker: 'Go for Goal',
     image: soccerAthlete,
     alt: 'Youth soccer athlete in action',
   },
