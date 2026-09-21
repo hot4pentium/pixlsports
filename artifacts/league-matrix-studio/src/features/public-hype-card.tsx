@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Check, Pause, Play, Send, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, Pause, Play, Send, Volume2, VolumeX, Zap } from 'lucide-react';
 import { Link } from 'wouter';
 import { useCreateHypeCardShareReply, useGetHypeCardShare } from '@workspace/api-client-react';
 
@@ -19,6 +19,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
   const [message, setMessage] = useState('');
   const [replySent, setReplySent] = useState(false);
   const [replyError, setReplyError] = useState('');
+  const [showStats, setShowStats] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { data: share, isLoading, isError } = useGetHypeCardShare(shareToken, {
     query: { enabled: Boolean(shareToken), queryKey: ['/api/hype-card-shares', shareToken], retry: false },
@@ -180,14 +181,29 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
           <p className="mt-5 text-sm font-medium leading-relaxed text-white/60">
             {share.mediaType === 'video' ? 'The selected highlight plays directly in the card.' : 'High quality Hype Card featured.'} No Pixl Sports account is required.
           </p>
-          {share.stats && (
-            <div className="mt-6 border border-white/10 bg-white/5 p-4 clip-angled-sm">
-              <p className="text-[10px] font-bold uppercase tracking-[.15em] text-primary">Season Stats</p>
-              <h2 className="mt-1 font-display text-2xl uppercase text-white">{share.stats.athleteName}</h2>
-              <p className="text-xs font-bold uppercase tracking-widest text-white/40">
-                {isSport(share.stats.sport) ? getSportRule(share.stats.sport).label : share.stats.sport}
-              </p>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {share.stats ? (
+            <section className="mt-6 border border-white/10 bg-white/5 p-4 clip-angled-sm" data-testid="hype-card-recipient-stats">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[.15em] text-primary">Season Stats</p>
+                  <h2 className="mt-1 font-display text-2xl uppercase text-white">{share.stats.athleteName}</h2>
+                  <p className="text-xs font-bold uppercase tracking-widest text-white/40">
+                    {isSport(share.stats.sport) ? getSportRule(share.stats.sport).label : share.stats.sport}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowStats((visible) => !visible)}
+                  aria-expanded={showStats}
+                  aria-controls="hype-card-recipient-stats-details"
+                  data-testid="button-view-hype-card-stats"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1 border border-primary/50 px-3 text-[10px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  {showStats ? 'Hide details' : 'View athlete stats'}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showStats ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="border border-white/10 bg-white/5 p-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Games</p>
                   <p className="font-display text-xl text-white">{share.stats.gamesPlayed}</p>
@@ -196,19 +212,31 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Score</p>
                   <p className="font-display text-xl text-primary">{share.stats.score}</p>
                 </div>
-                {Object.entries(share.stats.stats).map(([statId, count]) => {
-                  const rule = isSport(share.stats?.sport) ? getSportRule(share.stats.sport) : null;
-                  const definition = rule?.stats.find((s) => s.id === statId);
-                  const label = definition?.shortLabel || statId.replace(/-/g, ' ');
-                  return (
-                    <div key={statId} className="border border-white/10 bg-white/5 p-2">
-                      <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
-                      <p className="font-display text-xl text-white">{count}</p>
-                    </div>
-                  );
-                })}
               </div>
-              <p className="mt-3 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Last updated {new Date(share.stats.updatedAt).toLocaleDateString()}</p>
+              {showStats && (
+                <div id="hype-card-recipient-stats-details" className="mt-3 border-t border-white/10 pt-3">
+                  <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-white/50">Published finalized totals</p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {Object.entries(share.stats.stats).map(([statId, count]) => {
+                      const rule = isSport(share.stats?.sport) ? getSportRule(share.stats.sport) : null;
+                      const definition = rule?.stats.find((s) => s.id === statId);
+                      const label = definition?.shortLabel || statId.replace(/-/g, ' ');
+                      return (
+                        <div key={statId} className="border border-white/10 bg-white/5 p-2">
+                          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{label}</p>
+                          <p className="font-display text-xl text-white">{count}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Last updated {new Date(share.stats.updatedAt).toLocaleDateString()}</p>
+                </div>
+              )}
+            </section>
+          ) : (
+            <div className="mt-6 border border-white/10 bg-white/5 p-4 clip-angled-sm" data-testid="hype-card-recipient-stats-unavailable">
+              <p className="text-[10px] font-bold uppercase tracking-[.15em] text-white/50">Season Stats</p>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-white/50">Stats were not attached to this Hype Card.</p>
             </div>
           )}
           <form onSubmit={submitReply} className="mt-6 border border-white/10 bg-white/5 p-4" aria-label="Reply to this Hype Card">
