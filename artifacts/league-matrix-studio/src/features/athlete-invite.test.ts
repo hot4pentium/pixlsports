@@ -40,6 +40,8 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /How it works/);
   assert.match(source, /Open the Hype Card editor and create the card/);
   assert.match(source, /Choose Post to Athlete Hype Page/);
+  assert.match(hypeCardSource, /shareMode === 'stats' && \([\s\S]*?Link Stats Project/);
+  assert.match(hypeCardSource, /trackerProjectId: isStatsOnly && shareTrackerProjectId !== 'none'/);
   assert.match(source, /const hostedVideoQuery = \{ shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 \}/);
   assert.match(source, /useListHypeCardShares\(hostedVideoQuery,/);
   assert.match(

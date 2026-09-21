@@ -2335,7 +2335,7 @@ export function HypeCardEditor() {
     }
     if (existingShare && isOwnedHypeCardShare(existingShare)) {
       setShareMode('card');
-      setShareTrackerProjectId(existingShare.trackerProjectId ?? 'none');
+      setShareTrackerProjectId('none');
       setShareSport(profile.sport ?? existingShare.sport ?? 'basketball');
       setShareExpiresInDays(String(existingShare.expiresInDays));
     } else {
@@ -2451,9 +2451,9 @@ export function HypeCardEditor() {
           mediaType: mediaKind,
           mediaUploadClaimId: isStatsOnly ? null : claimId,
           posterUploadClaimId: isStatsOnly ? null : posterClaimId,
-          trackerProjectId: shareTrackerProjectId !== 'none' ? shareTrackerProjectId : null,
-          sport: shareTrackerProjectId !== 'none' ? ((profile.sport ?? shareSport) as any) : null,
-          athleteName: shareTrackerProjectId !== 'none' ? profile.athleteName : null,
+           trackerProjectId: isStatsOnly && shareTrackerProjectId !== 'none' ? shareTrackerProjectId : null,
+           sport: isStatsOnly && shareTrackerProjectId !== 'none' ? ((profile.sport ?? shareSport) as any) : null,
+           athleteName: isStatsOnly && shareTrackerProjectId !== 'none' ? profile.athleteName : null,
           expiresInDays: parseInt(shareExpiresInDays, 10),
           replaceShareToken: replacementShare?.shareToken ?? null,
         },
@@ -3011,9 +3011,9 @@ export function HypeCardEditor() {
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Share Hype Card</DialogTitle>
             <DialogDescription>
-                  {shareMode === 'stats'
+              {shareMode === 'stats'
                 ? 'Keep your video on this phone and send a separate finalized stats link with it.'
-                : 'Post this playable Hype Card to the Athlete Hype Page. The direct Hype Card URL will not be shown here.'}
+                : 'Post this playable Hype Card to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that stable page.'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePublishShare} className="space-y-4 pt-4">
@@ -3043,22 +3043,24 @@ export function HypeCardEditor() {
               </button>
              </div>
             )}
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Stats Project</Label>
-              <Select value={shareTrackerProjectId} onValueChange={setShareTrackerProjectId}>
-                <SelectTrigger className="clip-angled-sm h-12 rounded-none">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Do not link stats</SelectItem>
-                  {trackerProjects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+             {shareMode === 'stats' && (
+               <div className="space-y-2">
+                 <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Stats Project</Label>
+                 <Select value={shareTrackerProjectId} onValueChange={setShareTrackerProjectId}>
+                   <SelectTrigger className="clip-angled-sm h-12 rounded-none">
+                     <SelectValue placeholder="None" />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="none">Do not link stats</SelectItem>
+                     {trackerProjects.map((p) => (
+                       <SelectItem key={p.id} value={p.id}>
+                         {p.name}
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+             )}
             {shareMode === 'stats' && (
               <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-stats-link-export-warning">
                  The export adds a high-contrast “VIEW FINAL STATS” QR code and a readable fallback destination. The link follows this expiration and stops working if you revoke it; after creating it, copy or share the destination from the confirmation bar before sending the export.
@@ -3123,7 +3125,7 @@ export function HypeCardEditor() {
             )}
 
             <DialogFooter className="mt-6">
-              <Button type="submit" disabled={shareMode === 'stats' ? shareTrackerProjectId === 'none' || !profile.athleteName : shareTrackerProjectId !== 'none' && !profile.athleteName} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
+              <Button type="submit" disabled={shareMode === 'stats' && (shareTrackerProjectId === 'none' || !profile.athleteName)} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
                 {shareMode === 'stats' ? 'Create stats link' : 'Post to Athlete Hype Page'}
               </Button>
             </DialogFooter>
