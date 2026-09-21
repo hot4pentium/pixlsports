@@ -788,7 +788,7 @@ export function SupporterDashboardView({
             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
             <div className="relative flex items-center gap-4 bg-[#111316] p-4 sm:gap-5 sm:p-5">
               <div className="relative shrink-0">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-background text-foreground shadow-[0_0_26px_rgba(22,232,120,0.25)] sm:h-20 sm:w-20">
+                <div className="dashboard-athlete-avatar flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-background text-foreground shadow-[0_0_26px_rgba(22,232,120,0.25)] sm:h-20 sm:w-20">
                   {athletePhotoUrl ? (
                     <div className="h-full w-full overflow-hidden rounded-full">
                       <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />

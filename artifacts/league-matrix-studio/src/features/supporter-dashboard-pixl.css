@@ -357,7 +357,7 @@
   background: linear-gradient(135deg, rgba(16, 43, 77, .85), rgba(11, 31, 58, .8));
 }
 
-.pixl-dashboard [data-testid="athlete-summary"] .rounded-full {
+.pixl-dashboard [data-testid="athlete-summary"] .dashboard-athlete-avatar {
   border-color: var(--pixl-bright);
   box-shadow: 0 0 30px rgba(85, 164, 255, .3);
 }
@@ -1083,7 +1083,7 @@
     text-overflow: ellipsis;
   }
 
-  .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] .rounded-full {
+  .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] .dashboard-athlete-avatar {
     width: 116px;
     height: 116px;
     border-width: 2px;
