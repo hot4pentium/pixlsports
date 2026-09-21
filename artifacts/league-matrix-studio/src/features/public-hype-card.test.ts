@@ -10,6 +10,8 @@ test('recipient Hype Cards keep the card visible while exposing expandable athle
   assert.match(source, /aria-expanded=\{showStats\}/);
   assert.match(source, /aria-controls="hype-card-recipient-stats-details"/);
   assert.match(source, /View athlete stats/);
+  assert.match(source, /trackEvent\('hype_card_stats_viewed'/);
+  assert.match(source, /media_type: share\.mediaType/);
   assert.match(source, /Published finalized totals/);
   assert.match(source, /data-testid="hype-card-recipient-game-summaries"/);
   assert.match(source, /data-testid="hype-card-recipient-game-summary"/);

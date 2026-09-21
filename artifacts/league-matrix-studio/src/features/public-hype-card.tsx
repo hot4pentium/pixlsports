@@ -112,6 +112,14 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       setIsPlaying(false);
     }
   };
+  const toggleStats = () => {
+    if (!showStats) {
+      trackEvent('hype_card_stats_viewed', {
+        media_type: share.mediaType,
+      });
+    }
+    setShowStats((visible) => !visible);
+  };
   const submitReply = async (event: React.FormEvent) => {
     event.preventDefault();
     setReplyError('');
@@ -193,7 +201,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowStats((visible) => !visible)}
+                  onClick={toggleStats}
                   aria-expanded={showStats}
                   aria-controls="hype-card-recipient-stats-details"
                   data-testid="button-view-hype-card-stats"
