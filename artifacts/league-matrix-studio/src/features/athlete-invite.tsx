@@ -485,6 +485,13 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
     document.title = `${invite.athleteName} | Pixl Sports`;
     return () => { document.title = previous; };
   }, [invite]);
+  useEffect(() => {
+    if (!invite?.stats) return;
+    setTrendStatId((current) => {
+      if (current === 'score' || Object.prototype.hasOwnProperty.call(invite.stats?.stats ?? {}, current)) return current;
+      return 'score';
+    });
+  }, [invite]);
   if (isLoading) return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading athlete page…</p></PublicShell>;
   if (isError || !invite) return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Athlete page unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This invite may have ended, been revoked, or been copied incorrectly.</p></div></PublicShell>;
   const rule = getSportRule(invite.sport);
@@ -649,17 +656,16 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                   <Stat label="Points / runs" value={invite.stats.score} />
                   {Object.entries(invite.stats.stats).map(([id, value]) => <Stat key={id} label={rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' ')} value={value} />)}
                 </div>
-                 {trendOptions.length > 0 && (
-                   <div className="mt-6 border-t border-white/10 pt-5" data-testid="athlete-stat-trends">
+                   {trendOptions.length > 0 && (
+                    <div className="athlete-trends-panel mt-6 border-t border-white/10 p-4 pt-5 sm:p-5" data-testid="athlete-stat-trends">
                      <label htmlFor="athlete-trend-stat" className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Show trends</label>
                      <select
                        id="athlete-trend-stat"
                        value={trendStatId}
                        onChange={(event) => setTrendStatId(event.target.value)}
-                       className="mt-2 h-11 w-full border border-white/15 bg-black/25 px-3 text-sm font-bold text-white outline-none focus:border-primary"
+                        className="mt-2 h-11 w-full border border-orange-300/40 bg-black/30 px-3 text-sm font-bold text-white outline-none focus:border-accent"
                        data-testid="select-athlete-trend-stat"
                      >
-                       <option value="">Choose a stat</option>
                        {trendOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                      </select>
                      {selectedTrend && (
@@ -677,8 +683,8 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                              return (
                                <li key={`${game.date}-${game.opponent}-${index}`} className="flex items-center gap-3">
                                  <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/40">{game.date ? new Date(`${game.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `Game ${index + 1}`}</span>
-                                 <div className="h-2 min-w-0 flex-1 bg-white/10">
-                                   <div className="h-full bg-primary" style={{ width: `${Math.max(6, (value / trendMax) * 100)}%` }} />
+                                  <div className="athlete-trend-track h-2 min-w-0 flex-1 bg-white/10">
+                                    <div className="athlete-trend-bar h-full" style={{ width: `${Math.max(6, (value / trendMax) * 100)}%` }} />
                                  </div>
                                  <span className="w-8 text-right font-display text-lg text-white">{value}</span>
                                </li>

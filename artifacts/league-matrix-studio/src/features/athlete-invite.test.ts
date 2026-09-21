@@ -71,6 +71,9 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /Visible sections/);
   assert.match(source, /The Athlete Hype Page and its other content were not changed/);
   assert.match(source, /data-testid="select-athlete-trend-stat"/);
+  assert.match(source, /return 'score'/);
+  assert.match(source, /athlete-trends-panel/);
+  assert.match(source, /athlete-trend-bar/);
   assert.match(source, /data-testid="athlete-stat-trend-details"/);
   assert.match(source, /trendGames = invite\.stats\?\.games/);
   assert.match(source, /Finalized only/);
