@@ -3741,11 +3741,13 @@ function SchedulePreview({
   season,
   events,
   onAddEvent,
+  readOnly = false,
 }: {
   teamName: string;
   season: string;
   events: ScheduleEvent[];
   onAddEvent: () => void;
+  readOnly?: boolean;
 }) {
   return (
     <div className="relative mx-auto w-full max-w-[976px] overflow-hidden border border-[#DCE3EC] bg-[#E8F1FF] p-2 sm:p-3 clip-angled-sm">
@@ -3771,16 +3773,18 @@ function SchedulePreview({
 
           <div className="mt-7 flex items-center justify-between gap-3">
             <p className="font-display text-2xl font-bold uppercase tracking-wide text-[#F7F5EF] sm:text-3xl">Next up</p>
-            <button
-              type="button"
-              onClick={onAddEvent}
-              className="inline-flex items-center gap-2 rounded-md bg-[#FF6B35] px-4 py-2.5 text-xs font-extrabold uppercase tracking-[.14em] text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7F5EF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#12213A]"
-              aria-label="Add event"
-              data-testid="button-add-event"
-            >
-              <Plus className="h-4 w-4" strokeWidth={3} />
-              Add event
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={onAddEvent}
+                className="inline-flex items-center gap-2 rounded-md bg-[#FF6B35] px-4 py-2.5 text-xs font-extrabold uppercase tracking-[.14em] text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7F5EF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#12213A]"
+                aria-label="Add event"
+                data-testid="button-add-event"
+              >
+                <Plus className="h-4 w-4" strokeWidth={3} />
+                Add event
+              </button>
+            )}
           </div>
 
           <div
