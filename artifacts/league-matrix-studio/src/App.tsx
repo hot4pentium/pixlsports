@@ -1090,34 +1090,37 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
   const visibleTools = roleToolKinds[activeRole];
   const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
+  const isChecklistPage = location === '/studio/checklist' || location.startsWith('/checklist/');
   return (
     <div className="noise min-h-dvh bg-background flex flex-col">
       <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
         <SiteNav dark />
       </div>
-      <div className={isFanDashboard ? 'hidden lg:block border-b border-border bg-background bg-tech-grid' : 'border-b border-border bg-background bg-tech-grid'}>
-        <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
-          <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
-          {visibleTools.map((key) => {
-            const tool = toolData[key];
-            return (
-            <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>
-              {tool.label.replace(' Creator', '').replace(' Graphic Maker', '')}
-            </Link>
-            );
-          })}
-          {activeRole === 'fan' && (
-            <>
-              <Link href="/studio/athlete-page" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/athlete-page' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-athlete-page">
-                Athlete Page
+      {!isChecklistPage && (
+        <div className={isFanDashboard ? 'hidden lg:block border-b border-border bg-background bg-tech-grid' : 'border-b border-border bg-background bg-tech-grid'} data-testid="studio-tool-toolbar">
+          <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
+            <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
+            {visibleTools.map((key) => {
+              const tool = toolData[key];
+              return (
+              <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>
+                {tool.label.replace(' Creator', '').replace(' Graphic Maker', '')}
               </Link>
-              <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
-                My Athlete
-              </Link>
-            </>
-          )}
+              );
+            })}
+            {activeRole === 'fan' && (
+              <>
+                <Link href="/studio/athlete-page" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/athlete-page' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-athlete-page">
+                  Athlete Page
+                </Link>
+                <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
+                  My Athlete
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''} ${isFanDashboard ? 'supporter-dashboard-page-background' : ''}`}>
         {children}
       </div>
@@ -3156,27 +3159,27 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   return (
     <StudioLayout>
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-6 sm:px-8 sm:py-10">
-        <div className="mb-7 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div className="flex items-start gap-4">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-8 sm:py-8" data-testid="checklist-page">
+        <div className="mb-4 flex items-start justify-between gap-3 sm:mb-6 sm:items-end sm:gap-5">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
             <Link href={shared ? '/studio/checklist' : '/studio'} className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio">
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <div>
+            <div className="min-w-0">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : 'Game Day Hub'}</p>
-              <h1 className="mt-2 font-display text-5xl uppercase leading-[.88] tracking-tight sm:text-7xl">GAMEDAY<br /><span className="text-primary studio-textured-heading-accent">CHECKLIST.</span></h1>
-              <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : 'Start with the essentials, then make the list yours for every game day.'}</p>
+              <h1 className="mt-1 font-display text-4xl uppercase leading-[.88] tracking-tight sm:mt-2 sm:text-7xl">GAMEDAY<br /><span className="text-primary studio-textured-heading-accent">CHECKLIST.</span></h1>
+              <p className="mt-2 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : 'Start with the essentials, then make the list yours for every game day.'}</p>
             {shared && (
-              <p className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground" role="status" data-testid="checklist-live-status">
+              <p className="mt-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:mt-3" role="status" data-testid="checklist-live-status">
                 <span className={`h-2 w-2 rounded-full ${liveStatus === 'connected' ? 'bg-primary' : 'bg-muted-foreground animate-pulse'}`} />
                 {liveStatus === 'connected' ? 'Live updates connected' : 'Reconnecting live updates…'}
               </p>
             )}
             </div>
           </div>
-          <div className="border border-border bg-card px-4 py-3 text-right clip-angled-sm">
+          <div className="shrink-0 border border-border bg-card px-3 py-2 text-right clip-angled-sm sm:px-4 sm:py-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Progress</p>
-            <p className="mt-1 font-display text-3xl text-primary">{completed}/{checklist.items.length}</p>
+            <p className="mt-0.5 font-display text-2xl text-primary sm:mt-1 sm:text-3xl">{completed}/{checklist.items.length}</p>
           </div>
         </div>
 
@@ -3186,11 +3189,11 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           </div>
         )}
 
-        <section className="border border-border bg-card p-4 shadow-sm clip-angled-sm sm:p-6">
-          <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <section className="border border-border bg-card p-3 shadow-sm clip-angled-sm sm:p-6">
+          <div className="flex flex-col gap-2 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4 sm:pb-5">
             <label className="min-w-0 flex-1">
               <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Checklist name</span>
-              <input value={checklist.title} onChange={(event) => updateChecklist({ ...latestChecklist.current, title: event.target.value })} className="mt-1 w-full bg-transparent font-display text-3xl uppercase tracking-wide text-foreground outline-none placeholder:text-muted-foreground" aria-label="Checklist name" />
+              <input value={checklist.title} onChange={(event) => updateChecklist({ ...latestChecklist.current, title: event.target.value })} className="mt-0.5 w-full bg-transparent font-display text-2xl uppercase tracking-wide text-foreground outline-none placeholder:text-muted-foreground sm:mt-1 sm:text-3xl" aria-label="Checklist name" />
             </label>
             <div className="flex items-center gap-2">
               <button type="button" onClick={resetChecklist} className="inline-flex items-center gap-2 border border-border bg-background px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-foreground" data-testid="button-reset-checklist"><RotateCcw className="h-3.5 w-3.5" /> Reset</button>
@@ -3198,8 +3201,8 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
             </div>
           </div>
 
-          <div className="mt-5 border-t border-border pt-5" data-testid="checklist-game-selector">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mt-3 border-t border-border pt-3 sm:mt-5 sm:pt-5" data-testid="checklist-game-selector">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <label className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary"><CalendarDays className="h-3.5 w-3.5" /> Checklist for game</span>
                 <select
@@ -3220,7 +3223,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                     });
                   }}
                   disabled={shared || calendarGames.length === 0}
-                  className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm font-bold uppercase tracking-wide text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+                  className="mt-1 w-full border border-border bg-background px-3 py-2.5 text-sm font-bold uppercase tracking-wide text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70 sm:mt-2 sm:py-3"
                   aria-label="Choose which game this checklist is for"
                   data-testid="select-checklist-game"
                 >
@@ -3235,14 +3238,14 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                   ))}
                 </select>
               </label>
-              <p className="max-w-sm text-xs font-medium leading-relaxed text-muted-foreground">
+              <p className="max-w-sm text-[11px] font-medium leading-relaxed text-muted-foreground sm:text-xs">
                 {localSchedule
                   ? 'Choose a game from your saved schedule.'
                   : 'Add games in Schedule to connect this checklist to an event.'}
               </p>
             </div>
             {displayedGame && (
-              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-l-4 border-primary bg-primary/5 px-3 py-3 text-xs font-bold uppercase tracking-wider text-foreground">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:mt-4 sm:gap-x-5 sm:gap-y-2 sm:py-3">
                 <span>{formatScheduleDate(displayedGame.date)}</span>
                 <span>{formatScheduleTime(displayedGame.time)}</span>
                 <span>VS {displayedGame.opponent || 'OPPONENT TBD'}</span>
@@ -3250,15 +3253,15 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
               </div>
             )}
             {!shared && calendarGames.length === 0 && (
-              <Link href="/studio/schedule" className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
+              <Link href="/studio/schedule" className="mt-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
                 Open schedule <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             )}
           </div>
 
-          <div className="mt-5 h-2 overflow-hidden bg-muted" aria-label={`${progress}% complete`}><div className="h-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div>
+          <div className="mt-3 h-1.5 overflow-hidden bg-muted sm:mt-5 sm:h-2" aria-label={`${progress}% complete`}><div className="h-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${progress}%` }} /></div>
 
-          <div className="min-h-7 pt-3" aria-live="polite" aria-atomic="true" data-testid="checklist-completion-feedback">
+          <div className="min-h-5 pt-2 sm:min-h-7 sm:pt-3" aria-live="polite" aria-atomic="true" data-testid="checklist-completion-feedback">
             {completionFeedback && (
               <p className={`flex items-center gap-2 text-xs font-bold ${completionFeedback.kind === 'undo' ? 'text-muted-foreground' : 'text-primary'} motion-safe:animate-pulse`}>
                 {completionFeedback.kind !== 'undo' && <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />}
@@ -3298,13 +3301,13 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
             </section>
           )}
 
-          <div className="mt-6 space-y-6">
+          <div className="mt-4 space-y-5 sm:mt-6 sm:space-y-6" data-testid="checklist-items">
             {(Array.from(new Set(checklist.items.map((item) => item.section || 'Game day'))) as string[]).map((section) => (
               <div key={section}>
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">{section}</p>
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   {checklist.items.filter((item) => (item.section || 'Game day') === section).map((item) => (
-                    <div key={item.id} data-completed={item.completed ? 'true' : 'false'} className={`flex items-center gap-3 border px-3 py-3 transition-all motion-reduce:transition-none ${item.completed ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'} ${completionFeedback?.itemId === item.id && completionFeedback.kind !== 'undo' ? 'ring-2 ring-primary/30 motion-safe:animate-pulse' : ''}`}>
+                    <div key={item.id} data-completed={item.completed ? 'true' : 'false'} className={`flex items-center gap-3 border px-3 py-2.5 transition-all motion-reduce:transition-none sm:py-3 ${item.completed ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'} ${completionFeedback?.itemId === item.id && completionFeedback.kind !== 'undo' ? 'ring-2 ring-primary/30 motion-safe:animate-pulse' : ''}`}>
                       <button type="button" onClick={() => toggleItemCompletion(item)} className={`grid h-7 w-7 shrink-0 place-items-center border ${item.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 text-transparent hover:border-primary'}`} aria-label={`${item.completed ? 'Uncheck' : 'Check'} ${item.label}`} data-testid={`button-checklist-toggle-${item.id}`}><Check className="h-4 w-4" /></button>
                       <input value={item.label} onChange={(event) => updateItem(item.id, { label: event.target.value })} className={`min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none ${item.completed ? 'line-through opacity-60' : ''}`} aria-label={`Edit ${item.label}`} data-testid={`input-checklist-item-${item.id}`} />
                       {item.completed && <span className="hidden text-[10px] font-bold uppercase tracking-widest text-primary sm:inline">Ready</span>}
