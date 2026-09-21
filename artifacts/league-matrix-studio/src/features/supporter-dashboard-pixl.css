@@ -524,7 +524,7 @@
 
 .pixl-dashboard-mobile .mobile-hero-columns {
   display: grid;
-  grid-template-columns: minmax(112px, .42fr) minmax(0, .58fr);
+  grid-template-columns: minmax(150px, .44fr) minmax(0, .56fr);
   gap: 14px;
   align-items: stretch;
 }
@@ -561,16 +561,16 @@
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns .mobile-athlete-lockup {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns .mobile-athlete-copy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 5px;
+  gap: 2px;
   width: auto;
   height: auto;
   padding: 0;
@@ -578,7 +578,16 @@
   background: transparent;
   box-shadow: none;
   font-size: clamp(.95rem, 4vw, 1.25rem);
-  line-height: 1.05;
+  line-height: .98;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns .mobile-athlete-copy > .text-black\/30 {
+  display: none;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="btn-mobile-athlete-switcher"] > .mobile-athlete-lockup > div:first-child {
+  width: 60px;
+  height: 60px;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns [data-testid="btn-mobile-athlete-switcher"] > svg {
