@@ -591,12 +591,19 @@
 .pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] {
   height: 100%;
   min-width: 0;
-  padding: 18px;
-  border-radius: 18px;
+  padding: 10px 4px 10px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] > div {
   min-width: 0;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"]::after {
+  display: none;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] h2 {
