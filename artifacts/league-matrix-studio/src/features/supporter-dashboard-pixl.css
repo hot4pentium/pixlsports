@@ -52,6 +52,7 @@
 }
 
 .pixl-dashboard > header > :first-child {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -71,6 +72,19 @@
   letter-spacing: .2em;
 }
 
+.pixl-dashboard > header > :first-child::after,
+.pixl-dashboard [data-testid="athlete-summary"]::after,
+.pixl-dashboard [data-testid="section-next-game-context"]::after,
+.pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools)::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--pixl-acid) 0%, var(--pixl-bright) 48%, var(--pixl-orange) 100%);
+}
+
 .pixl-dashboard > header h1 {
   font: 800 clamp(2.8rem, 6vw, 5.8rem)/.86 "Barlow Condensed", sans-serif;
   letter-spacing: -.02em;
@@ -80,6 +94,7 @@
 .pixl-dashboard > header p { color: var(--pixl-muted); font-size: 13px; line-height: 1.5; }
 
 .pixl-dashboard [data-testid="athlete-summary"] {
+  position: relative;
   min-height: 190px;
   align-self: stretch;
   background: var(--pixl-panel-deep);
@@ -104,6 +119,7 @@
 }
 
 .pixl-dashboard [data-testid="section-next-game-context"] {
+  position: relative;
   grid-column: 2 / -1;
   min-height: 470px;
   background: var(--pixl-panel-deep);
@@ -138,6 +154,7 @@
 }
 
 .pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) {
+  position: relative;
   background: rgba(16, 43, 77, .78);
   border: 1px solid rgba(243, 246, 250, .1);
   padding: 22px;
