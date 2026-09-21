@@ -81,44 +81,25 @@
 .bg-landing-text\/10 { background-color: color-mix(in srgb, var(--landing-text) 10%, transparent); }
 
 .landing-sport-ticker-wrap {
-  --landing-ticker-gap: clamp(1rem, 2.5vw, 1.5rem);
+  --landing-ticker-gap: clamp(1rem, 2.5vw, 1.25rem);
   margin-top: 2.75rem;
 }
 
 .landing-sport-ticker {
-  position: relative;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin-inline: -0.25rem;
   padding: 0.25rem;
-  isolation: isolate;
+  scrollbar-width: none;
 }
 
-.landing-sport-ticker::before,
-.landing-sport-ticker::after {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  bottom: 0;
-  width: clamp(0.75rem, 3vw, 2rem);
-  content: "";
-  pointer-events: none;
-}
-
-.landing-sport-ticker::before {
-  left: 0;
-  background: linear-gradient(90deg, var(--landing-bg), transparent);
-}
-
-.landing-sport-ticker::after {
-  right: 0;
-  background: linear-gradient(270deg, var(--landing-bg), transparent);
+.landing-sport-ticker::-webkit-scrollbar {
+  display: none;
 }
 
 .landing-sport-ticker-track {
   display: flex;
   width: max-content;
-  gap: var(--landing-ticker-gap);
-  animation: landing-sport-ticker-scroll 34s linear infinite;
 }
 
 .landing-sport-ticker-group {
@@ -129,36 +110,50 @@
 
 .landing-sport-tile {
   position: relative;
-  flex: 0 0 clamp(8.5rem, 18vw, 12.5rem);
+  flex: 0 0 clamp(8.5rem, 16.5vw, 12rem);
   aspect-ratio: 4 / 5;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--landing-gray) 25%, transparent);
   border-radius: 0.9rem;
   background: var(--landing-pale-blue);
   box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--landing-text) 55%, transparent);
+  animation: landing-sport-tile-rubberband 900ms both;
+  animation-delay: var(--landing-tile-delay);
 }
 
 .landing-sport-tile img {
   display: block;
 }
 
-.landing-sport-ticker:hover .landing-sport-ticker-track,
-.landing-sport-ticker:focus-within .landing-sport-ticker-track {
-  animation-play-state: paused;
-}
-
-@keyframes landing-sport-ticker-scroll {
+@keyframes landing-sport-tile-rubberband {
   from {
-    transform: translateX(0);
+    opacity: 0;
+    transform: translateX(-4rem) scale(0.72);
+  }
+
+  48% {
+    opacity: 1;
+    transform: translateX(1rem) scale(1.08);
+  }
+
+  68% {
+    transform: translateX(-0.45rem) scale(0.96);
+  }
+
+  84% {
+    transform: translateX(0.2rem) scale(1.02);
   }
 
   to {
-    transform: translateX(calc(-50% - (var(--landing-ticker-gap) / 2)));
+    opacity: 1;
+    transform: translateX(0) scale(1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-sport-ticker-track {
+  .landing-sport-tile {
     animation: none;
+    opacity: 1;
+    transform: none;
   }
 }

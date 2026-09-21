@@ -140,19 +140,19 @@ const landingSports = [
 ] as const;
 
 function LandingSportShowcase() {
-  const renderSportTiles = (isDuplicate = false) => landingSports.map((sport, index) => (
+  const renderSportTiles = () => landingSports.map((sport, index) => (
     <div
-      key={`${sport.id}-${isDuplicate ? 'duplicate' : 'original'}`}
+      key={sport.id}
       data-sport-id={sport.id}
-      data-testid={`landing-sport-tile-${sport.id}${isDuplicate ? '-duplicate' : ''}`}
+      data-testid={`landing-sport-tile-${sport.id}`}
       className="landing-sport-tile"
+      style={{ '--landing-tile-delay': `${index * 120}ms` } as React.CSSProperties}
     >
       <img
         src={sport.image}
-        alt={isDuplicate ? '' : sport.alt}
-        aria-hidden={isDuplicate}
+        alt={sport.alt}
         className="h-full w-full object-cover"
-        loading={!isDuplicate && index === 0 ? 'eager' : 'lazy'}
+        loading={index === 0 ? 'eager' : 'lazy'}
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/80 to-transparent px-3 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
         <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/65 sm:text-[10px]">{sport.kicker}</p>
@@ -175,9 +175,6 @@ function LandingSportShowcase() {
         <div className="landing-sport-ticker-track">
           <div className="landing-sport-ticker-group">
             {renderSportTiles()}
-          </div>
-          <div className="landing-sport-ticker-group" aria-hidden="true">
-            {renderSportTiles(true)}
           </div>
         </div>
       </div>
