@@ -39,6 +39,17 @@ test('before-game-day guidance names the three intended actions', () => {
   assert.doesNotMatch(landingSource, /Keep locations and times current/);
 });
 
+test('landing tool benefit previews are informational rather than clickable', () => {
+  assert.doesNotMatch(landingSource, /href="\/studio\/schedule"/);
+  assert.doesNotMatch(landingSource, /href="\/studio\/checklist"/);
+  assert.doesNotMatch(landingSource, /href="\/studio\/stat-tracker"/);
+  assert.doesNotMatch(landingSource, /href="\/studio\/hype-card"/);
+  assert.match(landingSource, /data-testid="preview-schedule"/);
+  assert.match(landingSource, /data-testid="preview-checklist"/);
+  assert.match(landingSource, /data-testid="preview-stat-tracker"/);
+  assert.match(landingSource, /data-testid="preview-hype-card"/);
+});
+
 test('before-game-day guidance includes the uploaded checklist video', () => {
   assert.match(landingSource, /Plan-Checklist_phone_1789955681318\.mp4/);
   assert.match(landingSource, /Plan-Checklist_phone-poster_1789955681318\.webp/);

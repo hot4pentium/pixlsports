@@ -410,42 +410,42 @@ export function PublicLandingPage() {
                 <div className="space-y-8 relative">
                   <div className="absolute left-[11px] top-4 bottom-4 w-px bg-landing-gray/15" />
                   
-                  <Link href="/studio/schedule" className="group block relative pl-10" data-testid="link-preview-schedule">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 group-hover:border-landing-primary transition-colors flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="block relative pl-10" data-testid="preview-schedule">
+                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
+                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
                     </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text group-hover:text-landing-primary transition-colors mb-1">
+                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Schedule Maker
                     </h4>
                     <p className="text-[17px] text-landing-text/70 font-medium">Know what is happening next.</p>
-                  </Link>
-                  <Link href="/studio/checklist" className="group block relative pl-10" data-testid="link-preview-checklist">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 group-hover:border-landing-primary transition-colors flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="block relative pl-10" data-testid="preview-checklist">
+                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
+                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
                     </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text group-hover:text-landing-primary transition-colors mb-1">
+                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Game-Day Checklist
                     </h4>
                     <p className="text-[17px] text-landing-text/70 font-medium">Arrive prepared.</p>
-                  </Link>
-                  <Link href="/studio/stat-tracker" className="group block relative pl-10" data-testid="link-preview-stat-tracker">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 group-hover:border-landing-primary transition-colors flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="block relative pl-10" data-testid="preview-stat-tracker">
+                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
+                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
                     </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text group-hover:text-landing-primary transition-colors mb-1">
+                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Live Stat Tracker
                     </h4>
                     <p className="text-[17px] text-landing-text/70 font-medium">Follow the action.</p>
-                  </Link>
-                  <Link href="/studio/hype-card" className="group block relative pl-10" data-testid="link-preview-hype-card">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 group-hover:border-landing-primary transition-colors flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="block relative pl-10" data-testid="preview-hype-card">
+                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
+                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
                     </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text group-hover:text-landing-primary transition-colors mb-1">
+                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Athlete Hype Card
                     </h4>
                     <p className="text-[17px] text-landing-text/70 font-medium">Celebrate and share the moment.</p>
-                  </Link>
+                  </div>
                 </div>
               </div>
 
