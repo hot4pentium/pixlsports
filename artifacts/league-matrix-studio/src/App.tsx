@@ -1092,8 +1092,10 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
   return (
     <div className="noise min-h-dvh bg-background flex flex-col">
-      <SiteNav dark />
-      <div className="border-b border-border bg-background bg-tech-grid">
+      <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
+        <SiteNav dark />
+      </div>
+      <div className={isFanDashboard ? 'hidden lg:block border-b border-border bg-background bg-tech-grid' : 'border-b border-border bg-background bg-tech-grid'}>
         <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
           <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
           {visibleTools.map((key) => {
@@ -1407,6 +1409,7 @@ function Studio({ role }: { role: UserRole }) {
 function SupporterStudio() {
   const [, setLocation] = useLocation();
   const { user, isSignedIn } = useUser();
+  const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const profile = supporterProfileFromUser(user);
   const localSchedule = readScheduleDraft();
@@ -1491,6 +1494,7 @@ function SupporterStudio() {
              setLocation(`/studio/stat-tracker${query}`);
            }}
            onOpenChecklist={() => setLocation('/studio/checklist')}
+           onSignOut={() => signOut({ redirectUrl: basePath || "/" })}
           athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
           athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
         />

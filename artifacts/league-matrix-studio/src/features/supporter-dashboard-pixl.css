@@ -490,6 +490,10 @@
 }
 
 .pixl-dashboard-mobile > header {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  flex: 0 0 auto;
   height: 72px;
   background: #111316;
   border-bottom: 2px solid var(--m-orange);

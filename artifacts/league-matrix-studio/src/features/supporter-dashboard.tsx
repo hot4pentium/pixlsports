@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  ChevronDown, Home, PlusSquare, Check, Sparkles
+  ChevronDown, Home, PlusSquare, Check, Sparkles, Menu
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -87,6 +87,7 @@ export interface SupporterDashboardViewProps {
   athletePhotoCrop?: AthletePhotoCrop;
   onOpenStatTracker: () => void;
   onOpenChecklist: () => void;
+  onSignOut?: () => void;
 }
 
 function formatDateDisplay(dateStr: string) {
@@ -187,10 +188,13 @@ export function SupporterDashboardView({
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onOpenStatTracker,
   onOpenChecklist,
+  onSignOut,
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
   const [toolsOpen, setToolsOpen] = useState(false);
   const toolsTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
@@ -455,6 +459,17 @@ export function SupporterDashboardView({
     return () => window.removeEventListener('storage', handleStorage);
   }, [gameEvents, stageReminderKey]);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMobileMenuOpen(false);
+      window.requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
   const dismissStageReminder = () => {
     if (!stageReminderGame) return;
     acknowledgeSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage);
@@ -521,7 +536,44 @@ export function SupporterDashboardView({
             <button type="button" onClick={onOpenProfile} className="w-11 h-11 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center border border-black/10 text-lg font-bold text-slate-700" aria-label="Supporter profile" data-testid="btn-mobile-open-profile">
                {profile.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S'}
             </button>
+             <button
+               ref={mobileMenuButtonRef}
+               type="button"
+               onClick={() => setMobileMenuOpen((open) => !open)}
+               className="grid h-11 w-11 place-items-center rounded-full border border-black/10 text-[#12213A] transition-colors hover:bg-black/5"
+               aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+               aria-expanded={mobileMenuOpen}
+               aria-controls="mobile-dashboard-menu"
+               data-testid="button-mobile-dashboard-menu"
+             >
+               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+             </button>
           </div>
+          {mobileMenuOpen && (
+            <nav
+              id="mobile-dashboard-menu"
+              className="absolute inset-x-0 top-full border-b border-black/10 bg-white p-4 shadow-xl"
+              aria-label="Mobile dashboard navigation"
+              data-testid="mobile-dashboard-menu"
+            >
+              <div className="flex flex-col gap-2">
+                <Link href="/studio" className="flex items-center justify-between bg-[#12213A] p-4 text-lg font-display tracking-wide text-white" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-home">
+                  GAME DAY HUB <ArrowRight className="h-5 w-5 text-[#55A4FF]" />
+                </Link>
+                <Link href="/help" className="flex items-center justify-between bg-black/5 p-4 text-lg font-display tracking-wide text-[#12213A]" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-help">
+                  HELP <ArrowRight className="h-5 w-5 text-[#2474F5]" />
+                </Link>
+                <Link href="/privacy" className="flex items-center justify-between bg-black/5 p-4 text-lg font-display tracking-wide text-[#12213A]" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-privacy">
+                  PRIVACY <ArrowRight className="h-5 w-5 text-[#2474F5]" />
+                </Link>
+                {onSignOut && (
+                  <button type="button" onClick={() => { setMobileMenuOpen(false); onSignOut(); }} className="flex w-full items-center justify-between bg-black/5 p-4 text-left text-lg font-display tracking-wide text-destructive" data-testid="btn-mobile-dashboard-sign-out">
+                    SIGN OUT <ArrowRight className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            </nav>
+          )}
         </header>
 
         {/* Content */}
