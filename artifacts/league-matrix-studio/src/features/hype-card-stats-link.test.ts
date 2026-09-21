@@ -20,3 +20,24 @@ test('stats-only shares have no hosted media object paths and still require a li
   assert.match(serverSource, /posterObjectPath: posterClaim\?\.objectPath \?\? null/);
   assert.match(serverSource, /share\.shareMode === "stats"/);
 });
+
+test('linked exports create or reuse a stats URL and burn it into still and video renders', () => {
+  assert.match(editorSource, /data-testid="button-export-stats-link"/);
+  assert.match(editorSource, /const handleExport = async \(statsUrl\?: string\)/);
+  assert.match(editorSource, /if \(existingStatsShare\) \{\s*void handleExport\(shareUrlFor\(existingStatsShare\)\);/);
+  assert.match(editorSource, /setLinkedExportPending\(true\)/);
+  assert.match(editorSource, /buildHypeCardSvg\(project, 'fg', ns, statsUrl\)/);
+  assert.match(editorSource, /buildHypeCardSvg\(project, 'all', 'export', statsUrl\)/);
+  assert.match(editorSource, /data-testid="text-stats-link-export-warning"/);
+});
+
+test('stats URL markup stays optional and readable inside every SVG output format', () => {
+  const svgSource = readFileSync(new URL('./hype-card-svg.ts', import.meta.url), 'utf8');
+
+  assert.match(svgSource, /function buildStatsUrlMarkup\(/);
+  assert.match(svgSource, /if \(!statsUrl\) return ''/);
+  assert.match(svgSource, /aria-label="Finalized stats link"/);
+  assert.match(svgSource, /FINAL STATS/);
+  assert.match(svgSource, /buildStatsUrlMarkup\(statsUrl, 1000, 1400, palette\)/);
+  assert.match(svgSource, /buildStatsUrlMarkup\(statsUrl, width, height, palette\)/);
+});

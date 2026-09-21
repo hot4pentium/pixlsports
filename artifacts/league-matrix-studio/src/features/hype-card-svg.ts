@@ -281,6 +281,29 @@ function cardContent(project: HypeCardProject) {
   return { headline: headlineStr, player, number, team, details, recognition: '', message: '' };
 }
 
+function buildStatsUrlMarkup(
+  statsUrl: string | undefined,
+  width: number,
+  height: number,
+  palette: PaletteValue,
+) {
+  if (!statsUrl) return '';
+
+  const boxX = Math.max(24, width * 0.045);
+  const boxWidth = width - boxX * 2;
+  const boxHeight = Math.max(84, height * 0.065);
+  const boxY = height - boxHeight - Math.max(28, height * 0.025);
+  const labelSize = Math.max(11, width * 0.012);
+  const urlSize = fitText(statsUrl, boxWidth - 48, Math.max(15, width * 0.018), 0.58);
+
+  return `
+    <g aria-label="Finalized stats link">
+      <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="${Math.min(18, boxHeight / 3)}" fill="#02070e" fill-opacity=".94" stroke="${palette.accent}" stroke-width="${Math.max(2, width * .002)}"/>
+      <text x="${boxX + 24}" y="${boxY + labelSize + 10}" font-family="DM Sans,sans-serif" font-size="${labelSize}" font-weight="800" letter-spacing="${Math.max(1, width * .003)}" fill="${palette.accent}">FINAL STATS</text>
+      <text x="${width / 2}" y="${boxY + boxHeight - Math.max(17, width * .018)}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${urlSize}" font-weight="700" fill="#fff">${escapeXml(statsUrl)}</text>
+    </g>`;
+}
+
 export type SvgLayer = 'all' | 'bg' | 'fg';
 
 export const STADIUM_MEDIA_FRAME = { x: 180, y: 330, width: 640, height: 755, radius: 34 } as const;
@@ -292,7 +315,7 @@ const stadiumCardBackgrounds = {
   dugout: splitLightArena,
 } as const;
 
-function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: string) {
+function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: string, statsUrl?: string) {
   const content = cardContent(project);
   const palette = palettes[project.palette];
   const backgroundImage = stadiumCardBackgrounds[project.layout];
@@ -369,7 +392,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${logo}
       ${branding}
      </g>
-     ${nameplate}`;
+     ${nameplate}
+     ${buildStatsUrlMarkup(statsUrl, 1000, 1400, palette)}`;
   const photoMarkup = `<g clip-path="url(#stadiumPhotoClip-${ns})">${photo}</g>`;
   if (layer === 'bg') return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${bgContent}</svg>`;
   if (layer === 'fg') return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${fgContent}</svg>`;
@@ -735,9 +759,9 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${bgContent}<g clip-path="url(#dugoutPhoto-${ns})">${photo}</g>${fgContent}</svg>`;
 }
 
-export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'all', ns = 'ns') {
+export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'all', ns = 'ns', statsUrl?: string) {
   if (project.format === 'card') {
-    return buildStadiumCardSvg(project, layer, ns);
+    return buildStadiumCardSvg(project, layer, ns, statsUrl);
   }
   
   const { width, height } = getDimensions(project.format);
@@ -798,7 +822,7 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
     ? `<text x="${width - 55}" y="${height - 36}" text-anchor="end" font-size="${Math.max(12, width * .012)}" letter-spacing="${Math.max(1, width * .004)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".55">PIXL SPORTS STUDIO</text>`
     : '';
 
-  const fgContent = `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.paper}" stroke-opacity=".32" stroke-width="${Math.max(2, width * .004)}"/>${textMarkup}${logo}${branding}<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="34" fill="none" stroke="${palette.paper}" stroke-opacity=".18" stroke-width="${Math.max(2, width * .003)}"/><text x="${isLandscape ? width * .57 : width * .09}" y="${isLandscape ? 76 : 64}" font-size="${Math.max(15, width * .014)}" letter-spacing="${Math.max(2, width * .007)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".7">${escapeXml(template.name.toUpperCase())}</text>`;
+  const fgContent = `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.paper}" stroke-opacity=".32" stroke-width="${Math.max(2, width * .004)}"/>${textMarkup}${logo}${branding}<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="34" fill="none" stroke="${palette.paper}" stroke-opacity=".18" stroke-width="${Math.max(2, width * .003)}"/><text x="${isLandscape ? width * .57 : width * .09}" y="${isLandscape ? 76 : 64}" font-size="${Math.max(15, width * .014)}" letter-spacing="${Math.max(2, width * .007)}" font-family="DM Sans, sans-serif" font-weight="700" fill="${secondaryText}" opacity=".7">${escapeXml(template.name.toUpperCase())}</text>${buildStatsUrlMarkup(statsUrl, width, height, palette)}`;
 
   if (layer === 'bg') return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs>${photoClip}</defs>${bgContent}</svg>`;
   if (layer === 'fg') return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs>${photoClip}</defs>${fgContent}</svg>`;

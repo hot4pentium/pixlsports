@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, MessageCircle, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2Off, Clipboard, Trash2
+  LayoutGrid, Lightbulb, MessageCircle, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2, Link2Off, Clipboard, Trash2
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -1162,6 +1162,7 @@ export function HypeCardEditor() {
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [shareMode, setShareMode] = useState<'card' | 'stats'>('stats');
+  const [linkedExportPending, setLinkedExportPending] = useState(false);
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const [publishedStatsShare, setPublishedStatsShare] = useState<HypeCardShare | null>(null);
   const [syncRetry, setSyncRetry] = useState(0);
@@ -2157,7 +2158,7 @@ export function HypeCardEditor() {
     setProject(clearHypeCardMedia);
   };
 
-  const handleExport = async () => {
+  const handleExport = async (statsUrl?: string) => {
     setValidation('');
     setNotice('');
     if (!project.photo && !project.mediaType) {
@@ -2198,7 +2199,7 @@ export function HypeCardEditor() {
 
         const ns = 'export';
         const bgSvg = buildHypeCardSvg(project, 'bg', ns);
-        const fgSvg = buildHypeCardSvg(project, 'fg', ns);
+        const fgSvg = buildHypeCardSvg(project, 'fg', ns, statsUrl);
         const clipInfo = getPhotoClipInfo(project, ns);
 
         // Load background and foreground as images
@@ -2281,7 +2282,7 @@ export function HypeCardEditor() {
       // Fallback to existing image export...
       try {
         const dimensions = getDimensions(project.format);
-        const svg = buildHypeCardSvg(project);
+        const svg = buildHypeCardSvg(project, 'all', 'export', statsUrl);
         const { dataUrl, extension } = await rasterizeSvgForDownload(
           svg,
           dimensions.width,
@@ -2310,6 +2311,30 @@ export function HypeCardEditor() {
       ? 'https://pixlsports.com'
       : window.location.origin;
     return `${origin}${cleanBase}/h/${share.shareToken}`;
+  };
+
+  const handleExportWithStatsLink = () => {
+    setValidation('');
+    setNotice('');
+    if (!isOnline) {
+      setNotice('Reconnect to create a stats link before exporting it onto the card.');
+      return;
+    }
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    if (existingStatsShare) {
+      void handleExport(shareUrlFor(existingStatsShare));
+      return;
+    }
+
+    setLinkedExportPending(true);
+    setShareMode('stats');
+    setShareTrackerProjectId('none');
+    setShareSport(profile.sport ?? 'basketball');
+    setShareExpiresInDays('30');
+    setShareDialogOpen(true);
   };
 
   const handleShareClick = () => {
@@ -2349,9 +2374,10 @@ export function HypeCardEditor() {
       setNotice('Reconnect to publish this Hype Card player page.');
       return;
     }
-    setShareDialogOpen(false);
     setSharing(true);
+    setShareDialogOpen(false);
     setShareProgress(0);
+    const linkedExport = linkedExportPending;
     try {
       const isStatsOnly = shareMode === 'stats';
       const replacementShare = isStatsOnly ? existingStatsShare : existingShare;
@@ -2457,19 +2483,26 @@ export function HypeCardEditor() {
       else setPublishedShare(created);
       await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
       const url = shareUrlFor(created);
-      try {
-        if (navigator.share) await navigator.share({ title: created.title, text: isStatsOnly ? 'View the finalized Pixl Sports stats with this video.' : 'Watch this Pixl Sports Hype Card', url });
-        else await navigator.clipboard.writeText(url);
-      } catch {
-        await navigator.clipboard.writeText(url).catch(() => undefined);
+      if (!linkedExport) {
+        try {
+          if (navigator.share) await navigator.share({ title: created.title, text: isStatsOnly ? 'View the finalized Pixl Sports stats with this video.' : 'Watch this Pixl Sports Hype Card', url });
+          else await navigator.clipboard.writeText(url);
+        } catch {
+          await navigator.clipboard.writeText(url).catch(() => undefined);
+        }
       }
       setNotice(isStatsOnly
-        ? `Stats link ready for ${shareExpiresInDays} days. Your video stays on this phone.`
+        ? linkedExport
+          ? `Stats link ready for ${shareExpiresInDays} days. Printing it onto your export now.`
+          : `Stats link ready for ${shareExpiresInDays} days. Your video stays on this phone.`
         : `Player page published for ${shareExpiresInDays} days. The link is ready to share.`);
+      setLinkedExportPending(false);
+      if (linkedExport) await handleExport(url);
     } catch (error) {
       console.error(error);
       setNotice(error instanceof Error ? error.message : 'Could not publish the interactive Hype Card.');
     } finally {
+      setLinkedExportPending(false);
       setSharing(false);
     }
   };
@@ -2570,10 +2603,14 @@ export function HypeCardEditor() {
                 }
               }} />
             </label>
-             <Button onClick={handleExport} disabled={exporting} className="min-h-10 gap-2 whitespace-nowrap rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
+              <Button onClick={() => void handleExport()} disabled={exporting || sharing} className="min-h-10 gap-2 whitespace-nowrap rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
+              <Button variant="outline" onClick={handleExportWithStatsLink} disabled={sharing || exporting} data-testid="button-export-stats-link" className="min-h-10 gap-2 whitespace-nowrap rounded-none clip-angled-sm" aria-label="Export with stats link" title="Create or reuse a stats link and print it on the export">
+                <Link2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Export with stats link</span>
+              </Button>
               <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Preparing share link' : existingShare || existingStatsShare ? 'Refresh share link' : 'Create stats link'} title={existingShare || existingStatsShare ? 'Refresh share link' : 'Create stats link'}>
               <Share2 className="h-4 w-4" />
                 <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare || existingStatsShare ? 'Refresh link' : 'Share'}</span>
@@ -2984,12 +3021,18 @@ export function HypeCardEditor() {
                 <p className="mt-5 text-xs font-medium leading-relaxed text-muted-foreground">
                   Your design updates instantly in the preview. You can go back to any step before exporting.
                 </p>
+                <p className="mt-3 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-linked-export-note">
+                  Export with stats link prints a readable finalized-stats URL on the frame. It follows the selected expiration and stops working if you revoke the stats link.
+                </p>
                 <div className="mt-5 grid grid-cols-2 gap-3">
-                  <Button type="button" onClick={handleExport} disabled={exporting || sharing} data-testid="walkthrough-export-card" className="min-w-0 gap-2 rounded-none bg-primary px-3 font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
+                  <Button type="button" onClick={() => void handleExport()} disabled={exporting || sharing} data-testid="walkthrough-export-card" className="min-w-0 gap-2 rounded-none bg-primary px-3 font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
                     <Download className="h-4 w-4 shrink-0" /> <span className="truncate">{exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}</span>
                   </Button>
                   <Button type="button" variant="outline" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
                     <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare || existingStatsShare ? 'Refresh link' : 'Create stats link'}</span>
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleExportWithStatsLink} disabled={sharing || exporting} data-testid="walkthrough-export-stats-link" className="col-span-2 min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
+                    <Link2 className="h-4 w-4 shrink-0" /> <span className="truncate">Export with stats link</span>
                   </Button>
                 </div>
               </section>
@@ -3032,7 +3075,10 @@ export function HypeCardEditor() {
 
       <MobilePreviewDialog project={project} videoUrl={videoUrl} open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen} title={project.headline} />
 
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+      <Dialog open={shareDialogOpen} onOpenChange={(open) => {
+        setShareDialogOpen(open);
+        if (!open) setLinkedExportPending(false);
+      }}>
         <DialogContent className="clip-angled-sm">
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Share Hype Card</DialogTitle>
@@ -3081,6 +3127,11 @@ export function HypeCardEditor() {
                 </SelectContent>
               </Select>
             </div>
+            {shareMode === 'stats' && (
+              <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-stats-link-export-warning">
+                If you export with this stats link, the printed URL follows this expiration and stops working if you revoke the link. The downloaded file contains readable URL text, not a guaranteed tappable hyperlink.
+              </p>
+            )}
 
             {shareTrackerProjectId !== 'none' && (
               <>
