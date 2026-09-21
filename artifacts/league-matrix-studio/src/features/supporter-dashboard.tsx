@@ -798,22 +798,16 @@ export function SupporterDashboardView({
                   {hasAthlete ? profile.athleteName : 'Unassigned'}
                 </h2>
                 {hasAthlete ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/65 sm:text-xs">
+                  <div className="dashboard-athlete-meta mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/65 sm:text-xs">
                     {profile.jerseyNumber && <span><span className="text-primary">#</span>{profile.jerseyNumber}</span>}
-                    {profile.jerseyNumber && profile.position && <span className="opacity-40">•</span>}
-                    {profile.position && <span>{profile.position}</span>}
-                    {profile.relationship && <><span className="opacity-40">•</span><span>{profile.relationship}</span></>}
+                    {profile.jerseyNumber && profile.teamName && <span className="opacity-40">•</span>}
+                    {profile.teamName && <span data-testid="athlete-team-name">{profile.teamName}</span>}
+                    {(profile.position || profile.relationship) && <span className="basis-full pt-1 text-[9px] tracking-[0.16em] text-white/45">{[profile.position, profile.relationship].filter(Boolean).join(' · ')}</span>}
                   </div>
                 ) : (
                   <button type="button" onClick={onOpenProfile} className="mt-2 text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
                     Set up athlete details
                   </button>
-                )}
-                {profile.teamName && (
-                  <div className="mt-3 inline-flex max-w-full items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1 text-white/80 clip-angled-sm">
-                    <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span className="min-w-0 whitespace-normal break-words text-[10px] font-bold uppercase tracking-widest" data-testid="athlete-team-name">{profile.teamName}</span>
-                  </div>
                 )}
               </div>
               <div className="relative z-10 shrink-0">
@@ -831,25 +825,35 @@ export function SupporterDashboardView({
         <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" />
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:gap-12 lg:p-10">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-              {currentStage.kicker}
-              {scheduleSource && <span className="text-white/45">· Your schedule</span>}
-            </div>
+          <div className="dashboard-event-primary">
+            <div className="dashboard-event-top">
             {contextDateParts && (
-              <div className="dashboard-event-date-row mt-5 flex flex-wrap items-end gap-3" data-testid="next-event-date">
+              <div className="dashboard-event-date-row flex shrink-0 flex-wrap items-end gap-3" data-testid="next-event-date">
                 <div className="dashboard-event-date flex flex-col items-center justify-center border border-white/20 bg-white/10 px-4 py-2 text-center">
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{contextDateParts.month}</span>
                   <span className="font-display text-4xl leading-none text-white">{contextDateParts.day}</span>
                   <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">{contextDateParts.dayOfWeek}</span>
                 </div>
-                <span className="dashboard-countdown inline-flex items-center bg-[#FF6433] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white">{formatDaysUntil(contextEvent!.date)}</span>
               </div>
             )}
-            <h2 id="next-game-heading" className="mt-3 max-w-2xl break-words font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl" data-testid="next-game-heading">
-              {contextEvent ? contextTitle : 'Make the next game count.'}
-            </h2>
+              <div className="dashboard-event-copy min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                  {currentStage.kicker}
+                  {scheduleSource && <span className="text-white/45">· Your schedule</span>}
+                </div>
+                <div className="dashboard-event-title-row mt-3 flex flex-wrap items-center gap-x-4 gap-y-3">
+                  <h2 id="next-game-heading" className="max-w-2xl break-words font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl" data-testid="next-game-heading">
+                    {contextEvent ? contextTitle : 'Make the next game count.'}
+                  </h2>
+                  {contextEvent && (
+                    <span className="dashboard-event-badge inline-flex items-center bg-[#FF6433] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+                      {gameStage === 'live' ? 'Live now' : gameStage === 'completed' ? 'Final' : 'Up next'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
             {isViewingPastGame && (
               <div
                 className="mt-5 max-w-2xl break-words border-l-2 border-fuchsia-300 bg-fuchsia-300/[0.08] px-4 py-3"
@@ -873,7 +877,7 @@ export function SupporterDashboardView({
             )}
             {contextEvent ? (
               <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-white/65">
-                <span>{formatDateDisplay(contextEvent.date)}</span>
+                <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-primary" />{formatDateDisplay(contextEvent.date)}</span>
                 <span className="text-white/30">·</span>
                 <span>{formatTimeDisplay(contextEvent.time)}</span>
                 {contextEvent.location && <><span className="text-white/30">·</span><span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-primary" />{contextEvent.location}</span></>}
@@ -909,7 +913,12 @@ export function SupporterDashboardView({
               {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
             </div>
           </div>
-          <div className="flex flex-col justify-end">
+        </div>
+        </section>
+      </div>
+
+      <section className="dashboard-week-path-panel animate-slide-up delay-200">
+          <div className="dashboard-week-path-tabs flex flex-col justify-end">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
             <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as the week moves. The calendar marks what comes next.</p>
             {pathCelebration && (
@@ -950,7 +959,6 @@ export function SupporterDashboardView({
               })}
             </div>
           </div>
-        </div>
         <div id="week-path-content" className={`relative border-t-2 ${selectedPathTheme.contentBorder} ${selectedPathTheme.contentSurface} px-5 py-5 sm:px-8 sm:py-7`} data-testid="week-path-content" data-selected-path={selectedPath.id}>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
@@ -977,7 +985,6 @@ export function SupporterDashboardView({
           </div>
         </div>
         </section>
-      </div>
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-8 animate-slide-up delay-300">
