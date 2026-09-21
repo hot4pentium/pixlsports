@@ -3,7 +3,8 @@
   <desc id="desc">A reusable, text-free blue chevron container with a transparent background.</desc>
   <defs>
     <linearGradient id="fill" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#173B68" stop-opacity="0.94"/>
+      <stop offset="0" stop-color="#2B73C7" stop-opacity="0.96"/>
+      <stop offset="0.48" stop-color="#173B68" stop-opacity="0.95"/>
       <stop offset="1" stop-color="#0B1F3A" stop-opacity="0.98"/>
     </linearGradient>
     <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
