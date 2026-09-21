@@ -295,7 +295,7 @@ export function PublicLandingPage() {
 
               <div className="relative z-10 flex flex-col gap-8 sm:gap-10">
                 {/* Step 1 */}
-                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-gray/15 bg-landing-white p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
+                <div className="pixl-gradient-edge relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-gray/15 bg-landing-white p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange/60"></div>
                   <div className="relative flex justify-center lg:justify-start">
                     <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-text/10 bg-landing-bg shadow-sm">
@@ -340,7 +340,7 @@ export function PublicLandingPage() {
                 </div>
 
                 {/* Step 2 */}
-                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-primary/10 bg-landing-pale-blue p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
+                <div className="pixl-gradient-edge relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-primary/10 bg-landing-pale-blue p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange/80"></div>
                   <div className="relative flex justify-center lg:justify-start">
                     <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-primary/15 bg-landing-white shadow-sm">
@@ -369,7 +369,7 @@ export function PublicLandingPage() {
                 </div>
 
                 {/* Step 3 */}
-                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-orange/15 bg-[#FFF1EA] p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
+                <div className="pixl-gradient-edge relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-orange/15 bg-[#FFF1EA] p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange"></div>
                   <div className="relative flex justify-center lg:justify-start">
                     <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-orange/15 bg-landing-white shadow-sm">
@@ -457,13 +457,13 @@ export function PublicLandingPage() {
 
               <div className="relative h-[480px] sm:h-[650px] w-full">
                 {/* Decorative overlapping composition */}
-                <div className="absolute top-0 right-0 w-[65%] sm:w-[55%] rounded-2xl shadow-2xl border border-landing-gray/15 overflow-hidden z-20 hover:-translate-y-1 transition-transform duration-300">
+                <div className="pixl-gradient-edge absolute top-0 right-0 w-[65%] sm:w-[55%] rounded-2xl shadow-2xl border border-landing-gray/15 overflow-hidden z-20 hover:-translate-y-1 transition-transform duration-300">
                   <img src={statTrackerLive} alt="Stat Tracker preview" className="w-full h-auto object-cover" />
                 </div>
-                <div className="absolute bottom-4 right-[10%] w-[60%] sm:w-[50%] rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] border border-landing-gray/15 overflow-hidden z-30 hover:-translate-y-1 transition-transform duration-300">
+                <div className="pixl-gradient-edge absolute bottom-4 right-[10%] w-[60%] sm:w-[50%] rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] border border-landing-gray/15 overflow-hidden z-30 hover:-translate-y-1 transition-transform duration-300">
                   <img src={hypeCardRecipientPreview} alt="Hype Card preview" className="w-full h-auto object-cover" />
                 </div>
-                <div className="absolute top-[25%] left-0 w-[70%] sm:w-[60%] rounded-2xl shadow-xl border border-landing-gray/15 overflow-hidden z-10 hover:-translate-y-1 transition-transform duration-300">
+                <div className="pixl-gradient-edge absolute top-[25%] left-0 w-[70%] sm:w-[60%] rounded-2xl shadow-xl border border-landing-gray/15 overflow-hidden z-10 hover:-translate-y-1 transition-transform duration-300">
                   <img src={gameDayChecklist} alt="Checklist preview" className="w-full h-auto object-cover" />
                 </div>
               </div>
