@@ -12,6 +12,7 @@ test('Hype Card sharing offers device download or Athlete Hype Page posting', ()
   assert.doesNotMatch(editorSource, /data-testid="button-share-hosted-card"/);
   assert.doesNotMatch(editorSource, /data-testid="link-preview-recipient"/);
   assert.match(editorSource, /Hype Card added to Athlete Hype Page/);
+  assert.match(editorSource, /Video added to Athlete Hype Page/);
   assert.match(editorSource, /const isStatsOnly = shareMode === 'stats'/);
   assert.match(editorSource, /if \(isStatsOnly\) \{\s*mediaKind = project\.mediaType === 'image' \? 'image' : 'video';\s*setShareProgress\(0\.75\);/);
   assert.match(editorSource, /mediaUploadClaimId: isStatsOnly \? null : claimId/);
@@ -25,6 +26,8 @@ test('stats-only shares have no hosted media object paths and still require a li
   assert.match(serverSource, /videoObjectPath: mediaClaim\?\.objectPath \?\? null/);
   assert.match(serverSource, /posterObjectPath: posterClaim\?\.objectPath \?\? null/);
   assert.match(serverSource, /share\.shareMode === "stats"/);
+  assert.match(serverSource, /const MAX_VIDEO_BYTES = 35 \* 1024 \* 1024/);
+  assert.match(serverSource, /video\/mp4.*video\/webm/);
 });
 
 test('linked exports create or reuse a stats URL and burn it into still and video renders', () => {
@@ -38,6 +41,11 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
   assert.match(editorSource, /data-testid="button-copy-success-destination"/);
   assert.match(editorSource, /data-testid="button-share-success-destination"/);
   assert.match(editorSource, /revoking it makes this destination unavailable/);
+  assert.match(editorSource, /data-testid="text-hosted-video-preparation"/);
+  assert.match(editorSource, /MAX_HOSTED_VIDEO_BYTES/);
+  assert.match(editorSource, /prepared\.video\.size > MAX_HOSTED_VIDEO_BYTES/);
+  assert.match(editorSource, /signal: shareAbortController\.signal/);
+  assert.match(editorSource, /cancelSharePublish/);
 });
 
 test('stats URL markup stays optional and readable inside every SVG output format', () => {

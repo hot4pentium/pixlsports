@@ -3,6 +3,10 @@ import { checkExportSupport } from './hype-card-media';
 export type ExportProgressCallback = (progress: number) => void;
 
 export type ImageExportFormat = 'png' | 'jpeg';
+export type VideoRecorderOptions = {
+  videoBitsPerSecond?: number;
+  audioBitsPerSecond?: number;
+};
 
 export function svgToImage(svg: string, width: number, height: number): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -58,7 +62,8 @@ export async function exportVideoCanvas(
   includeAudio: boolean,
   trimStart: number,
   trimEnd: number,
-  onDrawFrame: (ctx: CanvasRenderingContext2D, videoFrame: HTMLVideoElement) => void
+  onDrawFrame: (ctx: CanvasRenderingContext2D, videoFrame: HTMLVideoElement) => void,
+  recorderOptions: VideoRecorderOptions = {},
 ): Promise<{ blob: Blob; mimeType: string; ext: string; audioIncluded: boolean }> {
   const support = checkExportSupport();
   
@@ -123,7 +128,7 @@ export async function exportVideoCanvas(
     }
   }
 
-  const recorder = new MediaRecorder(stream, { mimeType });
+  const recorder = new MediaRecorder(stream, { mimeType, ...recorderOptions });
   const chunks: Blob[] = [];
 
   recorder.ondataavailable = (e) => {

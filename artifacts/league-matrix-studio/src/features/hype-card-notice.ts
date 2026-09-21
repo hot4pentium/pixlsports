@@ -9,6 +9,7 @@ const SUCCESS_NOTICE_PREFIXES = [
   'Logo attached on this phone.',
   'Your Hype Card is ready on this phone.',
   'Hype Card added to Athlete Hype Page',
+  'Video added to Athlete Hype Page',
   'Stats link ready',
   'Hype Card removed from Athlete Hype Page',
   'Stats link revoked.',
@@ -24,9 +25,12 @@ const WARNING_NOTICE_PARTS = [
   'reconnect ',
   'browser does not support',
   'browser could not capture',
+  'browser could not prepare',
   'not supported in this browser',
   'this browser was not making progress',
   'this browser could not create a smaller mp4',
+  'prepared video is too large',
+  'upload cancelled',
 ] as const;
 
 export type HypeCardNoticeTone = 'success' | 'warning' | 'error';

@@ -11,6 +11,7 @@ test('recognizes representative Hype Card readiness, copy, publish, and completi
     'Share link copied.',
     'Stats link ready for 7 days. Your video stays on this phone.',
     'Hype Card added to Athlete Hype Page for 7 days.',
+    'Video added to Athlete Hype Page for 7 days.',
     'This design and its prepared media are now saved to the cloud.',
   ];
 
@@ -28,6 +29,8 @@ test('classifies the editor reconnect, offline, and browser compatibility notice
     'Your Hype Card is ready on this phone. Reconnect to post it to an Athlete Hype Page.',
     'Video preparation stopped because this browser was not making progress. The original video will stay local.',
     'This browser could not create a smaller MP4, so the original video will stay local.',
+    'The prepared video is too large for the Athlete Hype Page. Choose a shorter clip or download the Hype Card to this device instead.',
+    'Athlete Hype Page upload cancelled. Your Hype Card is still available for download on this device.',
     'Exported as WebM because MP4 encoding is not supported in this browser. If this video does not play on your phone, try exporting from a different browser like Chrome.',
     'The video exported without sound because this browser could not capture the clip audio.',
   ];
