@@ -84,6 +84,9 @@ test('public Athlete Hype Pages present direct videos in an accessible horizonta
   assert.match(source, /athlete-highlights-panel/);
   assert.match(source, /athlete-video-stage/);
   assert.match(source, /data-testid="athlete-video-reflection"/);
+  assert.match(source, /href="#athlete-reply-composer"/);
+  assert.match(source, /Send some hype/);
+  assert.match(source, /data-testid="button-send-hype-for-video"/);
   assert.match(source, /invite\.videos\.map\(\(video, index\)/);
   assert.match(source, /src=\{video\.videoUrl\}/);
   assert.match(source, /poster=\{video\.posterUrl \?\? undefined\}/);

@@ -621,7 +621,17 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                       </div>
                       <div className="border-l-2 border-primary px-4 py-4">
                         <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">Moment {String(index + 1).padStart(2, '0')}</p>
-                        <h3 className="mt-2 font-display text-3xl uppercase leading-none">{video.title}</h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-3">
+                          <h3 className="font-display text-3xl uppercase leading-none">{video.title}</h3>
+                          <a
+                            href="#athlete-reply-composer"
+                            className="inline-flex min-h-9 items-center border border-primary/60 px-3 text-[10px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                            aria-label={`Send some hype about ${video.title}`}
+                            data-testid="button-send-hype-for-video"
+                          >
+                            Send some hype
+                          </a>
+                        </div>
                         {details && <p className="mt-3 text-xs font-bold uppercase tracking-[.16em] text-white/55">{details}</p>}
                       </div>
                     </li>
