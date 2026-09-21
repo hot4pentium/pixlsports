@@ -16,6 +16,8 @@ test('Hype Card sharing offers device download or Athlete Hype Page posting', ()
   assert.match(editorSource, /if \(isStatsOnly\) \{\s*mediaKind = project\.mediaType === 'image' \? 'image' : 'video';\s*setShareProgress\(0\.75\);/);
   assert.match(editorSource, /mediaUploadClaimId: isStatsOnly \? null : claimId/);
   assert.match(editorSource, /data-testid="link-preview-stats-recipient"/);
+  assert.match(editorSource, /\{shareMode === 'stats' && shareTrackerProjectId !== 'none' && \(/);
+  assert.match(editorSource, /\{shareMode === 'stats' && \(\s*<div className="space-y-2">/);
 });
 
 test('stats-only shares have no hosted media object paths and still require a linked tracker', () => {

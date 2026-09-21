@@ -3028,7 +3028,7 @@ export function HypeCardEditor() {
               </p>
             )}
 
-            {shareTrackerProjectId !== 'none' && (
+            {shareMode === 'stats' && shareTrackerProjectId !== 'none' && (
               <>
                 {profile.sport ? (
                   <div className="space-y-2">
@@ -3065,23 +3065,25 @@ export function HypeCardEditor() {
               </>
             )}
 
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Expiration</Label>
-              <Select value={shareExpiresInDays} onValueChange={setShareExpiresInDays}>
-                <SelectTrigger className="clip-angled-sm h-12 rounded-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 Days</SelectItem>
-                  <SelectItem value="14">14 Days</SelectItem>
-                  <SelectItem value="30">30 Days</SelectItem>
-                  <SelectItem value="90">90 Days</SelectItem>
-                  {!['7', '14', '30', '90'].includes(shareExpiresInDays) && (
-                    <SelectItem value={shareExpiresInDays}>{shareExpiresInDays} Days</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            {shareMode === 'stats' && (
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Expiration</Label>
+                <Select value={shareExpiresInDays} onValueChange={setShareExpiresInDays}>
+                  <SelectTrigger className="clip-angled-sm h-12 rounded-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 Days</SelectItem>
+                    <SelectItem value="14">14 Days</SelectItem>
+                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="90">90 Days</SelectItem>
+                    {!['7', '14', '30', '90'].includes(shareExpiresInDays) && (
+                      <SelectItem value={shareExpiresInDays}>{shareExpiresInDays} Days</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <DialogFooter className="mt-6">
               <Button type="submit" disabled={shareMode === 'stats' ? shareTrackerProjectId === 'none' || !profile.athleteName : shareTrackerProjectId !== 'none' && !profile.athleteName} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
