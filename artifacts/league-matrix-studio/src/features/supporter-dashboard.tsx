@@ -713,7 +713,7 @@ export function SupporterDashboardView({
              </div>
              <span className="text-[10px] font-bold">Game Day</span>
            </button>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.hypeCard)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
+            <button type="button" onClick={() => setLocation('/studio/athlete-page')} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <PlusSquare className="w-[20px] h-[20px]" />
              </div>
