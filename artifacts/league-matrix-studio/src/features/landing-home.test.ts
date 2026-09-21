@@ -29,6 +29,14 @@ test('landing athlete photos render as compact entrance-animated tiles below the
   );
 });
 
+test('before-game-day guidance names the three intended actions', () => {
+  assert.match(landingSource, /Build the schedule/);
+  assert.match(landingSource, /Share your event card to keep others up to date/);
+  assert.match(landingSource, /Prepare with the game day checklist/);
+  assert.doesNotMatch(landingSource, /Build or import the schedule/);
+  assert.doesNotMatch(landingSource, /Keep locations and times current/);
+});
+
 test('landing athlete ticker protects the page width and respects reduced motion', () => {
   assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow-x: auto;/);
   assert.match(landingStyles, /overscroll-behavior-x: none/);

@@ -293,15 +293,15 @@ export function PublicLandingPage() {
                   <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
                     <li className="flex items-start gap-3">
                       <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Build or import the schedule
+                      Build the schedule
                     </li>
                     <li className="flex items-start gap-3">
                       <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Keep locations and times current
+                      Share your event card to keep others up to date
                     </li>
                     <li className="flex items-start gap-3">
                       <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Prepare with the game-day checklist
+                      Prepare with the game day checklist
                     </li>
                   </ul>
                 </div>
