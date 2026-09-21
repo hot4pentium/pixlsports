@@ -106,10 +106,13 @@ async function inspectFormat(format) {
   const svg = svgHost.querySelector('svg');
   const statsGroup = svg?.querySelector('[aria-label="Finalized stats link"]');
   const statsBox = statsGroup?.querySelector('rect');
+  const qrGroup = svg?.querySelector('[aria-label="QR code for finalized stats"]');
+  const qrBox = qrGroup?.querySelector('rect');
   const statsText = statsGroup?.querySelectorAll('text')[1];
-  if (!svg || !statsGroup || !statsBox || !statsText) throw new Error('Linked stats markup was not rendered');
+  if (!svg || !statsGroup || !statsBox || !qrGroup || !qrBox || !statsText) throw new Error('Linked stats markup was not rendered');
 
   const box = statsBox.getBBox();
+  const qr = qrBox.getBBox();
   const text = statsText.getBBox();
   const outsideTextBoxes = [...svg.querySelectorAll('text')]
     .filter((element) => !statsGroup.contains(element))
@@ -152,6 +155,7 @@ async function inspectFormat(format) {
     height: dimensions.height,
     url: statsText.textContent,
     box: { x: box.x, y: box.y, right: box.x + box.width, bottom: box.y + box.height },
+    qr: { x: qr.x, y: qr.y, size: qr.width },
     text: { x: text.x, y: text.y, right: text.x + text.width, bottom: text.y + text.height, fontSize: Number.parseFloat(statsText.getAttribute('font-size') || '0') },
     phoneTextHeight: phoneTextBox.bottom - phoneTextBox.y,
     rasterDataUrl: canvas.toDataURL('image/png').slice(0, 22),
@@ -245,6 +249,9 @@ test('linked stats URLs survive phone-sized image rasterization and video frame 
       assert.equal(result.url, 'https://pixlsports.com/finalized-stats/eastside-falcons/2026-09-21/game-123456789');
       assert.ok(result.box.x >= 0 && result.box.right <= result.width, `${result.format} stats panel leaves the output`);
       assert.ok(result.box.y >= 0 && result.box.bottom <= result.height, `${result.format} stats panel leaves the output vertically`);
+      assert.ok(result.qr.size >= 180, `${result.format} QR code is below the scan-friendly minimum`);
+      assert.ok(result.qr.x >= result.box.x && result.qr.x + result.qr.size <= result.box.right, `${result.format} QR code leaves its panel`);
+      assert.ok(result.qr.y >= result.box.y && result.qr.y + result.qr.size <= result.box.bottom, `${result.format} QR code leaves its panel vertically`);
       assert.ok(result.text.x >= result.box.x && result.text.right <= result.box.right, `${result.format} URL text leaves its panel`);
       assert.ok(result.text.y >= result.box.y && result.text.bottom <= result.box.bottom, `${result.format} URL text leaves its panel vertically`);
       assert.ok(result.phoneTextHeight >= 5, `${result.format} URL is too small at a 390px preview`);

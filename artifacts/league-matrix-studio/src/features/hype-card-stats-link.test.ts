@@ -29,6 +29,9 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
   assert.match(editorSource, /buildHypeCardSvg\(project, 'fg', ns, statsUrl\)/);
   assert.match(editorSource, /buildHypeCardSvg\(project, 'all', 'export', statsUrl\)/);
   assert.match(editorSource, /data-testid="text-stats-link-export-warning"/);
+  assert.match(editorSource, /data-testid="button-copy-success-destination"/);
+  assert.match(editorSource, /data-testid="button-share-success-destination"/);
+  assert.match(editorSource, /revoking it makes this destination unavailable/);
 });
 
 test('stats URL markup stays optional and readable inside every SVG output format', () => {
@@ -40,7 +43,10 @@ test('stats URL markup stays optional and readable inside every SVG output forma
   assert.match(svgSource, /function buildStatsUrlMarkup\(/);
   assert.match(svgSource, /if \(!statsUrl\) return ''/);
   assert.match(svgSource, /aria-label="Finalized stats link"/);
-  assert.match(svgSource, /FINAL STATS/);
+  assert.match(svgSource, /aria-label="QR code for finalized stats"/);
+  assert.match(svgSource, /const qrSize = Math\.max\(180/);
+  assert.match(svgSource, /VIEW FINAL STATS/);
+  assert.match(svgSource, /SCAN THE QR CODE/);
   assert.match(svgSource, /buildStatsUrlMarkup\(statsUrl, 1000, 1400, palette\)/);
   assert.match(svgSource, /buildStatsUrlMarkup\(statsUrl, width, height, palette\)/);
 });

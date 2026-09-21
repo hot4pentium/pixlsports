@@ -6,6 +6,7 @@ import {
   escapeXml,
   templates
 } from './hype-card-types';
+import QRCode from 'qrcode';
 import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
 import { buildPositionBadgeMarkup } from './position-badge';
 import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url&inline';
@@ -282,16 +283,22 @@ function cardContent(project: HypeCardProject) {
 }
 
 export function getStatsUrlLayout(statsUrl: string, width: number, height: number) {
-  const boxX = Math.max(24, width * 0.045);
-  const boxWidth = width - boxX * 2;
-  const boxHeight = Math.max(92, height * 0.065);
+  const rightInset = Math.max(24, width * 0.045);
+  const boxX = width === 1920 && height === 1080 ? width * 0.55 : rightInset;
+  const boxWidth = width - boxX - rightInset;
+  const qrSize = Math.max(180, Math.min(250, width * 0.22, height * 0.19));
+  const panelPadding = Math.max(18, width * 0.02);
+  const boxHeight = qrSize + panelPadding * 2;
   const bottomInset = Math.max(150, height * 0.11);
-  const boxY = width === 1000 && height === 1400
-    ? 300
-    : height - boxHeight - bottomInset;
-  const labelSize = Math.max(11, width * 0.012);
+  const boxY = height - boxHeight - (width === 1000 && height === 1400 ? 80 : bottomInset);
+  const qrX = boxX + panelPadding;
+  const qrY = boxY + panelPadding;
+  const copyX = qrX + qrSize + panelPadding;
+  const copyWidth = boxWidth - qrSize - panelPadding * 3;
+  const urlMaxWidth = copyWidth;
+  const labelSize = Math.max(12, width * 0.014);
   const baseUrlSize = Math.max(15, width * 0.018);
-  const urlSize = fitText(statsUrl, boxWidth - 48, baseUrlSize, 0.58);
+  const urlSize = Math.max(24, fitText(statsUrl, copyWidth, baseUrlSize, 0.58));
 
   return {
     boxX,
@@ -300,10 +307,38 @@ export function getStatsUrlLayout(statsUrl: string, width: number, height: numbe
     boxHeight,
     labelSize,
     urlSize,
-    urlTextX: width / 2,
-    urlTextY: boxY + boxHeight - Math.max(17, width * 0.018),
-    urlMaxWidth: boxWidth - 48,
+    qrSize,
+    qrX,
+    qrY,
+    copyX,
+    copyWidth,
+    urlMaxWidth,
+    urlTextX: copyX,
+    urlTextY: boxY + boxHeight - panelPadding - Math.max(17, width * 0.018),
   };
+}
+
+function buildQrCodeMarkup(statsUrl: string, x: number, y: number, size: number) {
+  const qr = QRCode.create(statsUrl, { errorCorrectionLevel: 'M' });
+  const modules = qr.modules.size;
+  const quietZone = Math.max(8, Math.round(size * 0.055));
+  const moduleSize = (size - quietZone * 2) / modules;
+  const paths: string[] = [];
+
+  for (let row = 0; row < modules; row += 1) {
+    for (let column = 0; column < modules; column += 1) {
+      if (qr.modules.get(row, column)) {
+        paths.push(`M${(x + quietZone + column * moduleSize).toFixed(2)} ${(y + quietZone + row * moduleSize).toFixed(2)}h${moduleSize.toFixed(2)}v${moduleSize.toFixed(2)}h-${moduleSize.toFixed(2)}z`);
+      }
+    }
+  }
+
+  return `
+    <g aria-label="QR code for finalized stats">
+      <rect x="${x}" y="${y}" width="${size}" height="${size}" rx="${Math.max(8, size * .04)}" fill="#fff"/>
+      <path d="${paths.join(' ')}" fill="#000" shape-rendering="crispEdges"/>
+      <metadata>${escapeXml(statsUrl)}</metadata>
+    </g>`;
 }
 
 function buildStatsUrlMarkup(
@@ -321,19 +356,26 @@ function buildStatsUrlMarkup(
     boxHeight,
     labelSize,
     urlSize,
+    qrSize,
+    qrX,
+    qrY,
+    copyX,
+    copyWidth,
+    urlMaxWidth,
     urlTextX,
     urlTextY,
-    urlMaxWidth,
   } = getStatsUrlLayout(statsUrl, width, height);
-  const urlTextSizing = urlSize < Math.max(15, width * 0.018)
+  const urlTextSizing = urlSize * statsUrl.length * 0.58 > copyWidth
     ? ` textLength="${urlMaxWidth}" lengthAdjust="spacingAndGlyphs"`
     : '';
 
   return `
     <g aria-label="Finalized stats link">
-      <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="${Math.min(18, boxHeight / 3)}" fill="#02070e" fill-opacity=".94" stroke="${palette.accent}" stroke-width="${Math.max(2, width * .002)}"/>
-      <text x="${boxX + 24}" y="${boxY + labelSize + 10}" font-family="DM Sans,sans-serif" font-size="${labelSize}" font-weight="800" letter-spacing="${Math.max(1, width * .003)}" fill="${palette.accent}">FINAL STATS</text>
-      <text x="${urlTextX}" y="${urlTextY}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${urlSize}" font-weight="700" fill="#fff"${urlTextSizing}>${escapeXml(statsUrl)}</text>
+      <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="${Math.min(24, boxHeight / 4)}" fill="#02070e" fill-opacity=".97" stroke="${palette.accent}" stroke-width="${Math.max(2, width * .002)}"/>
+      ${buildQrCodeMarkup(statsUrl, qrX, qrY, qrSize)}
+      <text x="${copyX}" y="${boxY + labelSize + 16}" font-family="DM Sans,sans-serif" font-size="${labelSize}" font-weight="800" letter-spacing="${Math.max(1, width * .003)}" fill="${palette.accent}">VIEW FINAL STATS</text>
+      <text x="${urlTextX}" y="${urlTextY}" text-anchor="start" font-family="DM Sans,sans-serif" font-size="${urlSize}" font-weight="700" fill="#fff"${urlTextSizing}>${escapeXml(statsUrl)}</text>
+      <text x="${copyX}" y="${boxY + labelSize + 48}" font-family="DM Sans,sans-serif" font-size="${Math.max(12, width * .012)}" font-weight="700" fill="#fff">SCAN THE QR CODE</text>
     </g>`;
 }
 
@@ -392,6 +434,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       detailsSize: lowerThirdDetailsSize,
       accent: palette.accent,
       ns,
+      offsetY: statsUrl ? -290 : 0,
     })
     : '';
   const mediaGlow = project.mediaType || project.photo
@@ -425,7 +468,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${logo}
       ${branding}
      </g>
-     ${nameplate}
+      ${nameplate}
      ${buildStatsUrlMarkup(statsUrl, 1000, 1400, palette)}`;
   const photoMarkup = `<g clip-path="url(#stadiumPhotoClip-${ns})">${photo}</g>`;
   if (layer === 'bg') return `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1400" viewBox="0 0 1000 1400"><defs>${defs}</defs>${bgContent}</svg>`;
@@ -821,7 +864,13 @@ export function buildHypeCardSvg(project: HypeCardProject, layer: SvgLayer = 'al
   
   const headlineSize = isLandscape ? width * .085 : isStory ? width * .12 : width * .13;
   const textX = isLandscape ? width * .57 : width * .09;
-  const textY = isLandscape ? height * .35 : isStory ? height * .59 : height * .62;
+  const textY = isLandscape
+    ? height * .35
+    : isStory
+      ? height * .59
+      : statsUrl
+        ? height * .48
+        : height * .62;
   const playerLine = project.position;
   const achievementLine = '';
   

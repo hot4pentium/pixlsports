@@ -2313,6 +2313,35 @@ export function HypeCardEditor() {
     return `${origin}${cleanBase}/h/${share.shareToken}`;
   };
 
+  const copyShareDestination = async (share: HypeCardShare, label: string) => {
+    const url = shareUrlFor(share);
+    try {
+      await navigator.clipboard.writeText(url);
+      setNotice(`${label} copied.`);
+    } catch {
+      setNotice(`Select and copy the ${label.toLowerCase()} above.`);
+    }
+  };
+
+  const shareDestination = async (share: HypeCardShare, statsOnly: boolean) => {
+    const url = shareUrlFor(share);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: share.title,
+          text: statsOnly ? 'View the finalized Pixl Sports stats.' : 'Watch this Pixl Sports Hype Card.',
+          url,
+        });
+        setNotice(statsOnly ? 'Stats link shared.' : 'Player page shared.');
+      } else {
+        await navigator.clipboard.writeText(url);
+        setNotice(statsOnly ? 'Stats link copied.' : 'Share link copied.');
+      }
+    } catch {
+      setNotice(statsOnly ? 'Stats link is ready to copy.' : 'Player page is ready to copy.');
+    }
+  };
+
   const handleExportWithStatsLink = () => {
     setValidation('');
     setNotice('');
@@ -2657,15 +2686,33 @@ export function HypeCardEditor() {
           {notice}
           <div className="flex shrink-0 items-center gap-2">
             {isShareSuccessNotice && successShare && (
-              <a
-                href={shareUrlFor(successShare)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
-                data-testid="link-preview-recipient-success"
-              >
-                <Eye className="h-3.5 w-3.5" /> Preview recipient view
-              </a>
+              <>
+                <button
+                  type="button"
+                  onClick={() => void copyShareDestination(successShare, shareMode === 'stats' ? 'Stats link' : 'Share link')}
+                  className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                  data-testid="button-copy-success-destination"
+                >
+                  <Clipboard className="h-3.5 w-3.5" /> Copy destination
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void shareDestination(successShare, shareMode === 'stats')}
+                  className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                  data-testid="button-share-success-destination"
+                >
+                  <Share2 className="h-3.5 w-3.5" /> Share
+                </button>
+                <a
+                  href={shareUrlFor(successShare)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                  data-testid="link-preview-recipient-success"
+                >
+                  <Eye className="h-3.5 w-3.5" /> Preview recipient view
+                </a>
+              </>
             )}
             <button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X className="h-4 w-4" /></button>
           </div>
@@ -2694,10 +2741,12 @@ export function HypeCardEditor() {
         </div>
       )}
       {existingStatsShare && (
-        <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
-          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Stats link</span>
+        <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Stats link</span>
           <input readOnly value={shareUrlFor(existingStatsShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Finalized stats link" />
-          <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingStatsShare)).then(() => setNotice('Stats link copied.')).catch(() => setNotice('Select and copy the stats link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
+          <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => void copyShareDestination(existingStatsShare, 'Stats link')}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
+          <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => void shareDestination(existingStatsShare, true)}><Share2 className="mr-2 h-4 w-4" /> Share</Button>
           <a
             href={shareUrlFor(existingStatsShare)}
             target="_blank"
@@ -2707,7 +2756,11 @@ export function HypeCardEditor() {
           >
             <Eye className="h-4 w-4" /> Preview
           </a>
-          <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeStatsShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
+            <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeStatsShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
+          </div>
+          <p className="text-[10px] font-medium leading-relaxed text-muted-foreground">
+            Opens finalized stats only · available until {new Date(existingStatsShare.expiresAt).toLocaleDateString()} · revoking it makes this destination unavailable.
+          </p>
         </div>
       )}
 
@@ -3129,7 +3182,7 @@ export function HypeCardEditor() {
             </div>
             {shareMode === 'stats' && (
               <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-stats-link-export-warning">
-                If you export with this stats link, the printed URL follows this expiration and stops working if you revoke the link. The downloaded file contains readable URL text, not a guaranteed tappable hyperlink.
+                 The export adds a high-contrast “VIEW FINAL STATS” QR code and a readable fallback destination. The link follows this expiration and stops working if you revoke it; after creating it, copy or share the destination from the confirmation bar before sending the export.
               </p>
             )}
 
