@@ -41,6 +41,19 @@ test('public schedule recipients get the same card without creation controls', (
   assert.doesNotMatch(publicSchedulePage, /button-add-event/);
 });
 
+test('public schedule cards include accessible phone-install guidance', () => {
+  const publicScheduleCard = appSource.slice(
+    appSource.indexOf('function ScheduleInstallPrompt'),
+    appSource.indexOf('function SchedulePreview'),
+  );
+  assert.match(publicScheduleCard, /schedule-install-prompt/);
+  assert.match(publicScheduleCard, /Install Pixl Sports on your phone/);
+  assert.match(publicScheduleCard, /beforeinstallprompt/);
+  assert.match(publicScheduleCard, /Add to Home Screen/);
+  assert.match(publicScheduleCard, /aria-expanded=\{showInstructions\}/);
+  assert.match(publicScheduleCard, /role="status"/);
+});
+
 test('compact connection controls can shrink without overlapping', () => {
   assert.match(compactConnectionPanel, /compact \? 'flex items-center gap-2'/);
   assert.match(compactConnectionPanel, /compact \? 'shrink-0'/);

@@ -86,6 +86,7 @@ import {
   type ScheduleEventType,
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
+import { getScheduleInstallAction, isIosDevice } from '@/features/schedule-install';
 import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
@@ -199,6 +200,11 @@ const SupporterProfileView = lazy(() =>
  const queryClient = new QueryClient();
 
  type CloudProjectPayload = Record<string, unknown>;
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
 
 function isCloudToolProject(value: unknown, tool: 'schedule' | 'roster'): value is CloudProjectPayload {
   return typeof value === 'object'
@@ -3736,6 +3742,102 @@ function buildScheduleGraphicSvg({
   </svg>`;
 }
 
+function ScheduleInstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+      || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setIsStandalone(standalone);
+    setIsIOS(isIosDevice(navigator.userAgent, navigator.platform, navigator.maxTouchPoints));
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
+    };
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setIsStandalone(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const action = getScheduleInstallAction({
+    isStandalone,
+    canPrompt: Boolean(deferredPrompt),
+  });
+
+  const handleInstall = async () => {
+    if (action !== 'install' || !deferredPrompt) {
+      setShowInstructions((current) => !current);
+      return;
+    }
+
+    await deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    if (choice.outcome === 'accepted') setIsStandalone(true);
+  };
+
+  return (
+    <div
+      className="mt-5 border-t border-[#F7F5EF]/20 pt-4"
+      data-testid="schedule-install-prompt"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#F7F5EF]">
+            Keep this schedule close
+          </p>
+          <p className="mt-1 max-w-xl text-xs font-medium leading-relaxed text-[#F7F5EF]/65">
+            Install Pixl Sports on your phone to reach this shared card anytime.
+          </p>
+        </div>
+        {action === 'installed' ? (
+          <span
+            className="shrink-0 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#05EF83]"
+            data-testid="schedule-install-installed"
+          >
+            Available on this phone
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { void handleInstall(); }}
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start border border-[#05EF83]/70 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#05EF83] transition-colors hover:bg-[#05EF83] hover:text-[#12213A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7F5EF] sm:self-auto"
+            aria-expanded={showInstructions}
+            aria-controls="schedule-install-instructions"
+            data-testid="button-schedule-install"
+          >
+            {action === 'install' ? 'Install on phone' : 'How to add it'}
+          </button>
+        )}
+      </div>
+      {showInstructions && action !== 'installed' && (
+        <p
+          id="schedule-install-instructions"
+          className="mt-3 border border-[#F7F5EF]/15 bg-[#F7F5EF]/[.06] p-3 text-xs font-medium leading-relaxed text-[#F7F5EF]/75"
+          role="status"
+          data-testid="schedule-install-instructions"
+        >
+          {isIOS
+            ? 'On iPhone or iPad, tap Share, choose Add to Home Screen, then tap Add.'
+            : 'Open your browser menu and choose Install Pixl Sports or Add to Home Screen. If neither option is available, bookmark this link for quick access.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SchedulePreview({
   teamName,
   season,
@@ -3831,6 +3933,7 @@ function SchedulePreview({
             <span>Bring the energy / stay in the moment</span>
             <CalendarDays className="h-5 w-5 text-[#FF6B35]" />
           </div>
+          {readOnly && <ScheduleInstallPrompt />}
         </div>
       </div>
     </div>
