@@ -1822,6 +1822,7 @@ function ScheduleEditor() {
       ? `${appOrigin}${basePath}/schedule/${storedDraft.shareToken}`
       : ''
   ));
+  const [noticeTone, setNoticeTone] = useState<'success' | 'error'>('success');
   const cloudRevision = useRef(1);
   const initializedCloudId = useRef<string | null>(null);
   const autosaveQueue = useRef(createScheduleAutosaveQueue()).current;
@@ -1928,7 +1929,8 @@ function ScheduleEditor() {
     }
   }, [events, selectedEventId, selectedWeekKey]);
 
-  const setNoticeFor = (message: string) => {
+  const setNoticeFor = (message: string, tone: 'success' | 'error' = 'success') => {
+    setNoticeTone(tone);
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2400);
   };
@@ -1966,7 +1968,7 @@ function ScheduleEditor() {
         });
         await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
       } catch {
-         setNoticeFor('WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT');
+         setNoticeFor('WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT', 'error');
         return;
       }
     }
@@ -2052,7 +2054,7 @@ function ScheduleEditor() {
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
       return true;
     } catch (error: any) {
-      setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — SAVED ON THIS DEVICE' : 'CLOUD SAVE FAILED — SAVED ON THIS DEVICE');
+      setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — SAVED ON THIS DEVICE' : 'CLOUD SAVE FAILED — SAVED ON THIS DEVICE', 'error');
       return false;
     }
   };
@@ -2074,7 +2076,7 @@ function ScheduleEditor() {
       return;
     }
     if (!teamName.trim() || events.length === 0) {
-      setNoticeFor('ADD A TEAM NAME AND EVENT BEFORE PUBLISHING');
+      setNoticeFor('ADD A TEAM NAME AND EVENT BEFORE PUBLISHING', 'error');
       return;
     }
 
@@ -2124,7 +2126,7 @@ function ScheduleEditor() {
         setLocation(`/studio/schedule/${createdProjectId}`);
       }
     } catch (error: any) {
-       setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT' : 'PUBLISH FAILED — TRY AGAIN');
+       setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — USE YOUR EXISTING DRAFT OR CONTACT SUPPORT' : 'PUBLISH FAILED — TRY AGAIN', 'error');
     }
   };
 
@@ -2141,7 +2143,7 @@ function ScheduleEditor() {
       setSaved(true);
       setNoticeFor('PARENT LINK REVOKED');
     } catch {
-      setNoticeFor('LINK REVOKE FAILED — TRY AGAIN');
+      setNoticeFor('LINK REVOKE FAILED — TRY AGAIN', 'error');
     }
   };
 
@@ -2179,6 +2181,20 @@ function ScheduleEditor() {
     </div>
   ) : null;
 
+  const renderScheduleNotice = (className: string) => notice ? (
+    <p
+      className={`${className} inline-flex max-w-full items-center justify-center border px-3 py-2 text-center text-[10px] font-bold uppercase tracking-widest animate-pulse ${
+        noticeTone === 'error'
+          ? 'border-red-300/40 bg-red-500/10 text-red-200'
+          : 'border-emerald-300/40 bg-emerald-500/10 text-emerald-200'
+      }`}
+      role="status"
+      data-testid="status-editor-notice"
+    >
+      {notice}
+    </p>
+  ) : null;
+
   return (
     <StudioLayout landingBackground>
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
@@ -2207,6 +2223,7 @@ function ScheduleEditor() {
         <div className="mb-6 lg:hidden">
           {renderScheduleSharePanel('schedule-share-link-mobile')}
         </div>
+        {renderScheduleNotice('mb-6 lg:hidden')}
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <section className="min-w-0 lg:sticky lg:top-6">
@@ -2279,7 +2296,7 @@ function ScheduleEditor() {
               {renderScheduleSharePanel('schedule-share-link')}
             </div>
 
-            {notice && <p className="relative z-10 mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary-ink animate-pulse" role="status" data-testid="status-editor-notice">{notice}</p>}
+            {renderScheduleNotice('relative z-10 mt-4 hidden lg:inline-flex')}
           </aside>
         </div>
 
