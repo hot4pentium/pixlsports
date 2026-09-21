@@ -1159,17 +1159,37 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
          bottomNavBottom: number;
          bottomNavHeight: number;
          mobileContentPaddingBottom: string;
+        mobileHeaderPosition: string;
+        mobileHeaderZIndex: string;
+        mobileHeaderTop: number;
+        mobileHeaderTopAfterScroll: number;
+        mobileHeaderHeight: number;
+        mobileHeroTop: number;
         diagnostics: string[];
       }>(`(() => {
         const mobileRoot = document.querySelector('.pixl-dashboard-mobile');
         const desktopRoot = document.querySelector('.pixl-dashboard');
         const recommendation = document.querySelector('[data-testid="btn-mobile-recommendation-action"]');
          const bottomNav = document.querySelector('[data-testid="mobile-bottom-nav"]');
+        const mobileHeader = document.querySelector('[data-testid="mobile-header"]');
+        const mobileHero = document.querySelector('[data-testid="mobile-hero-banner"]');
         const isVisible = (element) => {
           if (!(element instanceof HTMLElement)) return false;
           const rect = element.getBoundingClientRect();
           return getComputedStyle(element).display !== 'none' && rect.width > 0 && rect.height > 0;
         };
+        if (mobileRoot instanceof HTMLElement) mobileRoot.scrollTop = 0;
+        const headerBeforeScroll = mobileHeader instanceof HTMLElement
+          ? mobileHeader.getBoundingClientRect()
+          : null;
+        const heroRect = mobileHero instanceof HTMLElement ? mobileHero.getBoundingClientRect() : null;
+        if (mobileRoot instanceof HTMLElement) {
+          mobileRoot.scrollTop = Math.min(240, Math.max(0, mobileRoot.scrollHeight - mobileRoot.clientHeight));
+        }
+        const headerAfterScroll = mobileHeader instanceof HTMLElement
+          ? mobileHeader.getBoundingClientRect()
+          : null;
+        if (mobileRoot instanceof HTMLElement) mobileRoot.scrollTop = 0;
         return {
           visible: isVisible(mobileRoot),
           desktopHidden: desktopRoot instanceof HTMLElement && getComputedStyle(desktopRoot.parentElement).display === 'none',
@@ -1182,6 +1202,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
            bottomNavBottom: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().bottom) : -1,
            bottomNavHeight: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().height) : -1,
            mobileContentPaddingBottom: mobileRoot instanceof HTMLElement ? getComputedStyle(mobileRoot).paddingBottom : '',
+           mobileHeaderPosition: mobileHeader instanceof HTMLElement ? getComputedStyle(mobileHeader).position : '',
+           mobileHeaderZIndex: mobileHeader instanceof HTMLElement ? getComputedStyle(mobileHeader).zIndex : '',
+           mobileHeaderTop: headerBeforeScroll ? Math.round(headerBeforeScroll.top) : -1,
+           mobileHeaderTopAfterScroll: headerAfterScroll ? Math.round(headerAfterScroll.top) : -1,
+           mobileHeaderHeight: headerBeforeScroll ? Math.round(headerBeforeScroll.height) : -1,
+           mobileHeroTop: heroRect ? Math.round(heroRect.top) : -1,
           diagnostics: Array.from(document.querySelectorAll('.pixl-dashboard-mobile *'))
             .filter((element) => element instanceof HTMLElement
               && element.clientWidth > 1
@@ -1205,6 +1231,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
          bottomNavBottom: width === 768 ? 1024 : 844,
          bottomNavHeight: 88,
          mobileContentPaddingBottom: '112px',
+         mobileHeaderPosition: 'sticky',
+         mobileHeaderZIndex: '70',
+         mobileHeaderTop: 0,
+         mobileHeaderTopAfterScroll: 0,
+         mobileHeaderHeight: 72,
+         mobileHeroTop: 72,
         diagnostics: [],
       }, `mobile dashboard layout at ${width}px`);
     }
@@ -1215,6 +1247,32 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       deviceScaleFactor: 1,
       mobile: true,
     }, page.sessionId);
+
+    await connection.evaluate(`document.querySelector('[data-testid="button-mobile-dashboard-menu"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      expanded: string | null;
+      menuLinkCount: number;
+      menuLabel: string | null;
+    }>(`(() => {
+      const button = document.querySelector('[data-testid="button-mobile-dashboard-menu"]');
+      const menu = document.querySelector('[data-testid="mobile-dashboard-menu"]');
+      return {
+        expanded: button?.getAttribute('aria-expanded') || null,
+        menuLinkCount: menu?.querySelectorAll('a').length || 0,
+        menuLabel: menu?.getAttribute('aria-label') || null,
+      };
+    })()`, page.sessionId), {
+      expanded: 'true',
+      menuLinkCount: 3,
+      menuLabel: 'Mobile dashboard navigation',
+    });
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]") === null', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.activeElement?.getAttribute("data-testid") || ""', page.sessionId),
+      'button-mobile-dashboard-menu',
+    );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'ChampionshipOpponentWithAnUnreasonablyLongName', status: 'final' },
