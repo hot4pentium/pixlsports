@@ -1,7 +1,7 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { CalendarDays, Activity, Zap, ArrowRight, Check, Menu, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 // Using responsive images
 import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
@@ -140,67 +140,46 @@ const landingSports = [
 ] as const;
 
 function LandingSportShowcase() {
-  const [visibleCards, setVisibleCards] = useState<Set<string>>(() => new Set());
-  const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-
-  useEffect(() => {
-    const cards = cardRefs.current.filter((card): card is HTMLDivElement => Boolean(card));
-    if (typeof IntersectionObserver === 'undefined') {
-      setVisibleCards(new Set(landingSports.map((sport) => sport.id)));
-      return;
-    }
-
-    const observer = new IntersectionObserver((entries) => {
-      const entering = entries
-        .filter((entry) => entry.isIntersecting)
-        .map((entry) => entry.target.getAttribute('data-sport-id'))
-        .filter((id): id is string => Boolean(id));
-      if (entering.length === 0) return;
-      setVisibleCards((current) => {
-        const next = new Set(current);
-        entering.forEach((id) => next.add(id));
-        return next;
-      });
-    }, { threshold: 0.28 });
-
-    cards.forEach((card) => observer.observe(card));
-    return () => observer.disconnect();
-  }, []);
+  const renderSportTiles = (isDuplicate = false) => landingSports.map((sport, index) => (
+    <div
+      key={`${sport.id}-${isDuplicate ? 'duplicate' : 'original'}`}
+      data-sport-id={sport.id}
+      data-testid={`landing-sport-tile-${sport.id}${isDuplicate ? '-duplicate' : ''}`}
+      className="landing-sport-tile"
+    >
+      <img
+        src={sport.image}
+        alt={isDuplicate ? '' : sport.alt}
+        aria-hidden={isDuplicate}
+        className="h-full w-full object-cover"
+        loading={!isDuplicate && index === 0 ? 'eager' : 'lazy'}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/80 to-transparent px-3 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
+        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/65 sm:text-[10px]">{sport.kicker}</p>
+        <p className="mt-1 font-display text-sm font-extrabold uppercase leading-none tracking-tight text-white sm:text-base">{sport.label}</p>
+      </div>
+    </div>
+  ));
 
   return (
-    <div className="relative pt-9 sm:pt-12" data-testid="landing-sport-showcase">
-      <div className="absolute left-0 top-0 z-10 rotate-[-6deg] sm:left-2">
-        <p className="font-handwritten text-3xl font-bold text-landing-orange drop-shadow-sm sm:text-5xl">Less chasing.<br />More cheering.</p>
+    <div className="landing-sport-ticker-wrap" data-testid="landing-sport-showcase">
+      <div className="mb-4 flex items-end justify-between gap-4 px-1 sm:mb-5">
+        <p className="font-handwritten text-3xl font-bold leading-[.82] text-landing-orange drop-shadow-sm sm:text-4xl">
+          Less chasing.<br />More cheering.
+        </p>
+        <span className="pb-1 text-right text-[10px] font-extrabold uppercase tracking-[.16em] text-landing-gray sm:text-xs">
+          Every sport.<br />One clear week.
+        </span>
       </div>
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-        {landingSports.map((sport, index) => {
-          const isVisible = visibleCards.has(sport.id);
-          return (
-            <div
-              key={sport.id}
-              ref={(node) => {
-                cardRefs.current[index] = node;
-              }}
-              data-sport-id={sport.id}
-              data-testid={`landing-sport-card-${sport.id}`}
-              className={`landing-sport-card ${isVisible ? 'is-visible' : ''}`}
-              style={{ '--landing-sport-delay': `${index * 110}ms` } as React.CSSProperties}
-            >
-              <div className="landing-sport-card-face">
-                <img
-                  src={sport.image}
-                  alt={sport.alt}
-                  className="h-full w-full object-cover"
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/75 to-transparent px-2 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/65">{sport.kicker}</p>
-                  <p className="mt-1 font-display text-[15px] font-extrabold uppercase leading-none tracking-tight text-white sm:text-base lg:text-lg">{sport.label}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="landing-sport-ticker" aria-label="Sports represented on Pixl Sports">
+        <div className="landing-sport-ticker-track">
+          <div className="landing-sport-ticker-group">
+            {renderSportTiles()}
+          </div>
+          <div className="landing-sport-ticker-group" aria-hidden="true">
+            {renderSportTiles(true)}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -213,8 +192,8 @@ export function PublicLandingPage() {
       <main>
         {/* HERO SECTION */}
         <section className="relative overflow-hidden bg-landing-bg pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pb-32">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
-            <div className="flex-1 max-w-2xl lg:max-w-none text-center lg:text-left">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl text-center">
               <span className="inline-block text-landing-text font-extrabold uppercase tracking-widest text-xs mb-5">
                 YOUR SEASON, GUIDED
               </span>
@@ -222,10 +201,10 @@ export function PublicLandingPage() {
                 <span className="landing-hero-slam inline-block">We guide your week.</span><br />
                 <span className="text-landing-primary">You capture the moments.</span>
               </h1>
-              <p className="text-lg sm:text-[21px] leading-[1.6] text-landing-text/75 mb-10 max-w-xl mx-auto lg:mx-0 font-medium">
+              <p className="mx-auto mb-10 max-w-2xl text-lg font-medium leading-[1.6] text-landing-text/75 sm:text-[21px]">
                 From planning the week to following game day and celebrating the final whistle, Pixl puts the right tool in front of you at every step.
               </p>
-              <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link href="/sign-up" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
                   Get started free
                 </Link>
@@ -234,10 +213,7 @@ export function PublicLandingPage() {
                 </a>
               </div>
             </div>
-            
-            <div className="flex-1 w-full relative pt-8 lg:pt-0">
-              <LandingSportShowcase />
-            </div>
+            <LandingSportShowcase />
           </div>
         </section>
 
