@@ -582,7 +582,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
               {invite.videos.map((video, index) => {
                 const details = [video.jerseyNumber ? `#${video.jerseyNumber}` : '', video.position].filter(Boolean).join(' · ');
                 return (
-                  <li key={video.shareToken} className={`shrink-0 snap-start ${invite.videos.length === 1 ? 'w-full' : 'w-[88%] sm:w-[72%] lg:w-[62%]'}`} aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
+                  <li key={video.shareToken} className="w-[82%] shrink-0 snap-start sm:w-[58%] lg:w-[50%]" aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
                     <video
                       src={video.videoUrl}
                       poster={video.posterUrl ?? undefined}

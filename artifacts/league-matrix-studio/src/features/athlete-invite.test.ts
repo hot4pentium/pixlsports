@@ -88,6 +88,8 @@ test('public Athlete Hype Pages present direct videos in an accessible horizonta
   assert.match(source, /video\.jerseyNumber/);
   assert.match(source, /video\.position/);
   assert.match(source, /snap-x snap-mandatory/);
+  assert.match(source, /w-\[82%\][\s\S]*?sm:w-\[58%\][\s\S]*?lg:w-\[50%\]/);
+  assert.doesNotMatch(source, /invite\.videos\.length === 1 \? 'w-full'/);
   assert.match(source, /event\.key === 'ArrowLeft'/);
   assert.match(source, /event\.key === 'ArrowRight'/);
   assert.match(source, /if \(event\.target !== event\.currentTarget\) return/);
