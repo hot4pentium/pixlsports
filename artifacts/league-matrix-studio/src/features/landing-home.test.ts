@@ -51,8 +51,8 @@ test('landing tool benefit previews are informational rather than clickable', ()
 });
 
 test('before-game-day guidance includes the uploaded checklist video', () => {
-  assert.match(landingSource, /Plan-Checklist_phone_1789955681318\.mp4/);
-  assert.match(landingSource, /Plan-Checklist_phone-poster_1789955681318\.webp/);
+  assert.match(landingSource, /newprepdemo_1789959483586\.mp4/);
+  assert.match(landingSource, /newprepdemo_1789959483586-poster\.webp/);
   assert.match(landingSource, /<video/);
   assert.match(landingSource, /autoPlay/);
   assert.match(landingSource, /autoPlay=\{!prefersReducedMotion\}/);
@@ -62,7 +62,7 @@ test('before-game-day guidance includes the uploaded checklist video', () => {
 });
 
 test('checklist video uses the phone crop without a native player shell', () => {
-  assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 760 \/ 1080;/);
+  assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 1 \/ 1;/);
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*overflow: hidden;[\s\S]*border-radius: 1\.5rem;/);
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*mix-blend-mode: multiply;/);
   assert.match(landingSource, /landing-before-game-day-title/);
