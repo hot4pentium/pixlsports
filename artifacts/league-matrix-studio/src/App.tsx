@@ -1116,7 +1116,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
           )}
         </div>
       </div>
-      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''}`}>
+      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''} ${isFanDashboard ? 'supporter-dashboard-page-background' : ''}`}>
         {children}
       </div>
       <div className={isFanDashboard ? 'hidden lg:block' : undefined}>

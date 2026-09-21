@@ -178,6 +178,16 @@
   .studio-page-background > main {
     background-color: transparent;
   }
+
+@media (min-width: 1024px) {
+  .studio-page-background.supporter-dashboard-page-background {
+    background: #0B1F3A;
+  }
+  .studio-page-background.supporter-dashboard-page-background::before {
+    display: none;
+  }
+}
+
   .studio-page-background.landing-page-background {
     background-color: #F7F5EF;
   }
