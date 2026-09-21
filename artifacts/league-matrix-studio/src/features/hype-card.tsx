@@ -52,6 +52,7 @@ import {
   persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
+import { isHypeCardSuccessNotice } from './hype-card-notice';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
@@ -1288,6 +1289,7 @@ export function HypeCardEditor() {
     || notice === 'Share link copied.'
     || notice === 'Stats link copied.'
     || notice.startsWith('Hype Card removed from Athlete Hype Page');
+  const isSuccessNotice = isHypeCardSuccessNotice(notice);
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
   useEffect(() => {
@@ -2560,10 +2562,10 @@ export function HypeCardEditor() {
 
       {notice && (
         <div className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-2 text-sm font-bold ${
-          isShareSuccessNotice
-            ? 'border-primary/30 bg-primary text-primary-foreground'
+          isSuccessNotice
+            ? 'border-emerald-800 bg-emerald-700 text-white'
             : 'border-border bg-destructive text-destructive-foreground'
-        }`}>
+        }`} role={isSuccessNotice ? 'status' : 'alert'} aria-live={isSuccessNotice ? 'polite' : 'assertive'} data-testid="hype-card-notice" data-tone={isSuccessNotice ? 'success' : 'error'}>
           {notice}
           <div className="flex shrink-0 items-center gap-2">
             {isShareSuccessNotice && successShare && shareMode === 'stats' && (
@@ -2571,7 +2573,7 @@ export function HypeCardEditor() {
                 <button
                   type="button"
                   onClick={() => void copyShareDestination(successShare, shareMode === 'stats' ? 'Stats link' : 'Share link')}
-                  className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                  className="inline-flex min-h-8 items-center gap-2 border border-white/40 bg-white/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-white/20"
                   data-testid="button-copy-success-destination"
                 >
                   <Clipboard className="h-3.5 w-3.5" /> Copy destination
@@ -2579,7 +2581,7 @@ export function HypeCardEditor() {
                 <button
                   type="button"
                   onClick={() => void shareDestination(successShare, shareMode === 'stats')}
-                  className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                  className="inline-flex min-h-8 items-center gap-2 border border-white/40 bg-white/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-white/20"
                   data-testid="button-share-success-destination"
                 >
                   <Share2 className="h-3.5 w-3.5" /> Share
@@ -2588,7 +2590,7 @@ export function HypeCardEditor() {
                   href={shareUrlFor(successShare)}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                  className="inline-flex min-h-8 items-center gap-2 border border-white/40 bg-white/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-white/20"
                   data-testid="link-preview-recipient-success"
                 >
                   <Eye className="h-3.5 w-3.5" /> Preview recipient view
@@ -2598,7 +2600,7 @@ export function HypeCardEditor() {
             {isShareSuccessNotice && successShare && shareMode === 'card' && (
               <Link
                 href="/studio/athlete-page"
-                className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                className="inline-flex min-h-8 items-center gap-2 border border-white/40 bg-white/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-white/20"
                 data-testid="link-manage-athlete-page-success"
               >
                 <Eye className="h-3.5 w-3.5" /> Manage Athlete Hype Page
