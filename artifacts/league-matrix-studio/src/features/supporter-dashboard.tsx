@@ -1026,7 +1026,7 @@ export function SupporterDashboardView({
         </section>
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-8 animate-slide-up delay-300">
+      <div hidden>
         
         {/* TEAM SCHEDULE */}
         <section data-testid="section-upcoming">
