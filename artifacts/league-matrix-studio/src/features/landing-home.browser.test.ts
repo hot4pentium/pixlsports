@@ -73,6 +73,16 @@ async function openLandingPage(
     (count) => count === 6,
   );
   await connection.evaluate('document.fonts?.ready', page.sessionId);
+  await waitFor(
+    connection,
+    page.sessionId,
+    `(() => [...document.querySelectorAll(".landing-sport-tile")].every((tile) => {
+      const style = getComputedStyle(tile);
+      return style.opacity === "1"
+        && (style.transform === "none" || style.transform === "matrix(1, 0, 0, 1, 0, 0)");
+    }))()`,
+    (settled) => settled === true,
+  );
   return page;
 }
 
@@ -104,12 +114,22 @@ type LandingLayout = {
   };
   tiles: Array<{
     label: string;
+    left: number;
+    right: number;
     top: number;
     rowTop: number;
     width: number;
     height: number;
+    kickerFontSize: number;
+    kickerTop: number;
+    kickerBottom: number;
     labelFontSize: number;
+    labelTop: number;
     labelBottom: number;
+    kickerClientWidth: number;
+    kickerScrollWidth: number;
+    labelClientWidth: number;
+    labelScrollWidth: number;
     tileBottom: number;
   }>;
   texture: {
@@ -162,16 +182,28 @@ async function readLandingLayout(
       beforeGameDayTitleTop: rect('[data-testid="landing-before-game-day-title"]')?.top ?? -1,
       tiles: [...document.querySelectorAll('[data-testid^="landing-sport-tile-"]')].map((tile) => {
         const tileRect = tile.getBoundingClientRect();
+        const kicker = tile.querySelector('p:first-child');
         const label = tile.querySelector('p:last-child');
+        const kickerRect = kicker?.getBoundingClientRect();
         const labelRect = label?.getBoundingClientRect();
         return {
           label: label?.textContent?.trim() ?? '',
+          left: tileRect.left,
+          right: tileRect.right,
           top: tileRect.top,
           rowTop: tile instanceof HTMLElement ? tile.offsetTop : -1,
           width: tileRect.width,
           height: tileRect.height,
+          kickerFontSize: Number.parseFloat(kicker ? getComputedStyle(kicker).fontSize : '0'),
+          kickerTop: kickerRect?.top ?? -1,
+          kickerBottom: kickerRect?.bottom ?? -1,
           labelFontSize: Number.parseFloat(label ? getComputedStyle(label).fontSize : '0'),
+          labelTop: labelRect?.top ?? -1,
           labelBottom: labelRect?.bottom ?? -1,
+          kickerClientWidth: kicker instanceof HTMLElement ? kicker.clientWidth : -1,
+          kickerScrollWidth: kicker instanceof HTMLElement ? kicker.scrollWidth : -1,
+          labelClientWidth: label instanceof HTMLElement ? label.clientWidth : -1,
+          labelScrollWidth: label instanceof HTMLElement ? label.scrollWidth : -1,
           tileBottom: tileRect.bottom,
         };
       }),
@@ -237,7 +269,7 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
 
-    const phoneWidths = [320, 375, 393];
+    const phoneWidths = [280, 320, 375, 393];
     for (const width of phoneWidths) {
       const page = await openLandingPage(connection, `http://127.0.0.1:${port}/`, {
         width,
@@ -279,8 +311,19 @@ test('landing ticker stays readable and contained from phone to desktop', async 
          `phone photos should occupy two rows at ${width}px`,
        );
       for (const tile of layout.tiles) {
+        assert.ok(tile.left >= 0 && tile.right <= width, `${tile.label} leaves the viewport at ${width}px`);
+        assert.ok(tile.kickerFontSize >= 9, `${tile.label} kicker is too small at ${width}px`);
+        assert.ok(tile.kickerTop >= tile.top, `${tile.label} kicker starts outside its tile at ${width}px`);
+        assert.ok(tile.kickerBottom <= tile.labelTop, `${tile.label} kicker overlaps its label at ${width}px`);
+        assert.ok(tile.kickerBottom <= tile.tileBottom, `${tile.label} kicker is clipped at ${width}px`);
+        assert.ok(tile.kickerScrollWidth <= tile.kickerClientWidth, `${tile.label} kicker overflows at ${width}px`);
         assert.ok(tile.labelFontSize >= 14, `${tile.label} is too small at ${width}px`);
+        assert.ok(tile.labelTop >= tile.top, `${tile.label} starts outside its tile at ${width}px`);
         assert.ok(tile.labelBottom <= tile.tileBottom, `${tile.label} is clipped at ${width}px`);
+        assert.ok(
+          tile.labelScrollWidth <= tile.labelClientWidth,
+          `${tile.label} overflows at ${width}px (${tile.labelScrollWidth}px > ${tile.labelClientWidth}px, tile ${tile.width}px)`,
+        );
       }
     }
 

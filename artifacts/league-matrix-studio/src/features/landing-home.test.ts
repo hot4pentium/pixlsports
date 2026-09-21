@@ -63,6 +63,8 @@ test('landing athlete photos stay visible in a responsive grid and respect reduc
   assert.match(landingStyles, /\.landing-sport-ticker-group \{[\s\S]*display: grid;/);
   assert.match(landingStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(landingStyles, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(landingStyles, /@media \(max-width: 767px\) \{[\s\S]*\.landing-sport-tile > div \{[\s\S]*padding-inline: 0\.125rem;/);
+  assert.match(landingStyles, /@media \(max-width: 319px\) \{[\s\S]*--landing-ticker-gap: 0\.75rem;/);
   assert.match(landingStyles, /@keyframes landing-sport-tile-rubberband/);
   assert.match(landingStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(landingStyles, /animation-delay: var\(--landing-tile-delay\)/);
