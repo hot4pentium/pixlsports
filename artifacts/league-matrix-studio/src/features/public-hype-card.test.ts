@@ -11,6 +11,10 @@ test('recipient Hype Cards keep the card visible while exposing expandable athle
   assert.match(source, /aria-controls="hype-card-recipient-stats-details"/);
   assert.match(source, /View athlete stats/);
   assert.match(source, /Published finalized totals/);
+  assert.match(source, /data-testid="hype-card-recipient-game-summaries"/);
+  assert.match(source, /data-testid="hype-card-recipient-game-summary"/);
+  assert.match(source, /Finalized games/);
+  assert.match(source, /Game-by-game summaries are not available/);
   assert.match(source, /data-testid="hype-card-recipient-stats-unavailable"/);
   assert.match(source, /Stats were not attached to this Hype Card/);
 });

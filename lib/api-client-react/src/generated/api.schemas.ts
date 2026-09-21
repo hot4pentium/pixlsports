@@ -465,6 +465,20 @@ export const HypeCardShareStatsSport = {
 
 export type HypeCardShareStatsStats = {[key: string]: number};
 
+export type HypeCardShareGameSummaryStats = {[key: string]: number};
+
+export interface HypeCardShareGameSummary {
+  /** @maxLength 30 */
+  date: string;
+  /** @maxLength 240 */
+  opponent: string;
+  /** @minimum 0 */
+  score: number;
+  /** @minimum 0 */
+  opponentScore: number;
+  stats: HypeCardShareGameSummaryStats;
+}
+
 export interface HypeCardShareStats {
   athleteName: string;
   sport: HypeCardShareStatsSport;
@@ -472,6 +486,7 @@ export interface HypeCardShareStats {
   gamesPlayed: number;
   /** @minimum 0 */
   score: number;
+  games: HypeCardShareGameSummary[];
   stats: HypeCardShareStatsStats;
   updatedAt: string;
 }

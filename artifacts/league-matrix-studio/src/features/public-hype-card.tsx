@@ -229,6 +229,48 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
                       );
                     })}
                   </div>
+                  <div className="mt-5 border-t border-white/10 pt-4" data-testid="hype-card-recipient-game-summaries">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-white/50">Finalized games</p>
+                    {share.stats.games.length ? (
+                      <ol className="space-y-3">
+                        {share.stats.games.map((game, index) => (
+                          <li key={`${game.date}-${game.opponent}-${index}`} className="border border-white/10 bg-black/20 p-3" data-testid="hype-card-recipient-game-summary">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-white">
+                                  {game.opponent || `Game ${index + 1}`}
+                                </p>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                                  {formatHypeCardGameDate(game.date)}
+                                </p>
+                              </div>
+                              <p className="shrink-0 font-display text-lg text-primary" aria-label={`${game.score} to ${game.opponentScore}`}>
+                                {game.score}–{game.opponentScore}
+                              </p>
+                            </div>
+                            {Object.keys(game.stats).length ? (
+                              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                {Object.entries(game.stats).map(([statId, count]) => {
+                                  const rule = isSport(share.stats?.sport) ? getSportRule(share.stats.sport) : null;
+                                  const definition = rule?.stats.find((stat) => stat.id === statId);
+                                  return (
+                                    <div key={statId} className="border border-white/10 bg-white/5 p-2">
+                                      <p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/50">{definition?.shortLabel || statId.replace(/-/g, ' ')}</p>
+                                      <p className="font-display text-lg text-white">{count}</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-white/35">No tracked stats</p>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="text-xs font-medium leading-relaxed text-white/50">Game-by-game summaries are not available for this Hype Card.</p>
+                    )}
+                  </div>
                   <p className="mt-3 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Last updated {new Date(share.stats.updatedAt).toLocaleDateString()}</p>
                 </div>
               )}
@@ -278,6 +320,13 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       </main>
     </div>
   );
+}
+
+function formatHypeCardGameDate(value: string) {
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? value || 'Date unavailable'
+    : parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function PublicShell({ children }: { children: React.ReactNode }) {

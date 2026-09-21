@@ -43,6 +43,8 @@ export * from './hypeCardProjectVersion';
 export * from './hypeCardReplyInbox';
 export * from './hypeCardReplyInboxGroup';
 export * from './hypeCardShare';
+export * from './hypeCardShareGameSummary';
+export * from './hypeCardShareGameSummaryStats';
 export * from './hypeCardShareInput';
 export * from './hypeCardShareInputManifest';
 export * from './hypeCardShareInputMediaType';

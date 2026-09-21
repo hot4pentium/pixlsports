@@ -918,6 +918,16 @@ export const listHypeCardSharesResponseOneStatsOneGamesPlayedMin = 0;
 
 export const listHypeCardSharesResponseOneStatsOneScoreMin = 0;
 
+export const listHypeCardSharesResponseOneStatsOneGamesItemDateMax = 30;
+
+export const listHypeCardSharesResponseOneStatsOneGamesItemOpponentMax = 240;
+
+export const listHypeCardSharesResponseOneStatsOneGamesItemScoreMin = 0;
+
+export const listHypeCardSharesResponseOneStatsOneGamesItemOpponentScoreMin = 0;
+
+export const listHypeCardSharesResponseOneStatsOneGamesItemStatsMinOne = 0;
+
 export const listHypeCardSharesResponseOneStatsOneStatsMinOne = 0;
 
 export const listHypeCardSharesResponseTwoExpiresInDaysMax = 365;
@@ -938,6 +948,13 @@ export const ListHypeCardSharesResponseItem = zod.object({
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "gamesPlayed": zod.number().int().min(listHypeCardSharesResponseOneStatsOneGamesPlayedMin),
   "score": zod.number().int().min(listHypeCardSharesResponseOneStatsOneScoreMin),
+  "games": zod.array(zod.object({
+  "date": zod.string().max(listHypeCardSharesResponseOneStatsOneGamesItemDateMax),
+  "opponent": zod.string().max(listHypeCardSharesResponseOneStatsOneGamesItemOpponentMax),
+  "score": zod.number().int().min(listHypeCardSharesResponseOneStatsOneGamesItemScoreMin),
+  "opponentScore": zod.number().int().min(listHypeCardSharesResponseOneStatsOneGamesItemOpponentScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(listHypeCardSharesResponseOneStatsOneGamesItemStatsMinOne))
+})),
   "stats": zod.record(zod.string(), zod.number().int().min(listHypeCardSharesResponseOneStatsOneStatsMinOne)),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
@@ -990,6 +1007,16 @@ export const createHypeCardShareResponseStatsOneGamesPlayedMin = 0;
 
 export const createHypeCardShareResponseStatsOneScoreMin = 0;
 
+export const createHypeCardShareResponseStatsOneGamesItemDateMax = 30;
+
+export const createHypeCardShareResponseStatsOneGamesItemOpponentMax = 240;
+
+export const createHypeCardShareResponseStatsOneGamesItemScoreMin = 0;
+
+export const createHypeCardShareResponseStatsOneGamesItemOpponentScoreMin = 0;
+
+export const createHypeCardShareResponseStatsOneGamesItemStatsMinOne = 0;
+
 export const createHypeCardShareResponseStatsOneStatsMinOne = 0;
 
 
@@ -1008,6 +1035,13 @@ export const CreateHypeCardShareResponse = zod.object({
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "gamesPlayed": zod.number().int().min(createHypeCardShareResponseStatsOneGamesPlayedMin),
   "score": zod.number().int().min(createHypeCardShareResponseStatsOneScoreMin),
+  "games": zod.array(zod.object({
+  "date": zod.string().max(createHypeCardShareResponseStatsOneGamesItemDateMax),
+  "opponent": zod.string().max(createHypeCardShareResponseStatsOneGamesItemOpponentMax),
+  "score": zod.number().int().min(createHypeCardShareResponseStatsOneGamesItemScoreMin),
+  "opponentScore": zod.number().int().min(createHypeCardShareResponseStatsOneGamesItemOpponentScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(createHypeCardShareResponseStatsOneGamesItemStatsMinOne))
+})),
   "stats": zod.record(zod.string(), zod.number().int().min(createHypeCardShareResponseStatsOneStatsMinOne)),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),
@@ -1046,6 +1080,16 @@ export const getHypeCardShareResponseStatsOneGamesPlayedMin = 0;
 
 export const getHypeCardShareResponseStatsOneScoreMin = 0;
 
+export const getHypeCardShareResponseStatsOneGamesItemDateMax = 30;
+
+export const getHypeCardShareResponseStatsOneGamesItemOpponentMax = 240;
+
+export const getHypeCardShareResponseStatsOneGamesItemScoreMin = 0;
+
+export const getHypeCardShareResponseStatsOneGamesItemOpponentScoreMin = 0;
+
+export const getHypeCardShareResponseStatsOneGamesItemStatsMinOne = 0;
+
 export const getHypeCardShareResponseStatsOneStatsMinOne = 0;
 
 
@@ -1064,6 +1108,13 @@ export const GetHypeCardShareResponse = zod.object({
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "gamesPlayed": zod.number().int().min(getHypeCardShareResponseStatsOneGamesPlayedMin),
   "score": zod.number().int().min(getHypeCardShareResponseStatsOneScoreMin),
+  "games": zod.array(zod.object({
+  "date": zod.string().max(getHypeCardShareResponseStatsOneGamesItemDateMax),
+  "opponent": zod.string().max(getHypeCardShareResponseStatsOneGamesItemOpponentMax),
+  "score": zod.number().int().min(getHypeCardShareResponseStatsOneGamesItemScoreMin),
+  "opponentScore": zod.number().int().min(getHypeCardShareResponseStatsOneGamesItemOpponentScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(getHypeCardShareResponseStatsOneGamesItemStatsMinOne))
+})),
   "stats": zod.record(zod.string(), zod.number().int().min(getHypeCardShareResponseStatsOneStatsMinOne)),
   "updatedAt": zod.coerce.date()
 }),zod.null()]),

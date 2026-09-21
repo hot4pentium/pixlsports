@@ -1430,7 +1430,7 @@ components:
           pattern: "^[A-Za-z0-9_-]{24,80}$"
     HypeCardShareStats:
       type: object
-      required: [athleteName, sport, gamesPlayed, score, stats, updatedAt]
+      required: [athleteName, sport, gamesPlayed, score, games, stats, updatedAt]
       properties:
         athleteName:
           type: string
@@ -1443,6 +1443,10 @@ components:
         score:
           type: integer
           minimum: 0
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/HypeCardShareGameSummary"
         stats:
           type: object
           additionalProperties:
@@ -1451,6 +1455,27 @@ components:
         updatedAt:
           type: string
           format: date-time
+    HypeCardShareGameSummary:
+      type: object
+      required: [date, opponent, score, opponentScore, stats]
+      properties:
+        date:
+          type: string
+          maxLength: 30
+        opponent:
+          type: string
+          maxLength: 240
+        score:
+          type: integer
+          minimum: 0
+        opponentScore:
+          type: integer
+          minimum: 0
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
     HypeCardShareReplyInput:
       type: object
       required: [reaction]
