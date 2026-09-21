@@ -1190,6 +1190,8 @@
   }
 
   .pixl-dashboard .dashboard-week-path-tabs > .grid {
+    --week-path-chevron-height: clamp(160px, 17vw, 180px);
+    --week-path-chevron-center: clamp(80px, 8.5vw, 90px);
     position: relative;
     isolation: isolate;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
@@ -1202,7 +1204,7 @@
     content: "";
     position: absolute;
     z-index: -1;
-    top: 31px;
+    top: var(--week-path-chevron-center);
     right: 10%;
     left: 10%;
     height: 3px;
@@ -1214,13 +1216,13 @@
     position: relative;
     z-index: 1;
     isolation: isolate;
-    min-height: 180px;
+    min-height: calc(var(--week-path-chevron-height) + 56px);
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
     align-items: center;
-    gap: 7px;
+    gap: 0;
     margin-left: -1px;
-    padding: 50px 28px 20px;
+    padding: 0 28px;
     border: 0;
     border-radius: 0;
     background: transparent !important;
@@ -1233,7 +1235,8 @@
     content: "";
     position: absolute;
     z-index: -1;
-    inset: 0;
+    inset: 0 0 auto;
+    height: var(--week-path-chevron-height);
     background-image: url("../assets/pixl-step-chevron.svg");
     background-position: center;
     background-repeat: no-repeat;
@@ -1256,7 +1259,7 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"][aria-current="step"] {
     z-index: 2;
-    transform: translateY(-7px);
+    transform: translateY(-2px);
     color: white;
     box-shadow: 0 12px 32px rgba(22, 185, 129, .38), 0 0 24px rgba(45, 212, 191, .3);
   }
@@ -1267,6 +1270,9 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span:first-child {
     display: grid;
+    position: absolute;
+    top: var(--week-path-chevron-center);
+    left: 50%;
     width: 44px;
     height: 44px;
     min-width: 44px;
@@ -1276,6 +1282,7 @@
     background: #0B1F3A !important;
     color: #B9D8FF !important;
     box-shadow: 0 0 0 4px rgba(11, 31, 58, .85);
+    transform: translate(-50%, -50%);
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span:first-child[class*="bg-emerald-300"] {
@@ -1292,6 +1299,10 @@
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span:nth-of-type(2) {
+    position: absolute;
+    top: calc(var(--week-path-chevron-height) - 16px);
+    right: 12px;
+    left: 12px;
     max-width: 100%;
     overflow-wrap: anywhere;
     color: white;
@@ -1301,9 +1312,13 @@
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > svg {
-    width: 28px;
-    height: 28px;
+    position: absolute;
+    top: calc(var(--week-path-chevron-height) + 9px);
+    left: 50%;
+    width: 20px;
+    height: 20px;
     color: #55A4FF;
+    transform: translateX(-50%);
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"][aria-current="step"] > svg {
@@ -1311,8 +1326,13 @@
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span.ml-auto {
+    position: absolute;
+    top: calc(var(--week-path-chevron-height) + 34px);
+    left: 50%;
     margin-left: 0;
     color: #55A4FF;
+    white-space: nowrap;
+    transform: translateX(-50%);
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > .dashboard-stage-next {
