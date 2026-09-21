@@ -81,7 +81,7 @@
 .bg-landing-text\/10 { background-color: color-mix(in srgb, var(--landing-text) 10%, transparent); }
 
 .landing-sport-ticker-wrap {
-  --landing-ticker-gap: 0.75rem;
+  --landing-ticker-gap: clamp(1rem, 2.5vw, 1.5rem);
   margin-top: 2.75rem;
 }
 
