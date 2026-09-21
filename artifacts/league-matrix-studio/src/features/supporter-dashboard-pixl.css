@@ -832,7 +832,7 @@
 .pixl-dashboard-mobile .mobile-week-path-icon {
   display: block;
   position: absolute;
-  top: calc(clamp(128px, 18vw, 180px) + 24px);
+  top: calc(clamp(128px, 18vw, 180px) + 9px);
   left: 50%;
   color: rgba(159, 176, 200, .9);
   transform: translateX(-50%);
@@ -849,7 +849,7 @@
 
 .pixl-dashboard-mobile .mobile-week-path-label {
   position: absolute;
-  top: calc(clamp(128px, 18vw, 180px) - 1px);
+  top: calc(clamp(128px, 18vw, 180px) - 16px);
   right: 4px;
   left: 4px;
   max-width: 100%;
