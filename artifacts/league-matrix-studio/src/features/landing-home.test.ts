@@ -12,6 +12,17 @@ test('landing athlete photos render as compact entrance-animated tiles below the
   assert.match(landingSource, /landing-sport-tile/);
   assert.match(landingSource, /landing-tile-delay/);
   assert.doesNotMatch(landingSource, /isDuplicate/);
+  assert.deepEqual(
+    [...landingSource.matchAll(/id: '([^']+)',\s+label: '([^']+)'/g)].map(([, id, label]) => [id, label]),
+    [
+      ['soccer', 'Soccer'],
+      ['football', 'Football'],
+      ['basketball', 'Basketball'],
+      ['volleyball', 'Volleyball'],
+      ['baseball', 'Baseball'],
+      ['softball', 'Softball'],
+    ],
+  );
   assert.ok(
     landingPage.indexOf('data-testid="link-hero-explore-tools"')
       < landingPage.indexOf('<LandingSportShowcase />'),

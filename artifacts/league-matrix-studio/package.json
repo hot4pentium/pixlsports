@@ -10,6 +10,7 @@
     "test": "tsx --test src/features/schedule-draft.test.ts src/features/schedule-install.test.ts src/features/schedule-offline.test.ts src/features/landing-home.test.ts src/features/roster-draft.test.ts src/features/hype-card-svg.test.ts src/features/hype-card-export.test.ts src/features/hype-card-persistence.test.ts src/features/privacy-copy.test.ts src/features/guest-access.test.ts src/features/supporter-photo-cache.test.ts src/features/supporter-dashboard-model.test.ts src/features/stat-tracker.test.ts src/features/stat-tracker-share.test.ts src/features/calendar-connection.test.ts src/features/calendar-connection-copy.test.ts src/features/calendar-control-alignment.test.ts src/features/studio-role-boundary.test.tsx src/features/supporter-schedule-selector.test.tsx src/features/gameday-checklist.test.ts src/features/landing-role-flow.test.ts src/features/preview-routing.test.ts",
     "test:stat-tracker-browser": "tsx --test src/features/stat-tracker.browser.test.ts",
     "test:stat-tracker-spectator-browser": "tsx --test --test-concurrency=1 src/features/stat-tracker-spectator.browser.test.ts",
+    "test:landing-home-browser": "tsx --test src/features/landing-home.browser.test.ts",
     "test:hype-card-offline-browser": "tsx --test src/features/hype-card-offline.browser.test.ts",
     "test:schedule-install-browser": "tsx --test --test-concurrency=1 src/features/schedule-install.browser.test.ts",
     "test:supporter-dashboard-browser": "tsx --test --test-concurrency=1 src/features/supporter-dashboard.browser.test.ts",
