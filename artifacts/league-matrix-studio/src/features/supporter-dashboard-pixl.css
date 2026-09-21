@@ -732,7 +732,7 @@
   position: relative;
   z-index: 1;
   isolation: isolate;
-  min-height: clamp(128px, 18vw, 180px);
+  min-height: clamp(170px, 22vw, 220px);
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -750,7 +750,8 @@
   content: "";
   position: absolute;
   z-index: -1;
-  inset: 0 0 0 -1px;
+  inset: 0 0 auto -1px;
+  height: clamp(128px, 18vw, 180px);
   background-image: url("../assets/pixl-step-chevron.svg");
   background-position: center;
   background-repeat: no-repeat;
@@ -786,6 +787,9 @@
 
 .pixl-dashboard-mobile .mobile-week-path-number {
   display: grid;
+  position: absolute;
+  top: clamp(64px, 9vw, 90px);
+  left: 50%;
   width: clamp(38px, 5vw, 44px);
   height: clamp(38px, 5vw, 44px);
   min-height: 0;
@@ -798,7 +802,7 @@
   font-size: 13px;
   font-weight: 800;
   box-shadow: 0 0 0 4px rgba(11, 31, 58, .9);
-  transform: translateY(8px);
+  transform: translate(-50%, -50%);
   transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
 }
 
@@ -827,8 +831,11 @@
 
 .pixl-dashboard-mobile .mobile-week-path-icon {
   display: block;
+  position: absolute;
+  top: calc(clamp(128px, 18vw, 180px) + 34px);
+  left: 50%;
   color: rgba(159, 176, 200, .9);
-  transform: translateY(14px);
+  transform: translateX(-50%);
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step.is-completed .mobile-week-path-icon {
@@ -841,6 +848,10 @@
 }
 
 .pixl-dashboard-mobile .mobile-week-path-label {
+  position: absolute;
+  top: calc(clamp(128px, 18vw, 180px) + 4px);
+  right: 4px;
+  left: 4px;
   max-width: 100%;
   overflow-wrap: anywhere;
   font-size: 10px;
@@ -848,7 +859,7 @@
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: .08em;
-  transform: translateY(14px);
+  text-align: center;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-state {
