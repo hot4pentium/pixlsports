@@ -329,7 +329,7 @@ export function PublicLandingPage() {
                         preload="metadata"
                         aria-label="Plan and game day checklist video"
                         data-testid="landing-checklist-video"
-                        className="landing-checklist-video w-full max-w-[300px] object-contain"
+                        className="landing-checklist-video w-full max-w-[240px] object-cover"
                       />
                     </div>
                   </div>

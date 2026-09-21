@@ -62,7 +62,8 @@ test('before-game-day guidance includes the uploaded checklist video', () => {
 });
 
 test('checklist video uses the phone crop without a native player shell', () => {
-  assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 1 \/ 1;/);
+  assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 760 \/ 1080;/);
+  assert.match(landingSource, /landing-checklist-video w-full max-w-\[240px\] object-cover/);
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*overflow: hidden;[\s\S]*border-radius: 1\.5rem;/);
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*mix-blend-mode: multiply;/);
   assert.match(landingSource, /landing-before-game-day-title/);

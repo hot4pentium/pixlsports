@@ -344,7 +344,7 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       desktopLayout.checklistVideo.top - desktopLayout.beforeGameDayTitleTop,
     ) <= 2);
     assert.ok(Math.abs(
-      desktopLayout.checklistVideo.width / desktopLayout.checklistVideo.height - 1,
+      desktopLayout.checklistVideo.width / desktopLayout.checklistVideo.height - 760 / 1080,
     ) < 0.01);
 
     const reducedMotionPage = await openLandingPage(connection, `http://127.0.0.1:${port}/`, {
