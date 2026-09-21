@@ -545,7 +545,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           <p className="mt-4 text-sm font-bold uppercase tracking-widest text-white/45">{invite.teamName || 'Athlete season page'}</p>
         </header>
 
-        <section className="athlete-highlights-panel mt-10 p-4 sm:p-6" aria-labelledby="athlete-video-highlights">
+        <section className="mt-10" aria-labelledby="athlete-video-highlights">
           <div className="athlete-highlights-heading flex items-end justify-between gap-5">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
@@ -562,68 +562,70 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
               )}
             </div>
           </div>
-          {invite.videos.length > 0 ? (
-            <ol
-              ref={videoCarouselRef}
-              className="athlete-video-carousel mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
-              aria-label="Athlete video highlights"
-              tabIndex={0}
-              onScroll={updateActiveVideo}
-              onKeyDown={(event) => {
-                if (event.target !== event.currentTarget) return;
-                if (event.key === 'ArrowLeft') {
-                  event.preventDefault();
-                  moveToVideo(activeVideoIndex - 1);
-                }
-                if (event.key === 'ArrowRight') {
-                  event.preventDefault();
-                  moveToVideo(activeVideoIndex + 1);
-                }
-              }}
-              data-testid="athlete-video-carousel"
-            >
-              {invite.videos.map((video, index) => {
-                const details = [video.jerseyNumber ? `#${video.jerseyNumber}` : '', video.position].filter(Boolean).join(' · ');
-                return (
-                  <li key={video.shareToken} className="w-[82%] shrink-0 snap-start sm:w-[58%] lg:w-[50%]" aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
-                    <div className="athlete-video-stage">
-                      <div className="athlete-video-frame">
-                        <video
-                          src={video.videoUrl}
-                          poster={video.posterUrl ?? undefined}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          aria-label={`Play ${video.title}`}
-                          className="aspect-video w-full bg-black object-contain"
-                          onPlay={(event) => keepOneVideoPlaying(event.currentTarget)}
-                          data-testid="athlete-video-player"
-                        />
+          <div className="athlete-highlights-panel mt-5 p-3 sm:p-4">
+            {invite.videos.length > 0 ? (
+              <ol
+                ref={videoCarouselRef}
+                className="athlete-video-carousel flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+                aria-label="Athlete video highlights"
+                tabIndex={0}
+                onScroll={updateActiveVideo}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    moveToVideo(activeVideoIndex - 1);
+                  }
+                  if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    moveToVideo(activeVideoIndex + 1);
+                  }
+                }}
+                data-testid="athlete-video-carousel"
+              >
+                {invite.videos.map((video, index) => {
+                  const details = [video.jerseyNumber ? `#${video.jerseyNumber}` : '', video.position].filter(Boolean).join(' · ');
+                  return (
+                    <li key={video.shareToken} className="w-[82%] shrink-0 snap-start sm:w-[58%] lg:w-[50%]" aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
+                      <div className="athlete-video-stage">
+                        <div className="athlete-video-frame">
+                          <video
+                            src={video.videoUrl}
+                            poster={video.posterUrl ?? undefined}
+                            controls
+                            playsInline
+                            preload="metadata"
+                            aria-label={`Play ${video.title}`}
+                            className="aspect-video w-full bg-black object-contain"
+                            onPlay={(event) => keepOneVideoPlaying(event.currentTarget)}
+                            data-testid="athlete-video-player"
+                          />
+                        </div>
+                        {video.posterUrl && (
+                          <div
+                            aria-hidden="true"
+                            className="athlete-video-reflection"
+                            style={{ backgroundImage: `url("${video.posterUrl}")` }}
+                            data-testid="athlete-video-reflection"
+                          />
+                        )}
                       </div>
-                      {video.posterUrl && (
-                        <div
-                          aria-hidden="true"
-                          className="athlete-video-reflection"
-                          style={{ backgroundImage: `url("${video.posterUrl}")` }}
-                          data-testid="athlete-video-reflection"
-                        />
-                      )}
-                    </div>
-                    <div className="border-l-2 border-primary px-4 py-4">
-                      <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">Moment {String(index + 1).padStart(2, '0')}</p>
-                      <h3 className="mt-2 font-display text-3xl uppercase leading-none">{video.title}</h3>
-                      {details && <p className="mt-3 text-xs font-bold uppercase tracking-[.16em] text-white/55">{details}</p>}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <div className="mt-5 border border-white/10 bg-white/5 p-7" data-testid="athlete-video-empty-state">
-              <p className="font-display text-3xl uppercase">Highlights are coming</p>
-              <p className="mt-2 text-sm text-white/50">Check back after the next big moment.</p>
-            </div>
-          )}
+                      <div className="border-l-2 border-primary px-4 py-4">
+                        <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">Moment {String(index + 1).padStart(2, '0')}</p>
+                        <h3 className="mt-2 font-display text-3xl uppercase leading-none">{video.title}</h3>
+                        {details && <p className="mt-3 text-xs font-bold uppercase tracking-[.16em] text-white/55">{details}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <div className="border border-white/10 bg-white/5 p-7" data-testid="athlete-video-empty-state">
+                <p className="font-display text-3xl uppercase">Highlights are coming</p>
+                <p className="mt-2 text-sm text-white/50">Check back after the next big moment.</p>
+              </div>
+            )}
+          </div>
         </section>
 
         {invite.liveGame && (
