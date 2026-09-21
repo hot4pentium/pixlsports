@@ -393,6 +393,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
         </Link>
         <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
           <Link href="/studio" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-studio">Studio</Link>
+          <Link href="/studio/athlete-page" className="clip-angled-sm bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90" data-testid="link-nav-create">Create</Link>
           <Link href="/help" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-help">Help</Link>
           <Link href="/privacy" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-privacy">Privacy</Link>
 
@@ -418,6 +419,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
         <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#172024]' : 'border-border bg-card'}`} data-testid="menu-mobile">
           <nav className="flex flex-col gap-2">
             <Link href="/studio" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
+            <Link href="/studio/athlete-page" className="flex items-center justify-between bg-primary p-4 text-lg font-display tracking-wide text-primary-foreground" onClick={() => setMenuOpen(false)} data-testid="link-mobile-create">CREATE <ArrowRight className="h-5 w-5" /></Link>
             <Link href="/help" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-help">HELP <ArrowRight className="h-5 w-5 text-primary" /></Link>
             <Link href="/privacy" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-privacy">PRIVACY <ArrowRight className="h-5 w-5 text-primary" /></Link>
             {isSignedIn ? (
