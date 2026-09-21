@@ -912,6 +912,227 @@ export const GetStatTrackerShareEventsResponse = zod.unknown()
 
 
 /**
+ * @summary List athlete invites owned by the authenticated user
+ */
+export const listAthleteInvitesResponseOneAthleteNameMax = 100;
+
+export const listAthleteInvitesResponseOneTeamNameMax = 160;
+
+export const listAthleteInvitesResponseOneSeasonNameMax = 100;
+
+
+
+export const ListAthleteInvitesResponseItem = zod.object({
+  "athleteName": zod.string().min(1).max(listAthleteInvitesResponseOneAthleteNameMax),
+  "teamName": zod.string().max(listAthleteInvitesResponseOneTeamNameMax),
+  "seasonName": zod.string().min(1).max(listAthleteInvitesResponseOneSeasonNameMax),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "scheduleProjectId": zod.string().uuid().nullable(),
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showSchedule": zod.boolean()
+}).and(zod.object({
+  "inviteToken": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListAthleteInvitesResponse = zod.array(ListAthleteInvitesResponseItem)
+
+
+/**
+ * @summary Create an evolving athlete invite
+ */
+export const createAthleteInviteBodyAthleteNameMax = 100;
+
+export const createAthleteInviteBodyTeamNameMax = 160;
+
+export const createAthleteInviteBodySeasonNameMax = 100;
+
+
+
+export const CreateAthleteInviteBody = zod.object({
+  "athleteName": zod.string().min(1).max(createAthleteInviteBodyAthleteNameMax),
+  "teamName": zod.string().max(createAthleteInviteBodyTeamNameMax),
+  "seasonName": zod.string().min(1).max(createAthleteInviteBodySeasonNameMax),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "scheduleProjectId": zod.string().uuid().nullable(),
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showSchedule": zod.boolean()
+})
+
+export const createAthleteInviteResponseOneAthleteNameMax = 100;
+
+export const createAthleteInviteResponseOneTeamNameMax = 160;
+
+export const createAthleteInviteResponseOneSeasonNameMax = 100;
+
+
+
+export const CreateAthleteInviteResponse = zod.object({
+  "athleteName": zod.string().min(1).max(createAthleteInviteResponseOneAthleteNameMax),
+  "teamName": zod.string().max(createAthleteInviteResponseOneTeamNameMax),
+  "seasonName": zod.string().min(1).max(createAthleteInviteResponseOneSeasonNameMax),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "scheduleProjectId": zod.string().uuid().nullable(),
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showSchedule": zod.boolean()
+}).and(zod.object({
+  "inviteToken": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+/**
+ * @summary Get an active evolving athlete invite
+ */
+export const getAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInvitePathInviteTokenRegExp)
+})
+
+export const getAthleteInviteResponseStatsOneGamesPlayedMin = 0;
+
+export const getAthleteInviteResponseStatsOneScoreMin = 0;
+
+export const getAthleteInviteResponseStatsOneGamesItemDateMax = 30;
+
+export const getAthleteInviteResponseStatsOneGamesItemOpponentMax = 240;
+
+export const getAthleteInviteResponseStatsOneGamesItemScoreMin = 0;
+
+export const getAthleteInviteResponseStatsOneGamesItemOpponentScoreMin = 0;
+
+export const getAthleteInviteResponseStatsOneGamesItemStatsMinOne = 0;
+
+export const getAthleteInviteResponseStatsOneStatsMinOne = 0;
+
+
+
+export const GetAthleteInviteResponse = zod.object({
+  "inviteToken": zod.string(),
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "hypeCard": zod.union([zod.object({
+  "shareToken": zod.string(),
+  "title": zod.string(),
+  "mediaType": zod.enum(['image', 'video']),
+  "posterUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "stats": zod.union([zod.object({
+  "athleteName": zod.string(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "gamesPlayed": zod.number().int().min(getAthleteInviteResponseStatsOneGamesPlayedMin),
+  "score": zod.number().int().min(getAthleteInviteResponseStatsOneScoreMin),
+  "games": zod.array(zod.object({
+  "date": zod.string().max(getAthleteInviteResponseStatsOneGamesItemDateMax),
+  "opponent": zod.string().max(getAthleteInviteResponseStatsOneGamesItemOpponentMax),
+  "score": zod.number().int().min(getAthleteInviteResponseStatsOneGamesItemScoreMin),
+  "opponentScore": zod.number().int().min(getAthleteInviteResponseStatsOneGamesItemOpponentScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(getAthleteInviteResponseStatsOneGamesItemStatsMinOne))
+})),
+  "stats": zod.record(zod.string(), zod.number().int().min(getAthleteInviteResponseStatsOneStatsMinOne)),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
+  "scheduleEvents": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "date": zod.string(),
+  "time": zod.string(),
+  "location": zod.string(),
+  "opponent": zod.string(),
+  "notes": zod.string()
+})),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an owned evolving athlete invite without changing its URL
+ */
+export const updateAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const UpdateAthleteInviteParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(updateAthleteInvitePathInviteTokenRegExp)
+})
+
+export const updateAthleteInviteBodyAthleteNameMax = 100;
+
+export const updateAthleteInviteBodyTeamNameMax = 160;
+
+export const updateAthleteInviteBodySeasonNameMax = 100;
+
+
+
+export const UpdateAthleteInviteBody = zod.object({
+  "athleteName": zod.string().min(1).max(updateAthleteInviteBodyAthleteNameMax),
+  "teamName": zod.string().max(updateAthleteInviteBodyTeamNameMax),
+  "seasonName": zod.string().min(1).max(updateAthleteInviteBodySeasonNameMax),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "scheduleProjectId": zod.string().uuid().nullable(),
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showSchedule": zod.boolean()
+})
+
+export const updateAthleteInviteResponseOneAthleteNameMax = 100;
+
+export const updateAthleteInviteResponseOneTeamNameMax = 160;
+
+export const updateAthleteInviteResponseOneSeasonNameMax = 100;
+
+
+
+export const UpdateAthleteInviteResponse = zod.object({
+  "athleteName": zod.string().min(1).max(updateAthleteInviteResponseOneAthleteNameMax),
+  "teamName": zod.string().max(updateAthleteInviteResponseOneTeamNameMax),
+  "seasonName": zod.string().min(1).max(updateAthleteInviteResponseOneSeasonNameMax),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "trackerProjectId": zod.string().uuid().nullable(),
+  "scheduleProjectId": zod.string().uuid().nullable(),
+  "showHypeCard": zod.boolean(),
+  "showStats": zod.boolean(),
+  "showSchedule": zod.boolean()
+}).and(zod.object({
+  "inviteToken": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+/**
+ * @summary Revoke an owned evolving athlete invite
+ */
+export const deleteAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const DeleteAthleteInviteParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(deleteAthleteInvitePathInviteTokenRegExp)
+})
+
+export const DeleteAthleteInviteResponse = zod.void()
+
+
+/**
  * @summary List owned Hype Card shares
  */
 export const listHypeCardSharesResponseOneStatsOneGamesPlayedMin = 0;

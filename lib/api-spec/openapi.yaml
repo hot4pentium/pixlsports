@@ -306,6 +306,102 @@ paths:
                 type: string
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites:
+    get:
+      operationId: listAthleteInvites
+      tags: [athlete-invites]
+      summary: List athlete invites owned by the authenticated user
+      responses:
+        "200":
+          description: Owned athlete invites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInviteList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createAthleteInvite
+      tags: [athlete-invites]
+      summary: Create an evolving athlete invite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteInput"
+      responses:
+        "201":
+          description: Athlete invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInvite"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: This account already has an athlete invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}:
+    parameters:
+      - in: path
+        name: inviteToken
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{24,80}$"
+    get:
+      operationId: getAthleteInvite
+      tags: [athlete-invites]
+      summary: Get an active evolving athlete invite
+      responses:
+        "200":
+          description: Current public athlete page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAthleteInvite"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAthleteInvite
+      tags: [athlete-invites]
+      summary: Update an owned evolving athlete invite without changing its URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteInput"
+      responses:
+        "200":
+          description: Athlete invite updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnedAthleteInvite"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAthleteInvite
+      tags: [athlete-invites]
+      summary: Revoke an owned evolving athlete invite
+      responses:
+        "204":
+          description: Athlete invite revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /hype-card-shares:
     get:
       operationId: listHypeCardShares
@@ -1590,6 +1686,92 @@ components:
           type: string
           format: date-time
         createdAt:
+          type: string
+          format: date-time
+    AthleteInviteInput:
+      type: object
+      required: [athleteName, teamName, seasonName, seasonEndsAt, sport, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule]
+      properties:
+        athleteName: { type: string, minLength: 1, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
+        seasonName: { type: string, minLength: 1, maxLength: 100 }
+        seasonEndsAt: { type: string, format: date-time }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        trackerProjectId:
+          type: ["string", "null"]
+          format: uuid
+        scheduleProjectId:
+          type: ["string", "null"]
+          format: uuid
+        showHypeCard: { type: boolean }
+        showStats: { type: boolean }
+        showSchedule: { type: boolean }
+    OwnedAthleteInvite:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteInput"
+        - type: object
+          required: [inviteToken, createdAt, updatedAt]
+          properties:
+            inviteToken:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    OwnedAthleteInviteList:
+      type: array
+      items:
+        $ref: "#/components/schemas/OwnedAthleteInvite"
+    AthleteInviteHypeCard:
+      type: object
+      required: [shareToken, title, mediaType, posterUrl, createdAt]
+      properties:
+        shareToken: { type: string }
+        title: { type: string }
+        mediaType: { type: string, enum: [image, video] }
+        posterUrl: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteScheduleEvent:
+      type: object
+      required: [id, type, status, date, time, location, opponent, notes]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [game, practice, meeting] }
+        status: { type: string, enum: [upcoming, live, final] }
+        date: { type: string }
+        time: { type: string }
+        location: { type: string }
+        opponent: { type: string }
+        notes: { type: string }
+    PublicAthleteInvite:
+      type: object
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, hypeCard, stats, scheduleEvents, updatedAt]
+      properties:
+        inviteToken: { type: string }
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        seasonEndsAt: { type: string, format: date-time }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        hypeCard:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteHypeCard"
+            - type: "null"
+        stats:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardShareStats"
+            - type: "null"
+        scheduleEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        updatedAt:
           type: string
           format: date-time
     OwnedHypeCardShare:

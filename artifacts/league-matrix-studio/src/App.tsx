@@ -1,5 +1,6 @@
 import { PublicLandingPage } from '@/features/landing-home';
 import { HypeCardReplyInboxTrigger } from '@/features/hype-card-reply-inbox';
+import { AthleteInviteManager, PublicAthleteInvitePage } from '@/features/athlete-invite';
 import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
@@ -1104,9 +1105,14 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
             );
           })}
           {activeRole === 'fan' && (
-            <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
-              My Athlete
-            </Link>
+            <>
+              <Link href="/studio/athlete-page" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/athlete-page' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-athlete-page">
+                Athlete Page
+              </Link>
+              <Link href="/studio/profile" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio/profile' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-toolbar-profile">
+                My Athlete
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -3818,6 +3824,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     || location.startsWith('/watch/')
     || location.startsWith('/live/')
     || location.startsWith('/h/')
+    || location.startsWith('/player/')
     || location.startsWith('/sign-in')
     || location.startsWith('/sign-up');
   const { data: lifecycle, isLoading } = useGetAccountLifecycle({
@@ -3915,7 +3922,9 @@ function ClerkProviderWithRoutes() {
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
+               <Route path="/player/:inviteToken" component={PublicAthleteInvitePage} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+               <Route path="/studio/athlete-page" component={AthleteInviteManager} />
               <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>

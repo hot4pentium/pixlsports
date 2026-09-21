@@ -605,6 +605,119 @@ export interface HypeCardShare {
   createdAt: string;
 }
 
+export type AthleteInviteInputSport = typeof AthleteInviteInputSport[keyof typeof AthleteInviteInputSport];
+
+
+export const AthleteInviteInputSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface AthleteInviteInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  athleteName: string;
+  /** @maxLength 160 */
+  teamName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  seasonName: string;
+  seasonEndsAt: string;
+  sport: AthleteInviteInputSport;
+  /** @nullable */
+  trackerProjectId: string | null;
+  /** @nullable */
+  scheduleProjectId: string | null;
+  showHypeCard: boolean;
+  showStats: boolean;
+  showSchedule: boolean;
+}
+
+export type OwnedAthleteInvite = AthleteInviteInput & {
+  inviteToken: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OwnedAthleteInviteList = OwnedAthleteInvite[];
+
+export type AthleteInviteHypeCardMediaType = typeof AthleteInviteHypeCardMediaType[keyof typeof AthleteInviteHypeCardMediaType];
+
+
+export const AthleteInviteHypeCardMediaType = {
+  image: 'image',
+  video: 'video',
+} as const;
+
+export interface AthleteInviteHypeCard {
+  shareToken: string;
+  title: string;
+  mediaType: AthleteInviteHypeCardMediaType;
+  /** @nullable */
+  posterUrl: string | null;
+  createdAt: string;
+}
+
+export type AthleteInviteScheduleEventType = typeof AthleteInviteScheduleEventType[keyof typeof AthleteInviteScheduleEventType];
+
+
+export const AthleteInviteScheduleEventType = {
+  game: 'game',
+  practice: 'practice',
+  meeting: 'meeting',
+} as const;
+
+export type AthleteInviteScheduleEventStatus = typeof AthleteInviteScheduleEventStatus[keyof typeof AthleteInviteScheduleEventStatus];
+
+
+export const AthleteInviteScheduleEventStatus = {
+  upcoming: 'upcoming',
+  live: 'live',
+  final: 'final',
+} as const;
+
+export interface AthleteInviteScheduleEvent {
+  id: string;
+  type: AthleteInviteScheduleEventType;
+  status: AthleteInviteScheduleEventStatus;
+  date: string;
+  time: string;
+  location: string;
+  opponent: string;
+  notes: string;
+}
+
+export type PublicAthleteInviteSport = typeof PublicAthleteInviteSport[keyof typeof PublicAthleteInviteSport];
+
+
+export const PublicAthleteInviteSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface PublicAthleteInvite {
+  inviteToken: string;
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  seasonEndsAt: string;
+  sport: PublicAthleteInviteSport;
+  hypeCard: AthleteInviteHypeCard | null;
+  stats: HypeCardShareStats | null;
+  scheduleEvents: AthleteInviteScheduleEvent[];
+  updatedAt: string;
+}
+
 /**
  * @nullable
  */

@@ -204,6 +204,7 @@ export const webPushSubscriptionsTable = pgTable("web_push_subscriptions", {
 
 export * from "./checklistShares";
 export * from "./statTrackerShares";
+export * from "./athleteInvites";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,

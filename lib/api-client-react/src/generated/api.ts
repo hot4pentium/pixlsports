@@ -24,6 +24,7 @@ import type {
   AccountAccessInput,
   AccountLifecycle,
   AccountUsageConsumeInput,
+  AthleteInviteInput,
   BadRequestResponse,
   BillingWebhookResponse,
   ChecklistConflict,
@@ -51,12 +52,15 @@ import type {
   NotificationSubscriptionDeleteInput,
   NotificationSubscriptionInput,
   NotificationSubscriptionStatus,
+  OwnedAthleteInvite,
+  OwnedAthleteInviteList,
   PaidEntitlementEvent,
   Project,
   ProjectConflict,
   ProjectInput,
   ProjectList,
   ProjectUpdate,
+  PublicAthleteInvite,
   ScheduleShare,
   ScheduleShareInput,
   StatTrackerConflict,
@@ -1319,6 +1323,411 @@ export function useGetStatTrackerShareEvents<TData = Awaited<ReturnType<typeof g
 
 
 
+
+export const getListAthleteInvitesUrl = () => {
+
+
+
+
+  return `/api/athlete-invites`
+}
+
+/**
+ * @summary List athlete invites owned by the authenticated user
+ */
+export const listAthleteInvites = async ( options?: Parameters<typeof customFetch>[1]): Promise<OwnedAthleteInviteList> => {
+
+  return customFetch<OwnedAthleteInviteList>(getListAthleteInvitesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAthleteInvitesQueryKey = () => {
+    return [
+    `/api/athlete-invites`
+    ] as const;
+    }
+
+
+export const getListAthleteInvitesQueryOptions = <TData = Awaited<ReturnType<typeof listAthleteInvites>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAthleteInvites>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAthleteInvitesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAthleteInvites>>> = ({ signal }) => listAthleteInvites({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAthleteInvites>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAthleteInvitesQueryResult = NonNullable<Awaited<ReturnType<typeof listAthleteInvites>>>
+export type ListAthleteInvitesQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List athlete invites owned by the authenticated user
+ */
+
+export function useListAthleteInvites<TData = Awaited<ReturnType<typeof listAthleteInvites>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAthleteInvites>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAthleteInvitesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAthleteInviteUrl = () => {
+
+
+
+
+  return `/api/athlete-invites`
+}
+
+/**
+ * @summary Create an evolving athlete invite
+ */
+export const createAthleteInvite = async (athleteInviteInput: AthleteInviteInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnedAthleteInvite> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnedAthleteInvite>(getCreateAthleteInviteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAthleteInviteMutationKey = () => ['createAthleteInvite'] as const;
+
+export const getCreateAthleteInviteMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInvite>>, TError,CreateAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAthleteInvite>>, TError,CreateAthleteInviteMutationVariables, TContext> => {
+
+const mutationKey = getCreateAthleteInviteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAthleteInvite>>, CreateAthleteInviteMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAthleteInvite(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAthleteInviteMutationResult = NonNullable<Awaited<ReturnType<typeof createAthleteInvite>>>
+    export type CreateAthleteInviteMutationBody = BodyType<AthleteInviteInput>
+    export type CreateAthleteInviteMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type CreateAthleteInviteMutationVariables = {data: BodyType<AthleteInviteInput>}
+
+    /**
+ * @summary Create an evolving athlete invite
+ */
+export const useCreateAthleteInvite = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInvite>>, TError,CreateAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAthleteInvite>>,
+        TError,
+        CreateAthleteInviteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAthleteInviteMutationOptions(options));
+    }
+
+export const getGetAthleteInviteUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}`
+}
+
+/**
+ * @summary Get an active evolving athlete invite
+ */
+export const getAthleteInvite = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicAthleteInvite> => {
+
+  return customFetch<PublicAthleteInvite>(getGetAthleteInviteUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInvite>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInvite>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInvite>>> = ({ signal }) => getAthleteInvite(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInvite>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInvite>>>
+export type GetAthleteInviteQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get an active evolving athlete invite
+ */
+
+export function useGetAthleteInvite<TData = Awaited<ReturnType<typeof getAthleteInvite>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInvite>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAthleteInviteUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}`
+}
+
+/**
+ * @summary Update an owned evolving athlete invite without changing its URL
+ */
+export const updateAthleteInvite = async (inviteToken: string,
+    athleteInviteInput: AthleteInviteInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnedAthleteInvite> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OwnedAthleteInvite>(getUpdateAthleteInviteUrl(inviteToken),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAthleteInviteMutationKey = () => ['updateAthleteInvite'] as const;
+
+export const getUpdateAthleteInviteMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInvite>>, TError,UpdateAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInvite>>, TError,UpdateAthleteInviteMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAthleteInviteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAthleteInvite>>, UpdateAthleteInviteMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  updateAthleteInvite(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAthleteInviteMutationResult = NonNullable<Awaited<ReturnType<typeof updateAthleteInvite>>>
+    export type UpdateAthleteInviteMutationBody = BodyType<AthleteInviteInput>
+    export type UpdateAthleteInviteMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UpdateAthleteInviteMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteInput>}
+
+    /**
+ * @summary Update an owned evolving athlete invite without changing its URL
+ */
+export const useUpdateAthleteInvite = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInvite>>, TError,UpdateAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAthleteInvite>>,
+        TError,
+        UpdateAthleteInviteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAthleteInviteMutationOptions(options));
+    }
+
+export const getDeleteAthleteInviteUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}`
+}
+
+/**
+ * @summary Revoke an owned evolving athlete invite
+ */
+export const deleteAthleteInvite = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAthleteInviteUrl(inviteToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAthleteInviteMutationKey = () => ['deleteAthleteInvite'] as const;
+
+export const getDeleteAthleteInviteMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInvite>>, TError,DeleteAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInvite>>, TError,DeleteAthleteInviteMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAthleteInviteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAthleteInvite>>, DeleteAthleteInviteMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  deleteAthleteInvite(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAthleteInviteMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAthleteInvite>>>
+
+    export type DeleteAthleteInviteMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteAthleteInviteMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Revoke an owned evolving athlete invite
+ */
+export const useDeleteAthleteInvite = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInvite>>, TError,DeleteAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAthleteInvite>>,
+        TError,
+        DeleteAthleteInviteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAthleteInviteMutationOptions(options));
+    }
 
 export const getListHypeCardSharesUrl = () => {
 

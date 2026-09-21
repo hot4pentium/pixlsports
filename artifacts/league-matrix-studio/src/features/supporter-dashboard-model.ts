@@ -124,6 +124,7 @@ export const supporterToolRoutes = {
   schedule: '/studio/schedule',
   statTracker: '/studio/stat-tracker',
   checklist: '/studio/checklist',
+  athletePage: '/studio/athlete-page',
 } as const;
 export type SupporterGameLike = {
   id: string;

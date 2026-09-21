@@ -11,6 +11,7 @@ import supporterPhotoRouter from "./supporterPhoto";
 import checklistSharesRouter from "./checklistShares";
 import statTrackerSharesRouter from "./statTrackerShares";
 import webPushRouter from "./webPush";
+import athleteInvitesRouter from "./athleteInvites";
 
 const router: IRouter = Router();
 
@@ -20,6 +21,7 @@ router.use(billingRouter);
 router.use(projectsRouter);
 router.use(scheduleSharesRouter);
 router.use(hypeCardSharesRouter);
+router.use(athleteInvitesRouter);
 router.use(storageRouter);
 router.use(accountAccessRouter);
 router.use(supporterPhotoRouter);
