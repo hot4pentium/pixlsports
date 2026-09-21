@@ -20,7 +20,11 @@ test('landing athlete photos render as compact entrance-animated tiles below the
 
 test('landing athlete ticker protects the page width and respects reduced motion', () => {
   assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow-x: auto;/);
+  assert.match(landingStyles, /overscroll-behavior-x: contain/);
+  assert.match(landingStyles, /scroll-snap-type: x mandatory/);
   assert.match(landingStyles, /\.landing-sport-tile \{[\s\S]*flex: 0 0 clamp/);
+  assert.match(landingStyles, /scroll-snap-align: start/);
+  assert.match(landingStyles, /\.landing-sport-tile:last-child[\s\S]*scroll-snap-align: end/);
   assert.match(landingStyles, /@keyframes landing-sport-tile-rubberband/);
   assert.match(landingStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(landingStyles, /animation-delay: var\(--landing-tile-delay\)/);

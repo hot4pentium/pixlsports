@@ -90,6 +90,9 @@
   overflow-y: hidden;
   margin-inline: -0.25rem;
   padding: 0.25rem;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 0.25rem;
+  scroll-snap-type: x mandatory;
   scrollbar-width: none;
 }
 
@@ -119,6 +122,12 @@
   box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--landing-text) 55%, transparent);
   animation: landing-sport-tile-rubberband 900ms both;
   animation-delay: var(--landing-tile-delay);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.landing-sport-tile:last-child {
+  scroll-snap-align: end;
 }
 
 .landing-sport-tile img {
