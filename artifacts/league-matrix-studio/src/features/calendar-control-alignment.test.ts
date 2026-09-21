@@ -31,6 +31,16 @@ test('calendar preview uses the landing-page card and keeps creation controls in
   assert.match(appSource, /await persistSchedule\(/);
 });
 
+test('public schedule recipients get the same card without creation controls', () => {
+  const publicSchedulePage = appSource.slice(
+    appSource.indexOf('function PublicSchedulePage'),
+    appSource.indexOf('function ChecklistPage'),
+  );
+  assert.match(publicSchedulePage, /<SchedulePreview/);
+  assert.match(publicSchedulePage, /readOnly/);
+  assert.doesNotMatch(publicSchedulePage, /button-add-event/);
+});
+
 test('compact connection controls can shrink without overlapping', () => {
   assert.match(compactConnectionPanel, /compact \? 'flex items-center gap-2'/);
   assert.match(compactConnectionPanel, /compact \? 'shrink-0'/);

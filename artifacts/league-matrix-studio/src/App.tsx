@@ -3878,45 +3878,18 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
           <p className="mt-4 text-base font-bold uppercase tracking-[.12em] text-muted-foreground">{schedule.teamSeason}</p>
         </div>
 
-        <div className="space-y-4" data-testid="public-schedule-events">
+        <div data-testid="public-schedule-events">
           {schedule.events.length === 0 ? (
             <div className="border border-dashed border-border bg-card p-8 text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">No events have been added yet.</div>
-          ) : schedule.events.map((event) => (
-            <article key={event.id} className="border border-border bg-card p-5 shadow-sm clip-angled-sm sm:p-6">
-              <div className="flex flex-col gap-5 sm:flex-row">
-                <div className="shrink-0 sm:w-36 sm:border-r sm:border-border sm:pr-5">
-                  <p className="font-display text-2xl leading-none text-foreground">{formatScheduleDate(event.date)}</p>
-                  <p className="mt-2 text-xs font-bold uppercase tracking-widest text-primary">{formatScheduleTime(event.time)}</p>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[.16em] text-primary">{event.type}</span>
-                     {event.type === 'game' && event.status && (
-                       <span
-                         className="border border-primary/30 bg-background px-2 py-1 text-[10px] font-bold uppercase tracking-[.16em] text-foreground"
-                         data-testid={`public-schedule-game-status-${event.id}`}
-                       >
-                         {event.status}
-                       </span>
-                     )}
-                    <h2 className="font-display text-2xl leading-none text-foreground">
-                      {event.type === 'game' ? `VS ${event.opponent || 'OPPONENT TBD'}` : event.type === 'practice' ? 'TEAM PRACTICE' : 'TEAM MEETING'}
-                    </h2>
-                  </div>
-                  <p className="mt-4 flex items-start gap-2 text-sm font-bold uppercase tracking-wider text-foreground">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {event.location || 'Location TBD'}
-                  </p>
-                  {(event.snacks || event.drinks) && (
-                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {event.snacks && <span className="inline-flex items-center gap-1.5"><Utensils className="h-3.5 w-3.5 text-primary" /> Snacks: {event.snacks}</span>}
-                      {event.drinks && <span className="inline-flex items-center gap-1.5"><CupSoda className="h-3.5 w-3.5 text-primary" /> Drinks: {event.drinks}</span>}
-                    </div>
-                  )}
-                  {event.notes && <p className="mt-4 border-t border-border pt-3 text-sm font-medium leading-relaxed text-muted-foreground">{event.notes}</p>}
-                </div>
-              </div>
-            </article>
-          ))}
+          ) : (
+            <SchedulePreview
+              teamName={schedule.title}
+              season={schedule.teamSeason}
+              events={schedule.events}
+              onAddEvent={() => undefined}
+              readOnly
+            />
+          )}
         </div>
 
         <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from Pixl Sports</p>
