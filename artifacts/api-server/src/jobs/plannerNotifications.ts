@@ -148,6 +148,7 @@ async function sendPlannerReminder(
   project: PlannerProject,
   event: PlannerEvent,
   reminderType: PlannerReminderType,
+  sendPush: typeof sendPushNotificationToUser,
 ) {
   const [existingDelivery] = await db
     .select({ id: plannerNotificationDeliveriesTable.id })
@@ -161,7 +162,7 @@ async function sendPlannerReminder(
     .limit(1);
   if (existingDelivery) return;
 
-  const result = await sendPushNotificationToUser(ownerClerkUserId, {
+  const result = await sendPush(ownerClerkUserId, {
     ...reminderPayload(project, event, reminderType),
     tag: `planner-${projectId}-${event.id}-${reminderType}-${event.date}`,
   });
@@ -175,7 +176,15 @@ async function sendPlannerReminder(
   }).onConflictDoNothing();
 }
 
-export async function runPlannerNotificationJob(now = new Date()) {
+export type PlannerNotificationJobDependencies = {
+  sendPushNotificationToUser?: typeof sendPushNotificationToUser;
+};
+
+export async function runPlannerNotificationJob(
+  now = new Date(),
+  dependencies: PlannerNotificationJobDependencies = {},
+) {
+  const sendPush = dependencies.sendPushNotificationToUser ?? sendPushNotificationToUser;
   const subscriptions = await db
     .select({
       ownerClerkUserId: webPushSubscriptionsTable.ownerClerkUserId,
@@ -208,7 +217,7 @@ export async function runPlannerNotificationJob(now = new Date()) {
       if (event.type === "game" && event.status === "final") continue;
       const reminderType = getReminderType(event.date, local);
       if (!reminderType) continue;
-      await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType);
+      await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType, sendPush);
     }
   }
 }
