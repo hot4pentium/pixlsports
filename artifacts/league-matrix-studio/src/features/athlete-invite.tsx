@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -6,7 +6,6 @@ import {
   Check,
   Clipboard,
   ExternalLink,
-  AlertTriangle,
   Link2,
   Radio,
   MapPin,
@@ -32,15 +31,12 @@ import {
 } from '@workspace/api-client-react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { HypeCardReplyComposer } from './public-hype-card';
-import { getSportRule, sports, type Sport } from './stat-tracker';
+import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-const supportedSports = sports.filter((sport) => sport !== 'softball');
 
 function defaultSeasonEnd() {
   const now = new Date();
@@ -71,14 +67,14 @@ export function AthleteInviteManager() {
   const { data: invites, isLoading } = useListAthleteInvites({
     query: { enabled: Boolean(isSignedIn), queryKey: getListAthleteInvitesQueryKey() },
   });
-  const { data: projects, isFetched: projectsLoaded } = useListProjects({ query: { enabled: Boolean(isSignedIn), queryKey: getListProjectsQueryKey() } });
+  const { data: projects } = useListProjects({ query: { enabled: Boolean(isSignedIn), queryKey: getListProjectsQueryKey() } });
   const existing = invites?.[0] ?? null;
   const trackerProjects = projects?.filter((project) => project.project.tool === 'stat-tracker') ?? [];
   const scheduleProjects = projects?.filter((project) => project.project.tool === 'schedule') ?? [];
   const defaultSport = profile.sport && profile.sport !== 'softball' ? profile.sport : 'basketball';
   const [athleteName, setAthleteName] = useState(profile.athleteName);
   const [teamName, setTeamName] = useState(profile.teamName);
-  const [seasonName, setSeasonName] = useState('');
+  const [seasonName, setSeasonName] = useState(() => `Season ${new Date().getFullYear()}`);
   const [seasonEndsAt, setSeasonEndsAt] = useState(defaultSeasonEnd);
   const [sport, setSport] = useState<Exclude<Sport, 'softball'>>(defaultSport);
   const [trackerProjectId, setTrackerProjectId] = useState('none');
@@ -91,17 +87,6 @@ export function AthleteInviteManager() {
   const updateInvite = useUpdateAthleteInvite();
   const startLive = useStartAthleteInviteLive();
   const stopLive = useStopAthleteInviteLive();
-  const missingTrackerProject = Boolean(
-    projectsLoaded
-    && trackerProjectId !== 'none'
-    && !trackerProjects.some((project) => project.id === trackerProjectId),
-  );
-  const missingScheduleProject = Boolean(
-    projectsLoaded
-    && scheduleProjectId !== 'none'
-    && !scheduleProjects.some((project) => project.id === scheduleProjectId),
-  );
-
   useEffect(() => {
     if (!existing) return;
     setAthleteName(existing.athleteName);
@@ -137,11 +122,15 @@ export function AthleteInviteManager() {
     seasonName: seasonName.trim(),
     seasonEndsAt: seasonEndIso(seasonEndsAt),
     sport,
-    trackerProjectId: trackerProjectId === 'none' ? null : trackerProjectId,
-    scheduleProjectId: scheduleProjectId === 'none' ? null : scheduleProjectId,
+    trackerProjectId: trackerProjectId === 'none' || !trackerProjects.some((project) => project.id === trackerProjectId)
+      ? null
+      : trackerProjectId,
+    scheduleProjectId: scheduleProjectId === 'none' || !scheduleProjects.some((project) => project.id === scheduleProjectId)
+      ? null
+      : scheduleProjectId,
     showHypeCard,
-    showStats,
-    showSchedule,
+    showStats: showStats && (trackerProjectId === 'none' || trackerProjects.some((project) => project.id === trackerProjectId)),
+    showSchedule: showSchedule && (scheduleProjectId === 'none' || scheduleProjects.some((project) => project.id === scheduleProjectId)),
     paused: existing?.paused ?? false,
   });
   const save = async (event: React.FormEvent) => {
@@ -253,39 +242,7 @@ export function AthleteInviteManager() {
           </section>
         )}
 
-        <form onSubmit={save} className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="space-y-5 border border-border bg-card p-5 sm:p-7">
-            <h2 className="font-display text-3xl uppercase">Page details</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Athlete name" value={athleteName} onChange={setAthleteName} required />
-              <Field label="Team" value={teamName} onChange={setTeamName} />
-              <Field label="Season" value={seasonName} onChange={setSeasonName} placeholder="Fall 2026" required />
-              <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Season context ends</Label><Input type="date" value={seasonEndsAt} onChange={(event) => setSeasonEndsAt(event.target.value)} className="mt-2 h-12 rounded-none" required /></label>
-            </div>
-            <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Sport</Label><select value={sport} onChange={(event) => setSport(event.target.value as Exclude<Sport, 'softball'>)} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-bold">{supportedSports.map((item) => <option key={item} value={item}>{getSportRule(item).label}</option>)}</select></label>
-            {missingTrackerProject && (
-              <MissingSourceWarning
-                section="Finalized stats"
-                detail="The selected stats project was deleted or is no longer available to this account. Stats are currently omitted from the public page."
-                onHide={() => {
-                  setTrackerProjectId('none');
-                  setShowStats(false);
-                }}
-              />
-            )}
-            <ProjectSelect label="Finalized stats project" value={trackerProjectId} onChange={setTrackerProjectId} projects={trackerProjects} emptyLabel="Do not link stats" />
-            {missingScheduleProject && (
-              <MissingSourceWarning
-                section="Upcoming schedule"
-                detail="The selected schedule project was deleted or is no longer available to this account. Schedule events are currently omitted from the public page."
-                onHide={() => {
-                  setScheduleProjectId('none');
-                  setShowSchedule(false);
-                }}
-              />
-            )}
-            <ProjectSelect label="Schedule project" value={scheduleProjectId} onChange={setScheduleProjectId} projects={scheduleProjects} emptyLabel="Do not link a schedule" />
-          </section>
+        <form onSubmit={save} className="mt-8 max-w-xl">
           <aside className="space-y-5">
             <section className="border border-border bg-card p-5">
               <h2 className="font-display text-2xl uppercase">Visible sections</h2>
@@ -456,27 +413,6 @@ function escapeCalendar(value: string) {
 }
 function Stat({ label, value, primary = false }: { label: string; value: number; primary?: boolean }) {
   return <div className="border border-white/10 bg-black/20 p-3"><p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</p><p className={`mt-1 font-display text-3xl ${primary ? 'text-primary' : 'text-white'}`}>{value}</p></div>;
-}
-function Field({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean }) {
-  return <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">{label}</Label><Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} className="mt-2 h-12 rounded-none" /></label>;
-}
-function ProjectSelect({ label, value, onChange, projects, emptyLabel }: { label: string; value: string; onChange: (value: string) => void; projects: Array<{ id: string; name: string }>; emptyLabel: string }) {
-  const selectedProjectExists = value === 'none' || projects.some((project) => project.id === value);
-  return <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">{label}</Label><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-bold">{!selectedProjectExists && <option value={value}>Unavailable project — choose a replacement</option>}<option value="none">{emptyLabel}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>;
-}
-function MissingSourceWarning({ section, detail, onHide }: { section: string; detail: string; onHide: () => void }) {
-  return (
-    <div role="alert" className="border border-amber-500/50 bg-amber-500/10 p-4">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-        <div>
-          <p className="text-sm font-bold">{section} source unavailable</p>
-          <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">{detail} Select a replacement below, or hide this section.</p>
-          <Button type="button" variant="outline" className="mt-3 h-9 rounded-none border-amber-500/50 text-[10px] font-bold uppercase tracking-widest" onClick={onHide}>Hide {section}</Button>
-        </div>
-      </div>
-    </div>
-  );
 }
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-border pt-4"><div><p className="text-sm font-bold">{label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;
