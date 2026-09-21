@@ -1,0 +1,63 @@
+The structure works, but the screen feels more like a clean productivity app than an energetic sports experience. I would keep the same information architecture and modernize the presentation.
+Recommended direction: “Game Week Energy”
+Use the new PIXL Sports blue as the primary color, deep navy for contrast, and a small amount of orange for urgency.
+Electric blue: #2878F5
+Deep navy: #0B1F3A
+Bright blue: #55A4FF
+Game-day orange: #FF6433
+Success green: #16B981
+Cool page background: #F3F6FA
+Biggest improvements
+Turn the athlete area into a compact hero
+The large empty cream section should become a navy or blue-gradient athlete banner.
+Enlarge the athlete photo to approximately 72–84 px.
+Show “RANDAL” prominently.
+Put #30 • TIGERS beneath it.
+Add a subtle stadium-light, field-line, or halftone texture.
+Place “Good afternoon, Brian” above it in smaller text instead of making it the dominant headline.
+Make the next event the visual centerpiece
+Replace the plain white calendar card with a more energetic game card:
+Dark navy-to-blue gradient.
+Large date block on the left: SEP / 18.
+TIGERS vs WOLVES in white.
+Orange GAME DAY or UP NEXT pill.
+Location and time underneath.
+Very faint field markings or stadium lighting in the background.
+Add a small countdown such as 2 DAYS AWAY.
+Modernize the four-step journey
+The current line with four circles feels dated and takes up too much horizontal space.
+Use four connected compact tabs:
+PLAN ✓ PREP ✓ CAPTURE ✓ SEND 4
+Completed stages can use blue checks instead of large green circles. The active stage should become a filled blue pill with a soft glow or animated pulse. Keep orange only for a small NOW marker.
+Give “Your Next Best Step” more energy
+This should feel like an action card, not another white information panel.
+Add a blue gradient strip along the top or left.
+Include a small lightning-bolt or celebration icon.
+Use a relevant thumbnail from the athlete or game.
+Make the action clear: CREATE A HYPE CARD.
+Use a bold blue button with a subtle diagonal cut or arrow.
+Add a secondary option such as View recent moments.
+Use subtle motion and texture
+Modern sports energy does not require a busy interface.
+Slowly shift the gradient in the next-game card.
+Pulse the active journey step once when the page loads.
+Slide the recommended action upward by 10–15 px.
+Add faint dots, diagonal lines, or field markings at 3–5% opacity.
+Use soft blue shadows rather than gray shadows.
+Clean up the header
+The logo is currently clipped and the email address makes the header feel administrative.
+Display the complete logo with more breathing room.
+Replace the visible email with a circular profile button.
+Put Help, Privacy, and Sign Out inside the profile menu.
+On mobile, use only the logo and profile/avatar.
+Suggested mobile hierarchy
+Compact header
+Athlete hero
+Next-game hero card
+Four-stage journey
+Recommended action
+Recent designs or quick tools
+Bottom navigation
+The goal is for the page to immediately communicate:
+Here is your athlete. Here is what is happening next. Here is what you should do now.
+That would make the dashboard feel current, sports-focused, and energetic without returning to the heavy industrial style you were trying to move away from.
