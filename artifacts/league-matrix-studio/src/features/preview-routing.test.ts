@@ -16,5 +16,5 @@ test('the HTML entrypoint loads the app through the artifact base path', async (
 test('the offline shell rotates when the full-size preview receives a new build', async () => {
   const serviceWorker = await readFile(resolve(artifactDirectory, 'public/sw.js'), 'utf8');
 
-  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v5`;/);
+  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v6`;/);
 });

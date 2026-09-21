@@ -1,6 +1,7 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v5`;
+const CACHE_NAME = `${CACHE_PREFIX}-v6`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
+const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 
 function getScopePath() {
   return new URL(self.registration.scope).pathname;
@@ -73,7 +74,35 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (!isInScope(url) || url.pathname.includes('/api/')) return;
+  if (!isInScope(url)) return;
+
+  if (url.pathname.includes('/api/schedule-shares/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
+          }
+          return response;
+        })
+        .catch(async (error) => {
+          const cached = await caches.match(request);
+          if (!cached) throw error;
+
+          const headers = new Headers(cached.headers);
+          headers.set(SCHEDULE_CACHE_HEADER, 'offline');
+          return new Response(await cached.arrayBuffer(), {
+            status: cached.status,
+            statusText: cached.statusText,
+            headers,
+          });
+        }),
+    );
+    return;
+  }
+
+  if (url.pathname.includes('/api/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

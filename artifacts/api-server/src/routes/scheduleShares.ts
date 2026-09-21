@@ -137,6 +137,7 @@ router.get("/schedule-shares/:shareToken", async (req, res): Promise<void> => {
     return;
   }
 
+  res.setHeader("Cache-Control", "no-store");
   res.json(shareResponse(share));
 });
 

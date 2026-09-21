@@ -13,7 +13,6 @@ import {
   useGetConnectedCoachCalendarBySubscription,
   useConnectToCoachCalendar,
   getGetProjectQueryKey,
-  useGetScheduleShare,
   useListProjects,
   useUpdateProject,
   useUpdateScheduleShare,
@@ -55,7 +54,7 @@ import {
   Download, Star, Link2
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter, Redirect } from 'wouter';
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -92,6 +91,7 @@ import {
   isIosDevice,
 } from '@/features/schedule-install';
 import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
+import { fetchScheduleShareWithCache } from '@/features/schedule-offline';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
 import {
@@ -3944,8 +3944,11 @@ function SchedulePreview({
 
 function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
   const shareToken = params.shareToken ?? '';
-  const { data: schedule, isLoading, isError } = useGetScheduleShare(shareToken, {
-    query: { enabled: Boolean(shareToken), queryKey: ['/api/schedule-shares', shareToken] },
+  const { data: schedule, isLoading, isError } = useQuery({
+    queryKey: ['/api/schedule-shares', shareToken],
+    queryFn: ({ signal }) => fetchScheduleShareWithCache(shareToken, signal),
+    enabled: Boolean(shareToken),
+    retry: false,
   });
 
   if (isLoading) {
@@ -3977,6 +3980,16 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
     <div className="noise min-h-dvh bg-background">
       <SiteNav />
       <main className="mx-auto w-full max-w-[860px] px-4 py-8 sm:px-8 sm:py-14">
+        {schedule.cacheStatus === 'cached' && (
+          <div
+            className="mb-6 border-l-4 border-primary bg-primary/10 px-4 py-3 text-sm font-medium leading-relaxed text-foreground"
+            data-testid="schedule-cache-status"
+            role="status"
+          >
+            <p className="font-bold uppercase tracking-widest text-primary">Saved copy</p>
+            <p className="mt-1">Refresh unavailable. You’re viewing the last schedule saved on this device.</p>
+          </div>
+        )}
         <div className="mb-8 border-l-4 border-primary pl-4">
           <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Shared team schedule</p>
           <h1 className="mt-2 font-display text-5xl leading-[.9] tracking-tight text-foreground sm:text-7xl">{schedule.title}</h1>
