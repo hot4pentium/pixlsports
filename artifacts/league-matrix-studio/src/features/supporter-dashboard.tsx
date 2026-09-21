@@ -960,13 +960,12 @@ export function SupporterDashboardView({
                     <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
                     <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
                     {active && (
-                      <span className={`ml-auto inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] ${theme.accent}`} data-testid={`stage-${id}-next`}>
-                        <CheckCircle2 className="h-4 w-4" />
-                        Next
+                      <span className={`dashboard-stage-next ml-auto inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] ${theme.accent}`} data-testid={`stage-${id}-next`}>
+                        UP NEXT
                       </span>
                     )}
                     {completed && !active && (
-                      <span className="ml-auto text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-200">Done</span>
+                      <span className="ml-auto text-[9px] font-bold uppercase tracking-[0.16em] text-sky-300">Complete</span>
                     )}
                   </button>
                 );
