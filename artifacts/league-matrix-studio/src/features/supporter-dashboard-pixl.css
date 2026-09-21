@@ -523,8 +523,25 @@
 }
 
 .pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
   padding-bottom: 18px;
   border-bottom: 1px solid rgba(85, 164, 255, .3);
+}
+
+.pixl-dashboard-mobile .mobile-athlete-lockup {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+}
+
+.pixl-dashboard-mobile .mobile-athlete-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
 }
 
 .pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] > div:nth-child(1) > div:nth-child(2) {

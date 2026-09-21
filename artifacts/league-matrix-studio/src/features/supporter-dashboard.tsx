@@ -535,7 +535,7 @@ export function SupporterDashboardView({
 
           {/* Athlete Switcher Row */}
           <button type="button" onClick={onOpenProfile} className="flex items-center justify-between bg-transparent w-full text-left" aria-label="Change athlete" data-testid="btn-mobile-athlete-switcher">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="mobile-athlete-lockup flex min-w-0 flex-1 items-center gap-3">
               <div className="w-14 h-14 rounded-full overflow-hidden border border-black/10 shrink-0 bg-white flex items-center justify-center shadow-sm">
                  {athletePhotoUrl ? (
                     <div className="h-full w-full overflow-hidden rounded-full">
@@ -547,7 +547,7 @@ export function SupporterDashboardView({
                     <Users className="h-6 w-6 opacity-20" />
                   )}
               </div>
-              <div className="text-lg font-bold text-[#12213A] flex items-center flex-wrap gap-1.5 leading-none min-w-0">
+              <div className="mobile-athlete-copy text-lg font-bold text-[#12213A] flex min-w-0 items-center flex-wrap gap-1.5 leading-none">
                 <span className="truncate">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
                 {profile.jerseyNumber && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold shrink-0">#{profile.jerseyNumber}</span></>}
                 {profile.teamName && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold break-words">{profile.teamName}</span></>}
