@@ -15,16 +15,11 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
   const shareToken = params.shareToken ?? '';
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [reaction, setReaction] = useState<(typeof reactions)[number]>('🔥');
-  const [message, setMessage] = useState('');
-  const [replySent, setReplySent] = useState(false);
-  const [replyError, setReplyError] = useState('');
   const [showStats, setShowStats] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { data: share, isLoading, isError } = useGetHypeCardShare(shareToken, {
     query: { enabled: Boolean(shareToken), queryKey: ['/api/hype-card-shares', shareToken], retry: false },
   });
-  const createReply = useCreateHypeCardShareReply();
   const project = useMemo(() => {
     const manifestProject = share?.manifest && typeof share.manifest.project === 'object'
       ? share.manifest.project
@@ -122,28 +117,6 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       });
     }
     setShowStats((visible) => !visible);
-  };
-  const submitReply = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setReplyError('');
-    const hasMessage = message.trim().length > 0;
-    try {
-      await createReply.mutateAsync({
-        shareToken,
-        data: { reaction, message: hasMessage ? message.trim() : null },
-      });
-      trackEvent('hype_card_reply_submitted', {
-        reaction,
-        has_message: hasMessage,
-      });
-      setMessage('');
-      setReplySent(true);
-    } catch (error) {
-      const detail = error && typeof error === 'object' && 'data' in error
-        ? (error as { data?: { error?: string } }).data?.error
-        : null;
-      setReplyError(detail || 'Your reply could not be sent. Please try again.');
-    }
   };
   return (
     <div className="noise min-h-dvh bg-[#080a0f] text-white">
@@ -292,44 +265,90 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
               <p className="mt-2 text-sm font-medium leading-relaxed text-white/50">Stats were not attached to this Hype Card.</p>
             </div>
           )}
-          <form onSubmit={submitReply} className="mt-6 border border-white/10 bg-white/5 p-4" aria-label="Reply to this Hype Card">
-            <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Send some hype</p>
-            <div className="mt-3 flex gap-2" role="group" aria-label="Choose a reaction">
-              {reactions.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => { setReaction(item); setReplySent(false); }}
-                  className={`grid h-10 w-10 place-items-center border text-xl transition ${reaction === item ? 'border-primary bg-primary/20' : 'border-white/10 bg-black/20 hover:border-white/40'}`}
-                  aria-pressed={reaction === item}
-                  aria-label={`React ${item}`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-            <label className="mt-3 block text-[10px] font-bold uppercase tracking-widest text-white/50" htmlFor="hype-reply-message">Message (optional)</label>
-            <textarea
-              id="hype-reply-message"
-              value={message}
-              onChange={(event) => { setMessage(event.target.value); setReplySent(false); }}
-              maxLength={240}
-              rows={3}
-              placeholder="Add a short message…"
-              className="mt-2 w-full resize-none border border-white/15 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-primary"
-            />
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <span className="text-[10px] font-bold text-white/35">{message.length}/240</span>
-              <button type="submit" disabled={createReply.isPending || replySent} className="inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60">
-                {replySent ? <><Check className="h-4 w-4" /> Sent</> : <><Send className="h-4 w-4" /> {createReply.isPending ? 'Sending…' : 'Send reply'}</>}
-              </button>
-            </div>
-            {replyError && <p className="mt-2 text-xs font-bold text-red-300" role="alert">{replyError}</p>}
-          </form>
+          <HypeCardReplyComposer shareToken={shareToken} />
           <p className="mt-6 text-[10px] font-bold uppercase tracking-[.18em] text-white/40">Available until {new Date(share.expiresAt).toLocaleDateString()}</p>
         </aside>
       </main>
     </div>
+  );
+}
+
+export function HypeCardReplyComposer({
+  shareToken,
+  onSent,
+  className = 'mt-6 border border-white/10 bg-white/5 p-4',
+}: {
+  shareToken: string;
+  onSent?: (reply: { reaction: (typeof reactions)[number]; message: string | null }) => void;
+  className?: string;
+}) {
+  const [reaction, setReaction] = useState<(typeof reactions)[number]>('🔥');
+  const [message, setMessage] = useState('');
+  const [replySent, setReplySent] = useState(false);
+  const [replyError, setReplyError] = useState('');
+  const createReply = useCreateHypeCardShareReply();
+
+  const submitReply = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setReplyError('');
+    const trimmedMessage = message.trim();
+    const reply = { reaction, message: trimmedMessage || null };
+    try {
+      await createReply.mutateAsync({
+        shareToken,
+        data: reply,
+      });
+      trackEvent('hype_card_reply_submitted', {
+        reaction,
+        has_message: Boolean(trimmedMessage),
+      });
+      onSent?.(reply);
+      setMessage('');
+      setReplySent(true);
+    } catch (error) {
+      const detail = error && typeof error === 'object' && 'data' in error
+        ? (error as { data?: { error?: string } }).data?.error
+        : null;
+      setReplyError(detail || 'Your reply could not be sent. Please try again.');
+    }
+  };
+
+  return (
+    <form onSubmit={submitReply} className={className} aria-label="Reply to this Hype Card" aria-busy={createReply.isPending} data-testid="hype-card-reply-composer">
+      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Send some hype</p>
+      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Choose a reaction">
+        {reactions.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => { setReaction(item); setReplySent(false); setReplyError(''); }}
+            className={`grid h-10 w-10 shrink-0 place-items-center border text-xl transition ${reaction === item ? 'border-primary bg-primary/20' : 'border-white/10 bg-black/20 hover:border-white/40'}`}
+            aria-pressed={reaction === item}
+            aria-label={`React ${item}`}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+      <label className="mt-3 block text-[10px] font-bold uppercase tracking-widest text-white/50" htmlFor="hype-reply-message">Message (optional)</label>
+      <textarea
+        id="hype-reply-message"
+        value={message}
+        onChange={(event) => { setMessage(event.target.value); setReplySent(false); setReplyError(''); }}
+        maxLength={240}
+        rows={3}
+        placeholder="Add a short message…"
+        className="mt-2 w-full resize-none border border-white/15 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-primary"
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <span className="text-[10px] font-bold text-white/35">{message.length}/240</span>
+        <button type="submit" disabled={createReply.isPending || replySent} className="inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60">
+          {replySent ? <><Check className="h-4 w-4" /> Sent</> : <><Send className="h-4 w-4" /> {createReply.isPending ? 'Sending…' : 'Send reply'}</>}
+        </button>
+      </div>
+      {replySent && <p className="mt-3 text-xs font-bold text-primary" role="status" aria-live="polite">Reply sent. Thanks for cheering!</p>}
+      {replyError && <p className="mt-2 text-xs font-bold text-red-300" role="alert">{replyError}</p>}
+    </form>
   );
 }
 

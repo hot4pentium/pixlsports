@@ -20,3 +20,13 @@ test('recipient Hype Cards keep the card visible while exposing expandable athle
   assert.match(source, /data-testid="hype-card-recipient-stats-unavailable"/);
   assert.match(source, /Stats were not attached to this Hype Card/);
 });
+
+test('recipient Hype Cards expose an accessible reply composer with success and error states', () => {
+  assert.match(source, /export function HypeCardReplyComposer/);
+  assert.match(source, /data-testid="hype-card-reply-composer"/);
+  assert.match(source, /aria-label="Choose a reaction"/);
+  assert.match(source, /aria-pressed=\{reaction === item\}/);
+  assert.match(source, /aria-live="polite"/);
+  assert.match(source, /role="alert"/);
+  assert.match(source, /useCreateHypeCardShareReply/);
+});

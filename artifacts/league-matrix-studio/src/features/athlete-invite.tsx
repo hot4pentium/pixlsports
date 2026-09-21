@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { HypeCardReplyComposer } from './public-hype-card';
 import { getSportRule, sports, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
 
@@ -303,9 +304,13 @@ export function AthleteInviteManager() {
 
 export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: string } }) {
   const inviteToken = params.inviteToken ?? '';
+  const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
   const { data: invite, isLoading, isError } = useGetAthleteInvite(inviteToken, {
     query: { enabled: Boolean(inviteToken), queryKey: getGetAthleteInviteQueryKey(inviteToken), retry: false },
   });
+  useEffect(() => {
+    setLocalReplies([]);
+  }, [inviteToken]);
   useEffect(() => {
     if (!invite) return;
     const previous = document.title;
@@ -315,6 +320,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   if (isLoading) return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading athlete page…</p></PublicShell>;
   if (isError || !invite) return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Athlete page unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This invite may have ended, been revoked, or been copied incorrectly.</p></div></PublicShell>;
   const rule = getSportRule(invite.sport);
+  const replies = [...localReplies, ...invite.replies];
   return (
     <div className="noise min-h-dvh bg-[#080a0f] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
@@ -369,12 +375,26 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </ol>
               </section>
             )}
-            {invite.replies.length > 0 && (
+            {invite.hypeCard && (
+              <section className="border border-primary/40 bg-primary/10 p-5 sm:p-7" aria-labelledby="athlete-reply-composer">
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">For the athlete</p>
+                <h2 id="athlete-reply-composer" className="mt-2 font-display text-3xl uppercase">Send some hype</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/60">Choose a reaction and add an optional message without leaving this athlete page.</p>
+                <HypeCardReplyComposer
+                  shareToken={invite.hypeCard.shareToken}
+                  className="mt-5 border-t border-primary/20 pt-5"
+                  onSent={(reply) => {
+                    setLocalReplies((current) => [{ ...reply, createdAt: new Date().toISOString() }, ...current]);
+                  }}
+                />
+              </section>
+            )}
+            {replies.length > 0 && (
               <section className="border border-white/10 bg-white/5 p-5 sm:p-7" aria-labelledby="athlete-replies">
                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">From the people cheering</p>
                 <h2 id="athlete-replies" className="mt-2 font-display text-3xl uppercase">Recent reactions</h2>
                 <ul className="mt-5 space-y-3">
-                  {invite.replies.slice(0, 6).map((reply, index) => (
+                  {replies.slice(0, 6).map((reply, index) => (
                     <li key={`${reply.createdAt}-${index}`} className="border-l-2 border-primary/60 bg-black/20 p-4">
                       <p className="text-sm font-bold">{reply.reaction}</p>
                       {reply.message && <p className="mt-2 text-sm leading-relaxed text-white/65">{reply.message}</p>}
@@ -382,7 +402,6 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                     </li>
                   ))}
                 </ul>
-                {invite.hypeCard && <Link href={`/h/${invite.hypeCard.shareToken}`} className="mt-5 inline-flex text-xs font-bold uppercase tracking-widest text-primary hover:underline">Send your own reply →</Link>}
               </section>
             )}
             {!invite.hypeCard && !invite.stats && invite.scheduleEvents.length === 0 && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
