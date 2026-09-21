@@ -59,13 +59,13 @@ function LandingNav() {
           <BrandMark />
         </Link>
         <nav className="hidden items-center gap-8 md:flex">
-          <a href="#tools" className="text-[15px] font-semibold text-landing-text hover:text-landing-primary transition-colors" data-testid="link-landing-tools">Tools</a>
-          <a href="#how-it-works" className="text-[15px] font-semibold text-landing-text hover:text-landing-primary transition-colors" data-testid="link-landing-how-it-works">How It Works</a>
-          <a href="#pricing" className="text-[15px] font-semibold text-landing-text hover:text-landing-primary transition-colors" data-testid="link-landing-pricing">Pricing</a>
+          <a href="#tools" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-tools">Tools</a>
+          <a href="#how-it-works" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-how-it-works">How It Works</a>
+          <a href="#pricing" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-pricing">Pricing</a>
           {isSignedIn ? (
-            <Link href="/studio" className="text-[15px] font-semibold text-landing-text hover:text-landing-primary transition-colors" data-testid="link-landing-dashboard">Dashboard</Link>
+            <Link href="/studio" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-dashboard">Dashboard</Link>
           ) : (
-            <Link href="/sign-in" className="text-[15px] font-semibold text-landing-text hover:text-landing-primary transition-colors" data-testid="link-landing-sign-in">Sign In</Link>
+            <Link href="/sign-in" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-sign-in">Sign In</Link>
           )}
           <Link href="/sign-up" className="inline-flex items-center justify-center rounded-sm bg-landing-primary px-6 py-2.5 text-[15px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-landing-get-started-nav">
             Get Started
@@ -174,7 +174,7 @@ function LandingSportShowcase() {
         loading={index === 0 ? 'eager' : 'lazy'}
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/80 to-transparent px-3 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
-        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/65 sm:text-[10px]">{sport.kicker}</p>
+        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-landing-orange sm:text-[10px]">{sport.kicker}</p>
         <p className="mt-1 font-display text-sm font-extrabold uppercase leading-none tracking-tight text-white sm:text-base">{sport.label}</p>
       </div>
     </div>
@@ -215,7 +215,7 @@ export function PublicLandingPage() {
         <section className="relative overflow-hidden bg-landing-bg pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pb-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-4xl text-center">
-              <span className="inline-block text-landing-text font-extrabold uppercase tracking-widest text-xs mb-5">
+              <span className="inline-block text-landing-orange font-extrabold uppercase tracking-widest text-xs mb-5">
                 YOUR SEASON, GUIDED
               </span>
               <h1 className="font-display text-5xl sm:text-6xl lg:text-[76px] font-extrabold leading-[0.92] text-landing-text mb-6">
@@ -229,7 +229,7 @@ export function PublicLandingPage() {
                 <Link href="/sign-up" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
                   Get started free
                 </Link>
-                <a href="#tools" className="group w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-landing-gray/30 bg-transparent px-8 py-[18px] text-[17px] font-bold text-landing-text hover:border-landing-primary hover:text-landing-primary transition-colors" data-testid="link-hero-explore-tools">
+                <a href="#tools" className="group w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-landing-gray/30 bg-transparent px-8 py-[18px] text-[17px] font-bold text-landing-text hover:border-landing-primary hover:text-landing-orange transition-colors" data-testid="link-hero-explore-tools">
                   Explore the tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </a>
               </div>
@@ -243,8 +243,9 @@ export function PublicLandingPage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="grid grid-cols-3 divide-x divide-landing-gray/15">
               <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:pr-12">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
-                  <CalendarDays className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-3 h-3 bg-landing-orange/20 rounded-bl-xl"></div>
+                  <CalendarDays className="h-6 w-6 sm:h-8 sm:w-8 relative z-10" strokeWidth={1.5} />
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Plan the week</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
@@ -253,8 +254,9 @@ export function PublicLandingPage() {
               </div>
               
               <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:px-12">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
-                  <Activity className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-3 h-3 bg-landing-orange/20 rounded-bl-xl"></div>
+                  <Activity className="h-6 w-6 sm:h-8 sm:w-8 relative z-10" strokeWidth={1.5} />
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Follow the game</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
@@ -263,8 +265,9 @@ export function PublicLandingPage() {
               </div>
 
               <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:pl-12">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
-                  <Zap className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-3 h-3 bg-landing-orange/20 rounded-bl-xl"></div>
+                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 relative z-10" strokeWidth={1.5} />
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Celebrate the moment</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
@@ -292,7 +295,8 @@ export function PublicLandingPage() {
 
               <div className="relative z-10 flex flex-col gap-8 sm:gap-10">
                 {/* Step 1 */}
-                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-gray/15 bg-landing-white p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10">
+                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-gray/15 bg-landing-white p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange/60"></div>
                   <div className="relative flex justify-center lg:justify-start">
                     <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-text/10 bg-landing-bg shadow-sm">
                       <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-white">
@@ -336,7 +340,8 @@ export function PublicLandingPage() {
                 </div>
 
                 {/* Step 2 */}
-                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-primary/10 bg-landing-pale-blue p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10">
+                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-primary/10 bg-landing-pale-blue p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange/80"></div>
                   <div className="relative flex justify-center lg:justify-start">
                     <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-primary/15 bg-landing-white shadow-sm">
                       <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-white">
@@ -364,7 +369,8 @@ export function PublicLandingPage() {
                 </div>
 
                 {/* Step 3 */}
-                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-orange/15 bg-[#FFF1EA] p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10">
+                <div className="relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-orange/15 bg-[#FFF1EA] p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange"></div>
                   <div className="relative flex justify-center lg:justify-start">
                     <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-orange/15 bg-landing-white shadow-sm">
                       <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-primary">
@@ -412,7 +418,7 @@ export function PublicLandingPage() {
                   
                   <div className="block relative pl-10" data-testid="preview-schedule">
                     <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
+                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
                     </div>
                     <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Schedule Maker
@@ -421,7 +427,7 @@ export function PublicLandingPage() {
                   </div>
                   <div className="block relative pl-10" data-testid="preview-checklist">
                     <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
+                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
                     </div>
                     <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Game-Day Checklist
@@ -430,7 +436,7 @@ export function PublicLandingPage() {
                   </div>
                   <div className="block relative pl-10" data-testid="preview-stat-tracker">
                     <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
+                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
                     </div>
                     <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Live Stat Tracker
@@ -439,7 +445,7 @@ export function PublicLandingPage() {
                   </div>
                   <div className="block relative pl-10" data-testid="preview-hype-card">
                     <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-primary opacity-0" />
+                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
                     </div>
                     <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
                       Athlete Hype Card
@@ -470,7 +476,7 @@ export function PublicLandingPage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
               <div className="flex-1 text-center lg:text-left">
-                <span className="inline-block text-landing-primary font-extrabold uppercase tracking-widest text-sm mb-5">
+                <span className="inline-block text-landing-orange font-extrabold uppercase tracking-widest text-sm mb-5">
                   BUILT FOR THE PEOPLE ON THE SIDELINE
                 </span>
                 <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">

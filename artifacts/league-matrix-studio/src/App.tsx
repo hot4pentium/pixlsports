@@ -381,7 +381,7 @@ function BrandMark({ inverse = false }: { inverse?: boolean }) {
 
 function SiteNav({ dark = true }: { dark?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const navText = dark ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground';
+  const navText = dark ? 'text-white/70 hover:text-accent' : 'text-muted-foreground hover:text-accent';
   const { isSignedIn, user } = useUser();
   const { signOut } = useClerk();
 
@@ -441,7 +441,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4 sm:px-8 bg-background/80 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-4">
           <BrandMark />
-          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Premium local-first sports graphics <span className="mx-1 text-primary-ink">·</span> Built for your team account.</p>
+          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Premium local-first sports graphics <span className="mx-1 text-accent">·</span> Built for your team account.</p>
         </div>
         <div className="flex shrink-0 items-center gap-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
@@ -477,7 +477,7 @@ function LegacyHomePage() {
 
           <div className="relative z-10 mx-auto grid max-w-[1400px] items-center gap-14 px-5 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:gap-20">
             <div className="max-w-3xl">
-              <div className="home-reveal inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm">
+              <div className="home-reveal inline-flex items-center gap-2 border border-accent/50 bg-accent/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-accent clip-angled-sm">
                 <Activity className="h-4 w-4" /> Your season, in one place
               </div>
               <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]" data-testid="text-landing-headline">
@@ -487,7 +487,7 @@ function LegacyHomePage() {
                 {roleCopy.description}
               </p>
               <div className="home-reveal home-reveal-delay-3 mt-8" data-testid="landing-role-selector">
-                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F3F6FA]/48">Choose your home base</p>
+                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Choose your home base</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row" role="radiogroup" aria-label="Choose a Pixl Sports path">
                   {(['fan'] as UserRole[]).map((role) => {
                     const isSelected = selectedRole === role;
@@ -525,20 +525,20 @@ function LegacyHomePage() {
             </div>
 
             <div className="home-reveal home-reveal-delay-2 relative mx-auto w-full max-w-[530px]">
-              <div className="home-float absolute -right-3 -top-7 z-20 hidden rotate-3 bg-primary px-4 py-3 text-primary-foreground home-lime-shadow sm:block">
+              <div className="home-float absolute -right-3 -top-7 z-20 hidden rotate-3 bg-primary px-4 py-3 text-primary-foreground home-lime-shadow sm:block border-b-4 border-accent">
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em]">Next up</p>
                 <p className="home-display mt-1 text-2xl">Saturday / 4:30</p>
               </div>
               <div className="relative overflow-hidden border border-[#F3F6FA]/20 bg-[#102B4D]/90 p-4 home-card-shadow clip-angled">
                 <div className="flex items-center justify-between border-b border-[#F3F6FA]/15 pb-4">
                   <div className="flex items-center gap-3">
-                    <span className="grid h-11 w-11 place-items-center bg-primary text-primary-foreground clip-angled-sm"><Zap className="h-5 w-5" /></span>
+                    <span className="grid h-11 w-11 place-items-center bg-primary text-primary-foreground clip-angled-sm border-b-2 border-accent"><Zap className="h-5 w-5" /></span>
                     <div>
-                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{roleCopy.previewLabel}</p>
+                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">{roleCopy.previewLabel}</p>
                        <p className="home-display text-2xl">{roleCopy.previewTitle}</p>
                     </div>
                   </div>
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/.14)]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_0_5px_hsl(var(--accent)/.14)]" />
                 </div>
                 <div className="relative mt-4 overflow-hidden bg-[#0E2542] p-5">
                   <div className="absolute right-0 top-0 h-28 w-28 bg-primary/10 [clip-path:polygon(100%_0,100%_100%,0_0)]" />
@@ -549,7 +549,7 @@ function LegacyHomePage() {
                     </div>
                     <div className="text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[#F3F6FA]/45">
                       <p>Eastside Falcons</p>
-                      <p className="mt-2 text-primary">Fall / 2024</p>
+                      <p className="mt-2 text-accent">Fall / 2024</p>
                     </div>
                   </div>
                   <div className="mt-7 space-y-2">
@@ -583,11 +583,11 @@ function LegacyHomePage() {
         <section id="week" className="mx-auto max-w-[1400px] px-5 py-20 sm:px-8 sm:py-28">
           <div className="grid gap-12 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
             <div>
-              <div className="inline-flex items-center gap-2 border border-border bg-card px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-foreground clip-angled-sm">
+              <div className="inline-flex items-center gap-2 border border-accent/30 bg-accent/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-accent clip-angled-sm">
                 The weekly rhythm
               </div>
                <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">
-                 One hub.<br /><span className="text-primary-ink">A better week.</span>
+                 One hub.<br /><span className="text-accent">A better week.</span>
               </h2>
               <p className="mt-7 max-w-md text-base font-medium leading-relaxed text-muted-foreground">
                  Start with the moment you need most. Then follow the tools in order, with a clear place to land after every update.
@@ -612,10 +612,10 @@ function LegacyHomePage() {
               </Link>
               <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                  <Link href={roleSignupHref('fan')} onClick={() => setSelectedRole('fan')} className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-supporter-path">
-                  <Heart className="h-5 w-5 text-primary-ink" />
-                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-ink">For families</p>
+                  <Heart className="h-5 w-5 text-accent" />
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-accent">For families</p>
                   <p className="mt-2 text-sm font-bold leading-snug text-foreground">Follow an athlete and keep the whole week in view.</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary-ink">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
+                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-accent">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
                 </Link>
               </div>
             </div>
@@ -627,11 +627,11 @@ function LegacyHomePage() {
                   return (
                      <div key={step.title} className="group relative border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
                        <div className="grid gap-4 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6">
-                      <span className="relative z-10 grid h-12 w-12 place-items-center bg-card text-card-foreground clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                        <IconComponent className="h-5 w-5" />
+                      <span className="relative z-10 grid h-12 w-12 place-items-center bg-card text-card-foreground clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground border-b-2 border-transparent group-hover:border-accent">
+                        <IconComponent className="h-5 w-5 group-hover:text-accent" />
                       </span>
                       <div>
-                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary-ink">{step.title}</p>
+                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">{step.title}</p>
                          <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{step.body}</p>
                       </div>
                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-right">{step.label}</span>
@@ -646,7 +646,7 @@ function LegacyHomePage() {
                              <Bell className="h-3.5 w-3.5" />
                            </span>
                            <div className="min-w-0">
-                             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-primary-ink">Phone notification</p>
+                             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-accent">Phone notification</p>
                              <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{step.notification}</p>
                              <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground">{step.notificationMeta}</p>
                            </div>
@@ -689,15 +689,15 @@ function LegacyHomePage() {
             <p className="relative mt-6 max-w-sm text-sm font-semibold leading-relaxed text-primary-foreground/72">{LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</p>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-ink">Built for the in-between moments</p>
-            <h2 className="home-display mt-5 text-6xl leading-[0.86] sm:text-8xl">Less admin.<br /><span className="text-primary-ink">More living.</span></h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent">Built for the in-between moments</p>
+            <h2 className="home-display mt-5 text-6xl leading-[0.86] sm:text-8xl">Less admin.<br /><span className="text-accent">More living.</span></h2>
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
               <div className="border-t border-border pt-4">
-                <SquarePen className="h-5 w-5 text-primary-ink" />
+                <SquarePen className="h-5 w-5 text-accent" />
                 <p className="mt-4 text-sm font-bold">Fast enough between practice and pickup.</p>
               </div>
               <div className="border-t border-border pt-4">
-                <MapPin className="h-5 w-5 text-primary-ink" />
+                <MapPin className="h-5 w-5 text-accent" />
                 <p className="mt-4 text-sm font-bold">Clear enough that nobody asks, “Where is it again?”</p>
               </div>
             </div>
@@ -2147,7 +2147,7 @@ function ScheduleEditor() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
                 <CalendarDays className="h-4 w-4" /> Schedule Maker
               </div>
               <p className="mt-1 hidden text-sm font-medium text-muted-foreground sm:block">Put the season in motion.</p>
@@ -2232,7 +2232,7 @@ function ScheduleEditor() {
 
             {shareUrl && (
               <div className="relative z-10 mt-3 border border-primary/30 bg-primary/5 p-3 clip-angled-sm" data-testid="schedule-share-link">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink">Public parent link</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-accent">Public parent link</p>
                 <div className="mt-2 flex items-center gap-2">
                   <input readOnly value={shareUrl} className="min-w-0 flex-1 bg-transparent text-xs font-medium text-foreground outline-none" aria-label="Public parent schedule link" />
                   <button type="button" onClick={() => { void navigator.clipboard?.writeText(shareUrl); setNoticeFor('PARENT LINK COPIED TO CLIPBOARD'); }} className="grid h-8 w-8 shrink-0 place-items-center border border-border bg-card text-foreground hover:bg-muted" aria-label="Copy parent schedule link" data-testid="button-copy-schedule-link">
@@ -2258,7 +2258,7 @@ function ScheduleEditor() {
         >
           <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] gap-5 overflow-y-auto border-primary/40 bg-card p-4 sm:max-w-2xl sm:p-6" data-testid="schedule-event-dialog">
             <DialogHeader className="pr-8">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary-ink">Season calendar</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-accent">Season calendar</p>
               <DialogTitle className="font-display text-3xl uppercase tracking-wide">
                 {eventForm && events.some((event) => event.id === eventForm.id) ? 'Edit event' : 'Add event'}
               </DialogTitle>
@@ -3396,7 +3396,7 @@ function Help() {
   return (
     <StudioLayout>
       <main className="mx-auto max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
-        <div className="mb-10 inline-flex items-center gap-2 bg-muted px-3 py-1 text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm">
+        <div className="mb-10 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
           <CircleHelp className="h-4 w-4" /> Support Manual
         </div>
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Help & FAQ</h1>
@@ -3437,7 +3437,7 @@ function Privacy() {
   return (
     <StudioLayout>
       <main className="mx-auto max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
-        <div className="mb-10 inline-flex items-center gap-2 bg-muted px-3 py-1 text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm">
+        <div className="mb-10 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
           <ShieldCheck className="h-4 w-4" /> Data Security
         </div>
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Privacy Policy</h1>
@@ -3462,7 +3462,7 @@ function NotFound() {
     <div className="noise flex min-h-dvh flex-col bg-background">
       <SiteNav dark />
       <main className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center bg-tech-grid">
-        <div className="font-display text-[12rem] leading-none text-muted-foreground/20">404</div>
+        <div className="font-display text-[12rem] leading-none text-accent/20">404</div>
         <h1 className="mt-4 font-display text-5xl uppercase tracking-wide text-foreground sm:text-6xl">Out of bounds.</h1>
         <p className="mt-4 max-w-md text-lg font-medium text-muted-foreground">The page you're looking for doesn't exist or has been moved off the page.</p>
         <Link href="/" className="mt-10 inline-flex items-center gap-2 bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm transition-transform hover:scale-105">
@@ -3535,7 +3535,7 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
           <Link href="/" className="inline-block transition-opacity hover:opacity-80 scale-[0.85] origin-left sm:scale-100" data-testid="link-auth-home">
             <BrandMark inverse />
           </Link>
-          <div className="hidden lg:inline-flex items-center gap-2 bg-primary/20 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
+          <div className="hidden lg:inline-flex items-center gap-2 border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
             <Activity className="h-4 w-4" /> Secure Auth
           </div>
         </div>

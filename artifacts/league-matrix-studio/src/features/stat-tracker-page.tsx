@@ -320,7 +320,7 @@ export function StatTrackerStartPanel({
     <div className="stat-tracker-light-text border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
           <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{label}</h2>
           {!nextGame && <p className="mt-2 max-w-md text-sm font-medium leading-relaxed text-muted-foreground" data-testid="stat-tracker-blank-state">No game is scheduled yet. Start with a blank template, or review a previous game below.</p>}
         </div>
@@ -388,7 +388,7 @@ export function StatTrackerSharePanel({
     <section className="mb-6 border border-primary/40 bg-primary/5 p-4 clip-angled-sm sm:p-5" data-testid="stat-tracker-share-panel">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary-ink"><Share2 className="h-4 w-4" /> Live supporter link</p>
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent"><Share2 className="h-4 w-4 text-accent" /> Live supporter link</p>
           <h2 className="mt-1 font-display text-2xl uppercase tracking-wide">Share the scoreboard</h2>
           <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground">Read-only view for this game. It shows the live score and recent plays, never private notes or editing controls. The link expires in 24 hours.</p>
         </div>
@@ -586,7 +586,7 @@ export function LiveTrackerGame({
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
-        <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 bg-[#0B1F3A] p-3 text-white clip-angled-sm sm:p-6" aria-live="polite">
+        <div data-testid="live-tracker-scoreboard" className="relative min-w-0 border border-primary/40 border-t-2 border-t-accent bg-[#0B1F3A] p-3 text-white clip-angled-sm sm:p-6" aria-live="polite">
           <div className="flex min-w-0 items-center justify-between gap-3 pr-24 sm:pr-52"><span className="inline-flex shrink-0 items-center gap-2 bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground"><span className="h-2 w-2 animate-pulse bg-current" /> Live</span><span className="min-w-0 truncate text-right text-xs font-bold uppercase tracking-widest text-white/60">{formatDate(currentGame.date)}</span></div>
           <p data-testid="live-tracker-matchup" className="mt-3 min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60 sm:mt-7">{teamName || 'Your team'} {currentGame.opponent ? `vs ${currentGame.opponent}` : '— opponent TBD'}</p>
           <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
@@ -630,7 +630,7 @@ export function LiveTrackerGame({
         </div>
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
+        <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-accent">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
         {currentGame.sport === 'football' && (
           <div className="mb-5 border border-primary/30 bg-primary/5 p-3" data-testid="football-yard-tracking">
             <label className="flex cursor-pointer items-start gap-3 text-xs font-bold uppercase tracking-widest text-foreground">
@@ -1357,7 +1357,7 @@ export function StatTrackerPage() {
           <Link href="/studio" className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
           </Link>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Live numbers</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Live numbers</p>
           <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary-ink studio-textured-heading-accent">TRACKER.</span></h1>
           <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Tap each play as it happens. Finish the game to add it to your season history.</p>
         </div>
@@ -1394,7 +1394,7 @@ export function StatTrackerPage() {
         <section className="mb-6 border border-primary/50 bg-card p-5 clip-angled-sm sm:p-7" aria-labelledby="tracker-conflict-heading" data-testid="stat-tracker-conflict">
           <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">History needs a choice</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-accent">History needs a choice</p>
               <h2 id="tracker-conflict-heading" className="mt-1 font-display text-3xl uppercase tracking-wide">Newer cloud copy found</h2>
               <p className="mt-2 max-w-3xl text-sm font-medium text-muted-foreground">Your local history is preserved. Choose a copy or merge games that only exist in one history, then sync the selected result without leaving this page.</p>
             </div>
@@ -1502,7 +1502,7 @@ export function StatTrackerPage() {
       )}
 
       <section ref={historySectionRef} id="tracker-game-history" tabIndex={-1} className="mt-10 scroll-mt-6 border border-border bg-card p-5 clip-angled-sm outline-none sm:p-7" data-testid="stat-tracker-history">
-        <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-accent">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
          {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
       {report && (

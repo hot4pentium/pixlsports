@@ -116,7 +116,7 @@ export function GameReportView({
     <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md" data-testid="game-report-overlay" role="dialog" aria-modal="true" aria-labelledby="game-report-title">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-5 py-4 backdrop-blur-md sm:px-8">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Game Report</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Game Report</p>
           <h2 id="game-report-title" className="font-display text-2xl uppercase tracking-wide">{selectedGame.opponent ? `vs ${selectedGame.opponent}` : 'Game'}</h2>
         </div>
         <button type="button" autoFocus onClick={onClose} data-testid="game-report-close" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-muted clip-angled-sm"><ArrowLeft className="h-4 w-4" /> Back to Tracker</button>

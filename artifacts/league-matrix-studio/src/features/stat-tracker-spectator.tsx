@@ -235,7 +235,7 @@ export function PublicStatTrackerPage() {
             {allStats.length > 0 && (
               <div className="mt-4 border border-border bg-card p-4 clip-angled-sm sm:mt-6 sm:p-6" data-testid="stat-tracker-stats-summary">
                 <div className="mb-4 flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Stats Summary</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-accent">Stats Summary</p>
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -253,7 +253,7 @@ export function PublicStatTrackerPage() {
           <div className="order-2 lg:col-start-2 lg:row-start-1" data-testid="stat-tracker-recent-activity">
             <div className="sticky top-6 border border-border bg-card p-4 clip-angled-sm sm:p-6">
               <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Play-by-play</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-accent">Play-by-play</p>
                 <List className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="space-y-2">

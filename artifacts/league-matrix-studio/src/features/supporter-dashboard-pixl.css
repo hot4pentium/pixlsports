@@ -58,7 +58,7 @@
   padding: 17px;
   background: linear-gradient(145deg, rgba(16,43,77,.95), rgba(14,37,66,.8));
   border: 1px solid rgba(243, 246, 250, .12);
-  border-left: 2px solid var(--pixl-acid);
+  border-left: 2px solid var(--pixl-orange);
   clip-path: polygon(0 0, 100% 0, 100% 92%, 92% 100%, 0 100%);
 }
 
@@ -475,7 +475,7 @@
 .pixl-dashboard-mobile > header {
   height: 72px;
   background: #111316;
-  border-bottom: 2px solid rgba(40, 120, 245, .16);
+  border-bottom: 2px solid var(--m-orange);
   box-shadow: 0 8px 22px rgba(11, 31, 58, .06);
 }
 
