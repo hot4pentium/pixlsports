@@ -245,6 +245,7 @@ export function SupporterDashboardView({
   const contextTitle = contextEvent?.type === 'practice'
     ? `${profile.teamName || 'Your team'} practice`
     : gameTitle;
+  const contextDateParts = contextEvent ? getEventDateParts(contextEvent.date) : null;
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
     ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.statTracker;
@@ -759,17 +760,17 @@ export function SupporterDashboardView({
         </div>
       )}
       {/* HEADER */}
-      <header className="animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
+      <header className="dashboard-header animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
+          <div className="dashboard-welcome inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
             <Activity className="w-4 h-4 text-primary" />
-            {profile.displayName ? `WELCOME, ${profile.displayName}` : 'YOUR SPORTS HOME'}
+            {profile.displayName ? `GOOD ${greeting.toUpperCase()}, ${firstName.toUpperCase()}` : 'YOUR SPORTS HOME'}
           </div>
-          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-            GAME DAY <span className="text-primary studio-textured-accent">HUB.</span>
+          <h1 className="dashboard-heading font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
+            {hasAthlete ? profile.athleteName : 'YOUR ATHLETE'} <span className="text-primary studio-textured-accent">{profile.teamName || 'GAME WEEK'}</span>
           </h1>
-          <p className="mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
-            Plan the week, get ready for game day, capture what happens, and send the moment around.
+          <p className="dashboard-subtitle mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
+            Here&apos;s what&apos;s happening next. Plan the week, capture the moment, and keep the story moving.
           </p>
         </div>
 
@@ -845,6 +846,16 @@ export function SupporterDashboardView({
               {currentStage.kicker}
               {scheduleSource && <span className="text-white/45">· Your schedule</span>}
             </div>
+            {contextDateParts && (
+              <div className="dashboard-event-date-row mt-5 flex flex-wrap items-end gap-3" data-testid="next-event-date">
+                <div className="dashboard-event-date flex flex-col items-center justify-center border border-white/20 bg-white/10 px-4 py-2 text-center">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{contextDateParts.month}</span>
+                  <span className="font-display text-4xl leading-none text-white">{contextDateParts.day}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">{contextDateParts.dayOfWeek}</span>
+                </div>
+                <span className="dashboard-countdown inline-flex items-center bg-[#FF6433] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white">{formatDaysUntil(contextEvent!.date)}</span>
+              </div>
+            )}
             <h2 id="next-game-heading" className="mt-3 max-w-2xl break-words font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl" data-testid="next-game-heading">
               {contextEvent ? contextTitle : 'Make the next game count.'}
             </h2>
@@ -956,17 +967,22 @@ export function SupporterDashboardView({
               <h3 className={`mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl ${selectedPathTheme.accent}`}>{selectedPathDetails.title}</h3>
               <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-white/60">{selectedPathDetails.description}</p>
             </div>
-            <Link
-              href={selectedPath.href}
-              onClick={() => trackEvent('completion_next_action_clicked', {
-                source: 'weekly_path_desktop',
-                stage: selectedPath.id,
-                progress_count: activePathIndex,
-              })}
-              className={`inline-flex min-h-12 shrink-0 items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-transform hover:-translate-y-0.5 clip-angled-sm ${selectedPathTheme.action}`}
-            >
-              {selectedPathDetails.action} <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              <Link
+                href={selectedPath.href}
+                onClick={() => trackEvent('completion_next_action_clicked', {
+                  source: 'weekly_path_desktop',
+                  stage: selectedPath.id,
+                  progress_count: activePathIndex,
+                })}
+                className={`inline-flex min-h-12 items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-transform hover:-translate-y-0.5 clip-angled-sm ${selectedPathTheme.action}`}
+              >
+                {selectedPathDetails.action} <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="#recent-hype-cards" className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/20 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/70 transition-colors hover:border-white/50 hover:text-white" data-testid="link-recent-moments">
+                Recent moments
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -1098,7 +1114,7 @@ export function SupporterDashboardView({
         </section>
 
         {/* RECENT DESIGNS */}
-        <section data-testid="section-recent-hype-cards">
+        <section id="recent-hype-cards" data-testid="section-recent-hype-cards">
           <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
             <div>
               <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Recent Hype Cards</h3>
