@@ -67,3 +67,11 @@ test('landing athlete photos stay visible in a responsive grid and respect reduc
   assert.match(landingStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(landingStyles, /animation-delay: var\(--landing-tile-delay\)/);
 });
+
+test('landing neutral sections use a subtle moving texture with a reduced-motion fallback', () => {
+  assert.match(landingStyles, /\.new-landing > main > section\.bg-landing-bg::before \{[\s\S]*background-image:/);
+  assert.match(landingStyles, /\.new-landing > main > section\.bg-landing-bg::before \{[\s\S]*animation: landing-background-drift 38s/);
+  assert.match(landingStyles, /@keyframes landing-background-drift/);
+  assert.match(landingStyles, /\.new-landing > main > section\.bg-landing-bg > \* \{[\s\S]*z-index: 1;/);
+  assert.match(landingStyles, /\.new-landing > main > section\.bg-landing-bg::before \{[\s\S]*animation: none;/);
+});

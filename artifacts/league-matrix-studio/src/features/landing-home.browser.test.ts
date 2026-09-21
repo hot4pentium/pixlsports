@@ -112,6 +112,12 @@ type LandingLayout = {
     labelBottom: number;
     tileBottom: number;
   }>;
+  texture: {
+    sectionCount: number;
+    animationName: string;
+    animationDuration: string;
+    backgroundImage: string;
+  };
 };
 
 async function readLandingLayout(
@@ -169,6 +175,17 @@ async function readLandingLayout(
           tileBottom: tileRect.bottom,
         };
       }),
+      texture: (() => {
+        const sections = [...document.querySelectorAll('section.bg-landing-bg')];
+        const texture = sections[0];
+        const style = texture ? getComputedStyle(texture, '::before') : null;
+        return {
+          sectionCount: sections.length,
+          animationName: style?.animationName ?? '',
+          animationDuration: style?.animationDuration ?? '',
+          backgroundImage: style?.backgroundImage ?? '',
+        };
+      })(),
     };
   })()`, page.sessionId);
 }
@@ -236,6 +253,10 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       assert.ok(layout.ticker.right <= width, `ticker ends outside the viewport at ${width}px`);
        assert.ok(layout.ticker.scrollWidth <= layout.ticker.clientWidth, `ticker should not scroll within ${width}px`);
       assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above ticker at ${width}px`);
+      assert.equal(layout.texture.sectionCount, 2);
+      assert.equal(layout.texture.animationName, 'landing-background-drift');
+      assert.equal(layout.texture.animationDuration, '38s');
+      assert.notEqual(layout.texture.backgroundImage, 'none');
        assert.ok(layout.checklistVideo.width > 0, `checklist video is not rendered at ${width}px`);
        assert.ok(layout.checklistVideo.right <= width, `checklist video overflows at ${width}px`);
         assert.equal(layout.checklistVideo.borderRadius, '24px');
@@ -291,6 +312,7 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     const reducedMotionBefore = await readLandingLayout(connection, reducedMotionPage);
     assert.ok(reducedMotionBefore.tiles.every((tile) => tile.labelFontSize >= 14));
     assert.equal(reducedMotionBefore.checklistVideo.autoplay, false);
+    assert.equal(reducedMotionBefore.texture.animationName, 'none');
     assert.deepEqual(
       await connection.evaluate<string[]>(
         '[...document.querySelectorAll(".landing-sport-tile")].map((tile) => getComputedStyle(tile).animationName)',

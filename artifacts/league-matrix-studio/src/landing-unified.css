@@ -91,6 +91,34 @@
 
 .bg-landing-text\/10 { background-color: color-mix(in srgb, var(--landing-text) 10%, transparent); }
 
+.new-landing > main > section.bg-landing-bg {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.new-landing > main > section.bg-landing-bg::before {
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  content: '';
+  pointer-events: none;
+  opacity: 0.82;
+  background-image:
+    radial-gradient(circle at 15% 22%, color-mix(in srgb, var(--landing-primary) 8%, transparent) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 64%, color-mix(in srgb, var(--landing-orange) 6%, transparent) 0 1px, transparent 1.5px),
+    linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--landing-primary) 5%, transparent) 48%, transparent 100%);
+  background-size: 52px 52px, 76px 76px, 220% 220%;
+  background-position: 0 0, 22px 14px, 0% 50%;
+  animation: landing-background-drift 38s ease-in-out infinite alternate;
+  will-change: background-position;
+}
+
+.new-landing > main > section.bg-landing-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
 .landing-sport-ticker-wrap {
   --landing-ticker-gap: clamp(1rem, 2.5vw, 1.25rem);
   margin-top: 2.75rem;
@@ -159,10 +187,28 @@
   }
 }
 
+@keyframes landing-background-drift {
+  0% {
+    background-position: 0 0, 22px 14px, 0% 50%;
+  }
+
+  50% {
+    background-position: 24px -18px, -16px 30px, 100% 42%;
+  }
+
+  100% {
+    background-position: -18px 20px, 28px -12px, 0% 58%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-sport-tile {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .new-landing > main > section.bg-landing-bg::before {
+    animation: none;
   }
 }
