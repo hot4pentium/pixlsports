@@ -97,33 +97,23 @@
 }
 
 .landing-sport-ticker {
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   padding-block: 0.25rem;
-  overscroll-behavior-x: none;
-  scroll-padding-inline: 0;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-}
-
-.landing-sport-ticker::-webkit-scrollbar {
-  display: none;
 }
 
 .landing-sport-ticker-track {
-  display: flex;
-  width: max-content;
+  display: block;
+  width: 100%;
 }
 
 .landing-sport-ticker-group {
-  display: flex;
-  flex: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--landing-ticker-gap);
 }
 
 .landing-sport-tile {
   position: relative;
-  flex: 0 0 clamp(8.5rem, 16.5vw, 12rem);
   aspect-ratio: 4 / 5;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--landing-gray) 25%, transparent);
@@ -132,12 +122,18 @@
   box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--landing-text) 55%, transparent);
   animation: landing-sport-tile-rubberband 900ms both;
   animation-delay: var(--landing-tile-delay);
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
 }
 
-.landing-sport-tile:last-child {
-  scroll-snap-align: end;
+@media (min-width: 640px) {
+  .landing-sport-ticker-group {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-sport-ticker-group {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .landing-sport-tile img {

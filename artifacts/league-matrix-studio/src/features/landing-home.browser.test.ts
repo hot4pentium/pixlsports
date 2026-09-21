@@ -230,7 +230,7 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       assert.ok(layout.bodyScrollWidth <= width, `body overflows at ${width}px`);
       assert.ok(layout.ticker.left >= 0, `ticker starts outside the viewport at ${width}px`);
       assert.ok(layout.ticker.right <= width, `ticker ends outside the viewport at ${width}px`);
-      assert.ok(layout.ticker.scrollWidth > layout.ticker.clientWidth, `ticker should scroll within ${width}px`);
+       assert.ok(layout.ticker.scrollWidth <= layout.ticker.clientWidth, `ticker should not scroll within ${width}px`);
       assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above ticker at ${width}px`);
        assert.ok(layout.checklistVideo.width > 0, `checklist video is not rendered at ${width}px`);
        assert.ok(layout.checklistVideo.right <= width, `checklist video overflows at ${width}px`);
@@ -263,7 +263,7 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     assert.ok(desktopLayout.documentScrollWidth <= 1440);
     assert.ok(desktopLayout.bodyScrollWidth <= 1440);
     assert.ok(desktopLayout.ticker.right <= 1440);
-    assert.ok(desktopLayout.ticker.scrollWidth >= desktopLayout.ticker.clientWidth);
+     assert.ok(desktopLayout.ticker.scrollWidth <= desktopLayout.ticker.clientWidth);
     assert.ok(desktopLayout.ctaBottom <= desktopLayout.showcaseTop);
     assert.ok(desktopLayout.checklistVideo.width > 0);
     assert.ok(desktopLayout.checklistVideo.right <= 1440);
@@ -296,30 +296,12 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       reducedMotionBefore.tiles.map((tile) => [tile.width, tile.height, tile.labelBottom]),
     );
 
-    const tickerEndpoints = await connection.evaluate<{
-      maxScrollLeft: number;
-      scrollLeft: number;
-      tickerRight: number;
-      firstLeft: number;
-      lastRight: number;
-    }>(`(() => {
-      const ticker = document.querySelector('.landing-sport-ticker');
-      const tiles = [...document.querySelectorAll('.landing-sport-tile')];
-      if (!ticker || tiles.length === 0) {
-        return { maxScrollLeft: -1, scrollLeft: -1, tickerRight: -1, firstLeft: -1, lastRight: -1 };
-      }
-      ticker.scrollLeft = ticker.scrollWidth;
-      const tickerRect = ticker.getBoundingClientRect();
-      return {
-        maxScrollLeft: Math.max(0, ticker.scrollWidth - ticker.clientWidth),
-        scrollLeft: ticker.scrollLeft,
-        tickerRight: tickerRect.right,
-        firstLeft: tiles[0].getBoundingClientRect().left,
-        lastRight: tiles[tiles.length - 1].getBoundingClientRect().right,
-      };
-    })()`, reducedMotionPage.sessionId);
-    assert.ok(tickerEndpoints.scrollLeft <= tickerEndpoints.maxScrollLeft + 1);
-    assert.ok(Math.abs(tickerEndpoints.lastRight - tickerEndpoints.tickerRight) <= 1);
+    const tickerTiles = await connection.evaluate<Array<{ left: number; right: number }>>(
+      '[...document.querySelectorAll(".landing-sport-tile")].map((tile) => { const rect = tile.getBoundingClientRect(); return { left: rect.left, right: rect.right }; })',
+      reducedMotionPage.sessionId,
+    );
+    assert.equal(tickerTiles.length, 6);
+    assert.ok(tickerTiles.every((tile) => tile.left >= 0 && tile.right <= 320));
   } finally {
     if (connection) {
       await Promise.all(pages.map((page) => connection?.send('Target.closeTarget', {

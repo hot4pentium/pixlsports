@@ -6,7 +6,7 @@ const landingSource = readFileSync(new URL('./landing-home.tsx', import.meta.url
 const landingStyles = readFileSync(new URL('../landing-unified.css', import.meta.url), 'utf8');
 const landingPage = landingSource.slice(landingSource.indexOf('export function PublicLandingPage'));
 
-test('landing athlete photos render as compact entrance-animated tiles below the hero actions', () => {
+test('landing athlete photos render as visible entrance-animated tiles below the hero actions', () => {
   assert.match(landingSource, /landing-sport-ticker-track/);
   assert.match(landingSource, /landing-sport-ticker-group/);
   assert.match(landingSource, /landing-sport-tile/);
@@ -58,13 +58,12 @@ test('checklist video uses the phone crop without a native player shell', () => 
   assert.match(landingSource, /bg-\[#FFF1EA\]/);
 });
 
-test('landing athlete ticker protects the page width and respects reduced motion', () => {
-  assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow-x: auto;/);
-  assert.match(landingStyles, /overscroll-behavior-x: none/);
-  assert.match(landingStyles, /scroll-snap-type: x mandatory/);
-  assert.match(landingStyles, /\.landing-sport-tile \{[\s\S]*flex: 0 0 clamp/);
-  assert.match(landingStyles, /scroll-snap-align: start/);
-  assert.match(landingStyles, /\.landing-sport-tile:last-child[\s\S]*scroll-snap-align: end/);
+test('landing athlete photos stay visible in a responsive grid and respect reduced motion', () => {
+  assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow: visible;/);
+  assert.match(landingStyles, /\.landing-sport-ticker-group \{[\s\S]*display: grid;/);
+  assert.match(landingStyles, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(landingStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(landingStyles, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(landingStyles, /@keyframes landing-sport-tile-rubberband/);
   assert.match(landingStyles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(landingStyles, /animation-delay: var\(--landing-tile-delay\)/);
