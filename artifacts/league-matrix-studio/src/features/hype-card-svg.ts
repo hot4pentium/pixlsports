@@ -281,6 +281,31 @@ function cardContent(project: HypeCardProject) {
   return { headline: headlineStr, player, number, team, details, recognition: '', message: '' };
 }
 
+export function getStatsUrlLayout(statsUrl: string, width: number, height: number) {
+  const boxX = Math.max(24, width * 0.045);
+  const boxWidth = width - boxX * 2;
+  const boxHeight = Math.max(92, height * 0.065);
+  const bottomInset = Math.max(150, height * 0.11);
+  const boxY = width === 1000 && height === 1400
+    ? 300
+    : height - boxHeight - bottomInset;
+  const labelSize = Math.max(11, width * 0.012);
+  const baseUrlSize = Math.max(15, width * 0.018);
+  const urlSize = fitText(statsUrl, boxWidth - 48, baseUrlSize, 0.58);
+
+  return {
+    boxX,
+    boxY,
+    boxWidth,
+    boxHeight,
+    labelSize,
+    urlSize,
+    urlTextX: width / 2,
+    urlTextY: boxY + boxHeight - Math.max(17, width * 0.018),
+    urlMaxWidth: boxWidth - 48,
+  };
+}
+
 function buildStatsUrlMarkup(
   statsUrl: string | undefined,
   width: number,
@@ -289,18 +314,26 @@ function buildStatsUrlMarkup(
 ) {
   if (!statsUrl) return '';
 
-  const boxX = Math.max(24, width * 0.045);
-  const boxWidth = width - boxX * 2;
-  const boxHeight = Math.max(84, height * 0.065);
-  const boxY = height - boxHeight - Math.max(28, height * 0.025);
-  const labelSize = Math.max(11, width * 0.012);
-  const urlSize = fitText(statsUrl, boxWidth - 48, Math.max(15, width * 0.018), 0.58);
+  const {
+    boxX,
+    boxY,
+    boxWidth,
+    boxHeight,
+    labelSize,
+    urlSize,
+    urlTextX,
+    urlTextY,
+    urlMaxWidth,
+  } = getStatsUrlLayout(statsUrl, width, height);
+  const urlTextSizing = urlSize < Math.max(15, width * 0.018)
+    ? ` textLength="${urlMaxWidth}" lengthAdjust="spacingAndGlyphs"`
+    : '';
 
   return `
     <g aria-label="Finalized stats link">
       <rect x="${boxX}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="${Math.min(18, boxHeight / 3)}" fill="#02070e" fill-opacity=".94" stroke="${palette.accent}" stroke-width="${Math.max(2, width * .002)}"/>
       <text x="${boxX + 24}" y="${boxY + labelSize + 10}" font-family="DM Sans,sans-serif" font-size="${labelSize}" font-weight="800" letter-spacing="${Math.max(1, width * .003)}" fill="${palette.accent}">FINAL STATS</text>
-      <text x="${width / 2}" y="${boxY + boxHeight - Math.max(17, width * .018)}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${urlSize}" font-weight="700" fill="#fff">${escapeXml(statsUrl)}</text>
+      <text x="${urlTextX}" y="${urlTextY}" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${urlSize}" font-weight="700" fill="#fff"${urlTextSizing}>${escapeXml(statsUrl)}</text>
     </g>`;
 }
 

@@ -34,6 +34,9 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
 test('stats URL markup stays optional and readable inside every SVG output format', () => {
   const svgSource = readFileSync(new URL('./hype-card-svg.ts', import.meta.url), 'utf8');
 
+  assert.match(svgSource, /export function getStatsUrlLayout\(/);
+  assert.match(svgSource, /const bottomInset = Math\.max\(150, height \* 0\.11\)/);
+  assert.match(svgSource, /textLength="\$\{urlMaxWidth\}" lengthAdjust="spacingAndGlyphs"/);
   assert.match(svgSource, /function buildStatsUrlMarkup\(/);
   assert.match(svgSource, /if \(!statsUrl\) return ''/);
   assert.match(svgSource, /aria-label="Finalized stats link"/);

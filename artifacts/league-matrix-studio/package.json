@@ -12,6 +12,7 @@
     "test:stat-tracker-spectator-browser": "tsx --test --test-concurrency=1 src/features/stat-tracker-spectator.browser.test.ts",
     "test:landing-home-browser": "tsx --test src/features/landing-home.browser.test.ts",
     "test:hype-card-offline-browser": "tsx --test src/features/hype-card-offline.browser.test.ts",
+    "test:hype-card-stats-link-browser": "tsx --test --test-concurrency=1 src/features/hype-card-stats-link.browser.test.ts",
     "test:schedule-install-browser": "tsx --test --test-concurrency=1 src/features/schedule-install.browser.test.ts",
     "test:supporter-dashboard-browser": "tsx --test --test-concurrency=1 src/features/supporter-dashboard.browser.test.ts",
     "test:supporter-dashboard-browser-cleanup": "tsx --test --test-concurrency=1 --test-name-pattern=\"assertion failures still clean up\" src/features/supporter-dashboard.browser.test.ts",
