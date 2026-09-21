@@ -6,6 +6,7 @@ import {
   Check,
   Clipboard,
   ExternalLink,
+  AlertTriangle,
   Link2,
   Link2Off,
   MapPin,
@@ -68,7 +69,7 @@ export function AthleteInviteManager() {
   const { data: invites, isLoading } = useListAthleteInvites({
     query: { enabled: Boolean(isSignedIn), queryKey: getListAthleteInvitesQueryKey() },
   });
-  const { data: projects } = useListProjects({ query: { enabled: Boolean(isSignedIn), queryKey: getListProjectsQueryKey() } });
+  const { data: projects, isFetched: projectsLoaded } = useListProjects({ query: { enabled: Boolean(isSignedIn), queryKey: getListProjectsQueryKey() } });
   const existing = invites?.[0] ?? null;
   const trackerProjects = projects?.filter((project) => project.project.tool === 'stat-tracker') ?? [];
   const scheduleProjects = projects?.filter((project) => project.project.tool === 'schedule') ?? [];
@@ -87,6 +88,16 @@ export function AthleteInviteManager() {
   const createInvite = useCreateAthleteInvite();
   const updateInvite = useUpdateAthleteInvite();
   const deleteInvite = useDeleteAthleteInvite();
+  const missingTrackerProject = Boolean(
+    projectsLoaded
+    && trackerProjectId !== 'none'
+    && !trackerProjects.some((project) => project.id === trackerProjectId),
+  );
+  const missingScheduleProject = Boolean(
+    projectsLoaded
+    && scheduleProjectId !== 'none'
+    && !scheduleProjects.some((project) => project.id === scheduleProjectId),
+  );
 
   useEffect(() => {
     if (!existing) return;
@@ -201,7 +212,27 @@ export function AthleteInviteManager() {
               <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Season ends</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={seasonEndsAt} onChange={(event) => setSeasonEndsAt(event.target.value)} className="mt-2 h-12 rounded-none" required /></label>
             </div>
             <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Sport</Label><select value={sport} onChange={(event) => setSport(event.target.value as Exclude<Sport, 'softball'>)} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-bold">{supportedSports.map((item) => <option key={item} value={item}>{getSportRule(item).label}</option>)}</select></label>
+            {missingTrackerProject && (
+              <MissingSourceWarning
+                section="Finalized stats"
+                detail="The selected stats project was deleted or is no longer available to this account. Stats are currently omitted from the public page."
+                onHide={() => {
+                  setTrackerProjectId('none');
+                  setShowStats(false);
+                }}
+              />
+            )}
             <ProjectSelect label="Finalized stats project" value={trackerProjectId} onChange={setTrackerProjectId} projects={trackerProjects} emptyLabel="Do not link stats" />
+            {missingScheduleProject && (
+              <MissingSourceWarning
+                section="Upcoming schedule"
+                detail="The selected schedule project was deleted or is no longer available to this account. Schedule events are currently omitted from the public page."
+                onHide={() => {
+                  setScheduleProjectId('none');
+                  setShowSchedule(false);
+                }}
+              />
+            )}
             <ProjectSelect label="Schedule project" value={scheduleProjectId} onChange={setScheduleProjectId} projects={scheduleProjects} emptyLabel="Do not link a schedule" />
           </section>
           <aside className="space-y-5">
@@ -335,7 +366,22 @@ function Field({ label, value, onChange, placeholder, required }: { label: strin
   return <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">{label}</Label><Input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} className="mt-2 h-12 rounded-none" /></label>;
 }
 function ProjectSelect({ label, value, onChange, projects, emptyLabel }: { label: string; value: string; onChange: (value: string) => void; projects: Array<{ id: string; name: string }>; emptyLabel: string }) {
-  return <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">{label}</Label><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-bold"><option value="none">{emptyLabel}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>;
+  const selectedProjectExists = value === 'none' || projects.some((project) => project.id === value);
+  return <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">{label}</Label><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-bold">{!selectedProjectExists && <option value={value}>Unavailable project — choose a replacement</option>}<option value="none">{emptyLabel}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>;
+}
+function MissingSourceWarning({ section, detail, onHide }: { section: string; detail: string; onHide: () => void }) {
+  return (
+    <div role="alert" className="border border-amber-500/50 bg-amber-500/10 p-4">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+        <div>
+          <p className="text-sm font-bold">{section} source unavailable</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">{detail} Select a replacement below, or hide this section.</p>
+          <Button type="button" variant="outline" className="mt-3 h-9 rounded-none border-amber-500/50 text-[10px] font-bold uppercase tracking-widest" onClick={onHide}>Hide {section}</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-border pt-4"><div><p className="text-sm font-bold">{label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;

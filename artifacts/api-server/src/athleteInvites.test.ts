@@ -117,6 +117,17 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal(invite.scheduleEvents[0]?.opponent, "Falcons");
     assert.equal("snacks" in (invite.scheduleEvents[0] ?? {}), false);
 
+    await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+    const ownedAfterSourceDeletion = await (await fetch(listUrl, {
+      headers: { "x-test-user": ownerId },
+    })).json() as Array<{ trackerProjectId: string | null; scheduleProjectId: string | null; inviteToken: string }>;
+    assert.equal(ownedAfterSourceDeletion[0]?.trackerProjectId, tracker.id);
+    assert.equal(ownedAfterSourceDeletion[0]?.scheduleProjectId, schedule.id);
+    assert.equal(ownedAfterSourceDeletion[0]?.inviteToken, owned.inviteToken);
+    const publicAfterSourceDeletion = GetAthleteInviteResponse.parse(await (await fetch(publicUrl)).json());
+    assert.equal(publicAfterSourceDeletion.stats, null);
+    assert.deepEqual(publicAfterSourceDeletion.scheduleEvents, []);
+
     const hidden = await fetch(publicUrl, {
       method: "PATCH",
       headers: { "content-type": "application/json", "x-test-user": ownerId },
@@ -126,8 +137,8 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "basketball",
-        trackerProjectId: tracker.id,
-        scheduleProjectId: schedule.id,
+        trackerProjectId: null,
+        scheduleProjectId: null,
         showHypeCard: false,
         showStats: false,
         showSchedule: false,
