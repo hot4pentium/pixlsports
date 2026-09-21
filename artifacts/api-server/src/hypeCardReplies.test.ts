@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import test from "node:test";
+import test, { mock } from "node:test";
 import express from "express";
 import { eq } from "drizzle-orm";
 import {
@@ -14,6 +14,7 @@ import {
   ListHypeCardShareRepliesResponse,
 } from "@workspace/api-zod";
 import hypeCardSharesRouter from "./routes/hypeCardShares";
+import { ObjectStorageService } from "./lib/objectStorage";
 
 test("anonymous replies enforce ownership, read state, active shares, and an atomic quota", async () => {
   const ownerId = `hype-reply-owner-${crypto.randomUUID()}`;
@@ -111,6 +112,141 @@ test("anonymous replies enforce ownership, read state, active shares, and an ato
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     if (shareId) await db.delete(hypeCardShareRepliesTable).where(eq(hypeCardShareRepliesTable.shareId, shareId));
+    await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
+  }
+});
+
+test("hosted Hype Card downloads require the active share owner", async () => {
+  const ownerId = `hype-download-owner-${crypto.randomUUID()}`;
+  const otherId = `hype-download-other-${crypto.randomUUID()}`;
+  const now = Date.now();
+  const tokens = {
+    image: randomBytes(24).toString("base64url"),
+    video: randomBytes(24).toString("base64url"),
+    expired: randomBytes(24).toString("base64url"),
+    revoked: randomBytes(24).toString("base64url"),
+    stats: randomBytes(24).toString("base64url"),
+  };
+  const app = express();
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { warn: () => undefined, error: () => undefined };
+    next();
+  });
+  app.use("/api", hypeCardSharesRouter);
+  const server = app.listen(0);
+  const getObjectEntityFile = mock.method(
+    ObjectStorageService.prototype,
+    "getObjectEntityFile",
+    async (objectPath: string) => ({ objectPath }) as never,
+  );
+  const downloadObject = mock.method(
+    ObjectStorageService.prototype,
+    "downloadObject",
+    async () => new Response("hosted-media", {
+      status: 200,
+      headers: { "content-type": "application/octet-stream" },
+    }),
+  );
+
+  try {
+    await db.insert(accountAccessTable).values([
+      { ownerClerkUserId: ownerId, role: "supporter", accessMode: "full" },
+      { ownerClerkUserId: otherId, role: "supporter", accessMode: "full" },
+    ]);
+    const baseShare = {
+      ownerClerkUserId: ownerId,
+      title: "Hosted download",
+      manifest: {},
+      videoSize: 12,
+      posterObjectPath: null,
+      posterContentType: null,
+      posterSize: null,
+    };
+    await db.insert(hypeCardSharesTable).values([
+      {
+        ...baseShare,
+        publicToken: tokens.image,
+        slug: "image-card",
+        mediaType: "image",
+        videoObjectPath: "/test/download-image",
+        videoContentType: "image/png",
+        expiresAt: new Date(now + 60_000),
+      },
+      {
+        ...baseShare,
+        publicToken: tokens.video,
+        slug: "video-card",
+        mediaType: "video",
+        videoObjectPath: "/test/download-video",
+        videoContentType: "video/mp4",
+        expiresAt: new Date(now + 60_000),
+      },
+      {
+        ...baseShare,
+        publicToken: tokens.expired,
+        slug: "expired-card",
+        mediaType: "image",
+        videoObjectPath: "/test/download-expired",
+        videoContentType: "image/jpeg",
+        expiresAt: new Date(now - 60_000),
+      },
+      {
+        ...baseShare,
+        publicToken: tokens.revoked,
+        slug: "revoked-card",
+        mediaType: "image",
+        videoObjectPath: "/test/download-revoked",
+        videoContentType: "image/jpeg",
+        expiresAt: new Date(now + 60_000),
+        revokedAt: new Date(now),
+      },
+      {
+        ...baseShare,
+        publicToken: tokens.stats,
+        slug: "stats-card",
+        shareMode: "stats",
+        mediaType: "image",
+        videoObjectPath: "/test/download-stats",
+        videoContentType: "image/jpeg",
+        expiresAt: new Date(now + 60_000),
+      },
+    ]);
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const downloadUrl = (token: string) =>
+      `http://127.0.0.1:${address.port}/api/hype-card-shares/${token}/download`;
+    const asOwner = { headers: { "x-test-user": ownerId } };
+
+    const image = await fetch(downloadUrl(tokens.image), asOwner);
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get("content-disposition"), 'attachment; filename="image-card.png"');
+    assert.equal(await image.text(), "hosted-media");
+
+    const video = await fetch(downloadUrl(tokens.video), asOwner);
+    assert.equal(video.status, 200);
+    assert.equal(video.headers.get("content-disposition"), 'attachment; filename="video-card.mp4"');
+    assert.equal(await video.text(), "hosted-media");
+
+    assert.equal((await fetch(downloadUrl(tokens.image), {
+      headers: { "x-test-user": otherId },
+    })).status, 404);
+    assert.equal((await fetch(downloadUrl(tokens.image))).status, 401);
+    assert.equal((await fetch(downloadUrl(tokens.expired), asOwner)).status, 404);
+    assert.equal((await fetch(downloadUrl(tokens.revoked), asOwner)).status, 404);
+    assert.equal((await fetch(downloadUrl(tokens.stats), asOwner)).status, 404);
+    assert.equal(getObjectEntityFile.mock.callCount(), 2);
+    assert.equal(downloadObject.mock.callCount(), 2);
+  } finally {
+    getObjectEntityFile.mock.restore();
+    downloadObject.mock.restore();
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
