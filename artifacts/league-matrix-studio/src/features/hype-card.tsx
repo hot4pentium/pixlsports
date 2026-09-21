@@ -28,6 +28,9 @@ import {
   useListHypeCardShareReplies,
   useMarkHypeCardShareRepliesRead,
   useDeleteHypeCardShareReply,
+  useListAthleteInvites,
+  useUpdateAthleteInvite,
+  getListAthleteInvitesQueryKey,
   getListHypeCardShareRepliesQueryKey,
   getListHypeCardSharesQueryKey,
   requestHypeCardShareUploadUrl,
@@ -1106,6 +1109,14 @@ export function HypeCardEditor() {
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [shareMode, setShareMode] = useState<'card' | 'stats'>('card');
+  const { data: athleteInvites } = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListAthleteInvitesQueryKey(),
+    },
+  });
+  const athleteHypePage = athleteInvites?.[0] ?? null;
+  const updateAthleteHypePage = useUpdateAthleteInvite();
   const [linkedExportPending, setLinkedExportPending] = useState(false);
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const [publishedStatsShare, setPublishedStatsShare] = useState<HypeCardShare | null>(null);
@@ -2466,7 +2477,28 @@ export function HypeCardEditor() {
         : `Hype Card added to Athlete Hype Page for ${shareExpiresInDays} days.`);
       setLinkedExportPending(false);
       if (linkedExport) await handleExport(url);
-      if (!isStatsOnly && !linkedExport) setLocation('/studio/athlete-page');
+      if (!isStatsOnly && !linkedExport) {
+        if (athleteHypePage && (athleteHypePage.paused || !athleteHypePage.showHypeCard)) {
+          await updateAthleteHypePage.mutateAsync({
+            inviteToken: athleteHypePage.inviteToken,
+            data: {
+              athleteName: athleteHypePage.athleteName,
+              teamName: athleteHypePage.teamName,
+              seasonName: athleteHypePage.seasonName,
+              seasonEndsAt: athleteHypePage.seasonEndsAt,
+              sport: athleteHypePage.sport,
+              trackerProjectId: athleteHypePage.trackerProjectId,
+              scheduleProjectId: athleteHypePage.scheduleProjectId,
+              showHypeCard: true,
+              showStats: athleteHypePage.showStats,
+              showSchedule: athleteHypePage.showSchedule,
+              paused: false,
+            },
+          });
+          await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+        }
+        setLocation(athleteHypePage ? `/player/${athleteHypePage.inviteToken}` : '/studio/athlete-page');
+      }
     } catch (error) {
       console.error(error);
       setNotice(error instanceof Error ? error.message : 'Could not publish the interactive Hype Card.');

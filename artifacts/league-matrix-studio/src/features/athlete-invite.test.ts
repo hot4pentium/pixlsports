@@ -15,10 +15,22 @@ test('public Athlete Hype Pages keep replies on-page and update recent reactions
   assert.doesNotMatch(source, /Send your own reply →/);
 });
 
-test('posting a Hype Card returns owners to the hosted card manager', () => {
+test('posting a Hype Card opens the Athlete Hype Page with the newly active card', () => {
   assert.match(
     hypeCardSource,
-    /await queryClient\.invalidateQueries\(\{ queryKey: getListHypeCardSharesQueryKey\(\) \}\);[\s\S]*?if \(!isStatsOnly && !linkedExport\) setLocation\('\/studio\/athlete-page'\);/,
+    /const athleteHypePage = athleteInvites\?\.\[0\] \?\? null;/,
+  );
+  assert.match(
+    hypeCardSource,
+    /await queryClient\.invalidateQueries\(\{ queryKey: getListHypeCardSharesQueryKey\(\) \}\);[\s\S]*?if \(!isStatsOnly && !linkedExport\) \{[\s\S]*?setLocation\(athleteHypePage \? `\/player\/\$\{athleteHypePage\.inviteToken\}` : '\/studio\/athlete-page'\);/,
+  );
+  assert.match(
+    hypeCardSource,
+    /athleteHypePage && \(athleteHypePage\.paused \|\| !athleteHypePage\.showHypeCard\)[\s\S]*?showHypeCard: true,[\s\S]*?paused: false,/,
+  );
+  assert.match(
+    hypeCardSource,
+    /if \(linkedExport\) await handleExport\(url\);\s*if \(!isStatsOnly && !linkedExport\)/,
   );
   assert.match(source, /aria-expanded=\{hypeCardGuideOpen\}/);
   assert.match(source, /setSelectedPath\('card'\)/);
