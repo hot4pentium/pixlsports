@@ -718,7 +718,7 @@
 .pixl-dashboard-mobile .mobile-week-path-steps::before {
   content: "";
   position: absolute;
-  top: 39px;
+  top: 56px;
   right: 12.5%;
   left: 12.5%;
   height: 2px;
@@ -731,7 +731,7 @@
   position: relative;
   z-index: 1;
   isolation: isolate;
-  min-height: 96px;
+  min-height: 128px;
   width: 100%;
   flex-direction: column;
   align-items: center;
