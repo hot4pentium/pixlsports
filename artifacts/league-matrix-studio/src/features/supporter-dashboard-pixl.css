@@ -826,7 +826,18 @@
 }
 
 .pixl-dashboard-mobile .mobile-week-path-icon {
-  display: none;
+  display: block;
+  color: rgba(159, 176, 200, .9);
+  transform: translateY(14px);
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step.is-completed .mobile-week-path-icon {
+  color: var(--m-bright-blue);
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step.is-active .mobile-week-path-icon,
+.pixl-dashboard-mobile .mobile-week-path-step.is-selected .mobile-week-path-icon {
+  color: white;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-label {
@@ -1273,6 +1284,16 @@
     font-size: 12px;
     line-height: 1.1;
     letter-spacing: .1em;
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > svg {
+    width: 28px;
+    height: 28px;
+    color: #55A4FF;
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"][aria-current="step"] > svg {
+    color: white;
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span.ml-auto {

@@ -614,11 +614,11 @@ export function SupporterDashboardView({
                         <span className="mobile-week-path-number" aria-hidden="true">
                           {isCompleted ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}
                         </span>
-                        <StepIcon className="mobile-week-path-icon h-4 w-4" aria-hidden="true" />
                         <span className="mobile-week-path-label">
                           <span className="sr-only">Step {index + 1}: </span>
                           {step.id === 'plan' ? 'Plan' : step.id === 'upcoming' ? 'Prep' : step.id === 'live' ? 'Capture' : 'Send'}
                         </span>
+                        <StepIcon className="mobile-week-path-icon h-4 w-4" aria-hidden="true" />
                         <span className="mobile-week-path-state">
                           {isActive ? 'Next' : isCompleted ? 'Done' : ''}
                         </span>
@@ -965,8 +965,8 @@ export function SupporterDashboardView({
                     data-testid={`stage-${id}`}
                   >
                     <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selected ? theme.number : active ? `${theme.activeBorder} ${theme.surface} ${theme.accent} border` : completed ? 'bg-emerald-300 text-slate-950' : 'bg-white/10 text-white/60'}`}>{completed ? <Check className="h-4 w-4" /> : number}</span>
-                    <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
                     <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
+                    <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
                     {active && (
                       <span className={`dashboard-stage-next ml-auto inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] ${theme.accent}`} data-testid={`stage-${id}-next`}>
                         UP NEXT
