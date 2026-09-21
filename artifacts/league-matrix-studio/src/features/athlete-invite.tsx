@@ -15,6 +15,8 @@ import {
   Smartphone,
   Trophy,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   Zap,
 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -370,11 +372,13 @@ export function AthleteInviteManager() {
 export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: string } }) {
   const inviteToken = params.inviteToken ?? '';
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
+  const [trendStatId, setTrendStatId] = useState('');
   const { data: invite, isLoading, isError } = useGetAthleteInvite(inviteToken, {
     query: { enabled: Boolean(inviteToken), queryKey: getGetAthleteInviteQueryKey(inviteToken), retry: false },
   });
   useEffect(() => {
     setLocalReplies([]);
+    setTrendStatId('');
   }, [inviteToken]);
   useEffect(() => {
     if (!invite) return;
@@ -386,6 +390,28 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   if (isError || !invite) return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Athlete page unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This invite may have ended, been revoked, or been copied incorrectly.</p></div></PublicShell>;
   const rule = getSportRule(invite.sport);
   const replies = [...localReplies, ...invite.replies];
+  const trendOptions = invite.stats
+    ? [
+        { id: 'score', label: 'Points / runs' },
+        ...Object.keys(invite.stats.stats).map((id) => ({
+          id,
+          label: rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' '),
+        })),
+      ]
+    : [];
+  const selectedTrend = trendOptions.find((option) => option.id === trendStatId);
+  const trendGames = invite.stats?.games
+    ? [...invite.stats.games].sort((a, b) => a.date.localeCompare(b.date))
+    : [];
+  const trendValues = selectedTrend
+    ? trendGames.map((game) => selectedTrend.id === 'score' ? game.score : game.stats[selectedTrend.id] ?? 0)
+    : [];
+  const trendMax = Math.max(1, ...trendValues);
+  const latestTrend = trendValues.at(-1);
+  const previousTrend = trendValues.at(-2);
+  const trendDirection = latestTrend !== undefined && previousTrend !== undefined
+    ? latestTrend > previousTrend ? 'up' : latestTrend < previousTrend ? 'down' : 'flat'
+    : 'flat';
   return (
     <div className="noise min-h-dvh bg-[#080a0f] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
@@ -428,6 +454,46 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                   <Stat label="Points / runs" value={invite.stats.score} />
                   {Object.entries(invite.stats.stats).map(([id, value]) => <Stat key={id} label={rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' ')} value={value} />)}
                 </div>
+                 {trendOptions.length > 0 && (
+                   <div className="mt-6 border-t border-white/10 pt-5" data-testid="athlete-stat-trends">
+                     <label htmlFor="athlete-trend-stat" className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Show trends</label>
+                     <select
+                       id="athlete-trend-stat"
+                       value={trendStatId}
+                       onChange={(event) => setTrendStatId(event.target.value)}
+                       className="mt-2 h-11 w-full border border-white/15 bg-black/25 px-3 text-sm font-bold text-white outline-none focus:border-primary"
+                       data-testid="select-athlete-trend-stat"
+                     >
+                       <option value="">Choose a stat</option>
+                       {trendOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                     </select>
+                     {selectedTrend && (
+                       <div className="mt-4" data-testid="athlete-stat-trend-details">
+                         <div className="flex items-center justify-between gap-3">
+                           <p className="text-xs font-bold uppercase tracking-widest text-white/65">{selectedTrend.label} by game</p>
+                           <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-white/45">
+                             {trendDirection === 'up' ? <TrendingUp className="h-3.5 w-3.5 text-primary" /> : trendDirection === 'down' ? <TrendingDown className="h-3.5 w-3.5 text-amber-300" /> : null}
+                             {trendDirection === 'up' ? 'Up lately' : trendDirection === 'down' ? 'Down lately' : 'Steady'}
+                           </p>
+                         </div>
+                         <ol className="mt-3 space-y-3">
+                           {trendGames.map((game, index) => {
+                             const value = trendValues[index] ?? 0;
+                             return (
+                               <li key={`${game.date}-${game.opponent}-${index}`} className="flex items-center gap-3">
+                                 <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/40">{game.date ? new Date(`${game.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : `Game ${index + 1}`}</span>
+                                 <div className="h-2 min-w-0 flex-1 bg-white/10">
+                                   <div className="h-full bg-primary" style={{ width: `${Math.max(6, (value / trendMax) * 100)}%` }} />
+                                 </div>
+                                 <span className="w-8 text-right font-display text-lg text-white">{value}</span>
+                               </li>
+                             );
+                           })}
+                         </ol>
+                       </div>
+                     )}
+                   </div>
+                 )}
                 <p className="mt-4 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Updated {new Date(invite.stats.updatedAt).toLocaleDateString()}</p>
               </section>
             )}

@@ -54,4 +54,8 @@ test('posting a Hype Card returns owners to the hosted card manager', () => {
   assert.match(source, /value=\{inviteUrl\(existing\.inviteToken\)\}/);
   assert.match(source, /Visible sections/);
   assert.match(source, /The Athlete Hype Page and its other content were not changed/);
+  assert.match(source, /data-testid="select-athlete-trend-stat"/);
+  assert.match(source, /data-testid="athlete-stat-trend-details"/);
+  assert.match(source, /trendGames = invite\.stats\?\.games/);
+  assert.match(source, /Finalized only/);
 });
