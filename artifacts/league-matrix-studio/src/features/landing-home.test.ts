@@ -51,6 +51,8 @@ test('before-game-day guidance includes the uploaded checklist video', () => {
 test('checklist video uses the phone crop without a native player shell', () => {
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*aspect-ratio: 760 \/ 1080;/);
   assert.match(landingStyles, /\.landing-checklist-video \{[\s\S]*mix-blend-mode: multiply;/);
+  assert.match(landingSource, /landing-before-game-day-title/);
+  assert.match(landingSource, /lg:pt-\[168px\]/);
 });
 
 test('landing athlete ticker protects the page width and respects reduced motion', () => {

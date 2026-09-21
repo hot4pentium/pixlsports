@@ -311,7 +311,7 @@ export function PublicLandingPage() {
                         <span className="font-display text-5xl font-extrabold text-landing-text">01</span>
                       </div>
                     </div>
-                    <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center">Before game day</h3>
+                    <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center" data-testid="landing-before-game-day-title">Before game day</h3>
                     <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
                       <li className="flex items-start gap-3">
                         <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
@@ -327,7 +327,7 @@ export function PublicLandingPage() {
                       </li>
                     </ul>
                   </div>
-                  <div className="flex items-start justify-center lg:pt-2">
+                  <div className="flex items-start justify-center lg:pt-[168px]">
                     <video
                       src={planChecklistVideo}
                       autoPlay={!prefersReducedMotion}

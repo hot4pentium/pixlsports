@@ -89,6 +89,7 @@ type LandingLayout = {
     right: number;
   };
   checklistVideo: {
+    top: number;
     left: number;
     right: number;
     width: number;
@@ -134,6 +135,7 @@ async function readLandingLayout(
         const video = document.querySelector('[data-testid="landing-checklist-video"]');
         const videoRect = video?.getBoundingClientRect();
         return {
+          top: videoRect?.top ?? -1,
           left: videoRect?.left ?? -1,
           right: videoRect?.right ?? -1,
           width: videoRect?.width ?? -1,
@@ -145,6 +147,7 @@ async function readLandingLayout(
           autoplay: video instanceof HTMLVideoElement ? video.autoplay : false,
         };
       })(),
+      beforeGameDayTitleTop: rect('[data-testid="landing-before-game-day-title"]')?.top ?? -1,
       tiles: [...document.querySelectorAll('[data-testid^="landing-sport-tile-"]')].map((tile) => {
         const tileRect = tile.getBoundingClientRect();
         const label = tile.querySelector('p:last-child');
@@ -258,6 +261,9 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     assert.ok(desktopLayout.ctaBottom <= desktopLayout.showcaseTop);
     assert.ok(desktopLayout.checklistVideo.width > 0);
     assert.ok(desktopLayout.checklistVideo.right <= 1440);
+    assert.ok(Math.abs(
+      desktopLayout.checklistVideo.top - desktopLayout.beforeGameDayTitleTop,
+    ) <= 2);
     assert.ok(Math.abs(
       desktopLayout.checklistVideo.width / desktopLayout.checklistVideo.height - 760 / 1080,
     ) < 0.01);
