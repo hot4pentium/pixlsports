@@ -94,6 +94,8 @@ type LandingLayout = {
     right: number;
     width: number;
     height: number;
+    borderRadius: string;
+    overflow: string;
     controls: boolean;
     muted: boolean;
     loop: boolean;
@@ -140,6 +142,8 @@ async function readLandingLayout(
           right: videoRect?.right ?? -1,
           width: videoRect?.width ?? -1,
           height: videoRect?.height ?? -1,
+          borderRadius: video instanceof HTMLElement ? getComputedStyle(video).borderRadius : '',
+          overflow: video instanceof HTMLElement ? getComputedStyle(video).overflow : '',
           controls: video instanceof HTMLVideoElement ? video.controls : true,
           muted: video instanceof HTMLVideoElement ? video.muted : false,
           loop: video instanceof HTMLVideoElement ? video.loop : false,
@@ -230,6 +234,8 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above ticker at ${width}px`);
        assert.ok(layout.checklistVideo.width > 0, `checklist video is not rendered at ${width}px`);
        assert.ok(layout.checklistVideo.right <= width, `checklist video overflows at ${width}px`);
+        assert.equal(layout.checklistVideo.borderRadius, '24px');
+        assert.equal(layout.checklistVideo.overflow, 'hidden');
        assert.equal(layout.checklistVideo.controls, false);
        assert.equal(layout.checklistVideo.muted, true);
        assert.equal(layout.checklistVideo.loop, true);
