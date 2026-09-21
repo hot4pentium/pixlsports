@@ -759,84 +759,85 @@ export function SupporterDashboardView({
           </div>
         </div>
       )}
-      {/* HEADER */}
-      <header className="dashboard-header animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
-        <div>
-          <div className="dashboard-welcome inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
-            <Activity className="w-4 h-4 text-primary" />
-            {profile.displayName ? `GOOD ${greeting.toUpperCase()}, ${firstName.toUpperCase()}` : 'YOUR SPORTS HOME'}
+      <div className="dashboard-hero-banner">
+        {/* HEADER */}
+        <header className="dashboard-header animate-slide-up grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-12">
+          <div>
+            <div className="dashboard-welcome inline-flex items-center gap-2 px-3 py-1.5 bg-muted text-xs font-bold uppercase tracking-widest text-foreground clip-angled-sm mb-4">
+              <Activity className="w-4 h-4 text-primary" />
+              {profile.displayName ? `GOOD ${greeting.toUpperCase()}, ${firstName.toUpperCase()}` : 'YOUR SPORTS HOME'}
+            </div>
+            <h1 className="dashboard-heading font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
+              {hasAthlete ? profile.athleteName : 'YOUR ATHLETE'} <span className="text-primary studio-textured-accent">{profile.teamName || 'GAME WEEK'}</span>
+            </h1>
+            <p className="dashboard-subtitle mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
+              Here&apos;s what&apos;s happening next. Plan the week, capture the moment, and keep the story moving.
+            </p>
           </div>
-          <h1 className="dashboard-heading font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.9] tracking-tight uppercase">
-            {hasAthlete ? profile.athleteName : 'YOUR ATHLETE'} <span className="text-primary studio-textured-accent">{profile.teamName || 'GAME WEEK'}</span>
-          </h1>
-          <p className="dashboard-subtitle mt-4 max-w-2xl text-lg font-medium text-muted-foreground">
-            Here&apos;s what&apos;s happening next. Plan the week, capture the moment, and keep the story moving.
-          </p>
-        </div>
 
-        <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading" data-testid="athlete-summary">
-          <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
-          <div className="relative flex items-center gap-4 bg-[#111316] p-4 sm:gap-5 sm:p-5">
-            <div className="relative shrink-0">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-background text-foreground shadow-[0_0_26px_rgba(22,232,120,0.25)] sm:h-20 sm:w-20">
-                {athletePhotoUrl ? (
-                  <div className="h-full w-full overflow-hidden rounded-full">
-                    <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
+          <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading" data-testid="athlete-summary">
+            <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
+            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
+            <div className="relative flex items-center gap-4 bg-[#111316] p-4 sm:gap-5 sm:p-5">
+              <div className="relative shrink-0">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-background text-foreground shadow-[0_0_26px_rgba(22,232,120,0.25)] sm:h-20 sm:w-20">
+                  {athletePhotoUrl ? (
+                    <div className="h-full w-full overflow-hidden rounded-full">
+                      <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
+                    </div>
+                  ) : hasAthlete ? (
+                    <User className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
+                  ) : (
+                    <Users className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenProfile}
+                  className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-7 sm:w-7"
+                  aria-label="Edit athlete profile"
+                  title="Edit athlete profile"
+                  data-testid="btn-edit-athlete-avatar"
+                >
+                  <PenSquare className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">My athlete</p>
+                <h2 id="athlete-summary-heading" className="mt-1 break-words font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
+                  {hasAthlete ? profile.athleteName : 'Unassigned'}
+                </h2>
+                {hasAthlete ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/65 sm:text-xs">
+                    {profile.jerseyNumber && <span><span className="text-primary">#</span>{profile.jerseyNumber}</span>}
+                    {profile.jerseyNumber && profile.position && <span className="opacity-40">•</span>}
+                    {profile.position && <span>{profile.position}</span>}
+                    {profile.relationship && <><span className="opacity-40">•</span><span>{profile.relationship}</span></>}
                   </div>
-                ) : hasAthlete ? (
-                  <User className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
                 ) : (
-                  <Users className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
+                  <button type="button" onClick={onOpenProfile} className="mt-2 text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
+                    Set up athlete details
+                  </button>
+                )}
+                {profile.teamName && (
+                  <div className="mt-3 inline-flex max-w-full items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1 text-white/80 clip-angled-sm">
+                    <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="min-w-0 whitespace-normal break-words text-[10px] font-bold uppercase tracking-widest" data-testid="athlete-team-name">{profile.teamName}</span>
+                  </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={onOpenProfile}
-                className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-7 sm:w-7"
-                aria-label="Edit athlete profile"
-                title="Edit athlete profile"
-                data-testid="btn-edit-athlete-avatar"
-              >
-                <PenSquare className="h-3 w-3" />
-              </button>
+              <div className="relative z-10 shrink-0">
+                <HypeCardReplyInboxTrigger className="!px-2.5 !py-2" />
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">My athlete</p>
-              <h2 id="athlete-summary-heading" className="mt-1 break-words font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
-                {hasAthlete ? profile.athleteName : 'Unassigned'}
-              </h2>
-              {hasAthlete ? (
-                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/65 sm:text-xs">
-                  {profile.jerseyNumber && <span><span className="text-primary">#</span>{profile.jerseyNumber}</span>}
-                  {profile.jerseyNumber && profile.position && <span className="opacity-40">•</span>}
-                  {profile.position && <span>{profile.position}</span>}
-                  {profile.relationship && <><span className="opacity-40">•</span><span>{profile.relationship}</span></>}
-                </div>
-              ) : (
-                <button type="button" onClick={onOpenProfile} className="mt-2 text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
-                  Set up athlete details
-                </button>
-              )}
-              {profile.teamName && (
-                <div className="mt-3 inline-flex max-w-full items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1 text-white/80 clip-angled-sm">
-                  <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span className="min-w-0 whitespace-normal break-words text-[10px] font-bold uppercase tracking-widest" data-testid="athlete-team-name">{profile.teamName}</span>
-                </div>
-              )}
-            </div>
-            <div className="relative z-10 shrink-0">
-              <HypeCardReplyInboxTrigger className="!px-2.5 !py-2" />
-            </div>
-          </div>
-        </section>
-      </header>
+          </section>
+        </header>
 
-      <section
-        className="animate-slide-up delay-100 relative overflow-hidden border border-foreground/10 bg-[#111316] text-white clip-angled"
-        data-testid="section-next-game-context"
-        aria-labelledby="next-game-heading"
-      >
+        <section
+          className="animate-slide-up delay-100 relative overflow-hidden border border-foreground/10 bg-[#111316] text-white clip-angled"
+          data-testid="section-next-game-context"
+          aria-labelledby="next-game-heading"
+        >
         <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" />
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:gap-12 lg:p-10">
@@ -985,7 +986,8 @@ export function SupporterDashboardView({
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      </div>
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-8 animate-slide-up delay-300">
