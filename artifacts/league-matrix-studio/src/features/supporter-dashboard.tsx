@@ -525,11 +525,11 @@ export function SupporterDashboardView({
       {/* MOBILE VIEW */}
       <div className="supporter-dashboard-mobile-shell fixed inset-0 z-0 pixl-dashboard-mobile overflow-y-auto overflow-x-hidden pb-[calc(7rem+env(safe-area-inset-bottom))] flex-col">
         {/* Mobile Header */}
-        <header className="bg-white flex items-center justify-between px-5 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
+        <header className="bg-white flex items-center justify-between px-4 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
           <div className="flex items-center gap-2">
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-6 w-auto object-contain" />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <div className="relative w-11 h-11 flex items-center justify-center">
               <HypeCardReplyInboxTrigger className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-[#12213A] shadow-none hover:bg-transparent" />
             </div>

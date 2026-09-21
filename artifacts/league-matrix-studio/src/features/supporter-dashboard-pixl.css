@@ -502,6 +502,7 @@
 
 .pixl-dashboard-mobile > header img {
   height: 34px;
+  max-width: 110px;
 }
 
 .pixl-dashboard-mobile .mobile-hero-banner {

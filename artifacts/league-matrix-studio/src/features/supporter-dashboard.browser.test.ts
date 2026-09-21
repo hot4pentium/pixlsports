@@ -427,6 +427,160 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
+test('mobile supporter header stays pinned and keeps navigation accessible', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-dashboard-mobile-header-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-mobile-header-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+
+    for (const width of [320, 390, 768]) {
+      const height = width === 768 ? 1024 : 844;
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: true,
+      }, page.sessionId);
+      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-header\\"]") !== null', Boolean);
+      const result = await connection.evaluate<{
+        dashboardVisible: boolean;
+        viewportOverflow: boolean;
+        dashboardOverflow: boolean;
+        headerPosition: string;
+        headerZIndex: string;
+        headerTop: number;
+        headerTopAfterScroll: number;
+        heroClearsHeader: boolean;
+      }>(`(() => {
+        const root = document.querySelector('.supporter-dashboard-mobile-shell');
+        const header = document.querySelector('[data-testid="mobile-header"]');
+        const hero = document.querySelector('[data-testid="mobile-hero-banner"]');
+        if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)) {
+          throw new Error('Mobile dashboard shell is incomplete');
+        }
+        root.scrollTop = 0;
+        const initialHeaderRect = header.getBoundingClientRect();
+        const heroRect = hero.getBoundingClientRect();
+        root.scrollTop = Math.min(240, Math.max(0, root.scrollHeight - root.clientHeight));
+        const scrolledHeaderRect = header.getBoundingClientRect();
+        root.scrollTop = 0;
+        const rootRect = root.getBoundingClientRect();
+        return {
+          dashboardVisible: getComputedStyle(root).display !== 'none',
+          viewportOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          dashboardOverflow: root.scrollWidth > root.clientWidth,
+          headerPosition: getComputedStyle(header).position,
+          headerZIndex: getComputedStyle(header).zIndex,
+          headerTop: Math.round(initialHeaderRect.top - rootRect.top),
+          headerTopAfterScroll: Math.round(scrolledHeaderRect.top - rootRect.top),
+          heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
+        };
+      })()`, page.sessionId);
+      assert.deepEqual(result, {
+        dashboardVisible: true,
+        viewportOverflow: false,
+        dashboardOverflow: false,
+        headerPosition: 'sticky',
+        headerZIndex: '70',
+        headerTop: 0,
+        headerTopAfterScroll: 0,
+        heroClearsHeader: true,
+      }, `mobile header behavior at ${width}px`);
+    }
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="button-mobile-dashboard-menu"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      expanded: string | null;
+      links: string[];
+      label: string | null;
+    }>(`(() => {
+      const button = document.querySelector('[data-testid="button-mobile-dashboard-menu"]');
+      const menu = document.querySelector('[data-testid="mobile-dashboard-menu"]');
+      return {
+        expanded: button?.getAttribute('aria-expanded') || null,
+        links: Array.from(menu?.querySelectorAll('a') || []).map((link) => link.getAttribute('href') || ''),
+        label: menu?.getAttribute('aria-label') || null,
+      };
+    })()`, page.sessionId), {
+      expanded: 'true',
+      links: ['/studio', '/help', '/privacy'],
+      label: 'Mobile dashboard navigation',
+    });
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]") === null', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.activeElement?.getAttribute("data-testid") || ""', page.sessionId),
+      'button-mobile-dashboard-menu',
+    );
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
 function harnessSource() {
   return `
 import { createElement, useEffect, useState } from 'react';
