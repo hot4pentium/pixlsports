@@ -27,7 +27,7 @@
 }
 
 .landing-checklist-video {
-  aspect-ratio: 600 / 910;
+  aspect-ratio: 760 / 1080;
   display: block;
   filter: drop-shadow(0 18px 20px color-mix(in srgb, var(--landing-text) 18%, transparent));
   mix-blend-mode: multiply;
