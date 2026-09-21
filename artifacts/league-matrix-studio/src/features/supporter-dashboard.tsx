@@ -588,35 +588,45 @@ export function SupporterDashboardView({
           </section>
 
           {/* Four-Step Weekly Path */}
-          <section className="mt-2 px-1" data-testid="section-mobile-weekly-path" aria-label="Weekly progress">
-             <div className="flex flex-col gap-6 relative">
-                {/* Connecting Line */}
-                <div className="absolute top-6 left-6 right-6 h-[2px] bg-black/5 z-0" aria-hidden="true"></div>
+           <section className="mt-2 px-1" data-testid="section-mobile-weekly-path" aria-label="Weekly progress">
+              <div className="mobile-week-path-intro">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
+                <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/55">Start with the schedule, then follow the next step as the week moves. The calendar marks what comes next.</p>
+              </div>
 
-                <ol className="flex items-center justify-between m-0 p-0 list-none">
-                  {/* Steps */}
-                  {weeklyPath.map((step, index) => {
-                    const isActive = activePath.id === step.id;
-                    const isCompleted = index < activePathIndex;
+              <ol className="mobile-week-path-steps m-0 grid list-none p-0">
+                {weeklyPath.map((step, index) => {
+                  const isActive = activePath.id === step.id;
+                  const isCompleted = index < activePathIndex;
+                  const isSelected = selectedPath.id === step.id;
+                  const StepIcon = step.Icon;
 
-                    return (
-                      <li key={step.id} className="relative z-10 flex flex-col items-center gap-2.5" aria-current={isActive ? 'step' : undefined}>
-                        {isActive && (
-                          <div className="absolute -top-7 bg-[#FF6B35] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">NOW</div>
-                        )}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all motion-reduce:transition-none shadow-sm ${isActive ? 'bg-[#2474F5] border-2 border-[#2474F5] text-white ring-4 ring-[#2474F5]/15' : isCompleted ? 'bg-[#17A673] border-2 border-[#17A673] text-white' : 'bg-white border-2 border-black/5 text-black/40'}`} aria-hidden="true">
-                          {isCompleted ? <Check className="w-6 h-6 text-white" strokeWidth={3} /> : index + 1}
-                        </div>
-                        <span className={`text-[12px] font-bold uppercase tracking-wider ${isActive ? 'text-[#12213A]' : 'text-black/40'}`}>
-                           <span className="sr-only">Step {index + 1}: </span>
-                           {step.label.split(' ')[0]}
-                           {isCompleted && <span className="sr-only"> (Completed)</span>}
+                  return (
+                    <li key={step.id} aria-current={isActive ? 'step' : undefined}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPathId(step.id)}
+                        aria-current={isActive ? 'step' : undefined}
+                        aria-pressed={isSelected}
+                        className={`mobile-week-path-step ${isSelected ? 'is-selected' : ''} ${isActive ? 'is-active' : ''} ${isCompleted ? 'is-completed' : ''}`}
+                        data-testid={`mobile-stage-${step.id}`}
+                      >
+                        <span className="mobile-week-path-number" aria-hidden="true">
+                          {isCompleted ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}
                         </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-             </div>
+                        <StepIcon className="mobile-week-path-icon h-4 w-4" aria-hidden="true" />
+                        <span className="mobile-week-path-label">
+                          <span className="sr-only">Step {index + 1}: </span>
+                          {step.label}
+                        </span>
+                        <span className="mobile-week-path-state">
+                          {isActive ? 'Next' : isCompleted ? 'Done' : ''}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
           </section>
 
           {pathCelebration && (
