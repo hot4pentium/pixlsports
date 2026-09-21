@@ -104,6 +104,8 @@ type LandingLayout = {
   };
   tiles: Array<{
     label: string;
+    top: number;
+    rowTop: number;
     width: number;
     height: number;
     labelFontSize: number;
@@ -158,6 +160,8 @@ async function readLandingLayout(
         const labelRect = label?.getBoundingClientRect();
         return {
           label: label?.textContent?.trim() ?? '',
+          top: tileRect.top,
+          rowTop: tile instanceof HTMLElement ? tile.offsetTop : -1,
           width: tileRect.width,
           height: tileRect.height,
           labelFontSize: Number.parseFloat(label ? getComputedStyle(label).fontSize : '0'),
@@ -248,6 +252,11 @@ test('landing ticker stays readable and contained from phone to desktop', async 
         'Baseball',
         'Softball',
       ]);
+       assert.equal(
+         new Set(layout.tiles.map((tile) => tile.rowTop)).size,
+         2,
+         `phone photos should occupy two rows at ${width}px`,
+       );
       for (const tile of layout.tiles) {
         assert.ok(tile.labelFontSize >= 14, `${tile.label} is too small at ${width}px`);
         assert.ok(tile.labelBottom <= tile.tileBottom, `${tile.label} is clipped at ${width}px`);

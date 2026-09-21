@@ -108,7 +108,7 @@
 
 .landing-sport-ticker-group {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--landing-ticker-gap);
 }
 
@@ -122,12 +122,6 @@
   box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--landing-text) 55%, transparent);
   animation: landing-sport-tile-rubberband 900ms both;
   animation-delay: var(--landing-tile-delay);
-}
-
-@media (min-width: 640px) {
-  .landing-sport-ticker-group {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (min-width: 1024px) {

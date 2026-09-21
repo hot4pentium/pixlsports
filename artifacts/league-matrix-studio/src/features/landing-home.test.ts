@@ -61,7 +61,6 @@ test('checklist video uses the phone crop without a native player shell', () => 
 test('landing athlete photos stay visible in a responsive grid and respect reduced motion', () => {
   assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow: visible;/);
   assert.match(landingStyles, /\.landing-sport-ticker-group \{[\s\S]*display: grid;/);
-  assert.match(landingStyles, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(landingStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(landingStyles, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(landingStyles, /@keyframes landing-sport-tile-rubberband/);
