@@ -450,6 +450,24 @@ paths:
       operationId: listHypeCardShares
       tags: [hype-card-shares]
       summary: List owned Hype Card shares
+      parameters:
+        - in: query
+          name: shareMode
+          schema:
+            type: string
+            enum: [card, stats]
+        - in: query
+          name: mediaType
+          schema:
+            type: string
+            enum: [image, video]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
       responses:
         "200":
           description: Owned shares, newest first
@@ -1799,6 +1817,17 @@ components:
         mediaType: { type: string, enum: [image, video] }
         posterUrl: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+    AthleteInviteVideo:
+      type: object
+      required: [shareToken, title, jerseyNumber, position, videoUrl, posterUrl, createdAt]
+      properties:
+        shareToken: { type: string }
+        title: { type: string, maxLength: 160 }
+        jerseyNumber: { type: string, maxLength: 40 }
+        position: { type: string, maxLength: 100 }
+        videoUrl: { type: string }
+        posterUrl: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
     AthleteInviteScheduleEvent:
       type: object
       required: [id, type, status, date, time, location, opponent, notes]
@@ -1830,7 +1859,7 @@ components:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"
     PublicAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, hypeCard, stats, scheduleEvents, replies, liveGame, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, hypeCard, videos, stats, scheduleEvents, replies, liveGame, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -1844,6 +1873,11 @@ components:
           anyOf:
             - $ref: "#/components/schemas/AthleteInviteHypeCard"
             - type: "null"
+        videos:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AthleteInviteVideo"
         stats:
           anyOf:
             - $ref: "#/components/schemas/HypeCardShareStats"

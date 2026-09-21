@@ -71,22 +71,44 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
       },
     ]).returning();
     const hypeToken = randomBytes(24).toString("base64url");
-    await db.insert(hypeCardSharesTable).values({
-      ownerClerkUserId: ownerId,
-      publicToken: hypeToken,
-      slug: "latest-hype",
-      title: "Game winner",
-      manifest: {},
-      shareMode: "card",
-      mediaType: "image",
-      videoObjectPath: "/test/athlete-invite.jpg",
-      videoContentType: "image/jpeg",
-      videoSize: 1,
-      posterObjectPath: "/test/athlete-invite.jpg",
-      posterContentType: "image/jpeg",
-      posterSize: 1,
-      expiresAt: new Date(Date.now() + 7 * 86_400_000),
-    });
+    const imageToken = randomBytes(24).toString("base64url");
+    await db.insert(hypeCardSharesTable).values([
+      {
+        ownerClerkUserId: ownerId,
+        publicToken: hypeToken,
+        slug: "latest-hype",
+        title: "Game winner",
+        manifest: {
+          project: {
+            headline: "Game winner",
+            jerseyNumber: "23",
+            position: "Guard",
+          },
+        },
+        shareMode: "card",
+        mediaType: "video",
+        videoObjectPath: "/test/athlete-invite.mp4",
+        videoContentType: "video/mp4",
+        videoSize: 1,
+        posterObjectPath: "/test/athlete-invite.jpg",
+        posterContentType: "image/jpeg",
+        posterSize: 1,
+        expiresAt: new Date(Date.now() + 7 * 86_400_000),
+      },
+      {
+        ownerClerkUserId: ownerId,
+        publicToken: imageToken,
+        slug: "latest-image",
+        title: "Celebration image",
+        manifest: { project: { headline: "Celebration image" } },
+        shareMode: "card",
+        mediaType: "image",
+        videoObjectPath: "/test/athlete-invite-image.jpg",
+        videoContentType: "image/jpeg",
+        videoSize: 1,
+        expiresAt: new Date(Date.now() + 7 * 86_400_000),
+      },
+    ]);
 
     const address = server.address();
     assert.ok(address && typeof address === "object");
@@ -113,7 +135,15 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     const publicResponse = await fetch(publicUrl);
     assert.equal(publicResponse.status, 200);
     const invite = GetAthleteInviteResponse.parse(await publicResponse.json());
-    assert.equal(invite.hypeCard?.shareToken, hypeToken);
+    assert.equal(invite.hypeCard?.shareToken, imageToken);
+    assert.equal(invite.hypeCard?.mediaType, "image");
+    assert.equal(invite.hypeCard?.posterUrl, `/api/hype-card-shares/${imageToken}/media/video`);
+    assert.equal(invite.videos.length, 1);
+    assert.equal(invite.videos[0]?.shareToken, hypeToken);
+    assert.equal(invite.videos[0]?.title, "Game winner");
+    assert.equal(invite.videos[0]?.jerseyNumber, "23");
+    assert.equal(invite.videos[0]?.position, "Guard");
+    assert.equal(invite.videos[0]?.videoUrl, `/api/hype-card-shares/${hypeToken}/media/video`);
     assert.equal(invite.stats?.gamesPlayed, 1);
     assert.equal(invite.stats?.stats.points, 18);
     assert.equal(invite.stats?.games.some((game) => game.opponent === "Stars"), false);
@@ -151,6 +181,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal(hidden.status, 200);
     const hiddenPublic = GetAthleteInviteResponse.parse(await (await fetch(publicUrl)).json());
     assert.equal(hiddenPublic.hypeCard, null);
+    assert.deepEqual(hiddenPublic.videos, []);
     assert.equal(hiddenPublic.stats, null);
     assert.deepEqual(hiddenPublic.scheduleEvents, []);
 
@@ -201,6 +232,108 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
     await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+  }
+});
+
+test("athlete pages expose at most ten active videos newest first and ignore image shares", async () => {
+  const ownerId = `athlete-videos-${randomUUID()}`;
+  const inviteToken = randomBytes(24).toString("base64url");
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInvitesRouter);
+  const server = app.listen(0);
+
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await db.insert(athleteInvitesTable).values({
+      ownerClerkUserId: ownerId,
+      publicToken: inviteToken,
+      athleteName: "Jordan",
+      teamName: "City Hoops",
+      seasonName: "Fall 2026",
+      seasonEndsAt: new Date(Date.now() + 90 * 86_400_000),
+      sport: "basketball",
+      trackerProjectId: null,
+      scheduleProjectId: null,
+      showHypeCard: true,
+      showStats: false,
+      showSchedule: false,
+      paused: false,
+    });
+    const now = Date.now();
+    const imageToken = randomBytes(24).toString("base64url");
+    const videoShares = Array.from({ length: 12 }, (_, index) => ({
+      ownerClerkUserId: ownerId,
+      publicToken: randomBytes(24).toString("base64url"),
+      slug: `moment-${index}`,
+      title: `Jordan · Fallback ${index}`,
+      manifest: {
+        project: {
+          headline: `Moment ${index}`,
+          jerseyNumber: String(20 + index),
+          position: index === 11 ? "Point guard" : "Guard",
+        },
+      },
+      shareMode: "card",
+      mediaType: "video",
+      videoObjectPath: `/test/moment-${index}.mp4`,
+      videoContentType: "video/mp4",
+      videoSize: 1,
+      posterObjectPath: `/test/moment-${index}.jpg`,
+      posterContentType: "image/jpeg",
+      posterSize: 1,
+      expiresAt: new Date(now + 7 * 86_400_000),
+      createdAt: new Date(now + index * 1_000),
+    }));
+    await db.insert(hypeCardSharesTable).values([
+      ...videoShares,
+      {
+        ownerClerkUserId: ownerId,
+        publicToken: imageToken,
+        slug: "newer-image",
+        title: "Newer image",
+        manifest: { project: { headline: "Do not include" } },
+        shareMode: "card",
+        mediaType: "image",
+        videoObjectPath: "/test/newer-image.jpg",
+        videoContentType: "image/jpeg",
+        videoSize: 1,
+        posterObjectPath: "/test/newer-image.jpg",
+        posterContentType: "image/jpeg",
+        posterSize: 1,
+        expiresAt: new Date(now + 7 * 86_400_000),
+        createdAt: new Date(now + 60_000),
+      },
+    ]);
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}`);
+    assert.equal(response.status, 200);
+    const invite = GetAthleteInviteResponse.parse(await response.json());
+    assert.equal(invite.videos.length, 10);
+    assert.equal(invite.videos[0]?.title, "Moment 11");
+    assert.equal(invite.videos[0]?.jerseyNumber, "31");
+    assert.equal(invite.videos[0]?.position, "Point guard");
+    assert.equal(invite.videos.at(-1)?.title, "Moment 2");
+    assert.ok(invite.videos.every((video) => video.videoUrl.endsWith("/media/video")));
+    assert.ok(invite.videos.every((video) => video.posterUrl?.endsWith("/media/poster")));
+    assert.equal(invite.videos.some((video) => video.title === "Do not include"), false);
+    assert.equal(invite.hypeCard?.shareToken, imageToken);
+    assert.equal(invite.hypeCard?.mediaType, "image");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });

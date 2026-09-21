@@ -1259,7 +1259,7 @@ export function HypeCardEditor() {
     trackerProjects,
   ]);
 
-  const { data: hypeShares } = useListHypeCardShares({
+  const { data: hypeShares } = useListHypeCardShares(undefined, {
     query: {
       enabled: Boolean(isSignedIn && isOnline),
       queryKey: getListHypeCardSharesQueryKey(),

@@ -44,6 +44,7 @@ import type {
   HypeCardShareReplyReceipt,
   HypeCardShareUpload,
   HypeCardShareUploadInput,
+  ListHypeCardSharesParams,
   Media,
   MediaUpload,
   MediaUploadCompleteInput,
@@ -1879,20 +1880,27 @@ export const useStopAthleteInviteLive = <TError = ErrorType<UnauthorizedResponse
       return useMutation(getStopAthleteInviteLiveMutationOptions(options));
     }
 
-export const getListHypeCardSharesUrl = () => {
+export const getListHypeCardSharesUrl = (params?: ListHypeCardSharesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/hype-card-shares`
+  return stringifiedParams.length > 0 ? `/api/hype-card-shares?${stringifiedParams}` : `/api/hype-card-shares`
 }
 
 /**
  * @summary List owned Hype Card shares
  */
-export const listHypeCardShares = async ( options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShareList> => {
+export const listHypeCardShares = async (params?: ListHypeCardSharesParams, options?: Parameters<typeof customFetch>[1]): Promise<HypeCardShareList> => {
 
-  return customFetch<HypeCardShareList>(getListHypeCardSharesUrl(),
+  return customFetch<HypeCardShareList>(getListHypeCardSharesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1905,23 +1913,23 @@ export const listHypeCardShares = async ( options?: Parameters<typeof customFetc
 
 
 
-export const getListHypeCardSharesQueryKey = () => {
+export const getListHypeCardSharesQueryKey = (params?: ListHypeCardSharesParams,) => {
     return [
-    `/api/hype-card-shares`
+    `/api/hype-card-shares`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListHypeCardSharesQueryOptions = <TData = Awaited<ReturnType<typeof listHypeCardShares>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListHypeCardSharesQueryOptions = <TData = Awaited<ReturnType<typeof listHypeCardShares>>, TError = ErrorType<UnauthorizedResponse>>(params?: ListHypeCardSharesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListHypeCardSharesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListHypeCardSharesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHypeCardShares>>> = ({ signal }) => listHypeCardShares({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHypeCardShares>>> = ({ signal }) => listHypeCardShares(params, { signal, ...requestOptions });
 
 
 
@@ -1939,11 +1947,11 @@ export type ListHypeCardSharesQueryError = ErrorType<UnauthorizedResponse>
  */
 
 export function useListHypeCardShares<TData = Awaited<ReturnType<typeof listHypeCardShares>>, TError = ErrorType<UnauthorizedResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListHypeCardSharesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHypeCardShares>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListHypeCardSharesQueryOptions(options)
+  const queryOptions = getListHypeCardSharesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

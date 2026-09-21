@@ -14,6 +14,7 @@ import {
   DownloadHypeCardShareParams,
   GetHypeCardShareParams,
   GetHypeCardReplyInboxResponse,
+  ListHypeCardSharesQueryParams,
   ListHypeCardSharesResponse,
   ListHypeCardShareRepliesParams,
   ListHypeCardShareRepliesResponse,
@@ -156,17 +157,25 @@ router.post("/hype-card-shares/upload-url", requireAuth, async (req, res): Promi
   }
 });
 
-router.get("/hype-card-shares", requireAuth, async (_req, res): Promise<void> => {
+router.get("/hype-card-shares", requireAuth, async (req, res): Promise<void> => {
+  const parsed = ListHypeCardSharesQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid Hype Card share filters" });
+    return;
+  }
+  const conditions = [
+    eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+    isNull(hypeCardSharesTable.revokedAt),
+    gt(hypeCardSharesTable.expiresAt, new Date()),
+  ];
+  if (parsed.data.shareMode) conditions.push(eq(hypeCardSharesTable.shareMode, parsed.data.shareMode));
+  if (parsed.data.mediaType) conditions.push(eq(hypeCardSharesTable.mediaType, parsed.data.mediaType));
   const shares = await db
     .select()
     .from(hypeCardSharesTable)
-    .where(and(
-      eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
-      isNull(hypeCardSharesTable.revokedAt),
-      gt(hypeCardSharesTable.expiresAt, new Date()),
-    ))
+    .where(and(...conditions))
     .orderBy(desc(hypeCardSharesTable.createdAt))
-    .limit(25);
+    .limit(parsed.data.limit);
   res.json(ListHypeCardSharesResponse.parse(await Promise.all(shares.map(ownedShareResponse))));
 });
 

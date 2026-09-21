@@ -674,6 +674,20 @@ export interface AthleteInviteHypeCard {
   createdAt: string;
 }
 
+export interface AthleteInviteVideo {
+  shareToken: string;
+  /** @maxLength 160 */
+  title: string;
+  /** @maxLength 40 */
+  jerseyNumber: string;
+  /** @maxLength 100 */
+  position: string;
+  videoUrl: string;
+  /** @nullable */
+  posterUrl: string | null;
+  createdAt: string;
+}
+
 export type AthleteInviteScheduleEventType = typeof AthleteInviteScheduleEventType[keyof typeof AthleteInviteScheduleEventType];
 
 
@@ -741,6 +755,8 @@ export interface PublicAthleteInvite {
   seasonEndsAt: string;
   sport: PublicAthleteInviteSport;
   hypeCard: AthleteInviteHypeCard | null;
+  /** @maxItems 10 */
+  videos: AthleteInviteVideo[];
   stats: HypeCardShareStats | null;
   scheduleEvents: AthleteInviteScheduleEvent[];
   replies: AthleteInviteReply[];
@@ -1224,6 +1240,32 @@ export type UnauthorizedResponse = Error;
  * Resource not found
  */
 export type NotFoundResponse = Error;
+
+export type ListHypeCardSharesParams = {
+shareMode?: ListHypeCardSharesShareMode;
+mediaType?: ListHypeCardSharesMediaType;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type ListHypeCardSharesShareMode = typeof ListHypeCardSharesShareMode[keyof typeof ListHypeCardSharesShareMode];
+
+
+export const ListHypeCardSharesShareMode = {
+  card: 'card',
+  stats: 'stats',
+} as const;
+
+export type ListHypeCardSharesMediaType = typeof ListHypeCardSharesMediaType[keyof typeof ListHypeCardSharesMediaType];
+
+
+export const ListHypeCardSharesMediaType = {
+  image: 'image',
+  video: 'video',
+} as const;
 
 export type GetNotificationSubscriptionStatusParams = {
 /**

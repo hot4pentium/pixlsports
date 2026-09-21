@@ -1008,6 +1008,14 @@ export const GetAthleteInviteParams = zod.object({
   "inviteToken": zod.coerce.string().regex(getAthleteInvitePathInviteTokenRegExp)
 })
 
+export const getAthleteInviteResponseVideosItemTitleMax = 160;
+
+export const getAthleteInviteResponseVideosItemJerseyNumberMax = 40;
+
+export const getAthleteInviteResponseVideosItemPositionMax = 100;
+
+export const getAthleteInviteResponseVideosMax = 10;
+
 export const getAthleteInviteResponseStatsOneGamesPlayedMin = 0;
 
 export const getAthleteInviteResponseStatsOneScoreMin = 0;
@@ -1044,6 +1052,15 @@ export const GetAthleteInviteResponse = zod.object({
   "posterUrl": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 }),zod.null()]),
+  "videos": zod.array(zod.object({
+  "shareToken": zod.string(),
+  "title": zod.string().max(getAthleteInviteResponseVideosItemTitleMax),
+  "jerseyNumber": zod.string().max(getAthleteInviteResponseVideosItemJerseyNumberMax),
+  "position": zod.string().max(getAthleteInviteResponseVideosItemPositionMax),
+  "videoUrl": zod.string(),
+  "posterUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})).max(getAthleteInviteResponseVideosMax),
   "stats": zod.union([zod.object({
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
@@ -1191,6 +1208,17 @@ export const StopAthleteInviteLiveResponse = zod.void()
 /**
  * @summary List owned Hype Card shares
  */
+export const listHypeCardSharesQueryLimitDefault = 25;
+export const listHypeCardSharesQueryLimitMax = 100;
+
+
+
+export const ListHypeCardSharesQueryParams = zod.object({
+  "shareMode": zod.enum(['card', 'stats']).optional(),
+  "mediaType": zod.enum(['image', 'video']).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listHypeCardSharesQueryLimitMax).default(listHypeCardSharesQueryLimitDefault)
+})
+
 export const listHypeCardSharesResponseOneStatsOneGamesPlayedMin = 0;
 
 export const listHypeCardSharesResponseOneStatsOneScoreMin = 0;

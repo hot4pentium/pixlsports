@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Download,
   CalendarPlus,
   Check,
@@ -42,10 +44,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { HypeCardReplyComposer } from './public-hype-card';
+import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const hostedVideoQuery = { shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 };
+const hostedImageQuery = { shareMode: 'card' as const, mediaType: 'image' as const, limit: 1 };
 
 function defaultSeasonEnd() {
   const now = new Date();
@@ -67,6 +72,21 @@ function inviteUrl(token: string) {
 
 function seasonEndIso(value: string) {
   return new Date(`${value}T23:59:59.999`).toISOString();
+}
+
+function hostedVideoLabels(manifest: unknown, fallbackTitle: string) {
+  const source = manifest && typeof manifest === 'object' && !Array.isArray(manifest)
+    ? manifest as Record<string, unknown>
+    : {};
+  const project = source.project && typeof source.project === 'object' && !Array.isArray(source.project)
+    ? source.project as Record<string, unknown>
+    : {};
+  const label = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+  return {
+    title: label(project.headline) || fallbackTitle,
+    jerseyNumber: label(project.jerseyNumber),
+    position: label(project.position),
+  };
 }
 
 export function AthleteInviteManager() {
@@ -99,17 +119,25 @@ export function AthleteInviteManager() {
   const startLive = useStartAthleteInviteLive();
   const stopLive = useStopAthleteInviteLive();
   const deleteHypeCard = useDeleteHypeCardShare();
-  const { data: hypeCardShares, isLoading: hypeCardsLoading } = useListHypeCardShares({
+  const { data: hypeCardShares, isLoading: videosLoading } = useListHypeCardShares(hostedVideoQuery, {
     query: {
       enabled: Boolean(isSignedIn),
-      queryKey: getListHypeCardSharesQueryKey(),
+      queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery),
       staleTime: 10_000,
       refetchOnMount: 'always',
     },
   });
-  const hostedHypeCard = hypeCardShares?.find((share) =>
-    share.shareMode === 'card' && new Date(share.expiresAt).getTime() > Date.now(),
-  ) ?? null;
+  const { data: hostedImages, isLoading: imagesLoading } = useListHypeCardShares(hostedImageQuery, {
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListHypeCardSharesQueryKey(hostedImageQuery),
+      staleTime: 10_000,
+      refetchOnMount: 'always',
+    },
+  });
+  const hypeCardsLoading = videosLoading || imagesLoading;
+  const hostedVideos = hypeCardShares ?? [];
+  const hostedImage = hostedImages?.[0] ?? null;
   useEffect(() => {
     if (!existing) return;
     setAthleteName(existing.athleteName);
@@ -217,33 +245,70 @@ export function AthleteInviteManager() {
       setNotice(detail || 'Game Day Live could not be changed. Start a live game in Stat Tracker first.');
     }
   };
-  const downloadHostedHypeCard = async () => {
-    if (!hostedHypeCard) return;
+  const downloadHostedVideo = async (video: { shareToken: string; slug: string }) => {
     setNotice('');
     try {
-      const blob = await downloadHypeCardShare(hostedHypeCard.shareToken, { responseType: 'blob' });
+      const blob = await downloadHypeCardShare(video.shareToken, { responseType: 'blob' });
       const url = URL.createObjectURL(blob as Blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `${hostedHypeCard.slug}.${hostedHypeCard.mediaType === 'video' ? 'mp4' : 'jpg'}`;
+      anchor.download = `${video.slug}.${(blob as Blob).type === 'video/webm' ? 'webm' : 'mp4'}`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      setNotice('Hosted Hype Card downloaded.');
+      setNotice('Hosted video downloaded.');
     } catch {
-      setNotice('The hosted Hype Card could not be downloaded.');
+      setNotice('The hosted video could not be downloaded.');
     }
   };
-  const removeHostedHypeCard = async () => {
-    if (!hostedHypeCard || !window.confirm('Remove this hosted Hype Card from the Athlete Hype Page? The Hype Page and its other content will stay available.')) return;
+  const removeHostedVideo = async (video: { shareToken: string; title: string }) => {
+    if (!window.confirm(`Remove “${video.title}” from the Athlete Hype Page? The page and its other content will stay available.`)) return;
     setNotice('');
     try {
-      await deleteHypeCard.mutateAsync({ shareToken: hostedHypeCard.shareToken });
-      await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
-      setNotice('Hosted Hype Card removed. The Athlete Hype Page and its other content were not changed.');
+      await deleteHypeCard.mutateAsync({ shareToken: video.shareToken });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery) }),
+        ...(existing
+          ? [queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(existing.inviteToken) })]
+          : []),
+      ]);
+      setNotice('Hosted video removed. The Athlete Hype Page and its other content were not changed.');
     } catch {
-      setNotice('The hosted Hype Card could not be removed.');
+      setNotice('The hosted video could not be removed.');
+    }
+  };
+  const downloadHostedImage = async (image: { shareToken: string; slug: string }) => {
+    setNotice('');
+    try {
+      const blob = await downloadHypeCardShare(image.shareToken, { responseType: 'blob' }) as Blob;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${image.slug}.${blob.type === 'image/png' ? 'png' : 'jpg'}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setNotice('Hosted image Hype Card downloaded.');
+    } catch {
+      setNotice('The hosted image Hype Card could not be downloaded.');
+    }
+  };
+  const removeHostedImage = async (image: { shareToken: string; title: string }) => {
+    if (!window.confirm(`Remove “${image.title}” from the Athlete Hype Page? The page and its other content will stay available.`)) return;
+    setNotice('');
+    try {
+      await deleteHypeCard.mutateAsync({ shareToken: image.shareToken });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(hostedImageQuery) }),
+        ...(existing
+          ? [queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(existing.inviteToken) })]
+          : []),
+      ]);
+      setNotice('Hosted image Hype Card removed. The Athlete Hype Page and its other content were not changed.');
+    } catch {
+      setNotice('The hosted image Hype Card could not be removed.');
     }
   };
 
@@ -254,7 +319,7 @@ export function AthleteInviteManager() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Page</p>
             <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
-            <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Choose a quick Hype Card for one moment, or keep one evolving Hype Page for the athlete’s latest card, finalized stats, schedule, replies, and optional Game Day Live.</p>
+            <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Post video moments to one evolving Hype Page with finalized stats, schedule, replies, and optional Game Day Live.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
@@ -276,7 +341,7 @@ export function AthleteInviteManager() {
               <span>
                 <span className="block text-[10px] font-bold uppercase tracking-[.2em] text-primary">Quick share</span>
                 <span className="mt-2 block font-display text-3xl uppercase">Create a Hype Card</span>
-                <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">Post one favorite moment to this athlete’s Hype Page.</span>
+                <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">Post video moments to this athlete’s highlight carousel.</span>
               </span>
               <ChevronDown className={`mt-2 h-5 w-5 shrink-0 text-primary transition-transform ${hypeCardGuideOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
@@ -286,31 +351,62 @@ export function AthleteInviteManager() {
                 <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
                   <li>Open the Hype Card editor and create the card.</li>
                   <li>Choose Post to Athlete Hype Page when the card is ready.</li>
-                  <li>Return here to download or remove the hosted card.</li>
+                  <li>Return here to download or remove any hosted video.</li>
                 </ol>
                 <Link href="/studio/hype-card" className="mt-4 inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-create-hype-card">
                   Open Hype Card editor →
                 </Link>
                 <div className="mt-5 border-t border-border pt-4" aria-live="polite">
                   {hypeCardsLoading ? (
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking hosted card…</p>
-                  ) : hostedHypeCard ? (
-                    <div className="flex flex-col gap-3" data-testid="hosted-hype-card">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Hosted on Athlete Hype Page</p>
-                        <p className="mt-1 text-sm font-bold" data-testid="hosted-hype-card-title">{hostedHypeCard.title}</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking hosted videos…</p>
+                  ) : hostedVideos.length > 0 ? (
+                    <div data-testid="hosted-video-list">
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Videos on Athlete Hype Page</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{hostedVideos.length} / 10</p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedHypeCard()} data-testid="button-download-hosted-hype-card">
-                          <Download className="mr-2 h-4 w-4" />Download
+                      <ul className="mt-3 divide-y divide-border border-y border-border">
+                        {hostedVideos.map((video) => {
+                          const labels = hostedVideoLabels(video.manifest, video.title);
+                          const details = [labels.jerseyNumber ? `#${labels.jerseyNumber}` : '', labels.position].filter(Boolean).join(' · ');
+                          return (
+                            <li key={video.shareToken} className="py-4" data-testid="hosted-video-item">
+                              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-bold" data-testid="hosted-video-title">{labels.title}</p>
+                                  {details && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{details}</p>}
+                                  <p className="mt-1 text-[10px] text-muted-foreground">Posted {new Date(video.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <div className="flex shrink-0 flex-wrap gap-2">
+                                  <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedVideo(video)} data-testid="button-download-hosted-video">
+                                    <Download className="mr-2 h-4 w-4" />Download
+                                  </Button>
+                                  <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedVideo(video)} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-video">
+                                    <Trash2 className="mr-2 h-4 w-4" />Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium leading-relaxed text-muted-foreground">No hosted videos yet. Your Hype Page, stats, schedule, and replies stay available.</p>
+                  )}
+                  {hostedImage && (
+                    <div className="mt-5 border-t border-border pt-4" data-testid="hosted-image-hype-card">
+                      <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Image Hype Card outside the video carousel</p>
+                      <p className="mt-2 text-sm font-bold">{hostedImage.title}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedImage(hostedImage)}>
+                          <Download className="mr-2 h-4 w-4" />Download image
                         </Button>
-                        <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedHypeCard()} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-hype-card">
-                          <Trash2 className="mr-2 h-4 w-4" />Remove
+                        <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedImage(hostedImage)} disabled={deleteHypeCard.isPending}>
+                          <Trash2 className="mr-2 h-4 w-4" />Delete image
                         </Button>
                       </div>
                     </div>
-                  ) : (
-                    <p className="text-xs font-medium leading-relaxed text-muted-foreground">No hosted Hype Card yet. Your Hype Page, stats, schedule, and replies stay available.</p>
                   )}
                 </div>
               </div>
@@ -355,7 +451,7 @@ export function AthleteInviteManager() {
             <aside className="space-y-5">
               <section className="border border-border bg-card p-5" data-testid="section-visible-athlete-page">
                 <h2 className="font-display text-2xl uppercase">Visible sections</h2>
-                <Toggle label="Latest Hype Card" detail="Shows the newest active hosted Hype Card." checked={showHypeCard} onChange={setShowHypeCard} />
+                <Toggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
                 <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
                 <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
               </section>
@@ -373,12 +469,15 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const inviteToken = params.inviteToken ?? '';
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
   const [trendStatId, setTrendStatId] = useState('');
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const videoCarouselRef = useRef<HTMLOListElement>(null);
   const { data: invite, isLoading, isError } = useGetAthleteInvite(inviteToken, {
     query: { enabled: Boolean(inviteToken), queryKey: getGetAthleteInviteQueryKey(inviteToken), retry: false },
   });
   useEffect(() => {
     setLocalReplies([]);
     setTrendStatId('');
+    setActiveVideoIndex(0);
   }, [inviteToken]);
   useEffect(() => {
     if (!invite) return;
@@ -412,6 +511,30 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const trendDirection = latestTrend !== undefined && previousTrend !== undefined
     ? latestTrend > previousTrend ? 'up' : latestTrend < previousTrend ? 'down' : 'flat'
     : 'flat';
+  const moveToVideo = (index: number) => {
+    const nextIndex = Math.max(0, Math.min(invite.videos.length - 1, index));
+    const carousel = videoCarouselRef.current;
+    const item = carousel?.children.item(nextIndex) as HTMLElement | null;
+    if (carousel && item) carousel.scrollTo({ left: item.offsetLeft - carousel.offsetLeft, behavior: 'smooth' });
+    setActiveVideoIndex(nextIndex);
+  };
+  const updateActiveVideo = () => {
+    const carousel = videoCarouselRef.current;
+    if (!carousel) return;
+    const items = Array.from(carousel.children) as HTMLElement[];
+    setActiveVideoIndex(getActiveCarouselIndex({
+      scrollLeft: carousel.scrollLeft,
+      clientWidth: carousel.clientWidth,
+      scrollWidth: carousel.scrollWidth,
+      containerLeft: carousel.getBoundingClientRect().left,
+      itemLefts: items.map((item) => item.getBoundingClientRect().left),
+    }));
+  };
+  const keepOneVideoPlaying = (current: HTMLVideoElement) => {
+    videoCarouselRef.current?.querySelectorAll('video').forEach((video) => {
+      if (video !== current) video.pause();
+    });
+  };
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
@@ -422,13 +545,79 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           <p className="mt-4 text-sm font-bold uppercase tracking-widest text-white/45">{invite.teamName || 'Athlete season page'}</p>
         </header>
 
-        {invite.hypeCard && (
-          <section className="mt-10 grid overflow-hidden border border-white/10 bg-white/5 lg:grid-cols-[minmax(0,1fr)_360px]" aria-labelledby="latest-hype-card">
+        <section className="mt-10" aria-labelledby="athlete-video-highlights">
+          <div className="flex items-end justify-between gap-5">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Latest moments</p>
+              <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Video highlights</h2>
+            </div>
+            {invite.videos.length > 1 && (
+              <div className="flex shrink-0 items-center gap-2">
+                <button type="button" onClick={() => moveToVideo(activeVideoIndex - 1)} disabled={activeVideoIndex === 0} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous video" data-testid="button-previous-athlete-video"><ChevronLeft className="h-5 w-5" /></button>
+                <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite.videos.length}</span>
+                <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
+              </div>
+            )}
+          </div>
+          {invite.videos.length > 0 ? (
+            <ol
+              ref={videoCarouselRef}
+              className="mt-5 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+              aria-label="Athlete video highlights"
+              tabIndex={0}
+              onScroll={updateActiveVideo}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === 'ArrowLeft') {
+                  event.preventDefault();
+                  moveToVideo(activeVideoIndex - 1);
+                }
+                if (event.key === 'ArrowRight') {
+                  event.preventDefault();
+                  moveToVideo(activeVideoIndex + 1);
+                }
+              }}
+              data-testid="athlete-video-carousel"
+            >
+              {invite.videos.map((video, index) => {
+                const details = [video.jerseyNumber ? `#${video.jerseyNumber}` : '', video.position].filter(Boolean).join(' · ');
+                return (
+                  <li key={video.shareToken} className={`shrink-0 snap-start ${invite.videos.length === 1 ? 'w-full' : 'w-[88%] sm:w-[72%] lg:w-[62%]'}`} aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
+                    <video
+                      src={video.videoUrl}
+                      poster={video.posterUrl ?? undefined}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label={`Play ${video.title}`}
+                      className="aspect-video w-full bg-black object-contain"
+                      onPlay={(event) => keepOneVideoPlaying(event.currentTarget)}
+                      data-testid="athlete-video-player"
+                    />
+                    <div className="border-l-2 border-primary px-4 py-4">
+                      <p className="text-[9px] font-bold uppercase tracking-[.2em] text-primary">Moment {String(index + 1).padStart(2, '0')}</p>
+                      <h3 className="mt-2 font-display text-3xl uppercase leading-none">{video.title}</h3>
+                      {details && <p className="mt-3 text-xs font-bold uppercase tracking-[.16em] text-white/55">{details}</p>}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <div className="mt-5 border border-white/10 bg-white/5 p-7" data-testid="athlete-video-empty-state">
+              <p className="font-display text-3xl uppercase">Highlights are coming</p>
+              <p className="mt-2 text-sm text-white/50">Check back after the next big moment.</p>
+            </div>
+          )}
+        </section>
+
+        {invite.hypeCard?.mediaType === 'image' && (
+          <section className="mt-10 grid overflow-hidden border border-white/10 bg-white/5 lg:grid-cols-[minmax(0,1fr)_360px]" aria-labelledby="latest-image-hype-card" data-testid="athlete-image-hype-card">
             {invite.hypeCard.posterUrl && <img src={invite.hypeCard.posterUrl} alt="" className="aspect-video h-full max-h-[460px] w-full bg-black object-contain" />}
             <div className="flex flex-col justify-center p-6 sm:p-8">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Latest Hype Card</p>
-              <h2 id="latest-hype-card" className="mt-3 font-display text-4xl uppercase leading-none">{invite.hypeCard.title}</h2>
-              <Link href={`/h/${invite.hypeCard.shareToken}`} className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Open Hype Card <ExternalLink className="h-4 w-4" /></Link>
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Image Hype Card</p>
+              <h2 id="latest-image-hype-card" className="mt-3 font-display text-4xl uppercase leading-none">{invite.hypeCard.title}</h2>
+              <Link href={`/h/${invite.hypeCard.shareToken}`} className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Open image Hype Card <ExternalLink className="h-4 w-4" /></Link>
             </div>
           </section>
         )}
@@ -506,13 +695,13 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </ol>
               </section>
             )}
-            {invite.hypeCard && (
+            {invite.videos[0] && (
               <section className="border border-primary/40 bg-primary/10 p-5 sm:p-7" aria-labelledby="athlete-reply-composer">
                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">For the athlete</p>
                 <h2 id="athlete-reply-composer" className="mt-2 font-display text-3xl uppercase">Send some hype</h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/60">Choose a reaction and add an optional message without leaving this athlete page.</p>
                 <HypeCardReplyComposer
-                  shareToken={invite.hypeCard.shareToken}
+                  shareToken={invite.videos[0].shareToken}
                   className="mt-5 border-t border-primary/20 pt-5"
                   onSent={(reply) => {
                     setLocalReplies((current) => [{ ...reply, createdAt: new Date().toISOString() }, ...current]);
@@ -535,7 +724,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </ul>
               </section>
             )}
-            {!invite.hypeCard && !invite.stats && invite.scheduleEvents.length === 0 && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
+            {invite.videos.length === 0 && !invite.stats && invite.scheduleEvents.length === 0 && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
           </div>
           <aside className="h-fit border border-white/10 bg-[#11141b] p-5 sm:p-6">
             <Smartphone className="h-7 w-7 text-primary" />

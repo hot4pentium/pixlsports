@@ -140,6 +140,30 @@ function cleanLiveGame(payload: unknown, fallbackId: string) {
   };
 }
 
+function cleanVideoLabel(value: unknown, maxLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
+  const manifest = share.manifest && typeof share.manifest === "object" && !Array.isArray(share.manifest)
+    ? share.manifest as Record<string, unknown>
+    : {};
+  const project = manifest.project && typeof manifest.project === "object" && !Array.isArray(manifest.project)
+    ? manifest.project as Record<string, unknown>
+    : {};
+  return {
+    shareToken: share.publicToken,
+    title: cleanVideoLabel(project.headline, 160) || cleanVideoLabel(share.title, 160) || "Highlight",
+    jerseyNumber: cleanVideoLabel(project.jerseyNumber, 40),
+    position: cleanVideoLabel(project.position, 100),
+    videoUrl: `/api/hype-card-shares/${share.publicToken}/media/video`,
+    posterUrl: share.posterObjectPath
+      ? `/api/hype-card-shares/${share.publicToken}/media/poster`
+      : null,
+    createdAt: share.createdAt,
+  };
+}
+
 router.get("/athlete-invites", requireAuth, async (_req, res): Promise<void> => {
   const invites = await db
     .select()
@@ -197,7 +221,7 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     return;
   }
 
-  const [trackerProject, scheduleProject, hypeCards, liveShare] = await Promise.all([
+  const [trackerProject, scheduleProject, latestImages, videos, liveShare] = await Promise.all([
     invite.showStats && invite.trackerProjectId
       ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
       : null,
@@ -208,9 +232,19 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
       ? db.select().from(hypeCardSharesTable).where(and(
         eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
         eq(hypeCardSharesTable.shareMode, "card"),
+        eq(hypeCardSharesTable.mediaType, "image"),
         isNull(hypeCardSharesTable.revokedAt),
         gt(hypeCardSharesTable.expiresAt, new Date()),
-      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(12)
+      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(1)
+      : Promise.resolve([]),
+    invite.showHypeCard
+      ? db.select().from(hypeCardSharesTable).where(and(
+        eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+        eq(hypeCardSharesTable.shareMode, "card"),
+        eq(hypeCardSharesTable.mediaType, "video"),
+        isNull(hypeCardSharesTable.revokedAt),
+        gt(hypeCardSharesTable.expiresAt, new Date()),
+      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(10)
       : Promise.resolve([]),
     invite.liveTrackerShareToken
       ? db.select().from(statTrackerSharesTable).where(and(
@@ -219,10 +253,11 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
       )).then(([share]) => share ?? null)
       : Promise.resolve(null),
   ]);
-  const latestHypeCard = hypeCards[0] ?? null;
-  const replies = hypeCards.length
+  const latestImage = latestImages[0] ?? null;
+  const latestVideo = videos[0] ?? null;
+  const replies = videos.length
     ? await db.select().from(hypeCardShareRepliesTable).where(
-      inArray(hypeCardShareRepliesTable.shareId, hypeCards.map((share) => share.id)),
+      inArray(hypeCardShareRepliesTable.shareId, videos.map((share) => share.id)),
     ).orderBy(desc(hypeCardShareRepliesTable.createdAt)).limit(50)
     : [];
   const stats = trackerProject && isHypeCardSport(invite.sport)
@@ -238,7 +273,8 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     invite.updatedAt.getTime(),
     trackerProject?.updatedAt.getTime() ?? 0,
     scheduleProject?.updatedAt.getTime() ?? 0,
-    latestHypeCard?.createdAt.getTime() ?? 0,
+    latestImage?.createdAt.getTime() ?? 0,
+    latestVideo?.createdAt.getTime() ?? 0,
   ));
 
   res.json(GetAthleteInviteResponse.parse({
@@ -248,13 +284,16 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     seasonName: invite.seasonName,
     seasonEndsAt: invite.seasonEndsAt,
     sport: invite.sport,
-    hypeCard: latestHypeCard ? {
-      shareToken: latestHypeCard.publicToken,
-      title: latestHypeCard.title,
-      mediaType: latestHypeCard.mediaType,
-      posterUrl: `/api/hype-card-shares/${latestHypeCard.publicToken}/media/poster`,
-      createdAt: latestHypeCard.createdAt,
+    hypeCard: latestImage ? {
+      shareToken: latestImage.publicToken,
+      title: latestImage.title,
+      mediaType: "image",
+      posterUrl: latestImage.videoObjectPath
+        ? `/api/hype-card-shares/${latestImage.publicToken}/media/video`
+        : null,
+      createdAt: latestImage.createdAt,
     } : null,
+    videos: videos.map(athleteVideoResponse),
     stats,
     scheduleEvents,
     replies: replies.map((reply) => ({

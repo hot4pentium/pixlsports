@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import {
   CreateHypeCardShareReplyResponse,
+  ListHypeCardSharesResponse,
   ListHypeCardShareRepliesResponse,
 } from "@workspace/api-zod";
 import hypeCardSharesRouter from "./routes/hypeCardShares";
@@ -115,6 +116,94 @@ test("anonymous replies enforce ownership, read state, active shares, and an ato
     await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
+  }
+});
+
+test("owned share listing can match the Athlete Hype Page video window", async () => {
+  const ownerId = `hype-list-owner-${crypto.randomUUID()}`;
+  const now = Date.now();
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { warn: () => undefined, error: () => undefined };
+    next();
+  });
+  app.use("/api", hypeCardSharesRouter);
+  const server = app.listen(0);
+
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "supporter",
+      accessMode: "full",
+    });
+    await db.insert(hypeCardSharesTable).values([
+      {
+        ownerClerkUserId: ownerId,
+        publicToken: randomBytes(24).toString("base64url"),
+        slug: "older-video",
+        title: "Older video",
+        manifest: {},
+        shareMode: "card",
+        mediaType: "video",
+        videoObjectPath: "/test/older-video.mp4",
+        videoContentType: "video/mp4",
+        videoSize: 1,
+        expiresAt: new Date(now + 60_000),
+        createdAt: new Date(now),
+      },
+      {
+        ownerClerkUserId: ownerId,
+        publicToken: randomBytes(24).toString("base64url"),
+        slug: "newer-image",
+        title: "Newer image",
+        manifest: {},
+        shareMode: "card",
+        mediaType: "image",
+        videoObjectPath: "/test/newer-image.jpg",
+        videoContentType: "image/jpeg",
+        videoSize: 1,
+        expiresAt: new Date(now + 60_000),
+        createdAt: new Date(now + 1_000),
+      },
+      {
+        ownerClerkUserId: ownerId,
+        publicToken: randomBytes(24).toString("base64url"),
+        slug: "newest-video",
+        title: "Newest video",
+        manifest: {},
+        shareMode: "card",
+        mediaType: "video",
+        videoObjectPath: "/test/newest-video.webm",
+        videoContentType: "video/webm",
+        videoSize: 1,
+        expiresAt: new Date(now + 60_000),
+        createdAt: new Date(now + 2_000),
+      },
+    ]);
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}/api/hype-card-shares`;
+    const response = await fetch(`${baseUrl}?shareMode=card&mediaType=video&limit=1`, {
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(response.status, 200);
+    const shares = ListHypeCardSharesResponse.parse(await response.json());
+    assert.equal(shares.length, 1);
+    assert.equal(shares[0]?.title, "Newest video");
+    assert.equal(shares[0]?.mediaType, "video");
+    assert.equal((await fetch(`${baseUrl}?limit=0`, {
+      headers: { "x-test-user": ownerId },
+    })).status, 400);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });
 
