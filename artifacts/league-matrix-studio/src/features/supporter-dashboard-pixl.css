@@ -594,7 +594,7 @@
     grid-column: 1 / -1;
     position: relative;
     display: grid;
-    grid-template-columns: minmax(18rem, .82fr) minmax(0, 1.6fr);
+    grid-template-columns: minmax(22rem, .95fr) minmax(0, 1.25fr);
     overflow: hidden;
     border: 1px solid rgba(85, 164, 255, .3);
     border-radius: 28px;
@@ -621,6 +621,7 @@
     position: relative;
     z-index: 1;
     grid-column: 1;
+    grid-row: 1;
     display: block;
     min-width: 0;
     border: 0;
@@ -656,11 +657,23 @@
     display: flex;
     min-height: 100%;
     align-items: center;
+    gap: 22px;
     padding: 32px 28px;
   }
 
   .pixl-dashboard .dashboard-hero-banner > .dashboard-header [data-testid="athlete-summary"] > .relative {
     background: linear-gradient(135deg, rgba(16, 43, 77, .7), rgba(11, 31, 58, .46));
+  }
+
+  .pixl-dashboard .dashboard-hero-banner > .dashboard-header [data-testid="athlete-summary"] > .relative > .relative.z-10 {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+  }
+
+  .pixl-dashboard .dashboard-hero-banner > .dashboard-header [data-testid="athlete-summary"] > .relative > .min-w-0 {
+    min-width: 0;
+    padding-right: 36px;
   }
 
   .pixl-dashboard .dashboard-hero-banner .dashboard-welcome {
@@ -672,9 +685,12 @@
   }
 
   .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] h2 {
-    max-width: 12ch;
+    max-width: none;
     font-size: clamp(2.7rem, 4.3vw, 5rem);
     letter-spacing: -.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] .rounded-full {
@@ -688,6 +704,7 @@
     position: relative;
     z-index: 1;
     grid-column: 2;
+    grid-row: 1 !important;
     min-height: 0;
     height: 100%;
     border: 0;
