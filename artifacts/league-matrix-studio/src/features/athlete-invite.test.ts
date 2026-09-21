@@ -94,8 +94,6 @@ test('public Athlete Hype Pages present direct videos in an accessible horizonta
   assert.match(source, /aria-label="Previous video"/);
   assert.match(source, /aria-label="Next video"/);
   assert.match(source, /data-testid="athlete-video-empty-state"/);
-  assert.match(source, /invite\.hypeCard\?\.mediaType === 'image'/);
-  assert.match(source, /data-testid="athlete-image-hype-card"/);
-  assert.match(source, /Open image Hype Card/);
-  assert.doesNotMatch(source, /src=\{invite\.hypeCard\.posterUrl\}[\s\S]*?data-testid="athlete-video-player"/);
+  assert.doesNotMatch(source, /data-testid="athlete-image-hype-card"/);
+  assert.doesNotMatch(source, /Open image Hype Card/);
 });

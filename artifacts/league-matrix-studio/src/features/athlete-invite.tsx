@@ -611,17 +611,6 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           )}
         </section>
 
-        {invite.hypeCard?.mediaType === 'image' && (
-          <section className="mt-10 grid overflow-hidden border border-white/10 bg-white/5 lg:grid-cols-[minmax(0,1fr)_360px]" aria-labelledby="latest-image-hype-card" data-testid="athlete-image-hype-card">
-            {invite.hypeCard.posterUrl && <img src={invite.hypeCard.posterUrl} alt="" className="aspect-video h-full max-h-[460px] w-full bg-black object-contain" />}
-            <div className="flex flex-col justify-center p-6 sm:p-8">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Image Hype Card</p>
-              <h2 id="latest-image-hype-card" className="mt-3 font-display text-4xl uppercase leading-none">{invite.hypeCard.title}</h2>
-              <Link href={`/h/${invite.hypeCard.shareToken}`} className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Open image Hype Card <ExternalLink className="h-4 w-4" /></Link>
-            </div>
-          </section>
-        )}
-
         {invite.liveGame && (
           <section className="mt-6 flex flex-col gap-4 border border-primary/50 bg-primary/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="athlete-game-day-live">
             <div>
