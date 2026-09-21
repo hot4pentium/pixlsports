@@ -160,6 +160,7 @@ async function openPage(
   connection: DevToolsConnection,
   url: string,
   apiOrigin: string,
+  viewport: { width: number; height: number; mobile: boolean },
 ) {
   const target = await connection.send<{ targetId: string }>("Target.createTarget", { url: "about:blank" });
   const attached = await connection.send<{ sessionId: string }>("Target.attachToTarget", {
@@ -182,6 +183,12 @@ async function openPage(
         };
       })();
     `,
+  }, sessionId);
+  await connection.send("Emulation.setDeviceMetricsOverride", {
+    width: viewport.width,
+    height: viewport.height,
+    deviceScaleFactor: 1,
+    mobile: viewport.mobile,
   }, sessionId);
   await connection.send("Page.navigate", { url }, sessionId);
   return { sessionId, targetId: target.targetId };
@@ -298,8 +305,18 @@ test("two checklist collaborators recover a stale revision and keep it after rel
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl);
 
-    const first = await openPage(connection, `http://127.0.0.1:${vitePort}/checklist/${shareToken}`, api.address);
-    const second = await openPage(connection, `http://127.0.0.1:${vitePort}/checklist/${shareToken}`, api.address);
+    const first = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/checklist/${shareToken}`,
+      api.address,
+      { width: 390, height: 844, mobile: true },
+    );
+    const second = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/checklist/${shareToken}`,
+      api.address,
+      { width: 1280, height: 900, mobile: false },
+    );
     pageSessions.push(first, second);
     await Promise.all(pageSessions.map(({ sessionId }) => waitFor(
       connection!,
@@ -308,6 +325,26 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       (body) => body.includes("SHARED WORKSPACE"),
       30_000,
     )));
+
+    for (const { sessionId } of pageSessions) {
+      const layout = await connection.evaluate<{
+        toolbarVisible: boolean;
+        firstItemTop: number;
+        scrollWidth: number;
+        viewportWidth: number;
+      }>(`(() => {
+        const firstItem = document.querySelector('[data-testid="checklist-items"] [data-completed]');
+        return {
+          toolbarVisible: Boolean(document.querySelector('[data-testid="studio-tool-toolbar"]')),
+          firstItemTop: firstItem?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+          scrollWidth: document.documentElement.scrollWidth,
+          viewportWidth: window.innerWidth,
+        };
+      })()`, sessionId);
+      assert.equal(layout.toolbarVisible, false);
+      assert.ok(layout.firstItemTop < 700, `First checklist item should be near the opening viewport: ${JSON.stringify(layout)}`);
+      assert.ok(layout.scrollWidth <= layout.viewportWidth, `Checklist page should not overflow horizontally: ${JSON.stringify(layout)}`);
+    }
 
     await connection.evaluate(
       "document.querySelector('[data-testid=\"button-checklist-toggle-uniform\"]').click()",
