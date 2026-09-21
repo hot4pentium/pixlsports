@@ -25,6 +25,7 @@ import type {
   AccountLifecycle,
   AccountUsageConsumeInput,
   AthleteInviteInput,
+  AthleteInviteLiveSession,
   BadRequestResponse,
   BillingWebhookResponse,
   ChecklistConflict,
@@ -1410,7 +1411,7 @@ export const getCreateAthleteInviteUrl = () => {
 }
 
 /**
- * @summary Create an evolving athlete invite
+ * @summary Create an Athlete Hype Page
  */
 export const createAthleteInvite = async (athleteInviteInput: AthleteInviteInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnedAthleteInvite> => {
 
@@ -1476,7 +1477,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateAthleteInviteMutationVariables = {data: BodyType<AthleteInviteInput>}
 
     /**
- * @summary Create an evolving athlete invite
+ * @summary Create an Athlete Hype Page
  */
 export const useCreateAthleteInvite = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInvite>>, TError,CreateAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1498,7 +1499,7 @@ export const getGetAthleteInviteUrl = (inviteToken: string,) => {
 }
 
 /**
- * @summary Get an active evolving athlete invite
+ * @summary Get a public Athlete Hype Page
  */
 export const getAthleteInvite = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicAthleteInvite> => {
 
@@ -1545,7 +1546,7 @@ export type GetAthleteInviteQueryError = ErrorType<NotFoundResponse>
 
 
 /**
- * @summary Get an active evolving athlete invite
+ * @summary Get a public Athlete Hype Page
  */
 
 export function useGetAthleteInvite<TData = Awaited<ReturnType<typeof getAthleteInvite>>, TError = ErrorType<NotFoundResponse>>(
@@ -1575,7 +1576,7 @@ export const getUpdateAthleteInviteUrl = (inviteToken: string,) => {
 }
 
 /**
- * @summary Update an owned evolving athlete invite without changing its URL
+ * @summary Update an owned Athlete Hype Page without changing its URL
  */
 export const updateAthleteInvite = async (inviteToken: string,
     athleteInviteInput: AthleteInviteInput, options?: Parameters<typeof customFetch>[1]): Promise<OwnedAthleteInvite> => {
@@ -1642,7 +1643,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateAthleteInviteMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteInput>}
 
     /**
- * @summary Update an owned evolving athlete invite without changing its URL
+ * @summary Update an owned Athlete Hype Page without changing its URL
  */
 export const useUpdateAthleteInvite = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInvite>>, TError,UpdateAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1664,7 +1665,8 @@ export const getDeleteAthleteInviteUrl = (inviteToken: string,) => {
 }
 
 /**
- * @summary Revoke an owned evolving athlete invite
+ * Pauses the page without changing its stable URL. The page can be resumed with the update operation.
+ * @summary Pause an owned Athlete Hype Page
  */
 export const deleteAthleteInvite = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
@@ -1716,7 +1718,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteAthleteInviteMutationVariables = {inviteToken: string}
 
     /**
- * @summary Revoke an owned evolving athlete invite
+ * @summary Pause an owned Athlete Hype Page
  */
 export const useDeleteAthleteInvite = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInvite>>, TError,DeleteAthleteInviteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1727,6 +1729,154 @@ export const useDeleteAthleteInvite = <TError = ErrorType<UnauthorizedResponse |
         TContext
       > => {
       return useMutation(getDeleteAthleteInviteMutationOptions(options));
+    }
+
+export const getStartAthleteInviteLiveUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live`
+}
+
+/**
+ * @summary Start a short-lived Game Day Live session for an Athlete Hype Page
+ */
+export const startAthleteInviteLive = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteLiveSession> => {
+
+  return customFetch<AthleteInviteLiveSession>(getStartAthleteInviteLiveUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStartAthleteInviteLiveMutationKey = () => ['startAthleteInviteLive'] as const;
+
+export const getStartAthleteInviteLiveMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAthleteInviteLive>>, TError,StartAthleteInviteLiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startAthleteInviteLive>>, TError,StartAthleteInviteLiveMutationVariables, TContext> => {
+
+const mutationKey = getStartAthleteInviteLiveMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAthleteInviteLive>>, StartAthleteInviteLiveMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  startAthleteInviteLive(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartAthleteInviteLiveMutationResult = NonNullable<Awaited<ReturnType<typeof startAthleteInviteLive>>>
+
+    export type StartAthleteInviteLiveMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>
+    export type StartAthleteInviteLiveMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Start a short-lived Game Day Live session for an Athlete Hype Page
+ */
+export const useStartAthleteInviteLive = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAthleteInviteLive>>, TError,StartAthleteInviteLiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startAthleteInviteLive>>,
+        TError,
+        StartAthleteInviteLiveMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartAthleteInviteLiveMutationOptions(options));
+    }
+
+export const getStopAthleteInviteLiveUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live`
+}
+
+/**
+ * @summary Stop Game Day Live for an Athlete Hype Page
+ */
+export const stopAthleteInviteLive = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getStopAthleteInviteLiveUrl(inviteToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopAthleteInviteLiveMutationKey = () => ['stopAthleteInviteLive'] as const;
+
+export const getStopAthleteInviteLiveMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopAthleteInviteLive>>, TError,StopAthleteInviteLiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopAthleteInviteLive>>, TError,StopAthleteInviteLiveMutationVariables, TContext> => {
+
+const mutationKey = getStopAthleteInviteLiveMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopAthleteInviteLive>>, StopAthleteInviteLiveMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  stopAthleteInviteLive(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopAthleteInviteLiveMutationResult = NonNullable<Awaited<ReturnType<typeof stopAthleteInviteLive>>>
+
+    export type StopAthleteInviteLiveMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type StopAthleteInviteLiveMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Stop Game Day Live for an Athlete Hype Page
+ */
+export const useStopAthleteInviteLive = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopAthleteInviteLive>>, TError,StopAthleteInviteLiveMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopAthleteInviteLive>>,
+        TError,
+        StopAthleteInviteLiveMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStopAthleteInviteLiveMutationOptions(options));
     }
 
 export const getListHypeCardSharesUrl = () => {

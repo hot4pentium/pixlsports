@@ -8,7 +8,7 @@ import {
   ExternalLink,
   AlertTriangle,
   Link2,
-  Link2Off,
+  Radio,
   MapPin,
   Share2,
   Smartphone,
@@ -21,10 +21,11 @@ import {
   getGetAthleteInviteQueryKey,
   getListProjectsQueryKey,
   useCreateAthleteInvite,
-  useDeleteAthleteInvite,
   useGetAthleteInvite,
   useListAthleteInvites,
   useListProjects,
+  useStartAthleteInviteLive,
+  useStopAthleteInviteLive,
   useUpdateAthleteInvite,
   type AthleteInviteInput,
   type AthleteInviteScheduleEvent,
@@ -87,7 +88,8 @@ export function AthleteInviteManager() {
   const [notice, setNotice] = useState('');
   const createInvite = useCreateAthleteInvite();
   const updateInvite = useUpdateAthleteInvite();
-  const deleteInvite = useDeleteAthleteInvite();
+  const startLive = useStartAthleteInviteLive();
+  const stopLive = useStopAthleteInviteLive();
   const missingTrackerProject = Boolean(
     projectsLoaded
     && trackerProjectId !== 'none'
@@ -139,6 +141,7 @@ export function AthleteInviteManager() {
     showHypeCard,
     showStats,
     showSchedule,
+    paused: existing?.paused ?? false,
   });
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -170,11 +173,36 @@ export function AthleteInviteManager() {
     if (navigator.share) await navigator.share({ title: `${existing.athleteName} athlete page`, text: `Follow ${existing.athleteName}'s season.`, url });
     else await copy();
   };
-  const revoke = async () => {
-    if (!existing || !window.confirm('Revoke this athlete invite? The old URL will stop working immediately.')) return;
-    await deleteInvite.mutateAsync({ inviteToken: existing.inviteToken });
-    await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
-    setNotice('Invite revoked. Creating another page will generate a new URL.');
+  const toggleAvailability = async () => {
+    if (!existing) return;
+    const paused = !existing.paused;
+    try {
+      await updateInvite.mutateAsync({ inviteToken: existing.inviteToken, data: { ...payload(), paused } });
+      await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+      setNotice(paused
+        ? 'Hype Page paused. The same URL is ready to resume.'
+        : 'Hype Page resumed. The same URL is live again.');
+    } catch {
+      setNotice('The Hype Page availability could not be changed.');
+    }
+  };
+  const toggleLive = async () => {
+    if (!existing) return;
+    try {
+      if (existing.liveTrackerShareToken) {
+        await stopLive.mutateAsync({ inviteToken: existing.inviteToken });
+        setNotice('Game Day Live stopped. The Hype Page now shows finalized stats.');
+      } else {
+        await startLive.mutateAsync({ inviteToken: existing.inviteToken });
+        setNotice('Game Day Live started for this Hype Page.');
+      }
+      await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+    } catch (error) {
+      const detail = error && typeof error === 'object' && 'data' in error
+        ? (error as { data?: { error?: string } }).data?.error
+        : null;
+      setNotice(detail || 'Game Day Live could not be changed. Start a live game in Stat Tracker first.');
+    }
   };
 
   return (
@@ -182,12 +210,26 @@ export function AthleteInviteManager() {
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8">
         <div className="flex flex-col justify-between gap-5 border-l-4 border-primary pl-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete invite</p>
-            <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One page for the season</h1>
-            <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Share one owner-controlled URL. It updates when finalized stats, Hype Cards, or the selected schedule project change.</p>
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Page</p>
+            <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
+            <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Choose a quick Hype Card for one moment, or keep one evolving Hype Page for the athlete’s latest card, finalized stats, schedule, replies, and optional Game Day Live.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
+
+        <section className="mt-8 grid gap-4 md:grid-cols-2" aria-label="Sharing paths">
+          <Link href="/studio/hype-card" className="group border border-border bg-card p-5 transition-colors hover:border-primary" data-testid="link-create-hype-card">
+            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Quick share</p>
+            <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Card</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Share one favorite moment with a focused, reply-ready card.</p>
+            <span className="mt-4 inline-flex text-xs font-bold uppercase tracking-widest text-primary">Open Hype Card editor →</span>
+          </Link>
+          <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
+            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
+            <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
+          </div>
+        </section>
 
         {existing && (
           <section className="mt-8 border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="Active athlete invite">
@@ -198,7 +240,15 @@ export function AthleteInviteManager() {
               <Button type="button" className="rounded-none" onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button>
               <Link href={`/player/${existing.inviteToken}`} target="_blank" className="inline-flex min-h-10 items-center justify-center border border-border px-3 text-xs font-bold uppercase tracking-widest"><ExternalLink className="mr-2 h-4 w-4" />Open</Link>
             </div>
-            <p className="mt-3 text-xs font-medium text-muted-foreground">Active through {new Date(existing.seasonEndsAt).toLocaleDateString()}. Updating the settings below does not change this URL.</p>
+            <p className="mt-3 text-xs font-medium text-muted-foreground">{existing.paused ? 'Paused — this stable URL is unavailable until you resume it.' : 'Live — this stable URL stays with the athlete for the life of the account.'} Updating the settings below does not change this URL.</p>
+            <div className="mt-5 flex flex-wrap gap-3 border-t border-border pt-5">
+              <Button type="button" variant={existing.paused ? 'default' : 'outline'} onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none text-[10px] font-bold uppercase tracking-widest">
+                <Link2 className="mr-2 h-4 w-4" />{existing.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
+              </Button>
+              <Button type="button" variant="outline" onClick={toggleLive} disabled={startLive.isPending || stopLive.isPending || existing.paused} className="rounded-none text-[10px] font-bold uppercase tracking-widest">
+                <Radio className="mr-2 h-4 w-4" />{existing.liveTrackerShareToken ? 'Stop Game Day Live' : 'Start Game Day Live'}
+              </Button>
+            </div>
           </section>
         )}
 
@@ -209,7 +259,7 @@ export function AthleteInviteManager() {
               <Field label="Athlete name" value={athleteName} onChange={setAthleteName} required />
               <Field label="Team" value={teamName} onChange={setTeamName} />
               <Field label="Season" value={seasonName} onChange={setSeasonName} placeholder="Fall 2026" required />
-              <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Season ends</Label><Input type="date" min={new Date().toISOString().slice(0, 10)} value={seasonEndsAt} onChange={(event) => setSeasonEndsAt(event.target.value)} className="mt-2 h-12 rounded-none" required /></label>
+              <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Season context ends</Label><Input type="date" value={seasonEndsAt} onChange={(event) => setSeasonEndsAt(event.target.value)} className="mt-2 h-12 rounded-none" required /></label>
             </div>
             <label className="block"><Label className="text-xs font-bold uppercase tracking-widest">Sport</Label><select value={sport} onChange={(event) => setSport(event.target.value as Exclude<Sport, 'softball'>)} className="mt-2 h-12 w-full border border-border bg-background px-3 text-sm font-bold">{supportedSports.map((item) => <option key={item} value={item}>{getSportRule(item).label}</option>)}</select></label>
             {missingTrackerProject && (
@@ -242,8 +292,7 @@ export function AthleteInviteManager() {
               <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
               <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
             </section>
-            <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update athlete page' : 'Create athlete page'}</Button>
-            {existing && <Button type="button" variant="outline" onClick={revoke} disabled={deleteInvite.isPending} className="h-12 w-full rounded-none border-destructive/50 text-destructive"><Link2Off className="mr-2 h-4 w-4" />Revoke invite</Button>}
+            <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
             {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
           </aside>
         </form>
@@ -287,6 +336,17 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           </section>
         )}
 
+        {invite.liveGame && (
+          <section className="mt-6 flex flex-col gap-4 border border-primary/50 bg-primary/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6" aria-labelledby="athlete-game-day-live">
+            <div>
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-primary"><Radio className="h-4 w-4" /> Game Day Live</p>
+              <h2 id="athlete-game-day-live" className="mt-2 font-display text-3xl uppercase">Follow this game now</h2>
+              <p className="mt-2 text-sm leading-relaxed text-white/60">A short-lived live scoreboard is active. When it ends, this page returns to finalized stats.</p>
+            </div>
+            <Link href={`/live/${invite.liveGame.shareToken}`} className="inline-flex min-h-11 items-center justify-center gap-2 border border-primary px-5 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground">Open live scoreboard <ExternalLink className="h-4 w-4" /></Link>
+          </section>
+        )}
+
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-6">
             {invite.stats && (
@@ -309,6 +369,22 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </ol>
               </section>
             )}
+            {invite.replies.length > 0 && (
+              <section className="border border-white/10 bg-white/5 p-5 sm:p-7" aria-labelledby="athlete-replies">
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">From the people cheering</p>
+                <h2 id="athlete-replies" className="mt-2 font-display text-3xl uppercase">Recent reactions</h2>
+                <ul className="mt-5 space-y-3">
+                  {invite.replies.slice(0, 6).map((reply, index) => (
+                    <li key={`${reply.createdAt}-${index}`} className="border-l-2 border-primary/60 bg-black/20 p-4">
+                      <p className="text-sm font-bold">{reply.reaction}</p>
+                      {reply.message && <p className="mt-2 text-sm leading-relaxed text-white/65">{reply.message}</p>}
+                      <p className="mt-3 text-[9px] font-bold uppercase tracking-widest text-white/35">{new Date(reply.createdAt).toLocaleDateString()}</p>
+                    </li>
+                  ))}
+                </ul>
+                {invite.hypeCard && <Link href={`/h/${invite.hypeCard.shareToken}`} className="mt-5 inline-flex text-xs font-bold uppercase tracking-widest text-primary hover:underline">Send your own reply →</Link>}
+              </section>
+            )}
             {!invite.hypeCard && !invite.stats && invite.scheduleEvents.length === 0 && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
           </div>
           <aside className="h-fit border border-white/10 bg-[#11141b] p-5 sm:p-6">
@@ -320,7 +396,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
               <li className="flex gap-3"><span className="text-primary">2</span>Choose Add to Home Screen</li>
               <li className="flex gap-3"><span className="text-primary">3</span>Open the saved icon anytime</li>
             </ol>
-            <p className="mt-6 border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-widest text-white/30">Invite active through {new Date(invite.seasonEndsAt).toLocaleDateString()}</p>
+            <p className="mt-6 border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-widest text-white/30">Stable page URL · season context {new Date(invite.seasonEndsAt).toLocaleDateString()}</p>
           </aside>
         </div>
       </main>
@@ -390,7 +466,7 @@ function InviteShell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/studio"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">Back to studio</Link></div></header>{children}</div>;
 }
 function PublicHeader() {
-  return <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/35">Athlete season page</span></div></header>;
+  return <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/35">Athlete Hype Page</span></div></header>;
 }
 function PublicShell({ children }: { children: React.ReactNode }) {
   return <div className="noise min-h-dvh bg-[#080a0f] text-white"><PublicHeader /><main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main></div>;

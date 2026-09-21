@@ -29,4 +29,5 @@ export interface AthleteInviteInput {
   showHypeCard: boolean;
   showStats: boolean;
   showSchedule: boolean;
+  paused?: boolean;
 }

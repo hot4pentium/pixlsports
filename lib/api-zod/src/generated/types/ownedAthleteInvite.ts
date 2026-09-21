@@ -7,8 +7,11 @@
  */
 import type { AthleteInviteInput } from './athleteInviteInput';
 
-export type OwnedAthleteInvite = AthleteInviteInput & {
+export type OwnedAthleteInvite = AthleteInviteInput & ({
   inviteToken: string;
   createdAt: Date;
   updatedAt: Date;
-};
+  paused: boolean;
+  /** @nullable */
+  liveTrackerShareToken: string | null;
+});

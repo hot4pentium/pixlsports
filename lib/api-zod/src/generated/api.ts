@@ -920,7 +920,7 @@ export const listAthleteInvitesResponseOneTeamNameMax = 160;
 
 export const listAthleteInvitesResponseOneSeasonNameMax = 100;
 
-
+export const listAthleteInvitesResponseOnePausedDefault = false;
 
 export const ListAthleteInvitesResponseItem = zod.object({
   "athleteName": zod.string().min(1).max(listAthleteInvitesResponseOneAthleteNameMax),
@@ -932,17 +932,20 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
-  "showSchedule": zod.boolean()
+  "showSchedule": zod.boolean(),
+  "paused": zod.boolean().default(listAthleteInvitesResponseOnePausedDefault)
 }).and(zod.object({
   "inviteToken": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "paused": zod.boolean(),
+  "liveTrackerShareToken": zod.string().nullable()
 }))
 export const ListAthleteInvitesResponse = zod.array(ListAthleteInvitesResponseItem)
 
 
 /**
- * @summary Create an evolving athlete invite
+ * @summary Create an Athlete Hype Page
  */
 export const createAthleteInviteBodyAthleteNameMax = 100;
 
@@ -950,7 +953,7 @@ export const createAthleteInviteBodyTeamNameMax = 160;
 
 export const createAthleteInviteBodySeasonNameMax = 100;
 
-
+export const createAthleteInviteBodyPausedDefault = false;
 
 export const CreateAthleteInviteBody = zod.object({
   "athleteName": zod.string().min(1).max(createAthleteInviteBodyAthleteNameMax),
@@ -962,7 +965,8 @@ export const CreateAthleteInviteBody = zod.object({
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
-  "showSchedule": zod.boolean()
+  "showSchedule": zod.boolean(),
+  "paused": zod.boolean().default(createAthleteInviteBodyPausedDefault)
 })
 
 export const createAthleteInviteResponseOneAthleteNameMax = 100;
@@ -971,7 +975,7 @@ export const createAthleteInviteResponseOneTeamNameMax = 160;
 
 export const createAthleteInviteResponseOneSeasonNameMax = 100;
 
-
+export const createAthleteInviteResponseOnePausedDefault = false;
 
 export const CreateAthleteInviteResponse = zod.object({
   "athleteName": zod.string().min(1).max(createAthleteInviteResponseOneAthleteNameMax),
@@ -983,16 +987,19 @@ export const CreateAthleteInviteResponse = zod.object({
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
-  "showSchedule": zod.boolean()
+  "showSchedule": zod.boolean(),
+  "paused": zod.boolean().default(createAthleteInviteResponseOnePausedDefault)
 }).and(zod.object({
   "inviteToken": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "paused": zod.boolean(),
+  "liveTrackerShareToken": zod.string().nullable()
 }))
 
 
 /**
- * @summary Get an active evolving athlete invite
+ * @summary Get a public Athlete Hype Page
  */
 export const getAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -1016,6 +1023,10 @@ export const getAthleteInviteResponseStatsOneGamesItemOpponentScoreMin = 0;
 export const getAthleteInviteResponseStatsOneGamesItemStatsMinOne = 0;
 
 export const getAthleteInviteResponseStatsOneStatsMinOne = 0;
+
+export const getAthleteInviteResponseRepliesItemReactionMax = 40;
+
+export const getAthleteInviteResponseRepliesItemMessageMax = 240;
 
 
 
@@ -1058,12 +1069,22 @@ export const GetAthleteInviteResponse = zod.object({
   "opponent": zod.string(),
   "notes": zod.string()
 })),
+  "replies": zod.array(zod.object({
+  "reaction": zod.string().max(getAthleteInviteResponseRepliesItemReactionMax),
+  "message": zod.string().max(getAthleteInviteResponseRepliesItemMessageMax).nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "liveGame": zod.union([zod.object({
+  "shareToken": zod.string(),
+  "gameId": zod.string(),
+  "expiresAt": zod.coerce.date()
+}),zod.null()]),
   "updatedAt": zod.coerce.date()
 })
 
 
 /**
- * @summary Update an owned evolving athlete invite without changing its URL
+ * @summary Update an owned Athlete Hype Page without changing its URL
  */
 export const updateAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -1078,7 +1099,7 @@ export const updateAthleteInviteBodyTeamNameMax = 160;
 
 export const updateAthleteInviteBodySeasonNameMax = 100;
 
-
+export const updateAthleteInviteBodyPausedDefault = false;
 
 export const UpdateAthleteInviteBody = zod.object({
   "athleteName": zod.string().min(1).max(updateAthleteInviteBodyAthleteNameMax),
@@ -1090,7 +1111,8 @@ export const UpdateAthleteInviteBody = zod.object({
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
-  "showSchedule": zod.boolean()
+  "showSchedule": zod.boolean(),
+  "paused": zod.boolean().default(updateAthleteInviteBodyPausedDefault)
 })
 
 export const updateAthleteInviteResponseOneAthleteNameMax = 100;
@@ -1099,7 +1121,7 @@ export const updateAthleteInviteResponseOneTeamNameMax = 160;
 
 export const updateAthleteInviteResponseOneSeasonNameMax = 100;
 
-
+export const updateAthleteInviteResponseOnePausedDefault = false;
 
 export const UpdateAthleteInviteResponse = zod.object({
   "athleteName": zod.string().min(1).max(updateAthleteInviteResponseOneAthleteNameMax),
@@ -1111,16 +1133,20 @@ export const UpdateAthleteInviteResponse = zod.object({
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
-  "showSchedule": zod.boolean()
+  "showSchedule": zod.boolean(),
+  "paused": zod.boolean().default(updateAthleteInviteResponseOnePausedDefault)
 }).and(zod.object({
   "inviteToken": zod.string(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "paused": zod.boolean(),
+  "liveTrackerShareToken": zod.string().nullable()
 }))
 
 
 /**
- * @summary Revoke an owned evolving athlete invite
+ * Pauses the page without changing its stable URL. The page can be resumed with the update operation.
+ * @summary Pause an owned Athlete Hype Page
  */
 export const deleteAthleteInvitePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -1130,6 +1156,36 @@ export const DeleteAthleteInviteParams = zod.object({
 })
 
 export const DeleteAthleteInviteResponse = zod.void()
+
+
+/**
+ * @summary Start a short-lived Game Day Live session for an Athlete Hype Page
+ */
+export const startAthleteInviteLivePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const StartAthleteInviteLiveParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(startAthleteInviteLivePathInviteTokenRegExp)
+})
+
+export const StartAthleteInviteLiveResponse = zod.object({
+  "shareToken": zod.string(),
+  "gameId": zod.string(),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Stop Game Day Live for an Athlete Hype Page
+ */
+export const stopAthleteInviteLivePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const StopAthleteInviteLiveParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(stopAthleteInviteLivePathInviteTokenRegExp)
+})
+
+export const StopAthleteInviteLiveResponse = zod.void()
 
 
 /**

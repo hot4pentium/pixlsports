@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAthleteInviteBody,
@@ -8,6 +8,10 @@ import {
   GetAthleteInviteParams,
   GetAthleteInviteResponse,
   ListAthleteInvitesResponse,
+  StartAthleteInviteLiveParams,
+  StartAthleteInviteLiveResponse,
+  StopAthleteInviteLiveParams,
+  StopAthleteInviteLiveResponse,
   UpdateAthleteInviteBody,
   UpdateAthleteInviteParams,
   UpdateAthleteInviteResponse,
@@ -16,7 +20,9 @@ import {
   athleteInvitesTable,
   cloudProjectsTable,
   db,
+  hypeCardShareRepliesTable,
   hypeCardSharesTable,
+  statTrackerSharesTable,
 } from "@workspace/db";
 
 import { isAccountActive } from "../lib/accountLifecycle";
@@ -40,6 +46,8 @@ function ownedInviteResponse(invite: InviteRow) {
     showHypeCard: invite.showHypeCard,
     showStats: invite.showStats,
     showSchedule: invite.showSchedule,
+    paused: invite.paused,
+    liveTrackerShareToken: invite.liveTrackerShareToken,
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt,
   };
@@ -107,6 +115,31 @@ function cleanScheduleEvents(payload: unknown) {
   )).slice(0, 12);
 }
 
+function cleanLiveGame(payload: unknown, fallbackId: string) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const item = payload as Record<string, unknown>;
+  const id = typeof item.id === "string" ? item.id.slice(0, 120) : fallbackId;
+  const status = item.status === "final" ? "final" : "live";
+  return {
+    id,
+    sport: typeof item.sport === "string" ? item.sport.slice(0, 30) : "unknown",
+    status,
+    date: typeof item.date === "string" ? item.date.slice(0, 30) : "",
+    opponent: typeof item.opponent === "string" ? item.opponent.slice(0, 200) : "",
+    period: typeof item.period === "number" && Number.isFinite(item.period) ? item.period : 1,
+    score: typeof item.score === "number" && Number.isFinite(item.score) ? item.score : 0,
+    opponentScore: typeof item.opponentScore === "number" && Number.isFinite(item.opponentScore)
+      ? item.opponentScore
+      : 0,
+    stats: item.stats && typeof item.stats === "object" && !Array.isArray(item.stats) ? item.stats : {},
+    trackYards: item.trackYards === true,
+    yardStats: item.yardStats && typeof item.yardStats === "object" && !Array.isArray(item.yardStats)
+      ? item.yardStats
+      : {},
+    events: Array.isArray(item.events) ? item.events.slice(-10) : [],
+  };
+}
+
 router.get("/athlete-invites", requireAuth, async (_req, res): Promise<void> => {
   const invites = await db
     .select()
@@ -118,8 +151,8 @@ router.get("/athlete-invites", requireAuth, async (_req, res): Promise<void> => 
 
 router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateAthleteInviteBody.safeParse(req.body);
-  if (!parsed.success || parsed.data.seasonEndsAt.getTime() <= Date.now()) {
-    res.status(400).json({ error: "Choose an athlete, season, and future season end date." });
+  if (!parsed.success) {
+    res.status(400).json({ error: "Choose an athlete, season, and page details." });
     return;
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
@@ -131,6 +164,7 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
   try {
     const [created] = await db.insert(athleteInvitesTable).values({
       ...parsed.data,
+      paused: parsed.data.paused ?? false,
       athleteName: parsed.data.athleteName.trim(),
       teamName: parsed.data.teamName.trim(),
       seasonName: parsed.data.seasonName.trim(),
@@ -156,14 +190,14 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
   }
   const [invite] = await db.select().from(athleteInvitesTable).where(and(
     eq(athleteInvitesTable.publicToken, params.data.inviteToken),
-    gt(athleteInvitesTable.seasonEndsAt, new Date()),
+    eq(athleteInvitesTable.paused, false),
   ));
   if (!invite || !(await isAccountActive(invite.ownerClerkUserId))) {
     res.status(404).json({ error: "Athlete invite not found" });
     return;
   }
 
-  const [trackerProject, scheduleProject, latestHypeCard] = await Promise.all([
+  const [trackerProject, scheduleProject, hypeCards, liveShare] = await Promise.all([
     invite.showStats && invite.trackerProjectId
       ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
       : null,
@@ -176,9 +210,21 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
         eq(hypeCardSharesTable.shareMode, "card"),
         isNull(hypeCardSharesTable.revokedAt),
         gt(hypeCardSharesTable.expiresAt, new Date()),
-      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(1).then(([share]) => share ?? null)
-      : null,
+      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(12)
+      : Promise.resolve([]),
+    invite.liveTrackerShareToken
+      ? db.select().from(statTrackerSharesTable).where(and(
+        eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+        gt(statTrackerSharesTable.expiresAt, new Date()),
+      )).then(([share]) => share ?? null)
+      : Promise.resolve(null),
   ]);
+  const latestHypeCard = hypeCards[0] ?? null;
+  const replies = hypeCards.length
+    ? await db.select().from(hypeCardShareRepliesTable).where(
+      inArray(hypeCardShareRepliesTable.shareId, hypeCards.map((share) => share.id)),
+    ).orderBy(desc(hypeCardShareRepliesTable.createdAt)).limit(50)
+    : [];
   const stats = trackerProject && isHypeCardSport(invite.sport)
     ? computeHypeCardShareStats(
       trackerProject.project,
@@ -211,6 +257,21 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     } : null,
     stats,
     scheduleEvents,
+    replies: replies.map((reply) => ({
+      reaction: reply.reaction,
+      message: reply.message,
+      createdAt: reply.createdAt,
+    })),
+    liveGame: liveShare
+      && liveShare.game
+      && typeof liveShare.game === "object"
+      && (liveShare.game as { status?: unknown }).status !== "final"
+      ? {
+        shareToken: liveShare.id,
+        gameId: liveShare.gameId,
+        expiresAt: liveShare.expiresAt,
+      }
+      : null,
     updatedAt,
   }));
 });
@@ -218,8 +279,8 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
 router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateAthleteInviteParams.safeParse(req.params);
   const parsed = UpdateAthleteInviteBody.safeParse(req.body);
-  if (!params.success || !parsed.success || parsed.data.seasonEndsAt.getTime() <= Date.now()) {
-    res.status(400).json({ error: "Choose an athlete, season, and future season end date." });
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: "Choose an athlete, season, and page details." });
     return;
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
@@ -228,8 +289,16 @@ router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pro
     res.status(400).json({ error: "Choose tracker and schedule projects owned by this account." });
     return;
   }
+  const [current] = await db.select({
+    liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
+  }).from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+  ));
   const [updated] = await db.update(athleteInvitesTable).set({
     ...parsed.data,
+    ...(parsed.data.paused === undefined ? {} : { paused: parsed.data.paused }),
+    ...(parsed.data.paused === true ? { liveTrackerShareToken: null } : {}),
     athleteName: parsed.data.athleteName.trim(),
     teamName: parsed.data.teamName.trim(),
     seasonName: parsed.data.seasonName.trim(),
@@ -242,6 +311,12 @@ router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pro
     res.status(404).json({ error: "Athlete invite not found" });
     return;
   }
+  if (parsed.data.paused === true && current?.liveTrackerShareToken) {
+    await db.delete(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.id, current.liveTrackerShareToken),
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+    ));
+  }
   res.json(UpdateAthleteInviteResponse.parse(ownedInviteResponse(updated)));
 });
 
@@ -251,15 +326,132 @@ router.delete("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pr
     res.status(404).json({ error: "Athlete invite not found" });
     return;
   }
-  const [deleted] = await db.delete(athleteInvitesTable).where(and(
+  const [current] = await db.select({
+    id: athleteInvitesTable.id,
+    liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
+  }).from(athleteInvitesTable).where(and(
     eq(athleteInvitesTable.publicToken, params.data.inviteToken),
     eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
-  )).returning({ id: athleteInvitesTable.id });
-  if (!deleted) {
+  ));
+  if (!current) {
     res.status(404).json({ error: "Athlete invite not found" });
     return;
   }
-  res.status(204).send();
+  const [paused] = await db.update(athleteInvitesTable).set({
+    paused: true,
+    liveTrackerShareToken: null,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  )).returning({ id: athleteInvitesTable.id });
+  if (!paused) {
+    res.status(404).json({ error: "Athlete invite not found" });
+    return;
+  }
+  if (current.liveTrackerShareToken) {
+    await db.delete(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.id, current.liveTrackerShareToken),
+      eq(statTrackerSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+    ));
+  }
+  res.status(204).send(StopAthleteInviteLiveResponse.parse(undefined));
+});
+
+router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res): Promise<void> => {
+  const params = StartAthleteInviteLiveParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Athlete Hype Page not found" });
+    return;
+  }
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const [invite] = await db.select().from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+    eq(athleteInvitesTable.paused, false),
+  ));
+  if (!invite) {
+    res.status(404).json({ error: "Athlete Hype Page not found" });
+    return;
+  }
+  const project = await validateProject(invite.trackerProjectId, ownerClerkUserId, "stat-tracker");
+  const payload = project?.project && typeof project.project === "object"
+    ? project.project as { games?: unknown }
+    : null;
+  const sourceGame = Array.isArray(payload?.games)
+    ? payload.games.find((game) => game && typeof game === "object" && (game as { status?: unknown }).status === "live")
+    : null;
+  if (!sourceGame || typeof sourceGame !== "object") {
+    res.status(409).json({ error: "Start a live game in the selected Stat Tracker first." });
+    return;
+  }
+  const game = cleanLiveGame(sourceGame, "live-game");
+  if (!game) {
+    res.status(409).json({ error: "The selected live game is unavailable." });
+    return;
+  }
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const existingShare = invite.liveTrackerShareToken
+    ? (await db.select().from(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+      gt(statTrackerSharesTable.expiresAt, new Date()),
+    )))[0]
+    : null;
+  const sameGameShare = existingShare ?? (await db.select().from(statTrackerSharesTable).where(and(
+    eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+    eq(statTrackerSharesTable.gameId, game.id),
+    gt(statTrackerSharesTable.expiresAt, new Date()),
+  )))[0];
+  const share = sameGameShare ?? (await db.insert(statTrackerSharesTable).values({
+    ownerClerkUserId,
+    gameId: game.id,
+    athleteName: invite.athleteName,
+    teamName: invite.teamName,
+    game,
+    expiresAt,
+  }).returning())[0];
+  if (!share) {
+    res.status(409).json({ error: "Unable to start Game Day Live." });
+    return;
+  }
+  await db.update(athleteInvitesTable).set({
+    liveTrackerShareToken: share.id,
+    updatedAt: new Date(),
+  }).where(eq(athleteInvitesTable.id, invite.id));
+  res.status(201).json(StartAthleteInviteLiveResponse.parse({
+    shareToken: share.id,
+    gameId: share.gameId,
+    expiresAt: share.expiresAt,
+  }));
+});
+
+router.delete("/athlete-invites/:inviteToken/live", requireAuth, async (req, res): Promise<void> => {
+  const params = StopAthleteInviteLiveParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Athlete Hype Page not found" });
+    return;
+  }
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const [invite] = await db.select().from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+  ));
+  if (!invite) {
+    res.status(404).json({ error: "Athlete Hype Page not found" });
+    return;
+  }
+  if (invite.liveTrackerShareToken) {
+    await db.delete(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+    ));
+  }
+  await db.update(athleteInvitesTable).set({
+    liveTrackerShareToken: null,
+    updatedAt: new Date(),
+  }).where(eq(athleteInvitesTable.id, invite.id));
+  res.status(204).send(StopAthleteInviteLiveResponse.parse(undefined));
 });
 
 export default router;

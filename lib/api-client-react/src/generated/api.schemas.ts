@@ -638,13 +638,17 @@ export interface AthleteInviteInput {
   showHypeCard: boolean;
   showStats: boolean;
   showSchedule: boolean;
+  paused?: boolean;
 }
 
-export type OwnedAthleteInvite = AthleteInviteInput & {
+export type OwnedAthleteInvite = AthleteInviteInput & ({
   inviteToken: string;
   createdAt: string;
   updatedAt: string;
-};
+  paused: boolean;
+  /** @nullable */
+  liveTrackerShareToken: string | null;
+});
 
 export type OwnedAthleteInviteList = OwnedAthleteInvite[];
 
@@ -694,6 +698,25 @@ export interface AthleteInviteScheduleEvent {
   notes: string;
 }
 
+export interface AthleteInviteReply {
+  /** @maxLength 40 */
+  reaction: string;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  message: string | null;
+  createdAt: string;
+}
+
+export interface AthleteInviteLiveSession {
+  shareToken: string;
+  gameId: string;
+  expiresAt: string;
+}
+
+export type AthleteInviteLiveSessionPublic = AthleteInviteLiveSession;
+
 export type PublicAthleteInviteSport = typeof PublicAthleteInviteSport[keyof typeof PublicAthleteInviteSport];
 
 
@@ -715,6 +738,8 @@ export interface PublicAthleteInvite {
   hypeCard: AthleteInviteHypeCard | null;
   stats: HypeCardShareStats | null;
   scheduleEvents: AthleteInviteScheduleEvent[];
+  replies: AthleteInviteReply[];
+  liveGame: AthleteInviteLiveSessionPublic | null;
   updatedAt: string;
 }
 

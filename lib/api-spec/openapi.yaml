@@ -22,6 +22,8 @@ tags:
     description: Live stat tracker spectator sharing operations
   - name: hype-card-shares
     description: Interactive Hype Card sharing operations
+  - name: athlete-invites
+    description: Durable Athlete Hype Page sharing operations
   - name: account-access
     description: Authenticated account role and Guest usage
   - name: supporter-photos
@@ -323,7 +325,7 @@ paths:
     post:
       operationId: createAthleteInvite
       tags: [athlete-invites]
-      summary: Create an evolving athlete invite
+      summary: Create an Athlete Hype Page
       requestBody:
         required: true
         content:
@@ -358,7 +360,7 @@ paths:
     get:
       operationId: getAthleteInvite
       tags: [athlete-invites]
-      summary: Get an active evolving athlete invite
+      summary: Get a public Athlete Hype Page
       responses:
         "200":
           description: Current public athlete page
@@ -371,7 +373,7 @@ paths:
     patch:
       operationId: updateAthleteInvite
       tags: [athlete-invites]
-      summary: Update an owned evolving athlete invite without changing its URL
+      summary: Update an owned Athlete Hype Page without changing its URL
       requestBody:
         required: true
         content:
@@ -394,10 +396,51 @@ paths:
     delete:
       operationId: deleteAthleteInvite
       tags: [athlete-invites]
-      summary: Revoke an owned evolving athlete invite
+      summary: Pause an owned Athlete Hype Page
+      description: Pauses the page without changing its stable URL. The page can be resumed with the update operation.
       responses:
         "204":
           description: Athlete invite revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/live:
+    parameters:
+      - in: path
+        name: inviteToken
+        required: true
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{24,80}$"
+    post:
+      operationId: startAthleteInviteLive
+      tags: [athlete-invites]
+      summary: Start a short-lived Game Day Live session for an Athlete Hype Page
+      responses:
+        "201":
+          description: Short-lived live session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteLiveSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: No live game is available in the selected tracker project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: stopAthleteInviteLive
+      tags: [athlete-invites]
+      summary: Stop Game Day Live for an Athlete Hype Page
+      responses:
+        "204":
+          description: Live session stopped
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -1708,11 +1751,12 @@ components:
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showSchedule: { type: boolean }
+        paused: { type: boolean, default: false }
     OwnedAthleteInvite:
       allOf:
         - $ref: "#/components/schemas/AthleteInviteInput"
         - type: object
-          required: [inviteToken, createdAt, updatedAt]
+          required: [inviteToken, createdAt, updatedAt, paused, liveTrackerShareToken]
           properties:
             inviteToken:
               type: string
@@ -1722,6 +1766,8 @@ components:
             updatedAt:
               type: string
               format: date-time
+            paused: { type: boolean }
+            liveTrackerShareToken: { type: ["string", "null"] }
     OwnedAthleteInviteList:
       type: array
       items:
@@ -1747,9 +1793,26 @@ components:
         location: { type: string }
         opponent: { type: string }
         notes: { type: string }
+    AthleteInviteReply:
+      type: object
+      required: [reaction, message, createdAt]
+      properties:
+        reaction: { type: string, maxLength: 40 }
+        message: { type: ["string", "null"], maxLength: 240 }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteLiveSession:
+      type: object
+      required: [shareToken, gameId, expiresAt]
+      properties:
+        shareToken: { type: string }
+        gameId: { type: string }
+        expiresAt: { type: string, format: date-time }
+    AthleteInviteLiveSessionPublic:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteLiveSession"
     PublicAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, hypeCard, stats, scheduleEvents, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, hypeCard, stats, scheduleEvents, replies, liveGame, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -1771,6 +1834,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteReply"
+        liveGame:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteLiveSessionPublic"
+            - type: "null"
         updatedAt:
           type: string
           format: date-time

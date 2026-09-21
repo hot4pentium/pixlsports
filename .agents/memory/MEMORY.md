@@ -26,3 +26,4 @@
 - [Supporter-only product boundary](supporter-only-product-boundary.md) — Pixl Sports serves fans and parents only; profiles remain, but team-management paths must not return.
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.
 - [Exported stats QR safe areas](exported-stats-qr-safe-areas.md) — linked stats overlays share one SVG foreground across stills and video, with format-specific protected lanes.
+- [Athlete Hype Page lifecycle](athlete-hype-page-lifecycle.md) — the durable page pauses in place while Game Day Live remains a separately revocable, short-lived session.

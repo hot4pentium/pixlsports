@@ -150,6 +150,46 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal(hiddenPublic.stats, null);
     assert.deepEqual(hiddenPublic.scheduleEvents, []);
 
+    const paused = await fetch(publicUrl, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "basketball",
+        trackerProjectId: null,
+        scheduleProjectId: null,
+        showHypeCard: false,
+        showStats: false,
+        showSchedule: false,
+        paused: true,
+      }),
+    });
+    assert.equal(paused.status, 200);
+    assert.equal((await fetch(publicUrl)).status, 404);
+
+    const resumed = await fetch(publicUrl, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "basketball",
+        trackerProjectId: null,
+        scheduleProjectId: null,
+        showHypeCard: false,
+        showStats: false,
+        showSchedule: false,
+        paused: false,
+      }),
+    });
+    assert.equal(resumed.status, 200);
+    assert.equal((await fetch(publicUrl)).status, 200);
+
     assert.equal((await fetch(publicUrl, { method: "DELETE", headers: { "x-test-user": ownerId } })).status, 204);
     assert.equal((await fetch(publicUrl)).status, 404);
   } finally {

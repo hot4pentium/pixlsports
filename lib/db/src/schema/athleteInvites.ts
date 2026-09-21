@@ -16,6 +16,8 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   showHypeCard: boolean("show_hype_card").notNull().default(true),
   showStats: boolean("show_stats").notNull().default(true),
   showSchedule: boolean("show_schedule").notNull().default(true),
+  paused: boolean("paused").notNull().default(false),
+  liveTrackerShareToken: text("live_tracker_share_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
