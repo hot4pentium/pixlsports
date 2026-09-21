@@ -546,14 +546,13 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
-        <header className="border-l-4 border-primary pl-5">
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">{invite.seasonName} · {rule.label}</p>
-          <h1 className="mt-3 font-display text-6xl uppercase leading-[.85] sm:text-7xl">{invite.athleteName}</h1>
-          <p className="mt-4 text-sm font-bold uppercase tracking-widest text-white/45">{invite.teamName || 'Athlete season page'}</p>
-        </header>
-
-        <section className="mt-10" aria-labelledby="athlete-video-highlights">
-          <div className="athlete-highlights-heading flex items-end justify-between gap-5">
+        <header className="flex flex-col gap-8 border-l-4 border-primary pl-5 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">{invite.seasonName} · {rule.label}</p>
+            <h1 className="mt-3 font-display text-6xl uppercase leading-[.85] sm:text-7xl">{invite.athleteName}</h1>
+            <p className="mt-4 text-sm font-bold uppercase tracking-widest text-white/45">{invite.teamName || 'Athlete season page'}</p>
+          </div>
+          <div className="athlete-highlights-heading flex items-end justify-between gap-5 lg:max-w-[48%] lg:flex-1">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
               <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Video highlights</h2>
@@ -569,7 +568,10 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
               )}
             </div>
           </div>
-          <div className="athlete-highlights-panel mt-5 p-3 sm:p-4">
+        </header>
+
+        <section className="mt-5" aria-labelledby="athlete-video-highlights">
+          <div className="athlete-highlights-panel p-3 sm:p-4">
             {invite.videos.length > 0 ? (
               <ol
                 ref={videoCarouselRef}
