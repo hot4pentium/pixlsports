@@ -103,13 +103,14 @@
   z-index: 0;
   content: '';
   pointer-events: none;
-  opacity: 0.82;
+  opacity: 0.94;
   background-image:
-    radial-gradient(circle at 15% 22%, color-mix(in srgb, var(--landing-primary) 8%, transparent) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 78% 64%, color-mix(in srgb, var(--landing-orange) 6%, transparent) 0 1px, transparent 1.5px),
-    linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--landing-primary) 5%, transparent) 48%, transparent 100%);
-  background-size: 52px 52px, 76px 76px, 220% 220%;
-  background-position: 0 0, 22px 14px, 0% 50%;
+    radial-gradient(circle at 15% 22%, color-mix(in srgb, var(--landing-primary) 14%, transparent) 0 1.4px, transparent 1.8px),
+    radial-gradient(circle at 78% 64%, color-mix(in srgb, var(--landing-orange) 10%, transparent) 0 1.3px, transparent 1.8px),
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--landing-primary) 3.5%, transparent) 0 1px, transparent 1px 11px),
+    linear-gradient(120deg, transparent 0%, color-mix(in srgb, var(--landing-primary) 6%, transparent) 48%, transparent 100%);
+  background-size: 38px 38px, 58px 58px, 22px 22px, 220% 220%;
+  background-position: 0 0, 22px 14px, 0 0, 0% 50%;
   animation: landing-background-drift 38s ease-in-out infinite alternate;
   will-change: background-position;
 }
@@ -189,15 +190,15 @@
 
 @keyframes landing-background-drift {
   0% {
-    background-position: 0 0, 22px 14px, 0% 50%;
+    background-position: 0 0, 22px 14px, 0 0, 0% 50%;
   }
 
   50% {
-    background-position: 24px -18px, -16px 30px, 100% 42%;
+    background-position: 24px -18px, -16px 30px, 11px -11px, 100% 42%;
   }
 
   100% {
-    background-position: -18px 20px, 28px -12px, 0% 58%;
+    background-position: -18px 20px, 28px -12px, -9px 14px, 0% 58%;
   }
 }
 
