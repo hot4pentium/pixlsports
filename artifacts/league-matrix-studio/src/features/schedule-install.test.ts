@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getScheduleInstallAction, isIosDevice } from './schedule-install';
+import {
+  BROWSER_SCHEDULE_INSTALL_INSTRUCTIONS,
+  getScheduleInstallAction,
+  getScheduleInstallInstructions,
+  IOS_SCHEDULE_INSTALL_INSTRUCTIONS,
+  isIosDevice,
+} from './schedule-install';
 
 test('recognizes iPhone and iPad user agents, including iPad desktop mode', () => {
   assert.equal(isIosDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 'iPhone', 5), true);
@@ -13,4 +19,11 @@ test('chooses install prompt, fallback instructions, or installed state', () => 
   assert.equal(getScheduleInstallAction({ isStandalone: false, canPrompt: true }), 'install');
   assert.equal(getScheduleInstallAction({ isStandalone: false, canPrompt: false }), 'instructions');
   assert.equal(getScheduleInstallAction({ isStandalone: true, canPrompt: true }), 'installed');
+});
+
+test('gives iPhone and iPad users the Share-menu path, while other browsers get a usable fallback', () => {
+  assert.equal(getScheduleInstallInstructions(true), IOS_SCHEDULE_INSTALL_INSTRUCTIONS);
+  assert.match(getScheduleInstallInstructions(true), /Share.*Add to Home Screen.*Add/);
+  assert.equal(getScheduleInstallInstructions(false), BROWSER_SCHEDULE_INSTALL_INSTRUCTIONS);
+  assert.match(getScheduleInstallInstructions(false), /bookmark this link/);
 });

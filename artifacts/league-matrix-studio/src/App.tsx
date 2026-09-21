@@ -86,7 +86,11 @@ import {
   type ScheduleEventType,
 } from '@/features/schedule-draft';
 import { getGuestUsageKey } from '@/features/guest-access';
-import { getScheduleInstallAction, isIosDevice } from '@/features/schedule-install';
+import {
+  getScheduleInstallAction,
+  getScheduleInstallInstructions,
+  isIosDevice,
+} from '@/features/schedule-install';
 import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
@@ -3829,9 +3833,7 @@ function ScheduleInstallPrompt() {
           role="status"
           data-testid="schedule-install-instructions"
         >
-          {isIOS
-            ? 'On iPhone or iPad, tap Share, choose Add to Home Screen, then tap Add.'
-            : 'Open your browser menu and choose Install Pixl Sports or Add to Home Screen. If neither option is available, bookmark this link for quick access.'}
+          {getScheduleInstallInstructions(isIOS)}
         </p>
       )}
     </div>

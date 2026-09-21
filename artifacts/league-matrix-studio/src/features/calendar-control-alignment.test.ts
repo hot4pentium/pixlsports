@@ -49,9 +49,13 @@ test('public schedule cards include accessible phone-install guidance', () => {
   assert.match(publicScheduleCard, /schedule-install-prompt/);
   assert.match(publicScheduleCard, /Install Pixl Sports on your phone/);
   assert.match(publicScheduleCard, /beforeinstallprompt/);
-  assert.match(publicScheduleCard, /Add to Home Screen/);
+  assert.match(publicScheduleCard, /getScheduleInstallInstructions\(isIOS\)/);
   assert.match(publicScheduleCard, /aria-expanded=\{showInstructions\}/);
   assert.match(publicScheduleCard, /role="status"/);
+  assert.match(publicScheduleCard, /type="button"/);
+  assert.match(publicScheduleCard, /focus-visible:ring/);
+  assert.doesNotMatch(publicScheduleCard, /button-publish-schedule/);
+  assert.doesNotMatch(publicScheduleCard, /button-revoke-schedule/);
 });
 
 test('compact connection controls can shrink without overlapping', () => {
