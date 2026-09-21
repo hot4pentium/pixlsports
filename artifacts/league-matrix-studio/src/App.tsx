@@ -379,14 +379,14 @@ function BrandMark({ inverse = false }: { inverse?: boolean }) {
 }
 
 
-function SiteNav({ dark = false }: { dark?: boolean }) {
+function SiteNav({ dark = true }: { dark?: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navText = dark ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground';
   const { isSignedIn, user } = useUser();
   const { signOut } = useClerk();
 
   return (
-    <header className={`relative z-30 border-b ${dark ? 'bg-[#11181c]/95 border-white/15 backdrop-blur-md' : 'bg-background border-border'}`}>
+    <header className={`relative z-30 border-b ${dark ? 'bg-[#0B1F3A]/95 border-white/15 backdrop-blur-md' : 'bg-background border-border'}`}>
       <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
         <Link href="/" className="shrink-0 transition-opacity hover:opacity-80 focus-visible:opacity-80" data-testid="link-logo-home">
           <BrandMark inverse={dark} />
@@ -404,7 +404,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
               </button>
             </div>
           ) : (
-            <Link href="/sign-in" className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-primary/90 ${dark ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}`} data-testid="link-nav-sign-in">
+            <Link href="/sign-in" className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-primary/90 ${dark ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground'}`} data-testid="link-nav-sign-in">
               Sign In <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           )}
@@ -415,7 +415,7 @@ function SiteNav({ dark = false }: { dark?: boolean }) {
       </div>
 
       {menuOpen && (
-        <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#172024]' : 'border-border bg-card'}`} data-testid="menu-mobile">
+        <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#0B1F3A]' : 'border-border bg-card'}`} data-testid="menu-mobile">
           <nav className="flex flex-col gap-2">
             <Link href="/studio" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
             <Link href="/help" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-help">HELP <ArrowRight className="h-5 w-5 text-primary" /></Link>
@@ -464,14 +464,14 @@ function LegacyHomePage() {
       <SiteNav dark />
       <main>
         {/* HERO — profile first, then the week. */}
-        <section className="relative overflow-hidden bg-[#11181c] text-[#f5f0e3] clip-angled pb-16 pt-12 sm:pb-24 sm:pt-20">
+        <section className="relative overflow-hidden bg-[#0B1F3A] text-[#F3F6FA] clip-angled pb-16 pt-12 sm:pb-24 sm:pt-20">
           <img
             src={heroBanner}
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-45"
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#11181c] via-[#11181c]/90 to-[#11181c]/50" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0B1F3A] via-[#0B1F3A]/90 to-[#0B1F3A]/50" />
           <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-25" />
           <div className="pointer-events-none absolute inset-0 home-scanline opacity-20" />
 
@@ -483,11 +483,11 @@ function LegacyHomePage() {
               <h1 className="home-reveal home-reveal-delay-1 home-display mt-7 text-[clamp(4.5rem,10.7vw,10rem)] leading-[0.82]" data-testid="text-landing-headline">
                 <>{roleCopy.headline}<br /><span className="text-primary">{roleCopy.accent}</span><br />Game on.</>
               </h1>
-              <p className="home-reveal home-reveal-delay-2 mt-8 max-w-xl text-base font-medium leading-relaxed text-[#f5f0e3]/72 sm:text-lg">
+              <p className="home-reveal home-reveal-delay-2 mt-8 max-w-xl text-base font-medium leading-relaxed text-[#F3F6FA]/72 sm:text-lg">
                 {roleCopy.description}
               </p>
               <div className="home-reveal home-reveal-delay-3 mt-8" data-testid="landing-role-selector">
-                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5f0e3]/48">Choose your home base</p>
+                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F3F6FA]/48">Choose your home base</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row" role="radiogroup" aria-label="Choose a Pixl Sports path">
                   {(['fan'] as UserRole[]).map((role) => {
                     const isSelected = selectedRole === role;
@@ -499,7 +499,7 @@ function LegacyHomePage() {
                         role="radio"
                         aria-checked={isSelected}
                         onClick={() => setSelectedRole(role)}
-                        className={`group inline-flex items-center gap-3 border px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.14em] transition-colors clip-angled-sm ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-[#f5f0e3]/20 bg-[#f5f0e3]/5 text-[#f5f0e3]/70 hover:border-primary hover:text-primary'}`}
+                        className={`group inline-flex items-center gap-3 border px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.14em] transition-colors clip-angled-sm ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-[#F3F6FA]/20 bg-[#F3F6FA]/5 text-[#F3F6FA]/70 hover:border-primary hover:text-primary'}`}
                         data-testid={`button-landing-role-${role}`}
                       >
                         <Icon className="h-4 w-4" />
@@ -514,11 +514,11 @@ function LegacyHomePage() {
                 <Link href={heroCtaHref} className="group inline-flex items-center justify-center gap-3 bg-primary px-7 py-4 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground clip-angled-sm transition-transform hover:-translate-y-1" data-testid="link-hero-open-studio">
                   {roleCopy.cta} <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
-                <a href="#week" className="group inline-flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-[0.12em] text-[#f5f0e3]/70 transition-colors hover:text-primary" data-testid="link-hero-see-week">
+                <a href="#week" className="group inline-flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-[0.12em] text-[#F3F6FA]/70 transition-colors hover:text-primary" data-testid="link-hero-see-week">
                   See the weekly rhythm <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </a>
               </div>
-              <div className="home-reveal home-reveal-delay-4 mt-12 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
+              <div className="home-reveal home-reveal-delay-4 mt-12 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold uppercase tracking-[0.16em] text-[#F3F6FA]/45">
                 <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> {LANDING_MEDIA_BADGE}</span>
                 <span className="inline-flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Made for real life</span>
               </div>
@@ -529,8 +529,8 @@ function LegacyHomePage() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em]">Next up</p>
                 <p className="home-display mt-1 text-2xl">Saturday / 4:30</p>
               </div>
-              <div className="relative overflow-hidden border border-[#f5f0e3]/20 bg-[#1c2528]/90 p-4 home-card-shadow clip-angled">
-                <div className="flex items-center justify-between border-b border-[#f5f0e3]/15 pb-4">
+              <div className="relative overflow-hidden border border-[#F3F6FA]/20 bg-[#102B4D]/90 p-4 home-card-shadow clip-angled">
+                <div className="flex items-center justify-between border-b border-[#F3F6FA]/15 pb-4">
                   <div className="flex items-center gap-3">
                     <span className="grid h-11 w-11 place-items-center bg-primary text-primary-foreground clip-angled-sm"><Zap className="h-5 w-5" /></span>
                     <div>
@@ -540,21 +540,21 @@ function LegacyHomePage() {
                   </div>
                   <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/.14)]" />
                 </div>
-                <div className="relative mt-4 overflow-hidden bg-[#131b1f] p-5">
+                <div className="relative mt-4 overflow-hidden bg-[#0E2542] p-5">
                   <div className="absolute right-0 top-0 h-28 w-28 bg-primary/10 [clip-path:polygon(100%_0,100%_100%,0_0)]" />
                   <div className="relative flex items-start justify-between">
                     <div>
-                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f5f0e3]/50">Your week</p>
+                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#F3F6FA]/50">Your week</p>
                        <p className="home-display mt-2 text-5xl leading-none">{roleCopy.previewMetric}<br /><span className="text-primary">{roleCopy.previewAccent}</span></p>
                     </div>
-                    <div className="text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/45">
+                    <div className="text-right text-[10px] font-bold uppercase tracking-[0.16em] text-[#F3F6FA]/45">
                       <p>Eastside Falcons</p>
                       <p className="mt-2 text-primary">Fall / 2024</p>
                     </div>
                   </div>
                   <div className="mt-7 space-y-2">
                      {roleCopy.previewItems.map(([day, title, time], index) => (
-                       <div key={day} className={`flex items-center gap-3 border-t border-[#f5f0e3]/10 py-3 ${index === 2 ? 'text-primary' : 'text-[#f5f0e3]/72'}`} data-testid={`text-profile-week-${index + 1}`}>
+                       <div key={day} className={`flex items-center gap-3 border-t border-[#F3F6FA]/10 py-3 ${index === 2 ? 'text-primary' : 'text-[#F3F6FA]/72'}`} data-testid={`text-profile-week-${index + 1}`}>
                          <span className="w-9 text-[10px] font-bold tracking-[0.16em]">{day}</span>
                          <span className="flex-1 text-sm font-semibold">{title}</span>
                          <span className="text-xs font-bold tracking-[0.08em]">{time}</span>
@@ -562,7 +562,7 @@ function LegacyHomePage() {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[#f5f0e3]/42">
+                <div className="flex items-center justify-between pt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[#F3F6FA]/42">
                   <span className="inline-flex items-center gap-2"><Share2 className="h-3.5 w-3.5" /> Ready to share</span>
                   <span>Updated just now</span>
                 </div>
@@ -592,7 +592,7 @@ function LegacyHomePage() {
               <p className="mt-7 max-w-md text-base font-medium leading-relaxed text-muted-foreground">
                  Start with the moment you need most. Then follow the tools in order, with a clear place to land after every update.
               </p>
-               <div className="mt-8 border border-border bg-foreground p-5 text-background clip-angled-sm" data-testid="card-landing-hub-welcome">
+               <div className="mt-8 border border-border bg-card p-5 text-card-foreground clip-angled-sm" data-testid="card-landing-hub-welcome">
                  <div className="flex items-start justify-between gap-4">
                    <div>
                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">What your hub says hello with</p>
@@ -627,7 +627,7 @@ function LegacyHomePage() {
                   return (
                      <div key={step.title} className="group relative border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
                        <div className="grid gap-4 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6">
-                      <span className="relative z-10 grid h-12 w-12 place-items-center bg-foreground text-background clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                      <span className="relative z-10 grid h-12 w-12 place-items-center bg-card text-card-foreground clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <IconComponent className="h-5 w-5" />
                       </span>
                       <div>
@@ -642,7 +642,7 @@ function LegacyHomePage() {
                            <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{step.hub}</p>
                          </div>
                          <div className="flex items-start gap-3 border border-border bg-background px-3 py-3">
-                           <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-foreground text-background">
+                           <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-card text-card-foreground">
                              <Bell className="h-3.5 w-3.5" />
                            </span>
                            <div className="min-w-0">
@@ -661,15 +661,15 @@ function LegacyHomePage() {
         </section>
 
          {/* ROLE TOOL WALKTHROUGH */}
-        <section id="tools" className="relative overflow-hidden bg-[#172024] py-20 text-[#f5f0e3] clip-angled sm:py-28">
+        <section id="tools" className="relative overflow-hidden bg-[#0B1F3A] py-20 text-[#F3F6FA] clip-angled sm:py-28">
           <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-20" />
           <div className="relative mx-auto max-w-[1400px] px-5 sm:px-8">
             <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
               <div>
-                 <div className="inline-flex items-center gap-2 border border-[#f5f0e3]/20 bg-[#f5f0e3]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm" data-testid="text-walkthrough-role">{roleCopy.eyebrow}</div>
+                 <div className="inline-flex items-center gap-2 border border-[#F3F6FA]/20 bg-[#F3F6FA]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm" data-testid="text-walkthrough-role">{roleCopy.eyebrow}</div>
                  <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">See your<br /><span className="text-primary">tools in action.</span></h2>
               </div>
-               <p className="max-w-xs text-sm font-medium leading-relaxed text-[#f5f0e3]/55">This is what your Fan Hub looks like, one tool at a time.</p>
+               <p className="max-w-xs text-sm font-medium leading-relaxed text-[#F3F6FA]/55">This is what your Fan Hub looks like, one tool at a time.</p>
             </div>
 
              <div className="mt-14 grid gap-4 md:grid-cols-2" data-testid="section-role-tool-walkthrough">
@@ -705,7 +705,7 @@ function LegacyHomePage() {
         </section>
 
         {/* CTA */}
-        <section className="mx-5 mb-12 overflow-hidden bg-foreground text-background clip-angled-tl sm:mx-8">
+        <section className="mx-5 mb-12 overflow-hidden bg-card text-card-foreground clip-angled-tl sm:mx-8">
           <div className="relative mx-auto flex max-w-[1100px] flex-col items-start justify-between gap-10 px-6 py-16 sm:flex-row sm:items-end sm:px-12 sm:py-20">
             <div className="pointer-events-none absolute inset-0 home-hero-grid opacity-10" />
             <div className="relative">
@@ -868,14 +868,14 @@ function ToolFeatureCard({ kind, large = false }: { kind: ToolKind; large?: bool
   const tool = toolData[kind];
   const Icon = tool.icon;
   return (
-    <Link href={`/studio/${tool.slug}`} className={`group relative overflow-hidden border border-border transition-all hover:border-foreground clip-angled-sm ${large ? 'min-h-[420px] bg-foreground text-background' : 'min-h-[200px] bg-card text-foreground'} p-6 sm:p-8 flex flex-col justify-between`} data-testid={`link-tool-${kind}`}>
+    <Link href={`/studio/${tool.slug}`} className={`group relative overflow-hidden border border-border transition-all hover:border-foreground clip-angled-sm ${large ? 'min-h-[420px] bg-card text-card-foreground' : 'min-h-[200px] bg-card text-foreground'} p-6 sm:p-8 flex flex-col justify-between`} data-testid={`link-tool-${kind}`}>
       {large && <div className="absolute inset-0 bg-tech-grid-dark opacity-10" />}
       {!large && <div className="absolute inset-0 bg-tech-grid opacity-30" />}
 
       <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/20 blur-2xl transition-transform duration-700 group-hover:scale-150 group-hover:bg-primary/30" />
 
       <div className="relative flex items-start justify-between">
-        <span className={`grid h-14 w-14 place-items-center clip-angled-sm ${large ? 'bg-primary text-primary-foreground' : 'bg-foreground text-background'}`}>
+        <span className={`grid h-14 w-14 place-items-center clip-angled-sm ${large ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground'}`}>
           <Icon className="h-6 w-6" />
         </span>
         <ArrowUpRight className="h-6 w-6 opacity-40 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:opacity-100 group-hover:text-primary" />
@@ -919,21 +919,21 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
   const copy = walkthroughCopy[kind];
 
   return (
-    <article className="group overflow-hidden border border-[#f5f0e3]/15 bg-[#f5f0e3]/5 clip-angled-sm" data-testid={`card-tool-walkthrough-${kind}`}>
-      <div className="flex items-start justify-between gap-4 border-b border-[#f5f0e3]/10 p-5 sm:p-6">
+    <article className="group overflow-hidden border border-[#F3F6FA]/15 bg-[#F3F6FA]/5 clip-angled-sm" data-testid={`card-tool-walkthrough-${kind}`}>
+      <div className="flex items-start justify-between gap-4 border-b border-[#F3F6FA]/10 p-5 sm:p-6">
         <div className="flex items-start gap-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center bg-primary text-primary-foreground clip-angled-sm">
             <Icon className="h-5 w-5" />
           </span>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">0{step} / Fan Hub</p>
-            <h3 className="mt-1 font-display text-3xl uppercase tracking-wide text-[#f5f0e3]">{tool.label.replace(' Creator', '')}</h3>
+            <h3 className="mt-1 font-display text-3xl uppercase tracking-wide text-[#F3F6FA]">{tool.label.replace(' Creator', '')}</h3>
           </div>
         </div>
-        <ArrowUpRight className="mt-1 h-5 w-5 text-[#f5f0e3]/40 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-primary" />
+        <ArrowUpRight className="mt-1 h-5 w-5 text-[#F3F6FA]/40 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-primary" />
       </div>
 
-      <div className="min-h-[250px] bg-[#10181b] p-5 sm:p-6">
+      <div className="min-h-[250px] bg-[#0E2542] p-5 sm:p-6">
         <div className="mb-4 border-l-2 border-primary pl-3">
           <p className="text-sm font-semibold leading-relaxed text-white/85">{copy.what}</p>
           <p className="mt-1 text-xs leading-relaxed text-white/50">{copy.next}</p>
@@ -948,7 +948,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
 
         {kind === 'hype' && (
           <div className="grid grid-cols-2 items-start gap-2 sm:gap-4 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)]">
-            <div className="relative mx-auto min-w-0 aspect-[760/1036] w-full max-w-[250px] overflow-hidden border border-primary/40 bg-[#10181b]">
+            <div className="relative mx-auto min-w-0 aspect-[760/1036] w-full max-w-[250px] overflow-hidden border border-primary/40 bg-[#0E2542]">
               <img src={hypeCardFootballTemplate} alt="All Star Hype Card template" className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute left-[16%] right-[16%] top-[24%] h-[57%] overflow-hidden">
                 <img
@@ -969,7 +969,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
                 />
               </div>
             </div>
-            <figure className="mx-auto min-w-0 w-full max-w-[190px] overflow-hidden border border-white/15 bg-[#080a0f]">
+            <figure className="mx-auto min-w-0 w-full max-w-[190px] overflow-hidden border border-white/15 bg-[#0B1F3A]">
               <img
                 src={hypeCardRecipientPreview}
                 alt="Recipient view of a shared Hype Card with reactions and a reply box"
@@ -1000,21 +1000,21 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
         )}
 
         {kind === 'schedule' && (
-          <div className="border border-primary/30 bg-[#f5f0e3] text-[#11181c]">
-            <div className="flex items-center justify-between border-b border-[#11181c]/15 px-4 py-3">
+          <div className="border border-primary/30 bg-[#F3F6FA] text-[#0B1F3A]">
+            <div className="flex items-center justify-between border-b border-[#0B1F3A]/15 px-4 py-3">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#087a48]">Next event</span>
               <CalendarDays className="h-4 w-4 text-[#087a48]" />
             </div>
             <div className="grid grid-cols-[72px_1fr]">
-              <div className="border-r border-[#11181c]/15 bg-[#dfe6df] p-4 text-center">
+              <div className="border-r border-[#0B1F3A]/15 bg-[#dfe6df] p-4 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[#087a48]">SAT</p>
                 <p className="font-display text-4xl leading-none">14</p>
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-widest">SEP</p>
               </div>
               <div className="p-4">
                 <p className="font-display text-2xl uppercase leading-none">Falcons vs Northside</p>
-                <p className="mt-3 text-xs font-semibold text-[#11181c]/60">4:30 PM · Eastside Field</p>
-                <div className="mt-4 inline-flex items-center gap-2 bg-[#11181c] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-white">
+                <p className="mt-3 text-xs font-semibold text-[#0B1F3A]/60">4:30 PM · Eastside Field</p>
+                <div className="mt-4 inline-flex items-center gap-2 bg-[#0B1F3A] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-white">
                   <MapPin className="h-3 w-3 text-primary" /> Game day
                 </div>
               </div>
@@ -1024,7 +1024,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
 
         {kind === 'stat-tracker' && (
           <div className="grid gap-3 md:grid-cols-2">
-            <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+            <figure className="overflow-hidden border border-primary/30 bg-[#F3F6FA]">
               <div className="h-[180px] overflow-hidden sm:h-[220px]">
                 <ResponsiveLandingImage
                   fallback={statTrackerLive}
@@ -1036,9 +1036,9 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
                   height={802}
                 />
               </div>
-              <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">1 / Track the live game</figcaption>
+              <figcaption className="border-t border-[#0B1F3A]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#0B1F3A]/60">1 / Track the live game</figcaption>
             </figure>
-            <figure className="overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+            <figure className="overflow-hidden border border-primary/30 bg-[#F3F6FA]">
               <div className="h-[180px] overflow-hidden sm:h-[220px]">
                 <ResponsiveLandingImage
                   fallback={statTrackerTapStat}
@@ -1050,13 +1050,13 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
                   height={1110}
                 />
               </div>
-              <figcaption className="border-t border-[#11181c]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#11181c]/60">2 / Tap a stat and build the report</figcaption>
+              <figcaption className="border-t border-[#0B1F3A]/10 px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-[#0B1F3A]/60">2 / Tap a stat and build the report</figcaption>
             </figure>
           </div>
         )}
 
         {kind === 'checklist' && (
-          <div className="relative aspect-[16/10] overflow-hidden border border-primary/30 bg-[#f5f0e3]">
+          <div className="relative aspect-[16/10] overflow-hidden border border-primary/30 bg-[#F3F6FA]">
             <ResponsiveLandingImage
               fallback={gameDayChecklist}
               srcSet={`${gameDayChecklist480} 480w, ${gameDayChecklist768} 768w, ${gameDayChecklist1404} 1404w`}
@@ -1071,8 +1071,8 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
 
       </div>
 
-      <div className="flex items-center justify-between gap-4 border-t border-[#f5f0e3]/10 px-5 py-4 sm:px-6">
-        <p className="text-xs font-medium leading-relaxed text-[#f5f0e3]/55">
+      <div className="flex items-center justify-between gap-4 border-t border-[#F3F6FA]/10 px-5 py-4 sm:px-6">
+        <p className="text-xs font-medium leading-relaxed text-[#F3F6FA]/55">
           {kind === 'hype' ? 'Turn a real moment into something worth sharing.' : tool.description}
         </p>
         <Link href={toolHref} className="inline-flex shrink-0 items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary hover:text-white" data-testid={`link-walkthrough-${kind}`}>
@@ -1173,7 +1173,7 @@ function Studio({ role }: { role: UserRole }) {
                     <CircleHelp className="h-5 w-5" />
                   </button>
                 </DialogTrigger>
-                <DialogContent className="border-primary bg-foreground text-background sm:max-w-md">
+                <DialogContent className="border-primary bg-card text-card-foreground sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle className="font-display text-3xl tracking-wide text-white">HOW SAVES WORK</DialogTitle>
                     <DialogDescription className="text-left text-white/70">
@@ -1222,7 +1222,7 @@ function Studio({ role }: { role: UserRole }) {
            </div>
          )}
 
-        <div className="relative mt-8 overflow-hidden border-l-4 border-primary bg-foreground bg-tech-grid-dark px-5 py-4 text-background clip-angled-sm" data-testid="banner-user-team">
+        <div className="relative mt-8 overflow-hidden border-l-4 border-primary bg-card bg-tech-grid-dark px-5 py-4 text-card-foreground clip-angled-sm" data-testid="banner-user-team">
           <div className="pointer-events-none absolute inset-0 bg-tech-grid-green opacity-30" />
           <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -1255,7 +1255,7 @@ function Studio({ role }: { role: UserRole }) {
             {hasProject ? (
               <div className="flex items-center justify-between border-l-4 border-primary bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80">
                 <div className="flex items-center gap-4">
-                  <span className="grid h-12 w-12 place-items-center bg-foreground text-background clip-angled-sm">
+                  <span className="grid h-12 w-12 place-items-center bg-card text-card-foreground clip-angled-sm">
                     <FileImage className="h-5 w-5" />
                   </span>
                   <div>
@@ -1316,7 +1316,7 @@ function Studio({ role }: { role: UserRole }) {
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
-                          <Link href={projectHref} className="bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background clip-angled-sm hover:scale-105 transition-transform" data-testid={`link-resume-cloud-project-${project.id}`}>
+                          <Link href={projectHref} className="bg-card px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-card-foreground clip-angled-sm hover:scale-105 transition-transform" data-testid={`link-resume-cloud-project-${project.id}`}>
                             Open
                           </Link>
                         </div>
@@ -1691,7 +1691,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
             <span className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary transition-opacity duration-300 ${saved ? 'opacity-100' : 'opacity-0'}`}>
               <Check className="h-4 w-4" /> Session Marked
             </span>
-            <button type="button" onClick={saveProject} className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-background clip-angled-sm transition-transform hover:scale-105" data-testid="button-save-project">
+            <button type="button" onClick={saveProject} className="inline-flex items-center gap-2 bg-card px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-card-foreground clip-angled-sm transition-transform hover:scale-105" data-testid="button-save-project">
               <Save className="h-4 w-4" /> Mark Session
             </button>
           </div>
@@ -2487,7 +2487,7 @@ function buildScheduleGraphicSvg({
   template: number;
 }) {
   const background = template === 1 ? '#177d76' : template === 2 ? '#f5c94d' : '#f36f4c';
-  const foreground = template === 2 ? '#243248' : '#f9f3e8';
+  const foreground = template === 2 ? '#243248' : '#F3F6FA';
   const eventBackground = template === 2 ? '#ffffff2b' : '#0000001c';
   const eventHeight = 238;
   const height = Math.max(860, 330 + events.length * eventHeight);
@@ -2570,21 +2570,21 @@ function ScheduleInstallPrompt() {
 
   return (
     <div
-      className="mt-5 border-t border-[#F7F5EF]/20 pt-4"
+      className="mt-5 border-t border-[#F3F6FA]/20 pt-4"
       data-testid="schedule-install-prompt"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#F7F5EF]">
+          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#F3F6FA]">
             Keep this schedule close
           </p>
-          <p className="mt-1 max-w-xl text-xs font-medium leading-relaxed text-[#F7F5EF]/65">
+          <p className="mt-1 max-w-xl text-xs font-medium leading-relaxed text-[#F3F6FA]/65">
             Install Pixl Sports on your phone to reach this shared card anytime.
           </p>
         </div>
         {action === 'installed' ? (
           <span
-            className="shrink-0 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#05EF83]"
+            className="shrink-0 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#16B981]"
             data-testid="schedule-install-installed"
           >
             Available on this phone
@@ -2593,7 +2593,7 @@ function ScheduleInstallPrompt() {
           <button
             type="button"
             onClick={() => { void handleInstall(); }}
-            className="inline-flex shrink-0 items-center justify-center gap-2 self-start border border-[#05EF83]/70 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#05EF83] transition-colors hover:bg-[#05EF83] hover:text-[#12213A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7F5EF] sm:self-auto"
+            className="inline-flex shrink-0 items-center justify-center gap-2 self-start border border-[#16B981]/70 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#16B981] transition-colors hover:bg-[#16B981] hover:text-[#102B4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F3F6FA] sm:self-auto"
             aria-expanded={showInstructions}
             aria-controls="schedule-install-instructions"
             data-testid="button-schedule-install"
@@ -2605,7 +2605,7 @@ function ScheduleInstallPrompt() {
       {showInstructions && action !== 'installed' && (
         <p
           id="schedule-install-instructions"
-          className="mt-3 border border-[#F7F5EF]/15 bg-[#F7F5EF]/[.06] p-3 text-xs font-medium leading-relaxed text-[#F7F5EF]/75"
+          className="mt-3 border border-[#F3F6FA]/15 bg-[#F3F6FA]/[.06] p-3 text-xs font-medium leading-relaxed text-[#F3F6FA]/75"
           role="status"
           data-testid="schedule-install-instructions"
         >
@@ -2630,34 +2630,34 @@ function SchedulePreview({
   readOnly?: boolean;
 }) {
   return (
-    <div className="relative mx-auto w-full max-w-[976px] overflow-hidden border border-[#DCE3EC] bg-[#E8F1FF] p-2 sm:p-3 clip-angled-sm">
+    <div className="relative mx-auto w-full max-w-[976px] overflow-hidden border border-[#2878F5] bg-[#102B4D] p-2 sm:p-3 clip-angled-sm">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,107,53,.16),transparent_26%),radial-gradient(circle_at_85%_85%,rgba(36,116,245,.16),transparent_30%)]" />
-      <div className="relative w-full max-w-[960px] overflow-hidden rounded-[28px] bg-[#12213A] p-5 text-[#F7F5EF] shadow-[0_25px_70px_-24px_rgba(18,33,58,.65)] sm:p-8" data-testid="preview-canvas">
-        <div className="pointer-events-none absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] border-[#FF6B35]/80" />
+      <div className="relative w-full max-w-[960px] overflow-hidden rounded-[28px] bg-[#102B4D] p-5 text-[#F3F6FA] shadow-[0_25px_70px_-24px_rgba(18,33,58,.65)] sm:p-8" data-testid="preview-canvas">
+        <div className="pointer-events-none absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] border-[#FF6433]/80" />
         <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[#2474F5]/80" />
-        <div className="pointer-events-none absolute right-1/4 top-1/3 h-24 w-24 rotate-12 border-[10px] border-[#F7F5EF]/10" />
+        <div className="pointer-events-none absolute right-1/4 top-1/3 h-24 w-24 rotate-12 border-[10px] border-[#F3F6FA]/10" />
         <div className="relative">
-          <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.18em] text-[#F7F5EF]/70">
+          <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.18em] text-[#F3F6FA]/70">
             <div className="min-w-0">
               <p className="truncate">PIXL SPORTS / YOUR WEEK</p>
-              <p className="mt-3 max-w-[90%] font-display text-5xl font-extrabold leading-[.82] tracking-[-.04em] text-[#F7F5EF] sm:text-7xl">
+              <p className="mt-3 max-w-[90%] font-display text-5xl font-extrabold leading-[.82] tracking-[-.04em] text-[#F3F6FA] sm:text-7xl">
                 {teamName || 'TEAM NAME'}
               </p>
             </div>
             <span className="shrink-0 rounded-full bg-[#2474F5] px-3 py-1.5 text-[#FFFFFF]">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <span className="h-1.5 w-16 bg-[#FF6B35]" />
-            <p className="text-sm font-bold uppercase tracking-[.16em] text-[#F7F5EF]/75 sm:text-base">{season || 'SEASON'}</p>
+            <span className="h-1.5 w-16 bg-[#FF6433]" />
+            <p className="text-sm font-bold uppercase tracking-[.16em] text-[#F3F6FA]/75 sm:text-base">{season || 'SEASON'}</p>
           </div>
 
           <div className="mt-7 flex items-center justify-between gap-3">
-            <p className="font-display text-2xl font-bold uppercase tracking-wide text-[#F7F5EF] sm:text-3xl">Next up</p>
+            <p className="font-display text-2xl font-bold uppercase tracking-wide text-[#F3F6FA] sm:text-3xl">Next up</p>
             {!readOnly && (
               <button
                 type="button"
                 onClick={onAddEvent}
-                className="inline-flex items-center gap-2 rounded-md bg-[#FF6B35] px-4 py-2.5 text-xs font-extrabold uppercase tracking-[.14em] text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7F5EF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#12213A]"
+                className="inline-flex items-center gap-2 rounded-md bg-[#FF6433] px-4 py-2.5 text-xs font-extrabold uppercase tracking-[.14em] text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F3F6FA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#102B4D]"
                 aria-label="Add event"
                 data-testid="button-add-event"
               >
@@ -2674,42 +2674,42 @@ function SchedulePreview({
             data-testid="preview-schedule-event-list"
           >
             {events.length === 0 ? (
-              <div className="border border-dashed border-[#F7F5EF]/35 bg-[#F7F5EF]/[.06] p-8 text-center text-sm font-bold uppercase tracking-widest text-[#F7F5EF]/75">
+              <div className="border border-dashed border-[#F3F6FA]/35 bg-[#F3F6FA]/[.06] p-8 text-center text-sm font-bold uppercase tracking-widest text-[#F3F6FA]/75">
                 Add an event to fill the schedule
               </div>
             ) : events.map((event, index) => (
-              <div key={event.id} className="relative border border-[#F7F5EF]/20 bg-[#F7F5EF]/[.08] p-3.5 transition-colors hover:border-[#FF6B35]/70 hover:bg-[#F7F5EF]/[.12] clip-angled-sm">
+              <div key={event.id} className="relative border border-[#F3F6FA]/20 bg-[#F3F6FA]/[.08] p-3.5 transition-colors hover:border-[#FF6433]/70 hover:bg-[#F3F6FA]/[.12] clip-angled-sm">
                 <div className="flex gap-3 sm:gap-5">
-                  <div className="w-[86px] shrink-0 border-r border-[#F7F5EF]/20 pr-3 sm:w-[110px]">
-                    <p className="font-display text-lg leading-none text-[#F7F5EF] sm:text-2xl">{formatScheduleDate(event.date)}</p>
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#FF6B35]">{formatScheduleTime(event.time)}</p>
+                  <div className="w-[86px] shrink-0 border-r border-[#F3F6FA]/20 pr-3 sm:w-[110px]">
+                    <p className="font-display text-lg leading-none text-[#F3F6FA] sm:text-2xl">{formatScheduleDate(event.date)}</p>
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#FF6433]">{formatScheduleTime(event.time)}</p>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-sm bg-[#2474F5] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[.16em] text-white">{event.type}</span>
-                      {event.type === 'game' && <span className="font-display text-xl font-bold leading-none text-[#F7F5EF] sm:text-2xl">VS {event.opponent || 'OPPONENT TBD'}</span>}
-                      {event.type === 'practice' && <span className="font-display text-xl font-bold leading-none text-[#F7F5EF] sm:text-2xl">TEAM PRACTICE</span>}
-                      {event.type === 'meeting' && <span className="font-display text-xl font-bold leading-none text-[#F7F5EF] sm:text-2xl">TEAM MEETING</span>}
+                      {event.type === 'game' && <span className="font-display text-xl font-bold leading-none text-[#F3F6FA] sm:text-2xl">VS {event.opponent || 'OPPONENT TBD'}</span>}
+                      {event.type === 'practice' && <span className="font-display text-xl font-bold leading-none text-[#F3F6FA] sm:text-2xl">TEAM PRACTICE</span>}
+                      {event.type === 'meeting' && <span className="font-display text-xl font-bold leading-none text-[#F3F6FA] sm:text-2xl">TEAM MEETING</span>}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold uppercase tracking-wider text-[#F7F5EF]/75">
-                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-[#FF6B35]" />{event.location}</span>}
-                      {!event.location && <span className="text-[#F7F5EF]/50">Location TBD</span>}
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold uppercase tracking-wider text-[#F3F6FA]/75">
+                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-[#FF6433]" />{event.location}</span>}
+                      {!event.location && <span className="text-[#F3F6FA]/50">Location TBD</span>}
                     </div>
                     {(event.snacks || event.drinks) && (
-                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-[#F7F5EF]/70">
-                        {event.snacks && <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3 text-[#FF6B35]" /> Snacks: {event.snacks}</span>}
-                        {event.drinks && <span className="inline-flex items-center gap-1"><CupSoda className="h-3 w-3 text-[#FF6B35]" /> Drinks: {event.drinks}</span>}
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-[#F3F6FA]/70">
+                        {event.snacks && <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3 text-[#FF6433]" /> Snacks: {event.snacks}</span>}
+                        {event.drinks && <span className="inline-flex items-center gap-1"><CupSoda className="h-3 w-3 text-[#FF6433]" /> Drinks: {event.drinks}</span>}
                       </div>
                     )}
-                    {event.notes && <p className="mt-2 text-xs font-medium leading-relaxed text-[#F7F5EF]/70">{event.notes}</p>}
+                    {event.notes && <p className="mt-2 text-xs font-medium leading-relaxed text-[#F3F6FA]/70">{event.notes}</p>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-8 flex items-center justify-between border-t border-[#F7F5EF]/20 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-[#F7F5EF]/60">
+          <div className="mt-8 flex items-center justify-between border-t border-[#F3F6FA]/20 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-[#F3F6FA]/60">
             <span>Bring the energy / stay in the moment</span>
-            <CalendarDays className="h-5 w-5 text-[#FF6B35]" />
+            <CalendarDays className="h-5 w-5 text-[#FF6433]" />
           </div>
           {readOnly && <ScheduleInstallPrompt />}
         </div>
@@ -2746,7 +2746,7 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
           <CalendarDays className="h-10 w-10 text-primary" />
           <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Schedule not found</h1>
           <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">This parent link may have expired or been copied incorrectly.</p>
-           <Link href="/" className="mt-7 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm">Go to Pixl Sports</Link>
+           <Link href="/" className="mt-7 bg-card px-5 py-3 text-xs font-bold uppercase tracking-widest text-card-foreground clip-angled-sm">Go to Pixl Sports</Link>
         </main>
       </div>
     );
@@ -3135,7 +3135,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           <Link2Off className="h-11 w-11 text-primary" />
           <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Checklist link unavailable</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-muted-foreground">This edit link may have been revoked or copied incorrectly. Ask the owner to create a fresh link.</p>
-          <Link href="/studio/checklist" className="mt-7 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm">Start a local checklist</Link>
+          <Link href="/studio/checklist" className="mt-7 bg-card px-5 py-3 text-xs font-bold uppercase tracking-widest text-card-foreground clip-angled-sm">Start a local checklist</Link>
         </main>
       </div>
     );
@@ -3264,7 +3264,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           </div>
 
           {isChecklistComplete && (
-            <section className={`relative mt-3 overflow-hidden border border-primary/50 bg-foreground px-5 py-5 text-background clip-angled-sm sm:px-6 ${completionFeedback?.kind === 'complete' ? 'motion-safe:animate-pulse' : ''}`} data-testid="checklist-ready-celebration" aria-labelledby="checklist-ready-heading">
+            <section className={`relative mt-3 overflow-hidden border border-primary/50 bg-card px-5 py-5 text-card-foreground clip-angled-sm sm:px-6 ${completionFeedback?.kind === 'complete' ? 'motion-safe:animate-pulse' : ''}`} data-testid="checklist-ready-celebration" aria-labelledby="checklist-ready-heading">
               <div className="pointer-events-none absolute -right-5 -top-7 text-primary/15" aria-hidden="true">
                 <Sparkles className="h-28 w-28" />
               </div>
@@ -3314,7 +3314,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           </div>
         </section>
 
-        <section className="mt-5 border border-border bg-foreground p-5 text-background clip-angled-sm sm:p-6">
+        <section className="mt-5 border border-border bg-card p-5 text-card-foreground clip-angled-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><UsersRound className="h-4 w-4" /> Work together</p>
@@ -3357,7 +3357,7 @@ function Field({ label, value, onChange, testId }: { label: string; value: strin
 function Preview({ kind, values, selectedTemplate }: { kind: ToolKind; values: { headline: string; subline: string; name: string; detail: string }; selectedTemplate: number }) {
   const isSchedule = kind === 'schedule';
   const templateClass = selectedTemplate === 1 ? 'bg-[#177d76]' : selectedTemplate === 2 ? 'bg-[#f5c94d]' : 'bg-[#f36f4c]';
-  const foreground = selectedTemplate === 2 ? 'text-[#243248]' : 'text-[#f9f3e8]';
+  const foreground = selectedTemplate === 2 ? 'text-[#243248]' : 'text-[#F3F6FA]';
 
   return (
     <div className="relative flex min-h-[410px] flex-1 items-center justify-center overflow-hidden border border-border bg-muted p-5 sm:min-h-[580px] sm:p-10 clip-angled-sm">
@@ -3426,7 +3426,7 @@ function Help() {
               <p className="text-sm font-bold uppercase tracking-widest opacity-80 mt-1">Reach out for tactical support</p>
             </div>
           </div>
-           <a href="mailto:hello@pixlsports.com" className="bg-foreground text-background font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap">Contact Team</a>
+           <a href="mailto:hello@pixlsports.com" className="bg-card text-card-foreground font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap">Contact Team</a>
         </div>
       </main>
     </StudioLayout>
@@ -3483,20 +3483,20 @@ const clerkAppearance = {
     logoImageUrl: `${appOrigin}${basePath}/logo.svg`,
   },
   variables: {
-    colorPrimary: "hsl(148 100% 48%)",
-    colorForeground: "hsl(210 20% 98%)",
-    colorMutedForeground: "hsl(215 14% 65%)",
+    colorPrimary: "#2878F5",
+    colorForeground: "#F3F6FA",
+    colorMutedForeground: "#9FB0C8",
     colorDanger: "hsl(0 84% 60%)",
-    colorBackground: "#181a1f",
-    colorInput: "#121316",
-    colorInputForeground: "hsl(210 20% 98%)",
-    colorNeutral: "rgba(255,255,255,0.1)",
+    colorBackground: "#102B4D",
+    colorInput: "#0B1F3A",
+    colorInputForeground: "#F3F6FA",
+    colorNeutral: "rgba(85,164,255,0.16)",
     fontFamily: "var(--app-font-sans)",
     borderRadius: "0.125rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-[#181a1f] w-[440px] max-w-full overflow-hidden clip-angled-sm border border-white/10 shadow-2xl",
+    cardBox: "bg-[#102B4D] w-[440px] max-w-full overflow-hidden clip-angled-sm border border-[#55A4FF]/20 shadow-2xl",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
     headerTitle: "font-display text-4xl uppercase tracking-wide text-white",
@@ -3513,11 +3513,11 @@ const clerkAppearance = {
     logoImage: "h-16 object-contain",
     socialButtonsBlockButton: "rounded-none border border-white/10 clip-angled-sm h-12 bg-white/5 hover:bg-white/10 transition-colors text-white",
     formButtonPrimary: "rounded-none h-12 clip-angled-sm font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground transition-transform hover:scale-[1.02]",
-    formFieldInput: "rounded-none h-12 border-white/10 bg-[#121316] text-white font-medium focus:border-primary focus:ring-1 focus:ring-primary clip-angled-sm transition-all",
+    formFieldInput: "rounded-none h-12 border-white/10 bg-[#0B1F3A] text-white font-medium focus:border-primary focus:ring-1 focus:ring-primary clip-angled-sm transition-all",
     footerAction: "mt-8",
     dividerLine: "bg-white/10",
     alert: "rounded-none border border-destructive/20 bg-destructive/10 text-destructive clip-angled-sm",
-    otpCodeFieldInput: "rounded-none border-white/10 bg-[#121316] text-white focus:border-primary clip-angled-sm",
+    otpCodeFieldInput: "rounded-none border-white/10 bg-[#0B1F3A] text-white focus:border-primary clip-angled-sm",
     formFieldRow: "mb-5",
     main: "p-8 sm:p-10",
   },
@@ -3525,9 +3525,9 @@ const clerkAppearance = {
 
 function AuthLayout({ children, title, subtitle }: { children: ReactNode, title: ReactNode, subtitle: string }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col lg:flex-row bg-[#090a0c] noise">
+    <div className="flex min-h-[100dvh] flex-col lg:flex-row bg-background noise">
       {/* Brand & Context Panel */}
-      <div className="relative flex w-full flex-col justify-between overflow-hidden bg-foreground text-background lg:w-[45%] xl:w-[40%] px-5 py-6 sm:px-10 sm:py-12 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 shadow-2xl z-20">
+      <div className="relative flex w-full flex-col justify-between overflow-hidden bg-card text-card-foreground lg:w-[45%] xl:w-[40%] px-5 py-6 sm:px-10 sm:py-12 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 shadow-2xl z-20">
         <div className="absolute inset-0 bg-tech-grid-dark opacity-[0.05]" />
         <div className="absolute -left-20 -top-20 h-[500px] w-[500px] rounded-full bg-primary/20 blur-[120px] pointer-events-none animate-stadium-flash" />
 
@@ -3565,7 +3565,7 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
       </div>
 
       {/* Auth Form Panel */}
-      <div className="relative flex flex-1 p-5 py-8 sm:p-10 bg-[#090a0c]">
+      <div className="relative flex flex-1 p-5 py-8 sm:p-10 bg-background">
         <div className="absolute inset-0 bg-tech-grid-dark opacity-[0.02]" />
         <div className="relative z-10 w-full max-w-[440px] animate-slide-up m-auto">
           {children}
@@ -3696,7 +3696,7 @@ function RoleSelectionPage() {
               <button
                 type="button"
                 disabled={savingProfile}
-                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-white/15 bg-foreground text-background'}`}
+                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-card text-card-foreground shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-white/15 bg-card text-card-foreground'}`}
                 data-testid="button-role-fan"
               >
                 <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'fan' ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>
@@ -3760,7 +3760,7 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
     <div className="noise min-h-dvh bg-background">
       <SiteNav dark />
       <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-5xl items-center px-5 py-12 sm:px-8">
-        <section className="relative w-full overflow-hidden border-l-4 border-primary bg-foreground p-7 text-white clip-angled-sm sm:p-10" data-testid="locked-account-page">
+        <section className="relative w-full overflow-hidden border-l-4 border-primary bg-card p-7 text-white clip-angled-sm sm:p-10" data-testid="locked-account-page">
           <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
           <div className="relative z-10 max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">{expired ? 'Recovery window ended' : 'Account locked'}</p>

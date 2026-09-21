@@ -119,7 +119,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
     setShowStats((visible) => !visible);
   };
   return (
-    <div className="noise min-h-dvh bg-[#080a0f] text-white">
+    <div className="noise min-h-dvh bg-[#0B1F3A] text-white">
       <header className="border-b border-white/10 bg-[#11141b]">
         <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
           <Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" /></Link>
@@ -355,7 +355,7 @@ export function HypeCardReplyComposer({
 function PublicHypeCardStatsPage({ share }: { share: HypeCardShare }) {
   const stats = share.stats;
   return (
-    <div className="noise min-h-dvh bg-[#080a0f] text-white" data-testid="public-hype-card-stats-page">
+    <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="public-hype-card-stats-page">
       <header className="border-b border-white/10 bg-[#11141b]">
         <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
           <Link href="/">
@@ -461,7 +461,7 @@ function formatHypeCardGameDate(value: string) {
 
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="noise min-h-dvh bg-[#080a0f] text-white">
+    <div className="noise min-h-dvh bg-[#0B1F3A] text-white">
       <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link></div></header>
       <main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main>
     </div>

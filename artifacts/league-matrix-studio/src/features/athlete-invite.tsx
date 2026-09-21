@@ -413,7 +413,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
     ? latestTrend > previousTrend ? 'up' : latestTrend < previousTrend ? 'down' : 'flat'
     : 'flat';
   return (
-    <div className="noise min-h-dvh bg-[#080a0f] text-white" data-testid="public-athlete-invite">
+    <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
         <header className="border-l-4 border-primary pl-5">
@@ -598,5 +598,5 @@ function PublicHeader() {
   return <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/35">Athlete Hype Page</span></div></header>;
 }
 function PublicShell({ children }: { children: React.ReactNode }) {
-  return <div className="noise min-h-dvh bg-[#080a0f] text-white"><PublicHeader /><main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main></div>;
+  return <div className="noise min-h-dvh bg-[#0B1F3A] text-white"><PublicHeader /><main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main></div>;
 }

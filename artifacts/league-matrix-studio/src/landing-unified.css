@@ -1,12 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Caveat:wght@600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&display=swap");
 
 .new-landing {
-  --landing-bg: #F7F5EF;
-  --landing-text: #12213A;
-  --landing-primary: #2474F5;
-  --landing-orange: #FF6B35;
-  --landing-pale-blue: #E8F1FF;
-  --landing-white: #FFFFFF;
+  --landing-bg: #0B1F3A;
+  --landing-text: #F3F6FA;
+  --landing-primary: #55A4FF;
+  --landing-orange: #FF6433;
+  --landing-pale-blue: #102B4D;
+  --landing-white: #0E2542;
   --landing-gray: #8F9AAB;
 }
 
