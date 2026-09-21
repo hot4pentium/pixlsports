@@ -730,6 +730,7 @@
   display: flex;
   position: relative;
   z-index: 1;
+  isolation: isolate;
   min-height: 76px;
   width: 100%;
   flex-direction: column;
@@ -744,14 +745,50 @@
   transition: color .2s ease, transform .2s ease;
 }
 
+.pixl-dashboard-mobile .mobile-week-path-step::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 -1px;
+  border: 1px solid rgba(85, 164, 255, .24);
+  background: linear-gradient(145deg, rgba(16, 43, 77, .88), rgba(11, 31, 58, .72));
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%);
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step:first-child::before {
+  left: 0;
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%);
+}
+
 .pixl-dashboard-mobile .mobile-week-path-step.is-completed {
   color: #B9D8FF;
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step.is-completed::before {
+  border-color: rgba(85, 164, 255, .38);
+  background: linear-gradient(145deg, rgba(40, 120, 245, .28), rgba(16, 43, 77, .82));
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step.is-active,
 .pixl-dashboard-mobile .mobile-week-path-step.is-selected {
   color: white;
   transform: translateY(-2px);
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step.is-active::before {
+  border-color: rgba(110, 231, 183, .8);
+  background: linear-gradient(135deg, rgba(22, 185, 129, .82), rgba(14, 165, 165, .88));
+  box-shadow: 0 8px 20px rgba(22, 185, 129, .2);
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step.is-selected:not(.is-active)::before {
+  border-color: rgba(85, 164, 255, .7);
+  background: linear-gradient(135deg, rgba(40, 120, 245, .55), rgba(16, 43, 77, .9));
+}
+
+.pixl-dashboard-mobile .mobile-week-path-step > * {
+  position: relative;
+  z-index: 1;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-number {
