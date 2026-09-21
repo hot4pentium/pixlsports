@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  CheckCircle2, ChevronDown, Home, PlusSquare, Check, Sparkles
+  ChevronDown, Home, PlusSquare, Check, Sparkles
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -617,7 +617,7 @@ export function SupporterDashboardView({
                         <StepIcon className="mobile-week-path-icon h-4 w-4" aria-hidden="true" />
                         <span className="mobile-week-path-label">
                           <span className="sr-only">Step {index + 1}: </span>
-                          {step.label}
+                          {step.id === 'plan' ? 'Plan' : step.id === 'upcoming' ? 'Prep' : step.id === 'live' ? 'Capture' : 'Send'}
                         </span>
                         <span className="mobile-week-path-state">
                           {isActive ? 'Next' : isCompleted ? 'Done' : ''}
@@ -639,25 +639,33 @@ export function SupporterDashboardView({
           {/* Recommendation Card */}
           <section className="bg-white rounded-[24px] overflow-hidden shadow-sm border border-black/5 mt-3" data-testid="card-mobile-recommendation" aria-labelledby="mobile-recommendation-heading">
              <div className="p-6">
-               <p className="text-[11px] font-bold uppercase tracking-widest text-[#2474F5] mb-3">YOUR NEXT BEST STEP</p>
-               <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{activePathDetails.title}</h2>
-               <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{activePathDetails.description}</p>
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="mobile-recommendation-icon grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#55A4FF]/40 bg-[#2878F5]/10 text-[#55A4FF]" aria-hidden="true">
+                    <selectedPath.Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-[#2474F5]">YOUR NEXT BEST STEP</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/40">{selectedPath.id === activePath.id ? 'UP NEXT' : 'STAGE DETAILS'}</p>
+                  </div>
+                </div>
+                <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{selectedPathDetails.title}</h2>
+                <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{selectedPathDetails.description}</p>
 
                <button
                  type="button"
                  onClick={() => {
                    trackEvent('completion_next_action_clicked', {
                      source: 'weekly_path_mobile',
-                     stage: activePath.id,
+                      stage: selectedPath.id,
                      progress_count: activePathIndex,
                    });
-                   setLocation(activePath.href);
+                    setLocation(selectedPath.href);
                  }}
                  className="w-full bg-[#2474F5] hover:bg-[#2474F5]/90 text-white font-bold text-base py-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors shadow-sm"
                  data-testid="btn-mobile-recommendation-action"
                >
-                 <activePath.Icon className="w-5 h-5" />
-                 {activePathDetails.action}
+                  <selectedPath.Icon className="w-5 h-5" />
+                  {selectedPathDetails.action}
                </button>
 
                <p className="text-center text-[13px] font-medium text-black/40 mt-4">{mobileFeaturedEvent ? "Suggested from your next event" : "Add an event to get a recommendation"}</p>
