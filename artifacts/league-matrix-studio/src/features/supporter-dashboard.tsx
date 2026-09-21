@@ -360,7 +360,6 @@ export function SupporterDashboardView({
   const selectedPath = weeklyPath.find(({ id }) => id === selectedPathId)
     ?? weeklyPath.find(({ active }) => active)
     ?? weeklyPath[0];
-  const selectedPathTheme = weeklyPathThemes[selectedPath.id];
   const weeklyPathDetails: Record<WeeklyPathId, {
     eyebrow: string;
     title: string;
@@ -980,29 +979,48 @@ export function SupporterDashboardView({
               })}
             </div>
           </div>
-        <div id="week-path-content" className={`relative border-t-2 ${selectedPathTheme.contentBorder} ${selectedPathTheme.contentSurface} px-5 py-5 sm:px-8 sm:py-7`} data-testid="week-path-content" data-selected-path={selectedPath.id}>
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${selectedPathTheme.accent}`}>{selectedPathDetails.eyebrow}</p>
-              <h3 className={`mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl ${selectedPathTheme.accent}`}>{selectedPathDetails.title}</h3>
-              <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-white/60">{selectedPathDetails.description}</p>
+        <div
+          id="week-path-content"
+          className="dashboard-week-path-recommendation"
+          data-testid="week-path-content"
+          data-selected-path={selectedPath.id}
+          aria-labelledby="desktop-recommendation-heading"
+        >
+          <div className="dashboard-week-path-recommendation-inner">
+            <div className="dashboard-week-path-recommendation-header">
+              <span className="dashboard-week-path-recommendation-icon" aria-hidden="true">
+                <selectedPath.Icon />
+              </span>
+              <div className="min-w-0">
+                <p className="dashboard-week-path-recommendation-eyebrow">Your next best step</p>
+                <p className="dashboard-week-path-recommendation-status">
+                  {selectedPath.id === activePath.id ? 'Up next' : 'Stage details'}
+                </p>
+              </div>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
-              <Link
-                href={selectedPath.href}
-                onClick={() => trackEvent('completion_next_action_clicked', {
+            <h3 id="desktop-recommendation-heading" className="dashboard-week-path-recommendation-title">
+              {selectedPathDetails.title}
+            </h3>
+            <p className="dashboard-week-path-recommendation-description">{selectedPathDetails.description}</p>
+            <button
+              type="button"
+              onClick={() => {
+                trackEvent('completion_next_action_clicked', {
                   source: 'weekly_path_desktop',
                   stage: selectedPath.id,
                   progress_count: activePathIndex,
-                })}
-                className={`inline-flex min-h-12 items-center justify-center gap-2 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-transform hover:-translate-y-0.5 clip-angled-sm ${selectedPathTheme.action}`}
-              >
-                {selectedPathDetails.action} <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link href="#recent-hype-cards" className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/20 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-white/70 transition-colors hover:border-white/50 hover:text-white" data-testid="link-recent-moments">
-                Recent moments
-              </Link>
-            </div>
+                });
+                setLocation(selectedPath.href);
+              }}
+              className="dashboard-week-path-recommendation-action"
+              data-testid="btn-desktop-recommendation-action"
+            >
+              <selectedPath.Icon aria-hidden="true" />
+              {selectedPathDetails.action}
+            </button>
+            <p className="dashboard-week-path-recommendation-note">
+              {mobileFeaturedEvent ? 'Suggested from your next event' : 'Add an event to get a recommendation'}
+            </p>
           </div>
         </div>
         </section>
