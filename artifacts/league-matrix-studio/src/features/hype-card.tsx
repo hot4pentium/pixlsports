@@ -2,8 +2,8 @@ type SaveStatus = 'Saved locally' | 'Saving' | 'Saved design' | 'Waiting to sync
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
-  ArrowLeft, Check, Download, Eye, FileImage, FlipHorizontal2, FolderOpen, ImagePlus,
-  LayoutGrid, Lightbulb, MessageCircle, Move, Palette, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2, Link2Off, Clipboard, Trash2
+  ArrowLeft, Check, Download, Eye, FlipHorizontal2, FolderOpen, ImagePlus,
+  LayoutGrid, Lightbulb, MessageCircle, Move, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2, Link2Off, Clipboard, Trash2
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useParams, useLocation } from 'wouter';
@@ -45,8 +45,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import {
-  HypeCardProject, HypeFormat, TemplateId, CardLayoutId, PaletteId,
-  templates, cardLayouts, palettes, defaultProject, getDimensions, cardFinishes,
+  HypeCardProject, HypeFormat, TemplateId, CardLayoutId,
+  templates, cardLayouts, defaultProject, getDimensions, cardFinishes,
   normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject, clearHypeCardMedia,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE,
   persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
@@ -240,6 +240,7 @@ function hydrateCloudHypeCard(cloudProject: Project) {
   const download = cloudProject.media.find((item) => item.mediaRole === 'video_download');
   return normalizeHypeCardProject({
     ...source,
+    format: 'card',
     mediaType: preview || download ? 'video' : photo ? 'image' : null,
     mediaId: preview?.id ?? photo?.id ?? null,
     downloadMediaId: download?.id ?? null,
@@ -385,7 +386,7 @@ function Section({
   children,
 }: {
   title: string;
-  icon: typeof Palette;
+  icon: typeof Lightbulb;
   children: ReactNode;
 }) {
   return (
@@ -402,10 +403,7 @@ function Section({
 const hypeWalkthroughSteps = [
   { label: 'Moment', hint: 'Write your own moment' },
   { label: 'Media', hint: 'Add player media' },
-  { label: 'Details', hint: 'Add player info' },
-  { label: 'Format', hint: 'Choose the output' },
   { label: 'Layout', hint: 'Choose the scene' },
-  { label: 'Palette', hint: 'Choose the colors' },
   { label: 'Review', hint: 'Preview and export' },
 ] as const;
 
@@ -683,61 +681,6 @@ function MediaImageDownloadControls({
           </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-function OutputFormatControls({
-  project,
-  onFormatChange,
-}: {
-  project: HypeCardProject;
-  onFormatChange: (format: HypeFormat) => void;
-}) {
-  const landscapeAvailable = project.mediaType === 'video' || project.format === 'landscape';
-  const options: Array<{ format: HypeFormat; title: string; dimensions: string; description: string }> = [
-    {
-      format: 'card',
-      title: 'Portrait card',
-      dimensions: '1000 × 1400',
-      description: 'The standard vertical Hype Card layout.',
-    },
-  ];
-
-  options.push({
-    format: 'landscape',
-    title: 'Landscape video',
-    dimensions: '1920 × 1080',
-    description: landscapeAvailable
-      ? 'Shows the full wide video frame in a horizontal card.'
-      : 'Add a video to enable the horizontal card.',
-  });
-
-  return (
-    <div className="space-y-3" role="group" aria-label="Output format">
-      {options.map((option) => (
-        <button
-          key={option.format}
-          type="button"
-          data-testid={`format-option-${option.format}`}
-          aria-pressed={project.format === option.format}
-          disabled={option.format === 'landscape' && !landscapeAvailable}
-          onClick={() => onFormatChange(option.format)}
-          className={`w-full rounded-xl border p-4 text-left transition-colors ${
-            project.format === option.format
-              ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-              : option.format === 'landscape' && !landscapeAvailable
-                ? 'cursor-not-allowed border-border bg-muted/50 opacity-65'
-                : 'border-border bg-background hover:border-primary/60 hover:bg-muted'
-          }`}
-        >
-          <span className="block text-xs font-bold">{option.title}</span>
-          <span className="mt-1 block text-[10px] text-muted-foreground">{option.dimensions} · {option.description}</span>
-        </button>
-      ))}
-      <p className="text-[10px] font-medium text-muted-foreground">
-        Fit keeps the complete video visible. Fill uses more of the frame but may crop the sides.
-      </p>
     </div>
   );
 }
@@ -1122,8 +1065,8 @@ export function HypeCardEditor() {
 
   const [project, setProject] = useState<HypeCardProject>(() => {
     try {
-      if (cloudProjectId) return initialCloudDraft?.project ?? defaultProject();
-      return readHypeCardProject() ?? defaultProject();
+      const initial = cloudProjectId ? initialCloudDraft?.project ?? defaultProject() : readHypeCardProject() ?? defaultProject();
+      return { ...initial, format: 'card' };
     } catch {
       return defaultProject();
     }
@@ -1161,7 +1104,7 @@ export function HypeCardEditor() {
   const [shareTrackerProjectId, setShareTrackerProjectId] = useState<string>('none');
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
-  const [shareMode, setShareMode] = useState<'card' | 'stats'>('stats');
+  const [shareMode, setShareMode] = useState<'card' | 'stats'>('card');
   const [linkedExportPending, setLinkedExportPending] = useState(false);
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
   const [publishedStatsShare, setPublishedStatsShare] = useState<HypeCardShare | null>(null);
@@ -1257,11 +1200,7 @@ export function HypeCardEditor() {
   const trackerProjects = projects?.filter(p => p.project.tool === 'stat-tracker') || [];
 
   useEffect(() => {
-    if (
-      cloudProjectId
-      || !isLoaded
-      || profilePrefillAppliedRef.current
-    ) {
+    if (!isLoaded || profilePrefillAppliedRef.current) {
       return;
     }
     if (!profilePrefillAppliedRef.current) {
@@ -1344,11 +1283,11 @@ export function HypeCardEditor() {
       onError: () => setNotice('Could not delete that reply. Please try again.'),
     },
   });
-  const isShareSuccessNotice = notice.startsWith('Player page published')
+  const isShareSuccessNotice = notice.startsWith('Hype Card added to Athlete Hype Page')
     || notice.startsWith('Stats link ready')
     || notice === 'Share link copied.'
     || notice === 'Stats link copied.'
-    || notice.startsWith('Player page link revoked');
+    || notice.startsWith('Hype Card removed from Athlete Hype Page');
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
   useEffect(() => {
@@ -1365,7 +1304,7 @@ export function HypeCardEditor() {
       const photo = cloudProjectData.media.find((item) => item.mediaRole === 'photo');
       const logo = cloudProjectData.media.find((item) => item.mediaRole === 'logo');
       const poster = cloudProjectData.media.find((item) => item.mediaRole === 'poster');
-      const p = hydrateCloudHypeCard(cloudProjectData);
+      const p = seedHypeCardFromSupporterProfile(hydrateCloudHypeCard(cloudProjectData), profile);
       currentRevision.current = cloudProjectData.revision;
       const localDraft = readHypeCardCloudDraft(cloudProjectId);
       const revisionChanged = localDraft?.cloudRevision !== null
@@ -1383,21 +1322,24 @@ export function HypeCardEditor() {
         && hasDeviceOnlyMedia(localDraft.project),
       );
       if (pendingConflict && localDraft) {
-        setProject(localDraft.project);
-        lastSaved.current = localDraft.project;
+        const localProject = seedHypeCardFromSupporterProfile({ ...localDraft.project, format: 'card' as HypeFormat }, profile);
+        setProject(localProject);
+        lastSaved.current = localProject;
         setConflictData(cloudProjectData);
         setSaveStatus('Conflict');
       } else if (keepPendingLocal && localDraft) {
-        setProject(localDraft.project);
-        lastSaved.current = p;
+        const localProject = seedHypeCardFromSupporterProfile({ ...localDraft.project, format: 'card' as HypeFormat }, profile);
+        setProject(localProject);
+        lastSaved.current = localProject;
         setSaveStatus(isOnline ? 'Waiting to sync' : 'Offline');
-        nextSaveDataRef.current = localDraft.project;
+        nextSaveDataRef.current = localProject;
       } else if (mergeSyncedDeviceMedia && localDraft) {
         const merged = mergeDeviceMedia(p, localDraft.project);
-        setProject(merged);
-        lastSaved.current = merged;
+        const profileProject = seedHypeCardFromSupporterProfile({ ...merged, format: 'card' as HypeFormat }, profile);
+        setProject(profileProject);
+        lastSaved.current = profileProject;
         saveHypeCardCloudDraft(cloudProjectId, window.localStorage, {
-          project: projectForLocalSave(merged),
+          project: projectForLocalSave(profileProject),
           syncState: 'synced',
           cloudRevision: cloudProjectData.revision,
         });
@@ -1406,7 +1348,7 @@ export function HypeCardEditor() {
         setProject(p);
         lastSaved.current = p;
         saveHypeCardCloudDraft(cloudProjectId, window.localStorage, {
-          project: p,
+        project: p,
           syncState: 'synced',
           cloudRevision: cloudProjectData.revision,
         });
@@ -1916,7 +1858,7 @@ export function HypeCardEditor() {
   };
 
   const updateProject = <K extends keyof HypeCardProject>(key: K, value: HypeCardProject[K]) => {
-    setProject((current) => ({ ...current, [key]: value }));
+    setProject((current) => ({ ...current, format: 'card', [key]: value }));
     setValidation('');
   };
 
@@ -2370,7 +2312,7 @@ export function HypeCardEditor() {
     setValidation('');
     setNotice('');
     if (!isOnline) {
-      setNotice('Your Hype Card is ready on this phone. Reconnect to publish a player page.');
+      setNotice('Your Hype Card is ready on this phone. Reconnect to post it to an Athlete Hype Page.');
       return;
     }
     if (!isSignedIn) {
@@ -2382,13 +2324,8 @@ export function HypeCardEditor() {
       setShareTrackerProjectId(existingShare.trackerProjectId ?? 'none');
       setShareSport(profile.sport ?? existingShare.sport ?? 'basketball');
       setShareExpiresInDays(String(existingShare.expiresInDays));
-    } else if (existingStatsShare && isOwnedHypeCardShare(existingStatsShare)) {
-      setShareMode('stats');
-      setShareTrackerProjectId(existingStatsShare.trackerProjectId ?? 'none');
-      setShareSport(profile.sport ?? existingStatsShare.sport ?? 'basketball');
-      setShareExpiresInDays(String(existingStatsShare.expiresInDays));
-    } else if (!existingShare) {
-      setShareMode('stats');
+    } else {
+      setShareMode('card');
       setShareTrackerProjectId('none');
       setShareSport(profile.sport ?? 'basketball');
       setShareExpiresInDays('30');
@@ -2400,7 +2337,7 @@ export function HypeCardEditor() {
     e.preventDefault();
     if (!isOnline) {
       setShareDialogOpen(false);
-      setNotice('Reconnect to publish this Hype Card player page.');
+        setNotice('Reconnect to post this Hype Card to the Athlete Hype Page.');
       return;
     }
     setSharing(true);
@@ -2512,9 +2449,9 @@ export function HypeCardEditor() {
       else setPublishedShare(created);
       await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
       const url = shareUrlFor(created);
-      if (!linkedExport) {
+      if (!linkedExport && isStatsOnly) {
         try {
-          if (navigator.share) await navigator.share({ title: created.title, text: isStatsOnly ? 'View the finalized Pixl Sports stats with this video.' : 'Watch this Pixl Sports Hype Card', url });
+          if (navigator.share) await navigator.share({ title: created.title, text: 'View the finalized Pixl Sports stats with this video.', url });
           else await navigator.clipboard.writeText(url);
         } catch {
           await navigator.clipboard.writeText(url).catch(() => undefined);
@@ -2524,7 +2461,7 @@ export function HypeCardEditor() {
         ? linkedExport
           ? `Stats link ready for ${shareExpiresInDays} days. Printing it onto your export now.`
           : `Stats link ready for ${shareExpiresInDays} days. Your video stays on this phone.`
-        : `Player page published for ${shareExpiresInDays} days. The link is ready to share.`);
+        : `Hype Card added to Athlete Hype Page for ${shareExpiresInDays} days.`);
       setLinkedExportPending(false);
       if (linkedExport) await handleExport(url);
     } catch (error) {
@@ -2542,7 +2479,7 @@ export function HypeCardEditor() {
       await deleteHypeShare.mutateAsync({ shareToken: existingShare.shareToken });
       setPublishedShare(null);
       await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
-      setNotice('Player page link revoked and shared media removed.');
+      setNotice('Hype Card removed from Athlete Hype Page and shared media deleted.');
     } catch {
       setNotice('The interactive link could not be revoked.');
     }
@@ -2563,7 +2500,7 @@ export function HypeCardEditor() {
   const deviceOnlyMedia = hasDeviceOnlyMedia(project);
   const successShare = shareMode === 'stats' ? existingStatsShare : existingShare;
   const deviceMediaMessage = !isOnline
-    ? 'Media is attached on this phone. Reconnect only if you want a cloud copy or player page.'
+    ? 'Media is attached on this phone. Reconnect only if you want a cloud copy or Athlete Hype Page post.'
     : project.mediaType === 'video' && !project.videoPrepared
       ? 'The original video is attached on this phone and remains available for local export.'
       : accountAccess?.paid
@@ -2640,9 +2577,9 @@ export function HypeCardEditor() {
                 <Link2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Export with stats link</span>
               </Button>
-              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Preparing share link' : existingShare || existingStatsShare ? 'Refresh share link' : 'Create stats link'} title={existingShare || existingStatsShare ? 'Refresh share link' : 'Create stats link'}>
+              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Posting to Athlete Hype Page' : existingShare ? 'Update Athlete Hype Page' : 'Post to Athlete Hype Page'} title={existingShare ? 'Update Athlete Hype Page' : 'Post to Athlete Hype Page'}>
               <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare || existingStatsShare ? 'Refresh link' : 'Share'}</span>
+                <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Update Hype Page' : 'Post Hype Page'}</span>
             </Button>
             {exporting && (
               <Button variant="outline" size="icon" onClick={handleCancelExport} className="rounded-xl border-destructive text-destructive">
@@ -2685,7 +2622,7 @@ export function HypeCardEditor() {
         }`}>
           {notice}
           <div className="flex shrink-0 items-center gap-2">
-            {isShareSuccessNotice && successShare && (
+            {isShareSuccessNotice && successShare && shareMode === 'stats' && (
               <>
                 <button
                   type="button"
@@ -2714,6 +2651,15 @@ export function HypeCardEditor() {
                 </a>
               </>
             )}
+            {isShareSuccessNotice && successShare && shareMode === 'card' && (
+              <Link
+                href="/studio/athlete-page"
+                className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
+                data-testid="link-manage-athlete-page-success"
+              >
+                <Eye className="h-3.5 w-3.5" /> Manage Athlete Hype Page
+              </Link>
+            )}
             <button type="button" onClick={() => setNotice('')} aria-label="Dismiss notice"><X className="h-4 w-4" /></button>
           </div>
         </div>
@@ -2721,18 +2667,11 @@ export function HypeCardEditor() {
 
       {existingShare && (
         <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
-          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Player page</span>
-          <input readOnly value={shareUrlFor(existingShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Hype Card player page link" />
-          <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingShare)).then(() => setNotice('Share link copied.')).catch(() => setNotice('Select and copy the link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
-           <a
-             href={shareUrlFor(existingShare)}
-             target="_blank"
-             rel="noreferrer"
-             className="inline-flex min-h-9 items-center gap-2 border border-border bg-background px-3 text-xs font-bold uppercase tracking-wider hover:border-primary hover:bg-muted"
-             data-testid="link-preview-recipient"
-           >
-             <Eye className="h-4 w-4" /> Preview
-           </a>
+          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Athlete Hype Page</span>
+          <span className="min-w-0 flex-1 text-xs font-medium leading-relaxed text-muted-foreground">The latest playable Hype Card is available on the Athlete Hype Page with its stats, Game Day Live, and event cards.</span>
+          <Link href="/studio/athlete-page" className="inline-flex min-h-9 items-center justify-center gap-2 border border-border bg-background px-3 text-xs font-bold uppercase tracking-wider hover:border-primary hover:bg-muted" data-testid="link-manage-athlete-page">
+            <Eye className="h-4 w-4" /> Manage
+          </Link>
           <Button type="button" size="sm" variant="outline" className="relative rounded-none" onClick={() => setReplyDialogOpen(true)}>
             <MessageCircle className="mr-2 h-4 w-4" /> Replies
             {Boolean(shareReplies?.unreadCount) && <span className="ml-2 bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{shareReplies?.unreadCount}</span>}
@@ -3008,51 +2947,15 @@ export function HypeCardEditor() {
               </div>
             </Section>}
 
-            {walkthroughStep === 2 && <Section title="Details" icon={FileImage}>
-              <div className="flex flex-col gap-4">
-                <HypeField label="Player name" value={project.playerName} onChange={(v) => updateProject('playerName', v)} placeholder="e.g. Jordan Smith" />
-                <div className="grid grid-cols-2 gap-4">
-                  <HypeField label="Jersey number" value={project.jerseyNumber} onChange={(v) => updateProject('jerseyNumber', v)} placeholder="e.g. 12" />
-                  <HypeField label="Position" value={project.position} onChange={(v) => updateProject('position', v)} placeholder="e.g. Point guard" />
-                </div>
-                <HypeField label="Team name" value={project.teamName} onChange={(v) => updateProject('teamName', v)} placeholder="e.g. Eastside Falcons" />
-              </div>
-            </Section>}
-
-            {walkthroughStep === 3 && <Section title="Format" icon={SlidersHorizontal}>
-              <OutputFormatControls project={project} onFormatChange={(format) => updateProject('format', format)} />
-            </Section>}
-
-            {walkthroughStep === 4 && <Section title="Layout" icon={LayoutGrid}>
-              {project.format === 'landscape' ? (
-                <div className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-medium text-muted-foreground" data-testid="landscape-layout-note">
-                  Landscape video uses the dedicated wide layout so the full frame and player details stay visible. Choose a palette next.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {cardLayouts.map((l) => (
-                    <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id && project.format === 'card'} onSelect={() => { updateProject('layout', l.id); updateProject('format', 'card'); }} />
-                  ))}
-                </div>
-              )}
-            </Section>}
-
-            {walkthroughStep === 5 && <Section title="Palette" icon={Palette}>
-              <div className="flex flex-col gap-2">
-                {Object.entries(palettes).map(([id, p]) => (
-                  <button key={id} type="button" onClick={() => updateProject('palette', id as PaletteId)} className={`flex items-center justify-between rounded-xl border p-2 pl-3 transition-colors ${project.palette === id ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-background hover:bg-muted'}`}>
-                    <span className="text-xs font-bold">{p.name}</span>
-                    <div className="flex shrink-0 -space-x-1.5 overflow-hidden">
-                      {[p.primary, p.secondary, p.accent].map((c, i) => (
-                        <span key={i} className="inline-block h-6 w-6 rounded-full border-2 border-background" style={{ backgroundColor: c }} />
-                      ))}
-                    </div>
-                  </button>
+            {walkthroughStep === 2 && <Section title="Layout" icon={LayoutGrid}>
+              <div className="grid grid-cols-1 gap-3">
+                {cardLayouts.map((l) => (
+                  <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id} onSelect={() => updateProject('layout', l.id)} />
                 ))}
               </div>
             </Section>}
 
-            {walkthroughStep === 6 && (
+            {walkthroughStep === 3 && (
               <section className="border-t border-border pt-6">
                 <div className="mb-5 flex items-center gap-2">
                   <Check className="h-5 w-5 text-primary" />
@@ -3082,7 +2985,7 @@ export function HypeCardEditor() {
                     <Download className="h-4 w-4 shrink-0" /> <span className="truncate">{exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}</span>
                   </Button>
                   <Button type="button" variant="outline" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
-                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare || existingStatsShare ? 'Refresh link' : 'Create stats link'}</span>
+                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Update Hype Page' : 'Post Hype Page'}</span>
                   </Button>
                   <Button type="button" variant="outline" onClick={handleExportWithStatsLink} disabled={sharing || exporting} data-testid="walkthrough-export-stats-link" className="col-span-2 min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
                     <Link2 className="h-4 w-4 shrink-0" /> <span className="truncate">Export with stats link</span>
@@ -3136,34 +3039,38 @@ export function HypeCardEditor() {
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Share Hype Card</DialogTitle>
             <DialogDescription>
-              {shareMode === 'stats'
+                  {shareMode === 'stats'
                 ? 'Keep your video on this phone and send a separate finalized stats link with it.'
-                : `${PUBLIC_SHARE_MEDIA} Choose how long the hosted player page stays active below.`}
+                : 'Post this playable Hype Card to the Athlete Hype Page. The direct Hype Card URL will not be shown here.'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePublishShare} className="space-y-4 pt-4">
-            <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Choose what to share">
+            {shareMode === 'card' && (
+              <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Choose how to share">
+               <button
+                 type="button"
+                 onClick={() => {
+                   setShareDialogOpen(false);
+                   void handleExport();
+                 }}
+                 data-testid="button-download-hype-card"
+                 className="border border-border bg-muted/30 p-3 text-left transition-colors hover:border-primary/50"
+               >
+                 <span className="block text-xs font-bold uppercase tracking-widest text-primary">Download Hype Card</span>
+                 <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Save the finished vertical card to this device, then share the file anywhere.</span>
+               </button>
               <button
                 type="button"
-                onClick={() => setShareMode('stats')}
-                data-testid="button-share-stats-only"
-                aria-pressed={shareMode === 'stats'}
-                className={`border p-3 text-left transition-colors ${shareMode === 'stats' ? 'border-primary bg-primary/10' : 'border-border bg-muted/30 hover:border-primary/50'}`}
+                 onClick={() => setShareMode('card')}
+                 data-testid="button-post-athlete-hype-page"
+                 aria-pressed
+                 className="border border-primary bg-primary/10 p-3 text-left transition-colors"
               >
-                <span className="block text-xs font-bold uppercase tracking-widest text-primary">Local video + stats link</span>
-                <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Recommended. The video stays on your phone; only finalized stats are hosted.</span>
+                 <span className="block text-xs font-bold uppercase tracking-widest text-primary">Post Athlete Hype Page</span>
+                 <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Keep this playable card with finalized stats, Game Day Live, and event cards on the athlete’s stable page.</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setShareMode('card')}
-                data-testid="button-share-hosted-card"
-                aria-pressed={shareMode === 'card'}
-                className={`border p-3 text-left transition-colors ${shareMode === 'card' ? 'border-primary bg-primary/10' : 'border-border bg-muted/30 hover:border-primary/50'}`}
-              >
-                <span className="block text-xs font-bold uppercase tracking-widest text-primary">Hosted player page</span>
-                <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Upload a prepared image or video so the recipient can view the card on one page.</span>
-              </button>
-            </div>
+             </div>
+            )}
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Stats Project</Label>
               <Select value={shareTrackerProjectId} onValueChange={setShareTrackerProjectId}>
@@ -3243,7 +3150,7 @@ export function HypeCardEditor() {
 
             <DialogFooter className="mt-6">
               <Button type="submit" disabled={shareMode === 'stats' ? shareTrackerProjectId === 'none' || !profile.athleteName : shareTrackerProjectId !== 'none' && !profile.athleteName} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
-                {shareMode === 'stats' ? 'Create stats link' : 'Publish player page'}
+                {shareMode === 'stats' ? 'Create stats link' : 'Post to Athlete Hype Page'}
               </Button>
             </DialogFooter>
           </form>
@@ -3254,11 +3161,11 @@ export function HypeCardEditor() {
         <DialogContent className="clip-angled-sm sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display uppercase tracking-wider text-xl">Hype Card Replies</DialogTitle>
-            <DialogDescription>Reactions and messages from people who opened your active player page.</DialogDescription>
+            <DialogDescription>Reactions and messages from people who opened your active Athlete Hype Page card.</DialogDescription>
           </DialogHeader>
           <div className="max-h-[55dvh] space-y-3 overflow-y-auto pt-3">
             {!shareReplies?.replies.length ? (
-              <div className="border border-dashed border-border p-6 text-center text-sm font-medium text-muted-foreground">No replies yet. Share the player page to invite reactions.</div>
+              <div className="border border-dashed border-border p-6 text-center text-sm font-medium text-muted-foreground">No replies yet. Post the Athlete Hype Page to invite reactions.</div>
             ) : shareReplies.replies.map((reply) => (
               <article key={reply.id} className={`border p-3 ${reply.isRead ? 'border-border bg-muted/30' : 'border-primary/40 bg-primary/10'}`}>
                 <div className="flex items-start gap-3">
@@ -3305,7 +3212,7 @@ export function HypeCardEditor() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Preparing share link</p>
-                <h2 className="mt-1 font-display text-2xl uppercase tracking-wide text-foreground">Building your player page</h2>
+                <h2 className="mt-1 font-display text-2xl uppercase tracking-wide text-foreground">Preparing your Athlete Hype Page post</h2>
                 <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
                   Keep this page open while we prepare the media, upload it securely, and connect the selected stats.
                 </p>

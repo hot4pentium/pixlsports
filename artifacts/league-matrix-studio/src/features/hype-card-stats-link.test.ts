@@ -5,9 +5,13 @@ import test from 'node:test';
 const editorSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 const serverSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 
-test('local sharing has a stats-only path that does not prepare or upload the video', () => {
-  assert.match(editorSource, /data-testid="button-share-stats-only"/);
-  assert.match(editorSource, /Local video \+ stats link/);
+test('Hype Card sharing offers device download or Athlete Hype Page posting', () => {
+  assert.match(editorSource, /data-testid="button-download-hype-card"/);
+  assert.match(editorSource, /data-testid="button-post-athlete-hype-page"/);
+  assert.doesNotMatch(editorSource, /data-testid="button-share-stats-only"/);
+  assert.doesNotMatch(editorSource, /data-testid="button-share-hosted-card"/);
+  assert.doesNotMatch(editorSource, /data-testid="link-preview-recipient"/);
+  assert.match(editorSource, /Hype Card added to Athlete Hype Page/);
   assert.match(editorSource, /const isStatsOnly = shareMode === 'stats'/);
   assert.match(editorSource, /if \(isStatsOnly\) \{\s*mediaKind = project\.mediaType === 'image' \? 'image' : 'video';\s*setShareProgress\(0\.75\);/);
   assert.match(editorSource, /mediaUploadClaimId: isStatsOnly \? null : claimId/);
