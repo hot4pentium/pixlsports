@@ -27,3 +27,4 @@
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.
 - [Exported stats QR safe areas](exported-stats-qr-safe-areas.md) — linked stats overlays share one SVG foreground across stills and video, with format-specific protected lanes.
 - [Athlete Hype Page lifecycle](athlete-hype-page-lifecycle.md) — the durable page pauses in place while Game Day Live remains a separately revocable, short-lived session.
+- [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
