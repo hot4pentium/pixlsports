@@ -14,8 +14,8 @@ import basketballAthlete from '../../../../attached_assets/generated_images/land
 import volleyballAthlete from '../../../../attached_assets/generated_images/landing-volleyball-athlete-girl.jpg';
 import baseballAthlete from '../../../../attached_assets/generated_images/landing-baseball-athlete-black.jpg';
 import softballAthlete from '../../../../attached_assets/generated_images/landing-softball-athlete-girl.jpg';
-import planChecklistVideo from '../../../../attached_assets/newprepdemo_1789959483586.mp4';
-import planChecklistPoster from '../../../../attached_assets/newprepdemo_1789959483586-poster.webp';
+import planChecklistVideo from '../../../../attached_assets/Officialprep_1789962901507.mp4';
+import planChecklistPoster from '../../../../attached_assets/Officialprep_1789962901507-poster.webp';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 

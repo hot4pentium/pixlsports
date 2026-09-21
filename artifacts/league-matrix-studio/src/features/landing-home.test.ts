@@ -51,8 +51,8 @@ test('landing tool benefit previews are informational rather than clickable', ()
 });
 
 test('before-game-day guidance includes the uploaded checklist video', () => {
-  assert.match(landingSource, /newprepdemo_1789959483586\.mp4/);
-  assert.match(landingSource, /newprepdemo_1789959483586-poster\.webp/);
+  assert.match(landingSource, /Officialprep_1789962901507\.mp4/);
+  assert.match(landingSource, /Officialprep_1789962901507-poster\.webp/);
   assert.match(landingSource, /<video/);
   assert.match(landingSource, /autoPlay/);
   assert.match(landingSource, /autoPlay=\{!prefersReducedMotion\}/);
