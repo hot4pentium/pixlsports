@@ -38,10 +38,17 @@ router.post("/notifications/subscriptions", requireAuth, async (req, res): Promi
     }
     await db.insert(webPushSubscriptionsTable).values({
       ownerClerkUserId, endpoint: endpoint.toString(), p256dh: parsed.data.keys.p256dh,
-      auth: parsed.data.keys.auth, userAgent,
+      auth: parsed.data.keys.auth, timezone: parsed.data.timezone ?? "UTC", userAgent,
     }).onConflictDoUpdate({
       target: webPushSubscriptionsTable.endpoint,
-      set: { ownerClerkUserId, p256dh: parsed.data.keys.p256dh, auth: parsed.data.keys.auth, userAgent, updatedAt: new Date() },
+      set: {
+        ownerClerkUserId,
+        p256dh: parsed.data.keys.p256dh,
+        auth: parsed.data.keys.auth,
+        timezone: parsed.data.timezone ?? "UTC",
+        userAgent,
+        updatedAt: new Date(),
+      },
     });
     res.status(204).end();
   } catch (error) {

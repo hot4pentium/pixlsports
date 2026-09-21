@@ -2149,6 +2149,8 @@ export const GetNotificationConfigResponse = zod.object({
  */
 export const saveNotificationSubscriptionBodyEndpointMax = 2048;
 
+export const saveNotificationSubscriptionBodyTimezoneMax = 100;
+
 export const saveNotificationSubscriptionBodyKeysP256dhMax = 300;
 
 export const saveNotificationSubscriptionBodyKeysAuthMax = 300;
@@ -2157,6 +2159,7 @@ export const saveNotificationSubscriptionBodyKeysAuthMax = 300;
 
 export const SaveNotificationSubscriptionBody = zod.object({
   "endpoint": zod.string().url().max(saveNotificationSubscriptionBodyEndpointMax),
+  "timezone": zod.string().min(1).max(saveNotificationSubscriptionBodyTimezoneMax).optional(),
   "keys": zod.object({
   "p256dh": zod.string().min(1).max(saveNotificationSubscriptionBodyKeysP256dhMax),
   "auth": zod.string().min(1).max(saveNotificationSubscriptionBodyKeysAuthMax)

@@ -8,6 +8,16 @@ function decodeBase64Url(value: string) {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
+function getSubscriptionData(subscription: PushSubscription) {
+  const json = subscription.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) return null;
+  return {
+    endpoint: json.endpoint,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+  };
+}
+
 export function NotificationSettings() {
   const config = useGetNotificationConfig({ query: { retry: false, queryKey: getGetNotificationConfigQueryKey() } });
   const save = useSaveNotificationSubscription();
@@ -29,6 +39,8 @@ export function NotificationSettings() {
         const status = await getNotificationSubscriptionStatus({ endpoint: subscription.endpoint });
         if (status.owned) {
           setEnabled(true);
+          const data = getSubscriptionData(subscription);
+          if (data) void save.mutateAsync({ data }).catch(() => undefined);
           return;
         }
         // A browser subscription can outlive a Clerk session. Never show it as
@@ -50,9 +62,9 @@ export function NotificationSettings() {
       if (permission !== 'granted') { setMessage(permission === 'denied' ? 'Notifications are blocked. Enable them in your phone settings.' : 'Notification permission was not granted.'); return; }
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: decodeBase64Url(config.data.publicKey) });
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) throw new Error('The browser returned an incomplete push subscription.');
-      await save.mutateAsync({ data: { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } } });
+      const data = getSubscriptionData(subscription);
+      if (!data) throw new Error('The browser returned an incomplete push subscription.');
+      await save.mutateAsync({ data });
       setEnabled(true); setMessage('Notifications are on for this device.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to enable notifications.'); }
   }
@@ -76,7 +88,7 @@ export function NotificationSettings() {
     <section className="space-y-4 border-t border-border/60 pt-6" data-testid="notification-settings">
       <h3 className="flex items-center gap-2 border-b border-border/50 pb-2 text-xs font-bold uppercase tracking-widest text-primary"><Bell className="h-4 w-4" /> Phone Alerts</h3>
       <div className="border border-primary/20 bg-primary/5 p-4">
-        <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to every Hype Card reply</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Get an alert even when Pixl Sports is closed. You can turn this off anytime on this device.</p></div></div>
+        <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to the week</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Get reminders for tomorrow’s and today’s games, practices, and meetings—even when Pixl Sports is closed. You can turn this off anytime on this device.</p></div></div>
         {!config.isLoading && !config.data?.available && <p className="mt-3 text-sm font-medium text-muted-foreground">Phone alerts are not configured on this deployment yet.</p>}
         {config.isError && <p className="mt-3 text-sm font-medium text-destructive">Could not check notification availability.</p>}
         {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}

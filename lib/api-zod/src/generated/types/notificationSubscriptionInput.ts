@@ -10,5 +10,10 @@ import type { NotificationSubscriptionInputKeys } from './notificationSubscripti
 export interface NotificationSubscriptionInput {
   /** @maxLength 2048 */
   endpoint: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone?: string;
   keys: NotificationSubscriptionInputKeys;
 }

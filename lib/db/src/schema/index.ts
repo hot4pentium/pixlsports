@@ -194,12 +194,32 @@ export const webPushSubscriptionsTable = pgTable("web_push_subscriptions", {
   endpoint: text("endpoint").notNull(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
+  timezone: text("timezone").notNull().default("UTC"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
   endpointUnique: uniqueIndex("web_push_subscriptions_endpoint_unique").on(table.endpoint),
   ownerIndex: index("web_push_subscriptions_owner_index").on(table.ownerClerkUserId),
+}));
+
+export const plannerNotificationDeliveriesTable = pgTable("planner_notification_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id").notNull().references(() => cloudProjectsTable.id, {
+    onDelete: "cascade",
+  }),
+  eventId: text("event_id").notNull(),
+  notificationType: text("notification_type").notNull(),
+  eventDate: text("event_date").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  deliveryUnique: uniqueIndex("planner_notification_deliveries_key_unique").on(
+    table.projectId,
+    table.eventId,
+    table.notificationType,
+    table.eventDate,
+  ),
+  projectIndex: index("planner_notification_deliveries_project_index").on(table.projectId),
 }));
 
 export * from "./checklistShares";
@@ -230,3 +250,4 @@ export type AccountAccess = typeof accountAccessTable.$inferSelect;
 export type AccountEntitlementEvent = typeof accountEntitlementEventsTable.$inferSelect;
 export type GuestUsageEvent = typeof guestUsageEventsTable.$inferSelect;
 export type WebPushSubscription = typeof webPushSubscriptionsTable.$inferSelect;
+export type PlannerNotificationDelivery = typeof plannerNotificationDeliveriesTable.$inferSelect;

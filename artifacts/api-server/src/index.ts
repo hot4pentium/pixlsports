@@ -4,6 +4,7 @@ import { startExpiredAccountPurgeSchedule } from "./jobs/purgeCancelledAccounts"
 import { startHypeCardSharePurgeSchedule } from "./jobs/purgeHypeCardShares";
 import { startSupporterPhotoUploadPurgeSchedule } from "./jobs/purgeSupporterPhotoUploads";
 import { startProjectMediaUploadClaimPurgeSchedule } from "./jobs/purgeProjectMediaUploadClaims";
+import { startPlannerNotificationSchedule } from "./jobs/plannerNotifications";
 
 const rawPort = process.env["PORT"];
 
@@ -30,4 +31,5 @@ app.listen(port, (err) => {
   startHypeCardSharePurgeSchedule();
   startSupporterPhotoUploadPurgeSchedule();
   startProjectMediaUploadClaimPurgeSchedule();
+  startPlannerNotificationSchedule();
 });
