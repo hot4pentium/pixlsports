@@ -26,7 +26,7 @@ test('stats-only shares have no hosted media object paths and still require a li
 });
 
 test('linked exports create or reuse a stats URL and burn it into still and video renders', () => {
-  assert.match(editorSource, /data-testid="button-export-stats-link"/);
+  assert.doesNotMatch(editorSource, /data-testid="button-export-stats-link"/);
   assert.match(editorSource, /const handleExport = async \(statsUrl\?: string\)/);
   assert.match(editorSource, /if \(existingStatsShare\) \{\s*void handleExport\(shareUrlFor\(existingStatsShare\)\);/);
   assert.match(editorSource, /setLinkedExportPending\(true\)/);

@@ -91,6 +91,7 @@ export function AthleteInviteManager() {
   const [showSchedule, setShowSchedule] = useState(true);
   const [notice, setNotice] = useState('');
   const [hypeCardGuideOpen, setHypeCardGuideOpen] = useState(false);
+  const [selectedPath, setSelectedPath] = useState<'card' | 'page'>('page');
   const createInvite = useCreateAthleteInvite();
   const updateInvite = useUpdateAthleteInvite();
   const startLive = useStartAthleteInviteLive();
@@ -262,7 +263,11 @@ export function AthleteInviteManager() {
               className="flex w-full items-start justify-between gap-4 p-5 text-left"
               aria-expanded={hypeCardGuideOpen}
               aria-controls="hype-card-creation-guide"
-              onClick={() => setHypeCardGuideOpen((open) => !open)}
+               onClick={() => {
+                 setSelectedPath('card');
+                 setHypeCardGuideOpen(true);
+               }}
+               aria-pressed={selectedPath === 'card'}
               data-testid="button-toggle-hype-card-guide"
             >
               <span>
@@ -308,14 +313,20 @@ export function AthleteInviteManager() {
               </div>
             )}
           </div>
-          <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
+           <button
+             type="button"
+             className={`border p-5 text-left transition-colors ${selectedPath === 'page' ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary'}`}
+             onClick={() => setSelectedPath('page')}
+             aria-pressed={selectedPath === 'page'}
+             data-testid="card-create-hype-page"
+           >
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
             <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
-          </div>
+           </button>
         </section>
 
-        {existing && (
+         {selectedPath === 'page' && existing && (
           <section className="mt-8 border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="Active athlete invite">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link2 className="h-5 w-5 shrink-0 text-primary" />
@@ -336,18 +347,20 @@ export function AthleteInviteManager() {
           </section>
         )}
 
-        <form onSubmit={save} className="mt-8 max-w-xl">
-          <aside className="space-y-5">
-            <section className="border border-border bg-card p-5">
-              <h2 className="font-display text-2xl uppercase">Visible sections</h2>
-              <Toggle label="Latest Hype Card" detail="Shows the newest active hosted Hype Card." checked={showHypeCard} onChange={setShowHypeCard} />
-              <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
-              <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
-            </section>
-            <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
-            {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
-          </aside>
-        </form>
+         {selectedPath === 'page' && (
+           <form onSubmit={save} className="mt-8 max-w-xl">
+             <aside className="space-y-5">
+               <section className="border border-border bg-card p-5">
+                 <h2 className="font-display text-2xl uppercase">Visible sections</h2>
+                 <Toggle label="Latest Hype Card" detail="Shows the newest active hosted Hype Card." checked={showHypeCard} onChange={setShowHypeCard} />
+                 <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
+                 <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
+               </section>
+               <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
+               {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
+             </aside>
+           </form>
+         )}
       </main>
     </InviteShell>
   );

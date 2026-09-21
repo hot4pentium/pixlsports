@@ -2530,63 +2530,6 @@ export function HypeCardEditor() {
         </div>
          <div className="flex min-w-0 basis-full flex-wrap items-center justify-end gap-2 xl:basis-auto">
  <div className="flex min-w-0 flex-wrap justify-end gap-2">
-             <Button variant="outline" className="hidden min-h-10 gap-2 whitespace-nowrap rounded-none clip-angled-sm sm:flex" onClick={async () => {
-              try {
-                const portableProject = await getPortableProject();
-                const str = serializeHypeCardTemplate(portableProject);
-                const blob = new Blob([str], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${slugify(project.playerName || 'project')}.lmx`;
-                a.click();
-                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-                 setNotice(`${PORTABLE_TEMPLATE_MEDIA_NOTE} Re-add media after opening.`);
-              } catch (error) {
-                setNotice(error instanceof Error ? error.message : 'Could not prepare the project file.');
-              }
-            }}>
-              <Save className="h-4 w-4" /> Save template
-            </Button>
-             <label className="hidden cursor-pointer sm:block">
-               <span className="flex h-10 items-center gap-2 whitespace-nowrap border border-border bg-background px-4 text-sm font-medium hover:border-primary hover:bg-muted clip-angled-sm transition-colors">
-                <FolderOpen className="h-4 w-4" /> Open...
-              </span>
-              <input type="file" accept=".lmx,application/json" className="sr-only" onChange={async (e) => {
-                const file = e.target.files?.[0];
-                e.target.value = '';
-                if (!file) return;
-                try {
-                  const text = await readProjectFile(file);
-                   const reopened = parseHypeCardTemplate(text);
-                    if (reopened) {
-                      setProject(reopened);
-                      setTemplateMediaNotice(true);
-                      setNotice(`Template opened. Your design text and layout were restored. ${PORTABLE_TEMPLATE_MEDIA_NOTE} Add media again before exporting.`);
-                    }
-                   else setNotice('That file is not a valid Hype Card project.');
-                } catch {
-                  setNotice('Could not open that file.');
-                }
-              }} />
-            </label>
-              <Button onClick={() => void handleExport()} disabled={exporting || sharing} className="min-h-10 gap-2 whitespace-nowrap rounded-none bg-primary font-bold text-primary-foreground hover:bg-primary/90 clip-angled-sm">
-              {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
-              {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
-            </Button>
-              <Button variant="outline" onClick={handleExportWithStatsLink} disabled={sharing || exporting} data-testid="button-export-stats-link" className="min-h-10 gap-2 whitespace-nowrap rounded-none clip-angled-sm" aria-label="Export with stats link" title="Create or reuse a stats link and print it on the export">
-                <Link2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Export with stats link</span>
-              </Button>
-              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Posting to Athlete Hype Page' : existingShare ? 'Update Athlete Hype Page' : 'Post to Athlete Hype Page'} title={existingShare ? 'Update Athlete Hype Page' : 'Post to Athlete Hype Page'}>
-              <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Update Hype Page' : 'Post Hype Page'}</span>
-            </Button>
-            {exporting && (
-              <Button variant="outline" size="icon" onClick={handleCancelExport} className="rounded-xl border-destructive text-destructive">
-                <X className="h-4 w-4" />
-              </Button>
-            )}
             <Button variant="outline" size="icon" onClick={() => setMobilePreviewOpen(true)} className="rounded-none clip-angled-sm sm:hidden" aria-label="Preview">
               <Eye className="h-4 w-4" />
             </Button>

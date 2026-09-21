@@ -19,6 +19,10 @@ test('posting a Hype Card returns owners to the hosted card manager', () => {
     /await queryClient\.invalidateQueries\(\{ queryKey: getListHypeCardSharesQueryKey\(\) \}\);[\s\S]*?if \(!isStatsOnly && !linkedExport\) setLocation\('\/studio\/athlete-page'\);/,
   );
   assert.match(source, /aria-expanded=\{hypeCardGuideOpen\}/);
+  assert.match(source, /setSelectedPath\('card'\)/);
+  assert.match(source, /setSelectedPath\('page'\)/);
+  assert.match(source, /\{selectedPath === 'page' && existing &&/);
+  assert.match(source, /\{selectedPath === 'page' && \(/);
   assert.match(source, /How it works/);
   assert.match(source, /Open the Hype Card editor and create the card/);
   assert.match(source, /Choose Post to Athlete Hype Page/);
