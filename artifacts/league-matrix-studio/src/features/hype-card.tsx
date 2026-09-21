@@ -1161,7 +1161,9 @@ export function HypeCardEditor() {
   const [shareTrackerProjectId, setShareTrackerProjectId] = useState<string>('none');
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
+  const [shareMode, setShareMode] = useState<'card' | 'stats'>('stats');
   const [publishedShare, setPublishedShare] = useState<HypeCardShare | null>(null);
+  const [publishedStatsShare, setPublishedStatsShare] = useState<HypeCardShare | null>(null);
   const [syncRetry, setSyncRetry] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
@@ -1313,7 +1315,9 @@ export function HypeCardEditor() {
     },
   });
   const existingShare: HypeCardShare | OwnedHypeCardShare | null =
-    publishedShare ?? hypeShares?.find((share) => share.manifest.shareKey === shareKey) ?? null;
+    publishedShare ?? hypeShares?.find((share) => share.shareMode === 'card' && share.manifest.shareKey === shareKey) ?? null;
+  const existingStatsShare: HypeCardShare | OwnedHypeCardShare | null =
+    publishedStatsShare ?? hypeShares?.find((share) => share.shareMode === 'stats' && share.manifest.shareKey === shareKey) ?? null;
   const { data: shareReplies } = useListHypeCardShareReplies(existingShare?.shareToken ?? '', {
     query: {
       enabled: Boolean(isSignedIn && existingShare && isOnline),
@@ -1340,7 +1344,9 @@ export function HypeCardEditor() {
     },
   });
   const isShareSuccessNotice = notice.startsWith('Player page published')
+    || notice.startsWith('Stats link ready')
     || notice === 'Share link copied.'
+    || notice === 'Stats link copied.'
     || notice.startsWith('Player page link revoked');
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
@@ -2317,19 +2323,18 @@ export function HypeCardEditor() {
       setLocation('/sign-in');
       return;
     }
-    if (project.mediaType === 'video' && (!videoUrl || !videoRef.current)) {
-      setValidation('Add a video and wait for its preview to finish loading before publishing.');
-      return;
-    }
-    if (project.mediaType !== 'video' && (project.mediaType !== 'image' || !project.photo)) {
-      setValidation('Add a photo before publishing this Hype Card.');
-      return;
-    }
     if (existingShare && isOwnedHypeCardShare(existingShare)) {
+      setShareMode('card');
       setShareTrackerProjectId(existingShare.trackerProjectId ?? 'none');
       setShareSport(profile.sport ?? existingShare.sport ?? 'basketball');
       setShareExpiresInDays(String(existingShare.expiresInDays));
+    } else if (existingStatsShare && isOwnedHypeCardShare(existingStatsShare)) {
+      setShareMode('stats');
+      setShareTrackerProjectId(existingStatsShare.trackerProjectId ?? 'none');
+      setShareSport(profile.sport ?? existingStatsShare.sport ?? 'basketball');
+      setShareExpiresInDays(String(existingStatsShare.expiresInDays));
     } else if (!existingShare) {
+      setShareMode('stats');
       setShareTrackerProjectId('none');
       setShareSport(profile.sport ?? 'basketball');
       setShareExpiresInDays('30');
@@ -2348,6 +2353,17 @@ export function HypeCardEditor() {
     setSharing(true);
     setShareProgress(0);
     try {
+      const isStatsOnly = shareMode === 'stats';
+      const replacementShare = isStatsOnly ? existingStatsShare : existingShare;
+      if (!isStatsOnly && project.mediaType === 'video' && (!videoUrl || !videoRef.current)) {
+        throw new Error('Add a video and wait for its preview to finish loading before publishing.');
+      }
+      if (!isStatsOnly && project.mediaType !== 'video' && (project.mediaType !== 'image' || !project.photo)) {
+        throw new Error('Add a photo before publishing this Hype Card.');
+      }
+      if (isStatsOnly && (shareTrackerProjectId === 'none' || !profile.athleteName)) {
+        throw new Error('Choose a stats project and add an athlete name in Profile Settings before creating a stats link.');
+      }
       let claimId = '';
       let posterClaimId: string | undefined = undefined;
       let mediaKind: 'video' | 'image' = 'video';
@@ -2357,7 +2373,10 @@ export function HypeCardEditor() {
         mediaId: null,
       };
 
-      if (project.mediaType === 'video' && videoUrl && videoRef.current) {
+      if (isStatsOnly) {
+        mediaKind = project.mediaType === 'image' ? 'image' : 'video';
+        setShareProgress(0.75);
+      } else if (project.mediaType === 'video' && videoUrl && videoRef.current) {
         const prepared = await prepareHypeCardShareMedia(videoRef.current, project, setShareProgress);
         const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
         const [videoUpload, posterUpload] = await Promise.all([
@@ -2418,29 +2437,35 @@ export function HypeCardEditor() {
         data: {
           title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline}`,
           slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80) || 'hype-card',
-          manifest: { version: 1, shareKey, project: shareProject },
+          manifest: isStatsOnly
+            ? { version: 1, shareKey, shareMode: 'stats' }
+            : { version: 1, shareKey, project: shareProject },
           shareKey,
+          shareMode,
           mediaType: mediaKind,
-          mediaUploadClaimId: claimId,
-          posterUploadClaimId: posterClaimId,
+          mediaUploadClaimId: isStatsOnly ? null : claimId,
+          posterUploadClaimId: isStatsOnly ? null : posterClaimId,
           trackerProjectId: shareTrackerProjectId !== 'none' ? shareTrackerProjectId : null,
           sport: shareTrackerProjectId !== 'none' ? ((profile.sport ?? shareSport) as any) : null,
           athleteName: shareTrackerProjectId !== 'none' ? profile.athleteName : null,
           expiresInDays: parseInt(shareExpiresInDays, 10),
-          replaceShareToken: existingShare?.shareToken ?? null,
+          replaceShareToken: replacementShare?.shareToken ?? null,
         },
       });
 
-      setPublishedShare(created);
+      if (isStatsOnly) setPublishedStatsShare(created);
+      else setPublishedShare(created);
       await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
       const url = shareUrlFor(created);
       try {
-        if (navigator.share) await navigator.share({ title: created.title, text: 'Watch this Pixl Sports Hype Card', url });
+        if (navigator.share) await navigator.share({ title: created.title, text: isStatsOnly ? 'View the finalized Pixl Sports stats with this video.' : 'Watch this Pixl Sports Hype Card', url });
         else await navigator.clipboard.writeText(url);
       } catch {
         await navigator.clipboard.writeText(url).catch(() => undefined);
       }
-      setNotice(`Player page published for ${shareExpiresInDays} days. The link is ready to share.`);
+      setNotice(isStatsOnly
+        ? `Stats link ready for ${shareExpiresInDays} days. Your video stays on this phone.`
+        : `Player page published for ${shareExpiresInDays} days. The link is ready to share.`);
     } catch (error) {
       console.error(error);
       setNotice(error instanceof Error ? error.message : 'Could not publish the interactive Hype Card.');
@@ -2461,7 +2486,20 @@ export function HypeCardEditor() {
     }
   };
 
+  const revokeStatsShare = async () => {
+    if (!existingStatsShare || !window.confirm('Revoke this stats link? The video on your phone will not be affected.')) return;
+    try {
+      await deleteHypeShare.mutateAsync({ shareToken: existingStatsShare.shareToken });
+      setPublishedStatsShare(null);
+      await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
+      setNotice('Stats link revoked. Your local video is still available.');
+    } catch {
+      setNotice('The stats link could not be revoked.');
+    }
+  };
+
   const deviceOnlyMedia = hasDeviceOnlyMedia(project);
+  const successShare = shareMode === 'stats' ? existingStatsShare : existingShare;
   const deviceMediaMessage = !isOnline
     ? 'Media is attached on this phone. Reconnect only if you want a cloud copy or player page.'
     : project.mediaType === 'video' && !project.videoPrepared
@@ -2536,9 +2574,9 @@ export function HypeCardEditor() {
               {exporting ? 'Exporting...' : <Download className="h-4 w-4" />}
               {exporting ? `${Math.round(exportProgress * 100)}%` : 'Export'}
             </Button>
-              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Preparing share link' : existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'} title={existingShare ? 'Refresh player page link' : 'Publish Hype Card player page'}>
+              <Button variant="outline" onClick={handleShareClick} disabled={sharing || exporting} aria-busy={sharing} className="min-h-10 gap-2 rounded-none clip-angled-sm" aria-label={sharing ? 'Preparing share link' : existingShare || existingStatsShare ? 'Refresh share link' : 'Create stats link'} title={existingShare || existingStatsShare ? 'Refresh share link' : 'Create stats link'}>
               <Share2 className="h-4 w-4" />
-               <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh link' : 'Publish page'}</span>
+                <span className="hidden sm:inline">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare || existingStatsShare ? 'Refresh link' : 'Share'}</span>
             </Button>
             {exporting && (
               <Button variant="outline" size="icon" onClick={handleCancelExport} className="rounded-xl border-destructive text-destructive">
@@ -2581,9 +2619,9 @@ export function HypeCardEditor() {
         }`}>
           {notice}
           <div className="flex shrink-0 items-center gap-2">
-            {isShareSuccessNotice && existingShare && (
+            {isShareSuccessNotice && successShare && (
               <a
-                href={shareUrlFor(existingShare)}
+                href={shareUrlFor(successShare)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex min-h-8 items-center gap-2 border border-primary-foreground/30 bg-primary-foreground/10 px-3 text-[10px] font-bold uppercase tracking-wider hover:bg-primary-foreground/20"
@@ -2616,6 +2654,23 @@ export function HypeCardEditor() {
             {Boolean(shareReplies?.unreadCount) && <span className="ml-2 bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">{shareReplies?.unreadCount}</span>}
           </Button>
           <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
+        </div>
+      )}
+      {existingStatsShare && (
+        <div className="flex shrink-0 flex-col gap-2 border-b border-primary/25 bg-primary/10 px-4 py-3 text-sm sm:flex-row sm:items-center">
+          <span className="shrink-0 text-xs font-bold uppercase tracking-widest text-primary">Stats link</span>
+          <input readOnly value={shareUrlFor(existingStatsShare)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-primary/25 bg-background px-3 py-2 text-xs font-medium" aria-label="Finalized stats link" />
+          <Button type="button" size="sm" variant="outline" className="rounded-none" onClick={() => navigator.clipboard.writeText(shareUrlFor(existingStatsShare)).then(() => setNotice('Stats link copied.')).catch(() => setNotice('Select and copy the stats link above.'))}><Clipboard className="mr-2 h-4 w-4" /> Copy</Button>
+          <a
+            href={shareUrlFor(existingStatsShare)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-9 items-center gap-2 border border-border bg-background px-3 text-xs font-bold uppercase tracking-wider hover:border-primary hover:bg-muted"
+            data-testid="link-preview-stats-recipient"
+          >
+            <Eye className="h-4 w-4" /> Preview
+          </a>
+          <Button type="button" size="sm" variant="outline" className="rounded-none text-destructive" onClick={revokeStatsShare} disabled={deleteHypeShare.isPending}><Link2Off className="mr-2 h-4 w-4" /> Revoke</Button>
         </div>
       )}
 
@@ -2934,7 +2989,7 @@ export function HypeCardEditor() {
                     <Download className="h-4 w-4 shrink-0" /> <span className="truncate">{exporting ? `${Math.round(exportProgress * 100)}%` : 'Export card'}</span>
                   </Button>
                   <Button type="button" variant="outline" onClick={handleShareClick} disabled={sharing || exporting} data-testid="walkthrough-publish-page" className="min-w-0 gap-2 rounded-none px-3 font-bold clip-angled-sm">
-                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare ? 'Refresh page' : 'Publish page'}</span>
+                    <Share2 className="h-4 w-4 shrink-0" /> <span className="truncate">{sharing ? `${Math.round(shareProgress * 100)}%` : existingShare || existingStatsShare ? 'Refresh link' : 'Create stats link'}</span>
                   </Button>
                 </div>
               </section>
@@ -2980,12 +3035,36 @@ export function HypeCardEditor() {
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent className="clip-angled-sm">
           <DialogHeader>
-            <DialogTitle className="font-display uppercase tracking-wider text-xl">Publish Player Page</DialogTitle>
+            <DialogTitle className="font-display uppercase tracking-wider text-xl">Share Hype Card</DialogTitle>
             <DialogDescription>
-              {PUBLIC_SHARE_MEDIA} Choose how long the link stays active below. Optionally link a stat tracker.
+              {shareMode === 'stats'
+                ? 'Keep your video on this phone and send a separate finalized stats link with it.'
+                : `${PUBLIC_SHARE_MEDIA} Choose how long the hosted player page stays active below.`}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePublishShare} className="space-y-4 pt-4">
+            <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Choose what to share">
+              <button
+                type="button"
+                onClick={() => setShareMode('stats')}
+                data-testid="button-share-stats-only"
+                aria-pressed={shareMode === 'stats'}
+                className={`border p-3 text-left transition-colors ${shareMode === 'stats' ? 'border-primary bg-primary/10' : 'border-border bg-muted/30 hover:border-primary/50'}`}
+              >
+                <span className="block text-xs font-bold uppercase tracking-widest text-primary">Local video + stats link</span>
+                <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Recommended. The video stays on your phone; only finalized stats are hosted.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareMode('card')}
+                data-testid="button-share-hosted-card"
+                aria-pressed={shareMode === 'card'}
+                className={`border p-3 text-left transition-colors ${shareMode === 'card' ? 'border-primary bg-primary/10' : 'border-border bg-muted/30 hover:border-primary/50'}`}
+              >
+                <span className="block text-xs font-bold uppercase tracking-widest text-primary">Hosted player page</span>
+                <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Upload a prepared image or video so the recipient can view the card on one page.</span>
+              </button>
+            </div>
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Link Stats Project</Label>
               <Select value={shareTrackerProjectId} onValueChange={setShareTrackerProjectId}>
@@ -3059,8 +3138,8 @@ export function HypeCardEditor() {
             </div>
 
             <DialogFooter className="mt-6">
-              <Button type="submit" disabled={shareTrackerProjectId !== 'none' && !profile.athleteName} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
-                Publish Link
+              <Button type="submit" disabled={shareMode === 'stats' ? shareTrackerProjectId === 'none' || !profile.athleteName : shareTrackerProjectId !== 'none' && !profile.athleteName} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
+                {shareMode === 'stats' ? 'Create stats link' : 'Publish player page'}
               </Button>
             </DialogFooter>
           </form>

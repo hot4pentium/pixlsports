@@ -7,6 +7,7 @@
  */
 import type { HypeCardShareManifest } from './hypeCardShareManifest';
 import type { HypeCardShareMediaType } from './hypeCardShareMediaType';
+import type { HypeCardShareShareMode } from './hypeCardShareShareMode';
 import type { HypeCardShareStats } from './hypeCardShareStats';
 
 export interface HypeCardShare {
@@ -14,11 +15,14 @@ export interface HypeCardShare {
   slug: string;
   title: string;
   manifest: HypeCardShareManifest;
+  shareMode: HypeCardShareShareMode;
   mediaType: HypeCardShareMediaType;
-  mediaUrl: string;
+  /** @nullable */
+  mediaUrl: string | null;
   /** @nullable */
   videoUrl: string | null;
-  posterUrl: string;
+  /** @nullable */
+  posterUrl: string | null;
   stats: HypeCardShareStats | null;
   expiresAt: Date;
   createdAt: Date;

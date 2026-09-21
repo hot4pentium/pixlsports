@@ -7,6 +7,7 @@
  */
 import type { HypeCardShareInputManifest } from './hypeCardShareInputManifest';
 import type { HypeCardShareInputMediaType } from './hypeCardShareInputMediaType';
+import type { HypeCardShareInputShareMode } from './hypeCardShareInputShareMode';
 import type { HypeCardShareInputSport } from './hypeCardShareInputSport';
 
 export interface HypeCardShareInput {
@@ -27,8 +28,10 @@ export interface HypeCardShareInput {
      * @maxLength 200
      */
   shareKey?: string;
+  shareMode?: HypeCardShareInputShareMode;
   mediaType: HypeCardShareInputMediaType;
-  mediaUploadClaimId: string;
+  /** @nullable */
+  mediaUploadClaimId?: string | null;
   /** @nullable */
   posterUploadClaimId?: string | null;
   /** @nullable */

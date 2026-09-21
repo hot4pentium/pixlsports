@@ -24,3 +24,4 @@
 - [Vite artifact entrypoints](vite-artifact-entrypoints.md) — use a relative HTML module entry so root and subpath production builds resolve the same current app.
 - [Landing responsive browser checks](landing-responsive-browser-checks.md) — distinguish page containment from intentional internal ticker scrolling across phone and desktop widths.
 - [Supporter-only product boundary](supporter-only-product-boundary.md) — Pixl Sports serves fans and parents only; profiles remain, but team-management paths must not return.
+- [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.

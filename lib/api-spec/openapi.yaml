@@ -1384,7 +1384,7 @@ components:
           format: date-time
     HypeCardShareInput:
       type: object
-      required: [title, slug, manifest, mediaType, mediaUploadClaimId]
+      required: [title, slug, manifest, mediaType]
       properties:
         title:
           type: string
@@ -1402,11 +1402,15 @@ components:
           type: string
           minLength: 1
           maxLength: 200
+        shareMode:
+          type: string
+          enum: [card, stats]
+          default: card
         mediaType:
           type: string
           enum: [image, video]
         mediaUploadClaimId:
-          type: string
+          type: ["string", "null"]
           format: uuid
         posterUploadClaimId:
           type: ["string", "null"]
@@ -1555,7 +1559,7 @@ components:
             $ref: "#/components/schemas/HypeCardReplyInboxGroup"
     HypeCardShare:
       type: object
-      required: [shareToken, slug, title, manifest, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
+      required: [shareToken, slug, title, manifest, shareMode, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
       properties:
         shareToken:
           type: string
@@ -1566,15 +1570,18 @@ components:
         manifest:
           type: object
           additionalProperties: true
+        shareMode:
+          type: string
+          enum: [card, stats]
         mediaType:
           type: string
           enum: [image, video]
         mediaUrl:
-          type: string
+          type: ["string", "null"]
         videoUrl:
           type: ["string", "null"]
         posterUrl:
-          type: string
+          type: ["string", "null"]
         stats:
           anyOf:
             - $ref: "#/components/schemas/HypeCardShareStats"

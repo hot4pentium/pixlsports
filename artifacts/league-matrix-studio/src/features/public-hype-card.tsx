@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Pause, Play, Send, Volume2, VolumeX, Zap } from 'lucide-react';
 import { Link } from 'wouter';
-import { useCreateHypeCardShareReply, useGetHypeCardShare } from '@workspace/api-client-react';
+import { useCreateHypeCardShareReply, useGetHypeCardShare, type HypeCardShare } from '@workspace/api-client-react';
 
 import { PreviewArtwork } from './hype-card';
 import { getDimensions, normalizeHypeCardProject } from './hype-card-types';
@@ -33,7 +33,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       ...manifestProject,
       mediaType: share?.mediaType === 'image' ? 'image' : 'video',
       mediaId: share?.mediaType === 'video' ? 'shared-video' : null,
-      photo: share?.mediaType === 'image' ? share.mediaUrl : null,
+       photo: share?.mediaType === 'image' ? share.mediaUrl ?? null : null,
     });
   }, [share]);
 
@@ -70,9 +70,9 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
     };
     const cleanups = [
       upsert('og:title', share.title),
-      upsert('og:description', 'Watch this Hype Card from Pixl Sports.'),
-      upsert('og:image', new URL(share.posterUrl, window.location.origin).href),
-      upsert('og:type', share.mediaType === 'video' ? 'video.other' : 'website'),
+       upsert('og:description', share.shareMode === 'stats' ? 'View finalized athlete stats from Pixl Sports.' : 'Watch this Hype Card from Pixl Sports.'),
+       upsert('og:image', share.posterUrl ? new URL(share.posterUrl, window.location.origin).href : ''),
+       upsert('og:type', share.shareMode === 'stats' ? 'website' : share.mediaType === 'video' ? 'video.other' : 'website'),
       upsert('og:video', share.videoUrl ? new URL(share.videoUrl, window.location.origin).href : ''),
       upsert('og:url', window.location.href),
     ];
@@ -94,6 +94,9 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
         </div>
       </PublicShell>
     );
+  }
+  if (share.shareMode === 'stats') {
+    return <PublicHypeCardStatsPage share={share} />;
   }
 
   const dimensions = getDimensions(project.format);
@@ -153,10 +156,10 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       <main className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1280px] items-center gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="relative mx-auto w-full max-w-[660px] overflow-hidden rounded-[22px] shadow-[0_30px_100px_rgba(0,0,0,.65)]" style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}>
           {share.mediaType === 'image' ? (
-            <img src={share.mediaUrl} alt={share.title} className="h-full w-full object-contain" />
+            <img src={share.mediaUrl ?? ''} alt={share.title} className="h-full w-full object-contain" />
           ) : (
             <>
-              <PreviewArtwork project={project} videoUrl={share.videoUrl ?? undefined} videoRef={videoRef} poster={share.posterUrl} ns="public-share" testId="public-hype-card" muted={isMuted} />
+              <PreviewArtwork project={project} videoUrl={share.videoUrl ?? undefined} videoRef={videoRef} poster={share.posterUrl ?? undefined} ns="public-share" testId="public-hype-card" muted={isMuted} />
               <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 bg-black/75 p-2 backdrop-blur">
                 <button
                   type="button"
@@ -325,6 +328,106 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
           </form>
           <p className="mt-6 text-[10px] font-bold uppercase tracking-[.18em] text-white/40">Available until {new Date(share.expiresAt).toLocaleDateString()}</p>
         </aside>
+      </main>
+    </div>
+  );
+}
+
+function PublicHypeCardStatsPage({ share }: { share: HypeCardShare }) {
+  const stats = share.stats;
+  return (
+    <div className="noise min-h-dvh bg-[#080a0f] text-white" data-testid="public-hype-card-stats-page">
+      <header className="border-b border-white/10 bg-[#11141b]">
+        <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
+          <Link href="/">
+            <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" />
+          </Link>
+          <span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/40">Finalized stats</span>
+        </div>
+      </header>
+      <main className="mx-auto min-h-[calc(100dvh-72px)] w-full max-w-[900px] px-4 py-10 sm:px-8">
+        {!stats ? (
+          <div className="mx-auto max-w-md py-16 text-center">
+            <Zap className="mx-auto h-12 w-12 text-primary" />
+            <h1 className="mt-5 font-display text-4xl uppercase text-white">Stats unavailable</h1>
+            <p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This stats link does not have finalized athlete data attached.</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete stats</p>
+            <div className="mt-3 flex flex-col justify-between gap-4 border-l-4 border-primary pl-5 sm:flex-row sm:items-end">
+              <div>
+                <h1 className="font-display text-5xl uppercase leading-[.9] sm:text-6xl">{stats.athleteName}</h1>
+                <p className="mt-3 text-xs font-bold uppercase tracking-widest text-white/45">
+                  {isSport(stats.sport) ? getSportRule(stats.sport).label : stats.sport}
+                </p>
+              </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-white/40">Finalized games only</p>
+            </div>
+            <section className="mt-8 border border-white/10 bg-white/5 p-4 clip-angled-sm sm:p-6" aria-labelledby="stats-page-season-total">
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="stats-page-season-total" className="text-xs font-bold uppercase tracking-widest text-primary">Season totals</h2>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">{stats.gamesPlayed} games</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/55">Games</p>
+                  <p className="mt-1 font-display text-3xl text-white">{stats.gamesPlayed}</p>
+                </div>
+                <div className="border border-white/10 bg-white/5 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/55">Score</p>
+                  <p className="mt-1 font-display text-3xl text-primary">{stats.score}</p>
+                </div>
+                {Object.entries(stats.stats).map(([statId, count]) => {
+                  const rule = isSport(stats.sport) ? getSportRule(stats.sport) : null;
+                  const definition = rule?.stats.find((stat) => stat.id === statId);
+                  return (
+                    <div key={statId} className="border border-white/10 bg-white/5 p-3">
+                      <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/55">{definition?.shortLabel || statId.replace(/-/g, ' ')}</p>
+                      <p className="mt-1 font-display text-3xl text-white">{count}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-4 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Last updated {new Date(stats.updatedAt).toLocaleDateString()}</p>
+            </section>
+            <section className="mt-5 border border-white/10 bg-white/5 p-4 clip-angled-sm sm:p-6" aria-labelledby="stats-page-game-history">
+              <h2 id="stats-page-game-history" className="text-xs font-bold uppercase tracking-widest text-primary">Finalized games</h2>
+              {stats.games.length ? (
+                <ol className="mt-4 space-y-3">
+                  {stats.games.map((game, index) => (
+                    <li key={`${game.date}-${game.opponent}-${index}`} className="border border-white/10 bg-black/20 p-3 sm:p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-widest text-white">{game.opponent || `Game ${index + 1}`}</p>
+                          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-white/45">{formatHypeCardGameDate(game.date)}</p>
+                        </div>
+                        <p className="font-display text-xl text-primary">{game.score}–{game.opponentScore}</p>
+                      </div>
+                      {Object.keys(game.stats).length > 0 && (
+                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {Object.entries(game.stats).map(([statId, count]) => {
+                            const rule = isSport(stats.sport) ? getSportRule(stats.sport) : null;
+                            const definition = rule?.stats.find((stat) => stat.id === statId);
+                            return (
+                              <div key={statId} className="border border-white/10 bg-white/5 p-2">
+                                <p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/50">{definition?.shortLabel || statId.replace(/-/g, ' ')}</p>
+                                <p className="font-display text-lg text-white">{count}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-4 text-sm font-medium text-white/50">No finalized game summaries are available.</p>
+              )}
+            </section>
+            <p className="mt-6 text-center text-[10px] font-bold uppercase tracking-[.16em] text-white/35">This link shows published finalized stats and does not expose live game activity.</p>
+          </>
+        )}
       </main>
     </div>
   );

@@ -83,10 +83,17 @@ async function shareResponse(
     slug: share.slug,
     title: share.title,
     manifest: includeOwnerDetails ? share.manifest : publicManifest(share.manifest),
+    shareMode: share.shareMode === "stats" ? "stats" : "card",
     mediaType: share.mediaType,
-    mediaUrl: `/api/hype-card-shares/${share.publicToken}/media/${share.mediaType === "video" ? "video" : "poster"}`,
-    videoUrl: share.mediaType === "video" ? `/api/hype-card-shares/${share.publicToken}/media/video` : null,
-    posterUrl: `/api/hype-card-shares/${share.publicToken}/media/poster`,
+    mediaUrl: share.shareMode === "stats"
+      ? null
+      : `/api/hype-card-shares/${share.publicToken}/media/${share.mediaType === "video" ? "video" : "poster"}`,
+    videoUrl: share.shareMode === "card" && share.mediaType === "video"
+      ? `/api/hype-card-shares/${share.publicToken}/media/video`
+      : null,
+    posterUrl: share.shareMode === "stats"
+      ? null
+      : `/api/hype-card-shares/${share.publicToken}/media/poster`,
     stats,
     expiresAt: share.expiresAt,
     createdAt: share.createdAt,
@@ -110,6 +117,7 @@ async function ownedShareResponse(share: typeof hypeCardSharesTable.$inferSelect
 
 async function deleteShareObjects(share: Pick<typeof hypeCardSharesTable.$inferSelect, "videoObjectPath" | "posterObjectPath">) {
   for (const objectPath of new Set([share.videoObjectPath, share.posterObjectPath])) {
+    if (!objectPath) continue;
     try {
       await objectStorage.deleteObjectEntity(objectPath);
     } catch (error) {
@@ -361,45 +369,58 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
   try {
     const ownerClerkUserId = getRequiredClerkUserId(res);
     const { created, replaced } = await db.transaction(async (tx) => {
+      const shareMode = parsed.data.shareMode ?? "card";
       const manifestShareKey = parsed.data.manifest && typeof parsed.data.manifest.shareKey === "string"
         ? parsed.data.manifest.shareKey
         : null;
-      const shareKey = (parsed.data.shareKey ?? manifestShareKey)?.trim() || null;
+      const requestedShareKey = (parsed.data.shareKey ?? manifestShareKey)?.trim() || null;
+      const shareKey = requestedShareKey
+        ? shareMode === "stats" ? `${requestedShareKey}:stats` : requestedShareKey
+        : null;
       const claimIds = [parsed.data.mediaUploadClaimId, parsed.data.posterUploadClaimId].filter((id): id is string => Boolean(id));
-      const claims = await tx.delete(hypeCardShareUploadClaimsTable)
-        .where(and(
-          eq(hypeCardShareUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
-          gt(hypeCardShareUploadClaimsTable.expiresAt, new Date()),
-          inArray(hypeCardShareUploadClaimsTable.id, [
-            ...claimIds,
-          ]),
-        ))
-        .returning();
-      const mediaClaim = claims.find((claim) => claim.id === parsed.data.mediaUploadClaimId && claim.mediaKind === parsed.data.mediaType);
-      const posterClaim = parsed.data.mediaType === "image"
-        ? mediaClaim
-        : claims.find((claim) => claim.id === parsed.data.posterUploadClaimId && claim.mediaKind === "poster");
-      if (!mediaClaim || !posterClaim || claims.length !== (parsed.data.mediaType === "image" ? 1 : 2)
-        || (parsed.data.mediaType === "video" && mediaClaim.objectPath === posterClaim.objectPath)) {
-        throw new Error("UPLOAD_CLAIM_NOT_FOUND");
-      }
-      const [media, poster] = await Promise.all([
-        objectStorage.getObjectEntityMetadata(mediaClaim.objectPath),
-        objectStorage.getObjectEntityMetadata(posterClaim.objectPath),
-      ]);
-      if (parsed.data.mediaType === "video" &&
-        (!["video/mp4", "video/webm"].includes(media.contentType) || media.size > MAX_VIDEO_BYTES)) {
-        throw new Error("INVALID_VIDEO");
-      }
-      if (parsed.data.mediaType === "image" &&
-        (!["image/jpeg", "image/png"].includes(media.contentType) || media.size > MAX_POSTER_BYTES)) {
-        throw new Error("INVALID_IMAGE");
-      }
-      if (parsed.data.mediaType === "video" &&
-        (!["image/jpeg", "image/png"].includes(poster.contentType) || poster.size > MAX_POSTER_BYTES)) {
-        throw new Error("INVALID_POSTER");
+      const claims = claimIds.length
+        ? await tx.delete(hypeCardShareUploadClaimsTable)
+          .where(and(
+            eq(hypeCardShareUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
+            gt(hypeCardShareUploadClaimsTable.expiresAt, new Date()),
+            inArray(hypeCardShareUploadClaimsTable.id, claimIds),
+          ))
+          .returning()
+        : [];
+      let media: Awaited<ReturnType<typeof objectStorage.getObjectEntityMetadata>> | null = null;
+      let poster: Awaited<ReturnType<typeof objectStorage.getObjectEntityMetadata>> | null = null;
+      let mediaClaim: typeof claims[number] | undefined;
+      let posterClaim: typeof claims[number] | undefined;
+      if (shareMode === "card") {
+        mediaClaim = claims.find((claim) => claim.id === parsed.data.mediaUploadClaimId && claim.mediaKind === parsed.data.mediaType);
+        posterClaim = parsed.data.mediaType === "image"
+          ? mediaClaim
+          : claims.find((claim) => claim.id === parsed.data.posterUploadClaimId && claim.mediaKind === "poster");
+        if (!mediaClaim || !posterClaim || claims.length !== (parsed.data.mediaType === "image" ? 1 : 2)
+          || (parsed.data.mediaType === "video" && mediaClaim.objectPath === posterClaim.objectPath)) {
+          throw new Error("UPLOAD_CLAIM_NOT_FOUND");
+        }
+        [media, poster] = await Promise.all([
+          objectStorage.getObjectEntityMetadata(mediaClaim.objectPath),
+          objectStorage.getObjectEntityMetadata(posterClaim.objectPath),
+        ]);
+        if (parsed.data.mediaType === "video" &&
+          (!["video/mp4", "video/webm"].includes(media.contentType) || media.size > MAX_VIDEO_BYTES)) {
+          throw new Error("INVALID_VIDEO");
+        }
+        if (parsed.data.mediaType === "image" &&
+          (!["image/jpeg", "image/png"].includes(media.contentType) || media.size > MAX_POSTER_BYTES)) {
+          throw new Error("INVALID_IMAGE");
+        }
+        if (parsed.data.mediaType === "video" &&
+          (!["image/jpeg", "image/png"].includes(poster.contentType) || poster.size > MAX_POSTER_BYTES)) {
+          throw new Error("INVALID_POSTER");
+        }
       }
       let trackerProject: typeof cloudProjectsTable.$inferSelect | undefined;
+      if (shareMode === "stats" && !parsed.data.trackerProjectId) {
+        throw new Error("TRACKER_DETAILS_REQUIRED");
+      }
       if (parsed.data.trackerProjectId) {
         if (!parsed.data.athleteName?.trim() || !parsed.data.sport) throw new Error("TRACKER_DETAILS_REQUIRED");
         [trackerProject] = await tx.select().from(cloudProjectsTable).where(and(
@@ -448,13 +469,14 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
         title: parsed.data.title,
         manifest: parsed.data.manifest,
         shareKey,
+          shareMode,
         mediaType: parsed.data.mediaType,
-        videoObjectPath: mediaClaim.objectPath,
-        videoContentType: media.contentType,
-        videoSize: media.size,
-        posterObjectPath: posterClaim.objectPath,
-        posterContentType: poster.contentType,
-        posterSize: poster.size,
+        videoObjectPath: mediaClaim?.objectPath ?? null,
+        videoContentType: media?.contentType ?? null,
+        videoSize: media?.size ?? null,
+        posterObjectPath: posterClaim?.objectPath ?? null,
+        posterContentType: poster?.contentType ?? null,
+        posterSize: poster?.size ?? null,
         trackerProjectId: trackerProject?.id ?? null,
         athleteName: trackerProject ? parsed.data.athleteName?.trim() : null,
         sport: trackerProject ? parsed.data.sport : null,
@@ -534,7 +556,15 @@ router.get("/hype-card-shares/:shareToken/media/:mediaKind", async (req, res): P
     res.status(404).json({ error: "Hype Card share media not found" });
     return;
   }
+  if (share.shareMode === "stats") {
+    res.status(404).json({ error: "Hype Card share media not found" });
+    return;
+  }
   const objectPath = params.data.mediaKind === "video" ? share.videoObjectPath : share.posterObjectPath;
+  if (!objectPath) {
+    res.status(404).json({ error: "Hype Card share media not found" });
+    return;
+  }
   try {
     const file = await objectStorage.getObjectEntityFile(objectPath);
     const response = await objectStorage.downloadObject(file, 300);

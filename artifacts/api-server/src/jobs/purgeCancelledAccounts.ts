@@ -115,6 +115,7 @@ async function purgeAccount(
   }
   for (const share of hypeShares) {
     for (const objectPath of [share.videoObjectPath, share.posterObjectPath]) {
+      if (!objectPath) continue;
       try {
         await dependencies.deleteObject(objectPath);
       } catch (error) {

@@ -387,6 +387,14 @@ export interface HypeCardShareUpload {
 
 export type HypeCardShareInputManifest = { [key: string]: unknown };
 
+export type HypeCardShareInputShareMode = typeof HypeCardShareInputShareMode[keyof typeof HypeCardShareInputShareMode];
+
+
+export const HypeCardShareInputShareMode = {
+  card: 'card',
+  stats: 'stats',
+} as const;
+
 export type HypeCardShareInputMediaType = typeof HypeCardShareInputMediaType[keyof typeof HypeCardShareInputMediaType];
 
 
@@ -427,8 +435,10 @@ export interface HypeCardShareInput {
      * @maxLength 200
      */
   shareKey?: string;
+  shareMode?: HypeCardShareInputShareMode;
   mediaType: HypeCardShareInputMediaType;
-  mediaUploadClaimId: string;
+  /** @nullable */
+  mediaUploadClaimId?: string | null;
   /** @nullable */
   posterUploadClaimId?: string | null;
   /** @nullable */
@@ -561,6 +571,14 @@ export interface HypeCardReplyInbox {
 
 export type HypeCardShareManifest = { [key: string]: unknown };
 
+export type HypeCardShareShareMode = typeof HypeCardShareShareMode[keyof typeof HypeCardShareShareMode];
+
+
+export const HypeCardShareShareMode = {
+  card: 'card',
+  stats: 'stats',
+} as const;
+
 export type HypeCardShareMediaType = typeof HypeCardShareMediaType[keyof typeof HypeCardShareMediaType];
 
 
@@ -574,11 +592,14 @@ export interface HypeCardShare {
   slug: string;
   title: string;
   manifest: HypeCardShareManifest;
+  shareMode: HypeCardShareShareMode;
   mediaType: HypeCardShareMediaType;
-  mediaUrl: string;
+  /** @nullable */
+  mediaUrl: string | null;
   /** @nullable */
   videoUrl: string | null;
-  posterUrl: string;
+  /** @nullable */
+  posterUrl: string | null;
   stats: HypeCardShareStats | null;
   expiresAt: string;
   createdAt: string;

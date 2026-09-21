@@ -939,10 +939,11 @@ export const ListHypeCardSharesResponseItem = zod.object({
   "slug": zod.string(),
   "title": zod.string(),
   "manifest": zod.record(zod.string(), zod.unknown()),
+  "shareMode": zod.enum(['card', 'stats']),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaUrl": zod.string(),
+  "mediaUrl": zod.string().nullable(),
   "videoUrl": zod.string().nullable(),
-  "posterUrl": zod.string(),
+  "posterUrl": zod.string().nullable(),
   "stats": zod.union([zod.object({
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
@@ -980,6 +981,7 @@ export const createHypeCardShareBodySlugMax = 80;
 export const createHypeCardShareBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
 export const createHypeCardShareBodyShareKeyMax = 200;
 
+export const createHypeCardShareBodyShareModeDefault = `card`;
 export const createHypeCardShareBodyAthleteNameMax = 100;
 
 export const createHypeCardShareBodyExpiresInDaysDefault = 30;
@@ -993,8 +995,9 @@ export const CreateHypeCardShareBody = zod.object({
   "slug": zod.string().min(1).max(createHypeCardShareBodySlugMax).regex(createHypeCardShareBodySlugRegExp),
   "manifest": zod.record(zod.string(), zod.unknown()),
   "shareKey": zod.string().min(1).max(createHypeCardShareBodyShareKeyMax).optional(),
+  "shareMode": zod.enum(['card', 'stats']).default(createHypeCardShareBodyShareModeDefault),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaUploadClaimId": zod.string().uuid(),
+  "mediaUploadClaimId": zod.string().uuid().nullish(),
   "posterUploadClaimId": zod.string().uuid().nullish(),
   "trackerProjectId": zod.string().uuid().nullish(),
   "athleteName": zod.string().max(createHypeCardShareBodyAthleteNameMax).nullish(),
@@ -1026,10 +1029,11 @@ export const CreateHypeCardShareResponse = zod.object({
   "slug": zod.string(),
   "title": zod.string(),
   "manifest": zod.record(zod.string(), zod.unknown()),
+  "shareMode": zod.enum(['card', 'stats']),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaUrl": zod.string(),
+  "mediaUrl": zod.string().nullable(),
   "videoUrl": zod.string().nullable(),
-  "posterUrl": zod.string(),
+  "posterUrl": zod.string().nullable(),
   "stats": zod.union([zod.object({
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
@@ -1099,10 +1103,11 @@ export const GetHypeCardShareResponse = zod.object({
   "slug": zod.string(),
   "title": zod.string(),
   "manifest": zod.record(zod.string(), zod.unknown()),
+  "shareMode": zod.enum(['card', 'stats']),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaUrl": zod.string(),
+  "mediaUrl": zod.string().nullable(),
   "videoUrl": zod.string().nullable(),
-  "posterUrl": zod.string(),
+  "posterUrl": zod.string().nullable(),
   "stats": zod.union([zod.object({
   "athleteName": zod.string(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),

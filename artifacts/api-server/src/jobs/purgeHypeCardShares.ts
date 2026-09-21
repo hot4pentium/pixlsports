@@ -31,6 +31,7 @@ export async function purgeExpiredHypeCardShares() {
   for (const share of expired) {
     try {
       for (const objectPath of [share.videoObjectPath, share.posterObjectPath]) {
+        if (!objectPath) continue;
         try {
           await objectStorage.deleteObjectEntity(objectPath);
         } catch (error) {
