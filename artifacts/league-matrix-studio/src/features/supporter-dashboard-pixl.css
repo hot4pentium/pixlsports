@@ -522,6 +522,13 @@
   font-size: clamp(2rem, 9vw, 2.8rem);
 }
 
+.pixl-dashboard-mobile .mobile-hero-columns {
+  display: grid;
+  grid-template-columns: minmax(112px, .42fr) minmax(0, .58fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
 .pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] {
   display: flex;
   align-items: center;
@@ -529,6 +536,15 @@
   width: 100%;
   padding-bottom: 18px;
   border-bottom: 1px solid rgba(85, 164, 255, .3);
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="btn-mobile-athlete-switcher"] {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 22px 4px 0;
+  border-right: 1px solid rgba(85, 164, 255, .3);
+  border-bottom: 0;
 }
 
 .pixl-dashboard-mobile .mobile-athlete-lockup {
@@ -542,6 +558,49 @@
   min-width: 0;
   flex: 1 1 auto;
   overflow-wrap: anywhere;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns .mobile-athlete-lockup {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns .mobile-athlete-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: clamp(.95rem, 4vw, 1.25rem);
+  line-height: 1.05;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="btn-mobile-athlete-switcher"] > svg {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] {
+  height: 100%;
+  min-width: 0;
+  padding: 18px;
+  border-radius: 18px;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] > div {
+  min-width: 0;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] h2 {
+  font-size: clamp(1.1rem, 5vw, 1.65rem);
 }
 
 .pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] > div:nth-child(1) > div:nth-child(2) {
@@ -560,7 +619,7 @@
   color: rgba(255, 255, 255, .75);
 }
 
-.pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] > div:first-child > div {
+.pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] > .mobile-athlete-lockup > div:first-child {
   border-color: var(--m-bright-blue);
   background: rgba(4, 32, 77, .5);
   box-shadow: 0 0 22px rgba(85, 164, 255, .36);
@@ -572,7 +631,7 @@
   color: var(--m-text);
 }
 
-.pixl-dashboard-mobile [data-testid="btn-mobile-athlete-switcher"] > div:first-child > div {
+.pixl-dashboard-mobile [data-testid="btn-mobile-athlete-switcher"] > .mobile-athlete-lockup > div:first-child {
   width: 68px;
   height: 68px;
   border: 2px solid var(--m-blue);

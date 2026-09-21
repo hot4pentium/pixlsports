@@ -533,6 +533,7 @@ export function SupporterDashboardView({
             <h1 className="text-[34px] font-black font-display tracking-tight text-[#12213A] leading-none" data-testid="text-mobile-greeting">Good {greeting}, {firstName}.</h1>
           </div>
 
+          <div className="mobile-hero-columns">
           {/* Athlete Switcher Row */}
           <button type="button" onClick={onOpenProfile} className="flex items-center justify-between bg-transparent w-full text-left" aria-label="Change athlete" data-testid="btn-mobile-athlete-switcher">
             <div className="mobile-athlete-lockup flex min-w-0 flex-1 items-center gap-3">
@@ -582,6 +583,7 @@ export function SupporterDashboardView({
             ) : (
                <p className="text-sm font-medium text-black/60">No upcoming events. Add a game to get recommendations.</p>
             )}
+          </div>
           </div>
           </section>
 
