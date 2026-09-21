@@ -48,7 +48,7 @@ export interface HypeCardProject {
   grade: string;
   stat: string;
   achievement: string;
-  coachMessage: string;
+  message: string;
   visibility: ProjectVisibility;
   /** @nullable */
   photo: string | null;

@@ -780,7 +780,7 @@ test('ending a fan-owned game stays final locally when its cloud write fails', a
   assert.equal(readScheduleDraft(storage)?.events[0]?.status, 'final');
 });
 
-test('connected coach schedules remain read-only when tracker actions request phase changes', async () => {
+test('connected team schedules remain read-only when tracker actions request phase changes', async () => {
   const scheduledGame = {
     id: 'connected-game',
     type: 'game',

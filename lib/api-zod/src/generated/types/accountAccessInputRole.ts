@@ -10,6 +10,5 @@ export type AccountAccessInputRole = typeof AccountAccessInputRole[keyof typeof 
 
 
 export const AccountAccessInputRole = {
-  coach: 'coach',
   fan: 'fan',
 } as const;

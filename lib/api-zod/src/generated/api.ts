@@ -147,7 +147,7 @@ export const GetScheduleShareResponse = zod.object({
 
 
 /**
- * Updates a schedule share owned by the authenticated coach while keeping its public link.
+ * Updates a schedule share owned by the authenticated account while keeping its public link.
  * @summary Update a public schedule share
  */
 export const UpdateScheduleShareParams = zod.object({
@@ -234,7 +234,7 @@ export const UpdateScheduleShareResponse = zod.object({
 
 
 /**
- * Revokes a schedule share owned by the authenticated coach.
+ * Revokes a schedule share owned by the authenticated account.
  * @summary Revoke a public schedule share
  */
 export const DeleteScheduleShareParams = zod.object({
@@ -1214,203 +1214,6 @@ export const ServeHypeCardShareMediaResponse = zod.unknown()
 
 
 /**
- * Returns the stable five-character code and current private subscription-link state.
- * @summary Get or create the authenticated coach's calendar code
- */
-export const getCoachCalendarCodeResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
-
-
-export const GetCoachCalendarCodeResponse = zod.object({
-  "code": zod.string().regex(getCoachCalendarCodeResponseCodeRegExp),
-  "subscriptionFeedPath": zod.string().nullable()
-})
-
-
-/**
- * Issues a private tokenized feed link. Issuing a new link revokes the previous link.
- * @summary Create or refresh the authenticated coach's calendar subscription
- */
-export const CreateCoachCalendarSubscriptionResponse = zod.object({
-  "feedPath": zod.string()
-})
-
-
-/**
- * @summary Revoke the authenticated coach's calendar subscription
- */
-export const DeleteCoachCalendarSubscriptionResponse = zod.void()
-
-
-/**
- * Returns the current schedule for an authenticated supporter using an active private subscription link.
- * @summary Get a connected coach calendar by private subscription token
- */
-export const getConnectedCoachCalendarBySubscriptionPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,100}$');
-
-
-export const GetConnectedCoachCalendarBySubscriptionParams = zod.object({
-  "token": zod.coerce.string().regex(getConnectedCoachCalendarBySubscriptionPathTokenRegExp)
-})
-
-export const getConnectedCoachCalendarBySubscriptionResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemIdMax = 100;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemDateMax = 30;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemTimeMax = 30;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemLocationMax = 300;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemOpponentMax = 200;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemSnacksMax = 300;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemDrinksMax = 300;
-
-export const getConnectedCoachCalendarBySubscriptionResponseEventsItemNotesMax = 1000;
-
-
-
-export const GetConnectedCoachCalendarBySubscriptionResponse = zod.object({
-  "code": zod.string().regex(getConnectedCoachCalendarBySubscriptionResponseCodeRegExp),
-  "title": zod.string(),
-  "teamSeason": zod.string(),
-  "events": zod.array(zod.object({
-  "id": zod.string().min(1).max(getConnectedCoachCalendarBySubscriptionResponseEventsItemIdMax),
-  "type": zod.enum(['game', 'practice', 'meeting']),
-  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
-  "date": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemDateMax),
-  "time": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemTimeMax),
-  "location": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemLocationMax),
-  "opponent": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemOpponentMax),
-  "snacks": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemSnacksMax),
-  "drinks": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemDrinksMax),
-  "notes": zod.string().max(getConnectedCoachCalendarBySubscriptionResponseEventsItemNotesMax)
-})),
-  "scheduleAvailable": zod.boolean(),
-  "updatedAt": zod.coerce.date().nullable()
-})
-
-
-/**
- * @summary Connect a fan to a coach calendar
- */
-export const connectToCoachCalendarBodyCodeMin = 5;
-export const connectToCoachCalendarBodyCodeMax = 5;
-
-
-export const connectToCoachCalendarBodyCodeRegExp = new RegExp('^[A-Za-z2-9]{5}$');
-
-
-export const ConnectToCoachCalendarBody = zod.object({
-  "code": zod.string().min(connectToCoachCalendarBodyCodeMin).max(connectToCoachCalendarBodyCodeMax).regex(connectToCoachCalendarBodyCodeRegExp)
-})
-
-export const connectToCoachCalendarResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
-export const connectToCoachCalendarResponseEventsItemIdMax = 100;
-
-export const connectToCoachCalendarResponseEventsItemDateMax = 30;
-
-export const connectToCoachCalendarResponseEventsItemTimeMax = 30;
-
-export const connectToCoachCalendarResponseEventsItemLocationMax = 300;
-
-export const connectToCoachCalendarResponseEventsItemOpponentMax = 200;
-
-export const connectToCoachCalendarResponseEventsItemSnacksMax = 300;
-
-export const connectToCoachCalendarResponseEventsItemDrinksMax = 300;
-
-export const connectToCoachCalendarResponseEventsItemNotesMax = 1000;
-
-
-
-export const ConnectToCoachCalendarResponse = zod.object({
-  "code": zod.string().regex(connectToCoachCalendarResponseCodeRegExp),
-  "title": zod.string(),
-  "teamSeason": zod.string(),
-  "events": zod.array(zod.object({
-  "id": zod.string().min(1).max(connectToCoachCalendarResponseEventsItemIdMax),
-  "type": zod.enum(['game', 'practice', 'meeting']),
-  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
-  "date": zod.string().max(connectToCoachCalendarResponseEventsItemDateMax),
-  "time": zod.string().max(connectToCoachCalendarResponseEventsItemTimeMax),
-  "location": zod.string().max(connectToCoachCalendarResponseEventsItemLocationMax),
-  "opponent": zod.string().max(connectToCoachCalendarResponseEventsItemOpponentMax),
-  "snacks": zod.string().max(connectToCoachCalendarResponseEventsItemSnacksMax),
-  "drinks": zod.string().max(connectToCoachCalendarResponseEventsItemDrinksMax),
-  "notes": zod.string().max(connectToCoachCalendarResponseEventsItemNotesMax)
-})),
-  "scheduleAvailable": zod.boolean(),
-  "updatedAt": zod.coerce.date().nullable()
-})
-
-
-/**
- * Returns the current schedule without requiring a Pixl Sports account.
- * @summary Get a private ICS calendar feed
- */
-export const getCoachCalendarFeedPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,100}$');
-
-
-export const GetCoachCalendarFeedParams = zod.object({
-  "token": zod.coerce.string().regex(getCoachCalendarFeedPathTokenRegExp)
-})
-
-export const GetCoachCalendarFeedResponse = zod.unknown()
-
-
-/**
- * @summary Get the current schedule for a connected coach code
- */
-export const getConnectedCoachCalendarPathCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
-
-
-export const GetConnectedCoachCalendarParams = zod.object({
-  "code": zod.coerce.string().regex(getConnectedCoachCalendarPathCodeRegExp)
-})
-
-export const getConnectedCoachCalendarResponseCodeRegExp = new RegExp('^[A-Z2-9]{5}$');
-export const getConnectedCoachCalendarResponseEventsItemIdMax = 100;
-
-export const getConnectedCoachCalendarResponseEventsItemDateMax = 30;
-
-export const getConnectedCoachCalendarResponseEventsItemTimeMax = 30;
-
-export const getConnectedCoachCalendarResponseEventsItemLocationMax = 300;
-
-export const getConnectedCoachCalendarResponseEventsItemOpponentMax = 200;
-
-export const getConnectedCoachCalendarResponseEventsItemSnacksMax = 300;
-
-export const getConnectedCoachCalendarResponseEventsItemDrinksMax = 300;
-
-export const getConnectedCoachCalendarResponseEventsItemNotesMax = 1000;
-
-
-
-export const GetConnectedCoachCalendarResponse = zod.object({
-  "code": zod.string().regex(getConnectedCoachCalendarResponseCodeRegExp),
-  "title": zod.string(),
-  "teamSeason": zod.string(),
-  "events": zod.array(zod.object({
-  "id": zod.string().min(1).max(getConnectedCoachCalendarResponseEventsItemIdMax),
-  "type": zod.enum(['game', 'practice', 'meeting']),
-  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
-  "date": zod.string().max(getConnectedCoachCalendarResponseEventsItemDateMax),
-  "time": zod.string().max(getConnectedCoachCalendarResponseEventsItemTimeMax),
-  "location": zod.string().max(getConnectedCoachCalendarResponseEventsItemLocationMax),
-  "opponent": zod.string().max(getConnectedCoachCalendarResponseEventsItemOpponentMax),
-  "snacks": zod.string().max(getConnectedCoachCalendarResponseEventsItemSnacksMax),
-  "drinks": zod.string().max(getConnectedCoachCalendarResponseEventsItemDrinksMax),
-  "notes": zod.string().max(getConnectedCoachCalendarResponseEventsItemNotesMax)
-})),
-  "scheduleAvailable": zod.boolean(),
-  "updatedAt": zod.coerce.date().nullable()
-})
-
-
-/**
  * @summary Get the authenticated user's account access and Guest usage
  */
 export const getAccountAccessResponseUsageHypeCardsMin = 0;
@@ -1438,7 +1241,7 @@ export const getAccountAccessResponseStorageUsedBytesMin = 0;
 
 export const GetAccountAccessResponse = zod.object({
   "accessMode": zod.enum(['full', 'guest']),
-  "role": zod.union([zod.literal('coach'),zod.literal('fan'),zod.literal(null)]).nullable(),
+  "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
   "usage": zod.object({
   "hypeCards": zod.number().int().min(getAccountAccessResponseUsageHypeCardsMin),
   "scheduleEvents": zod.number().int().min(getAccountAccessResponseUsageScheduleEventsMin),
@@ -1466,7 +1269,7 @@ export const GetAccountAccessResponse = zod.object({
  * @summary Save the authenticated user's role and access mode
  */
 export const UpdateAccountAccessBody = zod.object({
-  "role": zod.enum(['coach', 'fan']),
+  "role": zod.enum(['fan']),
   "accessMode": zod.enum(['full', 'guest'])
 })
 
@@ -1495,7 +1298,7 @@ export const updateAccountAccessResponseStorageUsedBytesMin = 0;
 
 export const UpdateAccountAccessResponse = zod.object({
   "accessMode": zod.enum(['full', 'guest']),
-  "role": zod.union([zod.literal('coach'),zod.literal('fan'),zod.literal(null)]).nullable(),
+  "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
   "usage": zod.object({
   "hypeCards": zod.number().int().min(updateAccountAccessResponseUsageHypeCardsMin),
   "scheduleEvents": zod.number().int().min(updateAccountAccessResponseUsageScheduleEventsMin),
@@ -1634,7 +1437,7 @@ export const consumeAccountUsageResponseStorageUsedBytesMin = 0;
 
 export const ConsumeAccountUsageResponse = zod.object({
   "accessMode": zod.enum(['full', 'guest']),
-  "role": zod.union([zod.literal('coach'),zod.literal('fan'),zod.literal(null)]).nullable(),
+  "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
   "usage": zod.object({
   "hypeCards": zod.number().int().min(consumeAccountUsageResponseUsageHypeCardsMin),
   "scheduleEvents": zod.number().int().min(consumeAccountUsageResponseUsageScheduleEventsMin),

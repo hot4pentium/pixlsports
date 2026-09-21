@@ -599,42 +599,10 @@ export type OwnedHypeCardShare = HypeCardShare & ({
 
 export type HypeCardShareList = OwnedHypeCardShare[];
 
-export interface CoachCalendarCode {
-  /** @pattern ^[A-Z2-9]{5}$ */
-  code: string;
-  /** @nullable */
-  subscriptionFeedPath: string | null;
-}
-
-export interface CoachCalendarSubscription {
-  feedPath: string;
-}
-
-export interface CoachCalendarConnectInput {
-  /**
-     * @minLength 5
-     * @maxLength 5
-     * @pattern ^[A-Za-z2-9]{5}$
-     */
-  code: string;
-}
-
-export interface CoachCalendar {
-  /** @pattern ^[A-Z2-9]{5}$ */
-  code: string;
-  title: string;
-  teamSeason: string;
-  events: ScheduleEvent[];
-  scheduleAvailable: boolean;
-  /** @nullable */
-  updatedAt: string | null;
-}
-
 export type AccountAccessInputRole = typeof AccountAccessInputRole[keyof typeof AccountAccessInputRole];
 
 
 export const AccountAccessInputRole = {
-  coach: 'coach',
   fan: 'fan',
 } as const;
 
@@ -745,7 +713,6 @@ export type AccountAccessRole = typeof AccountAccessRole[keyof typeof AccountAcc
 
 
 export const AccountAccessRole = {
-  coach: 'coach',
   fan: 'fan',
 } as const;
 
@@ -877,7 +844,7 @@ export interface ProjectVisibility {
   grade: boolean;
   stat: boolean;
   achievement: boolean;
-  coachMessage: boolean;
+  message: boolean;
 }
 
 export interface PhotoTransform {
@@ -924,7 +891,7 @@ export interface HypeCardProject {
   grade: string;
   stat: string;
   achievement: string;
-  coachMessage: string;
+  message: string;
   visibility: ProjectVisibility;
   /** @nullable */
   photo: string | null;

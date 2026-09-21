@@ -159,7 +159,7 @@ export function PublicStatTrackerPage() {
           <WifiOff className="h-10 w-10 text-primary" />
           <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Scoreboard Unavailable</h1>
           <p className="mx-auto mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">
-            This live link has expired, was revoked by the coach, or the game has been removed.
+            This live link has expired, was revoked, or the game has been removed.
           </p>
           <Link href="/" className="mt-7 inline-flex bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm hover:bg-primary-ink">
             Return to Home

@@ -6,12 +6,6 @@ import {
   useDeleteProject,
   useCreateProject,
   useGetProject,
-  useGetCoachCalendarCode,
-  useCreateCoachCalendarSubscription,
-  useDeleteCoachCalendarSubscription,
-  useGetConnectedCoachCalendar,
-  useGetConnectedCoachCalendarBySubscription,
-  useConnectToCoachCalendar,
   getGetProjectQueryKey,
   useListProjects,
   useUpdateProject,
@@ -37,7 +31,7 @@ import {
 } from '@workspace/api-client-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
-import { lazy, Suspense, type FormEvent, type PointerEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -95,15 +89,6 @@ import { fetchScheduleShareWithCache } from '@/features/schedule-offline';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
 import {
-  clearStoredCalendarConnection,
-  getCalendarConnectionErrorKind,
-  getCoachCalendarHandoffToken,
-  getCoachCalendarSubscriptionToken,
-  getStoredCalendarConnection,
-  storeCalendarConnection,
-  type CalendarConnection,
-} from '@/features/calendar-connection';
-import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
   getSupporterScheduleSelection,
@@ -117,7 +102,7 @@ import {
   type UserRole,
 } from '@/features/supporter-dashboard-model';
 import { readHypeCardProject, type HypeCardProject } from '@/features/hype-card-types';
-import { getRoleIntent, roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
+import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import {
   completedChecklistCount,
@@ -132,36 +117,8 @@ import {
   type GamedayChecklistGame,
   type LocalGamedayChecklist,
 } from '@/features/gameday-checklist';
-import {
-  createBlankRosterPlayer,
-  getBenchPlayers,
-  getDefaultRoster,
-  getPlayerInitials,
-  getStarterPlayers,
-  normalizeFormationPosition,
-  normalizeRosterDraft,
-  readRosterDraft,
-  rosterBoardStyles,
-  removeRosterPlayer,
-  saveRosterDraft,
-  updateRosterPlayer,
-  type RosterDraft,
-  type RosterBoardStyle,
-  type RosterFormationPosition,
-  type RosterPlayer,
-} from '@/features/roster-draft';
-import { createRosterBoardGeometrySvg, rosterBoardViewBox } from '@/features/roster-board';
-import baseballFieldAsset from '@/assets/baseball-field.svg';
-import baseballFieldSvg from '@/assets/baseball-field.svg?raw';
-import basketballCourtAsset from '@/assets/basketball-court.svg';
 import heroBanner from '@/assets/hero-banner.webp';
-import basketballCourtSvg from '@/assets/basketball-court.svg?raw';
 import footballFieldAsset from '@/assets/football-field.svg';
-import footballFieldSvg from '@/assets/football-field.svg?raw';
-import soccerFieldAsset from '@/assets/soccer-field.svg';
-import soccerFieldSvg from '@/assets/soccer-field.svg?raw';
-import volleyballCourtAsset from '@/assets/volleyball-court.svg';
-import volleyballCourtSvg from '@/assets/volleyball-court.svg?raw';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
 import hypecardPlayerPhoto from '@/assets/hypecard-player-photo.png';
 import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
@@ -210,7 +167,7 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
-function isCloudToolProject(value: unknown, tool: 'schedule' | 'roster'): value is CloudProjectPayload {
+function isCloudToolProject(value: unknown, tool: 'schedule'): value is CloudProjectPayload {
   return typeof value === 'object'
     && value !== null
     && (value as { tool?: unknown }).tool === tool;
@@ -265,16 +222,6 @@ const toolData: Record<ToolKind, {
     accent: 'bg-white text-foreground',
     soft: 'bg-[#22252a] text-white',
     templateNames: ['Clean Slate', 'Warm-Up', 'Fall Classic'],
-  },
-  roster: {
-    slug: 'roster',
-    label: 'Roster & Lineup Creator',
-    kicker: 'Know who is ready to play.',
-    description: 'Build a clear team board, mark the starters, and share game-day lineups with families.',
-    icon: UsersRound,
-    accent: 'bg-primary text-primary-foreground',
-    soft: 'bg-[#253a39] text-white',
-    templateNames: ['Full Roster', 'Game Day', 'Numbers Up'],
   },
   'stat-tracker': {
     slug: 'stat-tracker',
@@ -359,63 +306,7 @@ type LandingRoleCopy = {
   journey: LandingJourneyStep[];
 };
 
-const landingRoleCopy: Record<UserRole, LandingRoleCopy> = {
-  coach: {
-    eyebrow: 'Coach playbook',
-    headline: 'Build the week.',
-    accent: 'Lead the team.',
-    description: 'Set the schedule, shape the lineup, and keep every family ready for game day.',
-    cta: 'Build my coach workspace',
-    previewLabel: 'Coach command',
-    previewTitle: 'Eastside / 12U',
-    previewMetric: '3 tools',
-    previewAccent: 'ready to run.',
-    previewItems: [
-      ['SCHEDULE', '4 events mapped', 'READY'],
-      ['ROSTER + LINEUP', '12 players set', 'READY'],
-      ['GAMEDAY CHECKLIST', '8 of 8 items', 'READY'],
-    ],
-    hubGreeting: 'Your team week is ready.',
-    hubDescription: 'A single command center for the details families need before the whistle.',
-    journey: [
-      {
-        icon: CalendarDays,
-        title: '01 / Set the week',
-        body: 'Add practices, games, and the places everyone needs to know.',
-        label: 'Schedule maker',
-        hub: 'Team schedule is up to date.',
-        notification: 'Schedule updated',
-        notificationMeta: 'Eastside Falcons · 4 events',
-      },
-      {
-        icon: UsersRound,
-        title: '02 / Set the lineup',
-        body: 'Give every family one clear view of who is playing and when.',
-        label: 'Roster + lineup',
-        hub: 'Saturday lineup is ready to share.',
-        notification: 'Lineup posted',
-        notificationMeta: '12 players · Saturday 4:30 PM',
-      },
-      {
-        icon: ClipboardCheck,
-        title: '03 / Be ready',
-        body: 'Keep uniforms, equipment, timing, and game details together.',
-        label: 'Gameday checklist',
-        hub: 'Game-day checklist is complete.',
-        notification: 'Game day is almost here',
-        notificationMeta: 'Eastside Falcons · Checklist ready',
-      },
-      {
-        icon: Share2,
-        title: '04 / Send it around',
-        body: 'Share the details once so the team can focus on the game.',
-        label: 'Ready to share',
-        hub: 'Your team has the same clear view.',
-        notification: 'Team hub is ready',
-        notificationMeta: 'Share the latest details',
-      },
-    ],
-  },
+const landingRoleCopy: Record<string, LandingRoleCopy> = {
   fan: {
     eyebrow: 'Fan playbook',
     headline: 'Celebrate the play.',
@@ -597,9 +488,9 @@ function LegacyHomePage() {
               <div className="home-reveal home-reveal-delay-3 mt-8" data-testid="landing-role-selector">
                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f5f0e3]/48">Choose your home base</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row" role="radiogroup" aria-label="Choose a Pixl Sports path">
-                  {(['fan', 'coach'] as UserRole[]).map((role) => {
+                  {(['fan'] as UserRole[]).map((role) => {
                     const isSelected = selectedRole === role;
-                    const Icon = role === 'coach' ? ShieldCheck : Heart;
+                    const Icon = Heart;
                     return (
                       <button
                         key={role}
@@ -611,7 +502,7 @@ function LegacyHomePage() {
                         data-testid={`button-landing-role-${role}`}
                       >
                         <Icon className="h-4 w-4" />
-                        <span>{role === 'coach' ? 'Coach hub' : 'Fan hub'}</span>
+                        <span>Fan hub</span>
                         {isSelected && <Check className="ml-auto h-4 w-4" />}
                       </button>
                     );
@@ -725,12 +616,6 @@ function LegacyHomePage() {
                   <p className="mt-2 text-sm font-bold leading-snug text-foreground">Follow an athlete and keep the whole week in view.</p>
                   <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary-ink">Follow an athlete <ArrowUpRight className="h-3.5 w-3.5" /></span>
                 </Link>
-                 <Link href={roleSignupHref('coach')} onClick={() => setSelectedRole('coach')} className="group border border-border bg-card p-4 transition-transform hover:-translate-y-1" data-testid="link-week-coach-path">
-                  <UsersRound className="h-5 w-5 text-primary-ink" />
-                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-ink">For coaches</p>
-                  <p className="mt-2 text-sm font-bold leading-snug text-foreground">Lead a team with one clear game-day home.</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-hover:text-primary-ink">Lead a team <ArrowUpRight className="h-3.5 w-3.5" /></span>
-                </Link>
               </div>
             </div>
             <div className="relative">
@@ -783,7 +668,7 @@ function LegacyHomePage() {
                  <div className="inline-flex items-center gap-2 border border-[#f5f0e3]/20 bg-[#f5f0e3]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-primary clip-angled-sm" data-testid="text-walkthrough-role">{roleCopy.eyebrow}</div>
                  <h2 className="home-display mt-6 text-6xl leading-[0.86] sm:text-8xl">See your<br /><span className="text-primary">tools in action.</span></h2>
               </div>
-               <p className="max-w-xs text-sm font-medium leading-relaxed text-[#f5f0e3]/55">This is what your {selectedRole === 'fan' ? 'Fan Hub' : 'Coach Hub'} looks like, one tool at a time.</p>
+               <p className="max-w-xs text-sm font-medium leading-relaxed text-[#f5f0e3]/55">This is what your Fan Hub looks like, one tool at a time.</p>
             </div>
 
              <div className="mt-14 grid gap-4 md:grid-cols-2" data-testid="section-role-tool-walkthrough">
@@ -874,7 +759,7 @@ function HomePage() {
                   <h1 id="landing-overview-heading" data-testid="text-landing-headline">
                     We guide<br />the week.<br /><em><span className="pixl-landing-hero-line">You capture</span><br /><span className="pixl-landing-hero-line">the moments.</span></em>
                   </h1>
-                <p>Choose how you show up for the season. Pixl gives fans and coaches a clear place to start, then puts the right tool in front of you.</p>
+                <p>Pixl gives families a clear place to start, then puts the right tool in front of you.</p>
               </div>
               <aside className="pixl-landing-overview-context" aria-label="This week preview">
                 <div className="pixl-landing-side-label">THIS WEEK <CalendarDays /></div>
@@ -895,19 +780,19 @@ function HomePage() {
               <div>
                 <small>CHOOSE YOUR HOME BASE</small>
                 <div className="pixl-landing-role-buttons" role="radiogroup" aria-label="Choose a Pixl Sports home base">
-                  {(['fan', 'coach'] as UserRole[]).map((role) => {
+                  {(['fan'] as UserRole[]).map((role) => {
                     const isSelected = selectedRole === role;
                     const Icon = role === 'fan' ? Heart : ShieldCheck;
                     return (
                       <button key={role} type="button" role="radio" aria-checked={isSelected} className={isSelected ? 'is-selected' : ''} onClick={() => selectLandingRole(role)} data-testid={`button-landing-role-${role}`}>
-                        <Icon /> {role === 'fan' ? 'Fan hub' : 'Coach hub'} {isSelected && <Check />}
+                        <Icon /> Fan hub {isSelected && <Check />}
                       </button>
                     );
                   })}
                 </div>
               </div>
               <Link href={roleSignupHref(selectedRole)} className="pixl-landing-text-link" data-testid="link-hero-open-studio">
-                Enter {selectedRole === 'fan' ? 'fan' : 'coach'} hub <ArrowRight />
+                Enter fan hub <ArrowRight />
               </Link>
             </div>
           </section>
@@ -917,7 +802,7 @@ function HomePage() {
         <section className="pixl-landing-tools" aria-labelledby="landing-tools-heading">
           <div className="pixl-landing-tools-heading">
             <div>
-              <small>{selectedRole === 'fan' ? 'FAN HUB' : 'COACH HUB'} / YOUR WEEK</small>
+              <small>FAN HUB / YOUR WEEK</small>
               <h2 id="landing-tools-heading">We guide the week. <em>{selectedRole === 'fan' ? 'You enjoy the moments.' : 'Lead the team.'}</em></h2>
             </div>
             <p>Move from calendar to game day to celebration with one clear next step at every turn.</p>
@@ -925,9 +810,9 @@ function HomePage() {
           <div className="pixl-landing-tools-body">
             <div className="pixl-landing-tool-index">
               <div className="pixl-landing-tool-index-intro">
-                <small>YOUR {selectedRole === 'fan' ? 'FAN' : 'COACH'} TOOLKIT</small>
+                <small>YOUR FAN TOOLKIT</small>
               </div>
-              <div className="pixl-landing-tool-tabs" role="tablist" aria-label={`${selectedRole === 'fan' ? 'Fan' : 'Coach'} Hub tools`}>
+              <div className="pixl-landing-tool-tabs" role="tablist" aria-label="Fan Hub tools">
                 {roleTools.map((kind, index) => {
                   const isActive = activeFanTool === kind;
                   const Icon = toolData[kind].icon;
@@ -959,7 +844,7 @@ function HomePage() {
             <div className="pixl-landing-tool-detail">
               <div className="pixl-landing-feature-label">
                 <span>SELECTED TOOL</span>
-                <strong>{selectedRole === 'fan' ? 'FAN HUB' : 'COACH HUB'} / {toolData[activeFanTool].label.replace(' Creator', '')}</strong>
+                <strong>FAN HUB / {toolData[activeFanTool].label.replace(' Creator', '')}</strong>
               </div>
               <div id={`landing-tool-panel-${activeFanTool}`} role="tabpanel" aria-labelledby={`landing-tool-tab-${activeFanTool}`} data-testid={`panel-fan-tool-${activeFanTool}`}>
                 <ToolWalkthroughCard kind={activeFanTool} step={Math.max(1, roleTools.indexOf(activeFanTool) + 1)} role={selectedRole} />
@@ -1029,11 +914,6 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
       next: 'Choose the media, pick a look, attach optional season stats, and share the finished celebration with your people.',
       steps: ['Choose the moment', 'Attach season stats', 'Share the card'],
     },
-    roster: {
-      what: 'Make the team board clear before the game starts and keep the lineup in one place.',
-      next: 'Add players, mark the starters, and share the game-day view with families.',
-      steps: ['Add players', 'Set the starters', 'Share the lineup'],
-    },
   };
   const copy = walkthroughCopy[kind];
 
@@ -1045,7 +925,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
             <Icon className="h-5 w-5" />
           </span>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">0{step} / {role === 'fan' ? 'Fan Hub' : 'Coach Hub'}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">0{step} / Fan Hub</p>
             <h3 className="mt-1 font-display text-3xl uppercase tracking-wide text-[#f5f0e3]">{tool.label.replace(' Creator', '')}</h3>
           </div>
         </div>
@@ -1188,22 +1068,6 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
           </div>
         )}
 
-        {kind === 'roster' && (
-          <div className="border border-primary/30 bg-[#253a39] p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Saturday lineup</p>
-                <p className="mt-1 font-display text-2xl uppercase text-white">Starting nine</p>
-              </div>
-              <UsersRound className="h-6 w-6 text-primary" />
-            </div>
-            <div className="mt-5 grid grid-cols-3 gap-2">
-              {['MAYA 12', 'JORDAN 04', 'RILEY 21', 'SAM 08', 'NOAH 15', 'AVA 02'].map((player, index) => (
-                <div key={player} className={`border px-2 py-3 text-center text-[9px] font-bold uppercase tracking-wider ${index < 3 ? 'border-primary bg-primary/15 text-primary' : 'border-white/10 text-white/55'}`}>{player}</div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="flex items-center justify-between gap-4 border-t border-[#f5f0e3]/10 px-5 py-4 sm:px-6">
@@ -1221,7 +1085,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
 function StudioLayout({ children, role, landingBackground = false }: { children: ReactNode; role?: UserRole; landingBackground?: boolean }) {
   const [location] = useLocation();
   const { user } = useUser();
-  const activeRole = role ?? getUserRole(user) ?? 'coach';
+  const activeRole = role ?? getUserRole(user) ?? 'fan';
   const visibleTools = roleToolKinds[activeRole];
   const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
@@ -1293,10 +1157,10 @@ function Studio({ role }: { role: UserRole }) {
               <Maximize className="h-4 w-4" /> Command Center
             </div>
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
-               {role === 'coach' ? 'COACH COMMAND' : 'FAN COMMAND'}<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
+               FAN COMMAND<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
             </h1>
              <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
-               <span>Save Hype Cards, schedules, and roster lineups locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
+               <span>Save Hype Cards, schedules, checklists, and stats locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
               <Dialog>
                 <DialogTrigger asChild>
                   <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
@@ -1347,7 +1211,6 @@ function Studio({ role }: { role: UserRole }) {
                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                  <span className="border border-border bg-background px-2.5 py-2">Hype {accountAccess.remaining.hypeCards}/{accountAccess.limits.hypeCards}</span>
                  <span className="border border-border bg-background px-2.5 py-2">Events {accountAccess.remaining.scheduleEvents}/{accountAccess.limits.scheduleEvents}</span>
-                 <span className="border border-border bg-background px-2.5 py-2">Lineup {accountAccess.remaining.lineups}/{accountAccess.limits.lineups}</span>
                </div>
              </div>
            </div>
@@ -1357,12 +1220,12 @@ function Studio({ role }: { role: UserRole }) {
           <div className="pointer-events-none absolute inset-0 bg-tech-grid-green opacity-30" />
           <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">{role === 'coach' ? 'Coaching' : 'Supporting'}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary">Supporting</p>
               <p className="mt-1 font-display text-2xl uppercase tracking-wide">{profile.teamName}</p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <p className="text-sm font-bold uppercase tracking-wider text-white/65">{profile.displayName}</p>
-              <HypeCardReplyInboxTrigger variant="coach" />
+              <HypeCardReplyInboxTrigger />
             </div>
           </div>
         </div>
@@ -1419,12 +1282,10 @@ function Studio({ role }: { role: UserRole }) {
                   <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {cloudProjects.map(project => (
                       (() => {
-                        const tool = isCloudToolProject(project.project, 'schedule')
-                          ? 'schedule'
-                          : isCloudToolProject(project.project, 'roster')
-                            ? 'roster'
-                            : 'hype-card';
-                        const toolLabel = tool === 'schedule' ? 'Schedule' : tool === 'roster' ? 'Roster lineup' : 'Hype Card';
+                         const tool = isCloudToolProject(project.project, 'schedule')
+                           ? 'schedule'
+                           : 'hype-card';
+                         const toolLabel = tool === 'schedule' ? 'Schedule' : 'Hype Card';
                         const projectHref = `/studio/${tool}/${project.id}`;
                         return (
                       <div key={project.id} className="flex items-center justify-between border-l-4 border-foreground bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80 group/project">
@@ -1546,9 +1407,6 @@ function SupporterStudio() {
   const { data: athletePhoto } = useGetSupporterPhoto({
     query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
   });
-  const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
-  const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
-  const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
   const { data: accountAccess } = useGetAccountAccess({
     query: {
       enabled: Boolean(isSignedIn),
@@ -1556,33 +1414,6 @@ function SupporterStudio() {
       queryKey: getGetAccountAccessQueryKey(),
     },
   });
-  const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
-    query: {
-      enabled: Boolean(calendarCode),
-      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
-      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
-      queryKey: ['/api/coach-calendar', calendarCode],
-    },
-  });
-  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
-    query: {
-      enabled: Boolean(calendarSubscriptionToken),
-      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
-      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
-      queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
-    },
-  });
-  const activeCalendarQuery = calendarConnection?.kind === 'subscription'
-    ? subscriptionCalendarQuery
-    : codeCalendarQuery;
-  const calendarConnectionErrorKind = activeCalendarQuery.isError
-    ? getCalendarConnectionErrorKind(activeCalendarQuery.error)
-    : null;
-  const calendarConnectionInvalid = calendarConnectionErrorKind === 'invalid';
-  const calendar = calendarConnectionInvalid ? undefined : activeCalendarQuery.data;
-  const loadingCalendar = activeCalendarQuery.isFetching;
-  const calendarError = activeCalendarQuery.isError && !calendarConnectionInvalid;
-  const hasCalendarConnection = Boolean(calendarConnection);
   const { data: cloudProjects } = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
@@ -1596,8 +1427,6 @@ function SupporterStudio() {
     : null;
   const customSchedule = cloudSchedule ?? localSchedule;
   const scheduleSelection = getSupporterScheduleSelection({
-    hasTeamConnection: hasCalendarConnection,
-    teamSchedule: calendar,
     customSchedule,
   });
 
@@ -1633,18 +1462,10 @@ function SupporterStudio() {
      ...(localHypeCard ? [mapLocalSupporterHypeCard(localHypeCard)] : []),
      ...mapRecentSupporterProjects(cloudProjects ?? []),
    ];
-  const connected = scheduleSelection.source === 'team';
   const scheduleSource = scheduleSelection.source;
-  const scheduleLabel = scheduleSelection.source === 'team'
-    ? calendar?.teamSeason || calendar?.title || profile.teamName
-    : scheduleSelection.source === 'custom'
+  const scheduleLabel = scheduleSelection.source === 'custom'
       ? [customSchedule?.teamName, customSchedule?.season].filter(Boolean).join(' · ')
       : profile.teamName;
-
-  const disconnect = () => {
-    clearStoredCalendarConnection();
-    setCalendarConnection(null);
-  };
 
   return (
     <StudioLayout role="fan">
@@ -1655,15 +1476,8 @@ function SupporterStudio() {
           nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
           scheduleSource={scheduleSource}
-          connected={connected}
           connectionLabel={scheduleLabel}
-          loadingCalendar={Boolean(calendarConnection && loadingCalendar)}
-          calendarError={Boolean(calendarConnection && calendarError)}
-           calendarConnectionInvalid={Boolean(calendarConnection && calendarConnectionInvalid)}
           onOpenProfile={() => setLocation('/studio/profile')}
-          onRetryCalendar={() => void activeCalendarQuery.refetch()}
-           onReconnectCalendar={() => setLocation('/studio/schedule')}
-          onDisconnect={disconnect}
            onOpenStatTracker={() => {
              const query = nextGame
                ? `?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
@@ -1826,483 +1640,8 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
   );
 }
 
-function CoachCalendarCodePanel() {
-  const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useGetCoachCalendarCode({
-    query: {
-      staleTime: Infinity,
-      refetchOnWindowFocus: false,
-      queryKey: ['/api/coach-calendar'],
-    },
-  });
-  const [copied, setCopied] = useState(false);
-  const [subscriptionCopied, setSubscriptionCopied] = useState(false);
-  const [appLinkCopied, setAppLinkCopied] = useState(false);
-  const createSubscription = useCreateCoachCalendarSubscription();
-  const deleteSubscription = useDeleteCoachCalendarSubscription();
-  const feedUrl = data?.subscriptionFeedPath
-    ? new URL(data.subscriptionFeedPath, window.location.origin).toString()
-    : '';
-  const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:');
-  const subscriptionToken = getCoachCalendarSubscriptionToken(feedUrl, window.location.origin, window.location.hostname)
-    ?? getCoachCalendarHandoffToken(feedUrl, window.location.origin, window.location.hostname);
-  const appCalendarUrl = subscriptionToken
-    ? `${appOrigin}${basePath}/studio/schedule?calendarToken=${encodeURIComponent(subscriptionToken)}`
-    : '';
-
-  const copyCode = async () => {
-    if (!data?.code) return;
-    await navigator.clipboard?.writeText(data.code);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  };
-
-  const refreshCodeData = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['/api/coach-calendar'] });
-  };
-
-  const createOrRefreshSubscription = () => {
-    if (
-      data?.subscriptionFeedPath
-      && !window.confirm('Refresh this subscription link? The current link will stop working immediately.')
-    ) {
-      return;
-    }
-    createSubscription.mutate(undefined, {
-      onSuccess: () => { void refreshCodeData(); },
-    });
-  };
-
-  const revokeSubscription = () => {
-    if (!window.confirm('Revoke this subscription link? Anyone using it will stop receiving schedule updates.')) return;
-    deleteSubscription.mutate(undefined, {
-      onSuccess: () => { void refreshCodeData(); },
-    });
-  };
-
-  const copySubscription = async () => {
-    if (!feedUrl) return;
-    await navigator.clipboard?.writeText(feedUrl);
-    setSubscriptionCopied(true);
-    window.setTimeout(() => setSubscriptionCopied(false), 1800);
-  };
-
-  const copyAppCalendarLink = async () => {
-    if (!appCalendarUrl) return;
-    await navigator.clipboard?.writeText(appCalendarUrl);
-    setAppLinkCopied(true);
-    window.setTimeout(() => setAppLinkCopied(false), 1800);
-  };
-
-  return (
-    <section className="relative w-fit max-w-full overflow-hidden border border-primary/30 bg-primary/5 p-2 clip-angled-sm" data-testid="coach-calendar-code-panel">
-      <div className="absolute inset-0 bg-tech-grid opacity-20 pointer-events-none" />
-      <div className="relative z-10 flex items-center justify-between gap-2">
-        <p className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-primary sm:text-[10px]">Share coach schedule</p>
-        <div className="flex shrink-0 items-center justify-end gap-1">
-          <div className="border border-primary bg-background px-2 py-1 font-display text-base tracking-[0.12em] text-foreground" aria-label="Fallback coach calendar code">
-            {isLoading ? '·····' : data?.code ?? '-----'}
-          </div>
-          <button
-            type="button"
-            onClick={() => { void copyCode(); }}
-            disabled={!data?.code || isError}
-             className="grid h-8 w-8 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-             aria-label="Copy fallback coach calendar code"
-            data-testid="button-copy-coach-calendar-code"
-          >
-             {copied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-       {isError && <p className="relative z-10 mt-3 text-xs font-bold uppercase tracking-wider text-destructive">Could not load the calendar sharing options. Refresh and try again.</p>}
-        <details className="relative z-10 mt-2 border-t border-primary/20 pt-2">
-          <summary className="cursor-pointer text-[9px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground">More options</summary>
-         <div className="pt-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-xl">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">Calendar app subscription</p>
-            <h3 className="mt-2 font-display text-2xl uppercase tracking-wide text-foreground">Keep every schedule update in sync.</h3>
-            <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">
-              Anyone with this private link can subscribe without an account. Refresh or revoke it at any time if it is shared with the wrong person.
-            </p>
-          </div>
-          {feedUrl ? (
-            <div className="w-full max-w-xl">
-              <div className="flex min-w-0 gap-2">
-                <input
-                  readOnly
-                  value={feedUrl}
-                  aria-label="Private calendar subscription link"
-                  className="min-w-0 flex-1 border border-border bg-background px-3 py-3 text-xs font-medium text-foreground outline-none"
-                  data-testid="input-coach-calendar-subscription"
-                />
-                <button
-                  type="button"
-                  onClick={() => { void copySubscription(); }}
-                  className="grid h-11 w-11 shrink-0 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm"
-                  aria-label="Copy private calendar subscription link"
-                  data-testid="button-copy-coach-calendar-subscription"
-                >
-                  {subscriptionCopied ? <Check className="h-4 w-4 text-primary" /> : <Clipboard className="h-4 w-4" />}
-                </button>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <a
-                  href={webcalUrl}
-                  className="inline-flex items-center gap-2 bg-foreground px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-background transition-colors hover:bg-primary hover:text-primary-foreground clip-angled-sm"
-                  data-testid="link-open-coach-calendar-subscription"
-                >
-                  <CalendarDays className="h-4 w-4" /> Open calendar app
-                </a>
-                <button
-                  type="button"
-                  onClick={() => { void copyAppCalendarLink(); }}
-                  disabled={!appCalendarUrl}
-                  className="inline-flex items-center gap-2 border border-primary bg-background px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-                  data-testid="button-copy-coach-calendar-app-link"
-                >
-                  {appLinkCopied ? <Check className="h-4 w-4 text-primary" /> : <Share2 className="h-4 w-4" />}
-                  {appLinkCopied ? 'Pixl Sports link copied' : 'Copy Pixl Sports link'}
-                </button>
-                <button
-                  type="button"
-                  onClick={createOrRefreshSubscription}
-                  disabled={createSubscription.isPending || deleteSubscription.isPending}
-                  className="border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-                  data-testid="button-refresh-coach-calendar-subscription"
-                >
-                  {createSubscription.isPending ? 'Refreshing…' : 'Refresh link'}
-                </button>
-                <button
-                  type="button"
-                  onClick={revokeSubscription}
-                  disabled={createSubscription.isPending || deleteSubscription.isPending}
-                  className="inline-flex items-center gap-2 border border-destructive/40 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-                  data-testid="button-revoke-coach-calendar-subscription"
-                >
-                  <Link2Off className="h-4 w-4" /> {deleteSubscription.isPending ? 'Revoking…' : 'Revoke'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={createOrRefreshSubscription}
-              disabled={createSubscription.isPending || isLoading || isError}
-              className="shrink-0 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm"
-              data-testid="button-create-coach-calendar-subscription"
-            >
-              {createSubscription.isPending ? 'Creating…' : 'Create subscription link'}
-            </button>
-          )}
-        </div>
-        {(createSubscription.isError || deleteSubscription.isError) && (
-          <p className="mt-3 text-xs font-bold uppercase tracking-wider text-destructive">
-            The subscription link could not be updated. Try again.
-          </p>
-        )}
-      </div>
-       </details>
-    </section>
-  );
-}
-
-function FanCalendarConnectionPanel({
-  onConnectionChange,
-  compact = false,
-}: {
-  onConnectionChange?: (connection: CalendarConnection | null) => void;
-  compact?: boolean;
-}) {
-  const [connection, setConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
-  const [handoffToken] = useState(() => getCoachCalendarHandoffToken(
-    window.location.href,
-    window.location.origin,
-    window.location.hostname,
-  ));
-  const [handoffError] = useState(() => {
-    try {
-      const url = new URL(window.location.href);
-      const hasHandoffParam = ['calendarToken', 'calendar'].some((key) => url.searchParams.has(key));
-      const isCalendarHandoffPath = /\/studio\/schedule\/?$/.test(url.pathname);
-      return hasHandoffParam && isCalendarHandoffPath && !getCoachCalendarHandoffToken(
-        window.location.href,
-        window.location.origin,
-        window.location.hostname,
-      )
-        ? 'That coach schedule link is invalid, expired, or revoked.'
-        : '';
-    } catch {
-      return '';
-    }
-  });
-  const [input, setInput] = useState(() => (
-    handoffToken
-      ? `${window.location.origin}/api/coach-calendar/feed/${handoffToken}.ics`
-      : connection?.kind === 'subscription'
-      ? `${window.location.origin}/api/coach-calendar/feed/${connection.value}.ics`
-      : connection?.value ?? ''
-  ));
-  const [pendingSubscriptionToken, setPendingSubscriptionToken] = useState(handoffToken ?? '');
-  const [inputError, setInputError] = useState(handoffError);
-  const connect = useConnectToCoachCalendar();
-  const code = connection?.kind === 'code' ? connection.value : '';
-  const subscriptionToken = connection?.kind === 'subscription' ? connection.value : '';
-  const codeCalendarQuery = useGetConnectedCoachCalendar(code, {
-    query: {
-      enabled: Boolean(code),
-      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
-      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
-      queryKey: ['/api/coach-calendar', code],
-    },
-  });
-  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(subscriptionToken, {
-    query: {
-      enabled: Boolean(subscriptionToken),
-      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
-      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
-      queryKey: ['/api/coach-calendar/subscription', subscriptionToken],
-    },
-  });
-  const pendingSubscriptionQuery = useGetConnectedCoachCalendarBySubscription(pendingSubscriptionToken, {
-    query: {
-      enabled: Boolean(pendingSubscriptionToken),
-      retry: false,
-      queryKey: ['/api/coach-calendar/subscription/pending', pendingSubscriptionToken],
-    },
-  });
-  const activeCalendarQuery = connection?.kind === 'subscription'
-    ? subscriptionCalendarQuery
-    : codeCalendarQuery;
-  const calendar = activeCalendarQuery.data;
-  const isLoading = activeCalendarQuery.isLoading || pendingSubscriptionQuery.isLoading;
-  const isError = activeCalendarQuery.isError;
-  const isFetching = activeCalendarQuery.isFetching;
-  const activeCalendarErrorKind = isError
-    ? getCalendarConnectionErrorKind(activeCalendarQuery.error)
-    : null;
-  const connectErrorKind = connect.isError
-    ? getCalendarConnectionErrorKind(connect.error)
-    : null;
-  const hasConnectedSchedule = Boolean(
-    calendar
-    && (calendar.scheduleAvailable || calendar.events.length > 0 || calendar.title || calendar.teamSeason),
-  );
-
-  useEffect(() => {
-    onConnectionChange?.(connection);
-  }, [connection, onConnectionChange]);
-
-  useEffect(() => {
-    if (!handoffToken) return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete('calendarToken');
-    url.searchParams.delete('calendar');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  }, [handoffToken]);
-
-  useEffect(() => {
-    if (!pendingSubscriptionToken) return;
-    if (pendingSubscriptionQuery.isError) {
-      setPendingSubscriptionToken('');
-      setInputError('That coach schedule link is invalid, expired, or revoked.');
-    }
-  }, [pendingSubscriptionQuery.data, pendingSubscriptionQuery.isError, pendingSubscriptionToken]);
-
-  const confirmPendingSubscription = () => {
-    if (!pendingSubscriptionToken || !pendingSubscriptionQuery.data) return;
-    const nextConnection = { kind: 'subscription' as const, value: pendingSubscriptionToken };
-    storeCalendarConnection(nextConnection);
-    setConnection(nextConnection);
-    setPendingSubscriptionToken('');
-    setInput(`${window.location.origin}/api/coach-calendar/feed/${nextConnection.value}.ics`);
-    setInputError('');
-  };
-
-  const cancelPendingSubscription = () => {
-    setPendingSubscriptionToken('');
-    setInputError('');
-  };
-
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const value = input.trim();
-    const subscriptionToken = getCoachCalendarSubscriptionToken(value, window.location.origin, window.location.hostname)
-      ?? getCoachCalendarHandoffToken(value, window.location.origin, window.location.hostname);
-    if (subscriptionToken) {
-      setInputError('');
-      setPendingSubscriptionToken(subscriptionToken);
-      return;
-    }
-    const nextCode = value.toUpperCase();
-    if (nextCode.length !== 5) {
-      setInputError('Paste a Pixl Sports schedule link from your coach or enter their five-character code.');
-      return;
-    }
-    connect.mutate(
-      { data: { code: nextCode } },
-      {
-        onSuccess: (connected) => {
-          const nextConnection = { kind: 'code' as const, value: connected.code };
-          storeCalendarConnection(nextConnection);
-          setConnection(nextConnection);
-          setInput(connected.code);
-          setInputError('');
-        },
-      },
-    );
-  };
-
-  const disconnect = () => {
-    clearStoredCalendarConnection();
-    setConnection(null);
-    setPendingSubscriptionToken('');
-    setInput('');
-    setInputError('');
-  };
-
-  return (
-    <section className={`${compact ? 'w-full max-w-[380px] p-2' : 'mb-6 p-5 sm:p-6'} border border-primary/30 bg-primary/5 clip-angled-sm`} data-testid="fan-calendar-connection-panel">
-      <div className={compact ? 'flex items-center gap-2' : 'flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between'}>
-        <div className={compact ? 'shrink-0' : 'max-w-xl'}>
-          <p className={`${compact ? 'hidden text-[9px] tracking-wider text-black md:block' : 'text-xs tracking-widest text-primary'} font-bold uppercase`}>
-            Connect to Coach’s Schedule
-          </p>
-          <h2 className={`${compact ? 'sr-only' : 'mt-2 font-display text-3xl uppercase tracking-wide text-foreground'}`}>Connect to your coach’s Pixl Sports schedule.</h2>
-          <p className={`${compact ? 'sr-only' : 'mt-2 text-sm font-medium leading-relaxed text-muted-foreground'}`}>
-            Paste the private Pixl Sports schedule link your coach shared, or use their five-character code. The connected schedule refreshes automatically when your coach makes changes.
-          </p>
-        </div>
-        <form onSubmit={submit} className={`${compact ? 'min-w-0 flex-1 gap-1' : 'w-full max-w-md gap-2'} flex`} data-testid="form-connect-coach-calendar">
-          <label className="sr-only" htmlFor="coach-calendar-connection">Coach’s Pixl Sports schedule link or code</label>
-          <input
-            id="coach-calendar-connection"
-            value={input}
-            onChange={(event) => {
-              setInput(event.target.value);
-              setInputError('');
-            }}
-            placeholder="Enter coach code"
-            autoComplete="off"
-            className={`min-w-0 flex-1 border border-border bg-background font-medium text-foreground outline-none transition-colors focus:border-primary ${compact ? 'px-2 py-2 text-xs' : 'px-4 py-3 text-sm'}`}
-            aria-describedby="coach-calendar-code-help"
-            data-testid="input-coach-calendar-link"
-          />
-          <button
-            type="submit"
-            disabled={connect.isPending || Boolean(pendingSubscriptionToken) || !input.trim()}
-            className={`shrink-0 bg-foreground font-bold uppercase text-background transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50 clip-angled-sm ${compact ? 'px-3 py-2 text-[9px] tracking-wider' : 'px-5 py-3 text-xs tracking-widest'}`}
-            data-testid="button-connect-coach-calendar"
-          >
-            {connect.isPending || pendingSubscriptionToken ? 'Connecting…' : 'Connect'}
-          </button>
-        </form>
-      </div>
-      <p id="coach-calendar-code-help" className={`${compact ? 'sr-only' : 'mt-3 text-[10px]'} font-bold uppercase tracking-wider text-muted-foreground`}>
-        {calendar ? `Connected to ${calendar.title || 'your coach’s schedule'}${isFetching ? ' · Updating…' : ' · Live sync on'}` : 'Ask your coach for the private Pixl Sports schedule link or five-character code from the Schedule section.'}
-      </p>
-      {pendingSubscriptionToken && (
-        <div className="mt-5 border border-primary/40 bg-background p-4 clip-angled-sm" data-testid="calendar-handoff-confirmation">
-          {pendingSubscriptionQuery.isLoading ? (
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking the private schedule link…</p>
-          ) : pendingSubscriptionQuery.data ? (
-            <>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">Coach schedule found</p>
-              <h3 className="mt-2 font-display text-2xl uppercase tracking-wide text-foreground">
-                {pendingSubscriptionQuery.data.title || 'Your coach’s schedule'}
-              </h3>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                {pendingSubscriptionQuery.data.teamSeason || 'Current team schedule'}
-              </p>
-              <p className="mt-3 text-sm font-medium leading-relaxed text-muted-foreground">
-                Connect to this coach’s Pixl Sports schedule? Your existing schedule connection will stay unchanged until you confirm.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={confirmPendingSubscription}
-                  className="bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/80 clip-angled-sm"
-                  data-testid="button-confirm-coach-calendar"
-                >
-                  Connect this schedule
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelPendingSubscription}
-                  className="border border-border bg-card px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground transition-colors hover:bg-muted clip-angled-sm"
-                  data-testid="button-cancel-coach-calendar-handoff"
-                >
-                  Not this one
-                </button>
-              </div>
-            </>
-          ) : null}
-        </div>
-      )}
-      {connection && (
-        <button
-          type="button"
-          onClick={disconnect}
-          className="mt-3 text-xs font-bold uppercase tracking-wider text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-destructive"
-          data-testid="button-disconnect-coach-calendar"
-        >
-          Disconnect coach’s schedule
-        </button>
-      )}
-      {(connect.isError || isError || inputError) && (
-        <p className="mt-2 text-xs font-bold uppercase tracking-wider text-destructive">
-          {inputError
-            || (activeCalendarErrorKind === 'invalid'
-              ? connection?.kind === 'subscription'
-                ? 'This private schedule link has expired or was revoked. Paste a new link or code from your coach.'
-                : 'This coach code is no longer valid. Ask your coach for a new code.'
-              : connectErrorKind === 'invalid'
-                ? 'That coach code is no longer valid. Ask your coach for a new code.'
-                : 'That coach schedule could not be connected. Check the link or code and try again.')}
-        </p>
-      )}
-
-      {calendar && hasConnectedSchedule && (
-        <div className="mt-5 border-t border-primary/20 pt-5" data-testid="fan-connected-calendar">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-foreground">Connected schedule</p>
-              <p className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{calendar.teamSeason || 'Current season'}</p>
-            </div>
-            {calendar.updatedAt && <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Last update {formatDistanceToNow(new Date(calendar.updatedAt), { addSuffix: true })}</p>}
-          </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {calendar.events.length === 0 ? (
-              <p className="border border-dashed border-border p-4 text-xs font-medium text-muted-foreground sm:col-span-2">Your coach has not added any events yet.</p>
-            ) : calendar.events.map((event) => (
-              <div key={event.id} className="border border-border bg-background p-3 clip-angled-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-display text-lg uppercase tracking-wide text-foreground">
-                      {event.type === 'game' ? `VS ${event.opponent || 'OPPONENT TBD'}` : event.type === 'practice' ? 'TEAM PRACTICE' : 'TEAM MEETING'}
-                    </p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary">{formatScheduleDate(event.date)} · {formatScheduleTime(event.time)}</p>
-                  </div>
-                  <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
-                </div>
-                <p className="mt-2 text-xs font-medium text-muted-foreground">{event.location || 'Location TBD'}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {calendar && !hasConnectedSchedule && (
-        <p className="mt-5 border-t border-primary/20 pt-5 text-sm font-medium text-muted-foreground">Connected. Your coach has not added a schedule yet.</p>
-      )}
-      {isLoading && code && <p className="mt-5 border-t border-primary/20 pt-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">Loading connected schedule…</p>}
-    </section>
-  );
-}
-
 function EditorPage({ kind }: { kind: ToolKind }) {
   if (kind === 'schedule') return <ScheduleEditor />;
-  if (kind === 'roster') return <RosterEditor />;
 
   const tool = toolData[kind];
   const Icon = tool.icon;
@@ -2437,574 +1776,6 @@ function ProtectedEditor({ kind, children }: { kind: ToolKind; children: ReactNo
   return <>{children}</>;
 }
 
-function rosterText(value: string, fallback: string, maxLength = 28) {
-  const clean = value.trim();
-  if (!clean) return fallback;
-  return clean.length > maxLength ? `${clean.slice(0, maxLength - 1).trimEnd()}…` : clean;
-}
-
-function escapeRosterSvgText(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-function rosterBoardStyleLabel(style: RosterBoardStyle): string {
-  return rosterBoardStyles.find((option) => option.id === style)?.label ?? 'Classic grid';
-}
-
-const portraitRosterBoardAssets: Partial<Record<RosterBoardStyle, { asset: string; svg: string }>> = {
-  soccer: { asset: soccerFieldAsset, svg: soccerFieldSvg },
-  basketball: { asset: basketballCourtAsset, svg: basketballCourtSvg },
-  baseball: { asset: baseballFieldAsset, svg: baseballFieldSvg },
-  football: { asset: footballFieldAsset, svg: footballFieldSvg },
-  volleyball: { asset: volleyballCourtAsset, svg: volleyballCourtSvg },
-};
-
-function isPortraitRosterBoardStyle(style: RosterBoardStyle) {
-  return Boolean(portraitRosterBoardAssets[style]);
-}
-
-function inlineSvgContent(svg: string) {
-  return svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
-}
-
-function createRosterBoardSvg(style: RosterBoardStyle, board: { x: number; y: number; width: number; height: number }) {
-  const { x, y, width, height } = board;
-  const asset = portraitRosterBoardAssets[style];
-  const viewBox = asset ? { width: 750, height: 1000 } : rosterBoardViewBox;
-  const geometry = asset ? inlineSvgContent(asset.svg) : createRosterBoardGeometrySvg(style);
-  return `<g transform="translate(${x} ${y}) scale(${width / viewBox.width} ${height / viewBox.height})">${geometry}</g>`;
-}
-
-function createRosterSvg(draft: RosterDraft) {
-  const starters = getStarterPlayers(draft.players);
-  const bench = getBenchPlayers(draft.players);
-  const title = draft.layout === 'lineup' ? 'GAME DAY LINEUP' : 'TEAM ROSTER';
-  const board = {
-    x: 72,
-    y: 350,
-    width: 936,
-    height: isPortraitRosterBoardStyle(draft.boardStyle) ? 1248 : 702,
-  };
-  const starterTokens = starters.length === 0
-    ? `<text x="${board.x + board.width / 2}" y="${board.y + board.height / 2}" text-anchor="middle" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="28" font-weight="600">MARK PLAYERS AS STARTERS TO BUILD THIS BOARD</text>`
-    : starters.map((player) => {
-      const position = normalizeFormationPosition(player.formationPosition);
-      const cx = board.x + (position.x / 100) * board.width;
-      const cy = board.y + (position.y / 100) * board.height;
-      const initials = escapeRosterSvgText(getPlayerInitials(player.name));
-      const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
-      const playerPosition = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 15));
-      return `
-        <circle cx="${cx}" cy="${cy}" r="24" fill="#b9f34a" stroke="#f4f6f0" stroke-width="2"/>
-        <text x="${cx}" y="${cy + 6}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="15" font-weight="900">${initials}</text>
-        ${player.isCaptain ? `<circle cx="${cx + 18}" cy="${cy - 18}" r="7" fill="#f4f6f0"/><text x="${cx + 18}" y="${cy - 15}" text-anchor="middle" fill="#17221d" font-family="Outfit, sans-serif" font-size="7" font-weight="900">C</text>` : ''}
-        <path d="M${cx - 3.5} ${cy + 28}l3.5 4 3.5-4" fill="none" stroke="#b9f34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="${cx}" y="${cy + 52}" text-anchor="middle" fill="#f4f6f0" font-family="Outfit, sans-serif" font-size="12" font-weight="800">${number}  ·  ${playerPosition}</text>
-      `;
-    }).join('');
-  const benchLabelY = board.y + board.height + 54;
-  const benchCardsStartY = benchLabelY + 34;
-  const benchCards = bench.length === 0
-    ? `<text x="72" y="${benchCardsStartY + 28}" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="22" font-weight="600">BENCH IS EMPTY — PROMOTE OR ADD A PLAYER</text>`
-    : bench.map((player, index) => {
-      const x = 72 + (index % 3) * 324;
-      const y = benchCardsStartY + Math.floor(index / 3) * 86;
-      const number = escapeRosterSvgText(rosterText(player.jerseyNumber, '—', 4));
-      const name = escapeRosterSvgText(rosterText(player.name, 'NAME TBD', 18));
-      const position = escapeRosterSvgText(rosterText(player.position, 'POSITION TBD', 12));
-      return `
-        <rect x="${x}" y="${y}" width="296" height="68" fill="#293832" stroke="#53645b" stroke-width="2"/>
-        <rect x="${x}" y="${y}" width="60" height="68" fill="#b9f34a"/>
-        <text x="${x + 30}" y="${y + 43}" text-anchor="middle" fill="#17221d" font-family="Oswald, sans-serif" font-size="28" font-weight="700">${number}</text>
-        <text x="${x + 76}" y="${y + 29}" fill="#f4f6f0" font-family="Outfit, sans-serif" font-size="17" font-weight="800">${name}</text>
-        <text x="${x + 76}" y="${y + 51}" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">${position}</text>
-      `;
-    }).join('');
-  const benchRows = Math.max(1, Math.ceil(bench.length / 3));
-  const contentBottom = benchCardsStartY + benchRows * 86;
-  const height = Math.max(1350, contentBottom + 130);
-  const footerY = height - 66;
-  const boardStyle = rosterBoardStyleLabel(draft.boardStyle);
-  return `<svg xmlns="http://www.w3.org/2000/svg" data-board-style="${draft.boardStyle}" width="1080" height="${height}" viewBox="0 0 1080 ${height}">
-    <rect width="1080" height="${height}" fill="#17221d"/>
-    <path d="M0 0h1080v${height}H0z" fill="url(#grid)" opacity=".25"/>
-    <defs><pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#b9f34a" stroke-opacity=".16"/></pattern></defs>
-    <circle cx="930" cy="150" r="240" fill="#b9f34a" opacity=".12"/>
-    <text x="72" y="95" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="19" font-weight="800" letter-spacing="4">PIXL SPORTS  /  COACH BOARD</text>
-    <text x="72" y="218" fill="#f4f6f0" font-family="Oswald, sans-serif" font-size="96" font-weight="700">${escapeSvgText(title)}</text>
-    <text x="76" y="270" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="26" font-weight="600">${escapeRosterSvgText(rosterText(draft.teamName, 'YOUR TEAM', 34))}  ·  ${escapeRosterSvgText(rosterText(draft.season, 'SEASON', 22))}</text>
-    <rect x="72" y="316" width="936" height="3" fill="#b9f34a"/>
-    ${createRosterBoardSvg(draft.boardStyle, board)}
-    <text x="96" y="386" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">STARTERS  /  ${starters.length}  ·  ${escapeRosterSvgText(boardStyle)}</text>
-    ${starterTokens}
-    <text x="72" y="${benchLabelY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">BENCH  /  ${bench.length}</text>
-    ${benchCards}
-    <text x="72" y="${footerY}" fill="#b9f34a" font-family="Outfit, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${starters.length} STARTERS  ·  ${bench.length} BENCH  /  LOCAL DRAFT</text>
-    <text x="1008" y="${footerY}" text-anchor="end" fill="#a7b2ad" font-family="Outfit, sans-serif" font-size="18" font-weight="600">SHARE READY</text>
-  </svg>`;
-}
-
-function RosterEditor() {
-  const [, setLocation] = useLocation();
-  const params = useParams<{ id?: string }>();
-  const cloudProjectId = params.id;
-  const { user, isSignedIn, isLoaded } = useUser();
-  const profile = getUserProfile(user);
-  const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
-  const consumeAccountUsage = useConsumeAccountUsage();
-  const queryClient = useQueryClient();
-  const lineupUsageKey = useRef(getGuestUsageKey('lineup', 'roster-editor')).current;
-  const claimedLineup = useRef(false);
-  const [storedDraft] = useState(() => readRosterDraft());
-  const [draft, setDraft] = useState<RosterDraft>(() => storedDraft ?? getDefaultRoster(profile.athleteName));
-  const [notice, setNotice] = useState('');
-  const [guestLineupBlocked, setGuestLineupBlocked] = useState(false);
-  const [saved, setSaved] = useState(Boolean(storedDraft));
-  const [expandedAthleteId, setExpandedAthleteId] = useState<string | null>(null);
-  const cloudRevision = useRef(1);
-  const initializedCloudId = useRef<string | null>(null);
-  const { data: cloudProjectData } = useGetProject(cloudProjectId ?? '', {
-    query: {
-      enabled: Boolean(cloudProjectId && isSignedIn),
-      queryKey: getGetProjectQueryKey(cloudProjectId ?? ''),
-    },
-  });
-  const createCloudProject = useCreateProject();
-  const updateCloudProject = useUpdateProject();
-
-  useEffect(() => {
-    if (accountAccess?.accessMode !== 'guest' || claimedLineup.current) return;
-    claimedLineup.current = true;
-    consumeAccountUsage.mutate(
-      { data: { category: 'lineup', usageKey: lineupUsageKey } },
-      {
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() }),
-        onError: () => {
-          if (!storedDraft && !cloudProjectId) setGuestLineupBlocked(true);
-          announce('WORKSPACE LINEUP LIMIT REACHED — YOUR EXISTING LOCAL DRAFT IS STILL AVAILABLE');
-        },
-      },
-    );
-  }, [accountAccess?.accessMode, consumeAccountUsage, lineupUsageKey, queryClient, storedDraft, cloudProjectId]);
-
-  const starters = getStarterPlayers(draft.players);
-  const bench = getBenchPlayers(draft.players);
-  const updateDraft = (patch: Partial<RosterDraft>) => {
-    setDraft((current) => ({ ...current, ...patch }));
-    setSaved(false);
-  };
-  const updatePlayer = (id: string, patch: Partial<RosterPlayer>) => {
-    setDraft((current) => ({ ...current, players: updateRosterPlayer(current.players, id, patch) }));
-    setSaved(false);
-  };
-  const announce = (message: string) => {
-    setNotice(message);
-    window.setTimeout(() => setNotice(''), 2600);
-  };
-  const saveDraft = () => {
-    saveRosterDraft(window.localStorage, draft);
-    setSaved(true);
-    announce('ROSTER SAVED ON THIS DEVICE');
-  };
-  const resetDraft = () => {
-    const nextDraft = getDefaultRoster(profile.athleteName);
-    setDraft(nextDraft);
-    saveRosterDraft(window.localStorage, nextDraft);
-    setSaved(true);
-    announce('ROSTER RESET TO THE STARTER BOARD');
-  };
-  const addPlayer = () => {
-    setDraft((current) => ({ ...current, players: [...current.players, createBlankRosterPlayer()] }));
-    setSaved(false);
-    announce('PLAYER SLOT ADDED');
-  };
-  const toggleStarter = (id: string, isStarter: boolean) => {
-    updatePlayer(id, { isStarter });
-    announce(isStarter ? 'PLAYER ADDED TO THE FIELD' : 'PLAYER MOVED TO THE BENCH');
-  };
-  const exportRoster = () => {
-    const blob = new Blob([createRosterSvg(draft)], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${rosterText(draft.teamName, 'team-roster', 32).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${draft.layout}.svg`;
-    link.click();
-    URL.revokeObjectURL(url);
-    announce('SVG READY TO SHARE');
-  };
-  const cloudDraft = (): CloudProjectPayload => ({
-    tool: 'roster',
-    version: 1,
-    ...draft,
-  });
-  const saveToCloud = async () => {
-    if (!isSignedIn) {
-      setLocation('/sign-in');
-      return;
-    }
-    try {
-      if (cloudProjectId) {
-        await updateCloudProject.mutateAsync({
-          projectId: cloudProjectId,
-          data: { project: cloudDraft(), expectedRevision: cloudRevision.current },
-        });
-        cloudRevision.current += 1;
-        setSaved(true);
-        announce('ROSTER SAVED TO CLOUD');
-      } else {
-        const created = await createCloudProject.mutateAsync({
-          data: { name: `${draft.teamName.trim()} - Roster`, project: cloudDraft() },
-        });
-        cloudRevision.current = created.revision;
-        setSaved(true);
-        setLocation(`/studio/roster/${created.id}`);
-      }
-    } catch (error: any) {
-      announce(error?.status === 409 ? 'WORKSPACE LINEUP LIMIT REACHED — KEEP USING YOUR LOCAL DRAFT' : 'CLOUD SAVE FAILED — TRY AGAIN');
-    }
-  };
-
-  useEffect(() => {
-    if (cloudProjectId && !isLoaded) return;
-    if (cloudProjectId && isLoaded && !isSignedIn) {
-      setLocation('/sign-in');
-    }
-  }, [cloudProjectId, isLoaded, isSignedIn, setLocation]);
-
-  useEffect(() => {
-    if (!cloudProjectId || !cloudProjectData || initializedCloudId.current === cloudProjectId) return;
-    if (!isCloudToolProject(cloudProjectData.project, 'roster')) return;
-    const loadedDraft = normalizeRosterDraft(cloudProjectData.project);
-    if (!loadedDraft) return;
-    initializedCloudId.current = cloudProjectId;
-    setDraft(loadedDraft);
-    setSaved(true);
-    cloudRevision.current = cloudProjectData.revision;
-  }, [cloudProjectData, cloudProjectId]);
-
-  if (guestLineupBlocked && !cloudProjectId && !storedDraft) {
-    return (
-      <StudioLayout>
-        <main className="mx-auto flex w-full max-w-3xl flex-1 items-center px-5 py-12 sm:px-8">
-          <section className="w-full border-l-4 border-primary bg-card p-7 clip-angled-sm">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">Limited workspace</p>
-            <h1 className="mt-3 font-display text-4xl uppercase tracking-wide">LINEUP ALREADY USED.</h1>
-            <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">
-            This workspace has already used its editable lineup. Your existing local draft remains safe on the device where it was created.
-            </p>
-            <Link href="/studio" className="mt-6 inline-flex items-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">
-              Back to Command Center <ArrowRight className="h-4 w-4" />
-            </Link>
-          </section>
-        </main>
-      </StudioLayout>
-    );
-  }
-
-  return (
-    <StudioLayout>
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-8 lg:py-10">
-        <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-4 inline-flex items-center gap-2 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm">
-              <UsersRound className="h-4 w-4" /> Team Operations Board
-            </div>
-            <h1 className="font-display text-5xl leading-[.88] tracking-tight sm:text-7xl">ROSTER <span className="text-primary studio-textured-heading-accent">&amp; LINEUP.</span></h1>
-            <p className="mt-5 max-w-2xl text-base font-medium leading-relaxed text-muted-foreground sm:text-lg">
-              Keep the whole squad clear, then switch to a game-day board when it is time to share the call.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-3 border border-border bg-card px-4 py-3 clip-angled-sm">
-            <span className={`h-2.5 w-2.5 rounded-full ${saved ? 'bg-primary' : 'bg-amber-500'}`} />
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{saved ? 'Saved locally' : 'Unsaved changes'}</span>
-          </div>
-        </div>
-
-        <div className="mt-10 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(400px,530px)]">
-          <section className="order-1 min-w-0 xl:order-1">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Live board</p>
-                <p className="mt-1 text-sm font-medium text-muted-foreground">{draft.players.length} players · {starters.length} starters · {bench.length} bench</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => updateDraft({ layout: 'roster' })} className={`px-3 py-2 text-xs font-bold uppercase tracking-widest clip-angled-sm ${draft.layout === 'roster' ? 'bg-foreground text-background' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-layout-roster">
-                  Full roster
-                </button>
-                <button type="button" onClick={() => updateDraft({ layout: 'lineup' })} className={`px-3 py-2 text-xs font-bold uppercase tracking-widest clip-angled-sm ${draft.layout === 'lineup' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-layout-lineup">
-                  Game-day lineup
-                </button>
-              </div>
-            </div>
-            <RosterGraphicPreview
-              draft={draft}
-              starters={starters}
-              onPositionChange={(id, formationPosition) => updatePlayer(id, { formationPosition })}
-            />
-            <div className="mt-3 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              <span data-testid="text-preview-layout">{draft.layout === 'lineup' ? 'Game-day starters with bench listed' : 'Starters on canvas · bench listed below'}</span>
-              <span>SVG export · no photos</span>
-            </div>
-          </section>
-
-          <aside className="order-2 border border-border bg-card p-5 clip-angled-sm sm:p-7 xl:order-2">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">Control deck</p>
-                <h2 className="mt-2 font-display text-3xl tracking-wide">SET THE BOARD.</h2>
-              </div>
-              <span className="grid h-11 w-11 shrink-0 place-items-center bg-muted text-foreground clip-angled-sm"><GripVertical className="h-5 w-5" /></span>
-            </div>
-
-            <div className="mt-7 grid gap-4 sm:grid-cols-2">
-              <Field label="Team name" value={draft.teamName} onChange={(value) => updateDraft({ teamName: value })} testId="input-roster-team-name" />
-              <Field label="Season" value={draft.season} onChange={(value) => updateDraft({ season: value })} testId="input-roster-season" />
-            </div>
-
-            <div className="mt-7">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Board treatment</p>
-                  <p className="mt-1 text-sm font-medium text-muted-foreground">Visual context only. Player positions stay freeform.</p>
-                </div>
-                <Palette className="h-5 w-5 text-primary" />
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Board treatment">
-                {rosterBoardStyles.map((style) => (
-                  <button
-                    key={style.id}
-                    type="button"
-                    onClick={() => updateDraft({ boardStyle: style.id })}
-                    className={`border px-3 py-2 text-left clip-angled-sm transition-colors ${draft.boardStyle === style.id ? 'border-primary bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground'}`}
-                    aria-pressed={draft.boardStyle === style.id}
-                    data-testid={`button-board-style-${style.id}`}
-                  >
-                    <span className="block text-[10px] font-bold uppercase tracking-widest">{style.label}</span>
-                    <span className="mt-1 block text-[10px] font-medium leading-tight opacity-70">{style.description}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={resetDraft} className="inline-flex flex-1 items-center justify-center gap-2 border border-border bg-background px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground clip-angled-sm hover:bg-muted hover:text-foreground" data-testid="button-reset-roster">
-                <RotateCcw className="h-4 w-4" /> Reset
-              </button>
-              <button type="button" onClick={saveDraft} className="inline-flex flex-[1.4] items-center justify-center gap-2 bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm hover:bg-primary hover:text-primary-foreground" data-testid="button-save-roster">
-                <Save className="h-4 w-4" /> Save locally
-              </button>
-              <button type="button" onClick={saveToCloud} disabled={createCloudProject.isPending || updateCloudProject.isPending} className="inline-flex flex-[1.4] items-center justify-center gap-2 border border-primary bg-primary/10 px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary clip-angled-sm hover:bg-primary hover:text-primary-foreground" data-testid="button-save-roster-cloud">
-                <Share2 className="h-4 w-4" /> {cloudProjectId ? 'Save cloud' : 'Save to cloud'}
-              </button>
-              <button type="button" onClick={exportRoster} className="inline-flex flex-1 items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:-translate-y-0.5" data-testid="button-export-roster">
-                <Download className="h-4 w-4" /> Export SVG
-              </button>
-            </div>
-            <div className="mt-7 border-t border-border pt-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-foreground">Athletes <span className="text-primary">/ {draft.players.length}</span></p>
-                  <p className="mt-1 text-sm font-medium text-muted-foreground">Quickly move players between the field and bench.</p>
-                </div>
-                <button type="button" onClick={addPlayer} className="inline-flex shrink-0 items-center gap-1.5 bg-primary px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:-translate-y-0.5" data-testid="button-add-roster-player">
-                  <Plus className="h-3.5 w-3.5" /> Add
-                </button>
-              </div>
-              <div className="mt-3 space-y-2">
-                {draft.players.map((player) => (
-                  <div key={player.id} className="border border-border bg-background" data-testid={`card-control-athlete-${player.id}`}>
-                    <div className="flex min-w-0 items-center gap-2 px-2.5 py-2">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center bg-muted font-display text-sm text-foreground">{getPlayerInitials(player.name)}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-bold uppercase tracking-wide">{rosterText(player.name, 'NAME TBD', 24)}</span>
-                        <span className={`block truncate text-[9px] font-bold uppercase tracking-[.12em] ${player.isStarter ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {player.isStarter ? 'Starter' : 'Bench'} · #{rosterText(player.jerseyNumber, '—', 4)} · {rosterText(player.position, 'POSITION TBD', 15)}
-                        </span>
-                      </span>
-                      <button type="button" onClick={() => toggleStarter(player.id, !player.isStarter)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground" aria-label={`${player.isStarter ? 'Move' : 'Add'} ${player.name || 'player'} ${player.isStarter ? 'to bench' : 'to the field'}`} data-testid={`${player.isStarter ? 'button-control-athlete-minus' : 'button-control-athlete-plus'}-${player.id}`}>
-                        {player.isStarter ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                      </button>
-                      <button type="button" onClick={() => setExpandedAthleteId((current) => current === player.id ? null : player.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary hover:bg-primary hover:text-primary-foreground" aria-label={`${expandedAthleteId === player.id ? 'Hide' : 'Edit'} ${player.name || 'player'}`} aria-expanded={expandedAthleteId === player.id} data-testid={`button-toggle-athlete-editor-${player.id}`}>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${expandedAthleteId === player.id ? 'rotate-180' : ''}`} />
-                      </button>
-                    </div>
-                    {expandedAthleteId === player.id && (
-                      <div className="grid gap-2 border-t border-border bg-card px-2.5 py-3" data-testid={`control-athlete-editor-${player.id}`}>
-                        <input value={player.name} onChange={(event) => updatePlayer(player.id, { name: event.target.value })} placeholder="Player name" className="w-full border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none" aria-label={`Name for ${player.name || 'player'}`} data-testid={`input-control-athlete-name-${player.id}`} />
-                        <div className="grid grid-cols-2 gap-2">
-                          <input value={player.jerseyNumber} onChange={(event) => updatePlayer(player.id, { jerseyNumber: event.target.value })} placeholder="Jersey #" inputMode="numeric" className="min-w-0 border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none" aria-label={`Jersey number for ${player.name || 'player'}`} data-testid={`input-control-athlete-number-${player.id}`} />
-                          <input value={player.position} onChange={(event) => updatePlayer(player.id, { position: event.target.value })} placeholder="Position" className="min-w-0 border border-border bg-background px-2.5 py-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none" aria-label={`Position for ${player.name || 'player'}`} data-testid={`input-control-athlete-position-${player.id}`} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => updatePlayer(player.id, { isCaptain: !player.isCaptain })} className={`flex-1 px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider ${player.isCaptain ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`} aria-pressed={player.isCaptain} data-testid={`button-control-athlete-captain-${player.id}`}>
-                            {player.isCaptain ? 'Captain' : 'Make captain'}
-                          </button>
-                          <button type="button" onClick={() => { setDraft((current) => ({ ...current, players: removeRosterPlayer(current.players, player.id) })); setExpandedAthleteId(null); setSaved(false); }} className="px-2.5 py-2 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:bg-red-500/10" aria-label={`Remove ${player.name || 'player'} from roster`} data-testid={`button-control-athlete-remove-${player.id}`}>
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-            {notice && <p className="mt-4 text-center text-xs font-bold uppercase tracking-widest text-primary" role="status" data-testid="status-roster-notice">{notice}</p>}
-          </aside>
-        </div>
-      </main>
-    </StudioLayout>
-  );
-}
-
-function FormationBoard({
-  starters,
-  boardStyle,
-  onPositionChange,
-}: {
-  starters: RosterPlayer[];
-  boardStyle: RosterBoardStyle;
-  onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
-}) {
-  const boardRef = useRef<HTMLDivElement>(null);
-  const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
-
-  const updatePositionFromPointer = (event: PointerEvent<HTMLDivElement>, id: string) => {
-    const board = boardRef.current;
-    if (!board) return;
-    const bounds = board.getBoundingClientRect();
-    onPositionChange(id, normalizeFormationPosition({
-      x: ((event.clientX - bounds.left) / bounds.width) * 100,
-      y: ((event.clientY - bounds.top) / bounds.height) * 100,
-    }));
-  };
-
-  const beginDrag = (event: PointerEvent<HTMLDivElement>, player: RosterPlayer) => {
-    if ((event.target as HTMLElement).closest('button, input')) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDraggingPlayerId(player.id);
-    updatePositionFromPointer(event, player.id);
-  };
-
-  const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setDraggingPlayerId(null);
-  };
-
-  return (
-    <div ref={boardRef} className={`relative ${isPortraitRosterBoardStyle(boardStyle) ? 'aspect-[3/4] min-h-[480px] sm:min-h-[560px]' : 'aspect-[4/3] min-h-[350px] sm:min-h-[480px]'} w-full overflow-hidden border border-white/15 touch-none bg-[#10271d]`} data-testid="formation-board" data-board-style={boardStyle}>
-        <FormationBoardDecorations style={boardStyle} />
-      {starters.length === 0 ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center px-8 text-center">
-          <div className="border border-dashed border-white/25 px-6 py-5 text-xs font-bold uppercase tracking-widest text-white/55" data-testid="empty-formation-board">
-            Make a bench player a starter to build the formation
-          </div>
-        </div>
-      ) : starters.map((player) => {
-        const formationPosition = normalizeFormationPosition(player.formationPosition);
-        const dragging = draggingPlayerId === player.id;
-        return (
-          <div
-            key={player.id}
-            className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 select-none ${dragging ? 'z-30 scale-105' : ''}`}
-            style={{ left: `${formationPosition.x}%`, top: `${formationPosition.y}%` }}
-            onPointerDown={(event) => beginDrag(event, player)}
-            onPointerMove={(event) => dragging && updatePositionFromPointer(event, player.id)}
-            onPointerUp={finishDrag}
-            onPointerCancel={finishDrag}
-            aria-label={`${player.name || 'Player'}, draggable starter`}
-            aria-grabbed={dragging}
-            data-testid={`formation-player-${player.id}`}
-          >
-            <div className="flex flex-col items-center">
-              <div className={`relative grid h-8 w-8 place-items-center rounded-full border-2 bg-primary font-display text-[12px] font-bold text-primary-foreground shadow-lg transition sm:h-10 sm:w-10 sm:text-[15px] ${dragging ? 'border-white shadow-primary/40' : 'border-primary/40'}`}>
-                {getPlayerInitials(player.name)}
-                {player.isCaptain && <span className="absolute -right-1 -top-1 grid h-3 w-3 place-items-center rounded-full bg-white text-[6px] font-black text-foreground">C</span>}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function FormationBoardDecorations({ style }: { style: RosterBoardStyle }) {
-  const asset = portraitRosterBoardAssets[style];
-  if (asset) {
-    return (
-      <img
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        src={asset.asset}
-        alt=""
-        aria-hidden="true"
-      />
-    );
-  }
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox={`0 0 ${rosterBoardViewBox.width} ${rosterBoardViewBox.height}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: createRosterBoardGeometrySvg(style) }}
-    />
-  );
-}
-
-function RosterGraphicPreview({
-  draft,
-  starters,
-  onPositionChange,
-}: {
-  draft: RosterDraft;
-  starters: RosterPlayer[];
-  onPositionChange: (id: string, formationPosition: RosterFormationPosition) => void;
-}) {
-  return (
-    <div className="relative overflow-hidden border border-border bg-[#17221d] p-4 shadow-xl clip-angled-sm sm:p-7" data-testid="preview-roster-canvas">
-      <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
-      <div className="relative w-full overflow-hidden border border-white/10 bg-[#17221d] p-5 text-[#f4f6f0] sm:p-8">
-        <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/15" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[.18em] text-white/60 sm:text-xs">
-            <span data-testid="text-preview-team">{rosterText(draft.teamName, 'YOUR TEAM', 34)}</span>
-            <span className="shrink-0 bg-primary px-2 py-1 text-primary-foreground">{rosterText(draft.season, 'SEASON', 20)}</span>
-          </div>
-          <div className="mt-10">
-            <p className="font-display text-[clamp(3rem,8vw,6rem)] leading-[.82] tracking-tight">{draft.layout === 'lineup' ? 'GAME DAY' : 'TEAM ROSTER'}</p>
-            <div className="mt-5 h-1 w-16 bg-primary" />
-          </div>
-          <div className="mt-6">
-            <div className="mb-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[.18em] text-primary">
-              <span>Starters / formation board</span>
-              <span>{starters.length}</span>
-            </div>
-              <FormationBoard
-                boardStyle={draft.boardStyle}
-                starters={starters}
-                onPositionChange={onPositionChange}
-              />
-          </div>
-          <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-white/50">
-            <span>{starters.length} starters · {draft.players.length - starters.length} bench</span>
-             <span className="text-primary">Pixl Sports</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ScheduleEditor() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
@@ -3014,7 +1785,6 @@ function ScheduleEditor() {
   const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
   const consumeAccountUsage = useConsumeAccountUsage();
   const queryClient = useQueryClient();
-  const [calendarConnection, setCalendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [storedDraft] = useState(() => readScheduleDraft());
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [saveStatus, setSaveStatus] = useState<'cloud' | 'device' | null>(
@@ -3482,7 +2252,7 @@ function ScheduleEditor() {
         >
           <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] gap-5 overflow-y-auto border-primary/40 bg-card p-4 sm:max-w-2xl sm:p-6" data-testid="schedule-event-dialog">
             <DialogHeader className="pr-8">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary-ink">Team calendar</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary-ink">Season calendar</p>
               <DialogTitle className="font-display text-3xl uppercase tracking-wide">
                 {eventForm && events.some((event) => event.id === eventForm.id) ? 'Edit event' : 'Add event'}
               </DialogTitle>
@@ -4024,7 +2794,6 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(user?.id ?? 'anonymous')}`;
   const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist());
   const [localSchedule] = useState(() => readScheduleDraft());
-  const [calendarConnection] = useState<CalendarConnection | null>(getStoredCalendarConnection);
   const [hydrated, setHydrated] = useState(!shared);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [notice, setNotice] = useState('');
@@ -4044,30 +2813,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const revisionRef = useRef(revision);
   const saveQueue = useRef(Promise.resolve());
 
-  const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
-  const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
-  const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
-    query: {
-      enabled: Boolean(isSignedIn && calendarCode),
-      refetchInterval: 30000,
-      queryKey: ['/api/coach-calendar', calendarCode],
-    },
-  });
-  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
-    query: {
-      enabled: Boolean(isSignedIn && calendarSubscriptionToken),
-      refetchInterval: 30000,
-      queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
-    },
-  });
-  const activeCalendarQuery = calendarConnection?.kind === 'subscription'
-    ? subscriptionCalendarQuery
-    : codeCalendarQuery;
-  const calendar = activeCalendarQuery.data;
-  const calendarLoading = activeCalendarQuery.isFetching;
-  const calendarEvents = calendarConnection
-    ? (calendar?.events ?? [])
-    : (localSchedule?.events ?? []);
+  const calendarEvents = localSchedule?.events ?? [];
   const calendarGames = calendarEvents.filter((event) => event.type === 'game');
   const liveSelectedGame = calendarGames.find((event) => event.id === checklist.selectedGame?.id);
   const displayedGame = liveSelectedGame ?? checklist.selectedGame;
@@ -4480,13 +3226,9 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                 </select>
               </label>
               <p className="max-w-sm text-xs font-medium leading-relaxed text-muted-foreground">
-                {calendarLoading
-                  ? 'Updating your connected calendar…'
-                  : calendarConnection
-                    ? 'Choose the game this checklist should follow from your connected calendar.'
-                    : localSchedule
-                      ? 'Choose a game from your saved schedule.'
-                      : 'Add games in Schedule to connect this checklist to a calendar event.'}
+                {localSchedule
+                  ? 'Choose a game from your saved schedule.'
+                  : 'Add games in Schedule to connect this checklist to an event.'}
               </p>
             </div>
             {displayedGame && (
@@ -4497,7 +3239,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                 <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {displayedGame.location || 'Location TBD'}</span>
               </div>
             )}
-            {!shared && !calendarLoading && calendarGames.length === 0 && (
+            {!shared && calendarGames.length === 0 && (
               <Link href="/studio/schedule" className="mt-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
                 Open schedule <ArrowRight className="h-3.5 w-3.5" />
               </Link>
@@ -4570,7 +3312,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><UsersRound className="h-4 w-4" /> Work together</p>
-              <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can add, rename, check, and uncheck items. Live updates keep collaborators in sync.' : 'Create one edit link for coaches, parents, and helpers. No collaborator accounts are required.'}</p>
+            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can add, rename, check, and uncheck items. Live updates keep collaborators in sync.' : 'Create one edit link for parents and helpers. No collaborator accounts are required.'}</p>
             </div>
             {!shared && <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-checklist"><Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : 'Create edit link'}</button>}
           </div>
@@ -4716,7 +3458,7 @@ function NotFound() {
       <main className="flex flex-1 flex-col items-center justify-center px-5 py-20 text-center bg-tech-grid">
         <div className="font-display text-[12rem] leading-none text-muted-foreground/20">404</div>
         <h1 className="mt-4 font-display text-5xl uppercase tracking-wide text-foreground sm:text-6xl">Out of bounds.</h1>
-        <p className="mt-4 max-w-md text-lg font-medium text-muted-foreground">The page you're looking for doesn't exist or has been moved off the active roster.</p>
+        <p className="mt-4 max-w-md text-lg font-medium text-muted-foreground">The page you're looking for doesn't exist or has been moved off the page.</p>
         <Link href="/" className="mt-10 inline-flex items-center gap-2 bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm transition-transform hover:scale-105">
           <ArrowLeft className="h-5 w-5" /> Return to Home
         </Link>
@@ -4832,7 +3574,7 @@ function SignInPage() {
   return (
     <AuthLayout
       title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
-      subtitle="Access your saved templates, synced rosters, and broadcast graphics across all your devices."
+      subtitle="Access your saved templates, schedules, and broadcast graphics across all your devices."
     >
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
     </AuthLayout>
@@ -4840,11 +3582,8 @@ function SignInPage() {
 }
 
 function SignUpPage() {
-  const requestedRole = getRoleIntent(window.location.search);
-  const roleRedirect = requestedRole ? `${basePath}/studio?role=${requestedRole}` : `${basePath}/studio`;
-  const signInUrl = requestedRole
-    ? `${basePath}/sign-in?redirect_url=${encodeURIComponent(roleRedirect)}`
-    : `${basePath}/sign-in`;
+  const roleRedirect = `${basePath}/studio`;
+  const signInUrl = `${basePath}/sign-in`;
 
   return (
     <AuthLayout
@@ -4860,8 +3599,7 @@ function RoleSelectionPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded } = useUser();
   const existingProfile = getUserProfile(user);
-  const requestedRole = getRoleIntent(window.location.search);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(requestedRole ?? existingProfile.role);
+  const [selectedRole] = useState<UserRole>('fan');
   const selectedAccessMode: AccessMode = existingProfile.accessMode ?? 'full';
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
   const [teamName, setTeamName] = useState(existingProfile.teamName);
@@ -4877,10 +3615,6 @@ function RoleSelectionPage() {
   const saveProfile = async () => {
     const cleanName = displayName.trim();
     const cleanTeam = teamName.trim();
-    if (!selectedRole) {
-      setError('Choose Coach or Fan to continue.');
-      return;
-    }
     if (!cleanName || !cleanTeam) {
       setError('Add your name and team to continue.');
       return;
@@ -4901,11 +3635,7 @@ function RoleSelectionPage() {
           teamName: cleanTeam,
         },
       });
-      const search = new URLSearchParams(window.location.search);
-      const calendarHandoffSearch = search.has('calendarToken') || search.has('calendar')
-        ? window.location.search
-        : '';
-      setLocation(calendarHandoffSearch ? `/studio/schedule${calendarHandoffSearch}` : '/studio');
+      setLocation('/studio');
     } catch {
       setSavingProfile(false);
       setError('We could not save your profile. Please try again.');
@@ -4956,36 +3686,10 @@ function RoleSelectionPage() {
                 />
               </label>
             </div>
-            <div className="mt-7 flex items-center justify-between gap-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose your role</p>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Select one</span>
-            </div>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Choose your role">
+             <div className="mt-7">
               <button
                 type="button"
-                onClick={() => setSelectedRole('coach')}
                 disabled={savingProfile}
-                role="radio"
-                aria-checked={selectedRole === 'coach'}
-                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'coach' ? 'border-primary bg-primary/10 shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-border bg-background'}`}
-                data-testid="button-role-coach"
-              >
-                <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'coach' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                  {selectedRole === 'coach' && <Check className="h-3 w-3" />} {selectedRole === 'coach' ? 'Selected' : 'Choose'}
-                </span>
-                <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
-                  <ShieldCheck className="h-7 w-7" />
-                </span>
-                <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Coach</span>
-                <span className="mt-3 block text-sm font-medium leading-relaxed text-muted-foreground">Build schedules, manage rosters, and prepare lineups for game day.</span>
-                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Schedule + Roster <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedRole('fan')}
-                disabled={savingProfile}
-                role="radio"
-                aria-checked={selectedRole === 'fan'}
                 className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-foreground text-background shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-white/15 bg-foreground text-background'}`}
                 data-testid="button-role-fan"
               >
@@ -5003,12 +3707,12 @@ function RoleSelectionPage() {
                 </span>
                 <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Hype Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </button>
-            </div>
+             </div>
              {selectedRole && (
                <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">
                  <p className="text-xs font-bold uppercase tracking-widest text-primary">Full team account</p>
                  <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
-                   Your account includes cloud saves, publishing, roster tools, and connected calendars.
+                   Your account includes cloud saves, publishing, schedules, checklists, stats, and Hype Cards.
                  </p>
                </div>
              )}
@@ -5033,9 +3737,7 @@ function StudioPortal() {
       isSignedIn={Boolean(isSignedIn)}
       loading={<div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading your studio…</div>}
       signedOut={<Redirect to="/sign-in" />}
-      roleSelection={<RoleSelectionPage />}
       supporter={<SupporterStudio />}
-      coach={<Studio role="coach" />}
     />
   );
 }
@@ -5190,7 +3892,7 @@ function ClerkProviderWithRoutes() {
         },
         signUp: {
           start: {
-            title: "JOIN THE ROSTER",
+            title: "JOIN THE TEAM",
             subtitle: "Create an account to save drafts in the cloud",
           },
         },
@@ -5218,7 +3920,6 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
-              <Route path="/studio/roster/:id?"><ProtectedEditor kind="roster"><RosterEditor /></ProtectedEditor></Route>
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
                <Route path="/studio/checklist"><ChecklistPage /></Route>
               <Route path="/help" component={Help} />

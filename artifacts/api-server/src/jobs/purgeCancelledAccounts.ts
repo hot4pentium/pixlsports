@@ -3,7 +3,6 @@ import { and, eq, isNull, lte, or } from "drizzle-orm";
 import {
   accountAccessTable,
   cloudProjectsTable,
-  coachCalendarCodesTable,
   db,
   guestUsageEventsTable,
   hypeCardSharesTable,
@@ -138,7 +137,6 @@ async function purgeAccount(
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
-    await tx.delete(coachCalendarCodesTable).where(eq(coachCalendarCodesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(supporterPhotosTable).where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(supporterPhotoUploadClaimsTable).where(eq(supporterPhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));

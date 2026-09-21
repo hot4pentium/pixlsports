@@ -406,7 +406,7 @@ test('the latest valid cloud schedule is shared by dashboard and schedule maker'
       id: 'not-a-schedule',
       revision: 4,
       updatedAt: '2026-09-20T12:00:00Z',
-      project: { tool: 'roster', players: [] },
+      project: { tool: 'other', payload: [] },
     },
     {
       id: 'latest',
@@ -493,11 +493,11 @@ test('supporters can select an older valid cloud schedule instead of the newest 
       project: { tool: 'schedule', events: completeEvents, teamName: 'Latest Team' },
     },
     {
-      id: 'roster',
-      name: 'Roster',
+      id: 'other',
+      name: 'Other',
       revision: 4,
       updatedAt: '2026-09-20T12:00:00Z',
-      project: { tool: 'roster', events: completeEvents },
+      project: { tool: 'other', events: completeEvents },
     },
   ];
 

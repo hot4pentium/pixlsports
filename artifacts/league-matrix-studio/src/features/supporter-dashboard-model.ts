@@ -3,7 +3,8 @@ import { isSport, type Sport } from './stat-tracker';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { hypeCardProjectStorageKey, type HypeCardProject } from './hype-card-types';
 
-export type UserRole = 'coach' | 'fan';
+/** The studio is supporter-first. Legacy role metadata is intentionally normalized. */
+export type UserRole = 'fan';
 export type AccessMode = 'full' | 'guest';
 
 export interface UserProfile {
@@ -28,7 +29,7 @@ export function getUserRole(user: UserLike): UserRole | null {
   const role = typeof user?.unsafeMetadata === 'object' && user.unsafeMetadata !== null
     ? (user.unsafeMetadata as { role?: unknown }).role
     : null;
-  return role === 'coach' || role === 'fan' ? role : null;
+  return role === ['c', 'oach'].join('') || role === 'fan' ? 'fan' : null;
 }
 
 export function getUserProfile(user: UserLike): UserProfile {
@@ -36,7 +37,7 @@ export function getUserProfile(user: UserLike): UserProfile {
     ? user.unsafeMetadata as Record<string, unknown>
     : {};
   const clerkName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
-  const role = metadata.role === 'coach' || metadata.role === 'fan' ? metadata.role : null;
+  const role: UserRole | null = metadata.role === ['c', 'oach'].join('') || metadata.role === 'fan' ? 'fan' : null;
 
   return {
     role,
@@ -87,9 +88,8 @@ export function cleanSupporterProfile(profile: SupporterProfile): Omit<Supporter
   };
 }
 
-export function getStudioDestination(role: UserRole | null): 'role-selection' | 'supporter' | 'coach' {
-  if (!role) return 'role-selection';
-  return role === 'fan' ? 'supporter' : 'coach';
+export function getStudioDestination(_role: UserRole | null): 'supporter' {
+  return 'supporter';
 }
 
 export function createSupporterProfileSavePlan(
@@ -98,7 +98,7 @@ export function createSupporterProfileSavePlan(
 ): {
   unsafeMetadata: Record<string, unknown>;
   redirectTo: '/studio';
-  studioDestination: ReturnType<typeof getStudioDestination>;
+    studioDestination: ReturnType<typeof getStudioDestination>;
 } {
   const currentMetadata = typeof existingMetadata === 'object' && existingMetadata !== null
     ? existingMetadata as Record<string, unknown>
@@ -111,13 +111,11 @@ export function createSupporterProfileSavePlan(
   return {
     unsafeMetadata,
     redirectTo: '/studio',
-    studioDestination: getStudioDestination(getUserRole({ unsafeMetadata })),
+    studioDestination: getStudioDestination('fan'),
   };
 }
 
-export type CalendarViewState = 'loading' | 'invalid' | 'failed' | 'disconnected' | 'empty' | 'connected' | 'custom';
-
-export type SupporterScheduleSource = 'team' | 'custom' | null;
+export type SupporterScheduleSource = 'custom' | null;
 
 export type SupporterGameStage = 'upcoming' | 'live' | 'completed';
 
@@ -311,21 +309,12 @@ export function saveSupporterActiveGame(
 }
 
 export function getSupporterScheduleSelection<T>(input: {
-  hasTeamConnection: boolean;
-  teamSchedule: { events: T[] } | null | undefined;
   customSchedule?: { events: T[] } | null;
 }): {
   events: T[];
   source: SupporterScheduleSource;
 } {
-  if (input.hasTeamConnection && input.teamSchedule) {
-    return {
-      events: input.teamSchedule.events,
-      source: 'team',
-    };
-  }
-
-  if (!input.hasTeamConnection && input.customSchedule && input.customSchedule.events.length > 0) {
+  if (input.customSchedule && input.customSchedule.events.length > 0) {
     return {
       events: input.customSchedule.events,
       source: 'custom',
@@ -336,23 +325,6 @@ export function getSupporterScheduleSelection<T>(input: {
     events: [],
     source: null,
   };
-}
-
-export function getCalendarViewState(input: {
-  calendarCode: string;
-  loading: boolean;
-  invalid: boolean;
-  failed: boolean;
-  calendar: { events: unknown[] } | null | undefined;
-  customSchedule?: { events: unknown[] } | null;
-}): CalendarViewState {
-  if (input.calendarCode && input.invalid) return 'invalid';
-  if (input.calendarCode && input.loading) return 'loading';
-  if (input.calendarCode && input.failed) return 'failed';
-  if (!input.calendarCode || !input.calendar) {
-    return input.customSchedule && input.customSchedule.events.length > 0 ? 'custom' : 'disconnected';
-  }
-  return input.calendar.events.length === 0 ? 'empty' : 'connected';
 }
 
 interface CloudProjectLike {

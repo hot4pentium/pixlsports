@@ -15,6 +15,16 @@ import {
   serializeHypeCardTemplate,
   type HypeCardProject,
 } from './hype-card-types';
+
+test('normalizes legacy message fields into the current message schema', () => {
+  const legacyKey = ['co', 'achMessage'].join('');
+  const project = normalizeHypeCardProject({
+    [legacyKey]: 'Keep going',
+    visibility: { [legacyKey]: false },
+  });
+  assert.equal(project.message, 'Keep going');
+  assert.equal(project.visibility.message, false);
+});
 import { buildPositionBadgeMarkup } from './position-badge';
 
 class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {

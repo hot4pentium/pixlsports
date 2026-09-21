@@ -5,7 +5,6 @@ import type { SupporterScheduleOption } from './supporter-dashboard';
 export interface SupporterScheduleSelectorProps {
   schedules: SupporterScheduleOption[];
   selectedScheduleId: string | null;
-  connected: boolean;
   onSelect: (scheduleId: string) => void;
   compact?: boolean;
   onOpen?: (scheduleId: string) => void;
@@ -18,7 +17,6 @@ export interface SupporterScheduleSelectorProps {
 export function SupporterScheduleSelector({
   schedules,
   selectedScheduleId,
-  connected,
   onSelect,
   compact = false,
 }: SupporterScheduleSelectorProps) {
@@ -48,9 +46,7 @@ export function SupporterScheduleSelector({
       </select>
       {!compact && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {connected
-            ? 'Your connected team calendar is currently shown first.'
-            : 'Choose which saved schedule to show on your dashboard.'}
+           Choose which saved schedule to show on your dashboard.
         </p>
       )}
 

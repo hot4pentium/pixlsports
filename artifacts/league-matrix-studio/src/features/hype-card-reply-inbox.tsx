@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
-export function HypeCardReplyInboxTrigger({ className = '', variant = 'coach' }: { className?: string, variant?: 'coach' | 'supporter' }) {
+export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter' }: { className?: string, variant?: 'supporter' }) {
   const [open, setOpen] = useState(false);
   const [targetToken, setTargetToken] = useState<string | null>(null);
 
@@ -92,9 +92,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'coach' }:
     <button
       type="button"
       className={`group flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-        variant === 'coach'
-          ? 'text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 clip-angled-sm'
-          : 'text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-3 clip-angled-sm w-full justify-between'
+        'text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-3 clip-angled-sm w-full justify-between'
       } ${className}`}
       data-testid="btn-reply-inbox"
     >

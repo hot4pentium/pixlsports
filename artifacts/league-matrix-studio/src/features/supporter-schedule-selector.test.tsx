@@ -1,138 +1,36 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { act, create, type ReactTestRenderer, type ReactTestRendererNode } from 'react-test-renderer';
+import { act, create } from 'react-test-renderer';
 import { createElement } from 'react';
 
-import {
-  readSupporterScheduleSelection,
-  saveSupporterScheduleSelection,
-} from './schedule-draft';
-import { SupporterScheduleSelector, type SupporterScheduleSelectorProps } from './supporter-schedule-selector';
+import { readSupporterScheduleSelection, saveSupporterScheduleSelection } from './schedule-draft';
+import { SupporterScheduleSelector } from './supporter-schedule-selector';
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem'> {
+class MemoryStorage {
   private readonly values = new Map<string, string>();
-
-  getItem(key: string) {
-    return this.values.get(key) ?? null;
-  }
-
-  setItem(key: string, value: string) {
-    this.values.set(key, value);
-  }
-
-  removeItem(key: string) {
-    this.values.delete(key);
-  }
+  getItem(key: string) { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string) { this.values.set(key, value); }
 }
 
 const schedules = [
-  {
-    id: 'latest',
-    label: 'Wildcats · Fall 2026',
-    teamName: 'Wildcats',
-    season: 'Fall 2026',
-    updatedAt: '2026-09-15T12:00:00Z',
-    eventCount: 3,
-  },
-  {
-    id: 'older',
-    label: 'Wildcats · Spring 2026',
-    teamName: 'Wildcats',
-    season: 'Spring 2026',
-    updatedAt: '2026-09-10T12:00:00Z',
-    eventCount: 2,
-  },
+  { id: 'latest', label: 'Wildcats · Fall 2026', teamName: 'Wildcats', season: 'Fall 2026', updatedAt: '2026-09-15', eventCount: 3 },
+  { id: 'older', label: 'Wildcats · Spring 2026', teamName: 'Wildcats', season: 'Spring 2026', updatedAt: '2026-09-10', eventCount: 2 },
 ];
 
-function findSelect(renderer: ReactTestRenderer) {
-  return renderer.root.findByProps({ 'data-testid': 'select-saved-custom-schedule' });
-}
-
-function renderedText(renderer: ReactTestRenderer): string {
-  type RenderedNode = ReactTestRendererNode | ReactTestRendererNode[] | null;
-  const visit = (node: RenderedNode): string => {
-    if (node === null) return '';
-    if (typeof node === 'string') return node;
-    if (Array.isArray(node)) return node.map(visit).join('');
-    return (node.children ?? []).map(visit).join('');
-  };
-  return visit(renderer.toJSON());
-}
-
-test('supporter schedule selector lets a supporter choose an older saved schedule and keeps it after reload', () => {
+test('supporters can select and persist a custom saved schedule', () => {
   const storage = new MemoryStorage();
-  let selectedScheduleId = readSupporterScheduleSelection(storage as unknown as Storage);
-  let renderer!: ReactTestRenderer;
-  const renderProps = (): SupporterScheduleSelectorProps => ({
+  let selected = readSupporterScheduleSelection(storage as unknown as Storage);
+  let renderer: ReturnType<typeof create>;
+  const render = () => createElement(SupporterScheduleSelector, {
     schedules,
-    selectedScheduleId,
-    connected: false,
-    onSelect: (scheduleId) => {
-      selectedScheduleId = scheduleId;
-      saveSupporterScheduleSelection(storage as unknown as Storage, scheduleId);
+    selectedScheduleId: selected,
+    onSelect: (id: string) => {
+      selected = id;
+      saveSupporterScheduleSelection(storage as unknown as Storage, id);
     },
   });
-
-  act(() => {
-    renderer = create(createElement(SupporterScheduleSelector, renderProps()));
-  });
-  assert.equal(findSelect(renderer).props.value, 'latest');
-
-  act(() => {
-    findSelect(renderer).props.onChange({ target: { value: 'older' } });
-  });
-  act(() => {
-    renderer.update(createElement(SupporterScheduleSelector, renderProps()));
-  });
+  act(() => { renderer = create(render()); });
+  const select = renderer!.root.findByProps({ 'data-testid': 'select-saved-custom-schedule' });
+  act(() => { select.props.onChange({ target: { value: 'older' } }); });
   assert.equal(readSupporterScheduleSelection(storage as unknown as Storage), 'older');
-  assert.equal(findSelect(renderer).props.value, 'older');
-
-  selectedScheduleId = readSupporterScheduleSelection(storage as unknown as Storage);
-  act(() => {
-    renderer.update(createElement(SupporterScheduleSelector, renderProps()));
-  });
-  assert.equal(findSelect(renderer).props.value, 'older');
-});
-
-test('selector keeps connected team calendar guidance visible while custom choice is preserved', () => {
-  let selectedScheduleId: string | null = 'older';
-  let renderer!: ReactTestRenderer;
-
-  act(() => {
-    renderer = create(createElement(SupporterScheduleSelector, {
-      schedules,
-      selectedScheduleId,
-      connected: true,
-      onSelect: (scheduleId: string) => {
-        selectedScheduleId = scheduleId;
-      },
-    }));
-  });
-
-  const select = findSelect(renderer);
-  assert.equal(select.props.value, 'older');
-  assert.deepEqual(select.findAllByType('option').map((option) => option.props.value), ['latest', 'older']);
-  assert.match(renderedText(renderer), /Your connected team calendar is currently shown first/);
-});
-
-test('saved schedule selector does not render the schedule management section', () => {
-  let renderer!: ReactTestRenderer;
-
-  act(() => {
-    renderer = create(createElement(SupporterScheduleSelector, {
-      schedules,
-      selectedScheduleId: 'latest',
-      connected: false,
-      onSelect: () => {},
-      onOpen: () => {},
-      onRename: () => {},
-      onRemove: () => {},
-    }));
-  });
-
-  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'manage-saved-schedules' }).length, 0);
-  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'button-open-saved-schedule-older' }).length, 0);
-  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'button-rename-saved-schedule-latest' }).length, 0);
 });

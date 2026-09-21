@@ -1,4 +1,4 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq, isNotNull, ne, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   ConsumeAccountUsageBody,
@@ -60,11 +60,21 @@ async function usageForUser(ownerClerkUserId: string) {
 }
 
 export async function getAccountAccessSnapshot(ownerClerkUserId: string) {
-  const [access] = await db
-    .select()
-    .from(accountAccessTable)
-    .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
-    .limit(1);
+  const [access] = await db.transaction(async (tx) => {
+    await tx
+      .update(accountAccessTable)
+      .set({ role: "fan", updatedAt: new Date() })
+      .where(and(
+        eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
+        isNotNull(accountAccessTable.role),
+        ne(accountAccessTable.role, "fan"),
+      ));
+    return tx
+      .select()
+      .from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
+      .limit(1);
+  });
   const usage = await usageForUser(ownerClerkUserId);
   const [storage] = await db
     .select({ bytes: sql<number>`coalesce(sum(${projectMediaTable.size}), 0)` })
@@ -79,7 +89,7 @@ export async function getAccountAccessSnapshot(ownerClerkUserId: string) {
 
   return {
     accessMode: access?.accessMode === "guest" ? "guest" as const : "full" as const,
-    role: access?.role === "coach" || access?.role === "fan" ? access.role : null,
+    role: access?.role === "fan" ? "fan" : null,
     usage,
     remaining,
     limits,

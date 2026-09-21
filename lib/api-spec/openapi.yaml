@@ -22,8 +22,6 @@ tags:
     description: Live stat tracker spectator sharing operations
   - name: hype-card-shares
     description: Interactive Hype Card sharing operations
-  - name: coach-calendars
-    description: Authenticated coach calendar connections
   - name: account-access
     description: Authenticated account role and Guest usage
   - name: supporter-photos
@@ -88,7 +86,7 @@ paths:
       operationId: updateScheduleShare
       tags: [schedule-shares]
       summary: Update a public schedule share
-      description: Updates a schedule share owned by the authenticated coach while keeping its public link.
+      description: Updates a schedule share owned by the authenticated account while keeping its public link.
       requestBody:
         required: true
         content:
@@ -112,7 +110,7 @@ paths:
       operationId: deleteScheduleShare
       tags: [schedule-shares]
       summary: Revoke a public schedule share
-      description: Revokes a schedule share owned by the authenticated coach.
+      description: Revokes a schedule share owned by the authenticated account.
       responses:
         "204":
           description: Public schedule share revoked
@@ -513,128 +511,6 @@ paths:
           content:
             image/*: {}
             video/*: {}
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /coach-calendar:
-    get:
-      operationId: getCoachCalendarCode
-      tags: [coach-calendars]
-      summary: Get or create the authenticated coach's calendar code
-      description: Returns the stable five-character code and current private subscription-link state.
-      responses:
-        "200":
-          description: Coach calendar code
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoachCalendarCode"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /coach-calendar/subscription:
-    post:
-      operationId: createCoachCalendarSubscription
-      tags: [coach-calendars]
-      summary: Create or refresh the authenticated coach's calendar subscription
-      description: Issues a private tokenized feed link. Issuing a new link revokes the previous link.
-      responses:
-        "200":
-          description: Calendar subscription link
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoachCalendarSubscription"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-    delete:
-      operationId: deleteCoachCalendarSubscription
-      tags: [coach-calendars]
-      summary: Revoke the authenticated coach's calendar subscription
-      responses:
-        "204":
-          description: Calendar subscription revoked
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-  /coach-calendar/subscription/{token}:
-    get:
-      operationId: getConnectedCoachCalendarBySubscription
-      tags: [coach-calendars]
-      summary: Get a connected coach calendar by private subscription token
-      description: Returns the current schedule for an authenticated supporter using an active private subscription link.
-      parameters:
-        - $ref: "#/components/parameters/CoachCalendarSubscriptionTokenParam"
-      responses:
-        "200":
-          description: Current coach calendar
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoachCalendar"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /coach-calendar/connect:
-    post:
-      operationId: connectToCoachCalendar
-      tags: [coach-calendars]
-      summary: Connect a fan to a coach calendar
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CoachCalendarConnectInput"
-      responses:
-        "200":
-          description: Current coach calendar
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoachCalendar"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /coach-calendar/feed/{token}.ics:
-    get:
-      operationId: getCoachCalendarFeed
-      tags: [coach-calendars]
-      summary: Get a private ICS calendar feed
-      description: Returns the current schedule without requiring a Pixl Sports account.
-      parameters:
-        - name: token
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: "^[A-Za-z0-9_-]{32,100}$"
-      responses:
-        "200":
-          description: ICS calendar feed
-          content:
-            text/calendar:
-              schema:
-                type: string
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /coach-calendar/{code}:
-    get:
-      operationId: getConnectedCoachCalendar
-      tags: [coach-calendars]
-      summary: Get the current schedule for a connected coach code
-      parameters:
-        - $ref: "#/components/parameters/CoachCalendarCodeParam"
-      responses:
-        "200":
-          description: Current coach calendar
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoachCalendar"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
   /account/access:
@@ -1193,20 +1069,6 @@ components:
       schema:
         type: string
         format: uuid
-    CoachCalendarCodeParam:
-      name: code
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: "^[A-Z2-9]{5}$"
-    CoachCalendarSubscriptionTokenParam:
-      name: token
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: "^[A-Za-z0-9_-]{32,100}$"
     HypeCardShareToken:
       name: shareToken
       in: path
@@ -1720,52 +1582,11 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/OwnedHypeCardShare"
-    CoachCalendarCode:
-      type: object
-      required: [code, subscriptionFeedPath]
-      properties:
-        code:
-          type: string
-          pattern: "^[A-Z2-9]{5}$"
-        subscriptionFeedPath:
-          type: ["string", "null"]
-    CoachCalendarSubscription:
-      type: object
-      required: [feedPath]
-      properties:
-        feedPath:
-          type: string
-    CoachCalendarConnectInput:
-      type: object
-      required: [code]
-      properties:
-        code:
-          type: string
-          minLength: 5
-          maxLength: 5
-          pattern: "^[A-Za-z2-9]{5}$"
-    CoachCalendar:
-      type: object
-      required: [code, title, teamSeason, events, scheduleAvailable, updatedAt]
-      properties:
-        code:
-          type: string
-          pattern: "^[A-Z2-9]{5}$"
-        title: { type: string }
-        teamSeason: { type: string }
-        events:
-          type: array
-          items:
-            $ref: "#/components/schemas/ScheduleEvent"
-        scheduleAvailable: { type: boolean }
-        updatedAt:
-          type: ["string", "null"]
-          format: date-time
     AccountAccessInput:
       type: object
       required: [role, accessMode]
       properties:
-        role: { type: string, enum: [coach, fan] }
+        role: { type: string, enum: [fan] }
         accessMode: { type: string, enum: [full, guest] }
     AccountUsageConsumeInput:
       type: object
@@ -1813,7 +1634,7 @@ components:
         accessMode: { type: string, enum: [full, guest] }
         role:
           type: ["string", "null"]
-          enum: [coach, fan, null]
+          enum: [fan, null]
         usage:
           $ref: "#/components/schemas/AccountUsage"
         remaining:
@@ -1853,7 +1674,7 @@ components:
     HypeCardProject:
       type: object
       description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
-      required: [version, headline, mediaType, mediaId, videoMeta, trimStart, trimEnd, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, coachMessage, visibility, photo, logo, photoTransform, adjustments]
+      required: [version, headline, mediaType, mediaId, videoMeta, trimStart, trimEnd, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, message, visibility, photo, logo, photoTransform, adjustments]
       properties:
         version:
           type: integer
@@ -1882,7 +1703,7 @@ components:
         grade: { type: string }
         stat: { type: string }
         achievement: { type: string }
-        coachMessage: { type: string }
+        message: { type: string }
         visibility:
           $ref: "#/components/schemas/ProjectVisibility"
         photo: { type: ["string", "null"] }
@@ -1901,12 +1722,12 @@ components:
         duration: { type: number }
     ProjectVisibility:
       type: object
-      required: [grade, stat, achievement, coachMessage]
+      required: [grade, stat, achievement, message]
       properties:
         grade: { type: boolean }
         stat: { type: boolean }
         achievement: { type: boolean }
-        coachMessage: { type: boolean }
+        message: { type: boolean }
     PhotoTransform:
       type: object
       required: [zoom, x, y, rotation, flip]

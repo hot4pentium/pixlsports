@@ -92,7 +92,7 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId: ownerId,
-      role: "coach",
+      role: "fan",
       accessMode: "full",
     });
     const address = server.address();
@@ -247,7 +247,7 @@ test("expired stat tracker shares are not readable", async () => {
   app.use("/api", statTrackerSharesRouter);
   const server = app.listen(0);
   try {
-    await db.insert(accountAccessTable).values({ ownerClerkUserId: ownerId, role: "coach", accessMode: "full" });
+    await db.insert(accountAccessTable).values({ ownerClerkUserId: ownerId, role: "fan", accessMode: "full" });
     const [share] = await db.insert(statTrackerSharesTable).values({
       ownerClerkUserId: ownerId,
       gameId: game.id,
@@ -283,7 +283,7 @@ test("inactive account stat tracker shares are not readable or streamable", asyn
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId: ownerId,
-      role: "coach",
+      role: "fan",
       accessMode: "full",
       lifecycleStatus: "cancelled",
     });

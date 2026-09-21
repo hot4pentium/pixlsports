@@ -3,13 +3,12 @@ import { Link, useLocation } from 'wouter';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
-  CalendarX2, ArrowRight, PenSquare, Loader2, AlertTriangle, AlertCircle, Camera, Trash2, RotateCcw, X,
+  ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
   CheckCircle2, ChevronDown, Home, PlusSquare, Check, Sparkles
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
-  getCalendarViewState,
   getSupporterGameStage,
   getSupporterWeekRecommendation,
   getSupporterStageAcknowledgmentKey,
@@ -81,16 +80,9 @@ export interface SupporterDashboardViewProps {
   events: SupporterEvent[];
   nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
-  scheduleSource: 'team' | 'custom' | null;
-  connected: boolean;
+  scheduleSource: 'custom' | null;
   connectionLabel: string;
-  loadingCalendar: boolean;
-  calendarError: boolean;
-  calendarConnectionInvalid: boolean;
   onOpenProfile: () => void;
-  onRetryCalendar: () => void;
-  onReconnectCalendar: () => void;
-  onDisconnect: () => void;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
   onOpenStatTracker: () => void;
@@ -189,15 +181,8 @@ export function SupporterDashboardView({
   nextGameIsUpcoming,
   projects,
   scheduleSource,
-  connected,
   connectionLabel,
-  loadingCalendar,
-  calendarError,
-  calendarConnectionInvalid,
   onOpenProfile,
-  onRetryCalendar,
-  onReconnectCalendar,
-  onDisconnect,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onOpenStatTracker,
@@ -210,14 +195,6 @@ export function SupporterDashboardView({
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
   const hasAthlete = Boolean(profile.athleteName);
-  const calendarState = getCalendarViewState({
-    calendarCode: connected || loadingCalendar || calendarError || calendarConnectionInvalid ? 'connected-calendar' : '',
-    loading: loadingCalendar,
-    invalid: calendarConnectionInvalid,
-    failed: calendarError,
-    calendar: connected ? { events } : undefined,
-    customSchedule: scheduleSource === 'custom' ? { events } : undefined,
-  });
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null);
   const weekRecommendation = getSupporterWeekRecommendation(events);
@@ -539,7 +516,7 @@ export function SupporterDashboardView({
           </div>
           <div className="flex items-center gap-4">
             <div className="relative w-11 h-11 flex items-center justify-center">
-              <HypeCardReplyInboxTrigger variant="coach" className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-[#12213A] shadow-none hover:bg-transparent" />
+              <HypeCardReplyInboxTrigger className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-[#12213A] shadow-none hover:bg-transparent" />
             </div>
             <button type="button" onClick={onOpenProfile} className="w-11 h-11 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center border border-black/10 text-lg font-bold text-slate-700" aria-label="Supporter profile" data-testid="btn-mobile-open-profile">
                {profile.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S'}
@@ -848,7 +825,7 @@ export function SupporterDashboardView({
               )}
             </div>
             <div className="relative z-10 shrink-0">
-              <HypeCardReplyInboxTrigger variant="coach" className="!px-2.5 !py-2" />
+              <HypeCardReplyInboxTrigger className="!px-2.5 !py-2" />
             </div>
           </div>
         </section>
@@ -866,7 +843,7 @@ export function SupporterDashboardView({
             <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               {currentStage.kicker}
-              {scheduleSource && <span className="text-white/45">· {scheduleSource === 'team' ? 'Team calendar' : 'Your schedule'}</span>}
+              {scheduleSource && <span className="text-white/45">· Your schedule</span>}
             </div>
             <h2 id="next-game-heading" className="mt-3 max-w-2xl break-words font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl" data-testid="next-game-heading">
               {contextEvent ? contextTitle : 'Make the next game count.'}
@@ -1004,7 +981,7 @@ export function SupporterDashboardView({
               <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
               {scheduleSource && (
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:flex items-center gap-1.5 border-l border-border/50 pl-3">
-                  <CalendarDays className="w-3 h-3" /> {scheduleSource === 'team' ? 'Team Calendar' : 'Custom Schedule'}
+                  <CalendarDays className="w-3 h-3" /> Custom Schedule
                 </span>
               )}
             </div>
@@ -1016,81 +993,16 @@ export function SupporterDashboardView({
           <div className="bg-card border border-border relative min-h-[220px] flex flex-col clip-angled-sm">
             <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
             <div className="relative p-3 sm:p-4 flex-1 flex flex-col">
-              {calendarState === 'loading' ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-sm font-bold uppercase tracking-widest">Loading Calendar...</p>
-                </div>
-              ) : calendarState === 'invalid' ? (
-                <div className="flex flex-1 flex-col items-center justify-center text-center">
-                  <AlertTriangle className="w-10 h-10 text-destructive mb-3" />
-                  <p className="font-bold text-destructive uppercase tracking-widest">Calendar Link No Longer Valid</p>
-                  <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                    This saved coach calendar link has expired or was revoked. Connect a new calendar to keep seeing team events.
-                  </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={onReconnectCalendar}
-                      className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
-                      data-testid="button-reconnect-calendar"
-                    >
-                      Connect a new calendar <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onDisconnect}
-                      className="bg-muted px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-destructive hover:text-destructive-foreground clip-angled-sm"
-                      data-testid="button-disconnect-invalid-calendar"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                </div>
-              ) : calendarState === 'failed' ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center">
-                  <AlertCircle className="w-10 h-10 text-destructive mb-3" />
-                  <p className="font-bold text-destructive uppercase tracking-widest">Calendar Sync Failed</p>
-                  <p className="text-sm text-muted-foreground mt-2 max-w-xs">There was a problem reaching the team schedule. Your saved connection is still here. Try again or disconnect.</p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={onRetryCalendar}
-                      className="inline-flex items-center gap-2 bg-primary px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
-                      data-testid="button-retry-calendar"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" /> Try again
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onDisconnect}
-                      className="bg-muted px-4 py-2 text-xs font-bold uppercase tracking-widest transition-colors hover:bg-destructive hover:text-destructive-foreground clip-angled-sm"
-                      data-testid="button-disconnect-calendar-error"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                </div>
-              ) : calendarState === 'disconnected' ? (
-                <div className="relative z-10 flex flex-1 flex-col items-center justify-center py-4 text-center">
-                  <CalendarX2 className="h-10 w-10 text-muted-foreground/60" />
-                  <p className="mt-3 font-bold uppercase tracking-widest">No Team Calendar Connected</p>
-                  <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-                    Open Team Calendar to connect your coach’s schedule.
-                  </p>
+              {events.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">
+                  <p className="font-bold uppercase tracking-widest">No saved schedule yet</p>
+                  <p className="text-sm max-w-xs text-balance">Create or open a schedule to see upcoming events here.</p>
                   <Link
                     href="/studio/schedule"
-                    className="mt-4 inline-flex items-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
-                    data-testid="link-open-team-calendar"
+                    className="mt-2 inline-flex items-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
                   >
-                    Open Team Calendar <ArrowRight className="h-4 w-4" />
+                    Open Schedule Maker <ArrowRight className="h-4 w-4" />
                   </Link>
-                </div>
-              ) : calendarState === 'empty' ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">
-                  <CalendarX2 className="w-10 h-10 opacity-50" />
-                  <p className="font-bold uppercase tracking-widest">No Scheduled Events</p>
-                  <p className="text-sm max-w-xs text-balance">The coach hasn’t added any events to the team schedule right now.</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -1275,7 +1187,7 @@ export function SupporterDashboardView({
                 <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
                 <span className="min-w-0">
                   <span className="block font-display text-xl uppercase tracking-wide">{recommendedPractice && !nextGame ? 'Practice' : 'Game Day'}</span>
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : recommendedPractice ? `${formatDateDisplay(recommendedPractice.date)} · Practice` : scheduleSource ? 'No upcoming game scheduled.' : 'Connect your team schedule.'}</span>
+                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : recommendedPractice ? `${formatDateDisplay(recommendedPractice.date)} · Practice` : scheduleSource ? 'No upcoming game scheduled.' : 'Create or open a saved schedule.'}</span>
                 </span>
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
@@ -1487,7 +1399,7 @@ export function SupporterProfileView({
                   value={profile.relationship}
                   onChange={(e) => onChange('relationship', e.target.value)}
                   className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                  placeholder="e.g. Parent, Fan, Coach"
+                  placeholder="e.g. Parent, Fan, Supporter"
                 />
               </div>
             </div>

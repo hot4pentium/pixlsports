@@ -19,6 +19,7 @@ import {
   hasActivePaidEntitlement,
 } from "./lib/accountLifecycle";
 import { runExpiredAccountPurge } from "./jobs/purgeCancelledAccounts";
+import { getAccountAccessSnapshot } from "./routes/accountAccess";
 
 async function deleteTestAccount(ownerClerkUserId: string) {
   await db.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId));
@@ -48,12 +49,34 @@ test("paid eligibility requires active lifecycle and an unexpired entitlement", 
   }
 });
 
+test("access snapshots lazily normalize stale roles", async () => {
+  const ownerClerkUserId = `stale-role-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId,
+      role: "legacy",
+      accessMode: "full",
+    });
+
+    const snapshot = await getAccountAccessSnapshot(ownerClerkUserId);
+    assert.equal(snapshot.role, "fan");
+
+    const [access] = await db
+      .select({ role: accountAccessTable.role })
+      .from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+    assert.equal(access?.role, "fan");
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
 test("lifecycle transitions cannot reset expired or purge-claimed accounts", async () => {
   const ownerClerkUserId = `lifecycle-test-${randomUUID()}`;
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId,
-      role: "coach",
+      role: "fan",
       accessMode: "guest",
     });
 
@@ -171,7 +194,7 @@ test("purge retries each destructive phase and allows a fresh account row", asyn
 
     await db.insert(accountAccessTable).values({
       ownerClerkUserId,
-      role: "coach",
+      role: "fan",
       accessMode: "full",
     });
     const fresh = await getAccountLifecycleSnapshot(ownerClerkUserId);
@@ -187,7 +210,7 @@ test("a verified paid entitlement restores an eligible account once and replays 
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId,
-      role: "coach",
+      role: "fan",
       accessMode: "full",
     });
     await cancelAccount(ownerClerkUserId);

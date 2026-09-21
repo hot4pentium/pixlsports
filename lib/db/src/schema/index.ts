@@ -146,19 +146,6 @@ export const hypeCardShareUploadClaimsTable = pgTable("hype_card_share_upload_cl
   expiresAtIndex: index("hype_card_share_upload_claims_expires_at_index").on(table.expiresAt),
 }));
 
-export const coachCalendarCodesTable = pgTable("coach_calendar_codes", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
-  code: text("code").notNull(),
-  subscriptionToken: text("subscription_token"),
-  subscriptionRevokedAt: timestamp("subscription_revoked_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => ({
-  ownerUnique: uniqueIndex("coach_calendar_codes_owner_unique").on(table.ownerClerkUserId),
-  codeUnique: uniqueIndex("coach_calendar_codes_code_unique").on(table.code),
-  subscriptionTokenUnique: uniqueIndex("coach_calendar_codes_subscription_token_unique").on(table.subscriptionToken),
-}));
-
 export const accountAccessTable = pgTable("account_access", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
@@ -237,7 +224,6 @@ export type ScheduleShare = typeof scheduleSharesTable.$inferSelect;
 export type HypeCardShare = typeof hypeCardSharesTable.$inferSelect;
 export type HypeCardShareReply = typeof hypeCardShareRepliesTable.$inferSelect;
 export type HypeCardShareUploadClaim = typeof hypeCardShareUploadClaimsTable.$inferSelect;
-export type CoachCalendarCode = typeof coachCalendarCodesTable.$inferSelect;
 export type AccountAccess = typeof accountAccessTable.$inferSelect;
 export type AccountEntitlementEvent = typeof accountEntitlementEventsTable.$inferSelect;
 export type GuestUsageEvent = typeof guestUsageEventsTable.$inferSelect;

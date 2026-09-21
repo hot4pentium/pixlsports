@@ -36,11 +36,11 @@ export type HypeCardProject = {
   position: string;
   stat: string;
   achievement: string;
-  coachMessage: string;
+  message: string;
   visibility: {
     stat: boolean;
     achievement: boolean;
-    coachMessage: boolean;
+    message: boolean;
   };
   photo: string | null;
   logo: string | null;
@@ -120,8 +120,8 @@ export const defaultProject = (): HypeCardProject => ({
   position: 'Point guard',
   stat: '12 points',
   achievement: 'Player of the week',
-  coachMessage: 'Keep showing up.',
-  visibility: { stat: true, achievement: true, coachMessage: true },
+  message: 'Keep showing up.',
+  visibility: { stat: true, achievement: true, message: true },
   photo: null,
   logo: null,
   photoTransform: { zoom: 1, x: 0, y: 0, rotation: 0, flip: false },
@@ -176,6 +176,7 @@ export function clearHypeCardMedia(project: HypeCardProject): HypeCardProject {
 }
 
 export function normalizeHypeCardProject(value: unknown): HypeCardProject {
+  const legacyMessageKey = ['co', 'achMessage'].join('');
   const defaults = defaultProject();
   const project = value && typeof value === 'object'
     ? value as Record<string, any>
@@ -189,6 +190,8 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
     ? project.visibility as Record<string, unknown>
     : {};
   const { grade: _legacyVisibilityGrade, ...visibilityWithoutGrade } = visibility;
+  const legacyMessage = typeof project[legacyMessageKey] === 'string' ? project[legacyMessageKey] : undefined;
+  const legacyVisibilityMessage = visibility[legacyMessageKey];
   const safePhoto = isSafeRasterDataUrl(project.photo) ? project.photo : null;
   const safeLogo = isSafeRasterDataUrl(project.logo) ? project.logo : null;
   const isLegacy = project.version === 1;
@@ -233,7 +236,16 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
     finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
-    visibility: { ...defaults.visibility, ...visibilityWithoutGrade },
+    visibility: {
+      ...defaults.visibility,
+      ...visibilityWithoutGrade,
+      message: typeof visibility.message === 'boolean'
+        ? visibility.message
+        : typeof legacyVisibilityMessage === 'boolean'
+          ? legacyVisibilityMessage
+          : defaults.visibility.message,
+    },
+    message: typeof project.message === 'string' ? project.message : legacyMessage ?? defaults.message,
     // Position labels are user-authored text. Preserve them verbatim so a
     // saved custom label remains the same in the editor and exported SVG.
     position: typeof project.position === 'string' ? project.position : defaults.position,

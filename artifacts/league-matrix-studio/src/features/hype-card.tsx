@@ -347,11 +347,11 @@ function LayoutOption({
       project.position,
       project.stat,
       project.achievement,
-      project.coachMessage,
+      project.message,
       project.logo,
       project.visibility.stat,
       project.visibility.achievement,
-      project.visibility.coachMessage,
+      project.visibility.message,
     ],
   );
   return (

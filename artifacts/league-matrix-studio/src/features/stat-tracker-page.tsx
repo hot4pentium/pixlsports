@@ -5,8 +5,6 @@ import { useUser } from '@clerk/react';
 import {
   useCreateProject,
   useGetAccountAccess,
-  useGetConnectedCoachCalendar,
-  useGetConnectedCoachCalendarBySubscription,
   useListProjects,
   useUpdateProject,
   getGetAccountAccessQueryKey,
@@ -20,10 +18,6 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import {
-  getCalendarConnectionErrorKind,
-  getStoredCalendarConnection,
-} from './calendar-connection';
 import { getGuestUsageKey } from './guest-access';
 import { getUserProfile } from './supporter-dashboard-model';
 import {
@@ -817,33 +811,6 @@ export function StatTrackerPage() {
   const profile = getUserProfile(user);
   const localNextGame = useMemo(() => getNextScheduledGame(), []);
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
-  const calendarConnection = useMemo(() => getStoredCalendarConnection(), []);
-  const calendarCode = calendarConnection?.kind === 'code' ? calendarConnection.value : '';
-  const calendarSubscriptionToken = calendarConnection?.kind === 'subscription' ? calendarConnection.value : '';
-  const codeCalendarQuery = useGetConnectedCoachCalendar(calendarCode, {
-    query: {
-      enabled: Boolean(isSignedIn && calendarCode),
-      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
-      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
-      queryKey: ['/api/coach-calendar', calendarCode],
-    },
-  });
-  const subscriptionCalendarQuery = useGetConnectedCoachCalendarBySubscription(calendarSubscriptionToken, {
-    query: {
-      enabled: Boolean(isSignedIn && calendarSubscriptionToken),
-      refetchInterval: (query) => getCalendarConnectionErrorKind(query.state.error) === 'invalid' ? false : 30000,
-      refetchOnWindowFocus: (query) => getCalendarConnectionErrorKind(query.state.error) !== 'invalid',
-      queryKey: ['/api/coach-calendar/subscription', calendarSubscriptionToken],
-    },
-  });
-  const activeCalendarQuery = calendarConnection?.kind === 'subscription'
-    ? subscriptionCalendarQuery
-    : codeCalendarQuery;
-  const connectedCalendar = activeCalendarQuery.data;
-  const connectedNextGame = useMemo(
-    () => getNextScheduledGame(connectedCalendar?.events),
-    [connectedCalendar?.events],
-  );
   const [sport, setSport] = useState<Sport>(profile.sport ?? 'basketball');
   const [storageAccountId, setStorageAccountId] = useState<string | null>(null);
   const [data, setData] = useState<StatTrackerData>(() => normalizeTrackerData(null));
@@ -1045,7 +1012,7 @@ export function StatTrackerPage() {
   const totals = seasonTotals(data.games, sport);
   const yardTotals = seasonYardTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
-  const nextGame = connectedNextGame ?? ownedScheduleNextGame ?? localNextGame;
+  const nextGame = ownedScheduleNextGame ?? localNextGame;
   const report = useMemo(() => {
     if (!selectedReportGameId) return null;
     return buildGameReport(data.games, sport, selectedReportGameId);
@@ -1106,7 +1073,7 @@ export function StatTrackerPage() {
         const updated = await persistScheduledGameStatus({
           scheduledGame,
           status,
-          canWrite: profile.role === 'fan' && !calendarConnection,
+           canWrite: profile.role === 'fan',
           storage: window.localStorage,
           ownedScheduleProject: project,
           expectedRevision: project && scheduleRevision.current?.id === project.id

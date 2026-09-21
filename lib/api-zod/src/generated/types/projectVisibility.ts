@@ -10,5 +10,5 @@ export interface ProjectVisibility {
   grade: boolean;
   stat: boolean;
   achievement: boolean;
-  coachMessage: boolean;
+  message: boolean;
 }

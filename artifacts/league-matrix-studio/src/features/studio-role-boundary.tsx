@@ -12,9 +12,7 @@ export interface StudioRoleBoundaryProps {
   isSignedIn: boolean;
   loading: ReactNode;
   signedOut: ReactNode;
-  roleSelection: ReactNode;
   supporter: ReactNode;
-  coach: ReactNode;
 }
 
 /**
@@ -27,16 +25,11 @@ export function StudioRoleBoundary({
   isSignedIn,
   loading,
   signedOut,
-  roleSelection,
   supporter,
-  coach,
 }: StudioRoleBoundaryProps) {
   if (!isLoaded) return createElement(Fragment, null, loading);
   if (!isSignedIn) return createElement(Fragment, null, signedOut);
 
-  const destination = getStudioDestination(getUserRole(user));
-  if (destination === 'role-selection') return createElement(Fragment, null, roleSelection);
-  return destination === 'supporter'
-    ? createElement(Fragment, null, supporter)
-    : createElement(Fragment, null, coach);
+  getStudioDestination(getUserRole(user));
+  return createElement(Fragment, null, supporter);
 }

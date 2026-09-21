@@ -322,7 +322,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const placeholder = !project.mediaType && !project.photo
     ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="#02070e" fill-opacity=".34" stroke="#fff" stroke-opacity=".38" stroke-width="3" stroke-dasharray="14 14"/><text x="500" y="710" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="25" font-weight="800" letter-spacing="7" fill="#fff" opacity=".82">ADD PLAYER MEDIA</text>`
     : '';
-  const coachMessage = content.message
+  const message = content.message
      ? `<text x="500" y="1344" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 780, 18, 0.62, 2)}" font-weight="600" letter-spacing="2" fill="#fff" opacity=".72">${content.message}</text>`
     : '';
   const branding = project.branding
@@ -365,7 +365,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
         <rect x="${hypeRailX}" y="500" width="${hypeRailWidth}" height="380" rx="26" fill="#02070e" fill-opacity=".78" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".9"/>
          <text x="${hypeRailCenterX}" y="690" text-anchor="middle" dominant-baseline="middle" transform="rotate(90 ${hypeRailCenterX} 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
       </g>
-      ${coachMessage}
+      ${message}
       ${logo}
       ${branding}
      </g>
@@ -407,7 +407,7 @@ function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<text x="500" y="1310" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS STUDIO</text>`
     : '';
 
-  const coachMessage = content.message ? `<text x="500" y="1285" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 800, 18, 0.65)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
+  const message = content.message ? `<text x="500" y="1285" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 800, 18, 0.65)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
   const recY = content.message ? 1255 : 1275;
   const headlineSize = fitText(content.headline, 900, 280, 0.65, -10);
 
@@ -456,7 +456,7 @@ function buildSluggerCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       <text x="500" y="1225" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.details, 800, 22, 0.65, 4)}" font-weight="800" letter-spacing="4" fill="#ffffff" opacity="0.9">${content.details}</text>
       <text x="500" y="${recY}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
       
-      ${coachMessage}
+      ${message}
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
@@ -499,7 +499,7 @@ function buildAllStarCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     ? `<text x="500" y="1320" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS STUDIO</text>`
     : '';
     
-  const coachMessage = content.message ? `<text x="500" y="1295" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 3)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
+  const message = content.message ? `<text x="500" y="1295" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 3)}" font-weight="700" letter-spacing="3" fill="#fff" opacity="0.8">${content.message}</text>` : '';
   const recY = content.message ? 1242 : 1262;
   const headlineSize = fitText(content.headline, 800, 180, 0.65, 4);
 
@@ -547,7 +547,7 @@ function buildAllStarCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       <path d="M 250 1200 L 750 1200 L 720 1260 L 280 1260 Z" fill="url(#teamMetal-${ns})" stroke="url(#metalCore-${ns})" stroke-width="6" />
       <text x="500" y="${recY}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 420, 30, 0.75)}" font-weight="800" fill="#fff">${content.recognition}</text>
       
-      ${coachMessage}
+      ${message}
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
@@ -591,7 +591,7 @@ function buildRookieCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
     ? `<text x="940" y="1335" text-anchor="end" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS</text>`
     : '';
 
-  const coachMessage = content.message ? `<text x="70" y="1335" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
+  const message = content.message ? `<text x="70" y="1335" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 600, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
   const headlineSize = fitText(content.headline, 900, 140, 0.65, 16);
 
   const bgContent = `
@@ -633,7 +633,7 @@ function buildRookieCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
         <text x="30" y="150" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, 800, 42, 0.75)}" font-weight="800" fill="#fff" filter="url(#dropShadowSmall-${ns})">${content.recognition}</text>
       </g>
       
-      ${coachMessage}
+      ${message}
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}
@@ -676,7 +676,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
     ? `<text x="500" y="1330" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="14" font-weight="800" letter-spacing="5" fill="#fff" opacity="0.6">PIXL SPORTS STUDIO</text>`
     : '';
 
-  const coachMessage = content.message ? `<text x="930" y="1255" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 400, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
+  const message = content.message ? `<text x="930" y="1255" text-anchor="end" font-family="DM Sans,sans-serif" font-size="${fitText(content.message, 400, 18, 0.65, 2)}" font-weight="700" letter-spacing="2" fill="#fff" opacity="0.7">${content.message}</text>` : '';
   const recWidth = content.message ? 380 : 800;
   const headlineSize = fitText(content.headline, 480, 82, 0.65, 8);
 
@@ -722,7 +722,7 @@ function buildDugoutCardSvg(project: HypeCardProject, layer: SvgLayer, ns: strin
       <path d="M 110 1200 L 890 1200" stroke="rgba(255,255,255,0.15)" stroke-width="6" stroke-dasharray="8 8" />
       <text x="110" y="1255" font-family="Space Grotesk,sans-serif" font-size="${fitText(content.recognition, recWidth, 36, 0.75)}" font-weight="800" fill="${palette.accent}" filter="url(#neonGlowTeam-${ns})">${content.recognition}</text>
       
-      ${coachMessage}
+      ${message}
       ${branding}
     </g>
     ${getOuterFrame(palette, ns)}

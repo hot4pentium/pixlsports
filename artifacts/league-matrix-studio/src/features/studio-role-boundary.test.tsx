@@ -31,19 +31,10 @@ function StudioSession({
     isSignedIn,
     loading: createElement('p', null, 'Loading your studio…'),
     signedOut: createElement('p', null, 'Sign in to continue'),
-    roleSelection: createElement('section', null,
-      createElement('h1', null, 'Pick your playbook'),
-      createElement('nav', null, 'Coach or Fan'),
-    ),
     supporter: createElement('section', null,
       createElement('nav', null, 'Game Day Hub · Hype Card · Schedule · My Athlete'),
       createElement('h1', null, 'Fan Command Center'),
       createElement('p', null, 'Fan controls'),
-    ),
-    coach: createElement('section', null,
-      createElement('nav', null, 'Command Center · Schedule · Roster'),
-      createElement('h1', null, 'Coach Command Center'),
-      createElement('p', null, 'Coach controls'),
     ),
   });
 }
@@ -59,7 +50,7 @@ function renderedText(renderer: ReactTestRenderer): string {
   return visit(renderer.toJSON());
 }
 
-test('a mounted session replaces fan UI with coach UI when Clerk metadata changes', () => {
+test('legacy role metadata remains in the supporter UI', () => {
   const user = userWithRole('fan');
   let renderer!: ReactTestRenderer;
 
@@ -68,28 +59,26 @@ test('a mounted session replaces fan UI with coach UI when Clerk metadata change
   });
   assert.match(renderedText(renderer), /Fan Command Center/);
   assert.match(renderedText(renderer), /Game Day Hub/);
-  assert.doesNotMatch(renderedText(renderer), /Coach controls/);
+  assert.doesNotMatch(renderedText(renderer), /Non-supporter controls/);
 
-  user.unsafeMetadata.role = 'coach';
+  user.unsafeMetadata.role = 'legacy';
   act(() => {
     renderer.update(createElement(StudioSession, { user }));
   });
-  assert.match(renderedText(renderer), /Coach Command Center/);
-  assert.match(renderedText(renderer), /Command Center · Schedule · Roster/);
-  assert.match(renderedText(renderer), /Coach controls/);
-  assert.doesNotMatch(renderedText(renderer), /Fan controls/);
-  assert.doesNotMatch(renderedText(renderer), /My Athlete/);
+  assert.match(renderedText(renderer), /Fan Command Center/);
+  assert.match(renderedText(renderer), /Fan controls/);
+  assert.match(renderedText(renderer), /My Athlete/);
 });
 
-test('a mounted session replaces coach UI with fan UI when Clerk metadata changes', () => {
-  const user = userWithRole('coach');
+test('legacy role metadata initially mounts supporter UI', () => {
+  const user = userWithRole('legacy');
   let renderer!: ReactTestRenderer;
 
   act(() => {
     renderer = create(createElement(StudioSession, { user }));
   });
-  assert.match(renderedText(renderer), /Coach Command Center/);
-  assert.doesNotMatch(renderedText(renderer), /Fan controls/);
+  assert.match(renderedText(renderer), /Fan Command Center/);
+  assert.match(renderedText(renderer), /Fan controls/);
 
   user.unsafeMetadata.role = 'fan';
   act(() => {
@@ -98,8 +87,6 @@ test('a mounted session replaces coach UI with fan UI when Clerk metadata change
   assert.match(renderedText(renderer), /Fan Command Center/);
   assert.match(renderedText(renderer), /Game Day Hub · Hype Card · Schedule · My Athlete/);
   assert.match(renderedText(renderer), /Fan controls/);
-  assert.doesNotMatch(renderedText(renderer), /Coach controls/);
-  assert.doesNotMatch(renderedText(renderer), /Roster/);
 });
 
 test('loading and missing-role states never expose either role dashboard', () => {
@@ -116,7 +103,6 @@ test('loading and missing-role states never expose either role dashboard', () =>
   act(() => {
     renderer.update(createElement(StudioSession, { user, isLoaded: true }));
   });
-  assert.match(renderedText(renderer), /Pick your playbook/);
-  assert.doesNotMatch(renderedText(renderer), /Fan Command Center/);
-  assert.doesNotMatch(renderedText(renderer), /Coach Command Center/);
+  assert.match(renderedText(renderer), /Fan Command Center/);
+  assert.doesNotMatch(renderedText(renderer), /Non-supporter Command Center/);
 });

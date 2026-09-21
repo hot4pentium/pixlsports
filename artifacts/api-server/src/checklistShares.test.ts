@@ -90,7 +90,7 @@ test("collaborators recover stale checklist revisions and owners control link ro
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId: ownerId,
-      role: "coach",
+      role: "fan",
       accessMode: "full",
     });
     const address = server.address();
