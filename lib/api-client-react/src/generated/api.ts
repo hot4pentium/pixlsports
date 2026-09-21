@@ -2283,6 +2283,83 @@ export const useDeleteHypeCardShare = <TError = ErrorType<UnauthorizedResponse |
       return useMutation(getDeleteHypeCardShareMutationOptions(options));
     }
 
+export const getDownloadHypeCardShareUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/hype-card-shares/${shareToken}/download`
+}
+
+/**
+ * @summary Download the hosted media for an owned Hype Card share
+ */
+export const downloadHypeCardShare = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadHypeCardShareUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadHypeCardShareQueryKey = (shareToken: string,) => {
+    return [
+    `/api/hype-card-shares/${shareToken}/download`
+    ] as const;
+    }
+
+
+export const getDownloadHypeCardShareQueryOptions = <TData = Awaited<ReturnType<typeof downloadHypeCardShare>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadHypeCardShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadHypeCardShareQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadHypeCardShare>>> = ({ signal }) => downloadHypeCardShare(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadHypeCardShare>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadHypeCardShareQueryResult = NonNullable<Awaited<ReturnType<typeof downloadHypeCardShare>>>
+export type DownloadHypeCardShareQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Download the hosted media for an owned Hype Card share
+ */
+
+export function useDownloadHypeCardShare<TData = Awaited<ReturnType<typeof downloadHypeCardShare>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadHypeCardShare>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadHypeCardShareQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetHypeCardReplyInboxUrl = () => {
 
 

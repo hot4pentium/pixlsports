@@ -541,6 +541,23 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /hype-card-shares/{shareToken}/download:
+    parameters:
+      - $ref: "#/components/parameters/HypeCardShareToken"
+    get:
+      operationId: downloadHypeCardShare
+      tags: [hype-card-shares]
+      summary: Download the hosted media for an owned Hype Card share
+      responses:
+        "200":
+          description: Hosted Hype Card image or prepared video attachment
+          content:
+            image/*: {}
+            video/*: {}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /hype-card-shares/reply-inbox:
     get:
       operationId: getHypeCardReplyInbox

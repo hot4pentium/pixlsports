@@ -11,6 +11,7 @@ import {
   CreateHypeCardShareResponse,
   DeleteHypeCardShareReplyParams,
   DeleteHypeCardShareParams,
+  DownloadHypeCardShareParams,
   GetHypeCardShareParams,
   GetHypeCardReplyInboxResponse,
   ListHypeCardSharesResponse,
@@ -543,6 +544,49 @@ router.get("/hype-card-shares/:shareToken", async (req, res): Promise<void> => {
     return;
   }
   res.json(await shareResponse(share));
+});
+
+router.get("/hype-card-shares/:shareToken/download", requireAuth, async (req, res): Promise<void> => {
+  const params = DownloadHypeCardShareParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Hype Card share not found" });
+    return;
+  }
+  const [share] = await db.select().from(hypeCardSharesTable).where(and(
+    eq(hypeCardSharesTable.publicToken, params.data.shareToken),
+    eq(hypeCardSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+    isNull(hypeCardSharesTable.revokedAt),
+    gt(hypeCardSharesTable.expiresAt, new Date()),
+  ));
+  if (!share || share.shareMode === "stats") {
+    res.status(404).json({ error: "Hype Card share not found" });
+    return;
+  }
+  const objectPath = share.videoObjectPath;
+  if (!objectPath) {
+    res.status(404).json({ error: "Hype Card share media not found" });
+    return;
+  }
+  try {
+    const file = await objectStorage.getObjectEntityFile(objectPath);
+    const response = await objectStorage.downloadObject(file, 300);
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    const extension = share.mediaType === "video"
+      ? share.videoContentType === "video/mp4" ? "mp4" : "webm"
+      : share.videoContentType === "image/png" ? "png" : "jpg";
+    const safeSlug = share.slug.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "hype-card";
+    res.setHeader("Content-Disposition", `attachment; filename="${safeSlug}.${extension}"`);
+    if (response.body) Readable.fromWeb(response.body as NodeReadableStream).pipe(res);
+    else res.end();
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Hype Card share media not found" });
+      return;
+    }
+    req.log.error({ err: error }, "Unable to download owned Hype Card share media");
+    res.status(500).json({ error: "Unable to download Hype Card share media" });
+  }
 });
 
 router.get("/hype-card-shares/:shareToken/media/:mediaKind", async (req, res): Promise<void> => {

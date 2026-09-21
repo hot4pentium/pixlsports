@@ -1419,6 +1419,19 @@ export const DeleteHypeCardShareResponse = zod.void()
 
 
 /**
+ * @summary Download the hosted media for an owned Hype Card share
+ */
+export const downloadHypeCardSharePathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const DownloadHypeCardShareParams = zod.object({
+  "shareToken": zod.coerce.string().regex(downloadHypeCardSharePathShareTokenRegExp)
+})
+
+export const DownloadHypeCardShareResponse = zod.unknown()
+
+
+/**
  * @summary Get replies grouped by owned Hype Card share
  */
 export const getHypeCardReplyInboxResponseTotalCountMin = 0;

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
+  ChevronDown,
+  Download,
   CalendarPlus,
   Check,
   Clipboard,
@@ -12,6 +14,7 @@ import {
   Share2,
   Smartphone,
   Trophy,
+  Trash2,
   Zap,
 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -19,10 +22,14 @@ import {
   getListAthleteInvitesQueryKey,
   getGetAthleteInviteQueryKey,
   getListProjectsQueryKey,
+  getListHypeCardSharesQueryKey,
+  downloadHypeCardShare,
   useCreateAthleteInvite,
   useGetAthleteInvite,
   useListAthleteInvites,
   useListProjects,
+  useListHypeCardShares,
+  useDeleteHypeCardShare,
   useStartAthleteInviteLive,
   useStopAthleteInviteLive,
   useUpdateAthleteInvite,
@@ -83,10 +90,22 @@ export function AthleteInviteManager() {
   const [showStats, setShowStats] = useState(true);
   const [showSchedule, setShowSchedule] = useState(true);
   const [notice, setNotice] = useState('');
+  const [hypeCardGuideOpen, setHypeCardGuideOpen] = useState(false);
   const createInvite = useCreateAthleteInvite();
   const updateInvite = useUpdateAthleteInvite();
   const startLive = useStartAthleteInviteLive();
   const stopLive = useStopAthleteInviteLive();
+  const deleteHypeCard = useDeleteHypeCardShare();
+  const { data: hypeCardShares, isLoading: hypeCardsLoading } = useListHypeCardShares({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListHypeCardSharesQueryKey(),
+      staleTime: 10_000,
+    },
+  });
+  const hostedHypeCard = hypeCardShares?.find((share) =>
+    share.shareMode === 'card' && new Date(share.expiresAt).getTime() > Date.now(),
+  ) ?? null;
   useEffect(() => {
     if (!existing) return;
     setAthleteName(existing.athleteName);
@@ -194,6 +213,35 @@ export function AthleteInviteManager() {
       setNotice(detail || 'Game Day Live could not be changed. Start a live game in Stat Tracker first.');
     }
   };
+  const downloadHostedHypeCard = async () => {
+    if (!hostedHypeCard) return;
+    setNotice('');
+    try {
+      const blob = await downloadHypeCardShare(hostedHypeCard.shareToken, { responseType: 'blob' });
+      const url = URL.createObjectURL(blob as Blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${hostedHypeCard.slug}.${hostedHypeCard.mediaType === 'video' ? 'mp4' : 'jpg'}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setNotice('Hosted Hype Card downloaded.');
+    } catch {
+      setNotice('The hosted Hype Card could not be downloaded.');
+    }
+  };
+  const removeHostedHypeCard = async () => {
+    if (!hostedHypeCard || !window.confirm('Remove this hosted Hype Card from the Athlete Hype Page? The Hype Page and its other content will stay available.')) return;
+    setNotice('');
+    try {
+      await deleteHypeCard.mutateAsync({ shareToken: hostedHypeCard.shareToken });
+      await queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey() });
+      setNotice('Hosted Hype Card removed. The Athlete Hype Page and its other content were not changed.');
+    } catch {
+      setNotice('The hosted Hype Card could not be removed.');
+    }
+  };
 
   return (
     <InviteShell>
@@ -207,13 +255,59 @@ export function AthleteInviteManager() {
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2" aria-label="Sharing paths">
-          <Link href="/studio/hype-card" className="group border border-border bg-card p-5 transition-colors hover:border-primary" data-testid="link-create-hype-card">
-            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Quick share</p>
-            <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Card</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Share one favorite moment with a focused, reply-ready card.</p>
-            <span className="mt-4 inline-flex text-xs font-bold uppercase tracking-widest text-primary">Open Hype Card editor →</span>
-          </Link>
+        <section className="mt-8 grid items-start gap-4 md:grid-cols-2" aria-label="Sharing paths">
+          <div className="border border-border bg-card transition-colors hover:border-primary">
+            <button
+              type="button"
+              className="flex w-full items-start justify-between gap-4 p-5 text-left"
+              aria-expanded={hypeCardGuideOpen}
+              aria-controls="hype-card-creation-guide"
+              onClick={() => setHypeCardGuideOpen((open) => !open)}
+              data-testid="button-toggle-hype-card-guide"
+            >
+              <span>
+                <span className="block text-[10px] font-bold uppercase tracking-[.2em] text-primary">Quick share</span>
+                <span className="mt-2 block font-display text-3xl uppercase">Create a Hype Card</span>
+                <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">Post one favorite moment to this athlete’s Hype Page.</span>
+              </span>
+              <ChevronDown className={`mt-2 h-5 w-5 shrink-0 text-primary transition-transform ${hypeCardGuideOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+            {hypeCardGuideOpen && (
+              <div id="hype-card-creation-guide" className="border-t border-border px-5 pb-5 pt-4">
+                <h3 className="text-xs font-bold uppercase tracking-widest">How it works</h3>
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+                  <li>Open the Hype Card editor and create the card.</li>
+                  <li>Choose Post to Athlete Hype Page when the card is ready.</li>
+                  <li>Return here to download or remove the hosted card.</li>
+                </ol>
+                <Link href="/studio/hype-card" className="mt-4 inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-create-hype-card">
+                  Open Hype Card editor →
+                </Link>
+                <div className="mt-5 border-t border-border pt-4" aria-live="polite">
+                  {hypeCardsLoading ? (
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking hosted card…</p>
+                  ) : hostedHypeCard ? (
+                    <div className="flex flex-col gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Hosted on Athlete Hype Page</p>
+                        <p className="mt-1 text-sm font-bold">{hostedHypeCard.title}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedHypeCard()}>
+                          <Download className="mr-2 h-4 w-4" />Download
+                        </Button>
+                        <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedHypeCard()} disabled={deleteHypeCard.isPending}>
+                          <Trash2 className="mr-2 h-4 w-4" />Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-medium leading-relaxed text-muted-foreground">No hosted Hype Card yet. Your Hype Page, stats, schedule, and replies stay available.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
             <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>

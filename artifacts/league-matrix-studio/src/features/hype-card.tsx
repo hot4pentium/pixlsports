@@ -2464,6 +2464,7 @@ export function HypeCardEditor() {
         : `Hype Card added to Athlete Hype Page for ${shareExpiresInDays} days.`);
       setLinkedExportPending(false);
       if (linkedExport) await handleExport(url);
+      if (!isStatsOnly && !linkedExport) setLocation('/studio/athlete-page');
     } catch (error) {
       console.error(error);
       setNotice(error instanceof Error ? error.message : 'Could not publish the interactive Hype Card.');
