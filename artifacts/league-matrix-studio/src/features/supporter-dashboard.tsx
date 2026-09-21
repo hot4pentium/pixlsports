@@ -527,6 +527,7 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
+          <section className="mobile-hero-banner" data-testid="mobile-hero-banner" aria-label="Athlete and next event">
           {/* Greeting */}
           <div>
             <h1 className="text-[34px] font-black font-display tracking-tight text-[#12213A] leading-none" data-testid="text-mobile-greeting">Good {greeting}, {firstName}.</h1>
@@ -582,6 +583,7 @@ export function SupporterDashboardView({
                <p className="text-sm font-medium text-black/60">No upcoming events. Add a game to get recommendations.</p>
             )}
           </div>
+          </section>
 
           {/* Four-Step Weekly Path */}
           <section className="mt-2 px-1" data-testid="section-mobile-weekly-path" aria-label="Weekly progress">
