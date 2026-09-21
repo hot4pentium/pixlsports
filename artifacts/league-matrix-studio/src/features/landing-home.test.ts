@@ -37,6 +37,13 @@ test('before-game-day guidance names the three intended actions', () => {
   assert.doesNotMatch(landingSource, /Keep locations and times current/);
 });
 
+test('before-game-day guidance includes the uploaded checklist video', () => {
+  assert.match(landingSource, /Plan-Checklist_1789955681318\.mp4/);
+  assert.match(landingSource, /<video/);
+  assert.match(landingSource, /autoPlay/);
+  assert.match(landingSource, /playsInline/);
+});
+
 test('landing athlete ticker protects the page width and respects reduced motion', () => {
   assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow-x: auto;/);
   assert.match(landingStyles, /overscroll-behavior-x: none/);

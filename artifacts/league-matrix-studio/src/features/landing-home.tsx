@@ -14,6 +14,7 @@ import basketballAthlete from '../../../../attached_assets/generated_images/land
 import volleyballAthlete from '../../../../attached_assets/generated_images/landing-volleyball-athlete-girl.jpg';
 import baseballAthlete from '../../../../attached_assets/generated_images/landing-baseball-athlete-black.jpg';
 import softballAthlete from '../../../../attached_assets/generated_images/landing-softball-athlete-girl.jpg';
+import planChecklistVideo from '../../../../attached_assets/Plan-Checklist_1789955681318.mp4';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -281,33 +282,48 @@ export function PublicLandingPage() {
               {/* Connecting line for desktop */}
               <div className="hidden md:block absolute top-[68px] left-[10%] right-[10%] h-0.5 bg-landing-text/10" />
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-12 relative z-10">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-16 lg:gap-12 relative z-10">
                 {/* Step 1 */}
-                <div className="flex flex-col">
-                  <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
-                    <div className="w-[116px] h-[116px] rounded-full bg-landing-white flex items-center justify-center">
-                      <span className="font-display text-5xl font-extrabold text-landing-text">01</span>
+                <div className="flex flex-col gap-10 lg:col-span-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+                  <div className="flex flex-col">
+                    <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
+                      <div className="w-[116px] h-[116px] rounded-full bg-landing-white flex items-center justify-center">
+                        <span className="font-display text-5xl font-extrabold text-landing-text">01</span>
+                      </div>
                     </div>
+                    <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center">Before game day</h3>
+                    <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Build the schedule
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Share your event card to keep others up to date
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        Prepare with the game day checklist
+                      </li>
+                    </ul>
                   </div>
-                  <h3 className="font-display text-[32px] font-bold text-landing-text mb-5 text-center">Before game day</h3>
-                  <ul className="space-y-4 text-landing-text/80 text-[17px] font-medium w-full max-w-[280px] mx-auto">
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Build the schedule
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Share your event card to keep others up to date
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                      Prepare with the game day checklist
-                    </li>
-                  </ul>
+                  <div className="flex items-start justify-center lg:pt-2">
+                    <video
+                      src={planChecklistVideo}
+                      autoPlay
+                      muted
+                      loop
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label="Plan and game day checklist video"
+                      className="aspect-square w-full max-w-[360px] rounded-3xl border-4 border-landing-white object-cover shadow-2xl"
+                    />
+                  </div>
                 </div>
 
                 {/* Step 2 */}
-                <div className="flex flex-col">
+                <div className="flex flex-col lg:col-span-1">
                   <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
                     <div className="w-[116px] h-[116px] rounded-full bg-landing-white flex items-center justify-center">
                       <span className="font-display text-5xl font-extrabold text-landing-text">02</span>
@@ -331,7 +347,7 @@ export function PublicLandingPage() {
                 </div>
 
                 {/* Step 3 */}
-                <div className="flex flex-col">
+                <div className="flex flex-col lg:col-span-1">
                   <div className="w-[136px] h-[136px] rounded-full bg-landing-bg border-2 border-landing-text/10 mx-auto flex items-center justify-center mb-8 shadow-sm">
                     <div className="w-[116px] h-[116px] rounded-full bg-landing-primary flex items-center justify-center">
                       <span className="font-display text-5xl font-extrabold text-landing-white">03</span>
