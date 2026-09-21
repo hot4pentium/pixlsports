@@ -487,9 +487,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   margin: -24px -16px 0;
-  padding: 28px 20px 22px;
+  padding: 20px 20px 16px;
   overflow: hidden;
   border: 1px solid rgba(85, 164, 255, .3);
   border-top: 0;
@@ -521,7 +521,8 @@
 
 .pixl-dashboard-mobile .mobile-hero-banner [data-testid="text-mobile-greeting"] {
   color: white;
-  font-size: clamp(2rem, 9vw, 2.8rem);
+  font-size: clamp(1.65rem, 7vw, 2.2rem);
+  line-height: .94;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns {
