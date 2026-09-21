@@ -20,7 +20,25 @@ const SUCCESS_NOTICE_SUFFIXES = [
   ' is ready to copy.',
 ] as const;
 
+const WARNING_NOTICE_PARTS = [
+  'reconnect ',
+  'browser does not support',
+  'browser could not capture',
+  'not supported in this browser',
+  'this browser was not making progress',
+  'this browser could not create a smaller mp4',
+] as const;
+
+export type HypeCardNoticeTone = 'success' | 'warning' | 'error';
+
 export function isHypeCardSuccessNotice(notice: string): boolean {
   return SUCCESS_NOTICE_PREFIXES.some((prefix) => notice.startsWith(prefix))
     || SUCCESS_NOTICE_SUFFIXES.some((suffix) => notice.endsWith(suffix));
+}
+
+export function getHypeCardNoticeTone(notice: string): HypeCardNoticeTone {
+  const normalizedNotice = notice.toLowerCase();
+  if (WARNING_NOTICE_PARTS.some((part) => normalizedNotice.includes(part))) return 'warning';
+  if (isHypeCardSuccessNotice(notice)) return 'success';
+  return 'error';
 }

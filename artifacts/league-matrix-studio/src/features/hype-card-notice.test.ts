@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { isHypeCardSuccessNotice } from './hype-card-notice';
+import { getHypeCardNoticeTone, isHypeCardSuccessNotice } from './hype-card-notice';
 
 const editorSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 
@@ -16,10 +16,28 @@ test('recognizes representative Hype Card readiness, copy, publish, and completi
 
   for (const notice of successNotices) {
     assert.equal(isHypeCardSuccessNotice(notice), true, notice);
+    assert.equal(getHypeCardNoticeTone(notice), 'success', notice);
   }
 });
 
-test('keeps representative Hype Card failures out of the success treatment', () => {
+test('classifies the editor reconnect, offline, and browser compatibility notices as warnings', () => {
+  const warningNotices = [
+    'This media is saved in the cloud but not on this phone. Reconnect to load it.',
+    'You are offline. Reconnect when you want to save it to the cloud.',
+    'Reconnect to publish a player page.',
+    'Your Hype Card is ready on this phone. Reconnect to post it to an Athlete Hype Page.',
+    'Video preparation stopped because this browser was not making progress. The original video will stay local.',
+    'This browser could not create a smaller MP4, so the original video will stay local.',
+    'Exported as WebM because MP4 encoding is not supported in this browser. If this video does not play on your phone, try exporting from a different browser like Chrome.',
+    'The video exported without sound because this browser could not capture the clip audio.',
+  ];
+
+  for (const notice of warningNotices) {
+    assert.equal(getHypeCardNoticeTone(notice), 'warning', notice);
+  }
+});
+
+test('keeps representative Hype Card failures in the error treatment', () => {
   const errorNotices = [
     'Could not publish the interactive Hype Card.',
     'Failed to migrate project to cloud.',
@@ -29,12 +47,15 @@ test('keeps representative Hype Card failures out of the success treatment', () 
 
   for (const notice of errorNotices) {
     assert.equal(isHypeCardSuccessNotice(notice), false, notice);
+    assert.equal(getHypeCardNoticeTone(notice), 'error', notice);
   }
 });
 
-test('renders success notices as accessible green statuses and failures as red alerts', () => {
-  assert.match(editorSource, /isSuccessNotice\s*\?\s*'border-emerald-800 bg-emerald-700 text-white'/);
+test('renders green successes and amber warnings as polite statuses, and red failures as assertive alerts', () => {
+  assert.match(editorSource, /noticeTone === 'success'[\s\S]*?'border-emerald-800 bg-emerald-700 text-white'/);
+  assert.match(editorSource, /noticeTone === 'warning'[\s\S]*?'border-amber-700 bg-amber-300 text-amber-950'/);
   assert.match(editorSource, /:\s*'border-border bg-destructive text-destructive-foreground'/);
-  assert.match(editorSource, /role=\{isSuccessNotice \? 'status' : 'alert'\}/);
-  assert.match(editorSource, /data-tone=\{isSuccessNotice \? 'success' : 'error'\}/);
+  assert.match(editorSource, /role=\{noticeTone === 'error' \? 'alert' : 'status'\}/);
+  assert.match(editorSource, /aria-live=\{noticeTone === 'error' \? 'assertive' : 'polite'\}/);
+  assert.match(editorSource, /data-tone=\{noticeTone\}/);
 });

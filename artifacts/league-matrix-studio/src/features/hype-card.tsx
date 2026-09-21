@@ -55,7 +55,7 @@ import {
   persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
-import { isHypeCardSuccessNotice } from './hype-card-notice';
+import { getHypeCardNoticeTone } from './hype-card-notice';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
@@ -1300,7 +1300,8 @@ export function HypeCardEditor() {
     || notice === 'Share link copied.'
     || notice === 'Stats link copied.'
     || notice.startsWith('Hype Card removed from Athlete Hype Page');
-  const isSuccessNotice = isHypeCardSuccessNotice(notice);
+  const noticeTone = getHypeCardNoticeTone(notice);
+  const isSuccessNotice = noticeTone === 'success';
   mutateFnRef.current = updateProjectMutation.mutateAsync;
 
   useEffect(() => {
@@ -2594,10 +2595,12 @@ export function HypeCardEditor() {
 
       {notice && (
         <div className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-2 text-sm font-bold ${
-          isSuccessNotice
+          noticeTone === 'success'
             ? 'border-emerald-800 bg-emerald-700 text-white'
-            : 'border-border bg-destructive text-destructive-foreground'
-        }`} role={isSuccessNotice ? 'status' : 'alert'} aria-live={isSuccessNotice ? 'polite' : 'assertive'} data-testid="hype-card-notice" data-tone={isSuccessNotice ? 'success' : 'error'}>
+            : noticeTone === 'warning'
+              ? 'border-amber-700 bg-amber-300 text-amber-950'
+              : 'border-border bg-destructive text-destructive-foreground'
+        }`} role={noticeTone === 'error' ? 'alert' : 'status'} aria-live={noticeTone === 'error' ? 'assertive' : 'polite'} data-testid="hype-card-notice" data-tone={noticeTone}>
           {notice}
           <div className="flex shrink-0 items-center gap-2">
             {isShareSuccessNotice && successShare && shareMode === 'stats' && (
