@@ -583,6 +583,14 @@ export function LiveTrackerGame({
     setShowBaseballPitchChoices(false);
   };
 
+  const handleMediaSelection = (kind: 'photo' | 'video', event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (typeof input.blur === 'function') input.blur();
+    onCapture(kind, file);
+  };
+
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
@@ -617,13 +625,13 @@ export function LiveTrackerGame({
               <Camera className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Take a photo</span>
               <span className="sr-only sm:hidden">Take a photo</span>
-              <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { onCapture('photo', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Take a photo of this game" data-testid="input-stat-tracker-capture-photo" />
+              <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => handleMediaSelection('photo', event)} aria-label="Take a photo of this game" data-testid="input-stat-tracker-capture-photo" />
             </label>
             <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 border border-white/20 bg-white/5 px-2.5 py-2 text-[10px] font-bold uppercase tracking-widest text-white/75 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-within:border-primary focus-within:text-primary sm:min-h-11 sm:px-3" data-testid="label-stat-tracker-capture-video">
               <Video className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Record a video</span>
               <span className="sr-only sm:hidden">Record a video</span>
-              <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => { onCapture('video', event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
+              <input type="file" accept="video/*" capture="environment" className="sr-only" onChange={(event) => handleMediaSelection('video', event)} aria-label="Record a video of this game" data-testid="input-stat-tracker-capture-video" />
             </label>
           </div>
           {captureNotice && <p className="mt-3 truncate text-[10px] font-bold uppercase tracking-widest text-primary" role="status" data-testid="status-stat-tracker-capture-notice">{captureNotice}</p>}

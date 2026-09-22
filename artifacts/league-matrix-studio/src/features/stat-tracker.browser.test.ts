@@ -197,7 +197,9 @@ function TrackerHarness() {
           showAllStats: false,
           saving: false,
           captureNotice: '',
-          onCapture: () => {},
+          onCapture: (kind, file) => {
+            window.__captureResult = { kind, hasFile: Boolean(file) };
+          },
            onGameChange: persistActiveGame,
           onToggleShowAllStats: () => {},
            onLeaveGame: () => persistActiveGame(null),
@@ -384,6 +386,20 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("#manual-game-setup") !== null', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-confirm-start-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
+
+    await connection.evaluate(`(() => {
+      const input = document.querySelector('[data-testid="input-stat-tracker-capture-photo"]');
+      input?.focus();
+      input?.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid") !== "input-stat-tracker-capture-photo"', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.documentElement.scrollWidth <= document.documentElement.clientWidth && window.innerWidth === 390',
+        page.sessionId,
+      ),
+      true,
+    );
 
     assert.equal(
       await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"toggle-football-yard-tracking\\"]")?.checked === true', page.sessionId),
