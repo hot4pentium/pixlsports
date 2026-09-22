@@ -600,12 +600,6 @@ export function SupporterDashboardView({
                 <Link href="/studio" className="flex items-center justify-between bg-[#12213A] p-4 text-lg font-display tracking-wide text-white" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-home">
                   GAME DAY HUB <ArrowRight className="h-5 w-5 text-[#55A4FF]" />
                 </Link>
-                <Link href="/help" className="flex items-center justify-between bg-black/5 p-4 text-lg font-display tracking-wide text-[#12213A]" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-help">
-                  HELP <ArrowRight className="h-5 w-5 text-[#2474F5]" />
-                </Link>
-                <Link href="/privacy" className="flex items-center justify-between bg-black/5 p-4 text-lg font-display tracking-wide text-[#12213A]" onClick={() => setMobileMenuOpen(false)} data-testid="link-mobile-dashboard-privacy">
-                  PRIVACY <ArrowRight className="h-5 w-5 text-[#2474F5]" />
-                </Link>
                 {onSignOut && (
                   <button type="button" onClick={() => { setMobileMenuOpen(false); onSignOut(); }} className="flex w-full items-center justify-between bg-black/5 p-4 text-left text-lg font-display tracking-wide text-destructive" data-testid="btn-mobile-dashboard-sign-out">
                     SIGN OUT <ArrowRight className="h-5 w-5" />
@@ -801,6 +795,11 @@ export function SupporterDashboardView({
              );
           })()}
         </div>
+
+        <footer className="mx-4 mt-8 flex items-center justify-center gap-6 border-t border-[#12213A]/15 pt-5 text-xs font-bold uppercase tracking-wider text-[#334969]">
+          <Link href="/help" className="hover:text-[#2474F5]" data-testid="link-mobile-dashboard-footer-help">Help / FAQ</Link>
+          <Link href="/privacy" className="hover:text-[#2474F5]" data-testid="link-mobile-dashboard-footer-privacy">Privacy</Link>
+        </footer>
 
         {/* Bottom Navigation */}
         <nav
