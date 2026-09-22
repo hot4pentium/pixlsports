@@ -60,7 +60,7 @@ import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } fro
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
-import { MAX_HOSTED_VIDEO_BYTES, prepareHypeCardShareMedia } from './hype-card-share';
+import { MAX_HOSTED_VIDEO_BYTES, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
 import { sports, getSportRule, normalizeTrackerData, type GameSession } from './stat-tracker';
 import { getUserProfile, seedHypeCardFromSupporterProfile } from './supporter-dashboard-model';
 import { LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from './privacy-copy';
@@ -2391,23 +2391,55 @@ export function HypeCardEditor() {
         setShareStage('Creating the finalized stats link…');
       } else if (project.mediaType === 'video' && videoUrl && videoRef.current) {
         setShareStage('Preparing a web-friendly video for the Athlete Hype Page…');
-        const prepared = await prepareHypeCardShareMedia(videoRef.current, project, setShareProgress, {
-          signal: shareAbortController.signal,
-        });
+        const prepared = await prepareHypeCardShareMedia(
+          videoRef.current,
+          project,
+          (progress) => setShareProgress(progress * 0.6),
+          {
+            signal: shareAbortController.signal,
+          },
+        );
         const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
         if (prepared.video.size > MAX_HOSTED_VIDEO_BYTES) {
           throw new Error('The prepared video is too large for the Athlete Hype Page. Choose a shorter clip or download the Hype Card to this device instead.');
         }
+        setShareProgress(0.6);
         setShareStage('Uploading the prepared video and poster…');
         const [videoUpload, posterUpload] = await Promise.all([
           requestHypeCardShareUploadUrl({ mediaKind: 'video', contentType: videoContentType }),
           requestHypeCardShareUploadUrl({ mediaKind: 'poster', contentType: 'image/jpeg' }),
         ]);
-        const uploadResponses = await Promise.all([
-          fetch(videoUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': videoContentType }, body: prepared.video, signal: shareAbortController.signal }),
-          fetch(posterUpload.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: prepared.poster, signal: shareAbortController.signal }),
+        const uploadBytes = {
+          video: 0,
+          poster: 0,
+        };
+        const totalUploadBytes = prepared.video.size + prepared.poster.size;
+        const updateUploadProgress = () => {
+          const transferred = uploadBytes.video + uploadBytes.poster;
+          setShareProgress(0.6 + (totalUploadBytes ? transferred / totalUploadBytes : 0) * 0.3);
+        };
+        await Promise.all([
+          uploadHypeCardShareMedia(
+            videoUpload.uploadUrl,
+            prepared.video,
+            videoContentType,
+            shareAbortController.signal,
+            (progress) => {
+              uploadBytes.video = prepared.video.size * progress;
+              updateUploadProgress();
+            },
+          ),
+          uploadHypeCardShareMedia(
+            posterUpload.uploadUrl,
+            prepared.poster,
+            'image/jpeg',
+            shareAbortController.signal,
+            (progress) => {
+              uploadBytes.poster = prepared.poster.size * progress;
+              updateUploadProgress();
+            },
+          ),
         ]);
-        if (uploadResponses.some((response) => !response.ok)) throw new Error('The prepared media could not be uploaded.');
         setShareProgress(0.9);
 
         const duration = Math.max(0.1, project.trimEnd - project.trimStart);
@@ -3249,6 +3281,7 @@ export function HypeCardEditor() {
               <div
                 className="h-2 overflow-hidden bg-muted"
                 role="progressbar"
+                aria-label={`${shareStage || 'Preparing share link'} ${Math.round(shareProgress * 100)}%`}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(shareProgress * 100)}
@@ -3257,7 +3290,7 @@ export function HypeCardEditor() {
               </div>
             </div>
             {shareMode === 'card' && (
-              <Button type="button" variant="outline" onClick={cancelSharePublish} className="mt-5 w-full rounded-none clip-angled-sm">
+              <Button type="button" variant="outline" onClick={cancelSharePublish} aria-label="Cancel Athlete Hype Page upload" className="mt-5 w-full rounded-none clip-angled-sm">
                 Cancel upload
               </Button>
             )}

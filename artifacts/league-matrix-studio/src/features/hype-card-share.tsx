@@ -9,6 +9,67 @@ function abortError() {
   return error;
 }
 
+export function uploadHypeCardShareMedia(
+  uploadUrl: string,
+  blob: Blob,
+  contentType: string,
+  signal: AbortSignal | undefined,
+  onProgress: (progress: number) => void,
+) {
+  return new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    let settled = false;
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback();
+    };
+    const onAbort = () => {
+      request.abort();
+      settle(() => reject(abortError()));
+    };
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+
+    request.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.min(1, event.loaded / event.total));
+      }
+    });
+    request.addEventListener('load', () => {
+      if (request.status >= 200 && request.status < 300) {
+        onProgress(1);
+        settle(resolve);
+      } else {
+        settle(() => reject(new Error('The prepared media could not be uploaded.')));
+      }
+    });
+    request.addEventListener('error', () => {
+      settle(() => reject(new Error('The prepared media could not be uploaded.')));
+    });
+    request.addEventListener('abort', () => {
+      settle(() => reject(abortError()));
+    });
+    signal?.addEventListener('abort', onAbort, { once: true });
+
+    try {
+      request.open('PUT', uploadUrl);
+      request.setRequestHeader('Content-Type', contentType);
+      request.send(blob);
+    } catch (error) {
+      settle(() => reject(error instanceof Error ? error : new Error('The prepared media could not be uploaded.')));
+    }
+  });
+}
+
 function seekVideo(video: HTMLVideoElement, time: number, signal?: AbortSignal) {
   if (Math.abs(video.currentTime - time) < 0.02) return Promise.resolve();
   return new Promise<void>((resolve, reject) => {

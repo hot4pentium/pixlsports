@@ -44,8 +44,23 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
   assert.match(editorSource, /data-testid="text-hosted-video-preparation"/);
   assert.match(editorSource, /MAX_HOSTED_VIDEO_BYTES/);
   assert.match(editorSource, /prepared\.video\.size > MAX_HOSTED_VIDEO_BYTES/);
+  assert.match(editorSource, /uploadHypeCardShareMedia\(/);
+  assert.match(editorSource, /totalUploadBytes = prepared\.video\.size \+ prepared\.poster\.size/);
+  assert.match(editorSource, /0\.6 \+ \(totalUploadBytes \? transferred \/ totalUploadBytes : 0\) \* 0\.3/);
   assert.match(editorSource, /signal: shareAbortController\.signal/);
+  assert.match(editorSource, /aria-label=\{`\$\{shareStage \|\| 'Preparing share link'\}/);
   assert.match(editorSource, /cancelSharePublish/);
+});
+
+test('hosted video uploads report byte progress and abort through the shared request', () => {
+  const shareSource = readFileSync(new URL('./hype-card-share.tsx', import.meta.url), 'utf8');
+
+  assert.match(shareSource, /new XMLHttpRequest\(\)/);
+  assert.match(shareSource, /request\.upload\.addEventListener\('progress'/);
+  assert.match(shareSource, /onProgress\(Math\.min\(1, event\.loaded \/ event\.total\)\)/);
+  assert.match(shareSource, /signal\?\.addEventListener\('abort', onAbort/);
+  assert.match(shareSource, /request\.abort\(\)/);
+  assert.match(shareSource, /request\.status >= 200 && request\.status < 300/);
 });
 
 test('stats URL markup stays optional and readable inside every SVG output format', () => {
