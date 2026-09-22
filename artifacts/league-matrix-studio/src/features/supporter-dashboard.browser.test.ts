@@ -2129,6 +2129,59 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") === null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"desktop-athlete-photo\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
+    const desktopFraming = await connection.evaluate<{
+      objectPosition: string;
+      transform: string;
+      cardRadius: string;
+      cardWidth: number;
+      cardHeight: number;
+      editVisible: boolean;
+      details: string;
+    }>(`(() => {
+        const desktopCard = document.querySelector('[data-testid="desktop-athlete-photo"]');
+        const desktopImage = desktopCard?.querySelector('img');
+        const editButton = document.querySelector('[data-testid="btn-edit-athlete-avatar"]');
+        const desktopRect = desktopCard?.getBoundingClientRect();
+        const editRect = editButton?.getBoundingClientRect();
+        return {
+          objectPosition: desktopImage?.style.objectPosition || '',
+          transform: desktopImage?.style.transform || '',
+          cardRadius: desktopCard ? getComputedStyle(desktopCard).borderRadius : '',
+          cardWidth: desktopRect ? Math.round(desktopRect.width) : 0,
+          cardHeight: desktopRect ? Math.round(desktopRect.height) : 0,
+          editVisible: Boolean(editButton && editRect && editRect.width > 0 && editRect.height > 0),
+          details: document.querySelector('[data-testid="athlete-summary"]')?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+        };
+      })()`, page.sessionId);
+    assert.deepEqual(
+      {
+        objectPosition: desktopFraming.objectPosition,
+        transform: desktopFraming.transform,
+        cardRadius: desktopFraming.cardRadius,
+      },
+      {
+        objectPosition: '72% 34%',
+        transform: 'scale(1.85)',
+        cardRadius: '20px',
+      },
+    );
+    assert.ok(desktopFraming.cardWidth >= 132 && desktopFraming.cardHeight >= 220);
+    assert.equal(desktopFraming.editVisible, true);
+    assert.match(desktopFraming.details, /Taylor Morgan/);
+    assert.match(desktopFraming.details, /Northside Comets/);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 320,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-mobile-athlete-switcher\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
     assert.deepEqual(
       await connection.evaluate(`(() => {

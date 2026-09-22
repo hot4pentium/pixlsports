@@ -1253,10 +1253,18 @@
   }
 
   .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] .dashboard-athlete-avatar {
-    width: 116px;
-    height: 116px;
+    flex: 0 0 clamp(132px, 38%, 190px);
+    width: clamp(132px, 38%, 190px);
+    height: clamp(176px, 18vw, 232px);
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: 20px;
     border-width: 2px;
     box-shadow: 0 0 28px rgba(85, 164, 255, .42);
+  }
+
+  .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] .dashboard-athlete-avatar > div {
+    border-radius: inherit;
   }
 
   .pixl-dashboard .dashboard-hero-banner > [data-testid="section-next-game-context"] {
