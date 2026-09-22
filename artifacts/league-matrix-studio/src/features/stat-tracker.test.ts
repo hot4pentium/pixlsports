@@ -303,6 +303,35 @@ test('team card and athlete avatar taps preserve separate attribution during rap
   assert.deepEqual(changedGame.events.map((event) => event.attribution), ['team', 'athlete', 'team']);
   assert.deepEqual(countStatEventsByAttribution(changedGame, 'three-point'), { team: 2, athlete: 1 });
   assert.equal(changedGame.stats['three-point'], 3);
+
+  act(() => {
+    renderer.update(createElement(LiveTrackerGame, {
+      currentGame: changedGame,
+      rule,
+      athleteName: 'Jordan Lee',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+  const highlightedCard = renderer.root.findByProps({ 'data-testid': 'live-stat-card-three-point' });
+  assert.equal(highlightedCard.props['data-athlete-assigned'], 'true');
+  assert.match(highlightedCard.props.className, /border-accent/);
+  assert.equal(
+    renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' }).props['aria-describedby'],
+    'athlete-assignment-three-point',
+  );
+  assert.match(
+    renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-three-point' }).props.className,
+    /ring-accent/,
+  );
 });
 
 test('an earlier play can move to the athlete without changing later plays or totals', () => {

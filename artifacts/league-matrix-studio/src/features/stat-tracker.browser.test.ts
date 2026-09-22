@@ -431,6 +431,22 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "5"', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true }))', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "10"', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"athlete-stat-target-pass-reception\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.dataset.athleteAssigned === "true"', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.className.includes("border-accent") && document.querySelector("[data-testid=\\"athlete-stat-target-pass-reception\\"]")?.className.includes("ring-accent")',
+        page.sessionId,
+      ),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<string>(
+        'document.querySelector("[data-testid=\\"live-stat-pass-reception\\"]")?.getAttribute("aria-describedby") || ""',
+        page.sessionId,
+      ),
+      'athlete-assignment-pass-reception',
+    );
 
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-rush-yard\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-rush-yard\\"]")?.disabled === false', Boolean);
@@ -519,7 +535,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid^=\\"history-card-\\"]")?.textContent || ""', page.sessionId),
-      'vs Northside 7 plays',
+      'vs Northside 9 plays',
     );
     assert.equal(
       await connection.evaluate<boolean>(
