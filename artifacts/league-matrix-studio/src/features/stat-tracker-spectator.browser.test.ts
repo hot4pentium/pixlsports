@@ -96,6 +96,17 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     assert.match(firstBody, /Loading live scoreboard|Scoreboard Unavailable|Falcons/);
     const initial = await connection.evaluate<string>('document.body.textContent || ""',page.sessionId);
     assert.match(initial,/14/); assert.match(initial,/LIVE/); assert.match(initial,/Pass yard/);
+    assert.match(initial,/Game day \/ live feed/);
+    assert.equal(await connection.evaluate<boolean>('document.querySelector(`[data-testid="scoreboard-hero"]`) !== null && document.querySelector(`[data-testid="stat-tracker-period"]`)?.textContent === "2"',page.sessionId),true);
+    await connection.send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false},page.sessionId);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("main")?.getBoundingClientRect().width > 900 && document.querySelector("[data-testid=\\"stat-tracker-scores\\"]")?.getBoundingClientRect().width > document.querySelector("[data-testid=\\"stat-tracker-recent-activity\\"]")?.getBoundingClientRect().width',
+        page.sessionId,
+      ),
+      true,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
     assert.equal(await connection.evaluate<boolean>('!document.body.textContent.includes("private note") && !document.body.textContent.includes("Game notes") && !document.body.textContent.includes("Revoke link") && !document.body.textContent.includes("Play-by-play editor")',page.sessionId),true);
     await connection.evaluate('window.__poll404(); window.__poll()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null', Boolean);
