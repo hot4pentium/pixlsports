@@ -23,3 +23,13 @@ test('private media upload progress can be cancelled without deleting local medi
   assert.match(editorSource, /if \(!cancelled && next !== project\) \{\s*await Promise\.all\(obsoleteLocalIds\.map/);
   assert.match(editorSource, /Your local media is safe; retry cloud sync to continue/);
 });
+
+test('a refreshed pending video draft retains every local rendition for retry', () => {
+  assert.match(editorSource, /initialCloudDraft\.syncState === 'pending' \? 'Waiting to sync'/);
+  assert.match(editorSource, /saveHypeCardCloudDraft\(cloudProjectId, window\.localStorage, \{\s*project: projectForLocalSave\(project\),\s*syncState: 'pending'/);
+  assert.match(editorSource, /const posterId = `\$\{id\}-poster`/);
+  assert.match(editorSource, /await saveMediaBlob\(posterId, posterBlob\)/);
+  assert.match(editorSource, /const localPoster = next\.posterMediaId\s*\?\s*await loadMediaBlob\(next\.posterMediaId\)/);
+  assert.match(editorSource, /if \(next\.posterMediaId && !isCloudMediaId\(next\.posterMediaId\)\) \{\s*obsoleteLocalIds\.push\(next\.posterMediaId\);/);
+  assert.match(editorSource, /nextSaveDataRef\.current = project;\s*setSaveStatus\('Waiting to sync'\);\s*void processNextSaveRef\.current\(\)/);
+});

@@ -1730,6 +1730,15 @@ export function HypeCardEditor() {
     const syncAbortController = new AbortController();
     mediaSyncRef.current = true;
     mediaSyncAbortRef.current = syncAbortController;
+    try {
+      saveHypeCardCloudDraft(cloudProjectId, window.localStorage, {
+        project: projectForLocalSave(project),
+        syncState: 'pending',
+        cloudRevision: currentRevision.current,
+      });
+    } catch {
+      // The regular autosave path will surface storage failures without stopping media recovery.
+    }
 
     void (async () => {
       let next = project;
@@ -1780,12 +1789,16 @@ export function HypeCardEditor() {
           && next.mediaId
           && next.downloadMediaId
           && !isCloudMediaId(next.mediaId)
-          && !isCloudMediaId(next.downloadMediaId);
+          && !isCloudMediaId(next.downloadMediaId)
+          && (!next.posterMediaId || !isCloudMediaId(next.posterMediaId));
         if (localVideoReady) {
+          const localPoster = next.posterMediaId
+            ? await loadMediaBlob(next.posterMediaId)
+            : undefined;
           const [preview, download, poster] = await Promise.all([
             loadMediaBlob(next.mediaId!),
             loadMediaBlob(next.downloadMediaId!),
-            next.photo ? fetch(next.photo).then((response) => response.blob()) : Promise.resolve(undefined),
+            localPoster ?? (next.photo ? fetch(next.photo).then((response) => response.blob()) : Promise.resolve(undefined)),
           ]);
           if (preview && download && poster && !cancelled && !syncAbortController.signal.aborted) {
             const uploadBytes: Record<'preview' | 'download' | 'poster', number> = {
@@ -1840,6 +1853,9 @@ export function HypeCardEditor() {
               }
             }));
             obsoleteLocalIds.push(next.mediaId!, next.downloadMediaId!);
+            if (next.posterMediaId && !isCloudMediaId(next.posterMediaId)) {
+              obsoleteLocalIds.push(next.posterMediaId);
+            }
             next = {
               ...next,
               mediaId: previewMedia.id,
@@ -2067,12 +2083,16 @@ export function HypeCardEditor() {
 
         const previewId = `${id}-preview`;
         const downloadId = `${id}-download`;
+        const posterId = `${id}-poster`;
         await Promise.all([
           saveMediaBlob(previewId, preparedPreview),
           saveMediaBlob(downloadId, preparedDownload),
         ]);
         if (project.mediaId) await deleteMediaBlob(project.mediaId).catch(console.warn);
         if (project.downloadMediaId) await deleteMediaBlob(project.downloadMediaId).catch(console.warn);
+        if (project.posterMediaId && !isCloudMediaId(project.posterMediaId)) {
+          await deleteMediaBlob(project.posterMediaId).catch(console.warn);
+        }
         setVideoUrl(playbackUrl);
         
         // Generate poster for project.photo as fallback
@@ -2087,12 +2107,19 @@ export function HypeCardEditor() {
           poster = cv.toDataURL('image/jpeg', 0.8);
         } catch (e) {}
 
+        const posterBlob = poster
+          ? await fetch(poster).then((response) => response.blob())
+          : null;
+        if (posterBlob) {
+          await saveMediaBlob(posterId, posterBlob);
+        }
+
         setProject(curr => ({
           ...curr,
           mediaType: 'video',
           mediaId: previewId,
           downloadMediaId: downloadId,
-          posterMediaId: null,
+          posterMediaId: posterBlob ? posterId : null,
           videoPrepared: conversionSucceeded,
           videoMeta: {
             name: preparedVideo.type.includes('mp4')
