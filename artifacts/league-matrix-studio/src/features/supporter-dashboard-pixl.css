@@ -739,11 +739,7 @@
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns [data-testid="btn-mobile-athlete-switcher"] > svg {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
+  display: none;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns [data-testid="card-mobile-featured-event"] {
