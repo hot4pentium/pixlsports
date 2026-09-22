@@ -647,6 +647,8 @@ function ProfilePropagationHarness() {
     }
   });
   const [draft, setDraft] = useState(profile);
+  const [pendingPhoto, setPendingPhoto] = useState(null);
+  const [pendingPhotoCrop, setPendingPhotoCrop] = useState({ x: 50, y: 50, zoom: 100 });
   const [savedCloudProject] = useState({
     playerName: 'Past Season Athlete',
     jerseyNumber: '4',
@@ -671,6 +673,14 @@ function ProfilePropagationHarness() {
     setDraft(profile);
     setRoute('profile');
   };
+  const handlePhotoChange = (file) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setPendingPhoto({ url: String(reader.result || '') });
+      setPendingPhotoCrop({ x: 50, y: 50, zoom: 100 });
+    });
+    reader.readAsDataURL(file);
+  };
   const fanToolNav = createElement('nav', { 'data-testid': 'fan-tool-nav', className: 'flex gap-3 p-4' },
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-dashboard', onClick: () => setRoute('dashboard') }, 'Dashboard'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-stat-tracker', onClick: () => setRoute('tracker') }, 'Stat Tracker'),
@@ -694,11 +704,27 @@ function ProfilePropagationHarness() {
           setRoute('dashboard');
         },
         onCancel: () => setRoute('dashboard'),
-        onPhotoChange: () => {},
-        onPhotoCropChange: () => {},
-        onPhotoUpload: () => {},
-        onPhotoCancel: () => {},
-        onPhotoRemove: () => {},
+         athletePhotoUrl: profile.athleteImageUrl,
+         athletePhotoCrop: profile.athleteImageCrop,
+         pendingPhotoUrl: pendingPhoto?.url,
+         pendingPhotoCrop,
+         onPhotoChange: handlePhotoChange,
+         onPhotoCropChange: setPendingPhotoCrop,
+         onPhotoUpload: () => {
+           if (!pendingPhoto) return;
+           setProfile((current) => ({
+             ...current,
+             athleteImageUrl: pendingPhoto.url,
+             athleteImageCrop: pendingPhotoCrop,
+           }));
+           setPendingPhoto(null);
+         },
+         onPhotoCancel: () => setPendingPhoto(null),
+         onPhotoRemove: () => setProfile((current) => ({
+           ...current,
+           athleteImageUrl: '',
+           athleteImageCrop: undefined,
+         })),
         photoBusy: false,
         photoError: '',
       }),
@@ -1997,6 +2023,84 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       {
         accessibleName: 'Record Three-point field goal for Taylor Morgan',
         fallback: 'TM',
+      },
+    );
+
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-athlete-photo\\"]") !== null', Boolean);
+    await connection.evaluate(`(() => {
+      const input = document.querySelector('[data-testid="input-athlete-photo"]');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Athlete photo input not found');
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([
+        '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="#F97316"/></svg>',
+      ], 'updated-athlete.svg', { type: 'image/svg+xml' }));
+      Object.defineProperty(input, 'files', { value: transfer.files, configurable: true });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") !== null', Boolean);
+    await connection.evaluate(`(() => {
+      const values = { 'Horizontal position': '72', 'Vertical position': '34', 'Zoom': '185' };
+      for (const [label, value] of Object.entries(values)) {
+        const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === label);
+        if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: ' + label);
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      document.querySelector('[data-testid="btn-upload-cropped-photo"]')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") === null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") !== null', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
+        const image = target?.querySelector('img');
+        const rect = target?.getBoundingClientRect();
+        return {
+          imageSource: image?.getAttribute('src') || '',
+          objectPosition: image?.style.objectPosition || '',
+          transform: image?.style.transform || '',
+          width: rect ? rect.width : 0,
+          height: rect ? rect.height : 0,
+          accessibleName: target?.getAttribute('aria-label') || '',
+        };
+      })()`, page.sessionId),
+      {
+        imageSource: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIGZpbGw9IiNGOTczMTYiLz48L3N2Zz4=',
+        objectPosition: '72% 34%',
+        transform: 'scale(1.85)',
+        width: 44,
+        height: 44,
+        accessibleName: 'Record Three-point field goal for Taylor Morgan',
+      },
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-remove-athlete-photo\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="btn-remove-athlete-photo"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") === null', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
+        return {
+          accessibleName: target?.getAttribute('aria-label') || '',
+          fallback: target?.textContent?.trim() || '',
+          width: target?.getBoundingClientRect().width || 0,
+          height: target?.getBoundingClientRect().height || 0,
+        };
+      })()`, page.sessionId),
+      {
+        accessibleName: 'Record Three-point field goal for Taylor Morgan',
+        fallback: 'TM',
+        width: 44,
+        height: 44,
       },
     );
 

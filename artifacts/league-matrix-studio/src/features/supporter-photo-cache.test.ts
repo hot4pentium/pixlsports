@@ -7,15 +7,22 @@ import { clearSupporterPhotoCache, updateSupporterPhotoCache } from './supporter
 test('successful photo removal notifies the active view with no photo immediately', () => {
   const queryClient = new QueryClient();
   const queryKey = getGetSupporterPhotoQueryKey();
+  const accountScopedQueryKey = [...queryKey, 'user-1'];
   queryClient.setQueryData(queryKey, {
     url: '/api/supporter-photo/image',
     contentType: 'image/jpeg',
     size: 123,
     updatedAt: new Date().toISOString(),
   });
+  queryClient.setQueryData(accountScopedQueryKey, {
+    url: '/api/supporter-photo/image',
+    contentType: 'image/jpeg',
+    size: 456,
+    updatedAt: new Date().toISOString(),
+  });
 
   const observer = new QueryObserver(queryClient, {
-    queryKey,
+    queryKey: accountScopedQueryKey,
     queryFn: async () => queryClient.getQueryData(queryKey),
     enabled: false,
   });
@@ -25,6 +32,7 @@ test('successful photo removal notifies the active view with no photo immediatel
   clearSupporterPhotoCache(queryClient);
 
   assert.equal(queryClient.getQueryData(queryKey), null);
+  assert.equal(queryClient.getQueryData(accountScopedQueryKey), null);
   assert.equal(observer.getCurrentResult().data, null);
   assert.equal(observed.at(-1), null);
   unsubscribe();
@@ -33,12 +41,20 @@ test('successful photo removal notifies the active view with no photo immediatel
 test('successful photo save immediately replaces stale crop data in the active view', () => {
   const queryClient = new QueryClient();
   const queryKey = getGetSupporterPhotoQueryKey();
+  const accountScopedQueryKey = [...queryKey, 'user-1'];
   queryClient.setQueryData(queryKey, {
     url: '/api/supporter-photo/image',
     cropX: 50,
     cropY: 50,
     cropZoom: 100,
     updatedAt: '2026-09-17T20:00:00.000Z',
+  });
+  queryClient.setQueryData(accountScopedQueryKey, {
+    url: '/api/supporter-photo/image',
+    cropX: 12,
+    cropY: 88,
+    cropZoom: 110,
+    updatedAt: '2026-09-17T19:00:00.000Z',
   });
   const savedPhoto = {
     url: '/api/supporter-photo/image',
@@ -51,4 +67,5 @@ test('successful photo save immediately replaces stale crop data in the active v
   updateSupporterPhotoCache(queryClient, savedPhoto);
 
   assert.deepEqual(queryClient.getQueryData(queryKey), savedPhoto);
+  assert.deepEqual(queryClient.getQueryData(accountScopedQueryKey), savedPhoto);
 });
