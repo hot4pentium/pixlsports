@@ -230,7 +230,7 @@ export function PublicLandingPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12">
+                  <div className="landing-before-game-day-content grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12">
                     <div className="flex flex-col">
                       <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left" data-testid="landing-before-game-day-title">Before game day</h3>
                       <ul className="mx-auto w-full max-w-[420px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
