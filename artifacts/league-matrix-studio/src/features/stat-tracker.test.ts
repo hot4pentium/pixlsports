@@ -639,6 +639,67 @@ test('football live controls stay disabled until the stat card records one play'
   assert.equal(changedGame.events.at(-3)?.yards, 5);
 });
 
+test('athlete football targets reset inactive yard controls while preserving paired attribution and totals', () => {
+  const game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('football');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+  const renderGame = (currentGame: typeof game) => createElement(LiveTrackerGame, {
+    currentGame,
+    rule,
+    athleteName: 'Jordan',
+    teamName: 'Falcons',
+    displayStats: rule.stats.filter((item) => item.featured),
+    showAllStats: false,
+    saving: false,
+    captureNotice: '',
+    onCapture: () => {},
+    onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+    onToggleShowAllStats: () => {},
+    onLeaveGame: () => {},
+    onEndGame: () => {},
+  });
+
+  act(() => {
+    renderer = create(renderGame(game));
+  });
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-pass-reception' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.onChange({ currentTarget: { value: '12' } }));
+  assert.equal(changedGame.events.length, 2);
+  assert.deepEqual(changedGame.events.map((event) => event.attribution), ['athlete', 'athlete']);
+  assert.deepEqual(changedGame.events.map((event) => event.yards), [12, 12]);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 12);
+  assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-rush-yard' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.disabled, false);
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.onChange({ currentTarget: { value: '7' } }));
+  assert.equal(changedGame.events.at(-1)?.attribution, 'athlete');
+  assert.equal(changedGame.events.at(-1)?.yards, 7);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 12);
+  assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
+  assert.equal(changedGame.yardStats?.['rush-yard'], 7);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-pass-reception' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.value, 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, false);
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.onChange({ currentTarget: { value: '9' } }));
+
+  assert.equal(changedGame.events.length, 5);
+  assert.deepEqual(changedGame.events.map((event) => event.attribution), ['athlete', 'athlete', 'athlete', 'athlete', 'athlete']);
+  assert.deepEqual(changedGame.events.map((event) => event.yards), [12, 12, 7, 9, 9]);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 21);
+  assert.equal(changedGame.yardStats?.['receiving-yard'], 21);
+  assert.equal(changedGame.yardStats?.['rush-yard'], 7);
+});
+
 test('a restored football game can correct an earlier yard play without changing unrelated plays', () => {
   let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   game = addStatEvent(game, 'pass-yard', new Date('2026-09-17T12:01:00Z'), 5);
