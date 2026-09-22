@@ -650,6 +650,13 @@
   align-items: stretch;
 }
 
+@media (min-width: 480px) {
+  .pixl-dashboard-mobile .mobile-hero-columns {
+    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+    justify-content: center;
+  }
+}
+
 .pixl-dashboard-mobile .mobile-hero-banner [data-testid="btn-mobile-athlete-switcher"] {
   display: flex;
   align-items: center;
