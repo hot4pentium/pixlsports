@@ -197,9 +197,7 @@ function TrackerHarness() {
           showAllStats: false,
           saving: false,
           captureNotice: '',
-          onCapture: (kind, file) => {
-            window.__captureResult = { kind, hasFile: Boolean(file) };
-          },
+          onCapture: () => {},
            onGameChange: persistActiveGame,
           onToggleShowAllStats: () => {},
            onLeaveGame: () => persistActiveGame(null),
