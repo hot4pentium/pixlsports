@@ -30,6 +30,7 @@ import {
   type ScheduleEventStatus,
 } from './schedule-draft';
 import {
+  addFootballPassReception,
   addStatEvent,
   adjustYardValue,
   adjustScore,
@@ -485,10 +486,22 @@ type LiveTrackerGameProps = {
 function latestYardEventIds(game: GameSession) {
   if (game.sport !== 'football' || game.trackYards !== true) return {};
   return game.events.reduce<Record<string, string>>((eventIds, event) => {
-    if (getFootballYardMetricId(event.statId)) eventIds[event.statId] = event.id;
+    if (getFootballYardMetricId(event.statId)) {
+      const controlId = event.statId === 'pass-yard' || event.statId === 'reception'
+        ? 'pass-reception'
+        : event.statId;
+      eventIds[controlId] = event.id;
+    }
     return eventIds;
   }, {});
 }
+
+const footballPassReceptionStat: StatDefinition = {
+  id: 'pass-reception',
+  label: 'Pass + reception',
+  shortLabel: 'PASS / REC',
+  points: 0,
+};
 
 export function LiveTrackerGame({
   currentGame,
@@ -555,8 +568,11 @@ export function LiveTrackerGame({
 
   const selectYardEvent = (event: GameSession['events'][number]) => {
     if (!getFootballYardMetricId(event.statId)) return;
-    setActiveYardEventIds((current) => ({ ...current, [event.statId]: event.id }));
-    setYardDrafts((current) => ({ ...current, [event.statId]: event.yards ?? 0 }));
+    const controlId = currentGame.sport === 'football' && (event.statId === 'pass-yard' || event.statId === 'reception')
+      ? 'pass-reception'
+      : event.statId;
+    setActiveYardEventIds((current) => ({ ...current, [controlId]: event.id }));
+    setYardDrafts((current) => ({ ...current, [controlId]: event.yards ?? 0 }));
   };
 
   const recordStat = (item: StatDefinition, attribution: StatAttribution) => {
@@ -568,14 +584,13 @@ export function LiveTrackerGame({
       setBaseballPitchAttribution((current) => current === attribution ? null : attribution);
       return;
     }
-    const yardMetricId = yardTrackingEnabled ? getFootballYardMetricId(item.id) : null;
-    const nextGame = addStatEvent(
-      currentGameRef.current,
-      item.id,
-      new Date(),
-      0,
-      attribution,
-    );
+    const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
+    const yardMetricId = yardTrackingEnabled
+      ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))
+      : null;
+    const nextGame = isCombinedPassReception
+      ? addFootballPassReception(currentGameRef.current, new Date(), 0, attribution)
+      : addStatEvent(currentGameRef.current, item.id, new Date(), 0, attribution);
     updateCurrentGame(nextGame);
     if (yardMetricId && nextGame.events.length > currentGame.events.length) {
       const eventId = nextGame.events.at(-1)?.id;
@@ -690,9 +705,28 @@ export function LiveTrackerGame({
           </div>
         )}
         <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
-          {displayStats.map((item) => {
-            const yardMetricId = currentGame.sport === 'football' ? getFootballYardMetricId(item.id) : null;
+          {(currentGame.sport === 'football'
+            ? displayStats.filter((item) => item.id !== 'reception').map((item) => item.id === 'pass-yard' ? footballPassReceptionStat : item)
+            : displayStats
+          ).map((item) => {
+            const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
+            const yardMetricId = currentGame.sport === 'football'
+              ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))
+              : null;
             const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
+            const receivingYardTotal = isCombinedPassReception ? currentGame.yardStats?.['receiving-yard'] ?? 0 : 0;
+            const yardSummary = isCombinedPassReception && yardTotal !== receivingYardTotal
+              ? `Pass ${yardTotal} · Rec ${receivingYardTotal} yds`
+              : isCombinedPassReception
+                ? `${yardTotal} yds each`
+                : `${yardTotal} yds`;
+            const statCount = isCombinedPassReception
+              ? Math.max(currentGame.stats['pass-yard'] ?? 0, currentGame.stats.reception ?? 0)
+              : currentGame.sport === 'baseball' && item.id === 'hit'
+                ? (currentGame.stats.hit ?? 0) + baseballHitChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
+                : currentGame.sport === 'baseball' && item.id === 'pitch'
+                  ? (currentGame.stats.pitch ?? 0) + baseballPitchChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
+                  : currentGame.stats[item.id] ?? 0;
             const activeYardEventId = yardMetricId ? activeYardEventIds[item.id] : undefined;
             const activeYardEvent = activeYardEventId
               ? currentGame.events.find((event) => event.id === activeYardEventId)
@@ -701,17 +735,20 @@ export function LiveTrackerGame({
             const yardDraft = yardControlEnabled
               ? yardDrafts[item.id] ?? activeYardEvent?.yards ?? 0
               : 0;
-            const statCount = currentGame.sport === 'baseball' && item.id === 'hit'
-              ? (currentGame.stats.hit ?? 0) + baseballHitChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
-              : currentGame.sport === 'baseball' && item.id === 'pitch'
-                ? (currentGame.stats.pitch ?? 0) + baseballPitchChoices.reduce((total, choice) => total + (currentGame.stats[choice.id] ?? 0), 0)
-              : currentGame.stats[item.id] ?? 0;
             const attributedStatIds = currentGame.sport === 'baseball' && item.id === 'hit'
               ? ['hit', ...baseballHitChoices.map((choice) => choice.id)]
               : currentGame.sport === 'baseball' && item.id === 'pitch'
                 ? ['pitch', ...baseballPitchChoices.map((choice) => choice.id)]
+                : isCombinedPassReception
+                  ? ['pass-yard', 'reception']
                 : item.id;
-            const attributedCounts = countStatEventsByAttribution(currentGame, attributedStatIds);
+            const rawAttributedCounts = countStatEventsByAttribution(currentGame, attributedStatIds);
+            const attributedCounts = isCombinedPassReception
+              ? {
+                team: Math.ceil(rawAttributedCounts.team / 2),
+                athlete: Math.ceil(rawAttributedCounts.athlete / 2),
+              }
+              : rawAttributedCounts;
             const choicesAttribution = item.id === 'hit' ? baseballHitAttribution : baseballPitchAttribution;
             return (
               <div key={item.id} data-testid={`live-stat-card-${item.id}`} className="relative min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
@@ -720,7 +757,7 @@ export function LiveTrackerGame({
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
                   <span className="mt-1 block truncate text-xs font-bold text-primary-ink">
                     {statCount}
-                    {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardTotal} yds` : ' · tracked'}
+                    {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardSummary}` : ' · tracked'}
                   </span>
                   <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Team {attributedCounts.team} · {athleteTargetName} {attributedCounts.athlete}</span>
                 </button>

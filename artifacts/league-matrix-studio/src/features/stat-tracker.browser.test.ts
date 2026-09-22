@@ -405,7 +405,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '["pass-yard", "rush-yard", "reception"].every((id) => document.querySelector(`[data-testid="input-yard-${id}"]`) !== null)',
+        '["pass-reception", "rush-yard"].every((id) => document.querySelector(`[data-testid="input-yard-${id}"]`) !== null)',
         page.sessionId,
       ),
       true,
@@ -425,22 +425,18 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       true,
     );
 
-    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-pass-yard\\"]")?.click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.disabled === false', Boolean);
-    await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.focus(); document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }))', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.value === "5"', Boolean);
-    await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true }))', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.value === "10"', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-pass-reception\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.disabled === false', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.focus(); document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }))', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "5"', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true }))', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "10"', Boolean);
 
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-rush-yard\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-rush-yard\\"]")?.disabled === false', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-rush-yard-increase\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-rush-yard\\"]")?.value === "5"', Boolean);
 
-    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-reception\\"]")?.click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.disabled === false', Boolean);
-    await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-reception-increase\\"]")?.click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-reception\\"]")?.value === "5"', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click(); document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1") && document.querySelector("[data-testid=\\"live-stat-card-tackle\\"]")?.textContent.includes("1")', Boolean);
     assert.equal(
@@ -476,7 +472,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '["pass-yard", "rush-yard", "reception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
+        '["pass-reception", "rush-yard", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
         page.sessionId,
       ),
       true,
@@ -484,13 +480,13 @@ test('stat tracker protects scheduled, live football, and completed-game states 
 
     await connection.evaluate('window.location.reload()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"live-tracker-score-card-athlete\\"]")?.textContent.includes("8") && document.querySelector("[data-testid=\\"live-tracker-score-card-opponent\\"]")?.textContent.includes("2")', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.disabled === false && document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.value === "10"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.disabled === false && document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "10"', Boolean);
     await connection.evaluate(
       'Array.from(document.querySelectorAll("[data-testid^=\\"button-correct-yards-\\"]")).find((button) => button.closest("[data-testid^=\\"recent-activity-\\"]")?.textContent?.includes("Passing yards"))?.click()',
       page.sessionId,
     );
-    await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-pass-yard-decrease\\"]")?.click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-yard\\"]")?.value === "9" && document.querySelector("[data-testid=\\"live-stat-card-pass-yard\\"]")?.textContent.includes("9 yds")', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"yard-adjust-pass-reception-decrease\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "9" && document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.textContent.includes("9 yds each")', Boolean);
 
     await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
@@ -516,7 +512,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-report-overlay\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>(
-        '["pass-yard", "rush-yard", "receiving-yard"].every((id) => document.querySelector(`[data-testid="report-yard-${id}"]`)?.textContent?.includes(id === "pass-yard" ? "9" : "5"))',
+        '["pass-yard", "rush-yard", "receiving-yard"].every((id) => document.querySelector(`[data-testid="report-yard-${id}"]`)?.textContent?.includes(id === "pass-yard" || id === "receiving-yard" ? "9" : "5"))',
         page.sessionId,
       ),
       true,

@@ -27,6 +27,7 @@ export function toStatTrackerShareInput(
         createdAt: event.createdAt,
         period: event.period,
         attribution: event.attribution === 'athlete' ? 'athlete' : 'team',
+        ...(event.playId ? { playId: event.playId } : {}),
         yards: typeof event.yards === 'number' && Number.isFinite(event.yards) ? event.yards : null,
       })),
     },

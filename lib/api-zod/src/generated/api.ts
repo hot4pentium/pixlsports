@@ -528,6 +528,8 @@ export const listStatTrackerSharesResponseOneGameEventsItemIdMax = 160;
 export const listStatTrackerSharesResponseOneGameEventsItemStatIdMax = 80;
 
 
+export const listStatTrackerSharesResponseOneGameEventsItemPlayIdMax = 160;
+
 export const listStatTrackerSharesResponseOneGameEventsItemYardsMin = 0;
 
 export const listStatTrackerSharesResponseOneGameEventsMax = 10;
@@ -556,6 +558,7 @@ export const ListStatTrackerSharesResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "playId": zod.string().min(1).max(listStatTrackerSharesResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(listStatTrackerSharesResponseOneGameEventsItemYardsMin).nullable()
 })).max(listStatTrackerSharesResponseOneGameEventsMax)
 })
@@ -597,6 +600,8 @@ export const createStatTrackerShareBodyGameEventsItemIdMax = 160;
 export const createStatTrackerShareBodyGameEventsItemStatIdMax = 80;
 
 
+export const createStatTrackerShareBodyGameEventsItemPlayIdMax = 160;
+
 export const createStatTrackerShareBodyGameEventsItemYardsMin = 0;
 
 export const createStatTrackerShareBodyGameEventsMax = 10;
@@ -624,6 +629,7 @@ export const CreateStatTrackerShareBody = zod.object({
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "playId": zod.string().min(1).max(createStatTrackerShareBodyGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(createStatTrackerShareBodyGameEventsItemYardsMin).nullable()
 })).max(createStatTrackerShareBodyGameEventsMax)
 })
@@ -653,6 +659,8 @@ export const createStatTrackerShareResponseOneGameEventsItemIdMax = 160;
 export const createStatTrackerShareResponseOneGameEventsItemStatIdMax = 80;
 
 
+export const createStatTrackerShareResponseOneGameEventsItemPlayIdMax = 160;
+
 export const createStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const createStatTrackerShareResponseOneGameEventsMax = 10;
@@ -681,6 +689,7 @@ export const CreateStatTrackerShareResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "playId": zod.string().min(1).max(createStatTrackerShareResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(createStatTrackerShareResponseOneGameEventsItemYardsMin).nullable()
 })).max(createStatTrackerShareResponseOneGameEventsMax)
 })
@@ -725,6 +734,8 @@ export const getStatTrackerShareResponseOneGameEventsItemIdMax = 160;
 export const getStatTrackerShareResponseOneGameEventsItemStatIdMax = 80;
 
 
+export const getStatTrackerShareResponseOneGameEventsItemPlayIdMax = 160;
+
 export const getStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const getStatTrackerShareResponseOneGameEventsMax = 10;
@@ -753,6 +764,7 @@ export const GetStatTrackerShareResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "playId": zod.string().min(1).max(getStatTrackerShareResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(getStatTrackerShareResponseOneGameEventsItemYardsMin).nullable()
 })).max(getStatTrackerShareResponseOneGameEventsMax)
 })
@@ -797,6 +809,8 @@ export const updateStatTrackerShareBodyOneGameEventsItemIdMax = 160;
 export const updateStatTrackerShareBodyOneGameEventsItemStatIdMax = 80;
 
 
+export const updateStatTrackerShareBodyOneGameEventsItemPlayIdMax = 160;
+
 export const updateStatTrackerShareBodyOneGameEventsItemYardsMin = 0;
 
 export const updateStatTrackerShareBodyOneGameEventsMax = 10;
@@ -825,6 +839,7 @@ export const UpdateStatTrackerShareBody = zod.object({
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "playId": zod.string().min(1).max(updateStatTrackerShareBodyOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(updateStatTrackerShareBodyOneGameEventsItemYardsMin).nullable()
 })).max(updateStatTrackerShareBodyOneGameEventsMax)
 })
@@ -856,6 +871,8 @@ export const updateStatTrackerShareResponseOneGameEventsItemIdMax = 160;
 export const updateStatTrackerShareResponseOneGameEventsItemStatIdMax = 80;
 
 
+export const updateStatTrackerShareResponseOneGameEventsItemPlayIdMax = 160;
+
 export const updateStatTrackerShareResponseOneGameEventsItemYardsMin = 0;
 
 export const updateStatTrackerShareResponseOneGameEventsMax = 10;
@@ -884,6 +901,7 @@ export const UpdateStatTrackerShareResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "period": zod.number().int().min(1),
   "attribution": zod.enum(['team', 'athlete']).optional(),
+  "playId": zod.string().min(1).max(updateStatTrackerShareResponseOneGameEventsItemPlayIdMax).optional(),
   "yards": zod.number().int().min(updateStatTrackerShareResponseOneGameEventsItemYardsMin).nullable()
 })).max(updateStatTrackerShareResponseOneGameEventsMax)
 })

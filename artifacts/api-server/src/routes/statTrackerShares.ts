@@ -32,6 +32,7 @@ function publicResponse(
         createdAt: item.createdAt,
         period: item.period,
         attribution: item.attribution === "athlete" ? "athlete" : "team",
+        ...(typeof item.playId === "string" ? { playId: item.playId } : {}),
         yards: typeof item.yards === "number" ? item.yards : null,
       };
     }),

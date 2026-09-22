@@ -283,6 +283,11 @@ export interface StatTrackerEvent {
   period: number;
   attribution?: StatTrackerEventAttribution;
   /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  playId?: string;
+  /**
      * @minimum 0
      * @nullable
      */

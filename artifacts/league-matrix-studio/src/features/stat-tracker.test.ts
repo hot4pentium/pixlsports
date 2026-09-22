@@ -4,6 +4,7 @@ import { act, create, type ReactTestRendererNode } from 'react-test-renderer';
 import { createElement } from 'react';
 
 import {
+  addFootballPassReception,
   addStatEvent,
   adjustYardValue,
   adjustScore,
@@ -367,23 +368,51 @@ test('legacy tracker events normalize to team attribution', () => {
 test('football yard tracking keeps play counts while recording passing, rushing, and receiving yards', () => {
   const firstTime = new Date('2026-09-17T12:01:00Z');
   let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
-  game = addStatEvent(game, 'pass-yard', firstTime, 15);
+  game = addFootballPassReception(game, firstTime, 15);
   game = addStatEvent(game, 'rush-yard', new Date('2026-09-17T12:02:00Z'), 7);
-  game = addStatEvent(game, 'reception', new Date('2026-09-17T12:03:00Z'), 12);
 
   assert.equal(game.trackYards, true);
   assert.deepEqual(game.stats, { 'pass-yard': 1, 'rush-yard': 1, reception: 1 });
   assert.deepEqual(game.yardStats, {
     'pass-yard': 15,
     'rush-yard': 7,
-    'receiving-yard': 12,
+    'receiving-yard': 15,
   });
-  assert.equal(game.events.at(-1)?.yards, 12);
+  assert.equal(game.events[0]?.playId, game.events[1]?.playId);
+  assert.equal(game.events[0]?.yards, 15);
+  assert.equal(game.events[1]?.yards, 15);
   assert.equal(getFootballYardMetricId('reception'), 'receiving-yard');
 
   game = undoLastStatEvent(game);
+  assert.equal(game.stats['pass-yard'], 1);
+  assert.equal(game.stats.reception, 1);
+  assert.equal(game.stats['rush-yard'], undefined);
+  assert.equal(game.yardStats?.['pass-yard'], 15);
+  assert.equal(game.yardStats?.['receiving-yard'], 15);
+
+  game = undoLastStatEvent(game);
+  assert.equal(game.stats['pass-yard'], undefined);
   assert.equal(game.stats.reception, undefined);
+  assert.equal(game.yardStats?.['pass-yard'], undefined);
   assert.equal(game.yardStats?.['receiving-yard'], undefined);
+});
+
+test('combined football play keeps athlete attribution and synchronized yard corrections', () => {
+  let game = createGameSession('football', {}, new Date('2026-09-17T12:00:00Z'));
+  game = addFootballPassReception(game, new Date('2026-09-17T12:01:00Z'), 0, 'athlete');
+  const passEventId = game.events.find((event) => event.statId === 'pass-yard')?.id;
+  assert.ok(passEventId);
+
+  game = updateStatEventYards(game, passEventId, 18);
+  assert.deepEqual(game.events.map((event) => event.yards), [18, 18]);
+  assert.deepEqual(game.events.map((event) => event.attribution), ['athlete', 'athlete']);
+  assert.equal(game.yardStats?.['pass-yard'], 18);
+  assert.equal(game.yardStats?.['receiving-yard'], 18);
+
+  game = updateStatEventYards(game, passEventId, 7);
+  assert.deepEqual(game.events.map((event) => event.yards), [7, 7]);
+  assert.equal(game.yardStats?.['pass-yard'], 7);
+  assert.equal(game.yardStats?.['receiving-yard'], 7);
 });
 
 test('football yard corrections preserve the recorded athlete attribution', () => {
@@ -466,31 +495,33 @@ test('football live controls stay disabled until the stat card records one play'
 
   const toggle = renderer.root.findByProps({ 'data-testid': 'toggle-football-yard-tracking' });
   assert.equal(toggle.props.checked, true);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.disabled, true);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-adjust-reception-increase' }).props.disabled, true);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-control-reception' }).props['aria-disabled'], true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-reception-increase' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-control-pass-reception' }).props['aria-disabled'], true);
 
-  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-reception' }).props.onClick());
-  assert.equal(changedGame.events.length, 1);
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-pass-reception' }).props.onClick());
+  assert.equal(changedGame.events.length, 2);
+  assert.equal(changedGame.stats['pass-yard'], 1);
   assert.equal(changedGame.stats.reception, 1);
-  assert.equal(changedGame.events[0]?.yards, undefined);
+  assert.equal(changedGame.events[0]?.playId, changedGame.events[1]?.playId);
 
   act(() => renderer.update(renderGame(changedGame)));
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.disabled, false);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-adjust-reception-increase' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-reception-increase' }).props.disabled, false);
 
-  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onWheel({ deltaY: -1, preventDefault: () => {} }));
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.value, 5);
-  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onWheel({ deltaY: 1, preventDefault: () => {} }));
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.value, 4);
-  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onChange({ currentTarget: { value: '12' } }));
-  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props.onKeyDown({ key: 'Enter', preventDefault: () => {} }));
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.onWheel({ deltaY: -1, preventDefault: () => {} }));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 5);
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.onWheel({ deltaY: 1, preventDefault: () => {} }));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 4);
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.onChange({ currentTarget: { value: '12' } }));
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.onKeyDown({ key: 'Enter', preventDefault: () => {} }));
 
   assert.equal(changedGame.stats.reception, 1);
-  assert.equal(changedGame.events.length, 1);
-  assert.equal(changedGame.events[0]?.yards, 12);
+  assert.equal(changedGame.events.length, 2);
+  assert.deepEqual(changedGame.events.map((event) => event.yards), [12, 12]);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 12);
   assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-reception' }).props['aria-valuenow'], 12);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props['aria-valuenow'], 12);
 });
 
 test('a restored football game can correct an earlier yard play without changing unrelated plays', () => {
@@ -526,19 +557,19 @@ test('a restored football game can correct an earlier yard play without changing
     renderer = create(renderGame());
   });
 
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-yard' }).props.disabled, false);
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-yard' }).props.value, 10);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 10);
   assert.match(renderedText(renderer), /Passing yards · 5 yds/);
   assert.match(renderedText(renderer), /Passing yards · 10 yds/);
 
   act(() => {
     renderer.root.findByProps({ 'data-testid': `button-correct-yards-${firstPassId}` }).props.onClick();
   });
-  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-yard' }).props.value, 5);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 5);
 
   act(() => {
-    renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-yard-increase' }).props.onClick();
-    renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-yard-decrease' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-reception-increase' }).props.onClick();
+    renderer.root.findByProps({ 'data-testid': 'yard-adjust-pass-reception-decrease' }).props.onClick();
   });
 
   assert.deepEqual(changedGame.events.map((event) => event.id), [firstPassId, game.events[1]?.id, secondPassId]);

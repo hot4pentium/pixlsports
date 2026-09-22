@@ -1501,6 +1501,7 @@ components:
         attribution:
           type: string
           enum: [team, athlete]
+        playId: { type: string, minLength: 1, maxLength: 160 }
         yards: { type: ["integer", "null"], minimum: 0 }
     StatTrackerGameSnapshot:
       type: object

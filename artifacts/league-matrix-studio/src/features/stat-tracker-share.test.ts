@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { toStatTrackerShareInput } from './stat-tracker-share';
+import { addFootballPassReception, createGameSession } from './stat-tracker';
 import type { GameSession } from './stat-tracker';
 
 const trackerPageSource = readFileSync(new URL('./stat-tracker-page.tsx', import.meta.url), 'utf8');
@@ -47,6 +48,24 @@ test('tracker share input is explicitly sanitized and keeps the last ten events'
   assert.equal(input.game.events[0]?.attribution, 'team');
   assert.equal(input.game.events.at(-1)?.attribution, 'athlete');
   assert.deepEqual(Object.keys(input.game.events[0] ?? {}).sort(), ['attribution', 'createdAt', 'id', 'period', 'statId', 'yards']);
+});
+
+test('paired football pass and reception events keep their shared play id in a share', () => {
+  const game = addFootballPassReception(
+    createGameSession('football', { opponent: 'Northside' }),
+    new Date('2026-09-21T18:00:00.000Z'),
+    14,
+    'athlete',
+  );
+  const input = toStatTrackerShareInput(game, 'Maya', 'Falcons');
+  const [passEvent, receptionEvent] = input.game.events;
+
+  assert.ok(passEvent?.playId);
+  assert.equal(passEvent?.playId, receptionEvent?.playId);
+  assert.equal(passEvent?.attribution, 'athlete');
+  assert.equal(receptionEvent?.attribution, 'athlete');
+  assert.equal(passEvent?.yards, 14);
+  assert.equal(receptionEvent?.yards, 14);
 });
 
 test('season snapshot and recipient scoreboard use readable dark-card contrast', () => {
