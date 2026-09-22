@@ -58,6 +58,10 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   );
   assert.match(source, /staleTime: 10_000,[\s\S]*?refetchOnMount: 'always'/);
   assert.match(source, /data-testid="hosted-video-list"/);
+  assert.match(source, /data-testid="section-manage-athlete-videos"/);
+  assert.match(source, /Manage posted videos/);
+  assert.match(source, /without opening the Hype Card editor/);
+  assert.match(source, /data-testid="button-retry-athlete-media"/);
   assert.match(source, /data-testid="hosted-video-title"/);
   assert.match(source, /data-testid="button-download-hosted-video"/);
   assert.match(source, /data-testid="button-remove-hosted-video"/);

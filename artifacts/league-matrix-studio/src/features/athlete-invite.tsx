@@ -119,7 +119,7 @@ export function AthleteInviteManager() {
   const startLive = useStartAthleteInviteLive();
   const stopLive = useStopAthleteInviteLive();
   const deleteHypeCard = useDeleteHypeCardShare();
-  const { data: hypeCardShares, isLoading: videosLoading } = useListHypeCardShares(hostedVideoQuery, {
+  const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
     query: {
       enabled: Boolean(isSignedIn),
       queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery),
@@ -127,7 +127,7 @@ export function AthleteInviteManager() {
       refetchOnMount: 'always',
     },
   });
-  const { data: hostedImages, isLoading: imagesLoading } = useListHypeCardShares(hostedImageQuery, {
+  const { data: hostedImages, isLoading: imagesLoading, isError: imagesError } = useListHypeCardShares(hostedImageQuery, {
     query: {
       enabled: Boolean(isSignedIn),
       queryKey: getListHypeCardSharesQueryKey(hostedImageQuery),
@@ -136,6 +136,7 @@ export function AthleteInviteManager() {
     },
   });
   const hypeCardsLoading = videosLoading || imagesLoading;
+  const hypeCardsError = videosError || imagesError;
   const hostedVideos = hypeCardShares ?? [];
   const hostedImage = hostedImages?.[0] ?? null;
   useEffect(() => {
@@ -311,6 +312,13 @@ export function AthleteInviteManager() {
       setNotice('The hosted image Hype Card could not be removed.');
     }
   };
+  const retryHostedMedia = async () => {
+    setNotice('');
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery) }),
+      queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(hostedImageQuery) }),
+    ]);
+  };
 
   return (
     <InviteShell>
@@ -351,64 +359,11 @@ export function AthleteInviteManager() {
                 <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
                   <li>Open the Hype Card editor and create the card.</li>
                   <li>Choose Post to Athlete Hype Page when the card is ready.</li>
-                  <li>Return here to download or remove any hosted video.</li>
+                   <li>Use the management area below to download or remove anything posted to this page.</li>
                 </ol>
                 <Link href="/studio/hype-card" className="mt-4 inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-create-hype-card">
                   Open Hype Card editor →
                 </Link>
-                <div className="mt-5 border-t border-border pt-4" aria-live="polite">
-                  {hypeCardsLoading ? (
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking hosted videos…</p>
-                  ) : hostedVideos.length > 0 ? (
-                    <div data-testid="hosted-video-list">
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Videos on Athlete Hype Page</p>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{hostedVideos.length} / 10</p>
-                      </div>
-                      <ul className="mt-3 divide-y divide-border border-y border-border">
-                        {hostedVideos.map((video) => {
-                          const labels = hostedVideoLabels(video.manifest, video.title);
-                          const details = [labels.jerseyNumber ? `#${labels.jerseyNumber}` : '', labels.position].filter(Boolean).join(' · ');
-                          return (
-                            <li key={video.shareToken} className="py-4" data-testid="hosted-video-item">
-                              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-bold" data-testid="hosted-video-title">{labels.title}</p>
-                                  {details && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{details}</p>}
-                                  <p className="mt-1 text-[10px] text-muted-foreground">Posted {new Date(video.createdAt).toLocaleDateString()}</p>
-                                </div>
-                                <div className="flex shrink-0 flex-wrap gap-2">
-                                  <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedVideo(video)} data-testid="button-download-hosted-video">
-                                    <Download className="mr-2 h-4 w-4" />Download
-                                  </Button>
-                                  <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedVideo(video)} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-video">
-                                    <Trash2 className="mr-2 h-4 w-4" />Delete
-                                  </Button>
-                                </div>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p className="text-xs font-medium leading-relaxed text-muted-foreground">No hosted videos yet. Your Hype Page, stats, schedule, and replies stay available.</p>
-                  )}
-                  {hostedImage && (
-                    <div className="mt-5 border-t border-border pt-4" data-testid="hosted-image-hype-card">
-                      <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Image Hype Card outside the video carousel</p>
-                      <p className="mt-2 text-sm font-bold">{hostedImage.title}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedImage(hostedImage)}>
-                          <Download className="mr-2 h-4 w-4" />Download image
-                        </Button>
-                        <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedImage(hostedImage)} disabled={deleteHypeCard.isPending}>
-                          <Trash2 className="mr-2 h-4 w-4" />Delete image
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
           </div>
@@ -424,6 +379,72 @@ export function AthleteInviteManager() {
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
           </button>
         </section>
+
+         <section className="mt-8 border border-primary/40 bg-card" aria-label="Manage posted media" data-testid="section-manage-athlete-videos">
+           <div className="border-b border-border bg-primary/5 p-5 sm:p-6">
+             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner controls</p>
+             <h2 className="mt-2 font-display text-3xl uppercase">Manage posted videos</h2>
+             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Videos posted to this Athlete Hype Page appear here. Download or remove one without opening the Hype Card editor.</p>
+           </div>
+           <div className="p-5 sm:p-6" aria-live="polite">
+             {hypeCardsLoading ? (
+               <p role="status" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking posted videos…</p>
+             ) : hypeCardsError ? (
+               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                 <p className="text-sm font-medium leading-relaxed text-muted-foreground">Posted videos could not be loaded. Try again to manage this page’s media.</p>
+                 <Button type="button" variant="outline" className="rounded-none" onClick={() => void retryHostedMedia()} data-testid="button-retry-athlete-media">Try again</Button>
+               </div>
+             ) : hostedVideos.length > 0 ? (
+               <div data-testid="hosted-video-list">
+                 <div className="flex items-center justify-between gap-4">
+                   <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Videos on Athlete Hype Page</p>
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{hostedVideos.length} / 10</p>
+                 </div>
+                 <ul className="mt-3 divide-y divide-border border-y border-border">
+                   {hostedVideos.map((video) => {
+                     const labels = hostedVideoLabels(video.manifest, video.title);
+                     const details = [labels.jerseyNumber ? `#${labels.jerseyNumber}` : '', labels.position].filter(Boolean).join(' · ');
+                     return (
+                       <li key={video.shareToken} className="py-4" data-testid="hosted-video-item">
+                         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                           <div className="min-w-0">
+                             <p className="truncate text-sm font-bold" data-testid="hosted-video-title">{labels.title}</p>
+                             {details && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{details}</p>}
+                             <p className="mt-1 text-[10px] text-muted-foreground">Posted {new Date(video.createdAt).toLocaleDateString()}</p>
+                           </div>
+                           <div className="flex shrink-0 flex-wrap gap-2">
+                             <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedVideo(video)} data-testid="button-download-hosted-video">
+                               <Download className="mr-2 h-4 w-4" />Download
+                             </Button>
+                             <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedVideo(video)} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-video">
+                               <Trash2 className="mr-2 h-4 w-4" />Delete
+                             </Button>
+                           </div>
+                         </div>
+                       </li>
+                     );
+                   })}
+                 </ul>
+               </div>
+             ) : (
+               <p className="text-sm font-medium leading-relaxed text-muted-foreground">No videos have been posted yet. Create a Hype Card, choose Post to Athlete Hype Page, and it will appear here. Your Hype Page, stats, schedule, and replies stay available.</p>
+             )}
+             {hostedImage && !hypeCardsError && (
+               <div className="mt-5 border-t border-border pt-4" data-testid="hosted-image-hype-card">
+                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Image Hype Card outside the video carousel</p>
+                 <p className="mt-2 text-sm font-bold">{hostedImage.title}</p>
+                 <div className="mt-3 flex flex-wrap gap-2">
+                   <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedImage(hostedImage)}>
+                     <Download className="mr-2 h-4 w-4" />Download image
+                   </Button>
+                   <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedImage(hostedImage)} disabled={deleteHypeCard.isPending}>
+                     <Trash2 className="mr-2 h-4 w-4" />Delete image
+                   </Button>
+                 </div>
+               </div>
+             )}
+           </div>
+         </section>
 
         {selectedPath === 'page' && existing && (
           <section className="mt-8 border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="Active athlete invite">
