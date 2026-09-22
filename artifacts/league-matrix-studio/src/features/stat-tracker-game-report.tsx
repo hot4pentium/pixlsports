@@ -134,13 +134,41 @@ export function GameReportView({
             <div className="space-y-6 lg:col-span-2">
               <div className="border border-border bg-card p-5 clip-angled-sm sm:p-7">
                 <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Box Score</h3>
-                <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">{rule.stats.map((stat) => {
-                  const count = selectedGame.stats[stat.id] || 0;
-                  const attribution = countStatEventsByAttribution(selectedGame, stat.id);
-                  const previous = previousGame ? (previousGame.stats[stat.id] || 0) : 0;
-                  const average = averages.stats[stat.id] || 0;
-                  return <div key={stat.id} className="border border-border/50 bg-background p-3 clip-angled-sm" data-testid={`report-stat-${stat.id}`}><p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p><p className="mt-1 font-display text-3xl">{count}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground" data-testid={`report-attribution-${stat.id}`}>Team {attribution.team} · Athlete {attribution.athlete}</p><p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Season: {seasonToDate.stats[stat.id] ?? 0}</p>{previousGame && <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${count > previous ? 'text-primary-ink' : count < previous ? 'text-destructive' : 'text-muted-foreground'}`}>{count > previous ? '+' : ''}{count - previous} vs last</p>}{!isOneGame && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg: {average.toFixed(1)}</p>}</div>;
-                })}</div>
+                 <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">{rule.stats.map((stat) => {
+                   const count = selectedGame.stats[stat.id] || 0;
+                   const attribution = countStatEventsByAttribution(selectedGame, stat.id);
+                   const athleteAttributed = attribution.athlete > 0;
+                   const previous = previousGame ? (previousGame.stats[stat.id] || 0) : 0;
+                   const average = averages.stats[stat.id] || 0;
+                   return (
+                     <div
+                       key={stat.id}
+                       className={`border p-3 clip-angled-sm ${athleteAttributed ? 'border-primary/60 bg-primary/5' : 'border-border/50 bg-background'}`}
+                       data-testid={`report-stat-${stat.id}`}
+                     >
+                       <div className="flex items-start justify-between gap-2">
+                         <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
+                         {athleteAttributed && (
+                           <span
+                             className="shrink-0 border border-primary/50 bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary-ink"
+                             data-testid={`report-athlete-attribution-${stat.id}`}
+                             aria-label={`${attribution.athlete} ${stat.label} attributed to athlete`}
+                           >
+                             Athlete
+                           </span>
+                         )}
+                       </div>
+                       <p className="mt-1 font-display text-3xl">{count}</p>
+                       <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${athleteAttributed ? 'text-primary-ink' : 'text-muted-foreground'}`} data-testid={`report-attribution-${stat.id}`}>
+                         Team {attribution.team} · Athlete {attribution.athlete}
+                       </p>
+                       {athleteAttributed && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Athlete credited</p>}
+                       <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink">Season: {seasonToDate.stats[stat.id] ?? 0}</p>
+                       {previousGame && <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${count > previous ? 'text-primary-ink' : count < previous ? 'text-destructive' : 'text-muted-foreground'}`}>{count > previous ? '+' : ''}{count - previous} vs last</p>}
+                       {!isOneGame && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Avg: {average.toFixed(1)}</p>}
+                     </div>
+                   );
+                 })}</div>
                 {selectedGame.sport === 'football' && (
                   <div className="mt-6 border-t border-border pt-6" data-testid="report-yardage">
                     <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Yardage</h3>

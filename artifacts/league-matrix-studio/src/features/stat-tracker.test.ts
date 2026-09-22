@@ -1391,6 +1391,8 @@ test('game report renders every sport stat and closes without changing the repor
   )).length, getSportRule('soccer').stats.length);
   assert.match(renderedText(renderer), /Season: 1/);
   assert.match(renderedText(renderer), /Team 0 · Athlete 1/);
+   assert.match(renderedText(renderer), /Athlete credited/);
+   assert.equal(renderer.root.findByProps({ 'data-testid': 'report-athlete-attribution-goal' }).props['aria-label'], '1 goal attributed to athlete');
   assert.match(renderedText(renderer), /Strong finish/);
   act(() => renderer.root.findByProps({ 'data-testid': 'game-report-close' }).props.onClick());
   assert.equal(closeCount, 1);
