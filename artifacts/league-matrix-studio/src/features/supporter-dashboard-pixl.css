@@ -286,7 +286,8 @@
   justify-content: center;
   min-width: 0;
   width: 100%;
-  min-height: 168px;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
   padding: 16px 28px 16px 14px;
   overflow: hidden;
   border: 1px solid rgba(85, 164, 255, .34);
@@ -799,10 +800,15 @@
 }
 
 .athlete-card-preview.athlete-card-preview-settings {
-  width: min(100%, 380px);
+  width: min(100%, 280px);
   min-height: 0;
-  aspect-ratio: 2.25 / 1;
-  flex: 0 1 380px;
+  aspect-ratio: 1 / 1;
+  flex: 0 1 280px;
+}
+
+.pixl-dashboard-mobile .mobile-hero-columns .athlete-card-preview {
+  min-height: 0;
+  aspect-ratio: 1 / 1;
 }
 
 .pixl-dashboard-mobile [data-testid="btn-mobile-open-profile"] {
