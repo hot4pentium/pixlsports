@@ -323,14 +323,15 @@ test('team card and athlete avatar taps preserve separate attribution during rap
   });
   const highlightedCard = renderer.root.findByProps({ 'data-testid': 'live-stat-card-three-point' });
   assert.equal(highlightedCard.props['data-athlete-assigned'], 'true');
-  assert.match(highlightedCard.props.className, /border-accent/);
+  assert.match(highlightedCard.props.className, /border-border/);
+  assert.doesNotMatch(highlightedCard.props.className, /border-accent|bg-accent|shadow-\[/);
   assert.equal(
     renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' }).props['aria-describedby'],
     'athlete-assignment-three-point',
   );
-  assert.match(
+  assert.doesNotMatch(
     renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-three-point' }).props.className,
-    /ring-accent/,
+    /ring-accent|ring-2/,
   );
 });
 

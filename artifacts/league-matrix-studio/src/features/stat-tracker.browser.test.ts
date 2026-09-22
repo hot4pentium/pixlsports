@@ -435,7 +435,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.dataset.athleteAssigned === "true"', Boolean);
     assert.equal(
       await connection.evaluate<boolean>(
-        'document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.className.includes("border-accent") && document.querySelector("[data-testid=\\"athlete-stat-target-pass-reception\\"]")?.className.includes("ring-accent")',
+        'document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.className.includes("border-border") && !document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.className.includes("border-accent") && !document.querySelector("[data-testid=\\"athlete-stat-target-pass-reception\\"]")?.className.includes("ring-accent")',
         page.sessionId,
       ),
       true,

@@ -757,7 +757,7 @@ export function LiveTrackerGame({
             const athleteAssignmentDescriptionId = `athlete-assignment-${item.id}`;
             const choicesAttribution = item.id === 'hit' ? baseballHitAttribution : baseballPitchAttribution;
             return (
-              <div key={item.id} data-testid={`live-stat-card-${item.id}`} data-athlete-assigned={athleteAssigned ? 'true' : 'false'} className={`relative min-w-0 overflow-hidden border p-3 transition-colors hover:border-primary hover:bg-primary/5 ${athleteAssigned ? 'border-accent bg-accent/10 shadow-[0_0_0_1px_hsl(var(--accent))]' : 'border-border bg-background'}`}>
+              <div key={item.id} data-testid={`live-stat-card-${item.id}`} data-athlete-assigned={athleteAssigned ? 'true' : 'false'} className="relative min-w-0 overflow-hidden border border-border bg-background p-3 transition-colors hover:border-primary hover:bg-primary/5">
                 <button type="button" data-testid={`live-stat-${item.id}`} onClick={() => recordStat(item, 'team')} aria-label={`Record ${item.label} for ${teamName || 'team'}`} aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined} aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? Boolean(choicesAttribution) : undefined} className="group block min-h-[76px] w-full min-w-0 overflow-hidden pr-12 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
                   <span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary-ink">{item.label}</span>
                   <span className="mt-2 block truncate font-display text-2xl uppercase">{item.shortLabel}</span>
@@ -766,7 +766,6 @@ export function LiveTrackerGame({
                     {item.points ? ` · +${item.points}` : yardMetricId ? ` · ${yardSummary}` : ' · tracked'}
                   </span>
                   <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Team {attributedCounts.team} · {athleteTargetName} {attributedCounts.athlete}</span>
-                  {athleteAssigned && <span className="mt-2 inline-flex border border-accent/50 bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-accent">Athlete assigned</span>}
                 </button>
                 <button
                   type="button"
@@ -775,7 +774,7 @@ export function LiveTrackerGame({
                   aria-describedby={athleteAssigned ? athleteAssignmentDescriptionId : undefined}
                   aria-expanded={currentGame.sport === 'baseball' && (item.id === 'hit' || item.id === 'pitch') ? choicesAttribution === 'athlete' : undefined}
                   data-testid={`athlete-stat-target-${item.id}`}
-                  className={`absolute right-2 top-2 flex min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 text-[10px] font-black uppercase text-primary-ink shadow-sm hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${athleteAssigned ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''}`}
+                  className="absolute right-2 top-2 flex min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 text-[10px] font-black uppercase text-primary-ink shadow-sm hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   {athleteImageUrl && !athleteImageFailed
                     ? (
