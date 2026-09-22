@@ -818,6 +818,19 @@
   aspect-ratio: 1 / 1;
 }
 
+.athlete-photo-crop-reset {
+  border-color: rgba(85, 164, 255, .34);
+  color: var(--pixl-muted, rgba(18, 33, 58, .7));
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+
+.athlete-photo-crop-reset:hover,
+.athlete-photo-crop-reset:focus-visible {
+  border-color: var(--pixl-acid);
+  background-color: rgba(40, 120, 245, .1);
+  color: var(--pixl-acid, #2878F5);
+}
+
 .pixl-dashboard-mobile [data-testid="btn-mobile-open-profile"] {
   background: var(--m-pale-blue);
   border-color: rgba(40, 120, 245, .25);

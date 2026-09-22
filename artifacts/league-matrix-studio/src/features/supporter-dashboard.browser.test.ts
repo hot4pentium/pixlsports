@@ -2095,6 +2095,46 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       input.dispatchEvent(new Event('change', { bubbles: true }));
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1.85)"', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const resetButton = document.querySelector('[data-testid="btn-reset-athlete-photo-crop"]');
+        const controls = Object.fromEntries(Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input')).map((input) => [input.getAttribute('aria-label') || '', input instanceof HTMLInputElement ? input.value : '']));
+        return {
+          buttonLabel: resetButton?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+          crop: controls,
+        };
+      })()`, page.sessionId),
+      {
+        buttonLabel: 'Reset crop',
+        crop: {
+          'Horizontal position': '72',
+          'Vertical position': '34',
+          Zoom: '185',
+        },
+      },
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="btn-reset-athlete-photo-crop"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "50% 50%" && document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1)"', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => Object.fromEntries(Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input')).map((input) => [input.getAttribute('aria-label') || '', input instanceof HTMLInputElement ? input.value : ''])))()`, page.sessionId),
+      {
+        'Horizontal position': '50',
+        'Vertical position': '50',
+        Zoom: '100',
+      },
+    );
+    await connection.evaluate(`(() => {
+      const values = { 'Horizontal position': '72', 'Vertical position': '34', Zoom: '185' };
+      for (const [label, value] of Object.entries(values)) {
+        const input = Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input')).find((element) => element.getAttribute('aria-label') === label);
+        if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: ' + label);
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "72% 34%" && document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1.85)"', Boolean);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 320,
       height: 844,
@@ -2115,6 +2155,11 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
             const rect = control.getBoundingClientRect();
             return rect.left >= 0 && rect.right <= window.innerWidth;
           }),
+           resetWithinViewport: (() => {
+             const reset = document.querySelector('[data-testid="btn-reset-athlete-photo-crop"]');
+             const rect = reset?.getBoundingClientRect();
+             return Boolean(reset && rect && rect.left >= 0 && rect.right <= window.innerWidth && rect.height >= 44);
+           })(),
           documentOverflow: document.documentElement.scrollWidth > window.innerWidth,
         };
       })()`, page.sessionId),
@@ -2122,6 +2167,7 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
         cardWithinViewport: true,
         editorWithinViewport: true,
         controlsWithinViewport: true,
+         resetWithinViewport: true,
         documentOverflow: false,
       },
     );

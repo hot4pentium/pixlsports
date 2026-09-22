@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  ChevronDown, Home, PlusSquare, Check, Sparkles, Menu
+  ChevronDown, Home, PlusSquare, Check, Sparkles, Menu, RotateCcw
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -1503,7 +1503,19 @@ export function SupporterProfileView({
                         />
                       </label>
                     ))}
-                    <p className="text-xs text-muted-foreground">Your replacement starts centered. Adjust it here before uploading.</p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-muted-foreground">Your replacement starts centered. Adjust it here before uploading.</p>
+                      <button
+                        type="button"
+                        disabled={photoBusy}
+                        onClick={() => onPhotoCropChange({ x: 50, y: 50, zoom: 100 })}
+                        className="athlete-photo-crop-reset inline-flex min-h-11 shrink-0 items-center gap-2 border px-3 py-2 text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+                        aria-label="Reset photo crop"
+                        data-testid="btn-reset-athlete-photo-crop"
+                      >
+                        <RotateCcw className="h-4 w-4" aria-hidden="true" /> Reset crop
+                      </button>
+                    </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <button type="button" disabled={photoBusy} onClick={onPhotoUpload} className="bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="btn-upload-cropped-photo">
                         {photoBusy ? 'Uploading…' : 'Upload Photo'}
