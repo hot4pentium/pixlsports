@@ -582,6 +582,32 @@ test('football live controls stay disabled until the stat card records one play'
   assert.equal(changedGame.yardStats?.['pass-yard'], 12);
   assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
   assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props['aria-valuenow'], 12);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-rush-yard' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.value, 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 0);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'yard-adjust-rush-yard-increase' }).props.onClick());
+  assert.equal(changedGame.yardStats?.['pass-yard'], 12);
+  assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
+  assert.equal(changedGame.yardStats?.['rush-yard'], 5);
+  const rushEvent = changedGame.events.at(-1);
+  assert.equal(rushEvent?.statId, 'rush-yard');
+  assert.equal(rushEvent?.yards, 5);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'live-stat-pass-reception' }).props.onClick());
+  act(() => renderer.update(renderGame(changedGame)));
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.disabled, false);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-pass-reception' }).props.value, 0);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.disabled, true);
+  assert.equal(renderer.root.findByProps({ 'data-testid': 'input-yard-rush-yard' }).props.value, 0);
+  assert.equal(changedGame.yardStats?.['pass-yard'], 12);
+  assert.equal(changedGame.yardStats?.['receiving-yard'], 12);
+  assert.equal(changedGame.yardStats?.['rush-yard'], 5);
+  assert.equal(changedGame.events.at(-3)?.yards, 5);
 });
 
 test('a restored football game can correct an earlier yard play without changing unrelated plays', () => {

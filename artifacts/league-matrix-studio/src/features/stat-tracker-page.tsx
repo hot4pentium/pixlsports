@@ -491,7 +491,7 @@ function latestYardEventIds(game: GameSession) {
       const controlId = event.statId === 'pass-yard' || event.statId === 'reception'
         ? 'pass-reception'
         : event.statId;
-      eventIds[controlId] = event.id;
+      return { [controlId]: event.id };
     }
     return eventIds;
   }, {});
@@ -567,13 +567,17 @@ export function LiveTrackerGame({
     updateYardValue(statId, Number.isFinite(parsed) ? Math.max(0, parsed) : 0);
   };
 
+  const activateYardEvent = (controlId: string, eventId: string, yards: number) => {
+    setActiveYardEventIds({ [controlId]: eventId });
+    setYardDrafts({ [controlId]: yards });
+  };
+
   const selectYardEvent = (event: GameSession['events'][number]) => {
     if (!getFootballYardMetricId(event.statId)) return;
     const controlId = currentGame.sport === 'football' && (event.statId === 'pass-yard' || event.statId === 'reception')
       ? 'pass-reception'
       : event.statId;
-    setActiveYardEventIds((current) => ({ ...current, [controlId]: event.id }));
-    setYardDrafts((current) => ({ ...current, [controlId]: event.yards ?? 0 }));
+    activateYardEvent(controlId, event.id, event.yards ?? 0);
   };
 
   const recordStat = (item: StatDefinition, attribution: StatAttribution) => {
@@ -596,9 +600,8 @@ export function LiveTrackerGame({
     if (yardMetricId && nextGame.events.length > currentGame.events.length) {
       const eventId = nextGame.events.at(-1)?.id;
       if (eventId) {
-        setActiveYardEventIds((current) => ({ ...current, [item.id]: eventId }));
+        activateYardEvent(item.id, eventId, 0);
       }
-      setYardDrafts((current) => ({ ...current, [item.id]: 0 }));
     }
   };
 
