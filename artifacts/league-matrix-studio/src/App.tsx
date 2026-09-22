@@ -1523,7 +1523,6 @@ function SupporterStudio() {
           projects={projects}
           scheduleSource={scheduleSource}
           connectionLabel={scheduleLabel}
-          onOpenProfile={() => setLocation('/studio/profile')}
            onOpenStatTracker={() => {
              const query = nextGame
                ? `?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`

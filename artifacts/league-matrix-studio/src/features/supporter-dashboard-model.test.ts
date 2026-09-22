@@ -44,6 +44,18 @@ test('upcoming practice and meeting events become preparation recommendations', 
   assert.equal(getSupporterWeekRecommendation([meeting], now)?.kind, 'meeting');
 });
 
+test('the next practice is recommended before a later upcoming game', () => {
+  const now = new Date('2026-09-22T12:00:00');
+  const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-24', time: '18:30' };
+  const game = { id: 'game', type: 'game' as const, date: '2026-09-27', time: '14:00', status: 'upcoming' as const };
+
+  const recommendation = getSupporterWeekRecommendation([game, practice], now);
+
+  assert.equal(recommendation?.event.id, 'practice');
+  assert.equal(recommendation?.kind, 'practice');
+  assert.equal(recommendation?.stage, 'upcoming');
+});
+
 test('preparation copy names each event type and has a no-event fallback', () => {
   assert.equal(getSupporterPreparationCopy('game').title, 'Get ready for game day.');
   assert.equal(getSupporterPreparationCopy('practice').title, 'Get ready for practice.');

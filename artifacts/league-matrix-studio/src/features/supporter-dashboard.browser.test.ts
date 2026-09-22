@@ -532,6 +532,27 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
       }, `mobile header behavior at ${width}px`);
     }
 
+    assert.deepEqual(await connection.evaluate<{
+      profileTag: string;
+      profileHref: string | null;
+      scheduleHref: string | null;
+      stagesAreStatic: boolean;
+    }>(`(() => {
+      const profileLink = document.querySelector('[data-testid="btn-mobile-open-profile"]');
+      const stages = Array.from(document.querySelectorAll('[data-testid^="mobile-stage-"]'));
+      return {
+        profileTag: profileLink?.tagName || '',
+        profileHref: profileLink?.getAttribute('href') || null,
+        scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
+        stagesAreStatic: stages.length === 4 && stages.every((stage) => stage.tagName === 'DIV'),
+      };
+    })()`, page.sessionId), {
+      profileTag: 'A',
+      profileHref: '/studio/profile',
+      scheduleHref: '/studio/schedule',
+      stagesAreStatic: true,
+    });
+
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
@@ -782,7 +803,6 @@ function ProfilePropagationHarness() {
       projects: [],
       scheduleSource: null,
       connectionLabel: '',
-      onOpenProfile: openProfile,
       athletePhotoUrl: profile.athleteImageUrl,
       athletePhotoCrop: profile.athleteImageCrop,
       onOpenStatTracker: () => setRoute('tracker'),
@@ -839,7 +859,6 @@ function LocalHypeCardFlowHarness() {
     projects,
     scheduleSource: null,
     connectionLabel: '',
-    onOpenProfile: () => {},
     onOpenStatTracker: () => {},
     onOpenChecklist: () => {},
   });
@@ -888,7 +907,6 @@ export function mount() {
           projects: [],
           scheduleSource: 'custom',
           connectionLabel: 'Northside · 2026',
-          onOpenProfile: () => navigate('/studio/profile'),
           onOpenStatTracker: () => navigate('/studio/stat-tracker'),
           onOpenChecklist: () => navigate('/studio/checklist'),
         }),
@@ -1015,20 +1033,18 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.className || ""', page.sessionId),
       /border-amber-300/,
     );
-    await connection.evaluate(`document.querySelector('[data-testid="stage-live"]')?.click()`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "live"',
-      Boolean,
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-live"]\')?.tagName || ""', page.sessionId),
+      'DIV',
     );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.className || ""', page.sessionId),
-      /border-emerald-300/,
+    await connection.evaluate(`document.querySelector('[data-testid="stage-live"]')?.click()`, page.sessionId);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.getAttribute("data-selected-path") || ""', page.sessionId),
+      'upcoming',
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-      /Start game day/,
+      /Open checklist/,
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-upcoming"]\')?.className || ""', page.sessionId),
@@ -1242,7 +1258,11 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"', Boolean);
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"]\')?.textContent || ""', page.sessionId),
-      /Rivals/,
+      /practice/i,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+      /Get ready for practice/,
     );
 
     assert.equal(await connection.evaluate<boolean>(

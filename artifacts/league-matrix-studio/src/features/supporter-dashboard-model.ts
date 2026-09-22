@@ -125,6 +125,7 @@ export const supporterToolRoutes = {
   statTracker: '/studio/stat-tracker',
   checklist: '/studio/checklist',
   athletePage: '/studio/athlete-page',
+  profile: '/studio/profile',
 } as const;
 export type SupporterGameLike = {
   id: string;
@@ -292,25 +293,25 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
 ): SupporterWeekRecommendation<T> | null {
   const games = events.filter((event) => event.type === 'game');
   const liveGame = games.find((game) => getSupporterGameStage(game, now) === 'live');
-  const upcomingGame = games.find((game) => getSupporterGameStage(game, now) === 'upcoming');
-  const prioritizedGame = liveGame ?? upcomingGame;
 
-  if (prioritizedGame) {
+  if (liveGame) {
     return {
-      event: prioritizedGame,
+      event: liveGame,
       kind: 'game',
-      stage: getSupporterGameStage(prioritizedGame, now),
+      stage: 'live',
     };
   }
 
-  const upcomingPreparationEvent = events.find((event) => (
-    (event.type === 'practice' || event.type === 'meeting')
-    && getSupporterGameStage(event, now) === 'upcoming'
-  ));
-  if (upcomingPreparationEvent) {
+  const upcomingEvent = events
+    .filter((event) => getSupporterGameStage(event, now) === 'upcoming')
+    .sort((left, right) => (
+      left.date.localeCompare(right.date)
+      || left.time.localeCompare(right.time)
+    ))[0];
+  if (upcomingEvent) {
     return {
-      event: upcomingPreparationEvent,
-      kind: upcomingPreparationEvent.type,
+      event: upcomingEvent,
+      kind: upcomingEvent.type,
       stage: 'upcoming',
     };
   }

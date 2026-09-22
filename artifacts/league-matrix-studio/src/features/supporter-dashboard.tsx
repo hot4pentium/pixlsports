@@ -81,6 +81,7 @@ interface AthleteCardPreviewProps {
   profile: SupporterProfile;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
+  href?: string;
   onClick?: () => void;
   ariaLabel?: string;
   testId?: string;
@@ -91,6 +92,7 @@ function AthleteCardPreview({
   profile,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
+  href,
   onClick,
   ariaLabel = 'Change athlete',
   testId,
@@ -121,6 +123,14 @@ function AthleteCardPreview({
     </>
   );
 
+  if (href) {
+    return (
+      <Link href={href} className={`athlete-card-preview${className ? ` ${className}` : ''}`} aria-label={ariaLabel} data-testid={testId}>
+        {content}
+      </Link>
+    );
+  }
+
   if (onClick) {
     return (
       <button type="button" onClick={onClick} className={`athlete-card-preview${className ? ` ${className}` : ''}`} aria-label={ariaLabel} data-testid={testId}>
@@ -143,7 +153,6 @@ export interface SupporterDashboardViewProps {
   projects: SupporterProject[];
   scheduleSource: 'custom' | null;
   connectionLabel: string;
-  onOpenProfile: () => void;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
   onOpenStatTracker: () => void;
@@ -244,7 +253,6 @@ export function SupporterDashboardView({
   projects,
   scheduleSource,
   connectionLabel,
-  onOpenProfile,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onOpenStatTracker,
@@ -420,15 +428,12 @@ export function SupporterDashboardView({
       action: 'bg-fuchsia-300 text-slate-950 hover:bg-fuchsia-200',
     },
   };
-  const [selectedPathId, setSelectedPathId] = useState<WeeklyPathId | null>(null);
   const activePath = weeklyPath.find((step) => step.active) ?? weeklyPath[0];
   const activePathIndex = weeklyPath.findIndex((step) => step.id === activePath.id);
   const [pathCelebration, setPathCelebration] = useState('');
   const previousActivePathIndex = useRef(activePathIndex);
   const pathCelebrationTimer = useRef<number | null>(null);
-  const selectedPath = weeklyPath.find(({ id }) => id === selectedPathId)
-    ?? weeklyPath.find(({ active }) => active)
-    ?? weeklyPath[0];
+  const selectedPath = activePath;
   const weeklyPathDetails: Record<WeeklyPathId, {
     eyebrow: string;
     title: string;
@@ -461,7 +466,6 @@ export function SupporterDashboardView({
     },
   };
   const selectedPathDetails = weeklyPathDetails[selectedPath.id];
-  const activePathDetails = weeklyPathDetails[activePath.id];
 
   useEffect(() => {
     const previousIndex = previousActivePathIndex.current;
@@ -483,12 +487,6 @@ export function SupporterDashboardView({
   useEffect(() => () => {
     if (pathCelebrationTimer.current !== null) window.clearTimeout(pathCelebrationTimer.current);
   }, []);
-
-  useEffect(() => {
-    if (!weekRecommendation && selectedPathId !== null) {
-      setSelectedPathId(null);
-    }
-  }, [selectedPathId, weekRecommendation]);
 
   useEffect(() => {
     if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
@@ -602,9 +600,9 @@ export function SupporterDashboardView({
             <div className="relative w-11 h-11 flex items-center justify-center">
               <HypeCardReplyInboxTrigger className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-[#12213A] shadow-none hover:bg-transparent" />
             </div>
-            <button type="button" onClick={onOpenProfile} className="w-11 h-11 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center border border-black/10 text-lg font-bold text-slate-700" aria-label="Supporter profile" data-testid="btn-mobile-open-profile">
+            <Link href={supporterToolRoutes.profile} className="w-11 h-11 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center border border-black/10 text-lg font-bold text-slate-700" aria-label="Supporter profile" data-testid="btn-mobile-open-profile">
                {profile.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S'}
-            </button>
+            </Link>
              <button
                ref={mobileMenuButtonRef}
                type="button"
@@ -659,7 +657,7 @@ export function SupporterDashboardView({
             profile={profile}
             athletePhotoUrl={athletePhotoUrl}
             athletePhotoCrop={athletePhotoCrop}
-            onClick={onOpenProfile}
+            href={supporterToolRoutes.profile}
             testId="btn-mobile-athlete-switcher"
           />
 
@@ -689,9 +687,8 @@ export function SupporterDashboardView({
             ) : (
                <p className="text-sm font-medium text-black/60">No upcoming events. Add a game to get recommendations.</p>
             )}
-            <button
-              type="button"
-              onClick={onOpenProfile}
+            <Link
+              href={supporterToolRoutes.profile}
               className="mobile-athlete-details"
               aria-label="View or change athlete"
               data-testid="btn-mobile-athlete-details"
@@ -705,7 +702,7 @@ export function SupporterDashboardView({
                 </span>
               )}
               <ChevronRight className="mobile-athlete-details-arrow" aria-hidden="true" />
-            </button>
+            </Link>
           </div>
           </div>
           </section>
@@ -721,17 +718,13 @@ export function SupporterDashboardView({
                 {weeklyPath.map((step, index) => {
                   const isActive = activePath.id === step.id;
                   const isCompleted = index < activePathIndex;
-                  const isSelected = selectedPath.id === step.id;
                   const StepIcon = step.Icon;
 
                   return (
                     <li key={step.id} aria-current={isActive ? 'step' : undefined}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPathId(step.id)}
+                      <div
                         aria-current={isActive ? 'step' : undefined}
-                        aria-pressed={isSelected}
-                        className={`mobile-week-path-step ${isSelected ? 'is-selected' : ''} ${isActive ? 'is-active' : ''} ${isCompleted ? 'is-completed' : ''}`}
+                        className={`mobile-week-path-step ${isActive ? 'is-selected is-active' : ''} ${isCompleted ? 'is-completed' : ''}`}
                         data-testid={`mobile-stage-${step.id}`}
                       >
                         <span className="mobile-week-path-number" aria-hidden="true">
@@ -745,7 +738,7 @@ export function SupporterDashboardView({
                         <span className="mobile-week-path-state">
                           {isActive ? 'Next' : isCompleted ? 'Done' : ''}
                         </span>
-                      </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -806,10 +799,10 @@ export function SupporterDashboardView({
               <section className="mt-2 mb-4" data-testid="section-mobile-coming-up" aria-labelledby="mobile-coming-up-heading">
                 <div className="flex items-center justify-between mb-4 px-1">
                   <h3 id="mobile-coming-up-heading" className="text-[28px] font-display font-black tracking-tight text-[#12213A]">Coming up</h3>
-                  <button type="button" onClick={() => setLocation(supporterToolRoutes.schedule)} className="text-[#2474F5] text-[15px] font-bold flex items-center gap-1" data-testid="btn-mobile-view-schedule">View schedule <ArrowRight className="w-4 h-4" /></button>
+                  <Link href={supporterToolRoutes.schedule} className="text-[#2474F5] text-[15px] font-bold flex items-center gap-1" data-testid="btn-mobile-view-schedule">View schedule <ArrowRight className="w-4 h-4" /></Link>
                 </div>
 
-                <button type="button" onClick={() => setLocation(supporterToolRoutes.schedule)} className="w-full text-left bg-white rounded-[20px] p-5 shadow-sm border border-black/5 flex items-center justify-between" aria-label="View upcoming event details" data-testid="btn-mobile-coming-up-action">
+                <Link href={supporterToolRoutes.schedule} className="w-full text-left bg-white rounded-[20px] p-5 shadow-sm border border-black/5 flex items-center justify-between" aria-label="View upcoming event details" data-testid="btn-mobile-coming-up-action">
                    <div className="flex items-center gap-4 min-w-0">
                      <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black/40 shrink-0 border border-black/5">
                        <CalendarDays className="w-6 h-6" />
@@ -830,7 +823,7 @@ export function SupporterDashboardView({
                      </div>
                    </div>
                    <ChevronRight className="w-6 h-6 text-black/20 shrink-0 ml-2" />
-                </button>
+                </Link>
               </section>
              );
           })()}
@@ -847,12 +840,12 @@ export function SupporterDashboardView({
              </div>
              <span className="text-[10px] font-bold">Home</span>
            </button>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.schedule)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
+           <Link href={supporterToolRoutes.schedule} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <CalendarDays className="w-[20px] h-[20px]" />
              </div>
              <span className="text-[10px] font-bold">Schedule</span>
-           </button>
+           </Link>
            <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Game Day" data-testid="btn-mobile-nav-stat-tracker">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <Users className="w-[20px] h-[20px]" />
@@ -923,16 +916,15 @@ export function SupporterDashboardView({
                     <Users className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={onOpenProfile}
+                <Link
+                  href={supporterToolRoutes.profile}
                   className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-7 sm:w-7"
                   aria-label="Edit athlete profile"
                   title="Edit athlete profile"
                   data-testid="btn-edit-athlete-avatar"
                 >
                   <PenSquare className="h-3 w-3" />
-                </button>
+                </Link>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="dashboard-welcome mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/65">
@@ -950,9 +942,9 @@ export function SupporterDashboardView({
                     {(profile.position || profile.relationship) && <span className="basis-full pt-1 text-[9px] tracking-[0.16em] text-white/45">{[profile.position, profile.relationship].filter(Boolean).join(' · ')}</span>}
                   </div>
                 ) : (
-                  <button type="button" onClick={onOpenProfile} className="mt-2 text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
+                  <Link href={supporterToolRoutes.profile} className="mt-2 inline-block text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
                     Set up athlete details
-                  </button>
+                  </Link>
                 )}
               </div>
               <div className="relative z-10 shrink-0">
@@ -1075,21 +1067,17 @@ export function SupporterDashboardView({
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               {weeklyPath.map(({ id, number, label, Icon, active }, index) => {
                 const theme = weeklyPathThemes[id];
-                const selected = selectedPath.id === id;
                 const completed = index < activePathIndex;
                 return (
-                  <button
-                    type="button"
+                   <div
                     key={id}
                     aria-current={active ? 'step' : undefined}
-                    aria-pressed={selected}
-                    onClick={() => setSelectedPathId(id)}
-                    className={`flex items-center gap-3 border px-3 py-3 text-left transition-all motion-reduce:transition-none hover:border-white/50 hover:text-white ${selected ? `${theme.border} ${theme.surface} text-white` : active ? `${theme.activeBorder} ${theme.surface} text-white/80` : completed ? 'border-emerald-300/25 bg-emerald-300/[0.06] text-white/70' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
+                     className={`dashboard-week-path-step flex items-center gap-3 border px-3 py-3 text-left ${active ? `${theme.border} ${theme.surface} text-white` : completed ? 'border-emerald-300/25 bg-emerald-300/[0.06] text-white/70' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
                     data-testid={`stage-${id}`}
                   >
-                    <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${selected ? theme.number : active ? `${theme.activeBorder} ${theme.surface} ${theme.accent} border` : completed ? 'bg-emerald-300 text-slate-950' : 'bg-white/10 text-white/60'}`}>{completed ? <Check className="h-4 w-4" /> : number}</span>
+                     <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${active ? theme.number : completed ? 'bg-emerald-300 text-slate-950' : 'bg-white/10 text-white/60'}`}>{completed ? <Check className="h-4 w-4" /> : number}</span>
                     <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
-                    <Icon className={`h-4 w-4 shrink-0 ${selected || active ? theme.icon : 'text-white/35'}`} />
+                     <Icon className={`h-4 w-4 shrink-0 ${active ? theme.icon : 'text-white/35'}`} />
                     {active && (
                       <span className={`dashboard-stage-next ml-auto inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] ${theme.accent}`} data-testid={`stage-${id}-next`}>
                         UP NEXT
@@ -1098,7 +1086,7 @@ export function SupporterDashboardView({
                     {completed && !active && (
                       <span className="ml-auto text-[9px] font-bold uppercase tracking-[0.16em] text-sky-300">Complete</span>
                     )}
-                  </button>
+                   </div>
                 );
               })}
             </div>
