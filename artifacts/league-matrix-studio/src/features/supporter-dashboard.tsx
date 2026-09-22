@@ -83,6 +83,7 @@ interface AthleteCardPreviewProps {
   onClick?: () => void;
   ariaLabel?: string;
   testId?: string;
+  className?: string;
 }
 
 function AthleteCardPreview({
@@ -92,6 +93,7 @@ function AthleteCardPreview({
   onClick,
   ariaLabel = 'Change athlete',
   testId,
+  className,
 }: AthleteCardPreviewProps) {
   const hasAthlete = Boolean(profile.athleteName);
   const content = (
@@ -120,14 +122,14 @@ function AthleteCardPreview({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="athlete-card-preview" aria-label={ariaLabel} data-testid={testId}>
+      <button type="button" onClick={onClick} className={`athlete-card-preview${className ? ` ${className}` : ''}`} aria-label={ariaLabel} data-testid={testId}>
         {content}
       </button>
     );
   }
 
   return (
-    <div className="athlete-card-preview" role="img" aria-label="Athlete card preview" data-testid={testId}>
+    <div className={`athlete-card-preview${className ? ` ${className}` : ''}`} role="img" aria-label="Athlete card preview" data-testid={testId}>
       {content}
     </div>
   );
@@ -1395,45 +1397,6 @@ export interface SupporterProfileViewProps {
   onPhotoRemove: () => void;
 }
 
-function AthletePhotoCardPreview({
-  url,
-  crop,
-  athleteName,
-  jerseyNumber,
-  teamName,
-  alt,
-  dataTestId,
-}: {
-  url?: string;
-  crop?: AthletePhotoCrop;
-  athleteName: string;
-  jerseyNumber: string;
-  teamName: string;
-  alt: string;
-  dataTestId?: string;
-}) {
-  return (
-    <div className="athlete-photo-settings-preview" data-testid={dataTestId}>
-      {url ? (
-        <AthletePhoto url={url} crop={crop ?? { x: 50, y: 50, zoom: 100 }} alt={alt} />
-      ) : (
-        <div className="athlete-photo-settings-preview-placeholder" aria-hidden="true">
-          <User className="h-12 w-12" />
-        </div>
-      )}
-      <div className="athlete-photo-settings-preview-scrim" aria-hidden="true" />
-      <div className="athlete-photo-settings-preview-copy">
-        <span>{athleteName || 'Athlete name'}</span>
-        <span className="athlete-photo-settings-preview-meta">
-          {jerseyNumber ? `#${jerseyNumber}` : '#00'}
-          {teamName ? `  ·  ${teamName}` : ''}
-        </span>
-      </div>
-      <ChevronRight className="athlete-photo-settings-preview-arrow" aria-hidden="true" />
-    </div>
-  );
-}
-
 export function SupporterProfileView({
   profile,
   saving,
@@ -1487,14 +1450,12 @@ export function SupporterProfileView({
               <Camera className="w-4 h-4" /> Athlete Photo
             </h3>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <AthletePhotoCardPreview
-                url={athletePhotoUrl}
-                crop={athletePhotoCrop}
-                athleteName={profile.athleteName}
-                jerseyNumber={profile.jerseyNumber}
-                teamName={profile.teamName}
-                alt="Athlete profile"
-                dataTestId="athlete-photo-settings-preview"
+              <AthleteCardPreview
+                profile={profile}
+                athletePhotoUrl={athletePhotoUrl}
+                athletePhotoCrop={athletePhotoCrop}
+                className="athlete-card-preview-settings"
+                testId="athlete-photo-settings-preview"
               />
               <div className="min-w-0 flex-1 space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Private to your signed-in account. JPG, PNG, or WebP, up to 5 MB.</p>
@@ -1515,14 +1476,12 @@ export function SupporterProfileView({
             {pendingPhotoUrl && (
               <div className="rounded-sm border border-border bg-background p-4 sm:p-5" data-testid="athlete-photo-crop-editor">
                 <div className="grid gap-5 sm:grid-cols-[minmax(220px,1fr)_1fr] sm:items-center">
-                  <AthletePhotoCardPreview
-                    url={pendingPhotoUrl}
-                    crop={pendingPhotoCrop}
-                    athleteName={profile.athleteName}
-                    jerseyNumber={profile.jerseyNumber}
-                    teamName={profile.teamName}
-                    alt="New athlete photo crop preview"
-                    dataTestId="athlete-photo-crop-preview"
+                  <AthleteCardPreview
+                    profile={profile}
+                    athletePhotoUrl={pendingPhotoUrl}
+                    athletePhotoCrop={pendingPhotoCrop}
+                    className="athlete-card-preview-settings"
+                    testId="athlete-photo-crop-preview"
                   />
                   <div className="space-y-4">
                     {([
