@@ -627,6 +627,8 @@ function ProfilePropagationHarness() {
     displayName: 'Jamie Fan',
     teamName: 'Northside Comets',
     athleteName: '',
+    athleteImageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="80"%3E%3Crect width="120" height="80" fill="%23007A78"/%3E%3C/svg%3E',
+    athleteImageCrop: { x: 20, y: 70, zoom: 150 },
     jerseyNumber: '',
     position: '',
     relationship: 'Parent',
@@ -710,6 +712,8 @@ function ProfilePropagationHarness() {
         currentGame,
         rule,
         athleteName: profile.athleteName,
+        athleteImageUrl: profile.athleteImageUrl,
+        athleteImageCrop: profile.athleteImageCrop,
         teamName: profile.teamName,
         displayStats: rule.stats.slice(0, 6),
         showAllStats: false,
@@ -1941,6 +1945,13 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img")?.complete === true', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="live-tracker-score-card-athlete"]\')?.textContent || ""', page.sessionId),
       'Taylor Morgan0',
@@ -1948,6 +1959,45 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="live-tracker-stat-controls"]\')?.textContent || ""', page.sessionId),
       /Taylor Morgan/,
+    );
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
+        const image = target?.querySelector('img');
+        const rect = target?.getBoundingClientRect();
+        if (!(target instanceof HTMLButtonElement) || !(image instanceof HTMLImageElement) || !rect) return null;
+        return {
+          accessibleName: target.getAttribute('aria-label'),
+          objectPosition: image.style.objectPosition,
+          transform: image.style.transform,
+          transformOrigin: image.style.transformOrigin,
+          width: rect.width,
+          height: rect.height,
+        };
+      })()`, page.sessionId),
+      {
+        accessibleName: 'Record Three-point field goal for Taylor Morgan',
+        objectPosition: '20% 70%',
+        transform: 'scale(1.5)',
+        transformOrigin: '20% 70%',
+        width: 44,
+        height: 44,
+      },
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="athlete-stat-target-three-point"] img')?.dispatchEvent(new Event('error'))`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") === null', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
+        return {
+          accessibleName: target?.getAttribute('aria-label'),
+          fallback: target?.textContent?.trim(),
+        };
+      })()`, page.sessionId),
+      {
+        accessibleName: 'Record Three-point field goal for Taylor Morgan',
+        fallback: 'TM',
+      },
     );
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-hype-card"]')?.click()`, page.sessionId);
