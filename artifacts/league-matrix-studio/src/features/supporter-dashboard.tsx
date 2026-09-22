@@ -75,6 +75,64 @@ export interface AthletePhotoCrop {
   y: number;
   zoom: number;
 }
+
+interface AthleteCardPreviewProps {
+  profile: SupporterProfile;
+  athletePhotoUrl?: string;
+  athletePhotoCrop?: AthletePhotoCrop;
+  onClick?: () => void;
+  ariaLabel?: string;
+  testId?: string;
+}
+
+function AthleteCardPreview({
+  profile,
+  athletePhotoUrl,
+  athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
+  onClick,
+  ariaLabel = 'Change athlete',
+  testId,
+}: AthleteCardPreviewProps) {
+  const hasAthlete = Boolean(profile.athleteName);
+  const content = (
+    <>
+      <div className="mobile-athlete-lockup flex min-w-0 flex-1 items-center gap-3">
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white shadow-sm">
+          {athletePhotoUrl ? (
+            <div className="h-full w-full overflow-hidden rounded-full">
+              <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
+            </div>
+          ) : hasAthlete ? (
+            <User className="h-6 w-6 opacity-20" />
+          ) : (
+            <Users className="h-6 w-6 opacity-20" />
+          )}
+        </div>
+        <div className="mobile-athlete-copy text-lg font-bold text-[#12213A] flex min-w-0 items-center flex-wrap gap-1.5 leading-none">
+          <span className="truncate">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
+          {profile.jerseyNumber && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold shrink-0">#{profile.jerseyNumber}</span></>}
+          {profile.teamName && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold break-words">{profile.teamName}</span></>}
+        </div>
+      </div>
+      <ChevronRight className="w-6 h-6 text-black/30 shrink-0" aria-hidden="true" />
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="athlete-card-preview" aria-label={ariaLabel} data-testid={testId}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="athlete-card-preview" role="img" aria-label="Athlete card preview" data-testid={testId}>
+      {content}
+    </div>
+  );
+}
+
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   events: SupporterEvent[];
@@ -586,27 +644,13 @@ export function SupporterDashboardView({
 
           <div className="mobile-hero-columns">
           {/* Athlete Switcher Row */}
-          <button type="button" onClick={onOpenProfile} className="flex items-center justify-between bg-transparent w-full text-left" aria-label="Change athlete" data-testid="btn-mobile-athlete-switcher">
-            <div className="mobile-athlete-lockup flex min-w-0 flex-1 items-center gap-3">
-              <div className="w-14 h-14 rounded-full overflow-hidden border border-black/10 shrink-0 bg-white flex items-center justify-center shadow-sm">
-                 {athletePhotoUrl ? (
-                    <div className="h-full w-full overflow-hidden rounded-full">
-                       <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
-                    </div>
-                  ) : hasAthlete ? (
-                    <User className="h-6 w-6 opacity-20" />
-                  ) : (
-                    <Users className="h-6 w-6 opacity-20" />
-                  )}
-              </div>
-              <div className="mobile-athlete-copy text-lg font-bold text-[#12213A] flex min-w-0 items-center flex-wrap gap-1.5 leading-none">
-                <span className="truncate">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
-                {profile.jerseyNumber && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold shrink-0">#{profile.jerseyNumber}</span></>}
-                {profile.teamName && <><span className="text-black/30 text-sm shrink-0">•</span><span className="text-black/50 font-semibold break-words">{profile.teamName}</span></>}
-              </div>
-            </div>
-            <ChevronRight className="w-6 h-6 text-black/30 shrink-0" />
-          </button>
+          <AthleteCardPreview
+            profile={profile}
+            athletePhotoUrl={athletePhotoUrl}
+            athletePhotoCrop={athletePhotoCrop}
+            onClick={onOpenProfile}
+            testId="btn-mobile-athlete-switcher"
+          />
 
           {/* Next Event Card */}
           <div className="bg-white rounded-[20px] p-5 shadow-sm border border-black/5" data-testid="card-mobile-featured-event">

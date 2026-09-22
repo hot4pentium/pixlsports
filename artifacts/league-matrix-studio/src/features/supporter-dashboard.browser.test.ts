@@ -703,7 +703,12 @@ function ProfilePropagationHarness() {
           window.history.replaceState({}, '', window.location.pathname + '?' + search.toString());
           setRoute('dashboard');
         },
-        onCancel: () => setRoute('dashboard'),
+        onCancel: () => {
+          const search = new URLSearchParams(window.location.search);
+          search.set('route', 'dashboard');
+          window.history.replaceState({}, '', window.location.pathname + '?' + search.toString());
+          setRoute('dashboard');
+        },
          athletePhotoUrl: profile.athleteImageUrl,
          athletePhotoCrop: profile.athleteImageCrop,
          pendingPhotoUrl: pendingPhoto?.url,
@@ -712,19 +717,21 @@ function ProfilePropagationHarness() {
          onPhotoCropChange: setPendingPhotoCrop,
          onPhotoUpload: () => {
            if (!pendingPhoto) return;
-           setProfile((current) => ({
-             ...current,
+           const nextProfile = {
+             ...profile,
              athleteImageUrl: pendingPhoto.url,
              athleteImageCrop: pendingPhotoCrop,
-           }));
+           };
+           setProfile(nextProfile);
+           window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
            setPendingPhoto(null);
          },
          onPhotoCancel: () => setPendingPhoto(null),
-         onPhotoRemove: () => setProfile((current) => ({
-           ...current,
-           athleteImageUrl: '',
-           athleteImageCrop: undefined,
-         })),
+         onPhotoRemove: () => {
+           const nextProfile = { ...profile, athleteImageUrl: '', athleteImageCrop: undefined };
+           setProfile(nextProfile);
+           window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
+         },
         photoBusy: false,
         photoError: '',
       }),
@@ -776,6 +783,8 @@ function ProfilePropagationHarness() {
       scheduleSource: null,
       connectionLabel: '',
       onOpenProfile: openProfile,
+      athletePhotoUrl: profile.athleteImageUrl,
+      athletePhotoCrop: profile.athleteImageCrop,
       onOpenStatTracker: () => setRoute('tracker'),
       onOpenChecklist: () => {},
     }),
@@ -2039,21 +2048,119 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       input.dispatchEvent(new Event('change', { bubbles: true }));
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") !== null', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const card = document.querySelector('[data-testid="athlete-photo-crop-preview"]');
+        const image = card?.querySelector('img');
+        return {
+          hasGradientCard: Boolean(card?.classList.contains('athlete-photo-settings-preview')),
+          hasSwitchAffordance: Boolean(card?.querySelector('svg')),
+          details: card?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+          objectPosition: image?.style.objectPosition || '',
+          transform: image?.style.transform || '',
+        };
+      })()`, page.sessionId),
+      {
+        hasGradientCard: true,
+        hasSwitchAffordance: true,
+        details: 'Taylor Morgan#00 · Northside Comets',
+        objectPosition: '50% 50%',
+        transform: 'scale(1)',
+      },
+    );
     await connection.evaluate(`(() => {
-      const values = { 'Horizontal position': '72', 'Vertical position': '34', 'Zoom': '185' };
-      for (const [label, value] of Object.entries(values)) {
-        const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === label);
-        if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: ' + label);
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-        setter?.call(input, value);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-      document.querySelector('[data-testid="btn-upload-cropped-photo"]')?.click();
+      const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === 'Horizontal position');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: Horizontal position');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, '72');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
     })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "72% 50%"', Boolean);
+    await connection.evaluate(`(() => {
+      const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === 'Vertical position');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: Vertical position');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, '34');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
+    await connection.evaluate(`(() => {
+      const input = Array.from(document.querySelectorAll('input[type="range"]')).find((element) => element.getAttribute('aria-label') === 'Zoom');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Photo crop input not found: Zoom');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, '185');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-preview\\"] img")?.style.transform === "scale(1.85)"', Boolean);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 320,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const card = document.querySelector('[data-testid="athlete-photo-crop-preview"]');
+        const editor = document.querySelector('[data-testid="athlete-photo-crop-editor"]');
+        const controls = Array.from(document.querySelectorAll('[data-testid="athlete-photo-crop-editor"] input'));
+        const cardRect = card?.getBoundingClientRect();
+        const editorRect = editor?.getBoundingClientRect();
+        return {
+          cardWithinViewport: Boolean(cardRect && cardRect.left >= 0 && cardRect.right <= window.innerWidth),
+          editorWithinViewport: Boolean(editorRect && editorRect.left >= 0 && editorRect.right <= window.innerWidth),
+          controlsWithinViewport: controls.every((control) => {
+            const rect = control.getBoundingClientRect();
+            return rect.left >= 0 && rect.right <= window.innerWidth;
+          }),
+          documentOverflow: document.documentElement.scrollWidth > window.innerWidth,
+        };
+      })()`, page.sessionId),
+      {
+        cardWithinViewport: true,
+        editorWithinViewport: true,
+        controlsWithinViewport: true,
+        documentOverflow: false,
+      },
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="btn-upload-cropped-photo"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"athlete-photo-crop-editor\\"]") === null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-mobile-athlete-switcher\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const card = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
+        const image = card?.querySelector('img');
+        return {
+          objectPosition: image?.style.objectPosition || '',
+          transform: image?.style.transform || '',
+          details: card?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+        };
+      })()`, page.sessionId),
+      {
+        objectPosition: '72% 34%',
+        transform: 'scale(1.85)',
+        details: 'Taylor Morgan•Northside Comets',
+      },
+    );
+    await reloadPage(connection, page);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-mobile-athlete-switcher\\"] img")?.style.objectPosition === "72% 34%"', Boolean);
+    assert.deepEqual(
+      await connection.evaluate(`(() => {
+        const image = document.querySelector('[data-testid="btn-mobile-athlete-switcher"] img');
+        return {
+          objectPosition: image?.style.objectPosition || '',
+          transform: image?.style.transform || '',
+        };
+      })()`, page.sessionId),
+      {
+        objectPosition: '72% 34%',
+        transform: 'scale(1.85)',
+      },
+    );
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") !== null', Boolean);
     assert.deepEqual(
