@@ -324,12 +324,9 @@ export function SupporterDashboardView({
   const checklistHrefForGame = (game: SupporterEvent | undefined) => game
     ? `/studio/checklist?gameId=${encodeURIComponent(game.id)}`
     : supporterToolRoutes.checklist;
-  const hypeCardHrefForGame = (game: SupporterEvent | undefined) => game
-    ? `/studio/hype-card?source=game-day&gameId=${encodeURIComponent(game.id)}&date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
-    : supporterToolRoutes.hypeCard;
   const statTrackerHref = statTrackerHrefForGame(nextGame);
   const contextChecklistHref = checklistHrefForGame(contextEvent);
-  const hypeCardHref = hypeCardHrefForGame(nextGame);
+  const hypeCardHref = supporterToolRoutes.athletePage;
   const recommendedStatTrackerHref = statTrackerHrefForGame(recommendedGame);
   const recommendedChecklistHref = checklistHrefForGame(weekRecommendation?.event);
   const weeklyPath = [
@@ -862,7 +859,7 @@ export function SupporterDashboardView({
              </div>
              <span className="text-[10px] font-bold">Game Day</span>
            </button>
-            <button type="button" onClick={() => setLocation('/studio/athlete-page')} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
+             <button type="button" onClick={() => setLocation(supporterToolRoutes.athletePage)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <PlusSquare className="w-[20px] h-[20px]" />
              </div>
