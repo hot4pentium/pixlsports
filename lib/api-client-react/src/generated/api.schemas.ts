@@ -243,6 +243,8 @@ export interface ChecklistShareInput {
      * @maxLength 200
      */
   title: string;
+  /** @maxLength 2000 */
+  notes?: string;
   mode: ChecklistShareInputMode;
   /** @maxItems 100 */
   items: ChecklistItem[];

@@ -250,6 +250,8 @@ export const DeleteScheduleShareResponse = zod.void()
  */
 export const createChecklistShareBodyTitleMax = 200;
 
+export const createChecklistShareBodyNotesMax = 2000;
+
 export const createChecklistShareBodyItemsItemIdMax = 100;
 
 export const createChecklistShareBodyItemsItemLabelMax = 240;
@@ -272,6 +274,7 @@ export const createChecklistShareBodySelectedGameOneOpponentMax = 240;
 
 export const CreateChecklistShareBody = zod.object({
   "title": zod.string().min(1).max(createChecklistShareBodyTitleMax),
+  "notes": zod.string().max(createChecklistShareBodyNotesMax).optional(),
   "mode": zod.enum(['gameday', 'tournament']),
   "items": zod.array(zod.object({
   "id": zod.string().min(1).max(createChecklistShareBodyItemsItemIdMax),
@@ -290,6 +293,8 @@ export const CreateChecklistShareBody = zod.object({
 })
 
 export const createChecklistShareResponseOneTitleMax = 200;
+
+export const createChecklistShareResponseOneNotesMax = 2000;
 
 export const createChecklistShareResponseOneItemsItemIdMax = 100;
 
@@ -314,6 +319,7 @@ export const createChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
 
 export const CreateChecklistShareResponse = zod.object({
   "title": zod.string().min(1).max(createChecklistShareResponseOneTitleMax),
+  "notes": zod.string().max(createChecklistShareResponseOneNotesMax).optional(),
   "mode": zod.enum(['gameday', 'tournament']),
   "items": zod.array(zod.object({
   "id": zod.string().min(1).max(createChecklistShareResponseOneItemsItemIdMax),
@@ -347,6 +353,8 @@ export const GetChecklistShareParams = zod.object({
 
 export const getChecklistShareResponseOneTitleMax = 200;
 
+export const getChecklistShareResponseOneNotesMax = 2000;
+
 export const getChecklistShareResponseOneItemsItemIdMax = 100;
 
 export const getChecklistShareResponseOneItemsItemLabelMax = 240;
@@ -370,6 +378,7 @@ export const getChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
 
 export const GetChecklistShareResponse = zod.object({
   "title": zod.string().min(1).max(getChecklistShareResponseOneTitleMax),
+  "notes": zod.string().max(getChecklistShareResponseOneNotesMax).optional(),
   "mode": zod.enum(['gameday', 'tournament']),
   "items": zod.array(zod.object({
   "id": zod.string().min(1).max(getChecklistShareResponseOneItemsItemIdMax),
@@ -404,6 +413,8 @@ export const UpdateChecklistShareParams = zod.object({
 
 export const updateChecklistShareBodyOneTitleMax = 200;
 
+export const updateChecklistShareBodyOneNotesMax = 2000;
+
 export const updateChecklistShareBodyOneItemsItemIdMax = 100;
 
 export const updateChecklistShareBodyOneItemsItemLabelMax = 240;
@@ -427,6 +438,7 @@ export const updateChecklistShareBodyOneSelectedGameOneOpponentMax = 240;
 
 export const UpdateChecklistShareBody = zod.object({
   "title": zod.string().min(1).max(updateChecklistShareBodyOneTitleMax),
+  "notes": zod.string().max(updateChecklistShareBodyOneNotesMax).optional(),
   "mode": zod.enum(['gameday', 'tournament']),
   "items": zod.array(zod.object({
   "id": zod.string().min(1).max(updateChecklistShareBodyOneItemsItemIdMax),
@@ -447,6 +459,8 @@ export const UpdateChecklistShareBody = zod.object({
 }))
 
 export const updateChecklistShareResponseOneTitleMax = 200;
+
+export const updateChecklistShareResponseOneNotesMax = 2000;
 
 export const updateChecklistShareResponseOneItemsItemIdMax = 100;
 
@@ -471,6 +485,7 @@ export const updateChecklistShareResponseOneSelectedGameOneOpponentMax = 240;
 
 export const UpdateChecklistShareResponse = zod.object({
   "title": zod.string().min(1).max(updateChecklistShareResponseOneTitleMax),
+  "notes": zod.string().max(updateChecklistShareResponseOneNotesMax).optional(),
   "mode": zod.enum(['gameday', 'tournament']),
   "items": zod.array(zod.object({
   "id": zod.string().min(1).max(updateChecklistShareResponseOneItemsItemIdMax),

@@ -92,6 +92,7 @@ export function getChecklistResetConfirmation(type: ChecklistEventType = 'game')
 
 export type LocalGamedayChecklist = {
   title: string;
+  notes?: string;
   mode: ChecklistMode;
   items: GamedayChecklistItem[];
   selectedGame?: GamedayChecklistGame;
@@ -192,6 +193,7 @@ export function normalizeChecklist(value: unknown): LocalGamedayChecklist | null
   const selectedGame = normalizeSelectedGame(input.selectedGame);
   return {
     title: textValue(input.title, 'Gameday Checklist').trim() || 'Gameday Checklist',
+    notes: textValue(input.notes).slice(0, 2000),
     mode,
     items,
     ...(selectedGame ? { selectedGame } : {}),

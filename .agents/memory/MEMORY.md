@@ -10,6 +10,7 @@
 - [Upload claim cleanup races](upload-claim-cleanup-races.md) — confirmation must atomically renew a valid claim before cleanup can remove it.
 - [Live role routing](live-role-routing.md) — studio role UI must derive from the current Clerk user on every render, not the initial session role.
 - [Checklist sharing test harness](checklist-sharing-test-harness.md) — direct route tests must provide Clerk-branded session auth; browser coverage uses installed Chromium CDP.
+- [Checklist owner sync](checklist-owner-sync.md) — after an edit link exists, owner and collaborator edits must update the same shared checklist; local saves alone are insufficient.
 - [Public Hype Card boundaries](public-hype-card-boundaries.md) — player pages expose flattened media and finalized aggregates while rotating one owner/design URL server-side.
 - [Profile sport precedence](profile-sport-precedence.md) — a selected profile sport controls sport-specific tools; history chooses the sport only when the profile has none.
 - [TSX test JSX runtime](tsx-test-jsx-runtime.md) — TSX modules rendered by Node tests need a React binding even when Vite and TypeScript accept named-only React imports.

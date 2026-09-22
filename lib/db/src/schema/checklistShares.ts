@@ -6,6 +6,7 @@ export const checklistSharesTable = pgTable("checklist_shares", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
   title: text("title").notNull(),
+  notes: text("notes").notNull().default(""),
   mode: text("mode").notNull().default("gameday"),
   items: jsonb("items").notNull(),
   selectedGame: jsonb("selected_game"),

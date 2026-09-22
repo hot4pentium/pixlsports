@@ -24,6 +24,13 @@ test('starts with practical template items and keeps tournament mode available',
   assert.equal(normalizeChecklist({ ...checklist, mode: 'tournament' })?.mode, 'tournament');
 });
 
+test('keeps optional notes in saved and shared checklist data', () => {
+  const checklist = createGamedayChecklist();
+  assert.equal(normalizeChecklist(checklist)?.notes, '');
+  assert.equal(normalizeChecklist({ ...checklist, notes: 'Meet by the north gate.' })?.notes, 'Meet by the north gate.');
+  assert.equal(resetGamedayChecklist({ ...checklist, notes: 'Bring a spare jersey.' }).notes, 'Bring a spare jersey.');
+});
+
 test('uses event-specific starter items without changing the game template', () => {
   assert.deepEqual(
     createGamedayChecklist('practice').items.map((item) => item.label),
@@ -118,6 +125,7 @@ test('normalizes malformed values and resets completion without dropping custom 
   });
   assert.deepEqual(checklist, {
     title: 'Saturday tournament',
+    notes: '',
     mode: 'gameday',
     selectedGame: {
       id: 'game-1',

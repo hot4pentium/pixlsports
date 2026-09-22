@@ -149,6 +149,7 @@ test("collaborators recover stale checklist revisions and owners control link ro
       ownerId,
       UpdateChecklistShareBody.parse({
         ...checklist,
+        notes: "Meet by the north gate at 8.",
         items: [{ ...checklist.items[0], completed: true }],
         expectedRevision: 1,
       }),
@@ -156,7 +157,10 @@ test("collaborators recover stale checklist revisions and owners control link ro
     );
     assert.equal(ownerUpdate.revision, 2);
     assert.equal(ownerUpdate.items[0]?.completed, true);
-    assert.match(await readEvent('"revision":2'), /"completed":true/);
+    assert.equal(ownerUpdate.notes, "Meet by the north gate at 8.");
+    const updatedEvent = await readEvent('"revision":2');
+    assert.match(updatedEvent, /"completed":true/);
+    assert.match(updatedEvent, /Meet by the north gate at 8/);
 
     await assert.rejects(
       () => requestJson(
@@ -192,6 +196,7 @@ test("collaborators recover stale checklist revisions and owners control link ro
     );
     assert.equal(recovered.revision, 2);
     assert.equal(recovered.items[0]?.completed, true);
+    assert.equal(recovered.notes, "Meet by the north gate at 8.");
 
     const rotatedShare = await requestJson(
       baseUrl,

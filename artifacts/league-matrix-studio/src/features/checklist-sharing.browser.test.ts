@@ -469,13 +469,24 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       connection,
       second.sessionId,
       "document.body?.innerText ?? ''",
-      (body) => body.includes("ANOTHER COLLABORATOR SAVED FIRST"),
+      (body) => body.includes("ANOTHER EDIT WAS SAVED FIRST"),
     );
     assert.deepEqual(
       requests.filter((request) => request.method === "PATCH").map((request) => [request.expectedRevision, request.status]),
       [[1, 200], [1, 409]],
     );
     assert.equal(share.revision, 2);
+    assert.equal(share.items[0]?.completed, true);
+    await connection.evaluate(
+      "document.querySelector('[data-testid=\"button-retry-checklist-sync\"]')?.click()",
+      second.sessionId,
+    );
+    await waitFor(
+      connection,
+      second.sessionId,
+      "document.body?.innerText ?? ''",
+      (body) => body.includes("Saved to shared checklist") && share.revision === 3,
+    );
     assert.equal(share.items[0]?.completed, true);
 
     const readsBeforeReload = requests.filter((request) => request.method === "GET").length;

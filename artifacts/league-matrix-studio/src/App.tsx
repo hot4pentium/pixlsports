@@ -2902,6 +2902,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const [completionFeedback, setCompletionFeedback] = useState<ReturnType<typeof getChecklistCompletionFeedback>>(null);
   const [shareUrl, setShareUrl] = useState(shareToken ? `${appOrigin}${basePath}/checklist/${shareToken}` : '');
   const [revision, setRevision] = useState(1);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const requestedGameId = useRef(
     shared || typeof window === 'undefined'
       ? ''
@@ -2915,6 +2916,9 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const latestChecklist = useRef(checklist);
   const revisionRef = useRef(revision);
   const saveQueue = useRef(Promise.resolve());
+  const pendingChanges = useRef(false);
+  const changeNumber = useRef(0);
+  const activeShareToken = shared ? shareToken : checklist.shareToken;
 
   const calendarEvents = localSchedule?.events ?? [];
   const liveSelectedEvent = calendarEvents.find((event) => event.id === checklist.selectedGame?.id);
@@ -2927,11 +2931,11 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     isLoading: sharedLoading,
     isError: sharedError,
     refetch: refetchSharedChecklist,
-  } = useGetChecklistShare(shareToken, {
+  } = useGetChecklistShare(activeShareToken ?? '', {
     query: {
-      enabled: Boolean(shared && shareToken),
+      enabled: Boolean(activeShareToken),
       retry: false,
-      queryKey: ['/api/checklist-shares', shareToken],
+      queryKey: ['/api/checklist-shares', activeShareToken],
     },
   });
   const createShare = useCreateChecklistShare();
@@ -2968,18 +2972,29 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   useEffect(() => {
     if (!sharedChecklist) return;
+    if (pendingChanges.current) return;
     const normalized = normalizeChecklist(sharedChecklist);
     if (!normalized) return;
     if (sharedChecklist.revision < revisionRef.current) return;
-    setChecklist({ ...normalized, revision: sharedChecklist.revision });
+    const next = { ...normalized, shareToken: sharedChecklist.shareToken, revision: sharedChecklist.revision };
+    latestChecklist.current = next;
+    setChecklist(next);
+    if (!shared) {
+      try {
+        saveGamedayChecklist(window.localStorage, next, userStorageKey);
+        setStorageUnavailable(false);
+      } catch {
+        setStorageUnavailable(true);
+      }
+    }
     setRevision(sharedChecklist.revision);
     revisionRef.current = sharedChecklist.revision;
     setShareUrl(`${appOrigin}${basePath}/checklist/${sharedChecklist.shareToken}`);
     setHydrated(true);
-  }, [sharedChecklist]);
+  }, [sharedChecklist, shared, userStorageKey]);
 
   useEffect(() => {
-    if (!shared || !shareToken) return;
+    if (!activeShareToken) return;
     setLiveStatus('connecting');
     if (typeof window.EventSource === 'undefined') {
       setLiveStatus('reconnecting');
@@ -2987,14 +3002,25 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     }
 
     let active = true;
-    const source = new EventSource(`${basePath}/api/checklist-shares/${encodeURIComponent(shareToken)}/events`);
+    const source = new EventSource(`${basePath}/api/checklist-shares/${encodeURIComponent(activeShareToken)}/events`);
     const applyLiveChecklist = (raw: unknown) => {
       if (typeof raw !== 'object' || raw === null) return;
+      if (pendingChanges.current) return;
       const payload = raw as { revision?: unknown };
       if (typeof payload.revision !== 'number' || !Number.isInteger(payload.revision) || payload.revision <= revisionRef.current) return;
       const normalized = normalizeChecklist(raw);
       if (!normalized) return;
-      setChecklist({ ...normalized, revision: payload.revision });
+      const next = { ...normalized, shareToken: activeShareToken, revision: payload.revision };
+      latestChecklist.current = next;
+      setChecklist(next);
+      if (!shared) {
+        try {
+          saveGamedayChecklist(window.localStorage, next, userStorageKey);
+          setStorageUnavailable(false);
+        } catch {
+          setStorageUnavailable(true);
+        }
+      }
       setRevision(payload.revision);
       revisionRef.current = payload.revision;
       setHydrated(true);
@@ -3027,7 +3053,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
       source.removeEventListener('checklist', handleChecklistEvent);
       source.close();
     };
-  }, [shared, shareToken, refetchSharedChecklist]);
+  }, [shared, activeShareToken, refetchSharedChecklist, userStorageKey]);
 
   useEffect(() => () => {
     if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
@@ -3050,29 +3076,33 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   };
 
   const persistShared = (next: LocalGamedayChecklist) => {
-    if (!shared || !shareToken) return;
-    const payload = {
-      title: next.title.trim() || 'Gameday Checklist',
-      mode: next.mode,
-      items: next.items,
-      selectedGame: next.selectedGame ?? null,
-      expectedRevision: revisionRef.current,
-    };
+    const token = shared ? shareToken : next.shareToken;
+    if (!token) return;
+    const savedChangeNumber = changeNumber.current;
     saveQueue.current = saveQueue.current.then(async () => {
       try {
-        const savedShare = await updateShare.mutateAsync({ shareToken, data: payload });
+        const savedShare = await updateShare.mutateAsync({ shareToken: token, data: {
+          title: next.title.trim() || 'Gameday Checklist',
+          notes: next.notes ?? '',
+          mode: next.mode,
+          items: next.items,
+          selectedGame: next.selectedGame ?? null,
+          expectedRevision: revisionRef.current,
+        } });
         setRevision(savedShare.revision);
         revisionRef.current = savedShare.revision;
         setChecklist((current) => ({ ...current, revision: savedShare.revision }));
+        latestChecklist.current = { ...latestChecklist.current, revision: savedShare.revision };
+        if (!shared) persistLocal(latestChecklist.current);
+        pendingChanges.current = changeNumber.current !== savedChangeNumber;
+        if (!pendingChanges.current) setSyncStatus('saved');
       } catch (error: any) {
+        pendingChanges.current = true;
+        setSyncStatus('error');
         if (error?.status === 409 && error?.data?.current) {
-          const current = normalizeChecklist(error.data.current);
-          if (current) {
-            setChecklist(current);
-            setRevision(error.data.current.revision);
-            revisionRef.current = error.data.current.revision;
-          }
-          setNoticeFor('ANOTHER COLLABORATOR SAVED FIRST — THEIR LATEST CHECKLIST IS NOW SHOWN');
+          setRevision(error.data.current.revision);
+          revisionRef.current = error.data.current.revision;
+          setNoticeFor('ANOTHER EDIT WAS SAVED FIRST — YOUR CHANGES ARE HERE; RETRY WILL REPLACE THE SHARED VERSION');
         } else if (error?.status === 404) {
           setNoticeFor('THIS EDIT LINK WAS REVOKED — ASK THE OWNER FOR A NEW LINK');
         } else {
@@ -3112,7 +3142,10 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     latestChecklist.current = next;
     setChecklist(next);
     persistLocal(next);
-    if (shared) {
+    if (shared || next.shareToken) {
+      changeNumber.current += 1;
+      pendingChanges.current = true;
+      setSyncStatus('saving');
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(() => persistShared(latestChecklist.current), 350);
     }
@@ -3173,10 +3206,17 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
       setLocation(`/sign-in?redirect_url=${encodeURIComponent('/studio/checklist')}`);
       return;
     }
+    if (!shared && latestChecklist.current.shareToken) {
+      const url = `${appOrigin}${basePath}/checklist/${latestChecklist.current.shareToken}`;
+      await navigator.clipboard?.writeText(url);
+      setNoticeFor('EDIT LINK COPIED TO CLIPBOARD');
+      return;
+    }
     try {
       const created = await createShare.mutateAsync({
         data: {
           title: latestChecklist.current.title.trim() || 'Gameday Checklist',
+          notes: latestChecklist.current.notes ?? '',
           mode: latestChecklist.current.mode,
           items: latestChecklist.current.items,
           selectedGame: latestChecklist.current.selectedGame ?? null,
@@ -3184,7 +3224,9 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
       });
       const url = `${appOrigin}${basePath}/checklist/${created.shareToken}`;
       setShareUrl(url);
-      setChecklist((current) => ({ ...current, shareToken: created.shareToken, revision: created.revision }));
+      const sharedDraft = { ...latestChecklist.current, shareToken: created.shareToken, revision: created.revision };
+      latestChecklist.current = sharedDraft;
+      setChecklist(sharedDraft);
       setRevision(created.revision);
       revisionRef.current = created.revision;
       try {
@@ -3428,12 +3470,27 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
         </section>
 
         <section className="mt-5 border border-border bg-card p-5 text-card-foreground clip-angled-sm sm:p-6">
+          <label htmlFor="checklist-notes" className="block text-xs font-bold uppercase tracking-widest text-primary">Notes for everyone</label>
+          <p className="mt-2 text-sm text-muted-foreground">Arrival details, reminders, or anything that does not fit a checkbox.</p>
+          <textarea
+            id="checklist-notes"
+            data-testid="input-checklist-notes"
+            value={checklist.notes ?? ''}
+            onChange={(event) => updateChecklist({ ...latestChecklist.current, notes: event.target.value })}
+            maxLength={2000}
+            rows={4}
+            placeholder="Add a note for this event…"
+            className="mt-4 w-full resize-y border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </section>
+
+        <section className="mt-5 border border-border bg-card p-5 text-card-foreground clip-angled-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><UsersRound className="h-4 w-4" /> Work together</p>
-            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can add, rename, check, and uncheck items. Live updates keep collaborators in sync.' : 'Create one edit link for parents and helpers. No collaborator accounts are required.'}</p>
+            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/65">{shared ? 'Everyone with this link can edit notes and checklist items. Changes save automatically and update for collaborators.' : 'Create one edit link for parents and helpers. After sharing, changes here also update that link automatically.'}</p>
             </div>
-            {!shared && <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-checklist"><Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : 'Create edit link'}</button>}
+            {!shared && <button type="button" onClick={() => { void createOrCopyShare(); }} disabled={isSaving} className="inline-flex shrink-0 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-share-checklist"><Share2 className="h-4 w-4" /> {createShare.isPending ? 'Creating link…' : checklist.shareToken ? 'Copy edit link' : 'Create edit link'}</button>}
           </div>
           {shareUrl && (
             <div className="mt-5 border border-white/15 bg-white/5 p-3">
@@ -3452,7 +3509,14 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
           )}
         </section>
         {notice && <p className="mt-5 text-center text-xs font-bold uppercase tracking-widest text-primary animate-pulse" role="status">{notice}</p>}
-        {isSaving && <p className="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground" role="status">Saving latest changes…</p>}
+        {(activeShareToken || syncStatus === 'error') && (
+          <div className="mt-3 text-center text-xs font-bold text-muted-foreground" role="status" aria-live="polite">
+            {syncStatus === 'saving' || isSaving ? 'Saving to shared checklist…' : syncStatus === 'saved' ? 'Saved to shared checklist' : syncStatus === 'error' ? 'Shared save failed — changes remain here.' : 'Shared checklist is ready'}
+            {syncStatus === 'error' && activeShareToken && (
+              <button type="button" onClick={() => { setSyncStatus('saving'); pendingChanges.current = true; persistShared(latestChecklist.current); }} className="ml-2 underline underline-offset-2 text-primary" data-testid="button-retry-checklist-sync">Replace shared version</button>
+            )}
+          </div>
+        )}
       </main>
     </StudioLayout>
   );

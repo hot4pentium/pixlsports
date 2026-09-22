@@ -20,6 +20,7 @@ function shareResponse(share: typeof checklistSharesTable.$inferSelect, canManag
   return CreateChecklistShareResponse.parse({
     shareToken: share.id,
     title: share.title,
+    notes: share.notes,
     mode: share.mode,
     items: share.items,
     selectedGame: share.selectedGame,
@@ -119,6 +120,7 @@ router.post("/checklist-shares", requireAuth, async (req, res): Promise<void> =>
     const [created] = await db.insert(checklistSharesTable).values({
       ownerClerkUserId: getRequiredClerkUserId(res),
       title: parsed.data.title,
+      notes: parsed.data.notes ?? "",
       mode: parsed.data.mode,
       items: parsed.data.items,
       selectedGame: parsed.data.selectedGame ?? null,
@@ -166,6 +168,7 @@ router.patch("/checklist-shares/:shareToken", async (req, res): Promise<void> =>
     }
     const [updated] = await db.update(checklistSharesTable).set({
       title: parsed.data.title,
+      notes: parsed.data.notes ?? "",
       mode: parsed.data.mode,
       items: parsed.data.items,
       selectedGame: parsed.data.selectedGame ?? null,

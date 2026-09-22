@@ -1456,6 +1456,7 @@ components:
       required: [title, mode, items]
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: string, maxLength: 2000 }
         mode: { type: string, enum: [gameday, tournament] }
         items:
           type: array

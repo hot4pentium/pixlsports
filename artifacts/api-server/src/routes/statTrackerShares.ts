@@ -26,7 +26,7 @@ export function getPublicEvents(storedEvents: unknown[]) {
   const visibleEvents = storedEvents.slice(firstVisibleIndex);
   const boundaryPlayIds = new Set(
     visibleEvents
-      .filter((event): event is Record<string, unknown> => typeof event === "object" && event !== null && isPairedPassEvent(event))
+      .filter((event): event is Record<string, unknown> => typeof event === "object" && event !== null && isPairedPassEvent(event as Record<string, unknown>))
       .map((event) => event.playId as string)
       .filter((playId) => storedEvents
         .slice(0, firstVisibleIndex)
