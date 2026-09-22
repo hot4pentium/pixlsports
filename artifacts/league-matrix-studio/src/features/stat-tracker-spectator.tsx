@@ -258,7 +258,7 @@ export function PublicStatTrackerPage() {
 
         <main className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(300px,.75fr)] lg:gap-7">
           <section className="min-w-0">
-            <div className="relative overflow-hidden border border-primary/45 bg-card shadow-xl clip-angled" data-testid="stat-tracker-scores">
+            <div className="relative overflow-hidden border border-primary/45 bg-card text-card-foreground shadow-xl clip-angled" data-testid="stat-tracker-scores">
               <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" aria-hidden="true" />
               <div className="relative border-b border-foreground/10 px-5 py-4 sm:px-8 sm:py-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -380,6 +380,7 @@ export function PublicStatTrackerPage() {
                         </div>
                         <div className="mt-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
                           <span>{phaseLabel} {event.period}</span>
+                          <span data-testid={`recent-activity-attribution-${event.id}`}>· {event.attribution === "athlete" ? data.athleteName || "Athlete" : data.teamName || "Team"}</span>
                           {index === 0 && <span className="text-accent">Current</span>}
                         </div>
                       </div>

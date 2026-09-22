@@ -121,6 +121,7 @@ export * from './scheduleShare';
 export * from './scheduleShareInput';
 export * from './statTrackerConflict';
 export * from './statTrackerEvent';
+export * from './statTrackerEventAttribution';
 export * from './statTrackerGameSnapshot';
 export * from './statTrackerGameSnapshotSport';
 export * from './statTrackerGameSnapshotStats';

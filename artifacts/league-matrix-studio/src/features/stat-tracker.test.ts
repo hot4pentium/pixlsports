@@ -9,6 +9,7 @@ import {
   adjustScore,
   buildGameReport,
   clearStoredTrackerConflict,
+  countStatEventsByAttribution,
   createGameSession,
   endGame,
   getPreferredTrackerSport,
@@ -258,6 +259,70 @@ test('back-to-back live stat taps preserve both events from one render', () => {
   assert.equal(changedGame.score, 6);
 });
 
+test('team card and athlete avatar taps preserve separate attribution during rapid play', () => {
+  const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('basketball');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan Lee',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const teamTarget = renderer.root.findByProps({ 'data-testid': 'live-stat-three-point' });
+  const athleteTarget = renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-three-point' });
+  assert.equal(teamTarget.props['aria-label'], 'Record Three-point field goal for Falcons');
+  assert.equal(athleteTarget.props['aria-label'], 'Record Three-point field goal for Jordan Lee');
+  assert.match(athleteTarget.props.className, /min-h-11/);
+  assert.match(athleteTarget.props.className, /min-w-11/);
+  assert.equal(athleteTarget.findAllByType('img').length, 0);
+  assert.equal(athleteTarget.findByType('span').children.join(''), 'JL');
+
+  act(() => {
+    teamTarget.props.onClick();
+    athleteTarget.props.onClick();
+    teamTarget.props.onClick();
+  });
+
+  assert.deepEqual(changedGame.events.map((event) => event.attribution), ['team', 'athlete', 'team']);
+  assert.deepEqual(countStatEventsByAttribution(changedGame, 'three-point'), { team: 2, athlete: 1 });
+  assert.equal(changedGame.stats['three-point'], 3);
+});
+
+test('legacy tracker events normalize to team attribution', () => {
+  const legacy = createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const normalized = normalizeTrackerData({
+    version: 1,
+    games: [{
+      ...endGame(legacy),
+      stats: { goal: 1 },
+      events: [{
+        id: 'legacy-event',
+        statId: 'goal',
+        createdAt: '2026-09-17T12:01:00.000Z',
+        period: 1,
+      }],
+    }],
+  });
+
+  assert.equal(normalized.games[0]?.events[0]?.attribution, 'team');
+  assert.deepEqual(countStatEventsByAttribution(normalized.games[0]!, 'goal'), { team: 1, athlete: 0 });
+});
+
 test('football yard tracking keeps play counts while recording passing, rushing, and receiving yards', () => {
   const firstTime = new Date('2026-09-17T12:01:00Z');
   let game = createGameSession('football', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
@@ -278,6 +343,20 @@ test('football yard tracking keeps play counts while recording passing, rushing,
   game = undoLastStatEvent(game);
   assert.equal(game.stats.reception, undefined);
   assert.equal(game.yardStats?.['receiving-yard'], undefined);
+});
+
+test('football yard corrections preserve the recorded athlete attribution', () => {
+  let game = createGameSession('football', {}, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'reception', new Date('2026-09-17T12:01:00Z'), 0, 'athlete');
+  const eventId = game.events[0]?.id;
+  assert.ok(eventId);
+
+  game = updateStatEventYards(game, eventId, 18);
+  assert.equal(game.events[0]?.yards, 18);
+  assert.equal(game.events[0]?.attribution, 'athlete');
+  game = undoLastStatEvent(game);
+  assert.equal(game.events.length, 0);
+  assert.deepEqual(game.stats, {});
 });
 
 test('football yard tracking can be ignored while preserving one-tap play counts', () => {
@@ -469,6 +548,36 @@ test('baseball hit waits for a single, double, or triple choice before recording
   act(() => renderer.update(renderGame(changedGame)));
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'baseball-hit-choices' }).length, 0);
   assert.match(renderedText(renderer), /HIT1 · tracked/);
+});
+
+test('baseball follow-on choices retain the athlete target that opened them', () => {
+  const game = createGameSession('baseball', { opponent: 'Northside' }, new Date('2026-09-20T12:00:00Z'));
+  const rule = getSportRule('baseball');
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan',
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => !item.liveHidden && item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-hit' }).props.onClick());
+  act(() => renderer.root.findByProps({ 'data-testid': 'baseball-hit-double' }).props.onClick());
+  assert.equal(changedGame.events[0]?.statId, 'double');
+  assert.equal(changedGame.events[0]?.attribution, 'athlete');
 });
 
 test('baseball pitch expands its choices without expanding the walk card', () => {
@@ -1006,9 +1115,13 @@ test('game reports safely reject missing and unfinished selections', () => {
 });
 
 test('game report renders every sport stat and closes without changing the report', () => {
-  const game = endGame(
-    addStatEvent(createGameSession('soccer', { opponent: 'Northside', notes: 'Strong finish.' }), 'goal'),
-  );
+  const game = endGame(addStatEvent(
+    createGameSession('soccer', { opponent: 'Northside', notes: 'Strong finish.' }),
+    'goal',
+    new Date(),
+    0,
+    'athlete',
+  ));
   const report = buildGameReport([game], 'soccer', game.id);
   assert.ok(report);
   let closeCount = 0;
@@ -1028,6 +1141,7 @@ test('game report renders every sport stat and closes without changing the repor
     && node.props['data-testid'].startsWith('report-stat-')
   )).length, getSportRule('soccer').stats.length);
   assert.match(renderedText(renderer), /Season: 1/);
+  assert.match(renderedText(renderer), /Team 0 · Athlete 1/);
   assert.match(renderedText(renderer), /Strong finish/);
   act(() => renderer.root.findByProps({ 'data-testid': 'game-report-close' }).props.onClick());
   assert.equal(closeCount, 1);

@@ -39,6 +39,7 @@ const game = {
     statId: "tackle",
     createdAt: "2026-09-20T18:02:00.000Z",
     period: 2,
+    attribution: "athlete" as const,
     yards: null,
   }],
 };
@@ -126,6 +127,8 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     );
     assert.equal(publicView.canManage, false);
     assert.equal(publicView.game.events.length, 2);
+    assert.equal(publicView.game.events[0]?.attribution, "team");
+    assert.equal(publicView.game.events[1]?.attribution, "athlete");
     assert.equal((publicView as unknown as Record<string, unknown>).ownerClerkUserId, undefined);
     assert.equal((publicView.game as unknown as Record<string, unknown>).notes, undefined);
 

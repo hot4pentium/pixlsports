@@ -31,6 +31,7 @@ function publicResponse(
         statId: item.statId,
         createdAt: item.createdAt,
         period: item.period,
+        attribution: item.attribution === "athlete" ? "athlete" : "team",
         yards: typeof item.yards === "number" ? item.yards : null,
       };
     }),

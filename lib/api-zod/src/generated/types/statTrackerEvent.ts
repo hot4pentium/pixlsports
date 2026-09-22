@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StatTrackerEventAttribution } from './statTrackerEventAttribution';
 
 export interface StatTrackerEvent {
   /**
@@ -20,6 +21,7 @@ export interface StatTrackerEvent {
   createdAt: Date;
   /** @minimum 1 */
   period: number;
+  attribution?: StatTrackerEventAttribution;
   /**
      * @minimum 0
      * @nullable

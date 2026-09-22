@@ -27,6 +27,7 @@ function game(): GameSession {
       statId: 'touchdown',
       createdAt: `2026-09-21T18:0${index}:00.000Z`,
       period: 2,
+      attribution: index === 10 ? 'athlete' as const : 'team' as const,
       ...(index % 2 ? { yards: index } : {}),
     })),
   };
@@ -43,7 +44,9 @@ test('tracker share input is explicitly sanitized and keeps the last ten events'
   assert.equal('notes' in input.game, false);
   assert.equal('startedAt' in input.game, false);
   assert.equal('endedAt' in input.game, false);
-  assert.deepEqual(Object.keys(input.game.events[0] ?? {}).sort(), ['createdAt', 'id', 'period', 'statId', 'yards']);
+  assert.equal(input.game.events[0]?.attribution, 'team');
+  assert.equal(input.game.events.at(-1)?.attribution, 'athlete');
+  assert.deepEqual(Object.keys(input.game.events[0] ?? {}).sort(), ['attribution', 'createdAt', 'id', 'period', 'statId', 'yards']);
 });
 
 test('season snapshot and recipient scoreboard use readable dark-card contrast', () => {
@@ -53,4 +56,11 @@ test('season snapshot and recipient scoreboard use readable dark-card contrast',
   assert.match(spectatorSource, /data-testid="stat-tracker-scores"[\s\S]*?text-muted-foreground/);
   assert.doesNotMatch(trackerPageSource, /Season snapshot[\s\S]*?text-white\/(?:55|60|70)/);
   assert.doesNotMatch(spectatorSource, /data-testid="stat-tracker-scores"[\s\S]*?text-white\/(?:40|60|80)/);
+});
+
+test('public play-by-play labels each event with its team or athlete attribution', () => {
+  assert.match(spectatorSource, /event\.attribution === "athlete"/);
+  assert.match(spectatorSource, /data\.athleteName \|\| "Athlete"/);
+  assert.match(spectatorSource, /data\.teamName \|\| "Team"/);
+  assert.match(spectatorSource, /recent-activity-attribution-/);
 });

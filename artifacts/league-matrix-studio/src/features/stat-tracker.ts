@@ -17,11 +17,14 @@ export type SportRule = {
   stats: StatDefinition[];
 };
 
+export type StatAttribution = 'team' | 'athlete';
+
 export type StatEvent = {
   id: string;
   statId: string;
   createdAt: string;
   period: number;
+  attribution: StatAttribution;
   yards?: number;
 };
 
@@ -259,6 +262,7 @@ function normalizeGameSession(game: GameSession): GameSession {
     events: Array.isArray(game.events)
       ? game.events.map((event) => ({
         ...event,
+        attribution: event.attribution === 'athlete' ? 'athlete' : 'team',
         ...(typeof event.yards === 'number' && Number.isFinite(event.yards)
           ? { yards: Math.max(0, Math.floor(event.yards)) }
           : {}),
@@ -421,6 +425,7 @@ export function addStatEvent(
   statId: string,
   now = new Date(),
   yards = 0,
+  attribution: StatAttribution = 'team',
 ): GameSession {
   const definition = getSportRule(game.sport).stats.find((item) => item.id === statId);
   if (!definition || game.status !== 'live') return game;
@@ -435,6 +440,7 @@ export function addStatEvent(
     statId,
     createdAt: now.toISOString(),
     period: game.period,
+    attribution,
     ...(eventYards > 0 ? { yards: eventYards } : {}),
   };
   const yardStats = { ...(game.yardStats ?? {}) };
@@ -448,6 +454,17 @@ export function addStatEvent(
     score: game.score + definition.points,
     events: [...game.events, event],
   };
+}
+
+export function countStatEventsByAttribution(
+  game: Pick<GameSession, 'events'>,
+  statIds: string | readonly string[],
+): Record<StatAttribution, number> {
+  const ids = new Set(Array.isArray(statIds) ? statIds : [statIds]);
+  return game.events.reduce<Record<StatAttribution, number>>((counts, event) => {
+    if (ids.has(event.statId)) counts[event.attribution === 'athlete' ? 'athlete' : 'team'] += 1;
+    return counts;
+  }, { team: 0, athlete: 0 });
 }
 
 export function updateStatEventYards(

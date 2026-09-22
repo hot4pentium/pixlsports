@@ -1498,6 +1498,9 @@ components:
         statId: { type: string, minLength: 1, maxLength: 80 }
         createdAt: { type: string, format: date-time }
         period: { type: integer, minimum: 1 }
+        attribution:
+          type: string
+          enum: [team, athlete]
         yards: { type: ["integer", "null"], minimum: 0 }
     StatTrackerGameSnapshot:
       type: object

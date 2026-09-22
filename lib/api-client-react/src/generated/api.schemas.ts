@@ -259,6 +259,14 @@ export interface ChecklistConflict {
   current: ChecklistShare;
 }
 
+export type StatTrackerEventAttribution = typeof StatTrackerEventAttribution[keyof typeof StatTrackerEventAttribution];
+
+
+export const StatTrackerEventAttribution = {
+  team: 'team',
+  athlete: 'athlete',
+} as const;
+
 export interface StatTrackerEvent {
   /**
      * @minLength 1
@@ -273,6 +281,7 @@ export interface StatTrackerEvent {
   createdAt: string;
   /** @minimum 1 */
   period: number;
+  attribution?: StatTrackerEventAttribution;
   /**
      * @minimum 0
      * @nullable
