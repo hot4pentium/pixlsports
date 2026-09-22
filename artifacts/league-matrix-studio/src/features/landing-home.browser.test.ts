@@ -69,19 +69,15 @@ async function openLandingPage(
   await waitFor(
     connection,
     page.sessionId,
-    'document.querySelectorAll("[data-testid^=\\"landing-sport-tile-\\"]").length',
-    (count) => count === 6,
+    'document.querySelector("[data-testid=\\"landing-sports-banner\\"]")?.complete',
+    (loaded) => loaded === true,
   );
   await connection.evaluate('document.fonts?.ready', page.sessionId);
   await waitFor(
     connection,
     page.sessionId,
-    `(() => [...document.querySelectorAll(".landing-sport-tile")].every((tile) => {
-      const style = getComputedStyle(tile);
-      return style.opacity === "1"
-        && (style.transform === "none" || style.transform === "matrix(1, 0, 0, 1, 0, 0)");
-    }))()`,
-    (settled) => settled === true,
+    'document.querySelector("[data-testid=\\"landing-sports-banner\\"]")?.naturalWidth',
+    (width) => width === 2146,
   );
   return page;
 }
@@ -92,11 +88,13 @@ type LandingLayout = {
   bodyScrollWidth: number;
   ctaBottom: number;
   showcaseTop: number;
-  ticker: {
+  banner: {
     clientWidth: number;
     scrollWidth: number;
     left: number;
     right: number;
+    imageWidth: number;
+    imageHeight: number;
   };
   checklistVideo: {
     top: number;
@@ -112,26 +110,6 @@ type LandingLayout = {
     playsInline: boolean;
     autoplay: boolean;
   };
-  tiles: Array<{
-    label: string;
-    left: number;
-    right: number;
-    top: number;
-    rowTop: number;
-    width: number;
-    height: number;
-    kickerFontSize: number;
-    kickerTop: number;
-    kickerBottom: number;
-    labelFontSize: number;
-    labelTop: number;
-    labelBottom: number;
-    kickerClientWidth: number;
-    kickerScrollWidth: number;
-    labelClientWidth: number;
-    labelScrollWidth: number;
-    tileBottom: number;
-  }>;
   texture: {
     sectionCount: number;
     animationName: string;
@@ -146,7 +124,8 @@ async function readLandingLayout(
 ): Promise<LandingLayout> {
   return connection.evaluate<LandingLayout>(`(() => {
     const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
-    const ticker = rect('.landing-sport-ticker');
+    const banner = rect('.landing-sports-banner-scroll');
+    const image = rect('[data-testid="landing-sports-banner"]');
     const cta = rect('[data-testid="link-hero-explore-tools"]');
     const showcase = rect('[data-testid="landing-sport-showcase"]');
     return {
@@ -155,11 +134,13 @@ async function readLandingLayout(
       bodyScrollWidth: document.body.scrollWidth,
       ctaBottom: cta?.bottom ?? -1,
       showcaseTop: showcase?.top ?? -1,
-      ticker: {
-        clientWidth: document.querySelector('.landing-sport-ticker')?.clientWidth ?? -1,
-        scrollWidth: document.querySelector('.landing-sport-ticker')?.scrollWidth ?? -1,
-        left: ticker?.left ?? -1,
-        right: ticker?.right ?? -1,
+      banner: {
+        clientWidth: document.querySelector('.landing-sports-banner-scroll')?.clientWidth ?? -1,
+        scrollWidth: document.querySelector('.landing-sports-banner-scroll')?.scrollWidth ?? -1,
+        left: banner?.left ?? -1,
+        right: banner?.right ?? -1,
+        imageWidth: image?.width ?? -1,
+        imageHeight: image?.height ?? -1,
       },
       checklistVideo: (() => {
         const video = document.querySelector('[data-testid="landing-checklist-video"]');
@@ -180,33 +161,6 @@ async function readLandingLayout(
         };
       })(),
       beforeGameDayTitleTop: rect('[data-testid="landing-before-game-day-title"]')?.top ?? -1,
-      tiles: [...document.querySelectorAll('[data-testid^="landing-sport-tile-"]')].map((tile) => {
-        const tileRect = tile.getBoundingClientRect();
-        const kicker = tile.querySelector('p:first-child');
-        const label = tile.querySelector('p:last-child');
-        const kickerRect = kicker?.getBoundingClientRect();
-        const labelRect = label?.getBoundingClientRect();
-        return {
-          label: label?.textContent?.trim() ?? '',
-          left: tileRect.left,
-          right: tileRect.right,
-          top: tileRect.top,
-          rowTop: tile instanceof HTMLElement ? tile.offsetTop : -1,
-          width: tileRect.width,
-          height: tileRect.height,
-          kickerFontSize: Number.parseFloat(kicker ? getComputedStyle(kicker).fontSize : '0'),
-          kickerTop: kickerRect?.top ?? -1,
-          kickerBottom: kickerRect?.bottom ?? -1,
-          labelFontSize: Number.parseFloat(label ? getComputedStyle(label).fontSize : '0'),
-          labelTop: labelRect?.top ?? -1,
-          labelBottom: labelRect?.bottom ?? -1,
-          kickerClientWidth: kicker instanceof HTMLElement ? kicker.clientWidth : -1,
-          kickerScrollWidth: kicker instanceof HTMLElement ? kicker.scrollWidth : -1,
-          labelClientWidth: label instanceof HTMLElement ? label.clientWidth : -1,
-          labelScrollWidth: label instanceof HTMLElement ? label.scrollWidth : -1,
-          tileBottom: tileRect.bottom,
-        };
-      }),
       texture: (() => {
         const sections = [...document.querySelectorAll('section.bg-landing-bg')];
         const texture = sections[0];
@@ -222,7 +176,7 @@ async function readLandingLayout(
   })()`, page.sessionId);
 }
 
-test('landing ticker stays readable and contained from phone to desktop', async () => {
+test('landing sports banner scrolls on phones without overflowing the page', async () => {
   const portProbe = createServer();
   const port = await listen(portProbe);
   await new Promise<void>((resolveClose, rejectClose) => {
@@ -281,10 +235,11 @@ test('landing ticker stays readable and contained from phone to desktop', async 
       assert.equal(layout.viewportWidth, width);
       assert.ok(layout.documentScrollWidth <= width, `document overflows at ${width}px`);
       assert.ok(layout.bodyScrollWidth <= width, `body overflows at ${width}px`);
-      assert.ok(layout.ticker.left >= 0, `ticker starts outside the viewport at ${width}px`);
-      assert.ok(layout.ticker.right <= width, `ticker ends outside the viewport at ${width}px`);
-       assert.ok(layout.ticker.scrollWidth <= layout.ticker.clientWidth, `ticker should not scroll within ${width}px`);
-      assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above ticker at ${width}px`);
+      assert.ok(layout.banner.left >= 0, `banner starts outside the viewport at ${width}px`);
+      assert.ok(layout.banner.right <= width, `banner ends outside the viewport at ${width}px`);
+      assert.ok(layout.banner.scrollWidth > layout.banner.clientWidth, `banner should scroll within ${width}px`);
+      assert.ok(layout.banner.imageWidth >= 900, `banner should remain readable at ${width}px`);
+      assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above banner at ${width}px`);
       assert.equal(layout.texture.sectionCount, 2);
       assert.equal(layout.texture.animationName, 'landing-background-drift');
       assert.equal(layout.texture.animationDuration, '38s');
@@ -297,34 +252,6 @@ test('landing ticker stays readable and contained from phone to desktop', async 
        assert.equal(layout.checklistVideo.muted, true);
        assert.equal(layout.checklistVideo.loop, true);
        assert.equal(layout.checklistVideo.playsInline, true);
-      assert.deepEqual(layout.tiles.map((tile) => tile.label), [
-        'Soccer',
-        'Football',
-        'Basketball',
-        'Volleyball',
-        'Baseball',
-        'Softball',
-      ]);
-       assert.equal(
-         new Set(layout.tiles.map((tile) => tile.rowTop)).size,
-         2,
-         `phone photos should occupy two rows at ${width}px`,
-       );
-      for (const tile of layout.tiles) {
-        assert.ok(tile.left >= 0 && tile.right <= width, `${tile.label} leaves the viewport at ${width}px`);
-        assert.ok(tile.kickerFontSize >= 9, `${tile.label} kicker is too small at ${width}px`);
-        assert.ok(tile.kickerTop >= tile.top, `${tile.label} kicker starts outside its tile at ${width}px`);
-        assert.ok(tile.kickerBottom <= tile.labelTop, `${tile.label} kicker overlaps its label at ${width}px`);
-        assert.ok(tile.kickerBottom <= tile.tileBottom, `${tile.label} kicker is clipped at ${width}px`);
-        assert.ok(tile.kickerScrollWidth <= tile.kickerClientWidth, `${tile.label} kicker overflows at ${width}px`);
-        assert.ok(tile.labelFontSize >= 14, `${tile.label} is too small at ${width}px`);
-        assert.ok(tile.labelTop >= tile.top, `${tile.label} starts outside its tile at ${width}px`);
-        assert.ok(tile.labelBottom <= tile.tileBottom, `${tile.label} is clipped at ${width}px`);
-        assert.ok(
-          tile.labelScrollWidth <= tile.labelClientWidth,
-          `${tile.label} overflows at ${width}px (${tile.labelScrollWidth}px > ${tile.labelClientWidth}px, tile ${tile.width}px)`,
-        );
-      }
     }
 
     const desktopPage = await openLandingPage(connection, `http://127.0.0.1:${port}/`, {
@@ -335,8 +262,10 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     const desktopLayout = await readLandingLayout(connection, desktopPage);
     assert.ok(desktopLayout.documentScrollWidth <= 1440);
     assert.ok(desktopLayout.bodyScrollWidth <= 1440);
-    assert.ok(desktopLayout.ticker.right <= 1440);
-     assert.ok(desktopLayout.ticker.scrollWidth <= desktopLayout.ticker.clientWidth);
+    assert.ok(desktopLayout.banner.right <= 1440);
+    assert.ok(desktopLayout.banner.scrollWidth <= desktopLayout.banner.clientWidth);
+    assert.ok(desktopLayout.banner.imageWidth > 1000);
+    assert.ok(Math.abs(desktopLayout.banner.imageWidth / desktopLayout.banner.imageHeight - 2146 / 733) < 0.01);
     assert.ok(desktopLayout.ctaBottom <= desktopLayout.showcaseTop);
     assert.ok(desktopLayout.checklistVideo.width > 0);
     assert.ok(desktopLayout.checklistVideo.right <= 1440);
@@ -353,29 +282,13 @@ test('landing ticker stays readable and contained from phone to desktop', async 
     }, true);
     pages.push(reducedMotionPage);
     const reducedMotionBefore = await readLandingLayout(connection, reducedMotionPage);
-    assert.ok(reducedMotionBefore.tiles.every((tile) => tile.labelFontSize >= 14));
+    assert.ok(reducedMotionBefore.banner.imageWidth >= 900);
     assert.equal(reducedMotionBefore.checklistVideo.autoplay, false);
     assert.equal(reducedMotionBefore.texture.animationName, 'none');
-    assert.deepEqual(
-      await connection.evaluate<string[]>(
-        '[...document.querySelectorAll(".landing-sport-tile")].map((tile) => getComputedStyle(tile).animationName)',
-        reducedMotionPage.sessionId,
-      ),
-      ['none', 'none', 'none', 'none', 'none', 'none'],
-    );
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_000));
     const reducedMotionAfter = await readLandingLayout(connection, reducedMotionPage);
-    assert.deepEqual(
-      reducedMotionAfter.tiles.map((tile) => [tile.width, tile.height, tile.labelBottom]),
-      reducedMotionBefore.tiles.map((tile) => [tile.width, tile.height, tile.labelBottom]),
-    );
-
-    const tickerTiles = await connection.evaluate<Array<{ left: number; right: number }>>(
-      '[...document.querySelectorAll(".landing-sport-tile")].map((tile) => { const rect = tile.getBoundingClientRect(); return { left: rect.left, right: rect.right }; })',
-      reducedMotionPage.sessionId,
-    );
-    assert.equal(tickerTiles.length, 6);
-    assert.ok(tickerTiles.every((tile) => tile.left >= 0 && tile.right <= 320));
+    assert.equal(reducedMotionAfter.banner.imageWidth, reducedMotionBefore.banner.imageWidth);
+    assert.equal(reducedMotionAfter.banner.imageHeight, reducedMotionBefore.banner.imageHeight);
   } finally {
     if (connection) {
       await Promise.all(pages.map((page) => connection?.send('Target.closeTarget', {

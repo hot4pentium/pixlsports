@@ -8,12 +8,7 @@ import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
 import gameDayChecklist from '@/assets/game-day-checklist-768.webp';
 import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
 import sidelineParents from '../../../../attached_assets/generated_images/sideline-parents.jpg';
-import soccerAthlete from '../../../../attached_assets/generated_images/landing-soccer-athlete.jpg';
-import footballAthlete from '../../../../attached_assets/generated_images/landing-football-athlete-black.jpg';
-import basketballAthlete from '../../../../attached_assets/generated_images/landing-basketball-athlete.jpg';
-import volleyballAthlete from '../../../../attached_assets/generated_images/landing-volleyball-athlete-girl.jpg';
-import baseballAthlete from '../../../../attached_assets/generated_images/landing-baseball-athlete-black.jpg';
-import softballAthlete from '../../../../attached_assets/generated_images/landing-softball-athlete-girl.jpg';
+import sportsBanner from '../../../../attached_assets/homepagesportsbanner_1790120971871.png';
 import planChecklistVideo from '../../../../attached_assets/Officialprep_1789962901507.mp4';
 import planChecklistPoster from '../../../../attached_assets/Officialprep_1789962901507-poster.webp';
 
@@ -113,93 +108,24 @@ function LandingFooter() {
   );
 }
 
-const landingSports = [
-  {
-    id: 'soccer',
-    label: 'Soccer',
-    kicker: 'Go for Goal',
-    image: soccerAthlete,
-    alt: 'Youth soccer athlete in action',
-  },
-  {
-    id: 'football',
-    label: 'Football',
-    kicker: 'Own the field',
-    image: footballAthlete,
-    alt: 'Black youth football athlete running with the ball',
-  },
-  {
-    id: 'basketball',
-    label: 'Basketball',
-    kicker: 'Run the floor',
-    image: basketballAthlete,
-    alt: 'Youth basketball athlete driving toward the basket',
-  },
-  {
-    id: 'volleyball',
-    label: 'Volleyball',
-    kicker: 'Rise together',
-    image: volleyballAthlete,
-    alt: 'Girls volleyball athlete jumping for a spike',
-  },
-  {
-    id: 'baseball',
-    label: 'Baseball',
-    kicker: 'Step up',
-    image: baseballAthlete,
-    alt: 'Black youth baseball athlete at bat',
-  },
-  {
-    id: 'softball',
-    label: 'Softball',
-    kicker: 'Swing big',
-    image: softballAthlete,
-    alt: 'Girls softball athlete hitting the ball',
-  },
-] as const;
-
 function LandingSportShowcase() {
-  const renderSportTiles = () => landingSports.map((sport, index) => (
-    <div
-      key={sport.id}
-      data-sport-id={sport.id}
-      data-testid={`landing-sport-tile-${sport.id}`}
-      className="landing-sport-tile"
-      style={{ '--landing-tile-delay': `${index * 120}ms` } as React.CSSProperties}
-    >
-      <img
-        src={sport.image}
-        alt={sport.alt}
-        className="h-full w-full object-cover"
-        loading={index === 0 ? 'eager' : 'lazy'}
-      />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#10213b] via-[#10213b]/80 to-transparent px-3 pb-3 pt-12 text-left sm:px-4 sm:pb-4">
-        <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-landing-orange sm:text-[10px]">{sport.kicker}</p>
-        <p className="mt-1 font-display text-sm font-extrabold uppercase leading-none tracking-tight text-white sm:text-base">{sport.label}</p>
-      </div>
-    </div>
-  ));
-
   return (
-    <div className="landing-sport-ticker-wrap" data-testid="landing-sport-showcase">
-      <div className="mb-4 flex items-end justify-between gap-4 px-1 sm:mb-5">
-        <p className="font-handwritten text-3xl font-bold leading-[.82] text-landing-orange drop-shadow-sm sm:text-4xl">
-          Less chasing.<br />More cheering.
-        </p>
-        <span className="pb-1 text-right text-[10px] font-extrabold uppercase tracking-[.16em] text-landing-gray sm:text-xs">
-          Every sport.<br />One clear week.
-        </span>
+    <div className="landing-sports-banner-wrap" data-testid="landing-sport-showcase">
+      <div className="landing-sports-banner-mobile-heading">
+        <p>Supported sports</p>
+        <h2 className="font-display">One game-week flow. <span>Six sports.</span></h2>
       </div>
-      <div
-        className="landing-sport-ticker"
-        aria-label="Sports represented on Pixl Sports"
-      >
-        <div className="landing-sport-ticker-track">
-          <div className="landing-sport-ticker-group">
-            {renderSportTiles()}
-          </div>
-        </div>
+      <div className="landing-sports-banner-scroll" role="region" aria-label="Supported sports banner" tabIndex={0}>
+        <img
+          src={sportsBanner}
+          alt="Supported sports: one game-week flow for soccer, football, basketball, volleyball, baseball, and softball. Plan it. Follow it. Celebrate it."
+          width={2146}
+          height={733}
+          className="landing-sports-banner"
+          data-testid="landing-sports-banner"
+        />
       </div>
+      <p className="landing-sports-banner-hint">Swipe to see all six sports</p>
     </div>
   );
 }

@@ -6,25 +6,11 @@ const landingSource = readFileSync(new URL('./landing-home.tsx', import.meta.url
 const landingStyles = readFileSync(new URL('../landing-unified.css', import.meta.url), 'utf8');
 const landingPage = landingSource.slice(landingSource.indexOf('export function PublicLandingPage'));
 
-test('landing athlete photos render as visible entrance-animated tiles below the hero actions', () => {
-  assert.match(landingSource, /landing-sport-ticker-track/);
-  assert.match(landingSource, /landing-sport-ticker-group/);
-  assert.match(landingSource, /landing-sport-tile/);
-  assert.match(landingSource, /landing-tile-delay/);
-  assert.doesNotMatch(landingSource, /isDuplicate/);
-  assert.match(landingSource, /kicker: 'Go for Goal'/);
-  assert.doesNotMatch(landingSource, /kicker: 'Find your shape'/);
-  assert.deepEqual(
-    [...landingSource.matchAll(/id: '([^']+)',\s+label: '([^']+)'/g)].map(([, id, label]) => [id, label]),
-    [
-      ['soccer', 'Soccer'],
-      ['football', 'Football'],
-      ['basketball', 'Basketball'],
-      ['volleyball', 'Volleyball'],
-      ['baseball', 'Baseball'],
-      ['softball', 'Softball'],
-    ],
-  );
+test('uploaded sports banner replaces the photo grid below the hero actions', () => {
+  assert.match(landingSource, /homepagesportsbanner_1790120971871\.png/);
+  assert.match(landingSource, /data-testid="landing-sports-banner"/);
+  assert.doesNotMatch(landingSource, /landing-sport-tile/);
+  assert.match(landingSource, /soccer, football, basketball, volleyball, baseball, and softball/);
   assert.ok(
     landingPage.indexOf('data-testid="link-hero-explore-tools"')
       < landingPage.indexOf('<LandingSportShowcase />'),
@@ -72,16 +58,12 @@ test('checklist video uses the phone crop without a native player shell', () => 
   assert.match(landingSource, /bg-\[#FFF1EA\]/);
 });
 
-test('landing athlete photos stay visible in a responsive grid and respect reduced motion', () => {
-  assert.match(landingStyles, /\.landing-sport-ticker \{[\s\S]*overflow: visible;/);
-  assert.match(landingStyles, /\.landing-sport-ticker-group \{[\s\S]*display: grid;/);
-  assert.match(landingStyles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.match(landingStyles, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
-  assert.match(landingStyles, /@media \(max-width: 767px\) \{[\s\S]*\.landing-sport-tile > div \{[\s\S]*padding-inline: 0\.125rem;/);
-  assert.match(landingStyles, /@media \(max-width: 319px\) \{[\s\S]*--landing-ticker-gap: 0\.75rem;/);
-  assert.match(landingStyles, /@keyframes landing-sport-tile-rubberband/);
-  assert.match(landingStyles, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(landingStyles, /animation-delay: var\(--landing-tile-delay\)/);
+test('banner stays full width on desktop and scrolls within its own region on phones', () => {
+  assert.match(landingStyles, /\.landing-sports-banner-scroll \{[\s\S]*overflow-x: auto;/);
+  assert.match(landingStyles, /\.landing-sports-banner \{[\s\S]*width: 100%;/);
+  assert.match(landingStyles, /@media \(max-width: 767px\) \{[\s\S]*\.landing-sports-banner \{[\s\S]*width: 900px;/);
+  assert.match(landingSource, /role="region" aria-label="Supported sports banner" tabIndex=\{0\}/);
+  assert.match(landingSource, /Swipe to see all six sports/);
 });
 
 test('landing neutral sections use a subtle moving texture with a reduced-motion fallback', () => {

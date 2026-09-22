@@ -120,83 +120,80 @@
   z-index: 1;
 }
 
-.landing-sport-ticker-wrap {
-  --landing-ticker-gap: clamp(1rem, 2.5vw, 1.25rem);
+.landing-sports-banner-wrap {
   margin-top: 2.75rem;
 }
 
-.landing-sport-ticker {
-  overflow: visible;
-  padding-block: 0.25rem;
+.landing-sports-banner-scroll {
+  border: 3px solid transparent;
+  border-radius: 16px;
+  background:
+    linear-gradient(#142a46, #142a46) padding-box,
+    linear-gradient(115deg, #ff7055 0%, #ffb06b 48%, #ef5b39 100%) border-box;
+  box-shadow: 0 14px 36px rgba(4, 15, 32, 0.22);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 
-.landing-sport-ticker-track {
+.landing-sports-banner {
   display: block;
   width: 100%;
+  height: auto;
 }
 
-.landing-sport-ticker-group {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--landing-ticker-gap);
+.landing-sports-banner-hint {
+  display: none;
+}
+
+.landing-sports-banner-mobile-heading {
+  display: none;
 }
 
 @media (max-width: 767px) {
-  .landing-sport-tile > div {
-    padding-inline: 0.125rem;
-  }
-}
-
-@media (max-width: 319px) {
-  .landing-sport-ticker-wrap {
-    --landing-ticker-gap: 0.75rem;
-  }
-}
-
-.landing-sport-tile {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--landing-gray) 25%, transparent);
-  border-radius: 0.9rem;
-  background: var(--landing-pale-blue);
-  box-shadow: 0 14px 30px -20px color-mix(in srgb, var(--landing-text) 55%, transparent);
-  animation: landing-sport-tile-rubberband 900ms both;
-  animation-delay: var(--landing-tile-delay);
-}
-
-@media (min-width: 1024px) {
-  .landing-sport-ticker-group {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-}
-
-.landing-sport-tile img {
-  display: block;
-}
-
-@keyframes landing-sport-tile-rubberband {
-  from {
-    opacity: 0;
-    transform: translateX(-4rem) scale(0.72);
+  .landing-sports-banner-mobile-heading {
+    display: block;
+    margin-bottom: 0.5rem;
+    text-align: center;
   }
 
-  48% {
-    opacity: 1;
-    transform: translateX(1rem) scale(1.08);
+  .landing-sports-banner-mobile-heading p {
+    color: #89bbff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
 
-  68% {
-    transform: translateX(-0.45rem) scale(0.96);
+  .landing-sports-banner-mobile-heading h2 {
+    margin-top: 0.5rem;
+    color: #fff;
+    font-size: clamp(1.65rem, 7vw, 2.5rem);
+    line-height: 1.05;
+    text-transform: uppercase;
   }
 
-  84% {
-    transform: translateX(0.2rem) scale(1.02);
+  .landing-sports-banner-mobile-heading h2 span {
+    color: #82b8ff;
   }
 
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
+  .landing-sports-banner-scroll {
+    height: 155px;
+    overflow-y: hidden;
+  }
+
+  .landing-sports-banner {
+    width: 900px;
+    max-width: none;
+    margin-top: -125px;
+  }
+
+  .landing-sports-banner-hint {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--landing-gray);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
   }
 }
 
@@ -215,12 +212,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-sport-tile {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-
   .new-landing > main > section.bg-landing-bg::before {
     animation: none;
   }
