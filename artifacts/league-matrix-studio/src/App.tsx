@@ -2875,7 +2875,7 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
   );
 }
 
-function ChecklistPage({ shared = false }: { shared?: boolean }) {
+export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const [, setLocation] = useLocation();
   const params = useParams<{ shareToken?: string }>();
   const shareToken = shared ? (params.shareToken ?? '') : '';

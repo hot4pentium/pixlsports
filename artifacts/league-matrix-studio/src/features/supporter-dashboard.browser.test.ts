@@ -277,6 +277,16 @@ async function reloadPage(
   await loadEvent;
 }
 
+async function navigatePage(
+  connection: DevToolsConnection,
+  page: { sessionId: string; targetId: string },
+  url: string,
+) {
+  const loadEvent = connection.waitForEvent('Page.loadEventFired', page.sessionId);
+  await connection.send('Page.navigate', { url }, page.sessionId);
+  await loadEvent;
+}
+
 async function waitFor<T>(
   page: DevToolsConnection,
   sessionId: string,
@@ -610,6 +620,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router, useLocation } from 'wouter';
 import { ClerkProvider } from '@clerk/react';
 import { HypeCardEditor } from './src/features/hype-card';
+import { ChecklistPage } from './src/App';
 import { SupporterDashboardView, SupporterProfileView } from './src/features/supporter-dashboard';
 import { LiveTrackerGame } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
@@ -864,6 +875,63 @@ function LocalHypeCardFlowHarness() {
   });
 }
 
+function ChecklistContextHarness() {
+  const [location] = useLocation();
+  const [, setRouteVersion] = useState(0);
+  useEffect(() => {
+    const handlePopState = () => setRouteVersion((version) => version + 1);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+  const scenario = new URLSearchParams(window.location.search).get('scenario') || 'practice';
+  const scenarioEvents = {
+    practice: [{
+      id: 'practice-1',
+      type: 'practice',
+      date: '2026-09-23',
+      time: '18:30',
+      location: 'Northside Gym',
+      notes: 'Bring water',
+    }],
+    meeting: [{
+      id: 'meeting-1',
+      type: 'meeting',
+      date: '2026-09-24',
+      time: '17:00',
+      location: 'Northside Clubhouse',
+      notes: 'Bring the agenda',
+    }],
+    game: [{
+      id: 'game-1',
+      type: 'game',
+      date: '2026-09-25',
+      time: '18:30',
+      location: 'Eastside Gym',
+      opponent: 'Rivals',
+      status: 'upcoming',
+    }],
+  };
+  const events = scenarioEvents[scenario] || scenarioEvents.practice;
+
+  if (location === '/studio/checklist' || new URLSearchParams(window.location.search).get('route') === 'checklist') {
+    return createElement('div', { 'data-testid': 'checklist-context-harness' }, createElement(ChecklistPage));
+  }
+
+  return createElement('div', { 'data-testid': 'checklist-context-harness' },
+    createElement(SupporterDashboardView, {
+      profile,
+      events,
+      nextGameIsUpcoming: true,
+      projects: [],
+      scheduleSource: 'custom',
+      connectionLabel: 'Northside · 2026',
+      onOpenProfile: () => {},
+      onOpenStatTracker: () => {},
+      onOpenChecklist: () => navigate('/studio/checklist'),
+    }),
+  );
+}
+
 export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
@@ -895,6 +963,19 @@ export function mount() {
         createElement(LocalHypeCardFlowHarness),
       ),
     )));
+    return;
+  }
+  if (window.location.search.includes('checklist-context')) {
+    root.render(
+      createElement(ClerkProvider, {
+        publishableKey: 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      createElement(Router, null,
+        createElement(QueryClientProvider, { client: queryClient },
+          createElement(ChecklistContextHarness),
+        ),
+      )),
+    );
     return;
   }
   const renderDashboard = () => root.render(
@@ -1665,6 +1746,210 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="link-quick-checklist"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
+  } finally {
+    if (page && connection) {
+      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('supporter Prep keeps practice, meeting, and game checklist context after reload', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-dashboard-checklist-context-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-checklist-context-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=practice`,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"checklist-context-harness\\"]"))', page.sessionId),
+      true,
+      'checklist context browser harness must be mounted',
+    );
+    const dashboardPath = await connection.evaluate<string>('location.pathname', page.sessionId);
+    assert.equal(dashboardPath, `/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+
+    const cases = [
+      {
+        scenario: 'practice',
+        event: {
+          id: 'practice-1',
+          type: 'practice',
+          date: '2026-09-23',
+          time: '18:30',
+          location: 'Northside Gym',
+          opponent: '',
+          snacks: '',
+          drinks: '',
+          notes: 'Bring water',
+        },
+        heading: /PRACTICE\s*CHECKLIST/i,
+        selectorLabel: 'Checklist for practice',
+        selectorAriaLabel: 'Choose which practice this checklist is for',
+        scheduleDescription: 'Choose a practice from your saved schedule.',
+      },
+      {
+        scenario: 'meeting',
+        event: {
+          id: 'meeting-1',
+          type: 'meeting',
+          date: '2026-09-24',
+          time: '17:00',
+          location: 'Northside Clubhouse',
+          opponent: '',
+          snacks: '',
+          drinks: '',
+          notes: 'Bring the agenda',
+        },
+        heading: /MEETING\s*CHECKLIST/i,
+        selectorLabel: 'Checklist for meeting',
+        selectorAriaLabel: 'Choose which meeting this checklist is for',
+        scheduleDescription: 'Choose a meeting from your saved schedule.',
+      },
+      {
+        scenario: 'game',
+        event: {
+          id: 'game-1',
+          type: 'game',
+          status: 'upcoming',
+          date: '2026-09-25',
+          time: '18:30',
+          location: 'Eastside Gym',
+          opponent: 'Rivals',
+          snacks: '',
+          drinks: '',
+          notes: '',
+        },
+        heading: /GAMEDAY\s*CHECKLIST/i,
+        selectorLabel: 'Checklist for game',
+        selectorAriaLabel: 'Choose which game this checklist is for',
+        scheduleDescription: 'Choose a game from your saved schedule.',
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const schedule = {
+          teamName: 'Northside Comets',
+          season: '2026',
+          events: [testCase.event],
+          template: 0,
+      };
+      await connection.evaluate(`(() => {
+        window.localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))});
+        window.history.pushState({}, '', ${JSON.stringify(`${dashboardPath}?checklist-context&scenario=${testCase.scenario}`)});
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      })()`, page.sessionId);
+      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]") !== null', Boolean);
+      assert.match(
+        await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+        testCase.scenario === 'practice' ? /practice/i : testCase.scenario === 'meeting' ? /meeting/i : /game/i,
+      );
+
+      await connection.evaluate(`document.querySelector('[data-testid="btn-desktop-recommendation-action"]')?.click()`, page.sessionId);
+      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
+      const readChecklistContext = () => connection!.evaluate<{
+        heading: string;
+        selectorText: string;
+        selectorAriaLabel: string;
+        selectedEventId: string;
+        scheduleDescription: string;
+      }>(`(() => {
+        const heading = document.querySelector('[data-testid="checklist-page"] h1')?.textContent || '';
+        const selector = document.querySelector('[data-testid="select-checklist-game"]');
+        const selectorContainer = document.querySelector('[data-testid="checklist-game-selector"]');
+        return {
+          heading,
+          selectorText: selectorContainer?.textContent || '',
+          selectorAriaLabel: selector?.getAttribute('aria-label') || '',
+          selectedEventId: selector instanceof HTMLSelectElement ? selector.value : '',
+          scheduleDescription: selectorContainer?.querySelector('p')?.textContent || '',
+        };
+      })()`, page.sessionId);
+      const beforeReload = await readChecklistContext();
+      assert.match(beforeReload.heading, testCase.heading);
+      assert.match(beforeReload.selectorText, new RegExp(testCase.selectorLabel, 'i'));
+      assert.equal(beforeReload.selectorAriaLabel, testCase.selectorAriaLabel);
+      assert.equal(beforeReload.selectedEventId, testCase.event.id);
+      assert.equal(beforeReload.scheduleDescription, testCase.scheduleDescription);
+
+      await navigatePage(
+        connection,
+        page,
+        `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=${testCase.scenario}&gameId=${testCase.event.id}&eventType=${testCase.event.type}&route=checklist`,
+      );
+      await reloadPage(connection, page);
+      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
+      const afterReload = await readChecklistContext();
+      assert.match(afterReload.heading, testCase.heading);
+      assert.match(afterReload.selectorText, new RegExp(testCase.selectorLabel, 'i'));
+      assert.equal(afterReload.selectorAriaLabel, testCase.selectorAriaLabel);
+      assert.equal(afterReload.selectedEventId, testCase.event.id);
+      assert.equal(afterReload.scheduleDescription, testCase.scheduleDescription);
+    }
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
