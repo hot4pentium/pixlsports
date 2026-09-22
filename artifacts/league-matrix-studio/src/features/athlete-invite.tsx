@@ -380,6 +380,21 @@ export function AthleteInviteManager() {
           </button>
         </section>
 
+        {selectedPath === 'card' && (
+          <form onSubmit={save} className="mt-8 max-w-xl">
+            <aside className="space-y-5">
+              <section className="border border-border bg-card p-5" data-testid="section-visible-athlete-page">
+                <h2 className="font-display text-2xl uppercase">Visible sections</h2>
+                <Toggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
+                <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
+                <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
+              </section>
+              <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
+              {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
+            </aside>
+          </form>
+        )}
+
          <section className="mt-8 border border-primary/40 bg-card" aria-label="Manage posted media" data-testid="section-manage-athlete-videos">
            <div className="border-b border-border bg-primary/5 p-5 sm:p-6">
              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner controls</p>
@@ -470,12 +485,6 @@ export function AthleteInviteManager() {
         {selectedPath === 'page' && (
           <form onSubmit={save} className="mt-8 max-w-xl">
             <aside className="space-y-5">
-              <section className="border border-border bg-card p-5" data-testid="section-visible-athlete-page">
-                <h2 className="font-display text-2xl uppercase">Visible sections</h2>
-                <Toggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
-                <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
-                <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
-              </section>
               <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
               {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
             </aside>

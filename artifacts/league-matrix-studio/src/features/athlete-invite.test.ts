@@ -35,6 +35,7 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /aria-expanded=\{hypeCardGuideOpen\}/);
   assert.match(source, /setSelectedPath\('card'\)/);
   assert.match(source, /setSelectedPath\('page'\)/);
+  assert.match(source, /\{selectedPath === 'card' && \(/);
   assert.match(source, /\{selectedPath === 'page' && existing &&/);
   assert.match(source, /\{selectedPath === 'page' && \(/);
   assert.match(source, /How it works/);
@@ -69,6 +70,11 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /getListHypeCardSharesQueryKey\(hostedImageQuery\)/);
   assert.match(source, /data-testid="input-athlete-invite-url"/);
   assert.match(source, /data-testid="section-visible-athlete-page"/);
+  assert.ok(
+    source.indexOf('data-testid="section-visible-athlete-page"')
+      < source.indexOf('data-testid="section-manage-athlete-videos"'),
+    'visible section controls should appear before posted media management',
+  );
   assert.match(
     apiSource,
     /eq\(hypeCardSharesTable\.ownerClerkUserId, getRequiredClerkUserId\(res\)\),[\s\S]*?isNull\(hypeCardSharesTable\.revokedAt\),[\s\S]*?gt\(hypeCardSharesTable\.expiresAt, new Date\(\)\)/,
