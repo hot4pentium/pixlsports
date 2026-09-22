@@ -375,7 +375,7 @@ export function AthleteInviteManager() {
             data-testid="card-create-hype-page"
           >
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-            <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>
+            <h2 className="mt-2 font-display text-3xl uppercase">{existing ? 'Access your Hype Page' : 'Create a Hype Page'}</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
           </button>
         </section>
