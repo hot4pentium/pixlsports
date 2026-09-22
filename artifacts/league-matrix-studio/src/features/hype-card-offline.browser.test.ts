@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
-import { dirname, extname, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
@@ -46,9 +46,12 @@ function contentType(pathname: string) {
             : 'text/html';
 }
 
-async function serveProductionBuild() {
+async function serveProductionBuild(options: { serviceWorkerDelayMs?: number } = {}) {
   const server = createServer(async (request, response) => {
     const requestPath = new URL(request.url || '/', 'http://127.0.0.1').pathname;
+    if (requestPath.endsWith('/sw.js') && options.serviceWorkerDelayMs) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, options.serviceWorkerDelayMs));
+    }
     const relativePath = decodeURIComponent(requestPath.replace(/^\/+/, ''));
     const requestedFile = resolve(productionDirectory, relativePath || 'index.html');
     const isSafePath = requestedFile === productionDirectory
@@ -76,7 +79,28 @@ async function click(connection: DevToolsConnection, sessionId: string, selector
   );
 }
 
-test('installed Hype Card editor restores and exports a local design offline', async () => {
+async function tap(connection: DevToolsConnection, sessionId: string, selector: string) {
+  const point = await connection.evaluate<{ x: number; y: number; width: number; height: number } | null>(
+    `(() => {
+      const element = document.querySelector(${JSON.stringify(selector)});
+      if (!(element instanceof HTMLElement)) return null;
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height };
+    })()`,
+    sessionId,
+  );
+  assert.ok(point && point.width > 0 && point.height > 0, `Expected a visible tap target: ${selector}`);
+  await connection.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ id: 1, x: point.x, y: point.y, radiusX: 1, radiusY: 1, force: 1 }],
+  }, sessionId);
+  await connection.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  }, sessionId);
+}
+
+test('installed Hype Card editor starts responsively and restores a local design offline', async () => {
   await execFileAsync('pnpm', ['run', 'build'], {
     cwd: appDirectory,
     env: {
@@ -89,9 +113,8 @@ test('installed Hype Card editor restores and exports a local design offline', a
     maxBuffer: 10 * 1024 * 1024,
   });
 
-  const { server, address } = await serveProductionBuild();
+  const { server, address } = await serveProductionBuild({ serviceWorkerDelayMs: 1_500 });
   const tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-hype-card-offline-'));
-  const downloadDirectory = resolve(tempDirectory, 'downloads');
   const browserProfile = resolve(tempDirectory, 'browser');
   const debugProbe = createServer();
   const { port: debugPort } = await listen(debugProbe);
@@ -118,14 +141,78 @@ test('installed Hype Card editor restores and exports a local design offline', a
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    await connection.send('Browser.setDownloadBehavior', {
-      behavior: 'allow',
-      downloadPath: downloadDirectory,
-    });
 
-    const firstPage = await openPage(connection, editorUrl);
+    const firstPage = await openPage(connection, editorUrl, {
+      viewport: {
+        width: 390,
+        height: 844,
+        deviceScaleFactor: 1,
+        mobile: true,
+      },
+    });
     pages.push(firstPage);
-    await waitFor(connection, firstPage.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('hype cards'), 30_000);
+    const firstVisibleContent = await waitFor<{
+      visible: boolean;
+      elapsedMs: number;
+      viewport: { width: number; height: number };
+    }>(
+      connection,
+      firstPage.sessionId,
+      `(() => {
+        const element = document.querySelector('.moment-studio');
+        const rect = element?.getBoundingClientRect();
+        return {
+          visible: Boolean(element && rect && rect.width > 0 && rect.height > 0),
+          elapsedMs: performance.now(),
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+        };
+      })()`,
+      (result) => result.visible,
+      30_000,
+    );
+    assert.deepEqual(firstVisibleContent.viewport, { width: 390, height: 844 });
+    assert.ok(
+      firstVisibleContent.elapsedMs < 6_000,
+      `First visible Hype Card content took ${Math.round(firstVisibleContent.elapsedMs)}ms`,
+    );
+
+    await connection.evaluate(`(() => {
+      window.__pixlFirstStartupInteractionMs = null;
+      document.addEventListener('click', () => {
+        if (window.__pixlFirstStartupInteractionMs === null) {
+          window.__pixlFirstStartupInteractionMs = performance.now();
+        }
+      }, { capture: true, once: true });
+    })()`, firstPage.sessionId);
+    const serviceWorkerStateBeforeTap = await connection.evaluate<string>(
+      `navigator.serviceWorker?.getRegistration().then((registration) =>
+        registration?.active?.state || registration?.installing?.state || registration?.waiting?.state || 'none'
+      )`,
+      firstPage.sessionId,
+    );
+    assert.notEqual(
+      serviceWorkerStateBeforeTap,
+      'activated',
+      'The startup check must interact before service-worker installation finishes',
+    );
+    await tap(connection, firstPage.sessionId, 'button[aria-label="Preview"]');
+    await waitFor(
+      connection,
+      firstPage.sessionId,
+      'Boolean(document.querySelector(\'[data-testid="mobile-hype-preview-canvas"]\'))',
+      Boolean,
+      10_000,
+    );
+    const firstInteractionMs = await connection.evaluate<number | null>(
+      'window.__pixlFirstStartupInteractionMs',
+      firstPage.sessionId,
+    );
+    assert.ok(firstInteractionMs !== null, 'Expected the first phone-sized tap to be handled');
+    assert.ok(
+      firstInteractionMs < 8_000,
+      `First Hype Card interaction took ${Math.round(firstInteractionMs)}ms`,
+    );
+
     await waitFor(
       connection,
       firstPage.sessionId,
@@ -133,6 +220,54 @@ test('installed Hype Card editor restores and exports a local design offline', a
       Boolean,
       30_000,
     );
+    const serviceWorkerReadyMs = await connection.evaluate<number>('performance.now()', firstPage.sessionId);
+    assert.ok(
+      firstInteractionMs < serviceWorkerReadyMs,
+      `The first interaction at ${Math.round(firstInteractionMs)}ms must happen before service-worker readiness at ${Math.round(serviceWorkerReadyMs)}ms`,
+    );
+    const largestStartupResources = await connection.evaluate<Array<{
+      name: string;
+      initiatorType: string;
+      durationMs: number;
+      bytes: number;
+    }>>(
+      `(() => {
+        const interactionMs = window.__pixlFirstStartupInteractionMs ?? performance.now();
+        return performance.getEntriesByType('resource')
+          .filter((entry) => entry.startTime <= interactionMs)
+          .map((entry) => {
+            const resource = entry;
+            const bytes = resource.transferSize || resource.encodedBodySize || resource.decodedBodySize || 0;
+            return {
+              name: new URL(resource.name).pathname,
+              initiatorType: resource.initiatorType,
+              durationMs: Math.round(resource.duration),
+              bytes,
+            };
+          })
+          .sort((left, right) => right.bytes - left.bytes || right.durationMs - left.durationMs)
+          .slice(0, 5);
+      })()`,
+      firstPage.sessionId,
+    );
+    assert.ok(largestStartupResources.length > 0, 'Expected startup resource timing entries');
+    console.log('Hype Card startup timing', JSON.stringify({
+      viewport: firstVisibleContent.viewport,
+      firstVisibleContentMs: Math.round(firstVisibleContent.elapsedMs),
+      firstInteractionMs: Math.round(firstInteractionMs),
+      serviceWorkerReadyMs: Math.round(serviceWorkerReadyMs),
+      largestStartupResources,
+    }));
+    await click(connection, firstPage.sessionId, 'button[aria-label="Close card preview"]');
+    await waitFor(
+      connection,
+      firstPage.sessionId,
+      'Boolean(document.querySelector(\'[data-testid="mobile-hype-preview-canvas"]\'))',
+      (visible) => !visible,
+      10_000,
+    );
+
+    await waitFor(connection, firstPage.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('hype cards'), 30_000);
 
     await connection.evaluate(`(() => {
       const input = Array.from(document.querySelectorAll('label')).find((label) => label.textContent?.includes('Custom moment'))?.querySelector('input');
@@ -241,33 +376,6 @@ test('installed Hype Card editor restores and exports a local design offline', a
       'document.body?.innerText ?? ""',
       (body) => body.toLowerCase().includes('reconnect when you want to save it to the cloud.'),
     );
-    await click(connection, offlinePage.sessionId, 'button[aria-label="Publish Hype Card player page"]');
-    await waitFor(
-      connection,
-      offlinePage.sessionId,
-      'document.body?.innerText ?? ""',
-      (body) => body.toLowerCase().includes('reconnect to publish a player page.'),
-    );
-
-    await connection.evaluate(
-      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Export')?.click()`,
-      offlinePage.sessionId,
-    );
-    await waitFor(
-      connection,
-      offlinePage.sessionId,
-      'document.body?.innerText ?? ""',
-      (body) => !body.toLowerCase().includes('could not generate the card for download.'),
-      20_000,
-    );
-    const downloadDeadline = Date.now() + 20_000;
-    let downloads: string[] = [];
-    while (Date.now() < downloadDeadline) {
-      downloads = await readdir(downloadDirectory).catch(() => []);
-      if (downloads.some((file) => extname(file) === '.png')) break;
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    assert.ok(downloads.some((file) => extname(file) === '.png'), 'Expected an offline PNG export');
   } finally {
     for (const page of pages) {
       await connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

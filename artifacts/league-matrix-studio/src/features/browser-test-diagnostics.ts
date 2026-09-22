@@ -249,7 +249,15 @@ export class DevToolsConnection {
 export async function openPage(
   connection: DevToolsConnection,
   url: string,
-  options: { offline?: boolean } = {},
+  options: {
+    offline?: boolean;
+    viewport?: {
+      width: number;
+      height: number;
+      deviceScaleFactor?: number;
+      mobile?: boolean;
+    };
+  } = {},
 ): Promise<BrowserPage> {
   const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
   const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', {
@@ -259,6 +267,14 @@ export async function openPage(
   const { sessionId } = attached;
   await connection.send('Page.enable', {}, sessionId);
   await connection.send('Runtime.enable', {}, sessionId);
+  if (options.viewport) {
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: options.viewport.width,
+      height: options.viewport.height,
+      deviceScaleFactor: options.viewport.deviceScaleFactor ?? 1,
+      mobile: options.viewport.mobile ?? true,
+    }, sessionId);
+  }
   if (options.offline) {
     await connection.send('Network.enable', {}, sessionId);
     await connection.send('Page.addScriptToEvaluateOnNewDocument', {
