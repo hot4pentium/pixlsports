@@ -1477,17 +1477,19 @@ export function SupporterProfileView({
               <div className="min-w-0 flex-1 space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Private to your signed-in account. JPG, PNG, or WebP, up to 5 MB.</p>
                 {photoError && <p className="text-sm font-bold text-destructive" role="alert">{photoError}</p>}
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <label className="cursor-pointer bg-foreground text-background px-5 py-3 text-center text-xs font-bold uppercase tracking-widest disabled:opacity-50">
-                    {photoBusy ? 'Uploading…' : athletePhotoUrl ? 'Replace Photo' : 'Add Photo'}
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoBusy} onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) onPhotoChange(file);
-                      event.currentTarget.value = '';
-                    }} data-testid="input-athlete-photo" />
-                  </label>
-                  {athletePhotoUrl && !pendingPhotoUrl && <button type="button" disabled={photoBusy} onClick={onPhotoRemove} className="border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="btn-remove-athlete-photo"><Trash2 className="mr-2 inline h-4 w-4" />Remove</button>}
-                </div>
+                {!pendingPhotoUrl && (
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <label className="cursor-pointer bg-foreground text-background px-5 py-3 text-center text-xs font-bold uppercase tracking-widest disabled:opacity-50">
+                      {photoBusy ? 'Uploading…' : athletePhotoUrl ? 'Replace Photo' : 'Add Photo'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoBusy} onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) onPhotoChange(file);
+                        event.currentTarget.value = '';
+                      }} data-testid="input-athlete-photo" />
+                    </label>
+                    {athletePhotoUrl && <button type="button" disabled={photoBusy} onClick={onPhotoRemove} className="border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="btn-remove-athlete-photo"><Trash2 className="mr-2 inline h-4 w-4" />Remove</button>}
+                  </div>
+                )}
               </div>
             </div>
             {pendingPhotoUrl && (
