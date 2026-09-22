@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  ChevronDown, Home, PlusSquare, Check, Sparkles, Menu, RotateCcw
+  Home, PlusSquare, Check, Sparkles, Menu, RotateCcw
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -260,8 +260,6 @@ export function SupporterDashboardView({
   onSignOut,
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const toolsTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
@@ -543,31 +541,6 @@ export function SupporterDashboardView({
       saveSupporterActiveGame(window.localStorage, gameId);
     } catch {
       // The selection still works for this session when storage is unavailable.
-    }
-  };
-
-  const focusFirstTool = () => {
-    document.getElementById('all-tools-panel')?.querySelector<HTMLElement>('a, button')?.focus();
-  };
-
-  const openTools = () => {
-    setToolsOpen(true);
-    window.requestAnimationFrame(() => {
-      document.getElementById('all-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.requestAnimationFrame(focusFirstTool);
-    });
-  };
-
-  const closeTools = () => {
-    setToolsOpen(false);
-    window.requestAnimationFrame(() => toolsTriggerRef.current?.focus());
-  };
-
-  const toggleTools = () => {
-    if (toolsOpen) {
-      closeTools();
-    } else {
-      openTools();
     }
   };
 
@@ -1308,36 +1281,20 @@ export function SupporterDashboardView({
       {/* TOOL CHOOSER */}
       <section id="all-tools" className="animate-slide-up delay-200">
         <div className="border-b border-border pb-4">
-          <button
-            type="button"
-            onClick={toggleTools}
-            aria-controls="all-tools-panel"
-            aria-expanded={toolsOpen}
-            className="flex w-full items-center justify-between gap-4 text-left"
-            data-testid="button-choose-task"
-            ref={toolsTriggerRef}
-          >
+          <div className="flex w-full items-center justify-between gap-4">
             <span id="all-tools-heading">
               <span className="studio-textured-accent mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
               <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
             </span>
-            <span className="inline-flex shrink-0 items-center gap-2 border border-border bg-card px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:text-primary clip-angled-sm">
-              {toolsOpen ? 'Hide tools' : 'View tools'}
-              <ChevronDown className={`h-4 w-4 transition-transform ${toolsOpen ? 'rotate-180' : ''}`} />
-            </span>
-          </button>
+          </div>
           <p className="mt-3 text-sm font-medium text-muted-foreground">The next best move is always close.</p>
         </div>
-        {toolsOpen && (
-          <div
-            id="all-tools-panel"
-            className="mt-4 grid gap-2 sm:grid-cols-2"
-            data-testid="all-tools-panel"
-            aria-labelledby="all-tools-heading"
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') closeTools();
-            }}
-          >
+        <div
+          id="all-tools-panel"
+          className="mt-4 grid gap-2 sm:grid-cols-2"
+          data-testid="all-tools-panel"
+          aria-labelledby="all-tools-heading"
+        >
             <Link href={supporterToolRoutes.hypeCard} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
               <span className="flex min-w-0 items-center gap-3">
                 <Zap className="h-5 w-5 shrink-0 text-primary" />
@@ -1378,8 +1335,7 @@ export function SupporterDashboardView({
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
             </button>
-          </div>
-        )}
+        </div>
       </section>
     </div>
       </div>
