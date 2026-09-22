@@ -510,12 +510,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin: -24px -16px 0;
-  padding: 20px 20px 16px;
+  margin: 0;
+  padding: 24px 18px 18px;
   overflow: hidden;
   border: 1px solid rgba(85, 164, 255, .3);
-  border-top: 0;
-  border-radius: 0 0 28px 28px;
+  border-radius: 24px;
   background:
     radial-gradient(circle at 92% 8%, rgba(85, 164, 255, .24), transparent 12rem),
     linear-gradient(145deg, #0B1F3A 0%, #102B4D 58%, #123C72 100%);
@@ -545,6 +544,7 @@
   color: white;
   font-size: clamp(1.65rem, 7vw, 2.2rem);
   line-height: .94;
+  text-align: center;
 }
 
 .pixl-dashboard-mobile .mobile-hero-columns {
