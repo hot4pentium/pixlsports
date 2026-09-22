@@ -2003,6 +2003,40 @@ test('supporters can switch saved checklist event types and keep the latest one 
     await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Meeting ready") === true', Boolean);
 
+    await connection.evaluate(`document.querySelector('[data-testid="button-add-checklist-item"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelectorAll(\'[data-testid^="input-checklist-item-custom-"]\').length === 1', Boolean);
+    await connection.evaluate(`(() => {
+      window.__checklistConfirmMessage = '';
+      window.confirm = (message) => {
+        window.__checklistConfirmMessage = message;
+        return false;
+      };
+      document.querySelector('[data-testid="button-reset-checklist"]')?.click();
+    })()`, page.sessionId);
+    const cancelledReset = await connection.evaluate<{
+      confirmMessage: string;
+      customItems: number;
+      completedItems: number;
+    }>(`({
+      confirmMessage: window.__checklistConfirmMessage || '',
+      customItems: document.querySelectorAll('[data-testid^="input-checklist-item-custom-"]').length,
+      completedItems: document.querySelectorAll('[data-completed="true"]').length,
+    })`, page.sessionId);
+    assert.match(cancelledReset.confirmMessage, /custom items and completion state will be replaced with the meeting starter template/i);
+    assert.equal(cancelledReset.customItems, 1, 'cancelling reset must keep the custom item');
+    assert.equal(cancelledReset.completedItems, 6, 'cancelling reset must keep completion state');
+
+    await connection.evaluate(`(() => {
+      window.confirm = () => true;
+      document.querySelector('[data-testid="button-reset-checklist"]')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelectorAll(\'[data-testid^="input-checklist-item-custom-"]\').length === 0 && document.querySelectorAll(\'[data-completed="true"]\').length === 0', Boolean);
+    for (let index = 0; index < 6; index += 1) {
+      await connection.evaluate(`document.querySelector('[data-testid^="button-checklist-toggle-"]:not([aria-label^="Uncheck"])')?.click()`, page.sessionId);
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+    }
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Meeting ready") === true', Boolean);
+
     await navigatePage(
       connection,
       page,

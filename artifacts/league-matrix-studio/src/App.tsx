@@ -109,6 +109,7 @@ import {
   getChecklistTemplate,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
+  getChecklistResetConfirmation,
   normalizeChecklist,
   readGamedayChecklist,
   resetGamedayChecklist,
@@ -3162,6 +3163,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   };
 
   const resetChecklist = () => {
+    if (!window.confirm(getChecklistResetConfirmation(displayedEventType))) return;
     updateChecklist(resetGamedayChecklist(latestChecklist.current));
     setNoticeFor('CHECKLIST RESET — TEMPLATE ITEMS RESTORED');
   };

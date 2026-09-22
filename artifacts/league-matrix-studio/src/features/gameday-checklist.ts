@@ -85,6 +85,11 @@ export function getChecklistEventCopy(type: ChecklistEventType = 'game'): Checkl
   }
 }
 
+export function getChecklistResetConfirmation(type: ChecklistEventType = 'game'): string {
+  const eventLabel = type === 'practice' ? 'practice' : type === 'meeting' ? 'meeting' : 'game day';
+  return `Reset this ${eventLabel} checklist? Your custom items and completion state will be replaced with the ${eventLabel} starter template.`;
+}
+
 export type LocalGamedayChecklist = {
   title: string;
   mode: ChecklistMode;

@@ -7,6 +7,7 @@ import {
   getChecklistTemplate,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
+  getChecklistResetConfirmation,
   normalizeChecklist,
   resetGamedayChecklist,
 } from './gameday-checklist';
@@ -57,6 +58,21 @@ test('uses event-specific checklist copy while keeping game copy unchanged', () 
   assert.equal(getChecklistEventCopy('meeting').heading, 'MEETING CHECKLIST.');
   assert.equal(getChecklistEventCopy('meeting').description, 'Start with the essentials, then make the list yours for every meeting.');
   assert.equal(getChecklistEventCopy('game').completionMessage, 'Game day ready — every task is complete.');
+});
+
+test('warns that reset replaces custom items and completion state for each event type', () => {
+  assert.equal(
+    getChecklistResetConfirmation(),
+    'Reset this game day checklist? Your custom items and completion state will be replaced with the game day starter template.',
+  );
+  assert.equal(
+    getChecklistResetConfirmation('practice'),
+    'Reset this practice checklist? Your custom items and completion state will be replaced with the practice starter template.',
+  );
+  assert.equal(
+    getChecklistResetConfirmation('meeting'),
+    'Reset this meeting checklist? Your custom items and completion state will be replaced with the meeting starter template.',
+  );
 });
 
 test('describes item, final, and undo completion moments without changing checklist data', () => {
