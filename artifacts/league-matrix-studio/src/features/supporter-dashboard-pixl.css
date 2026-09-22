@@ -863,7 +863,7 @@
 }
 
 .pixl-dashboard-mobile .mobile-week-path-icon {
-  display: block;
+  display: none;
   position: absolute;
   top: 96px;
   left: 50%;
@@ -882,7 +882,7 @@
 
 .pixl-dashboard-mobile .mobile-week-path-label {
   position: absolute;
-  top: 64px;
+  top: 96px;
   right: 4px;
   left: 4px;
   max-width: 100%;
@@ -1365,7 +1365,7 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span:nth-of-type(2) {
     position: absolute;
-    top: calc(var(--week-path-chevron-center) + 42px);
+    top: calc(var(--week-path-chevron-center) + 68px);
     right: 12px;
     left: 12px;
     max-width: 100%;
@@ -1378,6 +1378,7 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > svg {
     position: absolute;
+    display: none;
     top: calc(var(--week-path-chevron-center) + 68px);
     left: 50%;
     width: 20px;
