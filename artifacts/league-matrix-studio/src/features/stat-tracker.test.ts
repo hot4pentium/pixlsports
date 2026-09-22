@@ -303,6 +303,47 @@ test('team card and athlete avatar taps preserve separate attribution during rap
   assert.equal(changedGame.stats['three-point'], 3);
 });
 
+test('athlete stat target uses the athlete portrait crop and falls back to initials when it fails', () => {
+  const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  const rule = getSportRule('basketball');
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule,
+      athleteName: 'Jordan Lee',
+      athleteImageUrl: '/api/supporter-photo/image?v=1',
+      athleteImageCrop: { x: 20, y: 70, zoom: 150 },
+      teamName: 'Falcons',
+      displayStats: rule.stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: () => {},
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const athleteTarget = renderer.root.findByProps({ 'data-testid': 'athlete-stat-target-three-point' });
+  const portrait = athleteTarget.findByType('img');
+  assert.equal(portrait.props.src, '/api/supporter-photo/image?v=1');
+  assert.equal(portrait.props.alt, '');
+  assert.equal(portrait.props.style.objectPosition, '20% 70%');
+  assert.equal(portrait.props.style.transform, 'scale(1.5)');
+
+  act(() => portrait.props.onError());
+
+  assert.equal(athleteTarget.findAllByType('img').length, 0);
+  assert.equal(athleteTarget.findByType('span').children.join(''), 'JL');
+  assert.equal(athleteTarget.props['aria-label'], 'Record Three-point field goal for Jordan Lee');
+  assert.match(athleteTarget.props.className, /min-h-11/);
+  assert.match(athleteTarget.props.className, /min-w-11/);
+});
+
 test('legacy tracker events normalize to team attribution', () => {
   const legacy = createGameSession('soccer', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
   const normalized = normalizeTrackerData({

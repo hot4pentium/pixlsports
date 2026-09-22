@@ -5,9 +5,11 @@ import { useUser } from '@clerk/react';
 import {
   useCreateProject,
   useGetAccountAccess,
+  useGetSupporterPhoto,
   useListProjects,
   useUpdateProject,
   getGetAccountAccessQueryKey,
+  getGetSupporterPhotoQueryKey,
   getListProjectsQueryKey,
   useCreateStatTrackerShare,
   useDeleteStatTrackerShare,
@@ -463,6 +465,11 @@ type LiveTrackerGameProps = {
   rule: SportRule;
   athleteName: string;
   athleteImageUrl?: string;
+  athleteImageCrop?: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
   teamName: string;
   displayStats: StatDefinition[];
   showAllStats: boolean;
@@ -488,6 +495,7 @@ export function LiveTrackerGame({
   rule,
   athleteName,
   athleteImageUrl,
+  athleteImageCrop,
   teamName,
   displayStats,
   showAllStats,
@@ -597,6 +605,14 @@ export function LiveTrackerGame({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'A';
+
+  const [athleteImageFailed, setAthleteImageFailed] = useState(false);
+  useEffect(() => {
+    setAthleteImageFailed(false);
+  }, [athleteImageUrl]);
+  const athleteImageX = Math.max(0, Math.min(100, athleteImageCrop?.x ?? 50));
+  const athleteImageY = Math.max(0, Math.min(100, athleteImageCrop?.y ?? 50));
+  const athleteImageZoom = Math.max(100, Math.min(250, athleteImageCrop?.zoom ?? 100));
 
   const handleMediaSelection = (kind: 'photo' | 'video', event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
@@ -716,8 +732,22 @@ export function LiveTrackerGame({
                   data-testid={`athlete-stat-target-${item.id}`}
                   className="absolute right-2 top-2 flex min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-primary/10 text-[10px] font-black uppercase text-primary-ink shadow-sm hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
-                  {athleteImageUrl
-                    ? <img src={athleteImageUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  {athleteImageUrl && !athleteImageFailed
+                    ? (
+                      <span className="relative block h-10 w-10 overflow-hidden rounded-full" aria-hidden="true">
+                        <img
+                          src={athleteImageUrl}
+                          alt=""
+                          onError={() => setAthleteImageFailed(true)}
+                          className="absolute inset-0 block h-full w-full max-w-none object-cover"
+                          style={{
+                            objectPosition: `${athleteImageX}% ${athleteImageY}%`,
+                            transform: `scale(${athleteImageZoom / 100})`,
+                            transformOrigin: `${athleteImageX}% ${athleteImageY}%`,
+                          }}
+                        />
+                      </span>
+                    )
                     : <span aria-hidden="true" className="truncate">{athleteInitials}</span>}
                 </button>
                 {currentGame.sport === 'baseball' && item.id === 'hit' && baseballHitAttribution && (
@@ -896,6 +926,13 @@ export function StatTrackerPage() {
       enabled: Boolean(accountId),
       staleTime: 15000,
       queryKey: [...getGetAccountAccessQueryKey(), accountId],
+    },
+  });
+  const { data: athletePortrait } = useGetSupporterPhoto({
+    query: {
+      enabled: Boolean(accountId),
+      retry: false,
+      queryKey: [...getGetSupporterPhotoQueryKey(), accountId],
     },
   });
   const { data: projects } = useListProjects({
@@ -1530,6 +1567,12 @@ export function StatTrackerPage() {
           currentGame={currentGame}
           rule={rule}
           athleteName={profile.athleteName}
+          athleteImageUrl={athletePortrait ? `${athletePortrait.url}?v=${encodeURIComponent(String(athletePortrait.updatedAt))}` : undefined}
+          athleteImageCrop={athletePortrait ? {
+            x: athletePortrait.cropX,
+            y: athletePortrait.cropY,
+            zoom: athletePortrait.cropZoom,
+          } : undefined}
           teamName={profile.teamName}
           displayStats={displayStats}
           showAllStats={showAllStats}
