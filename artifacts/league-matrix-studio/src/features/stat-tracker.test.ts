@@ -34,6 +34,7 @@ import {
   trackerPayload,
   trackerSaveStatusMessage,
   trackerSaveErrorMessage,
+  updateStatEventAttribution,
   updateStatEventYards,
   undoLastStatEvent,
 } from './stat-tracker';
@@ -302,6 +303,65 @@ test('team card and athlete avatar taps preserve separate attribution during rap
   assert.deepEqual(changedGame.events.map((event) => event.attribution), ['team', 'athlete', 'team']);
   assert.deepEqual(countStatEventsByAttribution(changedGame, 'three-point'), { team: 2, athlete: 1 });
   assert.equal(changedGame.stats['three-point'], 3);
+});
+
+test('an earlier play can move to the athlete without changing later plays or totals', () => {
+  let game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'three-point', new Date('2026-09-17T12:01:00Z'), 0, 'team');
+  game = addStatEvent(game, 'rebound', new Date('2026-09-17T12:02:00Z'), 0, 'athlete');
+  const before = structuredClone(game);
+  const firstEventId = game.events[0]?.id;
+  assert.ok(firstEventId);
+
+  game = updateStatEventAttribution(game, firstEventId, 'athlete');
+
+  assert.equal(game.events[0]?.attribution, 'athlete');
+  assert.deepEqual(
+    game.events.map(({ attribution, ...event }) => event),
+    before.events.map(({ attribution, ...event }) => event),
+  );
+  assert.deepEqual(game.events[1], before.events[1]);
+  assert.deepEqual(game.stats, before.stats);
+  assert.equal(game.score, before.score);
+  assert.equal(game.opponentScore, before.opponentScore);
+  assert.deepEqual(game.yardStats, before.yardStats);
+});
+
+test('recent activity exposes a mobile-sized attribution correction with its destination', () => {
+  let game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));
+  game = addStatEvent(game, 'three-point', new Date('2026-09-17T12:01:00Z'), 0, 'team');
+  game = addStatEvent(game, 'rebound', new Date('2026-09-17T12:02:00Z'), 0, 'team');
+  const firstEventId = game.events[0]!.id;
+  let changedGame = game;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(LiveTrackerGame, {
+      currentGame: game,
+      rule: getSportRule('basketball'),
+      athleteName: 'Jordan Lee',
+      teamName: 'Falcons',
+      displayStats: getSportRule('basketball').stats.filter((item) => item.featured),
+      showAllStats: false,
+      saving: false,
+      captureNotice: '',
+      onCapture: () => {},
+      onGameChange: (nextGame: typeof game) => { changedGame = nextGame; },
+      onToggleShowAllStats: () => {},
+      onLeaveGame: () => {},
+      onEndGame: () => {},
+    }));
+  });
+
+  const correction = renderer.root.findByProps({ 'data-testid': `button-correct-attribution-${firstEventId}` });
+  assert.equal(correction.props['aria-label'], 'Change Three-point field goal attribution to Jordan Lee');
+  assert.match(correction.props.className, /min-h-11/);
+
+  act(() => correction.props.onClick());
+
+  assert.deepEqual(changedGame.events.map((event) => event.attribution), ['athlete', 'team']);
+  assert.deepEqual(changedGame.events.map((event) => event.statId), ['three-point', 'rebound']);
+  assert.equal(changedGame.score, game.score);
 });
 
 test('athlete stat target uses the athlete portrait crop and falls back to initials when it fails', () => {

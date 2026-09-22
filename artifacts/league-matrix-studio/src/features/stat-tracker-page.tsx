@@ -58,6 +58,7 @@ import {
   sports,
   syncTrackerDataToCloud,
   trackerSaveStatusMessage,
+  updateStatEventAttribution,
   updateStatEventYards,
   undoLastStatEvent,
   buildGameReport,
@@ -884,23 +885,36 @@ export function LiveTrackerGame({
           {currentGame.events.slice(-5).reverse().map((event) => {
             const yardMetricId = currentGame.sport === 'football' ? getFootballYardMetricId(event.statId) : null;
             const isSelectedYardEvent = activeYardEventIds[event.statId] === event.id;
+            const nextAttribution: StatAttribution = event.attribution === 'athlete' ? 'team' : 'athlete';
+            const nextAttributionLabel = nextAttribution === 'athlete' ? athleteTargetName : (teamName || 'team');
             return (
               <div key={event.id} className={`border-b pb-2 text-sm ${isSelectedYardEvent ? 'border-primary/60 bg-primary/5 px-2 pt-2' : 'border-border/60'}`} data-testid={`recent-activity-${event.id}`}>
                 <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{yardMetricId ? ` · ${event.yards ?? 0} yds` : ''} <span className="text-xs font-bold uppercase text-primary-ink">· {event.attribution === 'athlete' ? athleteTargetName : 'Team'}</span></span>
                   <span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span>
                 </div>
-                {yardMetricId && yardTrackingEnabled && (
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => selectYardEvent(event)}
-                    aria-pressed={isSelectedYardEvent}
-                    data-testid={`button-correct-yards-${event.id}`}
-                    className="mt-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink hover:text-foreground"
+                    onClick={() => updateCurrentGame((game) => updateStatEventAttribution(game, event.id, nextAttribution))}
+                    aria-label={`Change ${eventLabel(event.statId)} attribution to ${nextAttributionLabel}`}
+                    data-testid={`button-correct-attribution-${event.id}`}
+                    className="inline-flex min-h-11 items-center border border-border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink hover:border-primary hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                   >
-                    {isSelectedYardEvent ? 'Editing this play' : 'Correct yards'}
+                    Move to {nextAttribution === 'athlete' ? athleteTargetName : 'team'}
                   </button>
-                )}
+                  {yardMetricId && yardTrackingEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => selectYardEvent(event)}
+                      aria-pressed={isSelectedYardEvent}
+                      data-testid={`button-correct-yards-${event.id}`}
+                      className="inline-flex min-h-11 items-center border border-border px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-ink hover:border-primary hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      {isSelectedYardEvent ? 'Editing this play' : 'Correct yards'}
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

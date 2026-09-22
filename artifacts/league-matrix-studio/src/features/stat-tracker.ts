@@ -483,6 +483,23 @@ export function countStatEventsByAttribution(
   }, { team: 0, athlete: 0 });
 }
 
+export function updateStatEventAttribution(
+  game: GameSession,
+  eventId: string,
+  attribution: StatAttribution,
+): GameSession {
+  if (game.status !== 'live') return game;
+  const eventIndex = game.events.findIndex((event) => event.id === eventId);
+  if (eventIndex < 0 || game.events[eventIndex]?.attribution === attribution) return game;
+
+  return {
+    ...game,
+    events: game.events.map((event, index) => (
+      index === eventIndex ? { ...event, attribution } : event
+    )),
+  };
+}
+
 export function updateStatEventYards(
   game: GameSession,
   eventId: string,
