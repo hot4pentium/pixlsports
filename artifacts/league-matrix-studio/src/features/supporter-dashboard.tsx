@@ -598,7 +598,7 @@ export function SupporterDashboardView({
           </div>
           <div className="flex items-center gap-2">
             <div className="relative w-11 h-11 flex items-center justify-center">
-              <HypeCardReplyInboxTrigger className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-[#12213A] shadow-none hover:bg-transparent" />
+              <HypeCardReplyInboxTrigger className="mobile-notification-trigger !absolute inset-0 w-full h-full p-0 flex items-center justify-center bg-transparent border-none text-white shadow-none hover:bg-white/10" />
             </div>
             <Link href={supporterToolRoutes.profile} className="w-11 h-11 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center border border-black/10 text-lg font-bold text-slate-700" aria-label="Supporter profile" data-testid="btn-mobile-open-profile">
                {profile.displayName ? profile.displayName.charAt(0).toUpperCase() : 'S'}
@@ -607,7 +607,7 @@ export function SupporterDashboardView({
                ref={mobileMenuButtonRef}
                type="button"
                onClick={() => setMobileMenuOpen((open) => !open)}
-               className="grid h-11 w-11 place-items-center rounded-full border border-black/10 text-[#12213A] transition-colors hover:bg-black/5"
+               className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-white transition-colors hover:border-white/40 hover:bg-white/10"
                aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}
                aria-expanded={mobileMenuOpen}
                aria-controls="mobile-dashboard-menu"
@@ -840,19 +840,19 @@ export function SupporterDashboardView({
              </div>
              <span className="text-[10px] font-bold">Home</span>
            </button>
-           <Link href={supporterToolRoutes.schedule} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
+           <Link href={supporterToolRoutes.schedule} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <CalendarDays className="w-[20px] h-[20px]" />
              </div>
              <span className="text-[10px] font-bold">Schedule</span>
            </Link>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Game Day" data-testid="btn-mobile-nav-stat-tracker">
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Game Day" data-testid="btn-mobile-nav-stat-tracker">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <Users className="w-[20px] h-[20px]" />
              </div>
              <span className="text-[10px] font-bold">Game Day</span>
            </button>
-             <button type="button" onClick={() => setLocation(supporterToolRoutes.athletePage)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-black/40 hover:text-[#12213A] transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
+             <button type="button" onClick={() => setLocation(supporterToolRoutes.athletePage)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <PlusSquare className="w-[20px] h-[20px]" />
              </div>

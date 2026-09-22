@@ -415,7 +415,7 @@
   border-radius: 50% !important;
   background: transparent !important;
   border: none !important;
-  color: var(--m-text) !important;
+  color: #F3F6FA !important;
 }
 .mobile-notification-trigger span {
   position: absolute !important;
@@ -1184,8 +1184,9 @@
   box-shadow: 0 -8px 30px rgba(3, 17, 36, .32);
 }
 
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button {
-  color: rgba(243, 246, 250, .48);
+.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button,
+.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] a {
+  color: rgba(243, 246, 250, .78);
 }
 
 .pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button[data-testid="btn-mobile-nav-home"] {
