@@ -1351,6 +1351,45 @@ export interface SupporterProfileViewProps {
   onPhotoRemove: () => void;
 }
 
+function AthletePhotoCardPreview({
+  url,
+  crop,
+  athleteName,
+  jerseyNumber,
+  teamName,
+  alt,
+  dataTestId,
+}: {
+  url?: string;
+  crop?: AthletePhotoCrop;
+  athleteName: string;
+  jerseyNumber: string;
+  teamName: string;
+  alt: string;
+  dataTestId?: string;
+}) {
+  return (
+    <div className="athlete-photo-settings-preview" data-testid={dataTestId}>
+      {url ? (
+        <AthletePhoto url={url} crop={crop ?? { x: 50, y: 50, zoom: 100 }} alt={alt} />
+      ) : (
+        <div className="athlete-photo-settings-preview-placeholder" aria-hidden="true">
+          <User className="h-12 w-12" />
+        </div>
+      )}
+      <div className="athlete-photo-settings-preview-scrim" aria-hidden="true" />
+      <div className="athlete-photo-settings-preview-copy">
+        <span>{athleteName || 'Athlete name'}</span>
+        <span className="athlete-photo-settings-preview-meta">
+          {jerseyNumber ? `#${jerseyNumber}` : '#00'}
+          {teamName ? `  ·  ${teamName}` : ''}
+        </span>
+      </div>
+      <ChevronRight className="athlete-photo-settings-preview-arrow" aria-hidden="true" />
+    </div>
+  );
+}
+
 export function SupporterProfileView({
   profile,
   saving,
@@ -1404,9 +1443,15 @@ export function SupporterProfileView({
               <Camera className="w-4 h-4" /> Athlete Photo
             </h3>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-primary bg-background grid place-items-center">
-                {athletePhotoUrl ? <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt="Athlete profile" /> : <User className="h-12 w-12 text-muted-foreground/40" />}
-              </div>
+              <AthletePhotoCardPreview
+                url={athletePhotoUrl}
+                crop={athletePhotoCrop}
+                athleteName={profile.athleteName}
+                jerseyNumber={profile.jerseyNumber}
+                teamName={profile.teamName}
+                alt="Athlete profile"
+                dataTestId="athlete-photo-settings-preview"
+              />
               <div className="min-w-0 flex-1 space-y-3">
                 <p className="text-sm font-medium text-muted-foreground">Private to your signed-in account. JPG, PNG, or WebP, up to 5 MB.</p>
                 {photoError && <p className="text-sm font-bold text-destructive" role="alert">{photoError}</p>}
@@ -1425,10 +1470,16 @@ export function SupporterProfileView({
             </div>
             {pendingPhotoUrl && (
               <div className="rounded-sm border border-border bg-background p-4 sm:p-5" data-testid="athlete-photo-crop-editor">
-                <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
-                  <div className="mx-auto h-44 w-44 overflow-hidden rounded-full border-4 border-primary bg-muted touch-none">
-                    <AthletePhoto url={pendingPhotoUrl} crop={pendingPhotoCrop} alt="New athlete photo crop preview" />
-                  </div>
+                <div className="grid gap-5 sm:grid-cols-[minmax(220px,1fr)_1fr] sm:items-center">
+                  <AthletePhotoCardPreview
+                    url={pendingPhotoUrl}
+                    crop={pendingPhotoCrop}
+                    athleteName={profile.athleteName}
+                    jerseyNumber={profile.jerseyNumber}
+                    teamName={profile.teamName}
+                    alt="New athlete photo crop preview"
+                    dataTestId="athlete-photo-crop-preview"
+                  />
                   <div className="space-y-4">
                     {([
                       ['Horizontal position', 'x', 0, 100],
