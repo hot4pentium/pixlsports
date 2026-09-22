@@ -559,6 +559,251 @@
   animation: home-marquee 28s linear infinite;
 }
 
+.week-path-track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  isolation: isolate;
+  overflow: visible;
+  padding: 0.8rem 0 1.1rem;
+}
+
+.week-path-segment {
+  position: relative;
+  z-index: 1;
+  min-height: 14.5rem;
+  margin-left: -1.25rem;
+  padding: 1.65rem 2.35rem 1.65rem 2.8rem;
+  color: hsl(var(--foreground));
+  background:
+    linear-gradient(145deg, rgb(35 97 169 / 0.98), rgb(16 46 82 / 0.98) 70%),
+    hsl(var(--card));
+  clip-path: polygon(0 0, calc(100% - 2rem) 0, 100% 50%, calc(100% - 2rem) 100%, 0 100%, 2rem 50%);
+  filter: drop-shadow(0 12px 12px rgb(0 0 0 / 0.18));
+  transition: transform 200ms ease, filter 200ms ease, color 200ms ease;
+}
+
+.week-path-segment:first-child {
+  margin-left: 0;
+  clip-path: polygon(0 0, calc(100% - 2rem) 0, 100% 50%, calc(100% - 2rem) 100%, 0 100%);
+}
+
+.week-path-segment:nth-child(1) { z-index: 4; }
+.week-path-segment:nth-child(2) { z-index: 3; }
+.week-path-segment:nth-child(3) { z-index: 2; }
+.week-path-segment:nth-child(4) { z-index: 1; }
+
+.week-path-segment:hover,
+.week-path-segment:focus-visible {
+  z-index: 8;
+  transform: translateY(-0.35rem);
+  filter: drop-shadow(0 17px 17px rgb(0 0 0 / 0.28));
+}
+
+.week-path-segment:focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 4px;
+}
+
+.week-path-segment.is-selected {
+  z-index: 9;
+  color: white;
+  background: linear-gradient(135deg, #2878f5 0%, #315df2 44%, #7847f7 100%);
+  box-shadow: 0 0 0 1px rgb(85 164 255 / 0.45), 0 0 30px rgb(40 120 245 / 0.28);
+  transform: translateY(-0.55rem);
+}
+
+.week-path-segment-content {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  text-align: center;
+}
+
+.week-path-step-circle {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  place-items: center;
+  border: 1px solid rgb(85 164 255 / 0.7);
+  border-radius: 999px;
+  color: hsl(var(--primary-ink));
+  background: rgb(11 31 58 / 0.76);
+  font-family: var(--app-font-mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.week-path-segment.is-selected .week-path-step-circle {
+  border-color: rgb(255 255 255 / 0.9);
+  color: white;
+  background: rgb(11 31 58 / 0.2);
+}
+
+.week-path-step-icon {
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  place-items: center;
+  border: 1px solid rgb(85 164 255 / 0.35);
+  border-radius: 999px;
+  color: hsl(var(--primary-ink));
+  background: rgb(11 31 58 / 0.35);
+}
+
+.week-path-segment.is-selected .week-path-step-icon {
+  border-color: rgb(255 255 255 / 0.55);
+  color: white;
+  background: rgb(11 31 58 / 0.15);
+}
+
+.week-path-step-title {
+  max-width: 9rem;
+  font-family: var(--app-font-serif);
+  font-size: clamp(1.05rem, 1.7vw, 1.65rem);
+  font-weight: 800;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.week-path-step-label {
+  max-width: 10rem;
+  color: rgb(255 255 255 / 0.6);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.week-path-segment.is-selected .week-path-step-label {
+  color: rgb(255 255 255 / 0.82);
+}
+
+.week-path-detail {
+  margin: 0.35rem 0 0 0.4rem;
+  border: 1px solid rgb(85 164 255 / 0.3);
+  border-top: 2px solid hsl(var(--primary));
+  padding: 1.3rem 1.4rem;
+  background:
+    linear-gradient(135deg, rgb(17 52 91 / 0.96), rgb(9 29 56 / 0.98)),
+    hsl(var(--card));
+  box-shadow: 0 17px 30px rgb(0 0 0 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+.week-path-detail-icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid rgb(85 164 255 / 0.42);
+  border-radius: 999px;
+  color: hsl(var(--primary-ink));
+  background: rgb(11 31 58 / 0.7);
+}
+
+@media (max-width: 767px) {
+  .week-path-track {
+    position: relative;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 0 0 0.9rem;
+  }
+
+  .week-path-track::before {
+    position: absolute;
+    top: 1.55rem;
+    right: 10%;
+    left: 10%;
+    height: 2px;
+    content: '';
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-ink)), hsl(var(--accent)));
+    opacity: 0.7;
+  }
+
+  .week-path-segment,
+  .week-path-segment:first-child {
+    z-index: 1;
+    min-height: 5.6rem;
+    margin-left: 0;
+    padding: 0.35rem 0.15rem;
+    color: hsl(var(--foreground));
+    background: transparent;
+    clip-path: none;
+    filter: none;
+    transform: none;
+  }
+
+  .week-path-segment:hover,
+  .week-path-segment:focus-visible,
+  .week-path-segment.is-selected {
+    z-index: 2;
+    background: transparent;
+    box-shadow: none;
+    filter: none;
+    transform: none;
+  }
+
+  .week-path-segment-content {
+    gap: 0.4rem;
+  }
+
+  .week-path-step-circle {
+    position: relative;
+    width: 3.1rem;
+    height: 3.1rem;
+    border-width: 2px;
+    font-size: 0.65rem;
+    background: hsl(var(--background));
+  }
+
+  .week-path-segment.is-selected .week-path-step-circle {
+    border-color: hsl(var(--accent));
+    background: linear-gradient(135deg, #2878f5, #7847f7);
+    box-shadow: 0 0 0 5px rgb(40 120 245 / 0.15), 0 0 18px rgb(40 120 245 / 0.45);
+  }
+
+  .week-path-step-icon {
+    position: absolute;
+    top: 1.02rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 0;
+    color: white;
+    background: transparent;
+  }
+
+  .week-path-step-icon svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .week-path-step-title {
+    display: none;
+  }
+
+  .week-path-step-label {
+    max-width: 4.5rem;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+
+  .week-path-segment.is-selected .week-path-step-label {
+    color: hsl(var(--primary-ink));
+  }
+
+  .week-path-detail {
+    margin: 0.45rem 0 0;
+    padding: 1.1rem;
+  }
+}
+
 .stat-tracker-light-text .text-primary,
 [data-testid="stat-tracker-history"] .text-primary,
 [data-testid="live-tracker-stat-controls"] .text-primary,

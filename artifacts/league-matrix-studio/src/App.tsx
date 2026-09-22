@@ -463,10 +463,12 @@ function Footer() {
 
 function LegacyHomePage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('fan');
+  const [selectedWeekStep, setSelectedWeekStep] = useState(0);
   const roleCopy = landingRoleCopy[selectedRole];
   const heroCtaHref = roleSignupHref(selectedRole);
   const showcaseTools: ToolKind[] = roleToolKinds[selectedRole];
   const journey = roleCopy.journey;
+  const selectedJourneyStep = journey[selectedWeekStep] ?? journey[0];
 
   return (
     <div className="noise home-shell min-h-dvh overflow-hidden">
@@ -628,44 +630,66 @@ function LegacyHomePage() {
                 </Link>
               </div>
             </div>
-            <div className="relative">
-              <div className="absolute bottom-8 left-6 top-8 hidden w-px bg-border sm:block" />
-              <div className="space-y-4">
+             <div className="relative min-w-0" data-testid="week-path">
+               <div className="week-path-track" role="tablist" aria-label="Your week path">
                  {journey.map((step, index) => {
                    const IconComponent = step.icon;
-                  return (
-                     <div key={step.title} className="group relative border border-border bg-card p-5 transition-transform hover:-translate-y-1 sm:p-6" data-testid={`card-week-step-${index + 1}`}>
-                       <div className="grid gap-4 sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-6">
-                      <span className="relative z-10 grid h-12 w-12 place-items-center bg-card text-card-foreground clip-angled-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground border-b-2 border-transparent group-hover:border-accent">
-                        <IconComponent className="h-5 w-5 group-hover:text-accent" />
-                      </span>
-                      <div>
-                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">{step.title}</p>
-                         <p className="mt-2 text-sm font-medium leading-relaxed text-muted-foreground">{step.body}</p>
-                      </div>
-                       <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:text-right">{step.label}</span>
-                       </div>
-                       <div className="mt-5 grid gap-2 border-t border-border pt-4 sm:grid-cols-2">
-                         <div className="bg-muted/60 px-3 py-3">
-                           <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">In your hub</p>
-                           <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{step.hub}</p>
-                         </div>
-                         <div className="flex items-start gap-3 border border-border bg-background px-3 py-3">
-                           <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-card text-card-foreground">
-                             <Bell className="h-3.5 w-3.5" />
-                           </span>
-                           <div className="min-w-0">
-                             <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-accent">Phone notification</p>
-                             <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{step.notification}</p>
-                             <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground">{step.notificationMeta}</p>
-                           </div>
-                         </div>
-                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                   const isSelected = selectedWeekStep === index;
+                   return (
+                     <button
+                       key={step.title}
+                       type="button"
+                       role="tab"
+                       aria-selected={isSelected}
+                       aria-controls={`week-path-panel-${index + 1}`}
+                       onClick={() => setSelectedWeekStep(index)}
+                       className={`week-path-segment ${isSelected ? 'is-selected' : ''}`}
+                       data-testid={`card-week-step-${index + 1}`}
+                     >
+                       <span className="week-path-segment-content">
+                         <span className="week-path-step-circle">{String(index + 1).padStart(2, '0')}</span>
+                         <span className="week-path-step-icon" aria-hidden="true"><IconComponent className="h-5 w-5" /></span>
+                         <span className="week-path-step-title">{step.title}</span>
+                         <span className="week-path-step-label">{step.label}</span>
+                       </span>
+                     </button>
+                   );
+                 })}
+               </div>
+
+               <div
+                 id={`week-path-panel-${selectedWeekStep + 1}`}
+                 className="week-path-detail"
+                 role="tabpanel"
+                 aria-label={`${selectedJourneyStep.title} details`}
+                 data-testid={`week-path-panel-${selectedWeekStep + 1}`}
+               >
+                 <div className="flex items-start justify-between gap-4">
+                   <div className="min-w-0">
+                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">Step {String(selectedWeekStep + 1).padStart(2, '0')} / {selectedJourneyStep.label}</p>
+                     <h3 className="mt-2 font-display text-3xl uppercase tracking-wide text-foreground">{selectedJourneyStep.title}</h3>
+                     <p className="mt-3 max-w-xl text-sm font-medium leading-relaxed text-muted-foreground">{selectedJourneyStep.body}</p>
+                   </div>
+                   <span className="week-path-detail-icon" aria-hidden="true"><selectedJourneyStep.icon className="h-6 w-6" /></span>
+                 </div>
+                 <div className="mt-5 grid gap-2 border-t border-border pt-4 sm:grid-cols-2">
+                   <div className="bg-muted/60 px-3 py-3">
+                     <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">In your hub</p>
+                     <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{selectedJourneyStep.hub}</p>
+                   </div>
+                   <div className="flex items-start gap-3 border border-border bg-background px-3 py-3">
+                     <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-card text-card-foreground">
+                       <Bell className="h-3.5 w-3.5" />
+                     </span>
+                     <div className="min-w-0">
+                       <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-accent">Phone notification</p>
+                       <p className="mt-1 text-xs font-bold leading-relaxed text-foreground">{selectedJourneyStep.notification}</p>
+                       <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground">{selectedJourneyStep.notificationMeta}</p>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
           </div>
         </section>
 
