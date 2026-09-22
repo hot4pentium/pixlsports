@@ -24,6 +24,14 @@ type ChecklistResponse = {
   title: string;
   mode: "gameday" | "tournament";
   items: ChecklistItem[];
+  selectedGame?: {
+    id: string;
+    type: "game" | "practice" | "meeting";
+    date: string;
+    time: string;
+    location: string;
+    opponent: string;
+  } | null;
   revision: number;
   createdAt: string;
   updatedAt: string;
@@ -196,6 +204,8 @@ async function openPage(
 
 test("two checklist collaborators recover a stale revision and keep it after reload", async () => {
   const shareToken = "11111111-1111-4111-8111-111111111111";
+  const practiceShareToken = "22222222-2222-4222-8222-222222222222";
+  const meetingShareToken = "33333333-3333-4333-8333-333333333333";
   const now = new Date().toISOString();
   let share: ChecklistResponse = {
     shareToken,
@@ -214,6 +224,55 @@ test("two checklist collaborators recover a stale revision and keep it after rel
     updatedAt: now,
     canManage: false,
   };
+  const shares = new Map<string, ChecklistResponse>([
+    [shareToken, share],
+    [practiceShareToken, {
+      shareToken: practiceShareToken,
+      title: "Wednesday practice",
+      mode: "gameday",
+      items: [{
+        id: "practice-gear",
+        label: "Pack practice gear and shoes",
+        completed: false,
+        section: "Before practice",
+      }],
+      selectedGame: {
+        id: "practice-1",
+        type: "practice",
+        date: "2026-09-23",
+        time: "17:00",
+        location: "Eastside Field",
+        opponent: "",
+      },
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      canManage: false,
+    }],
+    [meetingShareToken, {
+      shareToken: meetingShareToken,
+      title: "Thursday meeting",
+      mode: "gameday",
+      items: [{
+        id: "meeting-notes",
+        label: "Bring a notebook and pen",
+        completed: false,
+        section: "Before meeting",
+      }],
+      selectedGame: {
+        id: "meeting-1",
+        type: "meeting",
+        date: "2026-09-24",
+        time: "18:00",
+        location: "Clubhouse",
+        opponent: "",
+      },
+      revision: 1,
+      createdAt: now,
+      updatedAt: now,
+      canManage: false,
+    }],
+  ]);
   const requests: Array<{ method: string; expectedRevision?: number; status: number }> = [];
   const apiServer = createServer(async (request, response) => {
     response.setHeader("Access-Control-Allow-Origin", "*");
@@ -223,13 +282,15 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       response.writeHead(204).end();
       return;
     }
-    if (request.url !== `/api/checklist-shares/${shareToken}`) {
+    const requestedToken = request.url?.match(/^\/api\/checklist-shares\/([^/]+)$/)?.[1];
+    const requestedShare = requestedToken ? shares.get(requestedToken) : undefined;
+    if (!requestedShare) {
       response.writeHead(404).end();
       return;
     }
     if (request.method === "GET") {
       requests.push({ method: "GET", status: 200 });
-      response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(share));
+      response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(requestedShare));
       return;
     }
     if (request.method === "PATCH") {
@@ -238,24 +299,26 @@ test("two checklist collaborators recover a stale revision and keep it after rel
         request.on("data", (chunk) => { raw += chunk; });
         request.on("end", () => resolveBody(raw));
       })) as ChecklistResponse & { expectedRevision: number };
-      if (body.expectedRevision !== share.revision) {
+      if (body.expectedRevision !== requestedShare.revision) {
         requests.push({ method: "PATCH", expectedRevision: body.expectedRevision, status: 409 });
         response.writeHead(409, { "Content-Type": "application/json" }).end(JSON.stringify({
           error: "Checklist revision is stale",
-          current: share,
+          current: requestedShare,
         }));
         return;
       }
       share = {
-        shareToken,
+        shareToken: requestedShare.shareToken,
         title: body.title,
         mode: body.mode,
         items: body.items,
-        revision: share.revision + 1,
-        createdAt: share.createdAt,
+        selectedGame: body.selectedGame,
+        revision: requestedShare.revision + 1,
+        createdAt: requestedShare.createdAt,
         updatedAt: new Date().toISOString(),
         canManage: false,
       };
+      shares.set(requestedShare.shareToken, share);
       requests.push({ method: "PATCH", expectedRevision: body.expectedRevision, status: 200 });
       response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(share));
       return;
@@ -317,7 +380,19 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       api.address,
       { width: 1280, height: 900, mobile: false },
     );
-    pageSessions.push(first, second);
+    const practice = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/checklist/${practiceShareToken}`,
+      api.address,
+      { width: 390, height: 844, mobile: true },
+    );
+    const meeting = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/checklist/${meetingShareToken}`,
+      api.address,
+      { width: 390, height: 844, mobile: true },
+    );
+    pageSessions.push(first, second, practice, meeting);
     await Promise.all(pageSessions.map(({ sessionId }) => waitFor(
       connection!,
       sessionId,
@@ -325,6 +400,20 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       (body) => body.includes("SHARED WORKSPACE"),
       30_000,
     )));
+    for (const [page, eventType, selectorLabel, selectorAriaLabel, selectorPlaceholder] of [
+      [practice, "PRACTICE", "Checklist for practice", "Choose which practice this checklist is for", "Choose a practice"],
+      [meeting, "MEETING", "Checklist for meeting", "Choose which meeting this checklist is for", "Choose a meeting"],
+    ] as const) {
+      await waitFor(
+        connection,
+        page.sessionId,
+        "({ heading: document.querySelector('h1')?.textContent ?? '', label: document.querySelector('[data-testid=\"select-checklist-game\"]')?.getAttribute('aria-label') ?? '', placeholder: document.querySelector('[data-testid=\"select-checklist-game\"] option')?.textContent ?? '', body: document.body?.innerText ?? '' })",
+        ({ heading, label, placeholder, body }) => heading.replace(/\s/g, '').includes(`${eventType}CHECKLIST.`)
+          && body.toUpperCase().includes(selectorLabel.toUpperCase())
+          && label === selectorAriaLabel
+          && placeholder === selectorPlaceholder,
+      );
+    }
 
     for (const { sessionId } of pageSessions) {
       const layout = await connection.evaluate<{
@@ -405,6 +494,22 @@ test("two checklist collaborators recover a stale revision and keep it after rel
       ),
       "Uncheck Pack the uniform and game shoes",
     );
+
+    for (const [page, eventType, selectorLabel, selectorAriaLabel, selectorPlaceholder] of [
+      [practice, "PRACTICE", "Checklist for practice", "Choose which practice this checklist is for", "Choose a practice"],
+      [meeting, "MEETING", "Checklist for meeting", "Choose which meeting this checklist is for", "Choose a meeting"],
+    ] as const) {
+      await connection.send("Page.reload", {}, page.sessionId);
+      await waitFor(
+        connection,
+        page.sessionId,
+        "({ heading: document.querySelector('h1')?.textContent ?? '', label: document.querySelector('[data-testid=\"select-checklist-game\"]')?.getAttribute('aria-label') ?? '', placeholder: document.querySelector('[data-testid=\"select-checklist-game\"] option')?.textContent ?? '', body: document.body?.innerText ?? '' })",
+        ({ heading, label, placeholder, body }) => heading.replace(/\s/g, '').includes(`${eventType}CHECKLIST.`)
+          && body.toUpperCase().includes(selectorLabel.toUpperCase())
+          && label === selectorAriaLabel
+          && placeholder === selectorPlaceholder,
+      );
+    }
   } finally {
     for (const { targetId } of pageSessions) {
       await connection?.send("Target.closeTarget", { targetId }).catch(() => undefined);
