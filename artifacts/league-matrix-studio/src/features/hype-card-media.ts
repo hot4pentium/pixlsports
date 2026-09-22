@@ -1,6 +1,77 @@
 export const MEDIA_DB_NAME = 'leaguematrix-hype-media';
 export const MEDIA_STORE_NAME = 'videos';
 
+export type MediaUploadProgress = (loaded: number, total: number) => void;
+
+function mediaUploadAbortError() {
+  const error = new Error('The media upload was cancelled.');
+  error.name = 'AbortError';
+  return error;
+}
+
+export function uploadMediaBlob(
+  uploadUrl: string,
+  blob: Blob,
+  contentType: string,
+  options: {
+    signal?: AbortSignal;
+    onProgress?: MediaUploadProgress;
+  } = {},
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    let settled = false;
+
+    const cleanup = () => {
+      options.signal?.removeEventListener('abort', onAbort);
+    };
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback();
+    };
+    const onAbort = () => {
+      request.abort();
+      settle(() => reject(mediaUploadAbortError()));
+    };
+
+    if (options.signal?.aborted) {
+      settle(() => reject(mediaUploadAbortError()));
+      return;
+    }
+
+    request.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        options.onProgress?.(Math.min(blob.size, event.loaded), blob.size);
+      }
+    });
+    request.addEventListener('load', () => {
+      if (request.status >= 200 && request.status < 300) {
+        options.onProgress?.(blob.size, blob.size);
+        settle(resolve);
+      } else {
+        settle(() => reject(new Error('The media upload could not be completed.')));
+      }
+    });
+    request.addEventListener('error', () => {
+      settle(() => reject(new Error('The media upload could not be completed.')));
+    });
+    request.addEventListener('abort', () => {
+      settle(() => reject(mediaUploadAbortError()));
+    });
+    options.signal?.addEventListener('abort', onAbort, { once: true });
+
+    try {
+      request.open('PUT', uploadUrl);
+      request.setRequestHeader('Content-Type', contentType);
+      request.send(blob);
+    } catch (error) {
+      settle(() => reject(error instanceof Error ? error : new Error('The media upload could not be completed.')));
+    }
+  });
+}
+
 export async function saveMediaBlob(id: string, blob: Blob): Promise<void> {
   const db = await openMediaDb();
   return new Promise((resolve, reject) => {

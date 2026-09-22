@@ -1,4 +1,10 @@
 type SaveStatus = 'Saved locally' | 'Saving' | 'Saved design' | 'Waiting to sync' | 'Offline' | 'Save failed' | 'Conflict';
+type MediaSyncState = {
+  status: 'idle' | 'syncing' | 'failed';
+  loaded: number;
+  total: number;
+  message?: string;
+};
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
@@ -56,7 +62,7 @@ import {
 } from './hype-card-types';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { getHypeCardNoticeTone } from './hype-card-notice';
-import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } from './hype-card-media';
+import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport, uploadMediaBlob, type MediaUploadProgress } from './hype-card-media';
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
@@ -203,6 +209,12 @@ function isCloudMediaId(value: string | null | undefined): value is string {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value));
 }
 
+function formatMediaBytes(bytes: number) {
+  if (bytes <= 0) return '0 KB';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+}
+
 function hasDeviceOnlyMedia(project: HypeCardProject) {
   return [project.mediaId, project.downloadMediaId, project.posterMediaId, project.logoMediaId]
     .some((id) => Boolean(id && !isCloudMediaId(id)));
@@ -278,18 +290,25 @@ async function uploadProjectMedia(
   mediaRole: 'photo' | 'logo' | 'poster' | 'video_preview' | 'video_download',
   blob: Blob,
   name: string,
+  options: {
+    signal?: AbortSignal;
+    onProgress?: MediaUploadProgress;
+  } = {},
 ) {
   const contentType = blob.type || (mediaRole.startsWith('video') ? 'video/mp4' : 'image/jpeg');
   const mediaType = mediaRole.startsWith('video') ? 'video' : 'image';
   const upload = await requestProjectMediaUploadUrl({
     projectId, mediaRole, mediaType, name, size: blob.size, contentType,
   });
-  const response = await fetch(upload.uploadURL, {
-    method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body: blob,
+  await uploadMediaBlob(upload.uploadURL, blob, contentType, {
+    signal: options.signal,
+    onProgress: options.onProgress,
   });
-  if (!response.ok) throw new Error('The media upload could not be completed.');
+  if (options.signal?.aborted) {
+    const error = new Error('The media upload was cancelled.');
+    error.name = 'AbortError';
+    throw error;
+  }
   return completeProjectMediaUpload({ objectPath: upload.objectPath });
 }
 
@@ -1087,6 +1106,11 @@ export function HypeCardEditor() {
       : 'Saved locally',
   );
   const [conflictData, setConflictData] = useState<Project | null>(null);
+  const [mediaSyncState, setMediaSyncState] = useState<MediaSyncState>({
+    status: 'idle',
+    loaded: 0,
+    total: 0,
+  });
   
   const [autosaveWarning, setAutosaveWarning] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -1130,6 +1154,7 @@ export function HypeCardEditor() {
   const sharePreparationAbortRef = useRef<AbortController | null>(null);
   const cloudPreviewLoadingRef = useRef(false);
   const mediaSyncRef = useRef(false);
+  const mediaSyncAbortRef = useRef<AbortController | null>(null);
   const profilePrefillAppliedRef = useRef(false);
   const gameDayPrefillAppliedRef = useRef(false);
 
@@ -1702,7 +1727,9 @@ export function HypeCardEditor() {
     ) return;
 
     let cancelled = false;
+    const syncAbortController = new AbortController();
     mediaSyncRef.current = true;
+    mediaSyncAbortRef.current = syncAbortController;
 
     void (async () => {
       let next = project;
@@ -1760,11 +1787,44 @@ export function HypeCardEditor() {
             loadMediaBlob(next.downloadMediaId!),
             next.photo ? fetch(next.photo).then((response) => response.blob()) : Promise.resolve(undefined),
           ]);
-          if (preview && download && poster) {
+          if (preview && download && poster && !cancelled && !syncAbortController.signal.aborted) {
+            const uploadBytes: Record<'preview' | 'download' | 'poster', number> = {
+              preview: 0,
+              download: 0,
+              poster: 0,
+            };
+            const totalUploadBytes = preview.size + download.size + poster.size;
+            setMediaSyncState({
+              status: 'syncing',
+              loaded: 0,
+              total: totalUploadBytes,
+            });
+            const updateUploadProgress = (
+              key: 'preview' | 'download' | 'poster',
+              loaded: number,
+              total: number,
+            ) => {
+              uploadBytes[key] = Math.min(total, loaded);
+              setMediaSyncState((current) => ({
+                ...current,
+                status: 'syncing',
+                loaded: uploadBytes.preview + uploadBytes.download + uploadBytes.poster,
+                total: totalUploadBytes,
+              }));
+            };
             const [previewMedia, downloadMedia, posterMedia] = await Promise.all([
-              uploadProjectMedia(cloudProjectId, 'video_preview', preview, `${next.videoMeta?.name || 'video'}.preview`),
-              uploadProjectMedia(cloudProjectId, 'video_download', download, `${next.videoMeta?.name || 'video'}.download`),
-              uploadProjectMedia(cloudProjectId, 'poster', poster, `${next.videoMeta?.name || 'video'}.jpg`),
+              uploadProjectMedia(cloudProjectId, 'video_preview', preview, `${next.videoMeta?.name || 'video'}.preview`, {
+                signal: syncAbortController.signal,
+                onProgress: (loaded, total) => updateUploadProgress('preview', loaded, total),
+              }),
+              uploadProjectMedia(cloudProjectId, 'video_download', download, `${next.videoMeta?.name || 'video'}.download`, {
+                signal: syncAbortController.signal,
+                onProgress: (loaded, total) => updateUploadProgress('download', loaded, total),
+              }),
+              uploadProjectMedia(cloudProjectId, 'poster', poster, `${next.videoMeta?.name || 'video'}.jpg`, {
+                signal: syncAbortController.signal,
+                onProgress: (loaded, total) => updateUploadProgress('poster', loaded, total),
+              }),
             ]);
             await Promise.all([
               saveMediaBlob(previewMedia.id, preview),
@@ -1786,6 +1846,7 @@ export function HypeCardEditor() {
               downloadMediaId: downloadMedia.id,
               posterMediaId: posterMedia.id,
             };
+            setMediaSyncState({ status: 'idle', loaded: totalUploadBytes, total: totalUploadBytes });
           }
         }
 
@@ -1798,14 +1859,36 @@ export function HypeCardEditor() {
         }
       } catch {
         if (!cancelled) {
+          setMediaSyncState((current) => ({
+            ...current,
+            status: 'failed',
+            message: 'The private media sync did not finish. Your local media is safe; retry when you are ready.',
+          }));
           setNotice('The design is safe on this phone, but its media did not sync. You can retry without choosing it again.');
         }
       } finally {
         mediaSyncRef.current = false;
+        if (mediaSyncAbortRef.current === syncAbortController) {
+          mediaSyncAbortRef.current = null;
+        }
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      syncAbortController.abort();
+      if (mediaSyncAbortRef.current === syncAbortController) {
+        mediaSyncAbortRef.current = null;
+        mediaSyncRef.current = false;
+        setMediaSyncState((current) => current.status === 'syncing'
+          ? {
+              ...current,
+              status: 'failed',
+              message: 'The private media sync was paused. Your local media is safe; retry cloud sync to continue.',
+            }
+          : current);
+      }
+    };
   }, [accountAccess?.paid, cloudProjectData, cloudProjectId, isOnline, project, queryClient, syncRetry]);
 
   const resolveConflict = async (action: 'server' | 'new') => {
@@ -2667,7 +2750,7 @@ export function HypeCardEditor() {
         </div>
       </header>
 
-      {deviceOnlyMedia && (
+      {deviceOnlyMedia && mediaSyncState.status === 'idle' && (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-primary/25 bg-primary/10 px-4 py-2 text-xs font-medium text-foreground" role="status" aria-live="polite">
           <span><strong className="uppercase tracking-wider text-primary">On this device:</strong> {deviceMediaMessage}</span>
           {cloudProjectId && isOnline && accountAccess?.paid && !(project.mediaType === 'video' && !project.videoPrepared) && (
@@ -2679,6 +2762,54 @@ export function HypeCardEditor() {
               Retry cloud sync
             </button>
           )}
+        </div>
+      )}
+
+      {cloudProjectId && (mediaSyncState.status === 'syncing' || mediaSyncState.status === 'failed') && (
+        <div
+          className={`flex shrink-0 flex-wrap items-center gap-3 border-b px-4 py-3 text-sm ${
+            mediaSyncState.status === 'failed'
+              ? 'border-amber-700 bg-amber-300 text-amber-950'
+              : 'border-primary/25 bg-primary/10 text-foreground'
+          }`}
+          role={mediaSyncState.status === 'failed' ? 'alert' : 'status'}
+          aria-live={mediaSyncState.status === 'failed' ? 'assertive' : 'polite'}
+          data-testid="private-media-sync"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold uppercase tracking-widest">
+              <span>{mediaSyncState.status === 'failed' ? 'Private media sync paused' : 'Syncing private media'}</span>
+              <span data-testid="private-media-sync-progress">
+                {mediaSyncState.total > 0 ? Math.round((mediaSyncState.loaded / mediaSyncState.total) * 100) : 0}%
+                {' · '}
+                {formatMediaBytes(mediaSyncState.loaded)} of {formatMediaBytes(mediaSyncState.total)}
+              </span>
+            </div>
+            <div
+              className="mt-2 h-2 overflow-hidden bg-background/60"
+              role="progressbar"
+              aria-label={`Private media sync ${mediaSyncState.total > 0 ? Math.round((mediaSyncState.loaded / mediaSyncState.total) * 100) : 0}%`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={mediaSyncState.total > 0 ? Math.round((mediaSyncState.loaded / mediaSyncState.total) * 100) : 0}
+            >
+              <div
+                className={`h-full transition-[width] duration-300 ${mediaSyncState.status === 'failed' ? 'bg-amber-900' : 'bg-primary'}`}
+                style={{ width: `${Math.max(mediaSyncState.status === 'syncing' ? 3 : 0, mediaSyncState.total > 0 ? (mediaSyncState.loaded / mediaSyncState.total) * 100 : 0)}%` }}
+              />
+            </div>
+            {mediaSyncState.message && (
+              <p className="mt-2 text-xs font-medium leading-relaxed">{mediaSyncState.message}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="shrink-0 font-bold uppercase tracking-wide underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => setSyncRetry((value) => value + 1)}
+            disabled={!isOnline || !accountAccess?.paid}
+          >
+            Retry cloud sync
+          </button>
         </div>
       )}
 
