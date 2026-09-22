@@ -199,35 +199,35 @@ export function PublicStatTrackerPage() {
 
         <main className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:gap-6">
           <div className="order-1 lg:col-start-1 lg:row-start-1">
-            <div className="relative min-w-0 border border-primary/40 bg-foreground p-4 text-background clip-angled-sm sm:p-6" data-testid="stat-tracker-scores">
-              <div className="flex min-w-0 items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div className="relative min-w-0 border border-primary/40 bg-card p-4 text-card-foreground clip-angled-sm sm:p-6" data-testid="stat-tracker-scores">
+              <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border pb-4">
                 <span className={`inline-flex shrink-0 items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${game.status === 'live' ? 'bg-primary text-primary-foreground' : game.status === 'paused' ? 'bg-accent text-accent-foreground' : 'bg-white/20 text-white'}`} data-testid="stat-tracker-status">
                   {game.status === 'live' && <span className="h-2 w-2 animate-pulse bg-current" />} 
                   {game.status === 'live' ? 'LIVE' : game.status === 'paused' ? 'PAUSED' : game.status === 'final' ? 'FINAL' : 'SETUP'}
                 </span>
-                <span className="min-w-0 truncate text-right text-[10px] font-bold uppercase tracking-widest text-white/40" title={`Updated at ${new Date(data.updatedAt).toLocaleTimeString()}`}>
+                <span className="min-w-0 truncate text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground" title={`Updated at ${new Date(data.updatedAt).toLocaleTimeString()}`}>
                   Updated {new Date(data.updatedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                 </span>
               </div>
               
               <div className="mt-4 flex items-end justify-between">
-                <p className="min-w-0 truncate text-xs font-bold uppercase tracking-widest text-white/60">
+                <p className="min-w-0 truncate text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   {data.teamName || 'Team'} {game.opponent ? `vs ${game.opponent}` : '— opponent TBD'}
-                  <span className="mt-1 block text-[10px] text-white/40">{formatDate(game.date)}</span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground/80">{formatDate(game.date)}</span>
                 </p>
-                <span className="shrink-0 text-right font-display text-xl uppercase tracking-wide text-white/80 sm:text-2xl">
+                <span className="shrink-0 text-right font-display text-xl uppercase tracking-wide text-foreground sm:text-2xl">
                   {phaseLabel} {game.period}
                 </span>
               </div>
 
               <div className="mt-5 grid min-w-0 grid-cols-2 gap-2 sm:mt-6 sm:gap-3">
-                <div className="min-w-0 border border-white/10 bg-white/5 p-3 text-center sm:p-4">
-                  <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{data.athleteName || 'Athlete'}</p>
+                <div className="min-w-0 border border-border bg-background/40 p-3 text-center sm:p-4">
+                  <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{data.athleteName || 'Athlete'}</p>
                   <p className="mt-2 font-display text-6xl leading-none text-primary sm:text-8xl">{game.score}</p>
                 </div>
-                <div className="min-w-0 border border-white/10 bg-white/5 p-3 text-center sm:p-4">
-                  <p className="truncate text-[10px] font-bold uppercase tracking-widest text-white/60">{game.opponent || 'Opponent'}</p>
-                  <p className="mt-2 font-display text-6xl leading-none text-white sm:text-8xl">{game.opponentScore}</p>
+                <div className="min-w-0 border border-border bg-background/40 p-3 text-center sm:p-4">
+                  <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{game.opponent || 'Opponent'}</p>
+                  <p className="mt-2 font-display text-6xl leading-none text-foreground sm:text-8xl">{game.opponentScore}</p>
                 </div>
               </div>
             </div>

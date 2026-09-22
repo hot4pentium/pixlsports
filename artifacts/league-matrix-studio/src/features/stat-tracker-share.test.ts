@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { toStatTrackerShareInput } from './stat-tracker-share';
 import type { GameSession } from './stat-tracker';
+
+const trackerPageSource = readFileSync(new URL('./stat-tracker-page.tsx', import.meta.url), 'utf8');
+const spectatorSource = readFileSync(new URL('./stat-tracker-spectator.tsx', import.meta.url), 'utf8');
 
 function game(): GameSession {
   return {
@@ -40,4 +44,13 @@ test('tracker share input is explicitly sanitized and keeps the last ten events'
   assert.equal('startedAt' in input.game, false);
   assert.equal('endedAt' in input.game, false);
   assert.deepEqual(Object.keys(input.game.events[0] ?? {}).sort(), ['createdAt', 'id', 'period', 'statId', 'yards']);
+});
+
+test('season snapshot and recipient scoreboard use readable dark-card contrast', () => {
+  assert.match(trackerPageSource, /className="[^"]*bg-card[^"]*text-card-foreground[^"]*" data-testid="stat-tracker-season-snapshot"/);
+  assert.match(trackerPageSource, /Season snapshot[\s\S]*?text-muted-foreground/);
+  assert.match(spectatorSource, /className="[^"]*bg-card[^"]*text-card-foreground[^"]*" data-testid="stat-tracker-scores"/);
+  assert.match(spectatorSource, /data-testid="stat-tracker-scores"[\s\S]*?text-muted-foreground/);
+  assert.doesNotMatch(trackerPageSource, /Season snapshot[\s\S]*?text-white\/(?:55|60|70)/);
+  assert.doesNotMatch(spectatorSource, /data-testid="stat-tracker-scores"[\s\S]*?text-white\/(?:40|60|80)/);
 });

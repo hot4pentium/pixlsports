@@ -1453,18 +1453,18 @@ export function StatTrackerPage() {
             onStartGame={beginGame}
             onReviewPreviousGames={reviewPreviousGames}
           />
-          <section className="border border-border bg-foreground p-6 text-background clip-angled-sm sm:p-8">
+          <section className="border border-border bg-card p-6 text-card-foreground clip-angled-sm sm:p-8" data-testid="stat-tracker-season-snapshot">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Season snapshot</p>
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="border border-white/10 bg-white/5 p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-white/55">Games</p><p className="mt-2 font-display text-4xl">{totals.gamesPlayed}</p></div>
-              <div className="border border-white/10 bg-white/5 p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-white/55">Points</p><p className="mt-2 font-display text-4xl text-primary">{totals.score}</p></div>
+              <div className="border border-border bg-background/40 p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Games</p><p className="mt-2 font-display text-4xl text-foreground">{totals.gamesPlayed}</p></div>
+              <div className="border border-border bg-background/40 p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Points</p><p className="mt-2 font-display text-4xl text-primary">{totals.score}</p></div>
             </div>
             <div className="mt-7 space-y-3">
-              {rule.stats.filter((item) => totals.stats[item.id]).slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between border-b border-white/10 pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-white/70">{item.label}</span><span className="font-display text-2xl">{totals.stats[item.id]}</span></div>)}
+              {rule.stats.filter((item) => totals.stats[item.id]).slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between border-b border-border pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-muted-foreground">{item.label}</span><span className="font-display text-2xl text-foreground">{totals.stats[item.id]}</span></div>)}
               {sport === 'football' && footballYardMetricDefinitions
                 .filter((metric) => yardTotals[metric.id])
-                .map((metric) => <div key={metric.id} className="flex items-center justify-between border-b border-white/10 pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-white/70">{metric.label}</span><span className="font-display text-2xl">{yardTotals[metric.id]} <span className="text-xs text-white/55">YDS</span></span></div>)}
-              {!totals.gamesPlayed && <p className="text-sm text-white/60">Finish your first game to build the season view.</p>}
+                .map((metric) => <div key={metric.id} className="flex items-center justify-between border-b border-border pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-muted-foreground">{metric.label}</span><span className="font-display text-2xl text-foreground">{yardTotals[metric.id]} <span className="text-xs text-muted-foreground">YDS</span></span></div>)}
+              {!totals.gamesPlayed && <p className="text-sm text-muted-foreground">Finish your first game to build the season view.</p>}
             </div>
           </section>
         </section>
