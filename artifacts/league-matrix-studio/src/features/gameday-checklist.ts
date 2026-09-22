@@ -105,11 +105,41 @@ export const gamedayChecklistTemplate: GamedayChecklistItem[] = [
   { id: 'schedule', label: 'Review the game schedule and field or court', completed: false, section: 'Team details' },
 ];
 
-export function createGamedayChecklist(): LocalGamedayChecklist {
+const practiceChecklistTemplate: GamedayChecklistItem[] = [
+  { id: 'uniform', label: 'Pack practice gear and shoes', completed: false, section: 'Before practice' },
+  { id: 'equipment', label: 'Pack practice equipment and team bag', completed: false, section: 'Before practice' },
+  { id: 'water', label: 'Bring water and a quick snack', completed: false, section: 'Before practice' },
+  { id: 'arrival', label: 'Confirm practice time and location', completed: false, section: 'Practice details' },
+  { id: 'lineup', label: 'Review the practice plan and player availability', completed: false, section: 'Practice details' },
+  { id: 'schedule', label: 'Review the practice schedule and field or court', completed: false, section: 'Practice details' },
+];
+
+const meetingChecklistTemplate: GamedayChecklistItem[] = [
+  { id: 'uniform', label: 'Bring a notebook and pen', completed: false, section: 'Before meeting' },
+  { id: 'equipment', label: 'Gather meeting materials', completed: false, section: 'Before meeting' },
+  { id: 'water', label: 'Bring water and any refreshments', completed: false, section: 'Before meeting' },
+  { id: 'arrival', label: 'Confirm meeting time and location', completed: false, section: 'Meeting details' },
+  { id: 'lineup', label: 'Review the meeting agenda and attendees', completed: false, section: 'Meeting details' },
+  { id: 'schedule', label: 'Review the meeting schedule and location', completed: false, section: 'Meeting details' },
+];
+
+export function getChecklistTemplate(type: ChecklistEventType = 'game'): readonly GamedayChecklistItem[] {
+  switch (type) {
+    case 'practice':
+      return practiceChecklistTemplate;
+    case 'meeting':
+      return meetingChecklistTemplate;
+    case 'game':
+    default:
+      return gamedayChecklistTemplate;
+  }
+}
+
+export function createGamedayChecklist(type: ChecklistEventType = 'game'): LocalGamedayChecklist {
   return {
-    title: 'Gameday Checklist',
+    title: type === 'practice' ? 'Practice Checklist' : type === 'meeting' ? 'Meeting Checklist' : 'Gameday Checklist',
     mode: 'gameday',
-    items: gamedayChecklistTemplate.map((item) => ({ ...item })),
+    items: getChecklistTemplate(type).map((item) => ({ ...item })),
   };
 }
 
@@ -185,9 +215,10 @@ export function saveGamedayChecklist(
 }
 
 export function resetGamedayChecklist(current: LocalGamedayChecklist): LocalGamedayChecklist {
+  const eventType = current.selectedGame?.type ?? 'game';
   return {
     ...current,
-    items: gamedayChecklistTemplate.map((item) => ({ ...item })),
+    items: getChecklistTemplate(eventType).map((item) => ({ ...item })),
   };
 }
 

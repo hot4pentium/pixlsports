@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   completedChecklistCount,
   createGamedayChecklist,
+  getChecklistTemplate,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
   normalizeChecklist,
@@ -20,6 +21,33 @@ test('starts with practical template items and keeps tournament mode available',
     'Confirm arrival time and location',
   ]) assert.ok(labels.includes(label));
   assert.equal(normalizeChecklist({ ...checklist, mode: 'tournament' })?.mode, 'tournament');
+});
+
+test('uses event-specific starter items without changing the game template', () => {
+  assert.deepEqual(
+    createGamedayChecklist('practice').items.map((item) => item.label),
+    [
+      'Pack practice gear and shoes',
+      'Pack practice equipment and team bag',
+      'Bring water and a quick snack',
+      'Confirm practice time and location',
+      'Review the practice plan and player availability',
+      'Review the practice schedule and field or court',
+    ],
+  );
+  assert.deepEqual(
+    createGamedayChecklist('meeting').items.map((item) => item.label),
+    [
+      'Bring a notebook and pen',
+      'Gather meeting materials',
+      'Bring water and any refreshments',
+      'Confirm meeting time and location',
+      'Review the meeting agenda and attendees',
+      'Review the meeting schedule and location',
+    ],
+  );
+  assert.equal(createGamedayChecklist().items[0]?.label, 'Pack the uniform and game shoes');
+  assert.equal(getChecklistTemplate('game'), getChecklistTemplate());
 });
 
 test('uses event-specific checklist copy while keeping game copy unchanged', () => {
@@ -87,6 +115,36 @@ test('normalizes malformed values and resets completion without dropping custom 
   assert.equal(completedChecklistCount(checklist?.items ?? []), 1);
   assert.equal(resetGamedayChecklist(checklist!).items.every((item) => !item.completed), true);
   assert.equal(resetGamedayChecklist(checklist!).title, 'Saturday tournament');
+});
+
+test('resets selected practice and meeting checklists with the matching template', () => {
+  const practice = {
+    ...createGamedayChecklist('practice'),
+    selectedGame: {
+      id: 'practice-1',
+      type: 'practice' as const,
+      date: '2026-09-23',
+      time: '17:00',
+      location: 'Eastside Field',
+      opponent: '',
+    },
+    items: [{ id: 'custom', label: 'Custom task', completed: true }],
+  };
+  assert.deepEqual(resetGamedayChecklist(practice).items, getChecklistTemplate('practice'));
+
+  const meeting = {
+    ...createGamedayChecklist('meeting'),
+    selectedGame: {
+      id: 'meeting-1',
+      type: 'meeting' as const,
+      date: '2026-09-24',
+      time: '18:00',
+      location: 'Clubhouse',
+      opponent: '',
+    },
+    items: [{ id: 'custom', label: 'Custom task', completed: true }],
+  };
+  assert.deepEqual(resetGamedayChecklist(meeting).items, getChecklistTemplate('meeting'));
 });
 
 test('persists a selected preparation event type and treats legacy selections as games', () => {

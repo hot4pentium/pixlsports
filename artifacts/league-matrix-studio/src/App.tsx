@@ -106,6 +106,7 @@ import {
   completedChecklistCount,
   createGamedayChecklist,
   gamedayChecklistStorageKey,
+  getChecklistTemplate,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
   normalizeChecklist,
@@ -2880,8 +2881,16 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const params = useParams<{ shareToken?: string }>();
   const shareToken = shared ? (params.shareToken ?? '') : '';
   const { user, isSignedIn } = useUser();
+  const requestedEventType = useRef<ChecklistEventType | undefined>(
+    shared || typeof window === 'undefined'
+      ? undefined
+      : (() => {
+        const value = new URLSearchParams(window.location.search).get('eventType');
+        return value === 'practice' || value === 'meeting' || value === 'game' ? value : undefined;
+      })(),
+  );
   const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(user?.id ?? 'anonymous')}`;
-  const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist());
+  const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist(requestedEventType.current));
   const [localSchedule] = useState(() => readScheduleDraft());
   const [hydrated, setHydrated] = useState(!shared);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
@@ -2894,15 +2903,8 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
       ? ''
       : new URLSearchParams(window.location.search).get('gameId') ?? '',
   );
-  const requestedEventType = useRef<ChecklistEventType | undefined>(
-    shared || typeof window === 'undefined'
-      ? undefined
-      : (() => {
-        const value = new URLSearchParams(window.location.search).get('eventType');
-        return value === 'practice' || value === 'meeting' || value === 'game' ? value : undefined;
-      })(),
-  );
   const requestedGameApplied = useRef(false);
+  const storedChecklistLoaded = useRef(false);
   const [liveStatus, setLiveStatus] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const saveTimer = useRef<number | null>(null);
   const completionTimer = useRef<number | null>(null);
@@ -2945,6 +2947,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     try {
       const stored = readGamedayChecklist(window.localStorage, userStorageKey);
       if (stored) {
+        storedChecklistLoaded.current = true;
         setChecklist(stored);
         if (stored.shareToken) setShareUrl(`${appOrigin}${basePath}/checklist/${stored.shareToken}`);
         if (stored.revision) {
@@ -3080,11 +3083,16 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     const requestedGame = calendarEvents.find((event) => event.id === requestedGameId.current);
     if (!requestedGame) return;
     requestedGameApplied.current = true;
+    const eventType = requestedGame.type ?? requestedEventType.current ?? 'game';
     const next = {
       ...latestChecklist.current,
+      ...(storedChecklistLoaded.current ? {} : {
+        title: eventType === 'practice' ? 'Practice Checklist' : eventType === 'meeting' ? 'Meeting Checklist' : latestChecklist.current.title,
+        items: getChecklistTemplate(eventType).map((item) => ({ ...item })),
+      }),
       selectedGame: {
         id: requestedGame.id,
-        type: requestedGame.type ?? requestedEventType.current,
+        type: eventType,
         date: requestedGame.date,
         time: requestedGame.time,
         location: requestedGame.location,
