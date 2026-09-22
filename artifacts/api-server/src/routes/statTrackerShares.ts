@@ -16,6 +16,48 @@ import { isAccountActive } from "../lib/accountLifecycle";
 const router: IRouter = Router();
 const subscribers = new Map<string, Set<Response>>();
 
+function isPairedPassEvent(event: Record<string, unknown>) {
+  return typeof event.playId === "string"
+    && (event.statId === "pass-yard" || event.statId === "reception");
+}
+
+export function getPublicEvents(storedEvents: unknown[]) {
+  const firstVisibleIndex = Math.max(0, storedEvents.length - 10);
+  const visibleEvents = storedEvents.slice(firstVisibleIndex);
+  const boundaryPlayIds = new Set(
+    visibleEvents
+      .filter((event): event is Record<string, unknown> => typeof event === "object" && event !== null && isPairedPassEvent(event))
+      .map((event) => event.playId as string)
+      .filter((playId) => storedEvents
+        .slice(0, firstVisibleIndex)
+        .some((event) => (
+          typeof event === "object"
+          && event !== null
+          && (event as Record<string, unknown>).playId === playId
+          && isPairedPassEvent(event as Record<string, unknown>)
+        ))),
+  );
+  if (!boundaryPlayIds.size) return visibleEvents;
+
+  const requiredEvents = new Set(
+    storedEvents.filter((event): event is Record<string, unknown> => (
+      typeof event === "object"
+      && event !== null
+      && typeof (event as Record<string, unknown>).playId === "string"
+      && boundaryPlayIds.has((event as Record<string, unknown>).playId as string)
+    )),
+  );
+  const expandedEvents = storedEvents.slice(Math.max(0, firstVisibleIndex - boundaryPlayIds.size));
+  while (expandedEvents.length > 10) {
+    const removableIndex = expandedEvents.findIndex((event) => (
+      typeof event !== "object" || event === null || !requiredEvents.has(event as Record<string, unknown>)
+    ));
+    if (removableIndex < 0) break;
+    expandedEvents.splice(removableIndex, 1);
+  }
+  return expandedEvents;
+}
+
 function publicResponse(
   share: typeof statTrackerSharesTable.$inferSelect,
   canManage = false,
@@ -24,7 +66,7 @@ function publicResponse(
   const storedEvents = Array.isArray(storedGame.events) ? storedGame.events : [];
   const game = {
     ...storedGame,
-    events: storedEvents.slice(-10).map((event) => {
+    events: getPublicEvents(storedEvents).map((event) => {
       const item = event as Record<string, unknown>;
       return {
         id: item.id,

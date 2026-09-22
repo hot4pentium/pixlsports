@@ -34,7 +34,7 @@ import { PublicStatTrackerPage } from './src/features/stat-tracker-spectator';
 import { StatTrackerSharePanel } from './src/features/stat-tracker-page';
 import './src/index.css';
 
-const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:'2026-09-22T18:00:00.000Z', canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1}, trackYards:true, yardStats:{'pass-yard':20}, events:[{id:'event-1',statId:'pass-yard',createdAt:'2026-09-21T18:01:00.000Z',period:2,yards:20}] } };
+const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:'2026-09-22T18:00:00.000Z', canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
 let current = initial;
 let revoked = false;
 let poll404 = false;
@@ -50,6 +50,11 @@ window.EventSource = MockEventSource;
 window.__sendUpdate = (status) => {
   current = { ...current, revision: current.revision + 1, updatedAt:'2026-09-21T18:02:00.000Z', game:{ ...current.game, status, score: status === 'final' ? 21 : 18, events:[...current.game.events,{id:'event-2',statId:'touchdown',createdAt:'2026-09-21T18:02:00.000Z',period:2,yards:null}] } };
   MockEventSource.instances.at(-1)?.emit('stat-tracker', current);
+};
+window.__sendDuplicate = () => {
+  const source = MockEventSource.instances.at(-1);
+  source?.emit('stat-tracker', current);
+  source?.emit('stat-tracker', current);
 };
 window.__revoke = () => { revoked = true; MockEventSource.instances.at(-1)?.emit('revoked', { shareToken: current.shareToken }); };
 window.__poll404 = () => { poll404 = true; };
@@ -97,6 +102,11 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     const initial = await connection.evaluate<string>('document.body.textContent || ""',page.sessionId);
     assert.match(initial,/14/); assert.match(initial,/LIVE/); assert.match(initial,/Pass yard/);
     assert.match(initial,/Game day \/ live feed/);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"recent-activity-completed-pass-play-1\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<boolean>('document.querySelectorAll("[data-testid^=\\"recent-activity-\\"]:not([data-testid^=\\"recent-activity-attribution-\\"])").length === 2 && document.querySelector("[data-testid=\\"recent-activity-completed-pass-play-1\\"]")?.textContent.includes("Completed pass") && document.querySelector("[data-testid=\\"recent-activity-completed-pass-play-1\\"]")?.textContent.includes("20 yds") && document.querySelector("[data-testid=\\"recent-activity-attribution-completed-pass-play-1\\"]")?.textContent.includes("Falcons") && document.querySelector("[data-testid=\\"recent-activity-event-legacy\\"]")?.textContent.includes("Tackle") && document.querySelector("[data-testid=\\"recent-activity-attribution-event-legacy\\"]")?.textContent.includes("Maya")', page.sessionId), true);
+    assert.equal(await connection.evaluate<boolean>('document.body.textContent.includes("Receiving") || document.body.textContent.includes("Reception")', page.sessionId), true);
+    await connection.evaluate('window.__sendDuplicate()', page.sessionId);
+    assert.equal(await connection.evaluate<boolean>('document.querySelectorAll("[data-testid^=\\"recent-activity-\\"]:not([data-testid^=\\"recent-activity-attribution-\\"])").length === 2', page.sessionId), true);
     assert.equal(await connection.evaluate<boolean>('document.querySelector(`[data-testid="scoreboard-hero"]`) !== null && document.querySelector(`[data-testid="stat-tracker-period"]`)?.textContent === "2"',page.sessionId),true);
     await connection.send('Emulation.setDeviceMetricsOverride',{width:1280,height:800,deviceScaleFactor:1,mobile:false},page.sessionId);
     assert.equal(

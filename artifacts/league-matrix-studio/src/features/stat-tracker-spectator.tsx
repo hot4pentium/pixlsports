@@ -72,6 +72,47 @@ function getStatusCopy(status: string) {
   }
 }
 
+const completedPassEventIds = new Set(["pass-yard", "reception"]);
+
+type RecentFeedEvent = StatTrackerEvent & {
+  isCompletedPass?: boolean;
+};
+
+function groupCompletedPassEvents(events: StatTrackerEvent[]): RecentFeedEvent[] {
+  const grouped = new Map<string, StatTrackerEvent[]>();
+  events.forEach((event) => {
+    if (!event.playId || !completedPassEventIds.has(event.statId)) return;
+    const playEvents = grouped.get(event.playId) ?? [];
+    playEvents.push(event);
+    grouped.set(event.playId, playEvents);
+  });
+
+  const completedPlayIds = new Set(
+    Array.from(grouped.entries())
+      .filter(([, playEvents]) => {
+        const statIds = new Set(playEvents.map((event) => event.statId));
+        return statIds.size === completedPassEventIds.size
+          && statIds.has("pass-yard")
+          && statIds.has("reception");
+      })
+      .map(([playId]) => playId),
+  );
+  const renderedPlayIds = new Set<string>();
+
+  return events.flatMap((event) => {
+    if (!event.playId || !completedPlayIds.has(event.playId)) return [event];
+    if (renderedPlayIds.has(event.playId)) return [];
+    renderedPlayIds.add(event.playId);
+    const passEvent = grouped.get(event.playId)?.find((item) => item.statId === "pass-yard") ?? event;
+    return [{
+      ...passEvent,
+      id: `completed-pass-${event.playId}`,
+      statId: "completed-pass",
+      isCompletedPass: true,
+    }];
+  });
+}
+
 export function PublicStatTrackerPage() {
   const params = useParams<{ shareToken?: string }>();
   const shareToken = params.shareToken || "";
@@ -215,7 +256,7 @@ export function PublicStatTrackerPage() {
     ...Object.entries(game.stats || {}).map(([key, value]) => ({ key, value: String(value) })),
     ...Object.entries(game.yardStats || {}).map(([key, value]) => ({ key, value: `${value} yds` })),
   ];
-  const recentEvents = game.events.slice().reverse();
+  const recentEvents = groupCompletedPassEvents(game.events.slice().reverse());
   const updatedTime = new Date(data.updatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const statusTone = {
     live: "border-primary/55 bg-primary text-primary-foreground",
@@ -361,7 +402,7 @@ export function PublicStatTrackerPage() {
               <div className="mt-4">
                 {recentEvents.length > 0 ? (
                   <div className="space-y-1">
-                    {recentEvents.map((event: StatTrackerEvent, index) => (
+                    {recentEvents.map((event, index) => (
                       <div
                         key={event.id}
                         className="relative border-b border-foreground/10 py-3 pl-7 last:border-0"
@@ -371,7 +412,7 @@ export function PublicStatTrackerPage() {
                         {index < recentEvents.length - 1 && <span className="absolute bottom-0 left-[4px] top-7 w-px bg-foreground/10" aria-hidden="true" />}
                         <div className="flex items-start justify-between gap-3">
                           <span className="min-w-0 truncate text-sm font-bold text-foreground">
-                            {formatStatKey(event.statId)}
+                            {event.isCompletedPass ? "Completed pass" : formatStatKey(event.statId)}
                             {event.yards != null ? ` · ${event.yards} yds` : ""}
                           </span>
                           <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">

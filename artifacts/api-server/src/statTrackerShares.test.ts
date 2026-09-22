@@ -14,7 +14,7 @@ import {
   UpdateStatTrackerShareBody,
   UpdateStatTrackerShareResponse,
 } from "@workspace/api-zod";
-import statTrackerSharesRouter from "./routes/statTrackerShares";
+import statTrackerSharesRouter, { getPublicEvents } from "./routes/statTrackerShares";
 
 const game = {
   id: "tracker-game-1",
@@ -131,6 +131,21 @@ test("stat tracker shares sanitize snapshots, stream revisions, and enforce owne
     assert.equal(publicView.game.events[1]?.attribution, "athlete");
     assert.equal((publicView as unknown as Record<string, unknown>).ownerClerkUserId, undefined);
     assert.equal((publicView.game as unknown as Record<string, unknown>).notes, undefined);
+    const boundaryEvents = [
+      { id: "boundary-pass", statId: "pass-yard", playId: "boundary-play", createdAt: "2026-09-20T18:00:00.000Z", period: 2, attribution: "team", yards: 18 },
+      { id: "boundary-reception", statId: "reception", playId: "boundary-play", createdAt: "2026-09-20T18:00:00.000Z", period: 2, attribution: "team", yards: 18 },
+      ...Array.from({ length: 9 }, (_, index) => ({
+        id: `boundary-filler-${index}`,
+        statId: "tackle",
+        createdAt: `2026-09-20T18:0${index + 1}:00.000Z`,
+        period: 2,
+        attribution: "athlete",
+        yards: null,
+      })),
+    ];
+    const visibleBoundaryEvents = getPublicEvents(boundaryEvents);
+    assert.equal(visibleBoundaryEvents.length, 10);
+    assert.deepEqual(visibleBoundaryEvents.slice(0, 2).map((event) => (event as { id: string }).id), ["boundary-pass", "boundary-reception"]);
 
     const streamResponse = await fetch(`${baseUrl}/api/stat-tracker-shares/${created.shareToken}/events`, {
       signal: eventsAbortController.signal,
