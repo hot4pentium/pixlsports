@@ -2,6 +2,7 @@ import type { HypeCardProject } from './hype-card-types';
 import { exportVideoCanvas } from './hype-card-export';
 
 export const MAX_HOSTED_VIDEO_BYTES = 35 * 1024 * 1024;
+export type HypeCardShareQuality = 'standard' | 'compact';
 
 function abortError() {
   const error = new Error('Athlete Hype Page video preparation was cancelled.');
@@ -114,13 +115,16 @@ export async function prepareHypeCardShareMedia(
   video: HTMLVideoElement,
   project: Pick<HypeCardProject, 'trimStart' | 'trimEnd'>,
   onProgress: (progress: number) => void,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; quality?: HypeCardShareQuality } = {},
 ) {
   if (!video.videoWidth || !video.videoHeight) throw new Error('The video is still loading. Try again in a moment.');
   if (options.signal?.aborted) throw abortError();
   const originalTime = video.currentTime;
   const wasPaused = video.paused;
-  const longEdge = 960;
+  const quality = options.quality ?? 'standard';
+  const longEdge = quality === 'compact' ? 640 : 960;
+  const videoBitsPerSecond = quality === 'compact' ? 800_000 : 2_000_000;
+  const audioBitsPerSecond = quality === 'compact' ? 64_000 : 128_000;
   const scale = Math.min(1, longEdge / Math.max(video.videoWidth, video.videoHeight));
   const width = Math.max(2, Math.round(video.videoWidth * scale / 2) * 2);
   const height = Math.max(2, Math.round(video.videoHeight * scale / 2) * 2);
@@ -148,8 +152,8 @@ export async function prepareHypeCardShareMedia(
       project.trimEnd,
       (ctx, frame) => drawContained(ctx, frame, width, height),
       {
-        videoBitsPerSecond: 2_000_000,
-        audioBitsPerSecond: 128_000,
+        videoBitsPerSecond,
+        audioBitsPerSecond,
       },
     );
     return { video: clip.blob, videoContentType: clip.mimeType, poster };

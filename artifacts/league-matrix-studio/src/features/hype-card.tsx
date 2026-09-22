@@ -60,7 +60,7 @@ import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport } fro
 import { exportVideoCanvas, rasterizeSvgForDownload, svgToImage } from './hype-card-export';
 import { transcodeVideoToMp4 } from './hype-card-transcode';
 import { getGuestUsageKey } from './guest-access';
-import { MAX_HOSTED_VIDEO_BYTES, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
+import { MAX_HOSTED_VIDEO_BYTES, prepareHypeCardShareMedia, uploadHypeCardShareMedia, type HypeCardShareQuality } from './hype-card-share';
 import { sports, getSportRule, normalizeTrackerData, type GameSession } from './stat-tracker';
 import { getUserProfile, seedHypeCardFromSupporterProfile } from './supporter-dashboard-model';
 import { LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from './privacy-copy';
@@ -1110,6 +1110,8 @@ export function HypeCardEditor() {
   const [shareSport, setShareSport] = useState<string>('basketball');
   const [shareExpiresInDays, setShareExpiresInDays] = useState<string>('30');
   const [shareMode, setShareMode] = useState<'card' | 'stats'>('card');
+  const [shareVideoQuality, setShareVideoQuality] = useState<HypeCardShareQuality>('standard');
+  const [shareVideoTooLargeQuality, setShareVideoTooLargeQuality] = useState<HypeCardShareQuality | null>(null);
   const { data: athleteInvites } = useListAthleteInvites({
     query: {
       enabled: Boolean(isSignedIn),
@@ -2328,6 +2330,8 @@ export function HypeCardEditor() {
   const handleShareClick = () => {
     setValidation('');
     setNotice('');
+    setShareVideoQuality('standard');
+    setShareVideoTooLargeQuality(null);
     if (!isOnline) {
       setNotice('Your Hype Card is ready on this phone. Reconnect to post it to an Athlete Hype Page.');
       return;
@@ -2397,11 +2401,18 @@ export function HypeCardEditor() {
           (progress) => setShareProgress(progress * 0.6),
           {
             signal: shareAbortController.signal,
+            quality: shareVideoQuality,
           },
         );
         const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
         if (prepared.video.size > MAX_HOSTED_VIDEO_BYTES) {
-          throw new Error('The prepared video is too large for the Athlete Hype Page. Choose a shorter clip or download the Hype Card to this device instead.');
+          const error = new Error(
+            shareVideoQuality === 'standard'
+              ? 'The prepared video is too large for the Athlete Hype Page.'
+              : 'The lower-quality prepared video is still too large for the Athlete Hype Page.',
+          );
+          error.name = 'HostedVideoTooLarge';
+          throw error;
         }
         setShareProgress(0.6);
         setShareStage('Uploading the prepared video and poster…');
@@ -2533,6 +2544,8 @@ export function HypeCardEditor() {
          : project.mediaType === 'video'
            ? `Video added to Athlete Hype Page for ${shareExpiresInDays} days.`
            : `Hype Card added to Athlete Hype Page for ${shareExpiresInDays} days.`);
+       setShareVideoQuality('standard');
+       setShareVideoTooLargeQuality(null);
       setLinkedExportPending(false);
       if (linkedExport) await handleExport(url);
       if (!isStatsOnly && !linkedExport) {
@@ -2560,11 +2573,23 @@ export function HypeCardEditor() {
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : '';
+      const hostedVideoTooLarge = error instanceof Error && error.name === 'HostedVideoTooLarge';
       const cancelled = error instanceof Error
         && (error.name === 'AbortError' || message === 'Export cancelled' || message.toLowerCase().includes('preparation was cancelled'));
-      setNotice(cancelled
-        ? 'Athlete Hype Page upload cancelled. Your Hype Card is still available for download on this device.'
-        : message || 'Could not add this media to the Athlete Hype Page.');
+      if (hostedVideoTooLarge) {
+        setShareVideoTooLargeQuality(shareVideoQuality);
+        if (shareVideoQuality === 'standard') {
+          setShareVideoQuality('compact');
+          setNotice('The prepared video is over 35 MB. Retry with a lower-quality browser-prepared copy, or download the Hype Card to this device instead.');
+        } else {
+          setNotice('The lower-quality browser-prepared video is still over 35 MB. Download the Hype Card to this device instead; your original video remains local.');
+        }
+        setShareDialogOpen(true);
+      } else {
+        setNotice(cancelled
+          ? 'Athlete Hype Page upload cancelled. Your Hype Card is still available for download on this device.'
+          : message || 'Could not add this media to the Athlete Hype Page.');
+      }
     } finally {
       setLinkedExportPending(false);
       if (sharePreparationAbortRef.current === shareAbortController) {
@@ -3116,9 +3141,18 @@ export function HypeCardEditor() {
              </div>
             )}
             {shareMode === 'card' && project.mediaType === 'video' && (
-              <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-hosted-video-preparation">
-                The Athlete Hype Page receives a smaller web copy of the selected clip and a poster image. Your original video remains on this device.
-              </p>
+               <>
+                 <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-hosted-video-preparation">
+                   The Athlete Hype Page receives a smaller web copy of the selected clip and a poster image. Your original video remains on this device.
+                 </p>
+                 {shareVideoTooLargeQuality && (
+                   <div className="border-l-2 border-amber-600 bg-amber-50 px-3 py-2 text-xs font-medium leading-relaxed text-amber-950" role="alert" data-testid="hosted-video-size-retry">
+                     {shareVideoTooLargeQuality === 'standard'
+                       ? 'The first browser-prepared copy was over 35 MB. Retry below with lower resolution and bitrate, or use Download Hype Card to keep the finished file on this device.'
+                       : 'The lower-quality browser-prepared copy is still over 35 MB. Use Download Hype Card to keep the finished file on this device; your original video remains local.'}
+                   </div>
+                 )}
+               </>
             )}
              {shareMode === 'stats' && (
                <div className="space-y-2">
@@ -3201,10 +3235,30 @@ export function HypeCardEditor() {
               </div>
             )}
 
-            <DialogFooter className="mt-6">
-              <Button type="submit" disabled={shareMode === 'stats' && (shareTrackerProjectId === 'none' || !profile.athleteName)} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
-                {shareMode === 'stats' ? 'Create stats link' : project.mediaType === 'video' ? 'Add video to Athlete Hype Page' : 'Add to Athlete Hype Page'}
-              </Button>
+             <DialogFooter className="mt-6">
+               {shareMode === 'card' && project.mediaType === 'video' && shareVideoTooLargeQuality === 'compact' ? (
+                 <Button
+                   type="button"
+                   onClick={() => {
+                     setShareDialogOpen(false);
+                     void handleExport();
+                   }}
+                   className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold"
+                   data-testid="button-download-oversized-hype-card"
+                 >
+                   <Download className="mr-2 h-4 w-4" /> Download Hype Card to this device
+                 </Button>
+               ) : (
+                 <Button type="submit" disabled={shareMode === 'stats' && (shareTrackerProjectId === 'none' || !profile.athleteName)} className="w-full h-12 clip-angled-sm rounded-none text-sm tracking-widest uppercase font-bold">
+                   {shareMode === 'stats'
+                     ? 'Create stats link'
+                     : shareVideoTooLargeQuality === 'standard'
+                       ? 'Retry at lower quality'
+                       : project.mediaType === 'video'
+                         ? 'Add video to Athlete Hype Page'
+                         : 'Add to Athlete Hype Page'}
+                 </Button>
+               )}
             </DialogFooter>
           </form>
         </DialogContent>

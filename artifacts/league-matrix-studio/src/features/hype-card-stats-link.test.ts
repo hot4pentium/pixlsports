@@ -42,6 +42,10 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
   assert.match(editorSource, /data-testid="button-share-success-destination"/);
   assert.match(editorSource, /revoking it makes this destination unavailable/);
   assert.match(editorSource, /data-testid="text-hosted-video-preparation"/);
+  assert.match(editorSource, /data-testid="hosted-video-size-retry"/);
+  assert.match(editorSource, /Retry at lower quality/);
+  assert.match(editorSource, /The lower-quality browser-prepared video is still over 35 MB/);
+  assert.match(editorSource, /quality: shareVideoQuality/);
   assert.match(editorSource, /MAX_HOSTED_VIDEO_BYTES/);
   assert.match(editorSource, /prepared\.video\.size > MAX_HOSTED_VIDEO_BYTES/);
   assert.match(editorSource, /uploadHypeCardShareMedia\(/);
@@ -55,6 +59,9 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
 test('hosted video uploads report byte progress and abort through the shared request', () => {
   const shareSource = readFileSync(new URL('./hype-card-share.tsx', import.meta.url), 'utf8');
 
+  assert.match(shareSource, /export type HypeCardShareQuality = 'standard' \| 'compact'/);
+  assert.match(shareSource, /quality === 'compact' \? 640 : 960/);
+  assert.match(shareSource, /quality === 'compact' \? 800_000 : 2_000_000/);
   assert.match(shareSource, /new XMLHttpRequest\(\)/);
   assert.match(shareSource, /request\.upload\.addEventListener\('progress'/);
   assert.match(shareSource, /onProgress\(Math\.min\(1, event\.loaded \/ event\.total\)\)/);
