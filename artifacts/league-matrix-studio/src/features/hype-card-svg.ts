@@ -9,10 +9,10 @@ import {
 import QRCode from 'qrcode';
 import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
 import { buildPositionBadgeMarkup } from './position-badge';
-import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url&inline';
-import sunsetStadium from '../assets/hype-cards/sunset-stadium.webp?url&inline';
-import lockerRoomWalkout from '../assets/hype-cards/locker-room-walkout.webp?url&inline';
-import splitLightArena from '../assets/hype-cards/split-light-arena.webp?url&inline';
+import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url';
+import sunsetStadium from '../assets/hype-cards/sunset-stadium.webp?url';
+import lockerRoomWalkout from '../assets/hype-cards/locker-room-walkout.webp?url';
+import splitLightArena from '../assets/hype-cards/split-light-arena.webp?url';
 
 export function getPhotoFrame(format: HypeFormat) {
   const { width, height } = getDimensions(format);

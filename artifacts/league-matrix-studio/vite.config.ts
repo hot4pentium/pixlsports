@@ -94,6 +94,15 @@ function offlineShellPrecache(): Plugin {
       }
       const files = (await listFiles(outputDirectory))
         .filter((file) => file !== 'sw.js')
+        // Keep the installed shell fast to install. Optional marketing media and
+        // sample video are still available online and are cached when requested.
+        // The four Hype Card template backgrounds are the exception: they are
+        // part of the offline editor experience after the user picks a layout.
+        .filter((file) => (
+          !/\.(?:mp4|png|jpe?g|webp)$/i.test(file)
+          || /(?:^|\/)pwa-icon-\d+\.png$/i.test(file)
+          || /(?:^|\/)(?:stadium-entrance|sunset-stadium|locker-room-walkout|split-light-arena)-[^/]+\.webp$/i.test(file)
+        ))
         .sort();
       await fs.writeFile(
         workerPath,

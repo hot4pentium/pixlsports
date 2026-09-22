@@ -3,7 +3,7 @@ import { ArrowUpRight, Check, ChevronDown, Pause, Play, Send, Volume2, VolumeX, 
 import { Link } from 'wouter';
 import { useCreateHypeCardShareReply, useGetHypeCardShare, type HypeCardShare } from '@workspace/api-client-react';
 
-import { PreviewArtwork } from './hype-card';
+import { PreviewArtwork } from './hype-card-preview';
 import { getDimensions, normalizeHypeCardProject } from './hype-card-types';
 import { getSportRule, isSport } from './stat-tracker';
 import { trackEvent } from '../lib/analytics';

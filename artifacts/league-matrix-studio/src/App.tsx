@@ -1,6 +1,3 @@
-import { PublicLandingPage } from '@/features/landing-home';
-import { HypeCardReplyInboxTrigger } from '@/features/hype-card-reply-inbox';
-import { AthleteInviteManager, PublicAthleteInvitePage } from '@/features/athlete-invite';
 import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
@@ -142,6 +139,18 @@ import './landing-unified.css';
 
 const HypeCardEditor = lazy(() =>
   import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
+);
+const PublicLandingPage = lazy(() =>
+  import('@/features/landing-home').then(({ PublicLandingPage }) => ({ default: PublicLandingPage })),
+);
+const HypeCardReplyInboxTrigger = lazy(() =>
+  import('@/features/hype-card-reply-inbox').then(({ HypeCardReplyInboxTrigger }) => ({ default: HypeCardReplyInboxTrigger })),
+);
+const AthleteInviteManager = lazy(() =>
+  import('@/features/athlete-invite').then(({ AthleteInviteManager }) => ({ default: AthleteInviteManager })),
+);
+const PublicAthleteInvitePage = lazy(() =>
+  import('@/features/athlete-invite').then(({ PublicAthleteInvitePage }) => ({ default: PublicAthleteInvitePage })),
 );
 const PublicHypeCardPage = lazy(() =>
   import('@/features/public-hype-card').then(({ PublicHypeCardPage }) => ({ default: PublicHypeCardPage })),
