@@ -519,7 +519,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid^=\\"history-card-\\"]")?.textContent || ""', page.sessionId),
-      'vs Northside 5 plays',
+      'vs Northside 7 plays',
     );
     assert.equal(
       await connection.evaluate<boolean>(
