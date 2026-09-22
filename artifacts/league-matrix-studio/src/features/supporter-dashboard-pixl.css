@@ -743,7 +743,7 @@
 .pixl-dashboard-mobile .mobile-week-path-steps::before {
   content: "";
   position: absolute;
-  top: clamp(64px, 9vw, 90px);
+  top: 32px;
   right: 12.5%;
   left: 12.5%;
   height: 2px;
@@ -757,30 +757,22 @@
   position: relative;
   z-index: 1;
   isolation: isolate;
-  min-height: clamp(170px, 22vw, 220px);
+  min-height: 78px;
   width: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   border: 0;
   background: transparent;
   color: rgba(243, 246, 250, .62);
-  padding: 8px 4px;
+  padding: 0 4px;
   text-align: center;
   transition: color .2s ease, transform .2s ease;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0 0 auto -1px;
-  height: clamp(128px, 18vw, 180px);
-  background-image: url("../assets/pixl-step-chevron.svg");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
+  display: none;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step.is-completed {
@@ -798,11 +790,11 @@
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step.is-active::before {
-  filter: hue-rotate(78deg) saturate(1.2) brightness(1.08);
+  display: none;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step.is-selected:not(.is-active)::before {
-  filter: brightness(1.18);
+  display: none;
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step > * {
@@ -813,7 +805,7 @@
 .pixl-dashboard-mobile .mobile-week-path-number {
   display: grid;
   position: absolute;
-  top: clamp(64px, 9vw, 90px);
+  top: 32px;
   left: 50%;
   width: clamp(38px, 5vw, 44px);
   height: clamp(38px, 5vw, 44px);
@@ -848,16 +840,16 @@
 }
 
 .pixl-dashboard-mobile .mobile-week-path-step.is-active .mobile-week-path-number {
-  background: var(--m-success);
+  background: linear-gradient(135deg, var(--m-blue), #7847F7);
   box-shadow:
     0 0 0 4px rgba(11, 31, 58, .9),
-    0 0 22px rgba(22, 185, 129, .75);
+    0 0 22px rgba(85, 164, 255, .75);
 }
 
 .pixl-dashboard-mobile .mobile-week-path-icon {
   display: block;
   position: absolute;
-  top: calc(clamp(128px, 18vw, 180px) + 9px);
+  top: 8px;
   left: 50%;
   color: rgba(159, 176, 200, .9);
   transform: translateX(-50%);
@@ -874,7 +866,7 @@
 
 .pixl-dashboard-mobile .mobile-week-path-label {
   position: absolute;
-  top: calc(clamp(128px, 18vw, 180px) - 16px);
+  top: 57px;
   right: 4px;
   left: 4px;
   max-width: 100%;
@@ -1212,13 +1204,13 @@
   }
 
   .pixl-dashboard .dashboard-week-path-tabs > .grid {
-    --week-path-chevron-height: clamp(160px, 17vw, 180px);
-    --week-path-chevron-center: clamp(80px, 8.5vw, 90px);
+    --week-path-chevron-height: clamp(190px, 18vw, 224px);
+    --week-path-chevron-center: calc(var(--week-path-chevron-height) / 2);
     position: relative;
     isolation: isolate;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 0;
-    margin-top: 28px;
+    margin-top: 34px;
     padding: 0;
   }
 
@@ -1238,13 +1230,13 @@
     position: relative;
     z-index: 1;
     isolation: isolate;
-    min-height: calc(var(--week-path-chevron-height) + 56px);
+    min-height: calc(var(--week-path-chevron-height) + 48px);
     flex-direction: column;
     justify-content: flex-start;
     align-items: center;
     gap: 0;
-    margin-left: -1px;
-    padding: 0 28px;
+    margin-left: -18px;
+    padding: 0 36px 0 50px;
     border: 0;
     border-radius: 0;
     background: transparent !important;
@@ -1253,17 +1245,43 @@
     transition: transform .2s ease, border-color .2s ease, filter .2s ease, box-shadow .2s ease;
   }
 
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid="stage-plan"] {
+    margin-left: 0;
+    padding-left: 36px;
+  }
+
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"]::before {
     content: "";
     position: absolute;
     z-index: -1;
     inset: 0 0 auto;
     height: var(--week-path-chevron-height);
-    background-image: url("../assets/pixl-step-chevron.svg");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
+    background:
+      radial-gradient(circle at 24% 18%, rgba(85, 164, 255, .16), transparent 34%),
+      linear-gradient(145deg, rgba(35, 97, 169, .98), rgba(16, 46, 82, .98) 72%);
+    clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%, 30px 50%);
+    filter: drop-shadow(0 13px 14px rgba(3, 17, 36, .24));
     transition: filter .2s ease;
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid="stage-plan"]::before {
+    clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 50%, calc(100% - 30px) 100%, 0 100%);
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid="stage-plan"] {
+    z-index: 4;
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid="stage-upcoming"] {
+    z-index: 3;
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid="stage-live"] {
+    z-index: 2;
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid="stage-completed"] {
+    z-index: 1;
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > * {
@@ -1287,7 +1305,16 @@
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"][aria-current="step"]::before {
-    filter: hue-rotate(78deg) saturate(1.2) brightness(1.08);
+    background:
+      radial-gradient(circle at 24% 18%, rgba(255, 255, 255, .2), transparent 34%),
+      linear-gradient(135deg, #2878F5 0%, #315DF2 48%, #7847F7 100%);
+    filter: drop-shadow(0 14px 18px rgba(40, 120, 245, .32));
+  }
+
+  .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"][aria-pressed="true"]::before {
+    background:
+      radial-gradient(circle at 24% 18%, rgba(255, 255, 255, .2), transparent 34%),
+      linear-gradient(135deg, #2878F5 0%, #315DF2 48%, #7847F7 100%);
   }
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span:first-child {
@@ -1322,7 +1349,7 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span:nth-of-type(2) {
     position: absolute;
-    top: calc(var(--week-path-chevron-height) - 16px);
+    top: calc(var(--week-path-chevron-center) + 42px);
     right: 12px;
     left: 12px;
     max-width: 100%;
@@ -1335,7 +1362,7 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > svg {
     position: absolute;
-    top: calc(var(--week-path-chevron-height) + 9px);
+    top: calc(var(--week-path-chevron-center) - 68px);
     left: 50%;
     width: 20px;
     height: 20px;
@@ -1349,7 +1376,7 @@
 
   .pixl-dashboard .dashboard-week-path-panel button[data-testid^="stage-"] > span.ml-auto {
     position: absolute;
-    top: calc(var(--week-path-chevron-height) + 34px);
+    top: calc(var(--week-path-chevron-center) + 72px);
     left: 50%;
     margin-left: 0;
     color: #55A4FF;
