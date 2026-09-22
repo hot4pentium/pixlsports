@@ -1266,10 +1266,10 @@
   }
 
   .pixl-dashboard .dashboard-hero-banner [data-testid="athlete-summary"] .dashboard-athlete-avatar {
-    flex: 0 0 clamp(132px, 38%, 190px);
-    width: clamp(132px, 38%, 190px);
-    height: clamp(176px, 18vw, 232px);
-    aspect-ratio: 4 / 5;
+    flex: 0 0 clamp(132px, 18vw, 190px);
+    width: clamp(132px, 18vw, 190px);
+    height: clamp(132px, 18vw, 190px);
+    aspect-ratio: 1 / 1;
     overflow: hidden;
     border-radius: 20px;
     border-width: 2px;
