@@ -910,6 +910,29 @@ function ChecklistContextHarness() {
       opponent: 'Rivals',
       status: 'upcoming',
     }],
+    mixed: [{
+      id: 'game-1',
+      type: 'game',
+      date: '2026-09-23',
+      time: '18:30',
+      location: 'Eastside Gym',
+      opponent: 'Rivals',
+      status: 'upcoming',
+    }, {
+      id: 'practice-1',
+      type: 'practice',
+      date: '2026-09-24',
+      time: '18:30',
+      location: 'Northside Gym',
+      notes: 'Bring water',
+    }, {
+      id: 'meeting-1',
+      type: 'meeting',
+      date: '2026-09-25',
+      time: '17:00',
+      location: 'Northside Clubhouse',
+      notes: 'Bring the agenda',
+    }],
   };
   const events = scenarioEvents[scenario] || scenarioEvents.practice;
 
@@ -1766,7 +1789,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
   }
 });
 
-test('supporter Prep keeps practice, meeting, and game checklist context after reload', { concurrency: false }, async () => {
+test('supporters can switch saved checklist event types and keep the latest one after reload', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-checklist-context-test');
   let devServer: ChildProcess | undefined;
@@ -1816,7 +1839,7 @@ test('supporter Prep keeps practice, meeting, and game checklist context after r
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(
       connection,
-      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=practice`,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=mixed`,
     );
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
@@ -1833,50 +1856,15 @@ test('supporter Prep keeps practice, meeting, and game checklist context after r
     const dashboardPath = await connection.evaluate<string>('location.pathname', page.sessionId);
     assert.equal(dashboardPath, `/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
 
-    const cases = [
-      {
-        scenario: 'practice',
-        event: {
-          id: 'practice-1',
-          type: 'practice',
-          date: '2026-09-23',
-          time: '18:30',
-          location: 'Northside Gym',
-          opponent: '',
-          snacks: '',
-          drinks: '',
-          notes: 'Bring water',
-        },
-        heading: /PRACTICE\s*CHECKLIST/i,
-        selectorLabel: 'Checklist for practice',
-        selectorAriaLabel: 'Choose which practice this checklist is for',
-        scheduleDescription: 'Choose a practice from your saved schedule.',
-      },
-      {
-        scenario: 'meeting',
-        event: {
-          id: 'meeting-1',
-          type: 'meeting',
-          date: '2026-09-24',
-          time: '17:00',
-          location: 'Northside Clubhouse',
-          opponent: '',
-          snacks: '',
-          drinks: '',
-          notes: 'Bring the agenda',
-        },
-        heading: /MEETING\s*CHECKLIST/i,
-        selectorLabel: 'Checklist for meeting',
-        selectorAriaLabel: 'Choose which meeting this checklist is for',
-        scheduleDescription: 'Choose a meeting from your saved schedule.',
-      },
-      {
-        scenario: 'game',
-        event: {
+    const schedule = {
+      teamName: 'Northside Comets',
+      season: '2026',
+      events: [
+        {
           id: 'game-1',
           type: 'game',
           status: 'upcoming',
-          date: '2026-09-25',
+          date: '2026-09-23',
           time: '18:30',
           location: 'Eastside Gym',
           opponent: 'Rivals',
@@ -1884,72 +1872,154 @@ test('supporter Prep keeps practice, meeting, and game checklist context after r
           drinks: '',
           notes: '',
         },
-        heading: /GAMEDAY\s*CHECKLIST/i,
-        selectorLabel: 'Checklist for game',
-        selectorAriaLabel: 'Choose which game this checklist is for',
-        scheduleDescription: 'Choose a game from your saved schedule.',
-      },
-    ] as const;
+        {
+          id: 'practice-1',
+          type: 'practice',
+          date: '2026-09-24',
+          time: '18:30',
+          location: 'Northside Gym',
+          opponent: '',
+          snacks: '',
+          drinks: '',
+          notes: 'Bring water',
+        },
+        {
+          id: 'meeting-1',
+          type: 'meeting',
+          date: '2026-09-25',
+          time: '17:00',
+          location: 'Northside Clubhouse',
+          opponent: '',
+          snacks: '',
+          drinks: '',
+          notes: 'Bring the agenda',
+        },
+      ],
+      template: 0,
+    };
+    await connection.evaluate(`window.localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="btn-desktop-recommendation-action"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
 
-    for (const testCase of cases) {
-      const schedule = {
-          teamName: 'Northside Comets',
-          season: '2026',
-          events: [testCase.event],
-          template: 0,
+    const readChecklistContext = () => connection!.evaluate<{
+      heading: string;
+      selectorText: string;
+      selectorAriaLabel: string;
+      selectedEventId: string;
+      eventSummary: string;
+      scheduleDescription: string;
+      completionFeedback: string;
+      readyHeading: string;
+    }>(`(() => {
+      const heading = document.querySelector('[data-testid="checklist-page"] h1')?.textContent || '';
+      const selector = document.querySelector('[data-testid="select-checklist-game"]');
+      const selectorContainer = document.querySelector('[data-testid="checklist-game-selector"]');
+      return {
+        heading,
+        selectorText: selectorContainer?.textContent || '',
+        selectorAriaLabel: selector?.getAttribute('aria-label') || '',
+        selectedEventId: selector instanceof HTMLSelectElement ? selector.value : '',
+        eventSummary: document.querySelector('[data-testid="checklist-selected-event-summary"]')?.textContent || '',
+        scheduleDescription: selectorContainer?.querySelector('p')?.textContent || '',
+        completionFeedback: document.querySelector('[data-testid="checklist-completion-feedback"]')?.textContent || '',
+        readyHeading: document.querySelector('[data-testid="checklist-ready-celebration"] h2')?.textContent || '',
       };
-      await connection.evaluate(`(() => {
-        window.localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))});
-        window.history.pushState({}, '', ${JSON.stringify(`${dashboardPath}?checklist-context&scenario=${testCase.scenario}`)});
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      })()`, page.sessionId);
-      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]") !== null', Boolean);
-      assert.match(
-        await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-        testCase.scenario === 'practice' ? /practice/i : testCase.scenario === 'meeting' ? /meeting/i : /game/i,
-      );
+    })()`, page.sessionId);
 
-      await connection.evaluate(`document.querySelector('[data-testid="btn-desktop-recommendation-action"]')?.click()`, page.sessionId);
-      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
-      const readChecklistContext = () => connection!.evaluate<{
-        heading: string;
-        selectorText: string;
-        selectorAriaLabel: string;
-        selectedEventId: string;
-        scheduleDescription: string;
-      }>(`(() => {
-        const heading = document.querySelector('[data-testid="checklist-page"] h1')?.textContent || '';
-        const selector = document.querySelector('[data-testid="select-checklist-game"]');
-        const selectorContainer = document.querySelector('[data-testid="checklist-game-selector"]');
-        return {
-          heading,
-          selectorText: selectorContainer?.textContent || '',
-          selectorAriaLabel: selector?.getAttribute('aria-label') || '',
-          selectedEventId: selector instanceof HTMLSelectElement ? selector.value : '',
-          scheduleDescription: selectorContainer?.querySelector('p')?.textContent || '',
-        };
-      })()`, page.sessionId);
-      const beforeReload = await readChecklistContext();
-      assert.match(beforeReload.heading, testCase.heading);
-      assert.match(beforeReload.selectorText, new RegExp(testCase.selectorLabel, 'i'));
-      assert.equal(beforeReload.selectorAriaLabel, testCase.selectorAriaLabel);
-      assert.equal(beforeReload.selectedEventId, testCase.event.id);
-      assert.equal(beforeReload.scheduleDescription, testCase.scheduleDescription);
+    const assertContext = async (expected: {
+      eventId: string;
+      heading: RegExp;
+      selectorLabel: string;
+      selectorAriaLabel: string;
+      summary: RegExp;
+      scheduleDescription: string;
+    }) => {
+      await waitFor(connection!, page!.sessionId, `document.querySelector('[data-testid="select-checklist-game"]')?.value === ${JSON.stringify(expected.eventId)}`, Boolean);
+      const context = await readChecklistContext();
+      assert.match(context.heading, expected.heading);
+      assert.match(context.selectorText, new RegExp(expected.selectorLabel, 'i'));
+      assert.equal(context.selectorAriaLabel, expected.selectorAriaLabel);
+      assert.equal(context.selectedEventId, expected.eventId);
+      assert.match(context.eventSummary, expected.summary);
+      assert.equal(context.scheduleDescription, expected.scheduleDescription);
+      return context;
+    };
 
-      await navigatePage(
-        connection,
-        page,
-        `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=${testCase.scenario}&gameId=${testCase.event.id}&eventType=${testCase.event.type}&route=checklist`,
-      );
-      await reloadPage(connection, page);
-      await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
-      const afterReload = await readChecklistContext();
-      assert.match(afterReload.heading, testCase.heading);
-      assert.match(afterReload.selectorText, new RegExp(testCase.selectorLabel, 'i'));
-      assert.equal(afterReload.selectorAriaLabel, testCase.selectorAriaLabel);
-      assert.equal(afterReload.selectedEventId, testCase.event.id);
-      assert.equal(afterReload.scheduleDescription, testCase.scheduleDescription);
+    await assertContext({
+      eventId: 'game-1',
+      heading: /GAMEDAY\s*CHECKLIST/i,
+      selectorLabel: 'Checklist for game',
+      selectorAriaLabel: 'Choose which game this checklist is for',
+      summary: /VS\s*RIVALS/i,
+      scheduleDescription: 'Choose a game from your saved schedule.',
+    });
+    for (let index = 0; index < 6; index += 1) {
+      await connection.evaluate(`document.querySelector('[data-testid^="button-checklist-toggle-"]:not([aria-label^="Uncheck"])')?.click()`, page.sessionId);
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
     }
+    const completedGame = await readChecklistContext();
+    assert.match(completedGame.completionFeedback, /Game day ready — every task is complete\./);
+    assert.match(completedGame.readyHeading, /Game day ready\./);
+
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-checklist-game"]');
+      if (!(select instanceof HTMLSelectElement)) throw new Error('Checklist event selector is missing');
+      select.value = 'practice-1';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    const selectedPractice = await assertContext({
+      eventId: 'practice-1',
+      heading: /PRACTICE\s*CHECKLIST/i,
+      selectorLabel: 'Checklist for practice',
+      selectorAriaLabel: 'Choose which practice this checklist is for',
+      summary: /PRACTICE/i,
+      scheduleDescription: 'Choose a practice from your saved schedule.',
+    });
+    assert.equal(selectedPractice.completionFeedback, '', 'switching events must clear the previous completion announcement');
+    assert.match(selectedPractice.readyHeading, /Practice ready\./);
+    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Practice ready") === true', Boolean);
+
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-checklist-game"]');
+      if (!(select instanceof HTMLSelectElement)) throw new Error('Checklist event selector is missing');
+      select.value = 'meeting-1';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    const selectedMeeting = await assertContext({
+      eventId: 'meeting-1',
+      heading: /MEETING\s*CHECKLIST/i,
+      selectorLabel: 'Checklist for meeting',
+      selectorAriaLabel: 'Choose which meeting this checklist is for',
+      summary: /MEETING/i,
+      scheduleDescription: 'Choose a meeting from your saved schedule.',
+    });
+    assert.equal(selectedMeeting.completionFeedback, '', 'switching events must clear the practice completion announcement');
+    assert.match(selectedMeeting.readyHeading, /Meeting ready\./);
+    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Meeting ready") === true', Boolean);
+
+    await navigatePage(
+      connection,
+      page,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=mixed&gameId=meeting-1&eventType=meeting&route=checklist`,
+    );
+    await reloadPage(connection, page);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
+    const afterReload = await assertContext({
+      eventId: 'meeting-1',
+      heading: /MEETING\s*CHECKLIST/i,
+      selectorLabel: 'Checklist for meeting',
+      selectorAriaLabel: 'Choose which meeting this checklist is for',
+      summary: /MEETING/i,
+      scheduleDescription: 'Choose a meeting from your saved schedule.',
+    });
+    assert.equal(afterReload.completionFeedback, '');
+    assert.match(afterReload.readyHeading, /Meeting ready\./);
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

@@ -2892,7 +2892,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(user?.id ?? 'anonymous')}`;
   const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist(requestedEventType.current));
   const [localSchedule] = useState(() => readScheduleDraft());
-  const [hydrated, setHydrated] = useState(!shared);
+  const [hydrated, setHydrated] = useState(false);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [notice, setNotice] = useState('');
   const [completionFeedback, setCompletionFeedback] = useState<ReturnType<typeof getChecklistCompletionFeedback>>(null);
@@ -3105,6 +3105,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   }, [calendarEvents, hydrated, shared]);
 
   const updateChecklist = (next: LocalGamedayChecklist) => {
+    latestChecklist.current = next;
     setChecklist(next);
     persistLocal(next);
     if (shared) {
@@ -3321,6 +3322,8 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
                           }
                         : undefined,
                     });
+                     if (completionTimer.current !== null) window.clearTimeout(completionTimer.current);
+                     setCompletionFeedback(null);
                   }}
                   disabled={shared || calendarEvents.length === 0}
                   className="mt-1 w-full border border-border bg-background px-3 py-2.5 text-sm font-bold uppercase tracking-wide text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70 sm:mt-2 sm:py-3"
@@ -3345,7 +3348,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
               </p>
             </div>
             {displayedEvent && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:mt-4 sm:gap-x-5 sm:gap-y-2 sm:py-3">
+             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:mt-4 sm:gap-x-5 sm:gap-y-2 sm:py-3" data-testid="checklist-selected-event-summary">
                 <span>{formatScheduleDate(displayedEvent.date)}</span>
                 <span>{formatScheduleTime(displayedEvent.time)}</span>
                 {displayedEventType === 'game' ? <span>VS {displayedEvent.opponent || 'OPPONENT TBD'}</span> : <span>{displayedEventType.toUpperCase()}</span>}
