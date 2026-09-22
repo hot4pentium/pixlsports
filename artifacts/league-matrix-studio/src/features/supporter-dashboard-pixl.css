@@ -842,6 +842,10 @@
   flex: 0 1 280px;
 }
 
+.athlete-card-preview-settings .mobile-athlete-copy {
+  display: none;
+}
+
 .pixl-dashboard-mobile .mobile-hero-columns .athlete-card-preview {
   min-height: 0;
   aspect-ratio: 1 / 1;
