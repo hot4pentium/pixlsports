@@ -27,7 +27,7 @@ import {
 
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
-import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
@@ -212,11 +212,12 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Athlete invite not found" });
     return;
   }
-  const [invite] = await db.select().from(athleteInvitesTable).where(and(
+  const [invite] = await db.select().from(athleteInvitesTable).where(
     eq(athleteInvitesTable.publicToken, params.data.inviteToken),
-    eq(athleteInvitesTable.paused, false),
-  ));
-  if (!invite || !(await isAccountActive(invite.ownerClerkUserId))) {
+  );
+  const viewerClerkUserId = getOptionalClerkUserId(req);
+  const isOwner = Boolean(viewerClerkUserId && viewerClerkUserId === invite?.ownerClerkUserId);
+  if (!invite || (invite.paused && !isOwner) || !(await isAccountActive(invite.ownerClerkUserId))) {
     res.status(404).json({ error: "Athlete invite not found" });
     return;
   }

@@ -367,122 +367,32 @@ export function AthleteInviteManager() {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            className={`border p-5 text-left transition-colors ${selectedPath === 'page' ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary'}`}
-            onClick={() => setSelectedPath('page')}
-            aria-pressed={selectedPath === 'page'}
-            data-testid="card-create-hype-page"
-          >
-            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-            <h2 className="mt-2 font-display text-3xl uppercase">{existing ? 'Access your Hype Page' : 'Create a Hype Page'}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
-          </button>
+          {existing ? (
+            <Link
+              href={`/player/${existing.inviteToken}`}
+              className="border border-primary bg-primary/10 p-5 text-left transition-colors hover:bg-primary/15"
+              data-testid="card-create-hype-page"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
+              <h2 className="mt-2 font-display text-3xl uppercase">Access your Hype Page</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Open the stable page and manage it there.</p>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={`border p-5 text-left transition-colors ${selectedPath === 'page' ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary'}`}
+              onClick={() => setSelectedPath('page')}
+              aria-pressed={selectedPath === 'page'}
+              data-testid="card-create-hype-page"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
+              <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
+            </button>
+          )}
         </section>
 
-        {selectedPath === 'card' && (
-          <form onSubmit={save} className="mt-8 max-w-xl">
-            <aside className="space-y-5">
-              <section className="border border-border bg-card p-5" data-testid="section-visible-athlete-page">
-                <h2 className="font-display text-2xl uppercase">Visible sections</h2>
-                <Toggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
-                <Toggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
-                <Toggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
-              </section>
-              <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
-              {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
-            </aside>
-          </form>
-        )}
-
-         <section className="mt-8 border border-primary/40 bg-card" aria-label="Manage posted media" data-testid="section-manage-athlete-videos">
-           <div className="border-b border-border bg-primary/5 p-5 sm:p-6">
-             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner controls</p>
-             <h2 className="mt-2 font-display text-3xl uppercase">Manage posted videos</h2>
-             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Videos posted to this Athlete Hype Page appear here. Download or remove one without opening the Hype Card editor.</p>
-           </div>
-           <div className="p-5 sm:p-6" aria-live="polite">
-             {hypeCardsLoading ? (
-               <p role="status" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Checking posted videos…</p>
-             ) : hypeCardsError ? (
-               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-                 <p className="text-sm font-medium leading-relaxed text-muted-foreground">Posted videos could not be loaded. Try again to manage this page’s media.</p>
-                 <Button type="button" variant="outline" className="rounded-none" onClick={() => void retryHostedMedia()} data-testid="button-retry-athlete-media">Try again</Button>
-               </div>
-             ) : hostedVideos.length > 0 ? (
-               <div data-testid="hosted-video-list">
-                 <div className="flex items-center justify-between gap-4">
-                   <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Videos on Athlete Hype Page</p>
-                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{hostedVideos.length} / 10</p>
-                 </div>
-                 <ul className="mt-3 divide-y divide-border border-y border-border">
-                   {hostedVideos.map((video) => {
-                     const labels = hostedVideoLabels(video.manifest, video.title);
-                     const details = [labels.jerseyNumber ? `#${labels.jerseyNumber}` : '', labels.position].filter(Boolean).join(' · ');
-                     return (
-                       <li key={video.shareToken} className="py-4" data-testid="hosted-video-item">
-                         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                           <div className="min-w-0">
-                             <p className="truncate text-sm font-bold" data-testid="hosted-video-title">{labels.title}</p>
-                             {details && <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{details}</p>}
-                             <p className="mt-1 text-[10px] text-muted-foreground">Posted {new Date(video.createdAt).toLocaleDateString()}</p>
-                           </div>
-                           <div className="flex shrink-0 flex-wrap gap-2">
-                             <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedVideo(video)} data-testid="button-download-hosted-video">
-                               <Download className="mr-2 h-4 w-4" />Download
-                             </Button>
-                             <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedVideo(video)} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-video">
-                               <Trash2 className="mr-2 h-4 w-4" />Delete
-                             </Button>
-                           </div>
-                         </div>
-                       </li>
-                     );
-                   })}
-                 </ul>
-               </div>
-             ) : (
-               <p className="text-sm font-medium leading-relaxed text-muted-foreground">No videos have been posted yet. Create a Hype Card, choose Post to Athlete Hype Page, and it will appear here. Your Hype Page, stats, schedule, and replies stay available.</p>
-             )}
-             {hostedImage && !hypeCardsError && (
-               <div className="mt-5 border-t border-border pt-4" data-testid="hosted-image-hype-card">
-                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Image Hype Card outside the video carousel</p>
-                 <p className="mt-2 text-sm font-bold">{hostedImage.title}</p>
-                 <div className="mt-3 flex flex-wrap gap-2">
-                   <Button type="button" variant="outline" className="rounded-none" onClick={() => void downloadHostedImage(hostedImage)}>
-                     <Download className="mr-2 h-4 w-4" />Download image
-                   </Button>
-                   <Button type="button" variant="outline" className="rounded-none text-destructive" onClick={() => void removeHostedImage(hostedImage)} disabled={deleteHypeCard.isPending}>
-                     <Trash2 className="mr-2 h-4 w-4" />Delete image
-                   </Button>
-                 </div>
-               </div>
-             )}
-           </div>
-         </section>
-
-        {selectedPath === 'page' && existing && (
-          <section className="mt-8 border border-primary/40 bg-primary/5 p-4 sm:p-5" aria-label="Active athlete invite">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link2 className="h-5 w-5 shrink-0 text-primary" />
-              <input readOnly value={inviteUrl(existing.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-border bg-background px-3 py-3 text-xs font-medium" aria-label="Athlete invite URL" data-testid="input-athlete-invite-url" />
-              <Button type="button" variant="outline" className="rounded-none" onClick={copy}><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
-              <Button type="button" className="rounded-none" onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button>
-              <Link href={`/player/${existing.inviteToken}`} target="_blank" className="inline-flex min-h-10 items-center justify-center border border-border px-3 text-xs font-bold uppercase tracking-widest"><ExternalLink className="mr-2 h-4 w-4" />Open</Link>
-            </div>
-            <p className="mt-3 text-xs font-medium text-muted-foreground">{existing.paused ? 'Paused — this stable URL is unavailable until you resume it.' : 'Live — this stable URL stays with the athlete for the life of the account.'} Updating the settings below does not change this URL.</p>
-            <div className="mt-5 flex flex-wrap gap-3 border-t border-border pt-5">
-              <Button type="button" variant={existing.paused ? 'default' : 'outline'} onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none text-[10px] font-bold uppercase tracking-widest">
-                <Link2 className="mr-2 h-4 w-4" />{existing.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
-              </Button>
-              <Button type="button" variant="outline" onClick={toggleLive} disabled={startLive.isPending || stopLive.isPending || existing.paused} className="rounded-none text-[10px] font-bold uppercase tracking-widest">
-                <Radio className="mr-2 h-4 w-4" />{existing.liveTrackerShareToken ? 'Stop Game Day Live' : 'Start Game Day Live'}
-              </Button>
-            </div>
-          </section>
-        )}
-
-        {selectedPath === 'page' && (
+        {selectedPath === 'page' && !existing && (
           <form onSubmit={save} className="mt-8 max-w-xl">
             <aside className="space-y-5">
               <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
@@ -495,8 +405,277 @@ export function AthleteInviteManager() {
   );
 }
 
+type OwnedAthleteInvite = {
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  seasonEndsAt: string;
+  sport: Exclude<Sport, 'softball'>;
+  trackerProjectId: string | null;
+  scheduleProjectId: string | null;
+  showHypeCard: boolean;
+  showStats: boolean;
+  showSchedule: boolean;
+  paused: boolean;
+  inviteToken: string;
+  liveTrackerShareToken: string | null;
+};
+
+function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
+  const queryClient = useQueryClient();
+  const updateInvite = useUpdateAthleteInvite();
+  const startLive = useStartAthleteInviteLive();
+  const stopLive = useStopAthleteInviteLive();
+  const deleteHypeCard = useDeleteHypeCardShare();
+  const [showHypeCard, setShowHypeCard] = useState(invite.showHypeCard);
+  const [showStats, setShowStats] = useState(invite.showStats);
+  const [showSchedule, setShowSchedule] = useState(invite.showSchedule);
+  const [notice, setNotice] = useState('');
+  const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
+    query: {
+      queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery),
+      staleTime: 10_000,
+      refetchOnMount: 'always',
+    },
+  });
+  const { data: hostedImages, isLoading: imagesLoading, isError: imagesError } = useListHypeCardShares(hostedImageQuery, {
+    query: {
+      queryKey: getListHypeCardSharesQueryKey(hostedImageQuery),
+      staleTime: 10_000,
+      refetchOnMount: 'always',
+    },
+  });
+  const hostedVideos = hypeCardShares ?? [];
+  const hostedImage = hostedImages?.[0] ?? null;
+  const mediaLoading = videosLoading || imagesLoading;
+  const mediaError = videosError || imagesError;
+
+  useEffect(() => {
+    setShowHypeCard(invite.showHypeCard);
+    setShowStats(invite.showStats);
+    setShowSchedule(invite.showSchedule);
+  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule]);
+
+  const payload = (paused = invite.paused): AthleteInviteInput => ({
+    athleteName: invite.athleteName,
+    teamName: invite.teamName,
+    seasonName: invite.seasonName,
+    seasonEndsAt: invite.seasonEndsAt,
+    sport: invite.sport,
+    trackerProjectId: invite.trackerProjectId,
+    scheduleProjectId: invite.scheduleProjectId,
+    showHypeCard,
+    showStats,
+    showSchedule,
+    paused,
+  });
+  const refreshPage = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+    ]);
+  };
+  const saveSettings = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setNotice('');
+    try {
+      await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload() });
+      await refreshPage();
+      setNotice('Hype Page settings updated.');
+    } catch {
+      setNotice('The Hype Page settings could not be updated.');
+    }
+  };
+  const copy = async () => {
+    await navigator.clipboard.writeText(inviteUrl(invite.inviteToken));
+    setNotice('Hype Page URL copied.');
+  };
+  const share = async () => {
+    const url = inviteUrl(invite.inviteToken);
+    if (navigator.share) await navigator.share({ title: `${invite.athleteName} Hype Page`, text: `Follow ${invite.athleteName}'s season.`, url });
+    else await copy();
+  };
+  const toggleAvailability = async () => {
+    setNotice('');
+    try {
+      await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload(!invite.paused) });
+      await refreshPage();
+      setNotice(invite.paused ? 'Hype Page resumed.' : 'Hype Page paused. Only you can access its management section.');
+    } catch {
+      setNotice('The Hype Page availability could not be changed.');
+    }
+  };
+  const toggleLive = async () => {
+    setNotice('');
+    try {
+      if (invite.liveTrackerShareToken) await stopLive.mutateAsync({ inviteToken: invite.inviteToken });
+      else await startLive.mutateAsync({ inviteToken: invite.inviteToken });
+      await refreshPage();
+      setNotice(invite.liveTrackerShareToken ? 'Game Day Live stopped.' : 'Game Day Live started.');
+    } catch {
+      setNotice('Game Day Live could not be changed. Start a live game in Stat Tracker first.');
+    }
+  };
+  const downloadMedia = async (media: { shareToken: string; slug: string }, kind: 'video' | 'image') => {
+    setNotice('');
+    try {
+      const blob = await downloadHypeCardShare(media.shareToken, { responseType: 'blob' }) as Blob;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${media.slug}.${kind === 'video' ? (blob.type === 'video/webm' ? 'webm' : 'mp4') : (blob.type === 'image/png' ? 'png' : 'jpg')}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setNotice(`${kind === 'video' ? 'Video' : 'Image'} downloaded.`);
+    } catch {
+      setNotice(`The ${kind} could not be downloaded.`);
+    }
+  };
+  const removeMedia = async (media: { shareToken: string; title: string }, query: typeof hostedVideoQuery | typeof hostedImageQuery) => {
+    if (!window.confirm(`Remove “${media.title}” from the Athlete Hype Page?`)) return;
+    setNotice('');
+    try {
+      await deleteHypeCard.mutateAsync({ shareToken: media.shareToken });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(query) }),
+        queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+      ]);
+      setNotice('Posted media removed.');
+    } catch {
+      setNotice('The posted media could not be removed.');
+    }
+  };
+
+  return (
+    <section className="mt-8 border border-primary/60 bg-[#102A4C] p-5 text-white sm:p-7" aria-labelledby="owner-hype-page-management" data-testid="owner-hype-page-management">
+      <div className="flex flex-col gap-3 border-b border-white/15 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner only</p>
+          <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase">Manage Hype Page</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">These controls are visible only to the account that owns this page.</p>
+        </div>
+        <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Back to studio</Link>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Link2 className="h-5 w-5 shrink-0 text-primary" />
+        <input readOnly value={inviteUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="Hype Page URL" data-testid="input-athlete-invite-url" />
+        <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copy}><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
+        <Button type="button" className="rounded-none" onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button>
+      </div>
+      <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — visitors cannot open this page until you resume it.' : 'Live — this stable URL stays with the athlete.'}</p>
+      <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
+        <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
+          <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
+        </Button>
+        <Button type="button" variant="outline" onClick={toggleLive} disabled={startLive.isPending || stopLive.isPending || invite.paused} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
+          <Radio className="mr-2 h-4 w-4" />{invite.liveTrackerShareToken ? 'Stop Game Day Live' : 'Start Game Day Live'}
+        </Button>
+      </div>
+
+      <form onSubmit={saveSettings} className="mt-6 border-t border-white/15 pt-6" data-testid="section-visible-athlete-page">
+        <h3 className="font-display text-2xl uppercase">Visible sections</h3>
+        <OwnerToggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
+        <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
+        <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
+        <Button type="submit" disabled={updateInvite.isPending} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Update Hype Page</Button>
+      </form>
+
+      <div className="mt-7 border-t border-white/15 pt-6" aria-live="polite" data-testid="section-manage-athlete-videos">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Posted media</p>
+            <h3 className="mt-2 font-display text-2xl uppercase">Manage posted videos</h3>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{hostedVideos.length} / 10</span>
+        </div>
+        {mediaLoading ? (
+          <p role="status" className="mt-4 text-sm text-white/55">Checking posted media…</p>
+        ) : mediaError ? (
+          <p className="mt-4 text-sm text-white/55">Posted media could not be loaded.</p>
+        ) : hostedVideos.length > 0 ? (
+          <ul className="mt-4 divide-y divide-white/15 border-y border-white/15" data-testid="hosted-video-list">
+            {hostedVideos.map((video) => {
+              const labels = hostedVideoLabels(video.manifest, video.title);
+              return (
+                <li key={video.shareToken} className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center" data-testid="hosted-video-item">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold" data-testid="hosted-video-title">{labels.title}</p>
+                    <p className="mt-1 text-[10px] text-white/45">Posted {new Date(video.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void downloadMedia(video, 'video')} data-testid="button-download-hosted-video"><Download className="mr-2 h-4 w-4" />Download</Button>
+                    <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => void removeMedia(video, hostedVideoQuery)} disabled={deleteHypeCard.isPending} data-testid="button-remove-hosted-video"><Trash2 className="mr-2 h-4 w-4" />Delete</Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-white/55">No videos have been posted yet.</p>
+        )}
+        {hostedImage && !mediaError && (
+          <div className="mt-5 border-t border-white/15 pt-4" data-testid="hosted-image-hype-card">
+            <p className="text-sm font-bold">{hostedImage.title}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void downloadMedia(hostedImage, 'image')}><Download className="mr-2 h-4 w-4" />Download image</Button>
+              <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => void removeMedia(hostedImage, hostedImageQuery)} disabled={deleteHypeCard.isPending}><Trash2 className="mr-2 h-4 w-4" />Delete image</Button>
+            </div>
+          </div>
+        )}
+      </div>
+      {notice && <p role="status" className="mt-5 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
+    </section>
+  );
+}
+
+export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken?: string } }) {
+  const inviteToken = params.inviteToken ?? '';
+  const { isLoaded, isSignedIn } = useUser();
+  const { data: ownedInvites, isLoading } = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn && inviteToken),
+      queryKey: getListAthleteInvitesQueryKey(),
+      retry: false,
+    },
+  });
+  const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+
+  if (!isLoaded || (isSignedIn && isLoading)) {
+    return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading management tools…</p></PublicShell>;
+  }
+  if (!isSignedIn) {
+    return (
+      <PublicShell>
+        <div className="max-w-md text-center">
+          <h1 className="font-display text-5xl uppercase">Sign in to manage this Hype Page</h1>
+          <Link href="/sign-in" className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link>
+        </div>
+      </PublicShell>
+    );
+  }
+  if (!ownerInvite) {
+    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p></div></PublicShell>;
+  }
+
+  return (
+    <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="owner-athlete-invite-management-page">
+      <PublicHeader />
+      <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
+        <Link href={`/player/${inviteToken}`} className="inline-flex min-h-10 items-center text-xs font-bold uppercase tracking-widest text-primary hover:underline" data-testid="link-back-to-athlete-hype-page">
+          <ChevronLeft className="mr-2 h-4 w-4" />Back to Hype Page
+        </Link>
+        <OwnerHypePageManage invite={ownerInvite} />
+      </main>
+    </div>
+  );
+}
+
 export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: string } }) {
   const inviteToken = params.inviteToken ?? '';
+  const { isSignedIn } = useUser();
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
   const [trendStatId, setTrendStatId] = useState('');
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
@@ -504,6 +683,14 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const { data: invite, isLoading, isError } = useGetAthleteInvite(inviteToken, {
     query: { enabled: Boolean(inviteToken), queryKey: getGetAthleteInviteQueryKey(inviteToken), retry: false },
   });
+  const { data: ownedInvites } = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListAthleteInvitesQueryKey(),
+      retry: false,
+    },
+  });
+  const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
   useEffect(() => {
     setLocalReplies([]);
     setTrendStatId('');
@@ -599,6 +786,18 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
             </div>
           </div>
         </header>
+
+        {ownerInvite && (
+          <div className="mt-6 flex justify-end">
+            <Link
+              href={`/player/${inviteToken}/manage`}
+              className="inline-flex min-h-11 items-center border border-primary bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90"
+              data-testid="link-manage-athlete-hype-page"
+            >
+              Manage Hype Page <ChevronRight className="ml-2 h-4 w-4" />
+            </Link>
+          </div>
+        )}
 
         <section className="mt-5" aria-labelledby="athlete-video-highlights">
           <div className="athlete-highlights-panel p-3 sm:p-4">
@@ -833,6 +1032,9 @@ function Stat({ label, value, primary = false }: { label: string; value: number;
 }
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-border pt-4"><div><p className="text-sm font-bold">{label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;
+}
+function OwnerToggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return <div className="mt-5 flex items-start justify-between gap-4 border-t border-white/15 pt-4"><div><p className="text-sm font-bold text-white">{label}</p><p className="mt-1 text-xs leading-relaxed text-white/50">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;
 }
 function InviteShell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/studio"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">Back to studio</Link></div></header>{children}</div>;

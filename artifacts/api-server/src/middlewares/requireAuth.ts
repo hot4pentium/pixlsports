@@ -13,6 +13,10 @@ function authenticatedUserId(req: Parameters<RequestHandler>[0]) {
   return typeof claimUserId === "string" && claimUserId.length > 0 ? claimUserId : null;
 }
 
+export function getOptionalClerkUserId(req: Parameters<RequestHandler>[0]): string | null {
+  return authenticatedUserId(req);
+}
+
 export const requireAuthenticatedIdentity: RequestHandler = (req, res, next): void => {
   const userId = authenticatedUserId(req);
   if (!userId) {

@@ -154,6 +154,9 @@ const AthleteInviteManager = lazy(() =>
 const PublicAthleteInvitePage = lazy(() =>
   import('@/features/athlete-invite').then(({ PublicAthleteInvitePage }) => ({ default: PublicAthleteInvitePage })),
 );
+const OwnerAthleteInviteManagePage = lazy(() =>
+  import('@/features/athlete-invite').then(({ OwnerAthleteInviteManagePage }) => ({ default: OwnerAthleteInviteManagePage })),
+);
 const PublicHypeCardPage = lazy(() =>
   import('@/features/public-hype-card').then(({ PublicHypeCardPage }) => ({ default: PublicHypeCardPage })),
 );
@@ -4030,6 +4033,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
+               <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={PublicAthleteInvitePage} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />

@@ -4,8 +4,10 @@ import test from 'node:test';
 
 const source = readFileSync(new URL('./athlete-invite.tsx', import.meta.url), 'utf8');
 const hypeCardSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
+const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
   assert.match(source, /HypeCardReplyComposer/);
@@ -35,9 +37,8 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /aria-expanded=\{hypeCardGuideOpen\}/);
   assert.match(source, /setSelectedPath\('card'\)/);
   assert.match(source, /setSelectedPath\('page'\)/);
-  assert.match(source, /\{selectedPath === 'card' && \(/);
-  assert.match(source, /\{selectedPath === 'page' && existing &&/);
-  assert.match(source, /\{selectedPath === 'page' && \(/);
+  assert.match(source, /href=\{`\/player\/\$\{existing\.inviteToken\}`\}/);
+  assert.match(source, /\{selectedPath === 'page' && !existing && \(/);
   assert.match(source, /How it works/);
   assert.match(source, /Open the Hype Card editor and create the card/);
   assert.match(source, /Choose Post to Athlete Hype Page/);
@@ -61,8 +62,6 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /data-testid="hosted-video-list"/);
   assert.match(source, /data-testid="section-manage-athlete-videos"/);
   assert.match(source, /Manage posted videos/);
-  assert.match(source, /without opening the Hype Card editor/);
-  assert.match(source, /data-testid="button-retry-athlete-media"/);
   assert.match(source, /data-testid="hosted-video-title"/);
   assert.match(source, /data-testid="button-download-hosted-video"/);
   assert.match(source, /data-testid="button-remove-hosted-video"/);
@@ -70,6 +69,12 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /getListHypeCardSharesQueryKey\(hostedImageQuery\)/);
   assert.match(source, /data-testid="input-athlete-invite-url"/);
   assert.match(source, /data-testid="section-visible-athlete-page"/);
+  assert.match(source, /export function OwnerAthleteInviteManagePage/);
+  assert.match(source, /data-testid="link-manage-athlete-hype-page"/);
+  assert.match(source, /href=\{`\/player\/\$\{inviteToken\}\/manage`\}/);
+  assert.match(source, /<OwnerHypePageManage invite=\{ownerInvite\} \/>/);
+  assert.doesNotMatch(publicPageSource, /<OwnerHypePageManage/);
+  assert.match(appSource, /path="\/player\/:inviteToken\/manage" component=\{OwnerAthleteInviteManagePage\}/);
   assert.ok(
     source.indexOf('data-testid="section-visible-athlete-page"')
       < source.indexOf('data-testid="section-manage-athlete-videos"'),
@@ -79,7 +84,7 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
     apiSource,
     /eq\(hypeCardSharesTable\.ownerClerkUserId, getRequiredClerkUserId\(res\)\),[\s\S]*?isNull\(hypeCardSharesTable\.revokedAt\),[\s\S]*?gt\(hypeCardSharesTable\.expiresAt, new Date\(\)\)/,
   );
-  assert.match(source, /value=\{inviteUrl\(existing\.inviteToken\)\}/);
+  assert.match(source, /value=\{inviteUrl\(invite\.inviteToken\)\}/);
   assert.match(source, /Visible sections/);
   assert.match(source, /The Athlete Hype Page and its other content were not changed/);
   assert.match(source, /data-testid="select-athlete-trend-stat"/);
