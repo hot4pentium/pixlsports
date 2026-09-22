@@ -106,13 +106,14 @@ import {
   completedChecklistCount,
   createGamedayChecklist,
   gamedayChecklistStorageKey,
+  getChecklistEventCopy,
   getChecklistCompletionFeedback,
   normalizeChecklist,
   readGamedayChecklist,
   resetGamedayChecklist,
   saveGamedayChecklist,
   type GamedayChecklistItem,
-  type GamedayChecklistGame,
+  type ChecklistEventType,
   type LocalGamedayChecklist,
 } from '@/features/gameday-checklist';
 import heroBanner from '@/assets/hero-banner.webp';
@@ -2894,6 +2895,14 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
       ? ''
       : new URLSearchParams(window.location.search).get('gameId') ?? '',
   );
+  const requestedEventType = useRef<ChecklistEventType | undefined>(
+    shared || typeof window === 'undefined'
+      ? undefined
+      : (() => {
+        const value = new URLSearchParams(window.location.search).get('eventType');
+        return value === 'practice' || value === 'meeting' || value === 'game' ? value : undefined;
+      })(),
+  );
   const requestedGameApplied = useRef(false);
   const [liveStatus, setLiveStatus] = useState<'connecting' | 'connected' | 'reconnecting'>('connecting');
   const saveTimer = useRef<number | null>(null);
@@ -2903,9 +2912,10 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const saveQueue = useRef(Promise.resolve());
 
   const calendarEvents = localSchedule?.events ?? [];
-  const calendarGames = calendarEvents.filter((event) => event.type === 'game');
-  const liveSelectedGame = calendarGames.find((event) => event.id === checklist.selectedGame?.id);
-  const displayedGame = liveSelectedGame ?? checklist.selectedGame;
+  const liveSelectedEvent = calendarEvents.find((event) => event.id === checklist.selectedGame?.id);
+  const displayedEvent = liveSelectedEvent ?? checklist.selectedGame;
+  const displayedEventType: ChecklistEventType = liveSelectedEvent?.type ?? checklist.selectedGame?.type ?? 'game';
+  const eventCopy = getChecklistEventCopy(displayedEventType);
 
   const {
     data: sharedChecklist,
@@ -3068,13 +3078,14 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   useEffect(() => {
     if (shared || !hydrated || requestedGameApplied.current || !requestedGameId.current) return;
-    const requestedGame = calendarGames.find((game) => game.id === requestedGameId.current);
+    const requestedGame = calendarEvents.find((event) => event.id === requestedGameId.current);
     if (!requestedGame) return;
     requestedGameApplied.current = true;
     const next = {
       ...latestChecklist.current,
       selectedGame: {
         id: requestedGame.id,
+        type: requestedGame.type ?? requestedEventType.current,
         date: requestedGame.date,
         time: requestedGame.time,
         location: requestedGame.location,
@@ -3084,7 +3095,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
     latestChecklist.current = next;
     setChecklist(next);
     persistLocal(next);
-  }, [calendarGames, hydrated, shared]);
+  }, [calendarEvents, hydrated, shared]);
 
   const updateChecklist = (next: LocalGamedayChecklist) => {
     setChecklist(next);
@@ -3104,7 +3115,12 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   const toggleItemCompletion = (item: GamedayChecklistItem) => {
     const completed = !item.completed;
-    const feedback = getChecklistCompletionFeedback(latestChecklist.current.items, item.id, completed);
+    const feedback = getChecklistCompletionFeedback(
+      latestChecklist.current.items,
+      item.id,
+      completed,
+      displayedEventType,
+    );
     updateItem(item.id, { completed });
     if (completed) {
       const completedCount = completedChecklistCount(latestChecklist.current.items) + 1;
@@ -3227,8 +3243,8 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const completed = completedChecklistCount(checklist.items);
   const progress = checklist.items.length ? Math.round((completed / checklist.items.length) * 100) : 0;
   const isChecklistComplete = checklist.items.length > 0 && completed === checklist.items.length;
-  const trackerHref = displayedGame
-    ? `/studio/stat-tracker?date=${encodeURIComponent(displayedGame.date)}&opponent=${encodeURIComponent(displayedGame.opponent || '')}`
+  const trackerHref = displayedEvent
+    ? `/studio/stat-tracker?date=${encodeURIComponent(displayedEvent.date)}&opponent=${encodeURIComponent(displayedEvent.opponent || '')}`
     : '/studio/stat-tracker';
   const isSaving = createShare.isPending || updateShare.isPending;
   const canManageShare = shared ? Boolean(sharedChecklist?.canManage) : Boolean(checklist.shareToken && isSignedIn);
@@ -3242,9 +3258,9 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : 'Game Day Hub'}</p>
-              <h1 className="mt-1 font-display text-4xl uppercase leading-[.88] tracking-tight sm:mt-2 sm:text-7xl">GAMEDAY<br /><span className="text-primary studio-textured-heading-accent">CHECKLIST.</span></h1>
-              <p className="mt-2 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : 'Start with the essentials, then make the list yours for every game day.'}</p>
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : eventCopy.hubLabel}</p>
+              <h1 className="mt-1 font-display text-4xl uppercase leading-[.88] tracking-tight sm:mt-2 sm:text-7xl">{eventCopy.heading.split(' ')[0]}<br /><span className="text-primary studio-textured-heading-accent">{eventCopy.heading.split(' ').slice(1).join(' ')}</span></h1>
+              <p className="mt-2 max-w-xl text-xs font-medium leading-relaxed text-muted-foreground sm:mt-4 sm:text-sm">{shared ? 'Edit together from one link. Changes refresh for everyone automatically.' : eventCopy.description}</p>
             {shared && (
               <p className="mt-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:mt-3" role="status" data-testid="checklist-live-status">
                 <span className={`h-2 w-2 rounded-full ${liveStatus === 'connected' ? 'bg-primary' : 'bg-muted-foreground animate-pulse'}`} />
@@ -3280,55 +3296,56 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           <div className="mt-3 border-t border-border pt-3 sm:mt-5 sm:pt-5" data-testid="checklist-game-selector">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
               <label className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary"><CalendarDays className="h-3.5 w-3.5" /> Checklist for game</span>
+                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary"><CalendarDays className="h-3.5 w-3.5" /> {eventCopy.selectorLabel}</span>
                 <select
-                  value={displayedGame?.id ?? ''}
+                  value={displayedEvent?.id ?? ''}
                   onChange={(event) => {
-                    const nextGame = calendarGames.find((candidate) => candidate.id === event.target.value);
+                    const nextEvent = calendarEvents.find((candidate) => candidate.id === event.target.value);
                     updateChecklist({
                       ...latestChecklist.current,
-                      selectedGame: nextGame
+                      selectedGame: nextEvent
                         ? {
-                            id: nextGame.id,
-                            date: nextGame.date,
-                            time: nextGame.time,
-                            location: nextGame.location,
-                            opponent: nextGame.opponent,
+                            id: nextEvent.id,
+                            type: nextEvent.type,
+                            date: nextEvent.date,
+                            time: nextEvent.time,
+                            location: nextEvent.location,
+                            opponent: nextEvent.opponent,
                           }
                         : undefined,
                     });
                   }}
-                  disabled={shared || calendarGames.length === 0}
+                  disabled={shared || calendarEvents.length === 0}
                   className="mt-1 w-full border border-border bg-background px-3 py-2.5 text-sm font-bold uppercase tracking-wide text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70 sm:mt-2 sm:py-3"
-                  aria-label="Choose which game this checklist is for"
+                  aria-label={eventCopy.selectorAriaLabel}
                   data-testid="select-checklist-game"
                 >
-                  <option value="">Choose a game</option>
-                  {displayedGame && !calendarGames.some((game) => game.id === displayedGame.id) && (
-                    <option value={displayedGame.id}>Previously selected · {displayedGame.opponent || 'Opponent TBD'}</option>
+                  <option value="">{eventCopy.selectorPlaceholder}</option>
+                  {displayedEvent && !calendarEvents.some((candidate) => candidate.id === displayedEvent.id) && (
+                    <option value={displayedEvent.id}>Previously selected · {displayedEvent.opponent || eventCopy.selectorPlaceholder}</option>
                   )}
-                  {calendarGames.map((game) => (
-                    <option key={game.id} value={game.id}>
-                      {formatScheduleDate(game.date)} · VS {game.opponent || 'OPPONENT TBD'}
+                  {calendarEvents.map((scheduleEvent) => (
+                    <option key={scheduleEvent.id} value={scheduleEvent.id}>
+                      {formatScheduleDate(scheduleEvent.date)} · {scheduleEvent.type === 'game' ? `VS ${scheduleEvent.opponent || 'OPPONENT TBD'}` : scheduleEvent.type.toUpperCase()}
                     </option>
                   ))}
                 </select>
               </label>
               <p className="max-w-sm text-[11px] font-medium leading-relaxed text-muted-foreground sm:text-xs">
                 {localSchedule
-                  ? 'Choose a game from your saved schedule.'
-                  : 'Add games in Schedule to connect this checklist to an event.'}
+                  ? eventCopy.scheduleDescription
+                  : `Add ${displayedEventType === 'practice' ? 'practices' : displayedEventType === 'meeting' ? 'meetings' : 'games'} in Schedule to connect this checklist to an event.`}
               </p>
             </div>
-            {displayedGame && (
+            {displayedEvent && (
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:mt-4 sm:gap-x-5 sm:gap-y-2 sm:py-3">
-                <span>{formatScheduleDate(displayedGame.date)}</span>
-                <span>{formatScheduleTime(displayedGame.time)}</span>
-                <span>VS {displayedGame.opponent || 'OPPONENT TBD'}</span>
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {displayedGame.location || 'Location TBD'}</span>
+                <span>{formatScheduleDate(displayedEvent.date)}</span>
+                <span>{formatScheduleTime(displayedEvent.time)}</span>
+                {displayedEventType === 'game' ? <span>VS {displayedEvent.opponent || 'OPPONENT TBD'}</span> : <span>{displayedEventType.toUpperCase()}</span>}
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {displayedEvent.location || 'Location TBD'}</span>
               </div>
             )}
-            {!shared && calendarGames.length === 0 && (
+            {!shared && calendarEvents.length === 0 && (
               <Link href="/studio/schedule" className="mt-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
                 Open schedule <ArrowRight className="h-3.5 w-3.5" />
               </Link>
@@ -3354,11 +3371,9 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
               <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary"><Sparkles className="h-4 w-4" /> All tasks complete</p>
-                  <h2 id="checklist-ready-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">Game day ready.</h2>
+                  <h2 id="checklist-ready-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">{eventCopy.readyHeading}</h2>
                   <p className="mt-2 max-w-xl text-sm font-medium text-white/65">
-                    {displayedGame?.opponent
-                      ? `Everything is set for the game against ${displayedGame.opponent}.`
-                      : 'Everything on the list is handled. You are ready for what comes next.'}
+                    {eventCopy.readyDescription(displayedEvent?.opponent)}
                   </p>
                 </div>
                 <Link
@@ -3378,11 +3393,11 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
           )}
 
           <div className="mt-4 space-y-5 sm:mt-6 sm:space-y-6" data-testid="checklist-items">
-            {(Array.from(new Set(checklist.items.map((item) => item.section || 'Game day'))) as string[]).map((section) => (
+            {(Array.from(new Set(checklist.items.map((item) => item.section || eventCopy.defaultSection))) as string[]).map((section) => (
               <div key={section}>
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">{section}</p>
                 <div className="space-y-1.5 sm:space-y-2">
-                  {checklist.items.filter((item) => (item.section || 'Game day') === section).map((item) => (
+                  {checklist.items.filter((item) => (item.section || eventCopy.defaultSection) === section).map((item) => (
                     <div key={item.id} data-completed={item.completed ? 'true' : 'false'} className={`flex items-center gap-3 border px-3 py-2.5 transition-all motion-reduce:transition-none sm:py-3 ${item.completed ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'} ${completionFeedback?.itemId === item.id && completionFeedback.kind !== 'undo' ? 'ring-2 ring-primary/30 motion-safe:animate-pulse' : ''}`}>
                       <button type="button" onClick={() => toggleItemCompletion(item)} className={`grid h-7 w-7 shrink-0 place-items-center border ${item.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/50 text-transparent hover:border-primary'}`} aria-label={`${item.completed ? 'Uncheck' : 'Check'} ${item.label}`} data-testid={`button-checklist-toggle-${item.id}`}><Check className="h-4 w-4" /></button>
                       <input value={item.label} onChange={(event) => updateItem(item.id, { label: event.target.value })} className={`min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none ${item.completed ? 'line-through opacity-60' : ''}`} aria-label={`Edit ${item.label}`} data-testid={`input-checklist-item-${item.id}`} />
@@ -3393,7 +3408,7 @@ function ChecklistPage({ shared = false }: { shared?: boolean }) {
                 </div>
               </div>
             ))}
-            {checklist.items.length === 0 && <div className="border-2 border-dashed border-border p-8 text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">No items yet. Add the first game-day task.</div>}
+            {checklist.items.length === 0 && <div className="border-2 border-dashed border-border p-8 text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">{eventCopy.emptyItemsMessage}</div>}
           </div>
         </section>
 

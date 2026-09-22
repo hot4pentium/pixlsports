@@ -281,6 +281,7 @@ export const CreateChecklistShareBody = zod.object({
 })).max(createChecklistShareBodyItemsMax),
   "selectedGame": zod.object({
   "id": zod.string().min(1).max(createChecklistShareBodySelectedGameOneIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']).optional(),
   "date": zod.string().max(createChecklistShareBodySelectedGameOneDateMax),
   "time": zod.string().max(createChecklistShareBodySelectedGameOneTimeMax),
   "location": zod.string().max(createChecklistShareBodySelectedGameOneLocationMax),
@@ -322,6 +323,7 @@ export const CreateChecklistShareResponse = zod.object({
 })).max(createChecklistShareResponseOneItemsMax),
   "selectedGame": zod.object({
   "id": zod.string().min(1).max(createChecklistShareResponseOneSelectedGameOneIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']).optional(),
   "date": zod.string().max(createChecklistShareResponseOneSelectedGameOneDateMax),
   "time": zod.string().max(createChecklistShareResponseOneSelectedGameOneTimeMax),
   "location": zod.string().max(createChecklistShareResponseOneSelectedGameOneLocationMax),
@@ -377,6 +379,7 @@ export const GetChecklistShareResponse = zod.object({
 })).max(getChecklistShareResponseOneItemsMax),
   "selectedGame": zod.object({
   "id": zod.string().min(1).max(getChecklistShareResponseOneSelectedGameOneIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']).optional(),
   "date": zod.string().max(getChecklistShareResponseOneSelectedGameOneDateMax),
   "time": zod.string().max(getChecklistShareResponseOneSelectedGameOneTimeMax),
   "location": zod.string().max(getChecklistShareResponseOneSelectedGameOneLocationMax),
@@ -433,6 +436,7 @@ export const UpdateChecklistShareBody = zod.object({
 })).max(updateChecklistShareBodyOneItemsMax),
   "selectedGame": zod.object({
   "id": zod.string().min(1).max(updateChecklistShareBodyOneSelectedGameOneIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']).optional(),
   "date": zod.string().max(updateChecklistShareBodyOneSelectedGameOneDateMax),
   "time": zod.string().max(updateChecklistShareBodyOneSelectedGameOneTimeMax),
   "location": zod.string().max(updateChecklistShareBodyOneSelectedGameOneLocationMax),
@@ -476,6 +480,7 @@ export const UpdateChecklistShareResponse = zod.object({
 })).max(updateChecklistShareResponseOneItemsMax),
   "selectedGame": zod.object({
   "id": zod.string().min(1).max(updateChecklistShareResponseOneSelectedGameOneIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']).optional(),
   "date": zod.string().max(updateChecklistShareResponseOneSelectedGameOneDateMax),
   "time": zod.string().max(updateChecklistShareResponseOneSelectedGameOneTimeMax),
   "location": zod.string().max(updateChecklistShareResponseOneSelectedGameOneLocationMax),

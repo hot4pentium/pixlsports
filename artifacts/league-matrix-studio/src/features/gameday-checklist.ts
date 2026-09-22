@@ -1,4 +1,5 @@
 export type ChecklistMode = 'gameday' | 'tournament';
+export type ChecklistEventType = 'game' | 'practice' | 'meeting';
 
 export type GamedayChecklistItem = {
   id: string;
@@ -9,11 +10,80 @@ export type GamedayChecklistItem = {
 
 export type GamedayChecklistGame = {
   id: string;
+  type?: ChecklistEventType;
   date: string;
   time: string;
   location: string;
   opponent: string;
 };
+
+export type ChecklistEventCopy = {
+  hubLabel: string;
+  heading: string;
+  description: string;
+  selectorLabel: string;
+  selectorAriaLabel: string;
+  selectorPlaceholder: string;
+  scheduleDescription: string;
+  readyHeading: string;
+  readyDescription: (opponent?: string) => string;
+  completionMessage: string;
+  defaultSection: string;
+  emptyItemsMessage: string;
+};
+
+export function getChecklistEventCopy(type: ChecklistEventType = 'game'): ChecklistEventCopy {
+  switch (type) {
+    case 'practice':
+      return {
+        hubLabel: 'Practice Prep',
+        heading: 'PRACTICE CHECKLIST.',
+        description: 'Start with the essentials, then make the list yours for every practice.',
+        selectorLabel: 'Checklist for practice',
+        selectorAriaLabel: 'Choose which practice this checklist is for',
+        selectorPlaceholder: 'Choose a practice',
+        scheduleDescription: 'Choose a practice from your saved schedule.',
+        readyHeading: 'Practice ready.',
+        readyDescription: () => 'Everything on the list is handled. You are ready for practice.',
+        completionMessage: 'Practice ready — every task is complete.',
+        defaultSection: 'Practice',
+        emptyItemsMessage: 'No items yet. Add the first practice task.',
+      };
+    case 'meeting':
+      return {
+        hubLabel: 'Meeting Prep',
+        heading: 'MEETING CHECKLIST.',
+        description: 'Start with the essentials, then make the list yours for every meeting.',
+        selectorLabel: 'Checklist for meeting',
+        selectorAriaLabel: 'Choose which meeting this checklist is for',
+        selectorPlaceholder: 'Choose a meeting',
+        scheduleDescription: 'Choose a meeting from your saved schedule.',
+        readyHeading: 'Meeting ready.',
+        readyDescription: () => 'Everything on the list is handled. You are ready for the meeting.',
+        completionMessage: 'Meeting ready — every task is complete.',
+        defaultSection: 'Meeting',
+        emptyItemsMessage: 'No items yet. Add the first meeting task.',
+      };
+    case 'game':
+    default:
+      return {
+        hubLabel: 'Game Day Hub',
+        heading: 'GAMEDAY CHECKLIST.',
+        description: 'Start with the essentials, then make the list yours for every game day.',
+        selectorLabel: 'Checklist for game',
+        selectorAriaLabel: 'Choose which game this checklist is for',
+        selectorPlaceholder: 'Choose a game',
+        scheduleDescription: 'Choose a game from your saved schedule.',
+        readyHeading: 'Game day ready.',
+        readyDescription: (opponent) => opponent
+          ? `Everything is set for the game against ${opponent}.`
+          : 'Everything on the list is handled. You are ready for what comes next.',
+        completionMessage: 'Game day ready — every task is complete.',
+        defaultSection: 'Game day',
+        emptyItemsMessage: 'No items yet. Add the first game-day task.',
+      };
+  }
+}
 
 export type LocalGamedayChecklist = {
   title: string;
@@ -51,8 +121,12 @@ function normalizeSelectedGame(value: unknown): GamedayChecklistGame | undefined
   if (typeof value !== 'object' || value === null) return undefined;
   const input = value as Partial<GamedayChecklistGame>;
   if (typeof input.id !== 'string' || !input.id.trim()) return undefined;
+  const type = input.type === 'practice' || input.type === 'meeting' || input.type === 'game'
+    ? input.type
+    : undefined;
   return {
     id: input.id.trim(),
+    ...(type ? { type } : {}),
     date: textValue(input.date),
     time: textValue(input.time),
     location: textValue(input.location),
@@ -131,6 +205,7 @@ export function getChecklistCompletionFeedback(
   items: readonly GamedayChecklistItem[],
   itemId: string,
   completed: boolean,
+  eventType: ChecklistEventType = 'game',
 ): ChecklistCompletionFeedback | null {
   const item = items.find((candidate) => candidate.id === itemId);
   if (!item) return null;
@@ -149,7 +224,7 @@ export function getChecklistCompletionFeedback(
     return {
       kind: 'complete',
       itemId,
-      message: 'Game day ready — every task is complete.',
+      message: `${getChecklistEventCopy(eventType).completionMessage}`,
     };
   }
   return {

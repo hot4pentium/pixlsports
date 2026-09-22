@@ -34,6 +34,7 @@ export * from './billingWebhookResponse';
 export * from './billingWebhookResponseStatus';
 export * from './checklistConflict';
 export * from './checklistGame';
+export * from './checklistGameType';
 export * from './checklistItem';
 export * from './checklistShare';
 export * from './checklistShareInput';

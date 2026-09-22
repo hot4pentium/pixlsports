@@ -321,8 +321,8 @@ export function SupporterDashboardView({
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
     ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.statTracker;
-  const checklistHrefForGame = (game: SupporterEvent | undefined) => game
-    ? `/studio/checklist?gameId=${encodeURIComponent(game.id)}`
+  const checklistHrefForGame = (event: SupporterEvent | undefined) => event
+    ? `/studio/checklist?gameId=${encodeURIComponent(event.id)}&eventType=${encodeURIComponent(event.type)}`
     : supporterToolRoutes.checklist;
   const statTrackerHref = statTrackerHrefForGame(nextGame);
   const contextChecklistHref = checklistHrefForGame(contextEvent);

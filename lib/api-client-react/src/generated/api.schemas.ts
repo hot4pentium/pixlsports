@@ -203,12 +203,22 @@ export interface ChecklistItem {
   section?: string | null;
 }
 
+export type ChecklistGameType = typeof ChecklistGameType[keyof typeof ChecklistGameType];
+
+
+export const ChecklistGameType = {
+  game: 'game',
+  practice: 'practice',
+  meeting: 'meeting',
+} as const;
+
 export interface ChecklistGame {
   /**
      * @minLength 1
      * @maxLength 100
      */
   id: string;
+  type?: ChecklistGameType;
   /** @maxLength 20 */
   date: string;
   /** @maxLength 20 */

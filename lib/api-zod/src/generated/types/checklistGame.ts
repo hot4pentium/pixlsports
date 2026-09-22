@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChecklistGameType } from './checklistGameType';
 
 export interface ChecklistGame {
   /**
@@ -12,6 +13,7 @@ export interface ChecklistGame {
      * @maxLength 100
      */
   id: string;
+  type?: ChecklistGameType;
   /** @maxLength 20 */
   date: string;
   /** @maxLength 20 */
