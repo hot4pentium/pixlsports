@@ -27,6 +27,7 @@ import {
   serveProjectMedia,
   requestProjectMediaUploadUrl,
   completeProjectMediaUpload,
+  abandonProjectMediaUpload,
   deleteProjectMedia,
   useCreateHypeCardShare,
   useDeleteHypeCardShare,
@@ -220,6 +221,29 @@ function hasDeviceOnlyMedia(project: HypeCardProject) {
     .some((id) => Boolean(id && !isCloudMediaId(id)));
 }
 
+type ProjectMediaUploadRecord = {
+  claimId: string;
+  objectPath: string;
+  mediaId?: string;
+};
+
+async function cleanupProjectMediaUploads(records: ProjectMediaUploadRecord[]): Promise<string[]> {
+  const failures: string[] = [];
+  await Promise.all(records.map(async (record) => {
+    try {
+      if (record.mediaId) {
+        await deleteProjectMedia(record.mediaId);
+      } else {
+        await abandonProjectMediaUpload(record.claimId);
+      }
+    } catch (error: any) {
+      if (error?.status === 404) return;
+      failures.push(record.mediaId ? 'completed media' : 'unfinished upload');
+    }
+  }));
+  return failures;
+}
+
 function projectForLocalSave(project: HypeCardProject) {
   return project.mediaType === 'image' && project.mediaId
     ? { ...project, photo: null }
@@ -293,6 +317,7 @@ async function uploadProjectMedia(
   options: {
     signal?: AbortSignal;
     onProgress?: MediaUploadProgress;
+    onClaimCreated?: (record: ProjectMediaUploadRecord) => void;
   } = {},
 ) {
   const contentType = blob.type || (mediaRole.startsWith('video') ? 'video/mp4' : 'image/jpeg');
@@ -300,6 +325,11 @@ async function uploadProjectMedia(
   const upload = await requestProjectMediaUploadUrl({
     projectId, mediaRole, mediaType, name, size: blob.size, contentType,
   });
+  const record: ProjectMediaUploadRecord = {
+    claimId: upload.claimId,
+    objectPath: upload.objectPath,
+  };
+  options.onClaimCreated?.(record);
   await uploadMediaBlob(upload.uploadURL, blob, contentType, {
     signal: options.signal,
     onProgress: options.onProgress,
@@ -309,7 +339,9 @@ async function uploadProjectMedia(
     error.name = 'AbortError';
     throw error;
   }
-  return completeProjectMediaUpload({ objectPath: upload.objectPath });
+  const media = await completeProjectMediaUpload({ objectPath: upload.objectPath });
+  record.mediaId = media.id;
+  return media;
 }
 
 function projectForCloudSave(project: HypeCardProject, paid: boolean): HypeCardProject {
@@ -1743,12 +1775,18 @@ export function HypeCardEditor() {
     void (async () => {
       let next = project;
       const obsoleteLocalIds: string[] = [];
+      const interruptedUploads: ProjectMediaUploadRecord[] = [];
+      const trackUpload = (record: ProjectMediaUploadRecord) => {
+        interruptedUploads.push(record);
+      };
 
       try {
         if (next.mediaType === 'image' && next.mediaId && !isCloudMediaId(next.mediaId)) {
           const blob = await loadMediaBlob(next.mediaId);
           if (blob) {
-            const media = await uploadProjectMedia(cloudProjectId, 'photo', blob, next.videoMeta?.name || 'photo');
+            const media = await uploadProjectMedia(cloudProjectId, 'photo', blob, next.videoMeta?.name || 'photo', {
+              onClaimCreated: trackUpload,
+            });
             await saveMediaBlob(media.id, blob);
             const obsoleteCloudVideo = cloudProjectData?.media.filter((item) =>
               item.mediaRole === 'video_preview'
@@ -1777,7 +1815,9 @@ export function HypeCardEditor() {
         if (next.logoMediaId && !isCloudMediaId(next.logoMediaId)) {
           const blob = await loadMediaBlob(next.logoMediaId);
           if (blob) {
-            const media = await uploadProjectMedia(cloudProjectId, 'logo', blob, 'logo');
+            const media = await uploadProjectMedia(cloudProjectId, 'logo', blob, 'logo', {
+              onClaimCreated: trackUpload,
+            });
             await saveMediaBlob(media.id, blob);
             obsoleteLocalIds.push(next.logoMediaId);
             next = { ...next, logoMediaId: media.id };
@@ -1825,20 +1865,28 @@ export function HypeCardEditor() {
                 total: totalUploadBytes,
               }));
             };
-            const [previewMedia, downloadMedia, posterMedia] = await Promise.all([
+            const uploadResults = await Promise.allSettled([
               uploadProjectMedia(cloudProjectId, 'video_preview', preview, `${next.videoMeta?.name || 'video'}.preview`, {
                 signal: syncAbortController.signal,
                 onProgress: (loaded, total) => updateUploadProgress('preview', loaded, total),
+                onClaimCreated: trackUpload,
               }),
               uploadProjectMedia(cloudProjectId, 'video_download', download, `${next.videoMeta?.name || 'video'}.download`, {
                 signal: syncAbortController.signal,
                 onProgress: (loaded, total) => updateUploadProgress('download', loaded, total),
+                onClaimCreated: trackUpload,
               }),
               uploadProjectMedia(cloudProjectId, 'poster', poster, `${next.videoMeta?.name || 'video'}.jpg`, {
                 signal: syncAbortController.signal,
                 onProgress: (loaded, total) => updateUploadProgress('poster', loaded, total),
+                onClaimCreated: trackUpload,
               }),
             ]);
+            const failedUpload = uploadResults.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+            if (failedUpload) throw failedUpload.reason;
+            const [previewMedia, downloadMedia, posterMedia] = uploadResults.map((result) => (
+              (result as PromiseFulfilledResult<Awaited<ReturnType<typeof completeProjectMediaUpload>>>).value
+            ));
             await Promise.all([
               saveMediaBlob(previewMedia.id, preview),
               saveMediaBlob(downloadMedia.id, download),
@@ -1870,17 +1918,22 @@ export function HypeCardEditor() {
           await Promise.all(obsoleteLocalIds.map((id) => deleteMediaBlob(id).catch(() => undefined)));
           setProject(next);
           setNotice('This design and its prepared media are now saved to the cloud.');
+          interruptedUploads.length = 0;
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
           queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
         }
       } catch {
+        const cleanupFailures = await cleanupProjectMediaUploads(interruptedUploads);
         if (!cancelled) {
+          const cleanupMessage = cleanupFailures.length > 0
+            ? ` Cloud cleanup also failed for ${cleanupFailures.length} uploaded item${cleanupFailures.length === 1 ? '' : 's'}; retry cloud sync to try again.`
+            : '';
           setMediaSyncState((current) => ({
             ...current,
             status: 'failed',
-            message: 'The private media sync did not finish. Your local media is safe; retry when you are ready.',
+            message: `The private media sync did not finish. Your local media is safe;${cleanupMessage || ' retry when you are ready.'}`,
           }));
-          setNotice('The design is safe on this phone, but its media did not sync. You can retry without choosing it again.');
+          setNotice(`The design is safe on this phone, but its media did not sync.${cleanupFailures.length > 0 ? ' Some abandoned cloud media could not be removed; retry cloud sync.' : ' You can retry without choosing it again.'}`);
         }
       } finally {
         mediaSyncRef.current = false;

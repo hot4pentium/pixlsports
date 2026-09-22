@@ -24,6 +24,14 @@ test('private media upload progress can be cancelled without deleting local medi
   assert.match(editorSource, /Your local media is safe; retry cloud sync to continue/);
 });
 
+test('interrupted multi-file sync cleans completed media and unfinished upload claims', () => {
+  assert.match(editorSource, /const interruptedUploads: ProjectMediaUploadRecord\[\] = \[\]/);
+  assert.match(editorSource, /await Promise\.allSettled\(\[/);
+  assert.match(editorSource, /cleanupProjectMediaUploads\(interruptedUploads\)/);
+  assert.match(editorSource, /abandonProjectMediaUpload\(record\.claimId\)/);
+  assert.match(editorSource, /Cloud cleanup also failed/);
+});
+
 test('a refreshed pending video draft retains every local rendition for retry', () => {
   assert.match(editorSource, /initialCloudDraft\.syncState === 'pending' \? 'Waiting to sync'/);
   assert.match(editorSource, /saveHypeCardCloudDraft\(cloudProjectId, window\.localStorage, \{\s*project: projectForLocalSave\(project\),\s*syncState: 'pending'/);

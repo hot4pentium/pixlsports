@@ -4066,6 +4066,80 @@ export const useCompleteProjectMediaUpload = <TError = ErrorType<BadRequestRespo
       return useMutation(getCompleteProjectMediaUploadMutationOptions(options));
     }
 
+export const getAbandonProjectMediaUploadUrl = (claimId: string,) => {
+
+
+
+
+  return `/api/storage/uploads/${claimId}`
+}
+
+/**
+ * @summary Abandon an unfinished project media upload
+ */
+export const abandonProjectMediaUpload = async (claimId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getAbandonProjectMediaUploadUrl(claimId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getAbandonProjectMediaUploadMutationKey = () => ['abandonProjectMediaUpload'] as const;
+
+export const getAbandonProjectMediaUploadMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof abandonProjectMediaUpload>>, TError,AbandonProjectMediaUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof abandonProjectMediaUpload>>, TError,AbandonProjectMediaUploadMutationVariables, TContext> => {
+
+const mutationKey = getAbandonProjectMediaUploadMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof abandonProjectMediaUpload>>, AbandonProjectMediaUploadMutationVariables> = (props) => {
+          const {claimId} = props ?? {};
+
+          return  abandonProjectMediaUpload(claimId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AbandonProjectMediaUploadMutationResult = NonNullable<Awaited<ReturnType<typeof abandonProjectMediaUpload>>>
+
+    export type AbandonProjectMediaUploadMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>
+    export type AbandonProjectMediaUploadMutationVariables = {claimId: string}
+
+    /**
+ * @summary Abandon an unfinished project media upload
+ */
+export const useAbandonProjectMediaUpload = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof abandonProjectMediaUpload>>, TError,AbandonProjectMediaUploadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof abandonProjectMediaUpload>>,
+        TError,
+        AbandonProjectMediaUploadMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAbandonProjectMediaUploadMutationOptions(options));
+    }
+
 export const getServeProjectMediaUrl = (mediaId: string,) => {
 
 

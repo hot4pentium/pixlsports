@@ -1009,6 +1009,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /storage/uploads/{claimId}:
+    parameters:
+      - $ref: "#/components/parameters/MediaUploadClaimId"
+    delete:
+      operationId: abandonProjectMediaUpload
+      tags: [storage]
+      summary: Abandon an unfinished project media upload
+      responses:
+        "204":
+          description: Upload claim and object removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Upload is already attached to project media
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Upload object could not be removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /storage/media/{mediaId}:
     parameters:
       - $ref: "#/components/parameters/MediaId"
@@ -1217,6 +1243,13 @@ components:
         format: uuid
     MediaId:
       name: mediaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MediaUploadClaimId:
+      name: claimId
       in: path
       required: true
       schema:

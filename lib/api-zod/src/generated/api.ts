@@ -2044,6 +2044,16 @@ export const CompleteProjectMediaUploadResponse = zod.object({
 
 
 /**
+ * @summary Abandon an unfinished project media upload
+ */
+export const AbandonProjectMediaUploadParams = zod.object({
+  "claimId": zod.coerce.string().uuid()
+})
+
+export const AbandonProjectMediaUploadResponse = zod.void()
+
+
+/**
  * @summary Serve owned project media
  */
 export const ServeProjectMediaParams = zod.object({

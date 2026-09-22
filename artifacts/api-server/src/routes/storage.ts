@@ -4,6 +4,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import {
   CompleteProjectMediaUploadBody,
   DeleteProjectMediaParams,
+  AbandonProjectMediaUploadParams,
   RequestProjectMediaUploadUrlBody,
   RequestProjectMediaUploadUrlResponse,
   CompleteProjectMediaUploadResponse,
@@ -137,6 +138,55 @@ router.post("/storage/uploads/complete", requireAuth, async (req, res): Promise<
     if (error instanceof Error && (error.message === "INVALID_MEDIA" || error.message === "INVALID_ROLE")) { await deleteObjectQuietly(parsed.data.objectPath, req.log); res.status(413).json({ error: "Uploaded media does not match its declared type or size." }); return; }
     req.log.error({ err: error }, "Unable to complete project media upload");
     res.status(500).json({ error: "Unable to save project media." });
+  }
+});
+
+router.delete("/storage/uploads/:claimId", requireAuth, async (req, res): Promise<void> => {
+  const params = AbandonProjectMediaUploadParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  try {
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerClerkUserId}))`);
+      const [claim] = await tx.select().from(projectMediaUploadClaimsTable).where(and(
+        eq(projectMediaUploadClaimsTable.id, params.data.claimId),
+        eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
+      ));
+      if (!claim) throw new Error("CLAIM_NOT_FOUND");
+
+      const [attached] = await tx.select({ id: projectMediaTable.id }).from(projectMediaTable).where(and(
+        eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId),
+        eq(projectMediaTable.objectPath, claim.objectPath),
+      ));
+      if (attached) throw new Error("CLAIM_ATTACHED");
+
+      try {
+        await objectStorageService.deleteObjectEntity(claim.objectPath);
+      } catch (error) {
+        if (!(error instanceof ObjectNotFoundError)) throw new Error("OBJECT_DELETE_FAILED", { cause: error });
+      }
+      await tx.delete(projectMediaUploadClaimsTable).where(and(
+        eq(projectMediaUploadClaimsTable.id, claim.id),
+        eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId),
+      ));
+    });
+    res.sendStatus(204);
+  } catch (error) {
+    if (error instanceof Error && error.message === "CLAIM_NOT_FOUND") {
+      res.status(404).json({ error: "Upload claim not found" });
+      return;
+    }
+    if (error instanceof Error && error.message === "CLAIM_ATTACHED") {
+      res.status(409).json({ error: "Upload is already attached to project media." });
+      return;
+    }
+    if (error instanceof Error && error.message === "OBJECT_DELETE_FAILED") {
+      req.log.error({ err: error.cause, claimId: params.data.claimId }, "Unable to remove abandoned project media object");
+      res.status(500).json({ error: "Unable to remove abandoned media. Please retry." });
+      return;
+    }
+    req.log.error({ err: error, claimId: params.data.claimId }, "Unable to abandon project media upload");
+    res.status(500).json({ error: "Unable to clean up abandoned media." });
   }
 });
 
