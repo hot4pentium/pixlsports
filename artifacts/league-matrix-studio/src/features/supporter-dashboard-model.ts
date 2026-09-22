@@ -139,9 +139,39 @@ export type SupporterWeekEventLike = SupporterGameLike & {
 
 export type SupporterWeekRecommendation<T extends SupporterWeekEventLike = SupporterWeekEventLike> = {
   event: T;
-  kind: 'game' | 'practice';
+  kind: 'game' | 'practice' | 'meeting';
   stage: SupporterGameStage;
 };
+
+export type SupporterPreparationKind = SupporterWeekRecommendation['kind'];
+
+export function getSupporterPreparationCopy(kind: SupporterPreparationKind | null): {
+  title: string;
+  description: string;
+} {
+  switch (kind) {
+    case 'game':
+      return {
+        title: 'Get ready for game day.',
+        description: 'Game day is coming up. Check what you need before you leave.',
+      };
+    case 'practice':
+      return {
+        title: 'Get ready for practice.',
+        description: 'Practice is coming up. Check what you need before you leave.',
+      };
+    case 'meeting':
+      return {
+        title: 'Get ready for your meeting.',
+        description: 'Your meeting is coming up. Check what you need before you leave.',
+      };
+    default:
+      return {
+        title: 'Get ready for your next event.',
+        description: 'Add an event to the schedule so Pixl can guide what you need next.',
+      };
+  }
+}
 
 export const supporterActiveGameStorageKey = 'pixlsports-supporter-active-game';
 export const supporterStageAcknowledgmentStoragePrefix = 'pixlsports-supporter-stage-ack';
@@ -273,13 +303,14 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
-  const upcomingPractice = events.find((event) => (
-    event.type === 'practice' && getSupporterGameStage(event, now) === 'upcoming'
+  const upcomingPreparationEvent = events.find((event) => (
+    (event.type === 'practice' || event.type === 'meeting')
+    && getSupporterGameStage(event, now) === 'upcoming'
   ));
-  if (upcomingPractice) {
+  if (upcomingPreparationEvent) {
     return {
-      event: upcomingPractice,
-      kind: 'practice',
+      event: upcomingPreparationEvent,
+      kind: upcomingPreparationEvent.type,
       stage: 'upcoming',
     };
   }

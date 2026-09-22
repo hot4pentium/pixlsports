@@ -10,6 +10,7 @@ import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
   getSupporterGameStage,
+  getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
   getSupporterStageAcknowledgmentKey,
   hasAcknowledgedSupporterGameStage,
@@ -219,7 +220,7 @@ const stageCopy: Record<SupporterGameStage, {
   upcoming: {
     label: 'Get ready',
     kicker: 'Next up',
-    description: 'Pack the details now so game day feels easy.',
+    description: 'Pack the details now so your next event feels easy.',
     accent: 'Preparation',
   },
   live: {
@@ -262,16 +263,16 @@ export function SupporterDashboardView({
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null);
   const weekRecommendation = getSupporterWeekRecommendation(events);
-  const recommendedPractice = weekRecommendation?.kind === 'practice'
+  const recommendedPreparationEvent = weekRecommendation?.kind === 'practice' || weekRecommendation?.kind === 'meeting'
     ? weekRecommendation.event
     : undefined;
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
-  const showPracticeContext = Boolean(
-    recommendedPractice
+  const showPreparationContext = Boolean(
+    recommendedPreparationEvent
     && (!selectedGameId || !gameEvents.some((game) => game.id === selectedGameId))
     && (!nextGame || (!selectedGameId && recommendedGame && getSupporterGameStage(recommendedGame) === 'completed')),
   );
-  const contextEvent = showPracticeContext ? recommendedPractice : nextGame;
+  const contextEvent = showPreparationContext ? recommendedPreparationEvent : nextGame;
   const gameStage: SupporterGameStage = contextEvent
     ? getSupporterGameStage(contextEvent)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
@@ -285,11 +286,15 @@ export function SupporterDashboardView({
     && nextGame.id !== recommendedGame.id
     && gameStage === 'completed',
   );
-  const currentStage = contextEvent?.type === 'practice' && gameStage === 'upcoming'
+  const currentStage = contextEvent && gameStage === 'upcoming'
     ? {
       ...stageCopy[gameStage],
-      kicker: 'Practice next',
-      description: 'Pack the essentials now so practice feels easy.',
+      kicker: contextEvent.type === 'practice' ? 'Practice next' : contextEvent.type === 'meeting' ? 'Meeting next' : stageCopy[gameStage].kicker,
+      description: contextEvent.type === 'practice'
+        ? 'Pack the essentials now so practice feels easy.'
+        : contextEvent.type === 'meeting'
+          ? 'Get the details ready before your meeting.'
+          : 'Pack the details now so game day feels easy.',
     }
     : stageCopy[gameStage];
   const stageReminderGame = contextEvent?.type === 'game' ? contextEvent : undefined;
@@ -308,7 +313,10 @@ export function SupporterDashboardView({
     : 'Your next game';
   const contextTitle = contextEvent?.type === 'practice'
     ? `${profile.teamName || 'Your team'} practice`
-    : gameTitle;
+    : contextEvent?.type === 'meeting'
+      ? `${profile.teamName || 'Your team'} meeting`
+      : gameTitle;
+  const preparationCopy = getSupporterPreparationCopy(contextEvent?.type ?? weekRecommendation?.kind ?? null);
   const contextDateParts = contextEvent ? getEventDateParts(contextEvent.date) : null;
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
     ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
@@ -438,10 +446,8 @@ export function SupporterDashboardView({
     },
     upcoming: {
       eyebrow: '02 / Preparation',
-      title: weekRecommendation?.kind === 'practice' ? 'Get ready for practice.' : 'Get ready for game day.',
-      description: weekRecommendation?.kind === 'practice'
-        ? 'Practice is coming up. Check what you need before you leave.'
-        : 'Game day is coming up. Check what you need before you leave.',
+      title: preparationCopy.title,
+      description: preparationCopy.description,
       action: 'Open checklist',
     },
     live: {
@@ -576,6 +582,12 @@ export function SupporterDashboardView({
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? events[0];
+  const scheduleCardEvent = weekRecommendation?.event ?? nextGame;
+  const scheduleCardLabel = scheduleCardEvent?.type === 'practice'
+    ? 'Practice'
+    : scheduleCardEvent?.type === 'meeting'
+      ? 'Meeting'
+      : 'Game Day';
   const mobileFeaturedTitle = mobileFeaturedEvent?.type === 'practice'
     ? `${profile.teamName || 'Your team'} practice`
     : `${profile.teamName || 'Your team'}${mobileFeaturedEvent?.opponent ? ` vs ${mobileFeaturedEvent.opponent}` : ''}`;
@@ -1355,8 +1367,8 @@ export function SupporterDashboardView({
               <span className="flex min-w-0 items-center gap-3">
                 <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
                 <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">{recommendedPractice && !nextGame ? 'Practice' : 'Game Day'}</span>
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{nextGame ? `${formatDateDisplay(nextGame.date)} · ${formatTimeDisplay(nextGame.time)}` : recommendedPractice ? `${formatDateDisplay(recommendedPractice.date)} · Practice` : scheduleSource ? 'No upcoming game scheduled.' : 'Create or open a saved schedule.'}</span>
+                  <span className="block font-display text-xl uppercase tracking-wide">{scheduleCardEvent ? scheduleCardLabel : 'Game Day'}</span>
+                  <span className="block truncate text-xs font-medium text-muted-foreground">{scheduleCardEvent ? `${formatDateDisplay(scheduleCardEvent.date)} · ${scheduleCardEvent.type === 'game' ? formatTimeDisplay(scheduleCardEvent.time) : scheduleCardLabel}` : scheduleSource ? 'No upcoming game scheduled.' : 'Create or open a saved schedule.'}</span>
                 </span>
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
