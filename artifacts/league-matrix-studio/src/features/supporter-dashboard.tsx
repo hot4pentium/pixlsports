@@ -680,6 +680,23 @@ export function SupporterDashboardView({
             ) : (
                <p className="text-sm font-medium text-black/60">No upcoming events. Add a game to get recommendations.</p>
             )}
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="mobile-athlete-details"
+              aria-label="View or change athlete"
+              data-testid="btn-mobile-athlete-details"
+            >
+              <span className="mobile-athlete-details-name">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
+              {hasAthlete && (profile.jerseyNumber || profile.teamName) && (
+                <span className="mobile-athlete-details-meta">
+                  {profile.jerseyNumber && <span>#{profile.jerseyNumber}</span>}
+                  {profile.jerseyNumber && profile.teamName && <span aria-hidden="true">•</span>}
+                  {profile.teamName && <span>{profile.teamName}</span>}
+                </span>
+              )}
+              <ChevronRight className="mobile-athlete-details-arrow" aria-hidden="true" />
+            </button>
           </div>
           </div>
           </section>
