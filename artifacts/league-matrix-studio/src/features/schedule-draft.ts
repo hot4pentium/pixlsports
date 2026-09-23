@@ -5,6 +5,7 @@ export type ScheduleEvent = {
   id: string;
   type: ScheduleEventType;
   status?: ScheduleEventStatus;
+  completedAt?: string;
   date: string;
   time: string;
   location: string;
@@ -112,6 +113,9 @@ export function normalizeScheduleEvent(
       || input.status === 'live'
       || input.status === 'final'
     ) ? { status: input.status } : {}),
+    ...(type === 'game' && stringValue(input.completedAt)
+      ? { completedAt: stringValue(input.completedAt) }
+      : {}),
     date: stringValue(input.date),
     time: stringValue(input.time),
     location: stringValue(input.location),
@@ -343,10 +347,16 @@ export function updateScheduleEventStatus(
   events: ScheduleEvent[],
   id: string,
   status: ScheduleEventStatus,
+  completedAt?: string,
 ) {
   return events.map((event) => (
     event.id === id && event.type === 'game'
-      ? { ...event, status }
+      ? {
+        ...event,
+        status,
+        ...(status === 'final' && completedAt ? { completedAt } : {}),
+        ...(status !== 'final' ? { completedAt: undefined } : {}),
+      }
       : event
   ));
 }

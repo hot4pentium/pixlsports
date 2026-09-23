@@ -132,6 +132,7 @@ export type SupporterGameLike = {
   date: string;
   time: string;
   status?: ScheduleEventStatus;
+  completedAt?: string;
   type?: 'game' | 'practice' | 'meeting';
 };
 
@@ -146,6 +147,8 @@ export type SupporterWeekRecommendation<T extends SupporterWeekEventLike = Suppo
 };
 
 export type SupporterPreparationKind = SupporterWeekRecommendation['kind'];
+
+const RECENT_COMPLETED_GAME_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function getSupporterPreparationCopy(kind: SupporterPreparationKind | null): {
   title: string;
@@ -334,6 +337,24 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
       event: liveGame,
       kind: 'game',
       stage: 'live',
+    };
+  }
+
+  const recentCompletedGame = games
+    .filter((game) => game.status === 'final' && typeof game.completedAt === 'string')
+    .filter((game) => {
+      const completedAt = Date.parse(game.completedAt!);
+      return Number.isFinite(completedAt)
+        && completedAt <= now.getTime()
+        && now.getTime() - completedAt <= RECENT_COMPLETED_GAME_WINDOW_MS;
+    })
+    .sort((left, right) => Date.parse(right.completedAt!) - Date.parse(left.completedAt!))[0];
+
+  if (recentCompletedGame) {
+    return {
+      event: recentCompletedGame,
+      kind: 'game',
+      stage: 'completed',
     };
   }
 

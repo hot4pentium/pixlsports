@@ -14,3 +14,9 @@ The mobile “Coming up” card should show the closest upcoming calendar event,
 **Why:** Skipping the recommended event made the prep card correctly switch to a newly added game while the calendar card appeared stuck on a later practice.
 
 **How to apply:** Use one upcoming-event ordering rule for both recommendation and calendar display; if a live game is prioritized for prep, “Coming up” can still show the next future event.
+
+For a fan-owned tracked game, persist its completion time with the final schedule status. A recently finalized game should stay ahead of future preparation recommendations for the short post-game Send window; once that window expires, the next scheduled event should win again.
+
+**Why:** Ending tracking previously changed only the status, so the dashboard could immediately jump from Capture to preparation for the next event and skip Send. A completion timestamp distinguishes that transition from an old final game.
+
+**How to apply:** Keep the post-game window bounded and require the explicit final status plus a valid timestamp; do not let legacy or stale completed games override future practice, meeting, or game guidance.

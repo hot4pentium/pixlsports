@@ -119,20 +119,26 @@ test('empty and partially filled saved events normalize into safe preview data',
 });
 
 test('schedule statuses survive normalization and update only game events', () => {
+  const completedAt = '2026-09-22T20:45:00Z';
   const draft = normalizeScheduleDraft({
     events: [
-      { id: 'live-game', type: 'game', status: 'live' },
+      { id: 'live-game', type: 'game', status: 'live', completedAt },
       { id: 'practice', type: 'practice', status: 'final' },
       { id: 'invalid-status', type: 'game', status: 'finished' },
     ],
   });
 
   assert.equal(draft?.events[0]?.status, 'live');
+  assert.equal(draft?.events[0]?.completedAt, completedAt);
   assert.equal(draft?.events[1]?.status, undefined);
   assert.equal(draft?.events[2]?.status, undefined);
   assert.equal(
-    updateScheduleEventStatus(draft!.events, 'live-game', 'final')[0]?.status,
+    updateScheduleEventStatus(draft!.events, 'live-game', 'final', completedAt)[0]?.status,
     'final',
+  );
+  assert.equal(
+    updateScheduleEventStatus(draft!.events, 'live-game', 'final', completedAt)[0]?.completedAt,
+    completedAt,
   );
   assert.equal(
     updateScheduleEventStatus(draft!.events, 'practice', 'live')[1]?.status,

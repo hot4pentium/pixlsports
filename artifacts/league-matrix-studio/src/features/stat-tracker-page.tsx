@@ -115,6 +115,7 @@ export type ScheduledGame = {
   time: string;
   opponent: string;
   status?: ScheduleEventStatus;
+  completedAt?: string;
 };
 
 export function getNextScheduledGame(events: readonly ScheduledGame[] = (readScheduleDraft()?.events ?? [])) {
@@ -148,6 +149,7 @@ type OwnedScheduleProject = {
 export async function persistScheduledGameStatus({
   scheduledGame,
   status,
+  completedAt,
   canWrite,
   storage,
   ownedScheduleProject,
@@ -156,6 +158,7 @@ export async function persistScheduledGameStatus({
 }: {
   scheduledGame: ScheduledGame | undefined;
   status: ScheduleEventStatus;
+  completedAt?: string;
   canWrite: boolean;
   storage: Storage;
   ownedScheduleProject?: OwnedScheduleProject;
@@ -183,7 +186,7 @@ export async function persistScheduledGameStatus({
   if (localDraft && localEvent) {
     saveScheduleDraft(storage, {
       ...localDraft,
-      events: updateScheduleEventStatus(localDraft.events, localEvent.id, status),
+      events: updateScheduleEventStatus(localDraft.events, localEvent.id, status, completedAt),
     });
   }
 
@@ -196,7 +199,7 @@ export async function persistScheduledGameStatus({
     data: {
       project: {
         ...ownedScheduleProject.project,
-        events: updateScheduleEventStatus(ownedScheduleProject.project.events, cloudEvent.id, status),
+        events: updateScheduleEventStatus(ownedScheduleProject.project.events, cloudEvent.id, status, completedAt),
       },
       expectedRevision: expectedRevision ?? ownedScheduleProject.revision,
     },
@@ -1206,6 +1209,7 @@ export function StatTrackerPage() {
   const updateOwnedScheduledGameStatus = (
     scheduledGame: ScheduledGame | undefined,
     status: ScheduleEventStatus,
+    completedAt?: string,
   ) => {
     scheduledStatusUpdate.current = scheduledStatusUpdate.current
       .catch(() => undefined)
@@ -1220,6 +1224,7 @@ export function StatTrackerPage() {
         const updated = await persistScheduledGameStatus({
           scheduledGame,
           status,
+          completedAt,
            canWrite: profile.role === 'fan',
           storage: window.localStorage,
           ownedScheduleProject: project,
@@ -1307,7 +1312,7 @@ export function StatTrackerPage() {
       shareUpdateTimer.current = null;
     }
     await publishTrackerShare(completed, activeTrackerShare ?? undefined);
-    updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final');
+    updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final', completed.endedAt);
     const nextData = { ...data, games: [...data.games, completed] };
     setData(nextData);
     setCurrentGame(null);

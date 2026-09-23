@@ -1049,13 +1049,14 @@ test('fan-owned game start and end persist locally and to the owned schedule in 
   const storage = createMemoryStorage({
     [scheduleStorageKey]: JSON.stringify(draft),
   }) as unknown as Storage;
-  const cloudWrites: Array<{ status: string | undefined; expectedRevision: number }> = [];
+  const cloudWrites: Array<{ status: string | undefined; completedAt: string | undefined; expectedRevision: number }> = [];
   let revision = 4;
   const updateCloudProject = async (input: {
     data: { project: { events: typeof draft.events }; expectedRevision: number };
   }) => {
     cloudWrites.push({
       status: input.data.project.events[0]?.status,
+      completedAt: input.data.project.events[0]?.completedAt,
       expectedRevision: input.data.expectedRevision,
     });
     revision += 1;
@@ -1069,13 +1070,14 @@ test('fan-owned game start and end persist locally and to the owned schedule in 
 
   let queued = Promise.resolve();
   let latestRevision = ownedScheduleProject.revision;
-  const queueStatus = (status: 'live' | 'final') => {
+  const queueStatus = (status: 'live' | 'final', completedAt?: string) => {
     queued = queued
       .catch(() => undefined)
       .then(async () => {
         const updated = await persistScheduledGameStatus({
           scheduledGame,
           status,
+          completedAt,
           canWrite: true,
           storage,
           ownedScheduleProject,
@@ -1087,13 +1089,14 @@ test('fan-owned game start and end persist locally and to the owned schedule in 
   };
 
   queueStatus('live');
-  queueStatus('final');
+  queueStatus('final', '2026-09-22T20:45:00Z');
   await queued;
 
   assert.equal(readScheduleDraft(storage)?.events[0]?.status, 'final');
+  assert.equal(readScheduleDraft(storage)?.events[0]?.completedAt, '2026-09-22T20:45:00Z');
   assert.deepEqual(cloudWrites, [
-    { status: 'live', expectedRevision: 4 },
-    { status: 'final', expectedRevision: 5 },
+    { status: 'live', completedAt: undefined, expectedRevision: 4 },
+    { status: 'final', completedAt: '2026-09-22T20:45:00Z', expectedRevision: 5 },
   ]);
 });
 

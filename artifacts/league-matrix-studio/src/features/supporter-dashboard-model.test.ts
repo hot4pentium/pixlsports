@@ -59,6 +59,42 @@ test('the next practice is recommended before a later upcoming game', () => {
   assert.equal(recommendation?.stage, 'upcoming');
 });
 
+test('a recently finished tracked game stays on Send before the next scheduled event', () => {
+  const now = new Date('2026-09-22T21:00:00Z');
+  const finishedGame = {
+    id: 'finished-game',
+    type: 'game' as const,
+    date: '2026-09-22',
+    time: '18:00',
+    status: 'final' as const,
+    completedAt: '2026-09-22T20:45:00Z',
+  };
+  const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-23', time: '17:00' };
+
+  const recommendation = getSupporterWeekRecommendation([finishedGame, practice], now);
+
+  assert.equal(recommendation?.event.id, 'finished-game');
+  assert.equal(recommendation?.stage, 'completed');
+});
+
+test('an older finished game yields to the next scheduled event', () => {
+  const now = new Date('2026-09-24T12:00:00Z');
+  const finishedGame = {
+    id: 'finished-game',
+    type: 'game' as const,
+    date: '2026-09-22',
+    time: '18:00',
+    status: 'final' as const,
+    completedAt: '2026-09-22T20:45:00Z',
+  };
+  const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-25', time: '17:00' };
+
+  const recommendation = getSupporterWeekRecommendation([finishedGame, practice], now);
+
+  assert.equal(recommendation?.event.id, 'practice');
+  assert.equal(recommendation?.stage, 'upcoming');
+});
+
 test('past games cannot remain upcoming or live just because their saved status was not updated', () => {
   const now = new Date('2026-09-22T12:00:00');
   assert.equal(getSupporterGameStage({ date: '2026-09-21', time: '18:30', status: 'upcoming' }, now), 'completed');
