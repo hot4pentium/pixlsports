@@ -31,6 +31,7 @@ import { Trash2 } from 'lucide-react';
 import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
+import { AccountLoadingScreen } from '@/features/account-loading-screen';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -3801,7 +3802,7 @@ function RoleSelectionPage() {
   const updateAccountAccess = useUpdateAccountAccess();
 
   if (!isLoaded) {
-    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Checking account access…</div>;
+    return <AccountLoadingScreen />;
   }
   if (!user) return <Redirect to="/sign-in" />;
 
@@ -4024,7 +4025,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   });
 
   if (!bypassLifecycle && (!isLoaded || (isSignedIn && isLoading))) {
-    return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Checking account access…</div>;
+    return <AccountLoadingScreen />;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
     return <LockedAccountPage deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} />;
