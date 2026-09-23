@@ -60,8 +60,8 @@ test('hosted video uploads report byte progress and abort through the shared req
   const shareSource = readFileSync(new URL('./hype-card-share.tsx', import.meta.url), 'utf8');
 
   assert.match(shareSource, /export type HypeCardShareQuality = 'standard' \| 'compact'/);
-  assert.match(shareSource, /quality === 'compact' \? 640 : 960/);
-  assert.match(shareSource, /quality === 'compact' \? 800_000 : 2_000_000/);
+  assert.match(shareSource, /quality === 'compact'[\s\S]*?longEdge: 640[\s\S]*?longEdge: 360[\s\S]*?longEdge: 960/);
+  assert.match(shareSource, /quality === 'compact'[\s\S]*?bitrate: 800_000[\s\S]*?bitrate: 2_000_000/);
   assert.match(shareSource, /new XMLHttpRequest\(\)/);
   assert.match(shareSource, /request\.upload\.addEventListener\('progress'/);
   assert.match(shareSource, /onProgress\(Math\.min\(1, event\.loaded \/ event\.total\)\)/);

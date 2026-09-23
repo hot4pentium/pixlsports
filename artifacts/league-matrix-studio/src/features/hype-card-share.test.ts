@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { hostedVideoBudgetBytes, isUsableHostedVideo } from './hype-card-share';
+import { hostedVideoBudgetBytes, isUsableHostedVideo, monotonicProgress } from './hype-card-share';
+
+test('preparation progress starts visibly and never moves backward between phases', () => {
+  assert.equal(monotonicProgress(0, 0.01), 0.01);
+  assert.equal(monotonicProgress(0.35, 0.1), 0.35);
+  assert.equal(monotonicProgress(0.35, 0.9), 0.9);
+  assert.equal(monotonicProgress(0.9, Number.NaN), 0.9);
+  assert.equal(monotonicProgress(0.9, 1.5), 1);
+});
 
 test('hosted clip budget stays well below the previous 35 MB limit', () => {
   assert.equal(hostedVideoBudgetBytes(8.36), 6_270_000);

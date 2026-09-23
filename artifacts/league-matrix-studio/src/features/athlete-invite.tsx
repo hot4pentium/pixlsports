@@ -53,7 +53,7 @@ import { HypeCardReplyComposer } from './public-hype-card';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
-import { MAX_HOSTED_VIDEO_BYTES, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
+import { MAX_HOSTED_VIDEO_BYTES, monotonicProgress, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const hostedVideoQuery = { shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 };
@@ -536,13 +536,13 @@ function OwnerVideoUpload({
     abortRef.current = controller;
     setUploading(true);
     setMessage('');
-    setProgress(0);
+    setProgress(0.01);
     setStage('Preparing a web-friendly video…');
     try {
       const prepared = await prepareHypeCardShareMedia(
         video,
         { trimStart, trimEnd },
-        (value) => setProgress(value * 0.55),
+        (value) => setProgress((current) => monotonicProgress(current, value * 0.55)),
         { signal: controller.signal, quality: 'standard' },
       );
       if (prepared.video.size > MAX_HOSTED_VIDEO_BYTES) {
@@ -550,6 +550,7 @@ function OwnerVideoUpload({
       }
       const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
       setStage('Uploading the prepared video and poster…');
+      setProgress((current) => monotonicProgress(current, 0.55));
       const [videoUpload, posterUpload] = await Promise.all([
         requestHypeCardShareUploadUrl({ mediaKind: 'video', contentType: videoContentType }),
         requestHypeCardShareUploadUrl({ mediaKind: 'poster', contentType: 'image/jpeg' }),
@@ -557,7 +558,7 @@ function OwnerVideoUpload({
       const transferred = { video: 0, poster: 0 };
       const updateProgress = () => {
         const total = prepared.video.size + prepared.poster.size;
-        setProgress(0.55 + (total ? (transferred.video + transferred.poster) / total : 0) * 0.3);
+        setProgress((current) => monotonicProgress(current, 0.55 + (total ? (transferred.video + transferred.poster) / total : 0) * 0.3));
       };
       await Promise.all([
         uploadHypeCardShareMedia(videoUpload.uploadUrl, prepared.video, videoContentType, controller.signal, (value) => {
@@ -570,6 +571,7 @@ function OwnerVideoUpload({
         }),
       ]);
       setStage('Adding the video to the Athlete Hype Page…');
+      setProgress((current) => monotonicProgress(current, 0.9));
       const label = file.name.replace(/\.[^.]+$/, '').trim() || 'Video highlight';
       const uniqueKey = `${invite.inviteToken}:${Date.now()}:${directVideoSlug(file.name)}`;
       await createShare.mutateAsync({
@@ -612,7 +614,7 @@ function OwnerVideoUpload({
         },
       });
       await onPosted();
-      setProgress(1);
+      setProgress((current) => monotonicProgress(current, 1));
       setStage('');
       setMessage('Video added to the Athlete Hype Page.');
       setFile(null);
@@ -667,7 +669,7 @@ function OwnerVideoUpload({
             )}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => void publish()} disabled={uploading || !duration} className="inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50">
-                {uploading ? `${Math.round(progress * 100)}%` : 'Post video'}
+                {uploading ? `${Math.max(1, Math.round(progress * 100))}%` : 'Post video'}
               </button>
               <button type="button" onClick={uploading ? () => abortRef.current?.abort() : reset} className="inline-flex min-h-10 items-center gap-2 border border-white/25 px-4 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10">
                 {uploading ? 'Cancel' : <><X className="h-4 w-4" /> Remove</>}

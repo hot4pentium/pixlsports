@@ -4,6 +4,11 @@ import { exportVideoCanvas } from './hype-card-export';
 export const MAX_HOSTED_VIDEO_BYTES = 35 * 1024 * 1024;
 export type HypeCardShareQuality = 'standard' | 'compact';
 
+export function monotonicProgress(previous: number, next: number): number {
+  const bounded = Number.isFinite(next) ? Math.min(1, Math.max(0, next)) : previous;
+  return Math.max(previous, bounded);
+}
+
 export function hostedVideoBudgetBytes(duration: number): number {
   return Math.min(10 * 1024 * 1024, Math.max(3 * 1024 * 1024, Math.ceil(duration * 750_000)));
 }
@@ -178,6 +183,13 @@ export async function prepareHypeCardShareMedia(
   const originalTime = video.currentTime;
   const wasPaused = video.paused;
   const quality = options.quality ?? 'standard';
+  let reportedProgress = 0;
+  const reportProgress = (value: number) => {
+    const next = monotonicProgress(reportedProgress, value);
+    if (next === reportedProgress) return;
+    reportedProgress = next;
+    onProgress(next);
+  };
   const expectedDuration = project.trimEnd - project.trimStart;
   if (!Number.isFinite(expectedDuration) || expectedDuration <= 0 || expectedDuration > 15.1) {
     throw new Error('Choose a video segment of up to 15 seconds before posting.');
@@ -187,6 +199,7 @@ export async function prepareHypeCardShareMedia(
   if (!context) throw new Error('This browser could not prepare the share video.');
 
   try {
+    reportProgress(0.01);
     video.pause();
     await seekVideo(video, project.trimStart, options.signal);
     const levels = quality === 'compact'
@@ -202,6 +215,7 @@ export async function prepareHypeCardShareMedia(
     if (options.signal?.aborted) throw abortError();
     for (const [index, level] of levels.entries()) {
       if (options.signal?.aborted) throw abortError();
+      reportProgress(index / levels.length + 0.01);
       const scale = Math.min(1, level.longEdge / Math.max(video.videoWidth, video.videoHeight));
       const width = Math.max(2, Math.round(video.videoWidth * scale / 2) * 2);
       const height = Math.max(2, Math.round(video.videoHeight * scale / 2) * 2);
@@ -212,7 +226,7 @@ export async function prepareHypeCardShareMedia(
           canvas,
           video,
           24,
-          (progress) => onProgress((index + progress) / levels.length),
+          (progress) => reportProgress((index + progress) / levels.length),
           options.signal ?? new AbortController().signal,
           true,
           project.trimStart,
@@ -227,6 +241,7 @@ export async function prepareHypeCardShareMedia(
         }
         const actualDuration = await readVideoDuration(clip.blob, options.signal);
         if (isUsableHostedVideo(actualDuration, expectedDuration, clip.blob.size)) {
+          reportProgress(1);
           return { video: clip.blob, videoContentType: clip.mimeType, poster, duration: actualDuration };
         }
       } catch (error) {
