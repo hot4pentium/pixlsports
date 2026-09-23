@@ -118,6 +118,7 @@ import {
   type ChecklistEventType,
   type LocalGamedayChecklist,
 } from '@/features/gameday-checklist';
+import MeetingCapture from '@/features/meeting-capture';
 import heroBanner from '@/assets/hero-banner.webp';
 import footballFieldAsset from '@/assets/football-field.svg';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
@@ -2876,6 +2877,13 @@ function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
   );
 }
 
+function ChecklistRoutePage() {
+  const isMeeting = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('eventType') === 'meeting';
+
+  return isMeeting ? <MeetingCapture key={window.location.search} /> : <ChecklistPage />;
+}
+
 export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const [, setLocation] = useLocation();
   const params = useParams<{ shareToken?: string }>();
@@ -4107,7 +4115,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
-               <Route path="/studio/checklist"><ChecklistPage /></Route>
+                <Route path="/studio/checklist"><ChecklistRoutePage /></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />
                  <Route component={NotFound} />

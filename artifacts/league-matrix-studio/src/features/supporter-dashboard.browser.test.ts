@@ -672,6 +672,7 @@ import { Router, useLocation } from 'wouter';
 import { ClerkProvider } from '@clerk/react';
 import { HypeCardEditor } from './src/features/hype-card';
 import { ChecklistPage } from './src/App';
+import { MeetingCapture } from './src/features/meeting-capture';
 import { SupporterDashboardView, SupporterProfileView } from './src/features/supporter-dashboard';
 import { LiveTrackerGame } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
@@ -1035,6 +1036,17 @@ export function mount() {
     createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
         createElement(LocalHypeCardFlowHarness),
+      ),
+    )));
+    return;
+  }
+  if (window.location.search.includes('meeting-capture')) {
+    root.render(createElement(ClerkProvider, {
+      publishableKey: 'pk_test_ZXhhbXBsZS5jb20k',
+    },
+    createElement(Router, null,
+      createElement(QueryClientProvider, { client: queryClient },
+        createElement(MeetingCapture),
       ),
     )));
     return;
@@ -1831,6 +1843,150 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('meeting capture keeps live notes and turns the finished meeting into a sendable recap', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('meeting-capture-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-meeting-capture-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?meeting-capture&gameId=meeting-1&eventType=meeting&title=Weekly%20Team%20Meeting&date=2026-09-25&time=17:00&location=Northside%20Clubhouse`,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"text-meeting-title\\"]")?.textContent || ""', (value) => value === 'Weekly Team Meeting');
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"checklist-page\\"]"))', page.sessionId),
+      false,
+      'meeting route must not render the generic checklist',
+    );
+
+    const setField = async (selector: string, value: string) => {
+      await connection!.evaluate(`(() => {
+        const field = document.querySelector(${JSON.stringify(selector)});
+        if (!(field instanceof HTMLInputElement) && !(field instanceof HTMLTextAreaElement)) throw new Error('Field is missing: ' + ${JSON.stringify(selector)});
+        const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field), 'value')?.set;
+        setter?.call(field, ${JSON.stringify(value)});
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`, page!.sessionId);
+    };
+
+    await setField('[data-testid="textarea-meeting-notes"]', 'We agreed to keep Wednesday practice focused on defense.');
+    await connection.evaluate(`document.querySelector('[data-testid^="button-toggle-agenda-"]')?.click()`, page.sessionId);
+    await setField('[data-testid="input-new-agenda"]', 'Confirm tournament transport');
+    await connection.evaluate(`document.querySelector('[data-testid="button-add-agenda"]')?.click()`, page.sessionId);
+    await setField('[data-testid="input-new-attendee"]', 'Morgan Lee');
+    await setField('[data-testid="input-new-attendee-role"]', 'Captain');
+    await connection.evaluate(`document.querySelector('[data-testid="button-add-attendee"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="button-add-decision"]')?.click()`, page.sessionId);
+    await setField('[data-testid^="textarea-decision-"]', 'Defense is the priority for Wednesday.');
+    await connection.evaluate(`document.querySelector('[data-testid="button-add-follow-up"]')?.click()`, page.sessionId);
+    await setField('[data-testid^="input-follow-up-task-"]', 'Confirm tournament transport');
+    await setField('[data-testid^="input-follow-up-owner-"]', 'Morgan Lee');
+
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-attendance-count\\"]")?.textContent || ""', page.sessionId),
+      /3 present/,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-agenda-progress\\"]")?.textContent || ""', page.sessionId),
+      /1\/4/,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-notes-count\\"]")?.textContent || ""', page.sessionId),
+      /characters/,
+    );
+
+    await reloadPage(connection, page);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]")?.value || ""', (value) => value.includes('Wednesday practice'));
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid^=\\"input-follow-up-task-\\"]")?.value || ""', page.sessionId),
+      'Confirm tournament transport',
+    );
+
+    await connection.evaluate(`document.querySelector('[data-testid="button-end-meeting"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"button-review-recap\\"]"))', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-review-recap"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"text-recap-content\\"]"))', Boolean);
+    const recap = await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-recap-content\\"]")?.textContent || ""', page.sessionId);
+    assert.match(recap, /Wednesday practice/);
+    assert.match(recap, /Defense is the priority/);
+    assert.match(recap, /Confirm tournament transport/);
+    assert.match(recap, /Morgan Lee/);
+
+    await connection.evaluate(`document.querySelector('[data-testid="button-copy-recap"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-recap-actions\\"]")?.textContent || ""', (value) => value.length > 0);
+    await connection.evaluate(`document.querySelector('[data-testid="button-return-to-editing"]')?.click()`, page.sessionId);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]")?.value || ""', page.sessionId),
+      'We agreed to keep Wednesday practice focused on defense.',
+    );
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
     if (browser && browserMonitor) {
       if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
