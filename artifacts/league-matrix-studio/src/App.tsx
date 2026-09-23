@@ -1520,6 +1520,7 @@ function SupporterStudio() {
       <main className="flex-1 bg-background">
         <SupporterDashboardView
           profile={profile}
+          userId={user?.id}
           events={events}
           nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}

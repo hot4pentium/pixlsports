@@ -1923,6 +1923,21 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       false,
       'meeting route must not render the generic checklist',
     );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"text-meeting-prep-heading\\"]"))', page.sessionId),
+      true,
+      'an upcoming meeting must open the lightweight prep view',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]"))', page.sessionId),
+      false,
+      'prep must not expose live notes',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"button-end-meeting\\"]"))', page.sessionId),
+      false,
+      'prep must not expose the end action',
+    );
 
     const setField = async (selector: string, value: string) => {
       await connection!.evaluate(`(() => {
@@ -1935,13 +1950,53 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       })()`, page!.sessionId);
     };
 
+    await setField('[data-testid="input-prep-new-agenda"]', 'Confirm tournament transport');
+    await connection.evaluate(`document.querySelector('[data-testid="button-prep-add-agenda"]')?.click()`, page.sessionId);
+    await setField('[data-testid="input-prep-new-attendee"]', 'Morgan Lee');
+    await setField('[data-testid="input-prep-new-attendee-role"]', 'Captain');
+    await connection.evaluate(`document.querySelector('[data-testid="button-prep-add-attendee"]')?.click()`, page.sessionId);
+
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid^=\\"row-prep-agenda-\\"]"))', page.sessionId),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid^=\\"button-toggle-agenda-\\"]"))', page.sessionId),
+      false,
+      'prep agenda items must not have completion checkboxes',
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-prep-attendance-count\\"]")?.textContent || ""', page.sessionId),
+      /3 expected/,
+    );
+
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Array.from(document.querySelectorAll("[data-testid^=\\"input-prep-agenda-\\"]")).map((input) => input.value).join("|")',
+      (value) => value.includes('Confirm tournament transport'),
+    );
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Array.from(document.querySelectorAll("[data-testid^=\\"input-prep-agenda-\\"]")).map((input) => input.value).join("|")',
+      (value) => value.includes('Confirm tournament transport'),
+    );
+    assert.match(
+      await connection.evaluate<string>('Array.from(document.querySelectorAll("[data-testid^=\\"input-prep-agenda-\\"]")).map((input) => input.value).join("|")', page.sessionId),
+      /Confirm tournament transport/,
+      'prep edits must survive reload',
+    );
+
+    await navigatePage(
+      connection,
+      page,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?meeting-capture&gameId=meeting-1&eventType=meeting&title=Weekly%20Team%20Meeting&date=2020-09-25&time=17:00&location=Northside%20Clubhouse`,
+    );
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]"))', Boolean);
     await setField('[data-testid="textarea-meeting-notes"]', 'We agreed to keep Wednesday practice focused on defense.');
     await connection.evaluate(`document.querySelector('[data-testid^="button-toggle-agenda-"]')?.click()`, page.sessionId);
-    await setField('[data-testid="input-new-agenda"]', 'Confirm tournament transport');
-    await connection.evaluate(`document.querySelector('[data-testid="button-add-agenda"]')?.click()`, page.sessionId);
-    await setField('[data-testid="input-new-attendee"]', 'Morgan Lee');
-    await setField('[data-testid="input-new-attendee-role"]', 'Captain');
-    await connection.evaluate(`document.querySelector('[data-testid="button-add-attendee"]')?.click()`, page.sessionId);
     await connection.evaluate(`document.querySelector('[data-testid="button-add-decision"]')?.click()`, page.sessionId);
     await setField('[data-testid^="textarea-decision-"]', 'Defense is the priority for Wednesday.');
     await connection.evaluate(`document.querySelector('[data-testid="button-add-follow-up"]')?.click()`, page.sessionId);
@@ -1969,8 +2024,6 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
     );
 
     await connection.evaluate(`document.querySelector('[data-testid="button-end-meeting"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"button-review-recap\\"]"))', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="button-review-recap"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"text-recap-content\\"]"))', Boolean);
     const recap = await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-recap-content\\"]")?.textContent || ""', page.sessionId);
     assert.match(recap, /Wednesday practice/);

@@ -328,6 +328,7 @@ export function getNextUpcomingSupporterEvent<T extends SupporterWeekEventLike>(
 export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>(
   events: readonly T[],
   now = new Date(),
+  completedMeetingIds: readonly string[] = [],
 ): SupporterWeekRecommendation<T> | null {
   const games = events.filter((event) => event.type === 'game');
   const liveGame = games.find((game) => getSupporterGameStage(game, now) === 'live');
@@ -341,7 +342,9 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
   }
 
   const activeMeeting = events.find((event) => (
-    event.type === 'meeting' && getSupporterGameStage(event, now) === 'live'
+    event.type === 'meeting'
+    && !completedMeetingIds.includes(event.id)
+    && getSupporterGameStage(event, now) === 'live'
   ));
 
   if (activeMeeting) {
@@ -349,6 +352,18 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
       event: activeMeeting,
       kind: 'meeting',
       stage: 'live',
+    };
+  }
+
+  const completedMeeting = events.find((event) => (
+    event.type === 'meeting' && completedMeetingIds.includes(event.id)
+  ));
+
+  if (completedMeeting) {
+    return {
+      event: completedMeeting,
+      kind: 'meeting',
+      stage: 'completed',
     };
   }
 

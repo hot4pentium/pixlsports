@@ -6,6 +6,7 @@ import {
   Clipboard,
   Clock3,
   Copy,
+  Download,
   ListChecks,
   MapPin,
   MessageSquare,
@@ -21,50 +22,18 @@ import { useUser } from '@clerk/react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { readScheduleDraft } from '@/features/schedule-draft';
-
-type Participant = {
-  id: string;
-  name: string;
-  role: string;
-  present: boolean;
-};
-
-type AgendaItem = {
-  id: string;
-  label: string;
-  completed: boolean;
-};
-
-type Decision = {
-  id: string;
-  text: string;
-};
-
-type FollowUp = {
-  id: string;
-  task: string;
-  owner: string;
-  dueDate: string;
-};
-
-type MeetingState = {
-  notes: string;
-  participants: Participant[];
-  agenda: AgendaItem[];
-  decisions: Decision[];
-  followUps: FollowUp[];
-  endedAt: string | null;
-};
-
-type MeetingContext = {
-  id: string;
-  date: string;
-  time: string;
-  location: string;
-  title: string;
-};
-
-const meetingStoragePrefix = 'pixlsports-meeting-capture';
+import {
+  getMeetingPhase,
+  meetingStorageKey,
+  readMeetingState,
+  type MeetingAgendaItem as AgendaItem,
+  type MeetingContext,
+  type MeetingDecision as Decision,
+  type MeetingFollowUp as FollowUp,
+  type MeetingParticipant as Participant,
+  type MeetingState,
+} from './meeting-capture-model';
+import { downloadMeetingRecapPdf } from './meeting-recap-pdf';
 
 const starterParticipants: Participant[] = [
   { id: 'participant-coach', name: 'Coach', role: 'Coach', present: true },
@@ -82,14 +51,16 @@ function makeId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function blankMeetingState(): MeetingState {
+function blankMeetingState(context: MeetingContext): MeetingState {
   return {
     notes: '',
     participants: starterParticipants.map((participant) => ({ ...participant })),
     agenda: starterAgenda.map((item) => ({ ...item })),
     decisions: [{ id: makeId('decision'), text: '' }],
     followUps: [],
+    startedAt: null,
     endedAt: null,
+    context,
   };
 }
 
@@ -118,85 +89,6 @@ function getMeetingContext(): MeetingContext {
     location: textParam(params, 'location') || event?.location || '',
     title: queryTitle || eventTitle || (eventType === 'meeting' ? 'Team meeting' : 'Team meeting'),
   };
-}
-
-function normalizeMeetingState(value: unknown): MeetingState | null {
-  if (typeof value !== 'object' || value === null) return null;
-  const input = value as Partial<MeetingState>;
-  if (!Array.isArray(input.participants) || !Array.isArray(input.agenda)) return null;
-
-  const participants = input.participants
-    .filter((item): item is Participant => (
-      typeof item === 'object'
-      && item !== null
-      && typeof (item as Participant).id === 'string'
-      && typeof (item as Participant).name === 'string'
-    ))
-    .slice(0, 100)
-    .map((item) => ({
-      id: item.id,
-      name: item.name.trim() || 'Unnamed attendee',
-      role: typeof item.role === 'string' ? item.role : '',
-      present: Boolean(item.present),
-    }));
-  const agenda = input.agenda
-    .filter((item): item is AgendaItem => (
-      typeof item === 'object'
-      && item !== null
-      && typeof (item as AgendaItem).id === 'string'
-      && typeof (item as AgendaItem).label === 'string'
-    ))
-    .slice(0, 100)
-    .map((item) => ({
-      id: item.id,
-      label: item.label.trim() || 'Untitled agenda item',
-      completed: Boolean(item.completed),
-    }));
-  const decisions = Array.isArray(input.decisions)
-    ? input.decisions
-      .filter((item): item is Decision => (
-        typeof item === 'object'
-        && item !== null
-        && typeof (item as Decision).id === 'string'
-        && typeof (item as Decision).text === 'string'
-      ))
-      .slice(0, 100)
-      .map((item) => ({ id: item.id, text: item.text }))
-    : [];
-  const followUps = Array.isArray(input.followUps)
-    ? input.followUps
-      .filter((item): item is FollowUp => (
-        typeof item === 'object'
-        && item !== null
-        && typeof (item as FollowUp).id === 'string'
-        && typeof (item as FollowUp).task === 'string'
-      ))
-      .slice(0, 100)
-      .map((item) => ({
-        id: item.id,
-        task: item.task,
-        owner: typeof item.owner === 'string' ? item.owner : '',
-        dueDate: typeof item.dueDate === 'string' ? item.dueDate : '',
-      }))
-    : [];
-
-  return {
-    notes: typeof input.notes === 'string' ? input.notes : '',
-    participants,
-    agenda,
-    decisions,
-    followUps,
-    endedAt: typeof input.endedAt === 'string' ? input.endedAt : null,
-  };
-}
-
-function readMeetingState(key: string): MeetingState | null {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? normalizeMeetingState(JSON.parse(raw)) : null;
-  } catch {
-    return null;
-  }
 }
 
 function formatDate(value: string) {
@@ -268,11 +160,13 @@ function MeetingHeader({
   context,
   ended,
   recap,
+  prep = false,
   onBack,
 }: {
   context: MeetingContext;
   ended: boolean;
   recap: boolean;
+  prep?: boolean;
   onBack: () => void;
 }) {
   return (
@@ -290,7 +184,7 @@ function MeetingHeader({
           </button>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6e94b2]" data-testid="text-meeting-mode">
             <span className={`h-2 w-2 rounded-full ${ended ? 'bg-[#8b9aad]' : 'animate-pulse bg-[#f7c97a]'}`} />
-            {recap ? 'Recap' : ended ? 'Meeting ended' : 'Live capture'}
+            {recap ? 'Recap' : ended ? 'Meeting ended' : prep ? 'Prep' : 'Live capture'}
           </div>
         </div>
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -317,22 +211,26 @@ function MeetingHeader({
 export function MeetingCapture() {
   const { user } = useUser();
   const context = useMemo(() => getMeetingContext(), []);
-  const storageKey = `${meetingStoragePrefix}:${user?.id || 'guest'}:${context.id}`;
-  const [state, setState] = useState<MeetingState>(() => readMeetingState(storageKey) ?? blankMeetingState());
+  const storageKey = meetingStorageKey(user?.id || 'guest', context.id);
+  const requestedView = useMemo(() => new URLSearchParams(window.location.search).get('view'), []);
+  const [state, setState] = useState<MeetingState>(() => readMeetingState(window.localStorage, storageKey) ?? blankMeetingState(context));
   const [loadedKey, setLoadedKey] = useState(storageKey);
-  const [showRecap, setShowRecap] = useState(false);
+  const [showRecap, setShowRecap] = useState(() => requestedView === 'share' || requestedView === 'review');
+  const [editingEnded, setEditingEnded] = useState(false);
   const [attendeeName, setAttendeeName] = useState('');
   const [attendeeRole, setAttendeeRole] = useState('');
   const [agendaDraft, setAgendaDraft] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [shareStatus, setShareStatus] = useState('');
+  const [pdfStatus, setPdfStatus] = useState('');
+  const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
     if (storageKey === loadedKey) return;
-    const restored = readMeetingState(storageKey);
-    const guestKey = `${meetingStoragePrefix}:guest:${context.id}`;
-    const guestState = restored ? null : readMeetingState(guestKey);
-    setState(restored ?? guestState ?? blankMeetingState());
+    const restored = readMeetingState(window.localStorage, storageKey);
+    const guestKey = meetingStorageKey('guest', context.id);
+    const guestState = restored ? null : readMeetingState(window.localStorage, guestKey);
+    setState(restored ?? guestState ?? blankMeetingState(context));
     if (!restored && guestState && storageKey !== guestKey) {
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(guestState));
@@ -341,8 +239,9 @@ export function MeetingCapture() {
       }
     }
     setLoadedKey(storageKey);
-    setShowRecap(false);
-  }, [loadedKey, storageKey]);
+    setShowRecap(requestedView === 'share' || requestedView === 'review');
+    setEditingEnded(false);
+  }, [context, loadedKey, requestedView, storageKey]);
 
   useEffect(() => {
     if (loadedKey !== storageKey) return;
@@ -353,13 +252,32 @@ export function MeetingCapture() {
     }
   }, [loadedKey, state, storageKey]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(new Date()), 15_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (state.context?.id === context.id) return;
+    setState((current) => ({ ...current, context }));
+  }, [context, state.context?.id]);
+
   const completedAgenda = state.agenda.filter((item) => item.completed).length;
   const presentCount = state.participants.filter((participant) => participant.present).length;
   const agendaProgress = state.agenda.length ? Math.round((completedAgenda / state.agenda.length) * 100) : 0;
   const ended = Boolean(state.endedAt);
+  const phase = getMeetingPhase(context, state, currentTime);
 
   const updateState = (patch: Partial<MeetingState>) => {
-    setState((current) => ({ ...current, ...patch }));
+    setState((current) => {
+      const next = { ...current, ...patch };
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // The meeting remains usable if browser storage is unavailable.
+      }
+      return next;
+    });
   };
 
   const toggleParticipant = (id: string) => {
@@ -419,9 +337,14 @@ export function MeetingCapture() {
   };
 
   const handleEndMeeting = () => {
-    updateState({ endedAt: new Date().toISOString() });
+    updateState({
+      startedAt: state.startedAt ?? new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+    });
     setCopyStatus('');
     setShareStatus('');
+    setEditingEnded(false);
+    setShowRecap(true);
   };
 
   const handleCopy = async () => {
@@ -448,6 +371,15 @@ export function MeetingCapture() {
     }
   };
 
+  const handleDownloadPdf = () => {
+    try {
+      downloadMeetingRecapPdf(context, state);
+      setPdfStatus('PDF downloaded.');
+    } catch {
+      setPdfStatus('PDF could not be created on this device. Copy the recap instead.');
+    }
+  };
+
   const handleBack = () => {
     // Preserve the artifact base path while returning to the studio dashboard.
     window.location.assign(
@@ -455,7 +387,9 @@ export function MeetingCapture() {
     );
   };
 
-  if (showRecap) {
+  const showRecapView = ended && (showRecap || (phase === 'share' && !editingEnded));
+
+  if (showRecapView) {
     return (
       <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
         <MeetingHeader context={context} ended={ended} recap onBack={handleBack} />
@@ -470,7 +404,10 @@ export function MeetingCapture() {
             </div>
             <button
               type="button"
-              onClick={() => setShowRecap(false)}
+              onClick={() => {
+                setShowRecap(false);
+                setEditingEnded(true);
+              }}
               className="inline-flex items-center gap-2 border border-[#426481] bg-[#163858] px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-[#f6f2e9] transition-colors hover:border-[#f7c97a] hover:text-[#f7c97a]"
               data-testid="button-return-to-editing"
             >
@@ -489,14 +426,101 @@ export function MeetingCapture() {
             <button type="button" onClick={handleCopy} className="inline-flex items-center justify-center gap-2 bg-[#e8a45c] px-5 py-3 text-xs font-bold uppercase tracking-[0.15em] text-[#18263a] transition-transform hover:-translate-y-0.5" data-testid="button-copy-recap">
               <Copy className="h-4 w-4" /> Copy recap
             </button>
+            <button type="button" onClick={handleDownloadPdf} className="inline-flex items-center justify-center gap-2 border border-[#e8a45c] bg-[#102b4d] px-5 py-3 text-xs font-bold uppercase tracking-[0.15em] text-[#f7c97a] transition-colors hover:bg-[#e8a45c] hover:text-[#18263a]" data-testid="button-download-recap-pdf">
+              <Download className="h-4 w-4" /> Download PDF
+            </button>
             <button type="button" onClick={handleShare} className="inline-flex items-center justify-center gap-2 border border-[#6385a0] bg-[#163858] px-5 py-3 text-xs font-bold uppercase tracking-[0.15em] text-[#f6f2e9] transition-colors hover:border-[#f7c97a] hover:text-[#f7c97a]" data-testid="button-share-recap">
               <Send className="h-4 w-4" /> Share recap
             </button>
           </div>
           <div className="mt-4 min-h-6 space-y-1 text-sm text-[#f7c97a]" aria-live="polite" data-testid="status-recap-actions">
             {copyStatus && <p data-testid="status-copy-recap">{copyStatus}</p>}
+            {pdfStatus && <p data-testid="status-download-recap-pdf">{pdfStatus}</p>}
             {shareStatus && <p data-testid="status-share-recap">{shareStatus}</p>}
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (phase === 'prep') {
+    return (
+      <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
+        <MeetingHeader context={context} ended={false} recap={false} prep onBack={handleBack} />
+        <main className="mx-auto max-w-4xl px-5 py-7 sm:px-8 sm:py-10">
+          <div className="mb-8 border-b border-white/10 pb-6">
+            <SectionLabel>Before the room</SectionLabel>
+            <h2 className="mt-3 font-display text-4xl uppercase leading-none sm:text-6xl" data-testid="text-meeting-prep-heading">Meeting prep</h2>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-[#aec5d3]" data-testid="text-meeting-prep-description">
+              Set the agenda and who should be in the room. Live notes and follow-ups will appear when the meeting starts.
+            </p>
+            <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-[#6f95b2]" data-testid="text-meeting-prep-save-status">
+              Saved locally to this team workspace
+            </p>
+          </div>
+
+          <div className="grid gap-5">
+            <section className="border border-[#426481] bg-[#102b4d] p-5 sm:p-7" aria-labelledby="prep-agenda-heading">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <SectionLabel>Set the plan</SectionLabel>
+                  <h2 id="prep-agenda-heading" className="mt-3 font-display text-3xl uppercase leading-none">Agenda</h2>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#8aa9c1]">Editable</span>
+              </div>
+              <div className="mt-5 space-y-2">
+                {state.agenda.map((item) => (
+                  <div key={item.id} className="border-b border-white/10 py-2" data-testid={`row-prep-agenda-${item.id}`}>
+                    <label htmlFor={`prep-agenda-${item.id}`} className="sr-only">Agenda item {item.id}</label>
+                    <input
+                      id={`prep-agenda-${item.id}`}
+                      aria-label={`Agenda item ${item.id}`}
+                      value={item.label}
+                      onChange={(event) => updateAgendaItem(item.id, event.target.value)}
+                      className="w-full bg-transparent py-1 text-sm text-[#f6f2e9] outline-none focus:border-b focus:border-[#f7c97a]"
+                      data-testid={`input-prep-agenda-${item.id}`}
+                    />
+                  </div>
+                ))}
+              </div>
+              <form onSubmit={addAgendaItem} className="mt-4 flex gap-2">
+                <label htmlFor="prep-new-agenda-item" className="sr-only">New agenda item</label>
+                <input id="prep-new-agenda-item" value={agendaDraft} onChange={(event) => setAgendaDraft(event.target.value)} placeholder="Add an agenda item" className="min-w-0 flex-1 border border-[#41627e] bg-[#0c2643] px-3 py-2.5 text-sm text-[#f6f2e9] placeholder:text-[#6d91ad] outline-none focus:border-[#f7c97a]" data-testid="input-prep-new-agenda" />
+                <button type="submit" className="grid min-h-11 w-11 shrink-0 place-items-center bg-[#e8a45c] text-[#18263a]" aria-label="Add agenda item" data-testid="button-prep-add-agenda"><Plus className="h-5 w-5" /></button>
+              </form>
+            </section>
+
+            <section className="border border-[#426481] bg-[#163858] p-5 sm:p-7" aria-labelledby="prep-attendance-heading">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <SectionLabel>Invite the room</SectionLabel>
+                  <h2 id="prep-attendance-heading" className="mt-3 font-display text-3xl uppercase leading-none">Attendees</h2>
+                </div>
+                <span className="text-sm text-[#f7c97a]" data-testid="text-prep-attendance-count">{presentCount} expected</span>
+              </div>
+              <div className="mt-4 space-y-2">
+                {state.participants.map((participant) => (
+                  <div key={participant.id} className="flex items-center gap-2 border-b border-white/10 py-2" data-testid={`row-prep-participant-${participant.id}`}>
+                    <button type="button" onClick={() => toggleParticipant(participant.id)} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border transition-colors ${participant.present ? 'border-[#e8a45c] bg-[#e8a45c] text-[#18263a]' : 'border-[#6385a0] text-[#6385a0]'}`} aria-label={`${participant.present ? 'Mark absent' : 'Mark expected'}: ${participant.name}`} aria-pressed={participant.present} data-testid={`button-prep-toggle-participant-${participant.id}`}>
+                      {participant.present ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </button>
+                    <input aria-label={`Attendee name ${participant.id}`} value={participant.name} onChange={(event) => updateParticipant(participant.id, { name: event.target.value })} className="min-w-0 flex-1 bg-transparent py-1 text-sm text-[#f6f2e9] outline-none focus:border-b focus:border-[#f7c97a]" data-testid={`input-prep-participant-name-${participant.id}`} />
+                    <input aria-label={`Attendee role ${participant.id}`} value={participant.role} onChange={(event) => updateParticipant(participant.id, { role: event.target.value })} className="hidden w-28 bg-transparent py-1 text-right text-xs text-[#8faec2] outline-none focus:border-b focus:border-[#f7c97a] sm:block" data-testid={`input-prep-participant-role-${participant.id}`} />
+                  </div>
+                ))}
+              </div>
+              <form onSubmit={addAttendee} className="mt-4 grid gap-2 sm:grid-cols-[1fr_120px_auto]">
+                <label htmlFor="prep-new-attendee-name" className="sr-only">Attendee name</label>
+                <input id="prep-new-attendee-name" value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} placeholder="Add attendee" className="border border-[#41627e] bg-[#0c2643] px-3 py-2.5 text-sm text-[#f6f2e9] placeholder:text-[#6d91ad] outline-none focus:border-[#f7c97a]" data-testid="input-prep-new-attendee" />
+                <label htmlFor="prep-new-attendee-role" className="sr-only">Attendee role</label>
+                <input id="prep-new-attendee-role" value={attendeeRole} onChange={(event) => setAttendeeRole(event.target.value)} placeholder="Role" className="border border-[#41627e] bg-[#0c2643] px-3 py-2.5 text-sm text-[#f6f2e9] placeholder:text-[#6d91ad] outline-none focus:border-[#f7c97a]" data-testid="input-prep-new-attendee-role" />
+                <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 border border-[#6385a0] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#f6f2e9] hover:border-[#f7c97a] hover:text-[#f7c97a]" data-testid="button-prep-add-attendee"><Plus className="h-4 w-4" /> Add</button>
+              </form>
+            </section>
+          </div>
+          <p className="mt-6 text-center text-xs font-bold uppercase tracking-[0.16em] text-[#6f95b2]" data-testid="text-meeting-prep-boundary">
+            Live capture opens at the scheduled meeting time.
+          </p>
         </main>
       </div>
     );

@@ -7,7 +7,7 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "test": "tsx --test src/features/schedule-draft.test.ts src/features/schedule-parent-link.test.ts src/features/schedule-install.test.ts src/features/schedule-offline.test.ts src/features/landing-home.test.ts src/features/public-hype-card.test.ts src/features/athlete-invite.test.ts src/features/athlete-video-carousel.test.ts src/features/hype-card-notice.test.ts src/features/hype-card-stats-link.test.ts src/features/hype-card-media-sync.test.ts src/features/hype-card-svg.test.ts src/features/hype-card-export.test.ts src/features/hype-card-persistence.test.ts src/features/privacy-copy.test.ts src/features/guest-access.test.ts src/features/supporter-photo-cache.test.ts src/features/supporter-dashboard-model.test.ts src/features/notification-settings.test.ts src/features/stat-tracker.test.ts src/features/stat-tracker-share.test.ts src/features/studio-role-boundary.test.tsx src/features/supporter-schedule-selector.test.tsx src/features/gameday-checklist.test.ts src/features/landing-role-flow.test.ts src/features/preview-routing.test.ts",
+    "test": "tsx --test src/features/schedule-draft.test.ts src/features/schedule-parent-link.test.ts src/features/schedule-install.test.ts src/features/schedule-offline.test.ts src/features/landing-home.test.ts src/features/public-hype-card.test.ts src/features/athlete-invite.test.ts src/features/athlete-video-carousel.test.ts src/features/hype-card-notice.test.ts src/features/hype-card-stats-link.test.ts src/features/hype-card-media-sync.test.ts src/features/hype-card-svg.test.ts src/features/hype-card-export.test.ts src/features/hype-card-persistence.test.ts src/features/privacy-copy.test.ts src/features/guest-access.test.ts src/features/supporter-photo-cache.test.ts src/features/supporter-dashboard-model.test.ts src/features/meeting-capture-model.test.ts src/features/notification-settings.test.ts src/features/stat-tracker.test.ts src/features/stat-tracker-share.test.ts src/features/studio-role-boundary.test.tsx src/features/supporter-schedule-selector.test.tsx src/features/gameday-checklist.test.ts src/features/landing-role-flow.test.ts src/features/preview-routing.test.ts",
     "test:stat-tracker-browser": "tsx --test src/features/stat-tracker.browser.test.ts",
     "test:stat-tracker-spectator-browser": "tsx --test --test-concurrency=1 src/features/stat-tracker-spectator.browser.test.ts",
     "test:landing-home-browser": "tsx --test src/features/landing-home.browser.test.ts",
@@ -89,6 +89,7 @@
     "@clerk/react": "^6.15.2",
     "@clerk/themes": "^2.4.57",
     "@types/qrcode": "1.5.5",
+    "jspdf": "^4.2.1",
     "qrcode": "1.5.4"
   }
 }

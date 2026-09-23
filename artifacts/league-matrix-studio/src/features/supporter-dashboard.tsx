@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  Home, PlusSquare, Check, Sparkles, Menu, RotateCcw
+  Home, PlusSquare, Check, Sparkles, Menu, RotateCcw, Send
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -22,6 +22,7 @@ import {
   supporterToolRoutes,
   type SupporterGameStage,
 } from './supporter-dashboard-model';
+import { listCompletedMeetingRecords } from './meeting-capture-model';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
@@ -149,6 +150,7 @@ function AthleteCardPreview({
 
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
+  userId?: string | null;
   events: SupporterEvent[];
   nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
@@ -221,6 +223,51 @@ function getEventDateParts(dateStr: string) {
   return { month: 'TBD', day: '-', dayOfWeek: '' };
 }
 
+function PreviousMeetingsSection({
+  records,
+}: {
+  records: ReturnType<typeof listCompletedMeetingRecords>;
+}) {
+  return (
+    <section className="border border-border bg-card p-5 sm:p-7" data-testid="section-previous-meetings" aria-labelledby="previous-meetings-heading">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Your local notebook</p>
+          <h2 id="previous-meetings-heading" className="mt-2 font-display text-3xl uppercase tracking-wide">Previous meetings</h2>
+        </div>
+        <p className="text-xs font-medium text-muted-foreground">Saved on this device</p>
+      </div>
+      {records.length === 0 ? (
+        <div className="py-8 text-sm text-muted-foreground" data-testid="meeting-history-empty">
+          <p className="font-bold uppercase tracking-widest text-foreground">No completed meetings yet</p>
+          <p className="mt-2 max-w-lg leading-relaxed">When you end a meeting, its recap will stay here so you can review it later.</p>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2">
+          {records.map((record) => (
+            <div key={record.context.id} className="flex flex-col gap-3 border border-border/70 bg-background p-4 sm:flex-row sm:items-center sm:justify-between" data-testid={`meeting-history-item-${record.context.id}`}>
+              <div className="min-w-0">
+                <h3 className="break-words font-display text-xl uppercase tracking-wide">{record.context.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatDateDisplay(record.context.date)} · {formatTimeDisplay(record.context.time)}
+                  {record.context.location ? ` · ${record.context.location}` : ''}
+                </p>
+              </div>
+              <Link
+                href={`/studio/checklist?gameId=${encodeURIComponent(record.context.id)}&eventType=meeting&view=review`}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-primary/60 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:bg-primary/10"
+                data-testid={`button-review-meeting-${record.context.id}`}
+              >
+                Review recap <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 const stageCopy: Record<SupporterGameStage, {
   label: string;
   kicker: string;
@@ -249,6 +296,7 @@ const stageCopy: Record<SupporterGameStage, {
 
 export function SupporterDashboardView({
   profile,
+  userId,
   events,
   nextGameIsUpcoming,
   projects,
@@ -264,6 +312,10 @@ export function SupporterDashboardView({
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const meetingScope = userId || 'guest';
+  const [meetingHistory, setMeetingHistory] = useState(() => (
+    typeof window === 'undefined' ? [] : listCompletedMeetingRecords(window.localStorage, meetingScope, events)
+  ));
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
@@ -273,11 +325,44 @@ export function SupporterDashboardView({
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const refreshMeetingHistory = () => {
+      setMeetingHistory(listCompletedMeetingRecords(window.localStorage, meetingScope, events));
+    };
+    refreshMeetingHistory();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (event.key?.startsWith(`pixlsports-meeting-capture:${meetingScope}:`)) refreshMeetingHistory();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [events, meetingScope]);
+
   const hasAthlete = Boolean(profile.athleteName);
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null, currentTime);
-  const weekRecommendation = getSupporterWeekRecommendation(events, currentTime);
+  const recommendationEvents: SupporterEvent[] = [
+    ...events,
+    ...meetingHistory
+      .filter((record) => !events.some((event) => event.id === record.context.id))
+      .map((record) => ({
+        id: record.context.id,
+        type: 'meeting' as const,
+        date: record.context.date,
+        time: record.context.time,
+        location: record.context.location,
+        opponent: record.context.title,
+      })),
+  ];
+  const weekRecommendation = getSupporterWeekRecommendation(
+    recommendationEvents,
+    currentTime,
+    meetingHistory.map((record) => record.context.id),
+  );
   const activeMeetingEvent = weekRecommendation?.kind === 'meeting' && weekRecommendation.stage === 'live'
+    ? weekRecommendation.event
+    : undefined;
+  const completedMeetingEvent = weekRecommendation?.kind === 'meeting' && weekRecommendation.stage === 'completed'
     ? weekRecommendation.event
     : undefined;
   const recommendedPreparationEvent = getSupporterPreparationContext(
@@ -288,10 +373,12 @@ export function SupporterDashboardView({
     currentTime,
   );
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
-  const contextEvent = activeMeetingEvent ?? recommendedPreparationEvent ?? nextGame;
-  const gameStage: SupporterGameStage = contextEvent
-    ? getSupporterGameStage(contextEvent, currentTime)
-    : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
+  const contextEvent = activeMeetingEvent ?? recommendedPreparationEvent ?? completedMeetingEvent ?? nextGame;
+  const gameStage: SupporterGameStage = completedMeetingEvent
+    ? 'completed'
+    : contextEvent
+      ? getSupporterGameStage(contextEvent, currentTime)
+      : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const recommendedGameStage = recommendedGame
     ? getSupporterGameStage(recommendedGame, currentTime)
     : null;
@@ -310,6 +397,14 @@ export function SupporterDashboardView({
       description: 'Keep the agenda and meeting details together while you are in the room.',
       accent: 'Meeting',
     }
+    : completedMeetingEvent
+      ? {
+        ...stageCopy.completed,
+        label: 'Share the recap',
+        kicker: 'Meeting complete',
+        description: 'Your meeting recap is ready to review and share from this device.',
+        accent: 'Share',
+      }
     : contextEvent && gameStage === 'upcoming'
     ? {
       ...stageCopy[gameStage],
@@ -351,8 +446,8 @@ export function SupporterDashboardView({
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
     ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
     : supporterToolRoutes.statTracker;
-  const checklistHrefForGame = (event: SupporterEvent | undefined) => event
-    ? `/studio/checklist?gameId=${encodeURIComponent(event.id)}&eventType=${encodeURIComponent(event.type)}`
+  const checklistHrefForGame = (event: SupporterEvent | undefined, view?: 'share' | 'review') => event
+    ? `/studio/checklist?gameId=${encodeURIComponent(event.id)}&eventType=${encodeURIComponent(event.type)}${view ? `&view=${view}` : ''}`
     : supporterToolRoutes.checklist;
   const statTrackerHref = statTrackerHrefForGame(nextGame);
   const contextChecklistHref = checklistHrefForGame(contextEvent);
@@ -387,9 +482,9 @@ export function SupporterDashboardView({
     {
       id: 'completed',
       number: '04',
-      label: 'Send the hype',
-      Icon: Zap,
-      href: hypeCardHref,
+      label: completedMeetingEvent ? 'Share' : 'Send the hype',
+      Icon: completedMeetingEvent ? Send : Zap,
+      href: completedMeetingEvent ? checklistHrefForGame(completedMeetingEvent, 'share') : hypeCardHref,
       active: Boolean(weekRecommendation && weekRecommendation.stage === 'completed'),
     },
   ] as const;
@@ -472,7 +567,7 @@ export function SupporterDashboardView({
       eyebrow: '02 / Preparation',
       title: preparationTitle,
       description: preparationCopy.description,
-      action: 'Open checklist',
+      action: contextEvent?.type === 'meeting' ? 'Open agenda' : 'Open checklist',
     },
     live: activeMeetingEvent
       ? {
@@ -488,10 +583,12 @@ export function SupporterDashboardView({
         action: 'Start game day',
       },
     completed: {
-      eyebrow: '04 / Celebration',
-      title: 'Celebrate the moment.',
-      description: 'Turn the game’s highlights into something your athlete can share.',
-      action: 'Create hype card',
+      eyebrow: completedMeetingEvent ? '04 / Share' : '04 / Celebration',
+      title: completedMeetingEvent ? 'Share the meeting recap.' : 'Celebrate the moment.',
+      description: completedMeetingEvent
+        ? 'Review the notes, decisions, and follow-ups, then share the recap from this device.'
+        : 'Turn the game’s highlights into something your athlete can share.',
+      action: completedMeetingEvent ? 'Open meeting recap' : 'Create hype card',
     },
   };
   const selectedPathDetails = weeklyPathDetails[selectedPath.id];
@@ -733,7 +830,7 @@ export function SupporterDashboardView({
                         </span>
                         <span className="mobile-week-path-label">
                           <span className="sr-only">Step {index + 1}: </span>
-                          {step.id === 'plan' ? 'Plan' : step.id === 'upcoming' ? 'Prep' : step.id === 'live' ? 'Capture' : 'Send'}
+                          {step.id === 'plan' ? 'Plan' : step.id === 'upcoming' ? 'Prep' : step.id === 'live' ? 'Capture' : completedMeetingEvent ? 'Share' : 'Send'}
                         </span>
                         <StepIcon className="mobile-week-path-icon h-4 w-4" aria-hidden="true" />
                         <span className="mobile-week-path-state">
@@ -788,6 +885,8 @@ export function SupporterDashboardView({
                <p className="text-center text-[13px] font-medium text-black/40 mt-4">{mobileFeaturedEvent ? "Suggested from your next event" : "Add an event to get a recommendation"}</p>
              </div>
           </section>
+
+          <PreviousMeetingsSection records={meetingHistory} />
 
         </div>
 
@@ -1011,10 +1110,12 @@ export function SupporterDashboardView({
             )}
             <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {gameStage === 'upcoming' && contextEvent && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
+              {gameStage === 'upcoming' && contextEvent?.type === 'meeting' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-prep"><ClipboardCheck className="h-4 w-4" /> Open agenda</button>}
+              {gameStage === 'upcoming' && contextEvent?.type !== 'meeting' && contextEvent && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
               {gameStage === 'live' && contextEvent?.type === 'meeting' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-checklist"><ClipboardCheck className="h-4 w-4" /> Open meeting checklist</button>}
               {gameStage === 'live' && contextEvent?.type !== 'meeting' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
-              {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
+              {completedMeetingEvent && <button type="button" onClick={() => setLocation(checklistHrefForGame(completedMeetingEvent, 'share'))} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-recap"><Send className="h-4 w-4" /> Open recap</button>}
+              {gameStage === 'completed' && !completedMeetingEvent && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
               {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
             </div>
           </div>
@@ -1104,6 +1205,8 @@ export function SupporterDashboardView({
           </div>
         </div>
         </section>
+
+        <PreviousMeetingsSection records={meetingHistory} />
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div hidden>
