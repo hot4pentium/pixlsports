@@ -1,7 +1,7 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { CalendarDays, Activity, Zap, ArrowRight, Check, Menu, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CalendarDays, Activity, Zap, ArrowRight, Check, Maximize2, Menu, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 // Using responsive images
 import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
@@ -132,6 +132,64 @@ function LandingSportShowcase() {
 
 export function PublicLandingPage() {
   const prefersReducedMotion = usePrefersReducedMotion();
+  const checklistVideoRef = useRef<HTMLVideoElement>(null);
+  const fullscreenDialogRef = useRef<HTMLDialogElement>(null);
+  const fallbackVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = checklistVideoRef.current;
+    if (!video) return;
+    const restorePreview = () => {
+      video.controls = false;
+      video.muted = true;
+    };
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement !== video) restorePreview();
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    video.addEventListener('webkitendfullscreen', restorePreview);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      video.removeEventListener('webkitendfullscreen', restorePreview);
+    };
+  }, []);
+
+  const expandChecklistVideo = async () => {
+    const video = checklistVideoRef.current;
+    if (!video) return;
+    video.controls = true;
+    video.muted = false;
+
+    if (typeof video.requestFullscreen === 'function') {
+      try {
+        await video.requestFullscreen();
+        return;
+      } catch {
+        // Some mobile browsers only support their native video fullscreen method.
+      }
+    }
+
+    const webkitVideo = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+    if (typeof webkitVideo.webkitEnterFullscreen === 'function') {
+      try {
+        webkitVideo.webkitEnterFullscreen();
+        return;
+      } catch {
+        // Use the full-window viewer when native fullscreen is unavailable.
+      }
+    }
+
+    video.controls = false;
+    video.muted = true;
+    const dialog = fullscreenDialogRef.current;
+    const fallbackVideo = fallbackVideoRef.current;
+    if (!dialog || !fallbackVideo) return;
+    fallbackVideo.currentTime = video.currentTime;
+    dialog.showModal();
+    void fallbackVideo.play().catch(() => {
+      // Playback controls remain available if the browser requires a second tap.
+    });
+  };
 
   return (
     <div className="new-landing">
@@ -248,8 +306,9 @@ export function PublicLandingPage() {
                         </li>
                       </ul>
                     </div>
-                    <div className="flex items-start justify-center lg:pt-0">
+                    <div className="flex flex-col items-center justify-center gap-2 lg:pt-0">
                       <video
+                        ref={checklistVideoRef}
                         src={planChecklistVideo}
                         autoPlay={!prefersReducedMotion}
                         muted
@@ -261,6 +320,16 @@ export function PublicLandingPage() {
                         data-testid="landing-checklist-video"
                         className="landing-checklist-video w-full max-w-[240px] object-cover"
                       />
+                      <button
+                        type="button"
+                        onClick={() => { void expandChecklistVideo(); }}
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-landing-gray/30 px-2 text-[10px] font-bold text-landing-text transition-colors hover:border-landing-orange lg:hidden"
+                        aria-label="Play checklist video full screen"
+                        data-testid="button-checklist-video-fullscreen"
+                      >
+                        <Maximize2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        Full screen
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -448,6 +517,32 @@ export function PublicLandingPage() {
           </div>
         </section>
       </main>
+      <dialog
+        ref={fullscreenDialogRef}
+        className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-black p-4 text-white backdrop:bg-black"
+        aria-label="Checklist video full screen"
+        onClose={() => fallbackVideoRef.current?.pause()}
+      >
+        <div className="flex h-full flex-col items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => fullscreenDialogRef.current?.close()}
+            className="self-end rounded-md border border-white/50 px-4 py-2 text-sm font-bold"
+            aria-label="Close full screen video"
+          >
+            Close
+          </button>
+          <video
+            ref={fallbackVideoRef}
+            src={planChecklistVideo}
+            poster={planChecklistPoster}
+            controls
+            playsInline
+            className="min-h-0 max-h-[calc(100dvh-100px)] max-w-full flex-1 object-contain"
+            aria-label="Plan and game day checklist video"
+          />
+        </div>
+      </dialog>
       <LandingFooter />
     </div>
   );

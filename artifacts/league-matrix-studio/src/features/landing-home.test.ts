@@ -42,9 +42,18 @@ test('before-game-day guidance includes the uploaded checklist video', () => {
   assert.match(landingSource, /<video/);
   assert.match(landingSource, /autoPlay/);
   assert.match(landingSource, /autoPlay=\{!prefersReducedMotion\}/);
-  assert.doesNotMatch(landingSource, /\scontrols(?:\s|>|=)/);
+  const previewVideo = landingSource.slice(landingSource.indexOf('ref={checklistVideoRef}'), landingSource.indexOf('data-testid="landing-checklist-video"'));
+  assert.doesNotMatch(previewVideo, /\scontrols(?:\s|>|=)/);
   assert.match(landingSource, /playsInline/);
   assert.match(landingSource, /usePrefersReducedMotion/);
+});
+
+test('mobile checklist video opens native fullscreen or a full-window fallback', () => {
+  assert.match(landingSource, /data-testid="button-checklist-video-fullscreen"/);
+  assert.match(landingSource, /video\.requestFullscreen\(\)/);
+  assert.match(landingSource, /webkitVideo\.webkitEnterFullscreen\(\)/);
+  assert.match(landingSource, /dialog\.showModal\(\)/);
+  assert.match(landingSource, /aria-label="Close full screen video"/);
 });
 
 test('checklist video uses the phone crop without a native player shell', () => {

@@ -252,6 +252,22 @@ test('landing sports banner scrolls on phones without overflowing the page', asy
        assert.equal(layout.checklistVideo.muted, true);
        assert.equal(layout.checklistVideo.loop, true);
        assert.equal(layout.checklistVideo.playsInline, true);
+       if (width === 393) {
+         await connection.evaluate(
+           'document.querySelector("[data-testid=\\"button-checklist-video-fullscreen\\"]")?.click()',
+           page.sessionId,
+         );
+         await waitFor(
+           connection,
+           page.sessionId,
+           'Boolean(document.fullscreenElement) || Boolean(document.querySelector("dialog[open]"))',
+           (expanded) => expanded === true,
+         );
+         await connection.evaluate(
+           'document.fullscreenElement ? document.exitFullscreen() : document.querySelector("dialog[open]")?.close()',
+           page.sessionId,
+         );
+       }
     }
 
     const desktopPage = await openLandingPage(connection, `http://127.0.0.1:${port}/`, {
