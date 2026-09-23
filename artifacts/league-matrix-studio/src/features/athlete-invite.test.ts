@@ -72,6 +72,9 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /export function OwnerAthleteInviteManagePage/);
   assert.match(source, /data-testid="link-manage-athlete-hype-page"/);
   assert.match(source, /href=\{`\/player\/\$\{inviteToken\}\/manage`\}/);
+  assert.match(publicPageSource, /aria-label=\{`Manage \$\{invite\.athleteName\}'s Hype Page`\}/);
+  assert.match(publicPageSource, />\s*Manage <ChevronRight/);
+  assert.match(publicPageSource, /text-\[clamp\(2\.75rem,13vw,4rem\)\]/);
   assert.match(source, /<OwnerHypePageManage invite=\{ownerInvite\} \/>/);
   assert.doesNotMatch(publicPageSource, /<OwnerHypePageManage/);
   assert.match(appSource, /path="\/player\/:inviteToken\/manage" component=\{OwnerAthleteInviteManagePage\}/);

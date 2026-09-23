@@ -762,15 +762,15 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
-      <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
-        <header className="flex flex-col gap-8 border-l-4 border-primary pl-5 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">{invite.seasonName} · {rule.label}</p>
-            <h1 className="mt-3 font-display text-6xl uppercase leading-[.85] sm:text-7xl">{invite.athleteName}</h1>
-            <p className="mt-4 text-sm font-bold uppercase tracking-widest text-white/45">{invite.teamName || 'Athlete season page'}</p>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 sm:px-8 sm:py-12">
+        <header className="grid min-w-0 gap-x-6 gap-y-5 border-l-4 border-primary pl-4 sm:pl-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,48%)] lg:items-end lg:gap-x-10 lg:gap-y-6">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary sm:text-xs">{invite.seasonName} · {rule.label}</p>
+            <h1 className="mt-2 max-w-full font-display text-[clamp(2.75rem,13vw,4rem)] uppercase leading-[.88] [overflow-wrap:anywhere] sm:mt-3 sm:text-7xl">{invite.athleteName}</h1>
+            <p className="mt-2 text-sm font-bold uppercase tracking-widest text-white/45 [overflow-wrap:anywhere] sm:mt-4">{invite.teamName || 'Athlete season page'}</p>
           </div>
-          <div className="athlete-highlights-heading flex items-end justify-between gap-5 lg:max-w-[48%] lg:flex-1">
-            <div>
+          <div className="athlete-highlights-heading flex min-w-0 flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 lg:border-0 lg:pt-0">
+            <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
               <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Video highlights</h2>
               <p className="mt-3 max-w-md text-xs font-medium leading-relaxed text-white/55">The latest plays, captured and ready to replay.</p>
@@ -785,19 +785,17 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
               )}
             </div>
           </div>
-        </header>
-
-        {ownerInvite && (
-          <div className="mt-6 flex justify-end">
+          {ownerInvite && (
             <Link
               href={`/player/${inviteToken}/manage`}
-              className="inline-flex min-h-11 items-center border border-primary bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90"
+              className="inline-flex min-h-11 items-center justify-self-start border border-primary bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 lg:col-span-2 lg:justify-self-end"
+              aria-label={`Manage ${invite.athleteName}'s Hype Page`}
               data-testid="link-manage-athlete-hype-page"
             >
-              Manage Hype Page <ChevronRight className="ml-2 h-4 w-4" />
+              Manage <ChevronRight className="ml-2 h-4 w-4" />
             </Link>
-          </div>
-        )}
+          )}
+        </header>
 
         <section className="mt-5" aria-labelledby="athlete-video-highlights">
           <div className="athlete-highlights-panel p-3 sm:p-4">

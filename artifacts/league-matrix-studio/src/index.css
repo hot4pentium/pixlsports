@@ -371,6 +371,12 @@
   letter-spacing: 0.22em;
 }
 
+@media (max-width: 639px) {
+  .athlete-highlights-heading::after {
+    display: none;
+  }
+}
+
 .athlete-video-carousel {
   scrollbar-width: none;
 }
