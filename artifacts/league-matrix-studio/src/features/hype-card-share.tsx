@@ -230,7 +230,11 @@ export async function prepareHypeCardShareMedia(
           return { video: clip.blob, videoContentType: clip.mimeType, poster, duration: actualDuration };
         }
       } catch (error) {
-        if (options.signal?.aborted || (error instanceof Error && (error.name === 'AbortError' || error.name === 'AudioCaptureUnavailable'))) throw error;
+        if (options.signal?.aborted || (error instanceof Error && (
+          error.name === 'AbortError'
+          || error.name === 'AudioCaptureUnavailable'
+          || error.name === 'PreparationStalled'
+        ))) throw error;
         if (index === levels.length - 1) throw error;
       }
     }

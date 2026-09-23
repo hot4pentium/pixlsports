@@ -8,6 +8,95 @@ export type VideoRecorderOptions = {
   audioBitsPerSecond?: number;
 };
 
+const MEDIA_READY_TIMEOUT_MS = 10_000;
+const PLAYBACK_START_TIMEOUT_MS = 8_000;
+const NO_PROGRESS_TIMEOUT_MS = 8_000;
+
+function abortError() {
+  const error = new Error('Export cancelled');
+  error.name = 'AbortError';
+  return error;
+}
+
+function stalledError(message: string) {
+  const error = new Error(message);
+  error.name = 'PreparationStalled';
+  return error;
+}
+
+function waitForMediaEvent(
+  video: HTMLVideoElement,
+  eventName: 'loadedmetadata' | 'seeked',
+  errorMessage: string,
+  signal: AbortSignal,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let timeoutId = 0;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      video.removeEventListener(eventName, onReady);
+      video.removeEventListener('error', onError);
+      signal.removeEventListener('abort', onAbort);
+    };
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error(errorMessage));
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(stalledError('Video preparation stalled while reading the clip.'));
+    }, MEDIA_READY_TIMEOUT_MS);
+    video.addEventListener(eventName, onReady, { once: true });
+    video.addEventListener('error', onError, { once: true });
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function withTimeout<T>(promise: Promise<T>, message: string, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let timeoutId = 0;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      signal.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(stalledError(message));
+    }, PLAYBACK_START_TIMEOUT_MS);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
 export function svgToImage(svg: string, width: number, height: number): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
@@ -80,6 +169,9 @@ export async function exportVideoCanvas(
   }
 
   const stream = canvas.captureStream(fps);
+  if (stream.getVideoTracks().length === 0) {
+    throw new Error('This browser could not create a video preparation stream.');
+  }
   let audioIncluded = false;
   const sourceDuration = videoElement.duration && isFinite(videoElement.duration) ? videoElement.duration : 15;
   const startTime = Math.max(0, Math.min(trimStart, sourceDuration));
@@ -102,16 +194,13 @@ export async function exportVideoCanvas(
       audioElement.playsInline = true;
       audioElement.muted = false;
       audioElement.src = sourceUrl;
-      await new Promise<void>((resolve, reject) => {
-        audioElement?.addEventListener('loadedmetadata', () => resolve(), { once: true });
-        audioElement?.addEventListener('error', () => reject(new Error('Audio could not be decoded.')), { once: true });
-      });
+      await waitForMediaEvent(audioElement, 'loadedmetadata', 'Audio could not be decoded.', signal);
       audioElement.currentTime = startTime;
       if (startTime > 0.01) {
-        await new Promise<void>((resolve) => audioElement?.addEventListener('seeked', () => resolve(), { once: true }));
+        await waitForMediaEvent(audioElement, 'seeked', 'Audio could not be decoded.', signal);
       }
       audioContext = new AudioContextConstructor();
-      await audioContext.resume();
+      await withTimeout(audioContext.resume(), 'Video preparation stalled while starting audio.', signal);
       const audioSource = audioContext.createMediaElementSource(audioElement);
       const audioDestination = audioContext.createMediaStreamDestination();
       audioSource.connect(audioDestination);
@@ -128,7 +217,15 @@ export async function exportVideoCanvas(
     }
   }
 
-  const recorder = new MediaRecorder(stream, { mimeType, ...recorderOptions });
+  let recorder: MediaRecorder;
+  try {
+    recorder = new MediaRecorder(stream, { mimeType, ...recorderOptions });
+  } catch {
+    stream.getTracks().forEach((track) => track.stop());
+    audioElement?.remove();
+    void audioContext?.close().catch(() => undefined);
+    throw new Error('This browser could not start video preparation.');
+  }
   const chunks: Blob[] = [];
 
   recorder.ondataavailable = (e) => {
@@ -140,16 +237,20 @@ export async function exportVideoCanvas(
   return new Promise((resolve, reject) => {
     let animationFrameId: number;
     let recordingTimeoutId: number | undefined;
+    let stallTimerId: number | undefined;
     const duration = endTime - startTime;
     const originalLoop = videoElement.loop;
     const wasPaused = videoElement.paused;
+    const originalMuted = videoElement.muted;
     let cancelled = false;
 
     const cleanup = () => {
       cancelAnimationFrame(animationFrameId);
       window.clearTimeout(recordingTimeoutId);
+      window.clearTimeout(stallTimerId);
       signal.removeEventListener('abort', onAbort);
       videoElement.loop = originalLoop;
+      videoElement.muted = originalMuted;
       if (wasPaused) videoElement.pause();
       audioElement?.pause();
       audioElement?.remove();
@@ -195,6 +296,13 @@ export async function exportVideoCanvas(
           recorder.stop();
         }
       } else {
+        window.clearTimeout(stallTimerId);
+        stallTimerId = window.setTimeout(() => {
+          cancelled = true;
+          cleanup();
+          if (recorder.state !== 'inactive') recorder.stop();
+          reject(stalledError('Video preparation stalled while reading frames.'));
+        }, NO_PROGRESS_TIMEOUT_MS);
         animationFrameId = requestAnimationFrame(drawLoop);
       }
     };
@@ -210,7 +318,7 @@ export async function exportVideoCanvas(
         }
         if (Math.abs(videoElement.currentTime - startTime) > 0.01) {
           videoElement.currentTime = startTime;
-          await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
+          await waitForMediaEvent(videoElement, 'seeked', 'The video could not be decoded.', signal);
         }
         recorder.start(1000);
         recordingTimeoutId = window.setTimeout(() => {
@@ -219,12 +327,29 @@ export async function exportVideoCanvas(
           if (recorder.state !== 'inactive') recorder.stop();
           reject(new Error('Video recording took too long for the selected segment.'));
         }, Math.ceil(duration * 1600 + 3000));
-        if (audioIncluded && audioElement) {
-          await audioElement.play();
-        }
-        await videoElement.play();
+        videoElement.muted = true;
+        const audioPlayback = audioIncluded && audioElement
+          ? (() => {
+            audioElement.muted = true;
+            return audioElement.play().then(() => {
+              if (audioElement) audioElement.muted = false;
+            });
+          })()
+          : Promise.resolve();
+        await withTimeout(
+          Promise.all([videoElement.play(), audioPlayback]).then(() => undefined),
+          'Video preparation stalled before playback started.',
+          signal,
+        );
+        stallTimerId = window.setTimeout(() => {
+          cancelled = true;
+          cleanup();
+          if (recorder.state !== 'inactive') recorder.stop();
+          reject(stalledError('Video preparation stalled while reading frames.'));
+        }, NO_PROGRESS_TIMEOUT_MS);
         drawLoop();
       } catch (error) {
+        cancelled = true;
         cleanup();
         if (recorder.state !== 'inactive') recorder.stop();
         reject(error);
