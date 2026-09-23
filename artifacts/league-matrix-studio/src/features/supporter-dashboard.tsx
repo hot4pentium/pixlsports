@@ -10,6 +10,7 @@ import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
   getSupporterGameStage,
+  getSupporterPreparationContext,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
   getSupporterStageAcknowledgmentKey,
@@ -265,20 +266,19 @@ export function SupporterDashboardView({
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
+  const [selectedThisSessionGameId, setSelectedThisSessionGameId] = useState<string | null>(null);
   const hasAthlete = Boolean(profile.athleteName);
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null);
   const weekRecommendation = getSupporterWeekRecommendation(events);
-  const recommendedPreparationEvent = weekRecommendation?.kind === 'practice' || weekRecommendation?.kind === 'meeting'
-    ? weekRecommendation.event
-    : undefined;
-  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
-  const showPreparationContext = Boolean(
-    recommendedPreparationEvent
-    && (!selectedGameId || !gameEvents.some((game) => game.id === selectedGameId))
-    && (!nextGame || (!selectedGameId && recommendedGame && getSupporterGameStage(recommendedGame) === 'completed')),
+  const recommendedPreparationEvent = getSupporterPreparationContext(
+    weekRecommendation,
+    gameEvents,
+    selectedGameId,
+    selectedThisSessionGameId === selectedGameId,
   );
-  const contextEvent = showPreparationContext ? recommendedPreparationEvent : nextGame;
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
+  const contextEvent = recommendedPreparationEvent ?? nextGame;
   const gameStage: SupporterGameStage = contextEvent
     ? getSupporterGameStage(contextEvent)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
@@ -537,6 +537,7 @@ export function SupporterDashboardView({
 
   const selectGame = (gameId: string) => {
     setSelectedGameId(gameId);
+    setSelectedThisSessionGameId(gameId);
     try {
       saveSupporterActiveGame(window.localStorage, gameId);
     } catch {

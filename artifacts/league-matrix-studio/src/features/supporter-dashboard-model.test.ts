@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getSupporterGameStage,
+  getSupporterPreparationContext,
   getSupporterScheduleSelection,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
@@ -54,6 +56,26 @@ test('the next practice is recommended before a later upcoming game', () => {
   assert.equal(recommendation?.event.id, 'practice');
   assert.equal(recommendation?.kind, 'practice');
   assert.equal(recommendation?.stage, 'upcoming');
+});
+
+test('past games cannot remain upcoming or live just because their saved status was not updated', () => {
+  const now = new Date('2026-09-22T12:00:00');
+  assert.equal(getSupporterGameStage({ date: '2026-09-21', time: '18:30', status: 'upcoming' }, now), 'completed');
+  assert.equal(getSupporterGameStage({ date: '2026-09-21', time: '18:30', status: 'live' }, now), 'completed');
+  assert.equal(getSupporterGameStage({ date: '2026-09-24', time: '18:30', status: 'upcoming' }, now), 'upcoming');
+  assert.equal(getSupporterGameStage({ date: '2026-09-21', time: '18:30', status: 'final' }, now), 'completed');
+});
+
+test('a saved September 21 game selection cannot hide the next September 24 practice', () => {
+  const now = new Date('2026-09-22T12:00:00');
+  const oldGame = { id: 'game-21', type: 'game' as const, date: '2026-09-21', time: '18:30', status: 'upcoming' as const };
+  const practice = { id: 'practice-24', type: 'practice' as const, date: '2026-09-24', time: '18:30' };
+  const events = [oldGame, practice];
+  const recommendation = getSupporterWeekRecommendation(events, now);
+
+  assert.equal(recommendation?.event.id, 'practice-24');
+  assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', false, now)?.id, 'practice-24');
+  assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', true, now), undefined);
 });
 
 test('preparation copy names each event type and has a no-event fallback', () => {

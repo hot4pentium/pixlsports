@@ -38,3 +38,4 @@
 - [Installed startup checks](installed-startup-browser-check.md) — delay worker installation and measure first content/tap separately so shell regressions are visible before offline assertions run.
 - [Browser fixture reloads](browser-fixture-reloads.md) — reload generated browser-test HTML through its direct fixture URL after route changes to avoid SPA fallback to the production shell.
 - [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject it automatically.
+- [Schedule stage precedence](schedule-stage-precedence.md) — a saved upcoming/live status must not keep a past event ahead of a future practice.

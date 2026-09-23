@@ -254,8 +254,6 @@ export function getSupporterGameStage(
   game: Pick<SupporterGameLike, 'date' | 'time' | 'status'>,
   now = new Date(),
 ): SupporterGameStage {
-  if (game.status === 'upcoming') return 'upcoming';
-  if (game.status === 'live') return 'live';
   if (game.status === 'final') return 'completed';
 
   const todayKey = [
@@ -263,8 +261,11 @@ export function getSupporterGameStage(
     String(now.getMonth() + 1).padStart(2, '0'),
     String(now.getDate()).padStart(2, '0'),
   ].join('-');
-  if (game.date > todayKey) return 'upcoming';
+  // A saved status must not keep a previous day's event in the upcoming queue.
   if (game.date < todayKey) return 'completed';
+  if (game.status === 'upcoming') return 'upcoming';
+  if (game.status === 'live') return 'live';
+  if (game.date > todayKey) return 'upcoming';
 
   const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(game.time.trim());
   if (!timeMatch) return 'live';
@@ -324,6 +325,23 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
       stage: 'completed',
     }
     : null;
+}
+
+export function getSupporterPreparationContext<T extends SupporterWeekEventLike>(
+  recommendation: SupporterWeekRecommendation<T> | null,
+  games: readonly T[],
+  selectedGameId: string | null,
+  selectedThisSession = false,
+  now = new Date(),
+): T | undefined {
+  if (recommendation?.kind !== 'practice' && recommendation?.kind !== 'meeting') return undefined;
+  const selectedGame = games.find((game) => game.id === selectedGameId);
+  // A stored selection for a completed game should not override the next practice.
+  // An explicit selection made on this screen can still show an earlier game's details.
+  if (selectedGame && (selectedThisSession || getSupporterGameStage(selectedGame, now) !== 'completed')) {
+    return undefined;
+  }
+  return recommendation.event;
 }
 
 export function readSupporterActiveGame(storage: Pick<Storage, 'getItem'>): string | null {
