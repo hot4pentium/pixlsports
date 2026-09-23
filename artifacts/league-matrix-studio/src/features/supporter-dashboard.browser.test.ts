@@ -1442,7 +1442,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-      /Get ready for practice/,
+      /Get ready for practice.*Sep 22, 2026.*6:30 PM/,
     );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
@@ -1456,7 +1456,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-      /Get ready for practice/,
+      /Get ready for practice.*Sep 22, 2026.*6:30 PM/,
     );
 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);

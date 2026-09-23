@@ -341,6 +341,12 @@ export function SupporterDashboardView({
       ? `${profile.teamName || 'Your team'} meeting`
       : gameTitle;
   const preparationCopy = getSupporterPreparationCopy(contextEvent?.type ?? weekRecommendation?.kind ?? null);
+  const preparationSchedule = contextEvent
+    ? [formatDateDisplay(contextEvent.date), formatTimeDisplay(contextEvent.time)].filter(Boolean).join(' · ')
+    : '';
+  const preparationTitle = preparationSchedule
+    ? `${preparationCopy.title.replace(/\.$/, '')} — ${preparationSchedule}`
+    : preparationCopy.title;
   const contextDateParts = contextEvent ? getEventDateParts(contextEvent.date) : null;
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
     ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
@@ -464,7 +470,7 @@ export function SupporterDashboardView({
     },
     upcoming: {
       eyebrow: '02 / Preparation',
-      title: preparationCopy.title,
+      title: preparationTitle,
       description: preparationCopy.description,
       action: 'Open checklist',
     },
