@@ -35,6 +35,7 @@ import { sendPushNotificationToUser } from "../lib/webPush";
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
 const MAX_VIDEO_BYTES = 35 * 1024 * 1024;
+const MAX_VIDEO_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_POSTER_BYTES = 5 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 400 * 1024;
 const UPLOAD_CLAIM_LIFETIME_MS = 2 * 60 * 60 * 1000;
@@ -632,7 +633,7 @@ router.get("/hype-card-shares/:shareToken/media/:mediaKind", async (req, res): P
         throw new Error("Hype Card video size is unavailable");
       }
       const rangeHeader = req.get("range");
-      const range = rangeHeader ? parseHttpByteRange(rangeHeader, size) : null;
+      const range = rangeHeader ? parseHttpByteRange(rangeHeader, size, MAX_VIDEO_RESPONSE_BYTES) : null;
       res.setHeader("Accept-Ranges", "bytes");
       res.setHeader("Content-Type", share.videoContentType ?? "video/mp4");
       res.setHeader("Cache-Control", "private, max-age=300");

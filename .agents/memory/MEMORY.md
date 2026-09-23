@@ -40,4 +40,4 @@
 - [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject it automatically.
 - [Schedule stage precedence](schedule-stage-precedence.md) — a saved upcoming/live status must not keep a past event ahead of a future practice.
 - [Tracker mobile start actions](tracker-mobile-start-actions.md) — keep the compact scheduled-game actions accessible when the larger setup card is hidden on mobile.
-- [Hype Page video streaming](hype-page-video-streaming.md) — public video playback needs real byte-range responses; full-file responses were repeatedly aborted by browsers.
+- [Hype Page video streaming](hype-page-video-streaming.md) — public video responses need bounded byte ranges; large open-ended ranges fail through the published proxy.
