@@ -132,6 +132,7 @@ export type SupporterGameLike = {
   date: string;
   time: string;
   status?: ScheduleEventStatus;
+  type?: 'game' | 'practice' | 'meeting';
 };
 
 export type SupporterWeekEventLike = SupporterGameLike & {
@@ -251,7 +252,7 @@ export function acknowledgeSupporterGameStage(
 }
 
 export function getSupporterGameStage(
-  game: Pick<SupporterGameLike, 'date' | 'time' | 'status'>,
+  game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type'>,
   now = new Date(),
 ): SupporterGameStage {
   if (game.status === 'final') return 'completed';
@@ -263,15 +264,16 @@ export function getSupporterGameStage(
   ].join('-');
   // A saved status must not keep a previous day's event in the upcoming queue.
   if (game.date < todayKey) return 'completed';
-  if (game.status === 'upcoming') return 'upcoming';
   if (game.status === 'live') return 'live';
   if (game.date > todayKey) return 'upcoming';
 
   const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(game.time.trim());
-  if (!timeMatch) return 'live';
+  if (!timeMatch) return game.type === 'game' || !game.type ? 'live' : 'upcoming';
   const start = new Date(now);
   start.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
-  if (start.getTime() > now.getTime()) return 'upcoming';
+  const isGame = game.type === 'game' || !game.type;
+  const captureStart = isGame ? start.getTime() - 60 * 60 * 1000 : start.getTime();
+  if (captureStart > now.getTime()) return 'upcoming';
   return now.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
 }
 

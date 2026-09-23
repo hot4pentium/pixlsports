@@ -236,9 +236,9 @@ const stageCopy: Record<SupporterGameStage, {
   },
   live: {
     label: 'Capture the game',
-    kicker: 'Happening now',
-    description: 'Keep the game moving and save the moments worth replaying.',
-    accent: 'Live',
+    kicker: 'Capture window open',
+    description: 'Your capture window is open. Start game day and save the moments worth replaying.',
+    accent: 'Capture',
   },
   completed: {
     label: 'Send the hype',
@@ -264,27 +264,34 @@ export function SupporterDashboardView({
   const [, setLocation] = useLocation();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
     typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
   ));
   const [selectedThisSessionGameId, setSelectedThisSessionGameId] = useState<string | null>(null);
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(new Date()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const hasAthlete = Boolean(profile.athleteName);
   const gameEvents = events.filter((event) => event.type === 'game');
-  const recommendedGame = getActiveSupporterGame(gameEvents, null);
-  const weekRecommendation = getSupporterWeekRecommendation(events);
+  const recommendedGame = getActiveSupporterGame(gameEvents, null, currentTime);
+  const weekRecommendation = getSupporterWeekRecommendation(events, currentTime);
   const recommendedPreparationEvent = getSupporterPreparationContext(
     weekRecommendation,
     gameEvents,
     selectedGameId,
     selectedThisSessionGameId === selectedGameId,
+    currentTime,
   );
-  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId);
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
   const contextEvent = recommendedPreparationEvent ?? nextGame;
   const gameStage: SupporterGameStage = contextEvent
-    ? getSupporterGameStage(contextEvent)
+    ? getSupporterGameStage(contextEvent, currentTime)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
   const recommendedGameStage = recommendedGame
-    ? getSupporterGameStage(recommendedGame)
+    ? getSupporterGameStage(recommendedGame, currentTime)
     : null;
   const isViewingPastGame = Boolean(
     nextGame
@@ -452,9 +459,9 @@ export function SupporterDashboardView({
       action: 'Open checklist',
     },
     live: {
-      eyebrow: '03 / Live game',
+      eyebrow: '03 / Capture window',
       title: 'Capture today’s game.',
-      description: 'The event is here. Track the action and save the moments that matter.',
+      description: 'Your capture window is open. Track the action and save the moments that matter.',
       action: 'Start game day',
     },
     completed: {

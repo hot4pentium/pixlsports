@@ -9,8 +9,7 @@ import { logger } from "../lib/logger";
 import { sendPushNotificationToUser } from "../lib/webPush";
 
 const INTERVAL_MS = 15 * 60 * 1000;
-const MORNING_HOUR = 7;
-const EVENING_HOUR = 18;
+const ONE_HOUR_MS = 60 * 60 * 1000;
 
 type PlannerEvent = {
   id: string;
@@ -28,12 +27,7 @@ type PlannerProject = {
   events: PlannerEvent[];
 };
 
-export type PlannerReminderType = "today" | "tomorrow";
-
-type LocalDateTime = {
-  date: string;
-  hour: number;
-};
+export type PlannerReminderType = "one_hour";
 
 function asString(value: unknown) {
   return typeof value === "string" ? value : "";
@@ -72,7 +66,27 @@ function parsePlannerProject(value: unknown): PlannerProject | null {
   };
 }
 
-function getLocalDateTime(now: Date, timezone: string): LocalDateTime {
+function parseEventTime(value: string) {
+  const twelveHour = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(value.trim());
+  if (twelveHour) {
+    const hour = Number(twelveHour[1]);
+    const minute = Number(twelveHour[2]);
+    if (hour < 1 || hour > 12 || minute > 59) return null;
+    return {
+      hour: (hour % 12) + (twelveHour[3].toUpperCase() === "PM" ? 12 : 0),
+      minute,
+    };
+  }
+
+  const twentyFourHour = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!twentyFourHour) return null;
+  const hour = Number(twentyFourHour[1]);
+  const minute = Number(twentyFourHour[2]);
+  if (hour > 23 || minute > 59) return null;
+  return { hour, minute };
+}
+
+function getTimeZoneOffsetMs(date: Date, timezone: string) {
   try {
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: timezone,
@@ -80,31 +94,53 @@ function getLocalDateTime(now: Date, timezone: string): LocalDateTime {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
       hourCycle: "h23",
-    }).formatToParts(now);
+    }).formatToParts(date);
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return {
-      date: `${values.year}-${values.month}-${values.day}`,
-      hour: Number(values.hour),
-    };
+    return Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+      Number(values.second),
+    ) - date.getTime();
   } catch {
-    return getLocalDateTime(now, "UTC");
+    return 0;
   }
 }
 
-function addDays(date: string, days: number) {
-  const value = new Date(`${date}T12:00:00Z`);
-  value.setUTCDate(value.getUTCDate() + days);
-  return value.toISOString().slice(0, 10);
+function getEventStart(eventDate: string, eventTime: string, timezone: string) {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(eventDate);
+  const time = parseEventTime(eventTime);
+  if (!dateMatch || !time) return null;
+
+  const wallClockAsUtc = Date.UTC(
+    Number(dateMatch[1]),
+    Number(dateMatch[2]) - 1,
+    Number(dateMatch[3]),
+    time.hour,
+    time.minute,
+  );
+  const firstGuess = wallClockAsUtc - getTimeZoneOffsetMs(new Date(wallClockAsUtc), timezone);
+  const corrected = wallClockAsUtc - getTimeZoneOffsetMs(new Date(firstGuess), timezone);
+  return new Date(corrected);
 }
 
 function getReminderType(
   eventDate: string,
-  local: LocalDateTime,
+  eventTime: string,
+  now: Date,
+  timezone: string,
 ): PlannerReminderType | null {
-  if (local.date === eventDate && local.hour >= MORNING_HOUR) return "today";
-  if (local.date === addDays(eventDate, -1) && local.hour >= EVENING_HOUR) return "tomorrow";
-  return null;
+  const eventStart = getEventStart(eventDate, eventTime, timezone);
+  if (!eventStart) return null;
+  const nowMs = now.getTime();
+  const eventStartMs = eventStart.getTime();
+  const reminderAtMs = eventStartMs - ONE_HOUR_MS;
+  return nowMs >= reminderAtMs && nowMs < eventStartMs ? "one_hour" : null;
 }
 
 function eventLabel(event: PlannerEvent) {
@@ -128,18 +164,19 @@ function reminderPayload(
 ) {
   const label = eventLabel(event);
   return {
-    title: reminderType === "today" ? `Today: ${label}` : `Tomorrow: ${label}`,
-    body: `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to see the full week.`,
+    title: `Starting in 1 hour: ${label}`,
+    body: `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to capture the moment.`,
     url: "/studio",
   };
 }
 
 export function getPlannerReminderForTest(
   eventDate: string,
+  eventTime: string,
   now: Date,
   timezone: string,
 ) {
-  return getReminderType(eventDate, getLocalDateTime(now, timezone));
+  return getReminderType(eventDate, eventTime, now, timezone);
 }
 
 async function sendPlannerReminder(
@@ -212,10 +249,9 @@ export async function runPlannerNotificationJob(
     if (!timezone) continue;
     const project = parsePlannerProject(row.project);
     if (!project) continue;
-    const local = getLocalDateTime(now, timezone);
     for (const event of project.events) {
       if (event.type === "game" && event.status === "final") continue;
-      const reminderType = getReminderType(event.date, local);
+      const reminderType = getReminderType(event.date, event.time, now, timezone);
       if (!reminderType) continue;
       await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType, sendPush);
     }

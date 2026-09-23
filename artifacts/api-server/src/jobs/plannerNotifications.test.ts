@@ -13,64 +13,60 @@ import {
   runPlannerNotificationJob,
 } from "./plannerNotifications";
 
-test("planner reminders use each subscription's local morning and evening cutoffs", () => {
+test("planner reminders use each subscription's local event time", () => {
   const cases = [
     {
       timezone: "America/New_York",
-      today: "2026-01-15",
-      tomorrow: "2026-01-16",
-      beforeMorning: "2026-01-15T11:59:00.000Z",
-      morning: "2026-01-15T12:00:00.000Z",
-      beforeEvening: "2026-01-15T22:59:00.000Z",
-      evening: "2026-01-15T23:00:00.000Z",
+      eventDate: "2026-01-15",
+      eventTime: "10:00",
+      beforeReminder: "2026-01-15T13:59:00.000Z",
+      reminder: "2026-01-15T14:00:00.000Z",
+      eventStart: "2026-01-15T15:00:00.000Z",
     },
     {
       timezone: "America/Los_Angeles",
-      today: "2026-01-15",
-      tomorrow: "2026-01-16",
-      beforeMorning: "2026-01-15T14:59:00.000Z",
-      morning: "2026-01-15T15:00:00.000Z",
-      beforeEvening: "2026-01-16T01:59:00.000Z",
-      evening: "2026-01-16T02:00:00.000Z",
+      eventDate: "2026-01-15",
+      eventTime: "10:00 AM",
+      beforeReminder: "2026-01-15T16:59:00.000Z",
+      reminder: "2026-01-15T17:00:00.000Z",
+      eventStart: "2026-01-15T18:00:00.000Z",
     },
   ];
 
   for (const current of cases) {
     assert.equal(
-      getPlannerReminderForTest(current.today, new Date(current.beforeMorning), current.timezone),
+      getPlannerReminderForTest(current.eventDate, current.eventTime, new Date(current.beforeReminder), current.timezone),
       null,
     );
     assert.equal(
-      getPlannerReminderForTest(current.today, new Date(current.morning), current.timezone),
-      "today",
+      getPlannerReminderForTest(current.eventDate, current.eventTime, new Date(current.reminder), current.timezone),
+      "one_hour",
     );
     assert.equal(
-      getPlannerReminderForTest(current.tomorrow, new Date(current.beforeEvening), current.timezone),
+      getPlannerReminderForTest(current.eventDate, current.eventTime, new Date(current.eventStart), current.timezone),
       null,
-    );
-    assert.equal(
-      getPlannerReminderForTest(current.tomorrow, new Date(current.evening), current.timezone),
-      "tomorrow",
     );
   }
 });
 
-test("planner reminders keep morning cutoffs correct across daylight-saving transitions", () => {
+test("planner reminders keep one-hour timing correct across daylight-saving transitions", () => {
   assert.equal(
     getPlannerReminderForTest(
       "2026-03-08",
-      new Date("2026-03-08T11:00:00.000Z"),
+      "10:00",
+      new Date("2026-03-08T13:00:00.000Z"),
       "America/New_York",
     ),
-    "today",
+    "one_hour",
   );
   assert.equal(
     getPlannerReminderForTest(
       "2026-11-01",
-      new Date("2026-11-01T13:00:00.000Z"),
+      "10:00",
+      new Date("2026-11-01T14:00:00.000Z"),
       "America/New_York",
     ),
-    "today",
+    "one_hour",
   );
 });
 
@@ -107,7 +103,7 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
             type: "game",
             status: "upcoming",
             date: "2026-03-10",
-            time: "18:00",
+            time: "13:00",
             location: "Main Gym",
             opponent: "Falcons",
           },
@@ -125,15 +121,15 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
         return { configured: true, sent: 1, removed: 0 };
       },
     };
-    const morning = new Date("2026-03-10T11:00:00.000Z");
+    const oneHourBefore = new Date("2026-03-10T16:00:00.000Z");
 
-    await runPlannerNotificationJob(morning, dependencies);
-    await runPlannerNotificationJob(morning, dependencies);
+    await runPlannerNotificationJob(oneHourBefore, dependencies);
+    await runPlannerNotificationJob(oneHourBefore, dependencies);
 
     assert.equal(sent.length, 1);
     assert.equal(sent[0]?.ownerId, ownerId);
-    assert.equal(sent[0]?.title, "Today: Game vs Falcons");
-    assert.match(sent[0]?.tag ?? "", /event-1-today-2026-03-10/);
+    assert.equal(sent[0]?.title, "Starting in 1 hour: Game vs Falcons");
+    assert.match(sent[0]?.tag ?? "", /event-1-one_hour-2026-03-10/);
 
     const deliveriesAfterRepeat = await db
       .select()
@@ -159,7 +155,7 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
             type: "game",
             status: "upcoming",
             date: "2026-03-11",
-            time: "18:00",
+            time: "13:00",
             location: "Main Gym",
             opponent: "Falcons",
           },
@@ -167,10 +163,10 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
       },
     }).where(eq(cloudProjectsTable.id, projectId));
 
-    await runPlannerNotificationJob(new Date("2026-03-11T11:00:00.000Z"), dependencies);
+    await runPlannerNotificationJob(new Date("2026-03-11T16:00:00.000Z"), dependencies);
 
     assert.equal(sent.length, 2);
-    assert.match(sent[1]?.tag ?? "", /event-1-today-2026-03-11/);
+    assert.match(sent[1]?.tag ?? "", /event-1-one_hour-2026-03-11/);
     const deliveriesAfterDateChange = await db
       .select()
       .from(plannerNotificationDeliveriesTable)

@@ -67,6 +67,19 @@ test('past games cannot remain upcoming or live just because their saved status 
   assert.equal(getSupporterGameStage({ date: '2026-09-21', time: '18:30', status: 'final' }, now), 'completed');
 });
 
+test('the week path moves a game to Capture one hour before start', () => {
+  const event = { type: 'game' as const, date: '2026-09-22', time: '18:00', status: 'upcoming' as const };
+  assert.equal(getSupporterGameStage(event, new Date('2026-09-22T16:59:59')), 'upcoming');
+  assert.equal(getSupporterGameStage(event, new Date('2026-09-22T17:00:00')), 'live');
+  assert.equal(getSupporterGameStage(event, new Date('2026-09-22T19:00:00')), 'live');
+});
+
+test('non-game events stay in preparation until their scheduled start', () => {
+  const practice = { type: 'practice' as const, date: '2026-09-22', time: '18:00' };
+  assert.equal(getSupporterGameStage(practice, new Date('2026-09-22T17:30:00')), 'upcoming');
+  assert.equal(getSupporterGameStage(practice, new Date('2026-09-22T18:00:00')), 'live');
+});
+
 test('a saved September 21 game selection cannot hide the next September 24 practice', () => {
   const now = new Date('2026-09-22T12:00:00');
   const oldGame = { id: 'game-21', type: 'game' as const, date: '2026-09-21', time: '18:30', status: 'upcoming' as const };
