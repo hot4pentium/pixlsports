@@ -6,6 +6,12 @@ const MEDIA_READY_TIMEOUT_MS = 10_000;
 const PLAYBACK_START_TIMEOUT_MS = 8_000;
 const NO_PROGRESS_TIMEOUT_MS = 8_000;
 
+export function preparedVideoDurationMatches(sourceDuration: number, preparedDuration: number): boolean {
+  return Number.isFinite(sourceDuration) && sourceDuration > 0
+    && Number.isFinite(preparedDuration) && preparedDuration > 0
+    && Math.abs(preparedDuration - sourceDuration) <= Math.max(0.5, sourceDuration * 0.08);
+}
+
 export type VideoTranscodeOptions = {
   signal?: AbortSignal;
   longEdge?: number;
@@ -174,6 +180,10 @@ export async function transcodeVideoToMp4(
       signal,
     );
 
+    const sourceDuration = video.duration;
+    if (!Number.isFinite(sourceDuration) || sourceDuration <= 0) {
+      throw new Error('The original video has an invalid duration. The original clip will be kept locally.');
+    }
     const scale = Math.min(1, (options.longEdge ?? 1280) / Math.max(video.videoWidth || 1280, video.videoHeight || 720));
     const width = Math.max(2, Math.floor((video.videoWidth || 1280) * scale / 2) * 2);
     const height = Math.max(2, Math.floor((video.videoHeight || 720) * scale / 2) * 2);
@@ -300,6 +310,26 @@ export async function transcodeVideoToMp4(
       })();
     });
 
+    const resultUrl = URL.createObjectURL(result);
+    const preparedVideo = document.createElement('video');
+    preparedVideo.preload = 'metadata';
+    try {
+      preparedVideo.src = resultUrl;
+      await waitForMediaEvent(
+        preparedVideo,
+        'loadedmetadata',
+        'The prepared video could not be played. The original clip will be kept locally.',
+        mediaReadyTimeoutMs,
+        signal,
+      );
+      if (!preparedVideoDurationMatches(sourceDuration, preparedVideo.duration)) {
+        throw new Error('Video preparation changed the clip length. The original clip will be kept locally.');
+      }
+    } finally {
+      preparedVideo.removeAttribute('src');
+      preparedVideo.load();
+      URL.revokeObjectURL(resultUrl);
+    }
     onProgress(1);
     return result;
   } finally {

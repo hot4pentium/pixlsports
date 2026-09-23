@@ -2042,8 +2042,13 @@ export function HypeCardEditor() {
         } catch (conversionError) {
           if (preparationAbort.signal.aborted) throw conversionError;
           console.warn('Video conversion unavailable; keeping original locally.', conversionError);
+          preparedDownload = file;
+          preparedPreview = file;
           const stalled = conversionError instanceof Error && conversionError.message.toLowerCase().includes('stalled');
-          conversionWarning = stalled
+          const changedLength = conversionError instanceof Error && conversionError.message.includes('changed the clip length');
+          conversionWarning = changedLength
+            ? 'Video preparation changed the clip length, so the original video was kept on this device instead.'
+            : stalled
             ? 'Video preparation stopped because this browser was not making progress. The original video will stay local.'
             : 'This browser could not create a smaller MP4, so the original video will stay local.';
         }
