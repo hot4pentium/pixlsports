@@ -763,13 +763,13 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="public-athlete-invite">
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 pb-10 pt-6 sm:px-8 sm:py-12">
-        <header className="grid min-w-0 gap-x-6 gap-y-5 border-l-4 border-primary pl-4 sm:pl-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,48%)] lg:items-end lg:gap-x-10 lg:gap-y-6">
-          <div className="min-w-0">
+        <header className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-5 border-l-4 border-primary pl-4 sm:pl-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,48%)] lg:items-end lg:gap-x-10 lg:gap-y-6">
+          <div className="col-start-1 row-start-1 min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary sm:text-xs">{invite.seasonName} · {rule.label}</p>
             <h1 className="mt-2 max-w-full font-display text-[clamp(2.75rem,13vw,4rem)] uppercase leading-[.88] [overflow-wrap:anywhere] sm:mt-3 sm:text-7xl">{invite.athleteName}</h1>
             <p className="mt-2 text-sm font-bold uppercase tracking-widest text-white/45 [overflow-wrap:anywhere] sm:mt-4">{invite.teamName || 'Athlete season page'}</p>
           </div>
-          <div className="athlete-highlights-heading flex min-w-0 flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 lg:border-0 lg:pt-0">
+          <div className="athlete-highlights-heading col-span-2 row-start-2 flex min-w-0 flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:border-0 lg:pt-0">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
               <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Video highlights</h2>
@@ -788,11 +788,11 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           {ownerInvite && (
             <Link
               href={`/player/${inviteToken}/manage`}
-              className="inline-flex min-h-11 items-center justify-self-start border border-primary bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 lg:col-span-2 lg:justify-self-end"
+              className="col-start-2 row-start-1 inline-flex min-h-10 items-center self-center justify-self-end border border-primary bg-primary px-3 text-[10px] font-bold uppercase tracking-[.12em] text-primary-foreground transition-colors hover:bg-primary/90 sm:min-h-11 sm:px-5 sm:text-xs sm:tracking-widest lg:col-span-2 lg:col-start-1 lg:row-start-2"
               aria-label={`Manage ${invite.athleteName}'s Hype Page`}
               data-testid="link-manage-athlete-hype-page"
             >
-              Manage <ChevronRight className="ml-2 h-4 w-4" />
+              Manage <ChevronRight className="ml-1 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
             </Link>
           )}
         </header>

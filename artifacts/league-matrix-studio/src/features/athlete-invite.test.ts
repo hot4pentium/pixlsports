@@ -75,6 +75,9 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(publicPageSource, /aria-label=\{`Manage \$\{invite\.athleteName\}'s Hype Page`\}/);
   assert.match(publicPageSource, />\s*Manage <ChevronRight/);
   assert.match(publicPageSource, /text-\[clamp\(2\.75rem,13vw,4rem\)\]/);
+  assert.match(publicPageSource, /grid-cols-\[minmax\(0,1fr\)_auto\]/);
+  assert.match(publicPageSource, /athlete-highlights-heading col-span-2 row-start-2[\s\S]*?lg:col-start-2 lg:row-start-1/);
+  assert.match(publicPageSource, /col-start-2 row-start-1 inline-flex min-h-10[\s\S]*?text-\[10px\][\s\S]*?lg:col-start-1 lg:row-start-2/);
   assert.match(source, /<OwnerHypePageManage invite=\{ownerInvite\} \/>/);
   assert.doesNotMatch(publicPageSource, /<OwnerHypePageManage/);
   assert.match(appSource, /path="\/player\/:inviteToken\/manage" component=\{OwnerAthleteInviteManagePage\}/);
