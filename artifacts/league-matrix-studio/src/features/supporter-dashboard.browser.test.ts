@@ -2265,6 +2265,11 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       false,
       'prep must not expose the end action',
     );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"button-start-meeting\\"]"))', page.sessionId),
+      false,
+      'scheduled prep must not expose a manual start action',
+    );
 
     const setField = async (selector: string, value: string) => {
       await connection!.evaluate(`(() => {
@@ -2380,6 +2385,44 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       false,
       'back to dashboard must leave the query-driven meeting variant',
     );
+
+    await navigatePage(
+      connection,
+      page,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?meeting-capture&gameId=meeting-unscheduled&eventType=meeting&title=Ad%20Hoc%20Team%20Meeting`,
+    );
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"text-meeting-prep-heading\\"]"))', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"button-start-meeting\\"]"))', page.sessionId),
+      true,
+      'an unscheduled meeting must offer a manual start action',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]"))', page.sessionId),
+      false,
+      'an unscheduled meeting must remain in prep until started',
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="button-start-meeting"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]"))', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"button-start-meeting\\"]"))', page.sessionId),
+      false,
+      'manual start must leave prep',
+    );
+    await setField('[data-testid="textarea-meeting-notes"]', 'We started this conversation without a calendar slot.');
+    await connection.evaluate(`document.querySelector('[data-testid="button-end-meeting"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"text-recap-content\\"]"))', Boolean);
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-recap-content\\"]")?.textContent || ""', page.sessionId),
+      /We started this conversation without a calendar slot/,
+    );
+    const unscheduledRecord = await connection.evaluate<{ startedAt: string | null; endedAt: string | null; notes: string }>(`(() => {
+      const entry = Object.entries(localStorage).find(([key]) => key.endsWith(':meeting-unscheduled'));
+      return entry ? JSON.parse(entry[1]) : { startedAt: null, endedAt: null, notes: '' };
+    })()`, page.sessionId);
+    assert.ok(unscheduledRecord.startedAt, 'manual start must persist a local start time');
+    assert.ok(unscheduledRecord.endedAt, 'ending must persist the local history record');
+    assert.equal(unscheduledRecord.notes, 'We started this conversation without a calendar slot.');
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

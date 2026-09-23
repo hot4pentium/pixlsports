@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getMeetingPhase,
+  isMeetingUnscheduled,
   listCompletedMeetingRecords,
   meetingStorageKey,
   normalizeMeetingState,
@@ -27,6 +28,21 @@ test('scheduled meetings stay in prep until their scheduled start', () => {
   assert.equal(getMeetingPhase(context, { startedAt: null, endedAt: null }, new Date('2026-09-25T16:59:59')), 'prep');
   assert.equal(getMeetingPhase(context, { startedAt: null, endedAt: null }, new Date('2026-09-25T17:00:00')), 'live');
   assert.equal(getMeetingPhase(context, { startedAt: null, endedAt: '2026-09-25T18:00:00Z' }), 'share');
+});
+
+test('meetings without a complete schedule stay in prep until started manually', () => {
+  assert.equal(isMeetingUnscheduled({ date: '', time: '' }), true);
+  assert.equal(isMeetingUnscheduled({ date: '2026-09-25', time: '' }), true);
+  assert.equal(isMeetingUnscheduled({ date: '', time: '17:00' }), true);
+  assert.equal(isMeetingUnscheduled({ date: '2026-09-25', time: '17:00' }), false);
+  assert.equal(
+    getMeetingPhase({ date: '', time: '' }, { startedAt: null, endedAt: null }),
+    'prep',
+  );
+  assert.equal(
+    getMeetingPhase({ date: '', time: '' }, { startedAt: '2026-09-23T12:00:00.000Z', endedAt: null }),
+    'live',
+  );
 });
 
 test('legacy meeting records normalize without losing captured content', () => {

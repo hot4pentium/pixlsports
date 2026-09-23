@@ -81,6 +81,10 @@ export function isMeetingScheduledToStart(context: Pick<MeetingContext, 'date' |
   return start.getTime() <= now.getTime();
 }
 
+export function isMeetingUnscheduled(context: Pick<MeetingContext, 'date' | 'time'>) {
+  return !context.date.trim() || !context.time.trim();
+}
+
 export function getMeetingPhase(
   context: Pick<MeetingContext, 'date' | 'time'>,
   state: Pick<MeetingState, 'startedAt' | 'endedAt'>,

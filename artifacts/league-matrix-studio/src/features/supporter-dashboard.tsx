@@ -22,7 +22,7 @@ import {
   supporterToolRoutes,
   type SupporterGameStage,
 } from './supporter-dashboard-model';
-import { listCompletedMeetingRecords } from './meeting-capture-model';
+import { isMeetingUnscheduled, listCompletedMeetingRecords } from './meeting-capture-model';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
@@ -449,6 +449,7 @@ export function SupporterDashboardView({
       ? `${profile.teamName || 'Your team'} meeting`
       : gameTitle;
   const preparationCopy = getSupporterPreparationCopy(contextEvent?.type ?? weekRecommendation?.kind ?? null);
+  const unscheduledMeeting = contextEvent?.type === 'meeting' && isMeetingUnscheduled(contextEvent);
   const preparationSchedule = contextEvent
     ? [formatDateDisplay(contextEvent.date), formatTimeDisplay(contextEvent.time)].filter(Boolean).join(' · ')
     : '';
@@ -1139,7 +1140,7 @@ export function SupporterDashboardView({
             )}
             <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {gameStage === 'upcoming' && contextEvent?.type === 'meeting' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-prep"><ClipboardCheck className="h-4 w-4" /> Open agenda</button>}
+              {gameStage === 'upcoming' && contextEvent?.type === 'meeting' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-prep"><ClipboardCheck className="h-4 w-4" /> {unscheduledMeeting ? 'Prepare meeting' : 'Open agenda'}</button>}
               {gameStage === 'upcoming' && contextEvent?.type !== 'meeting' && contextEvent && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
               {gameStage === 'live' && contextEvent?.type === 'meeting' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-checklist"><ClipboardCheck className="h-4 w-4" /> Open meeting checklist</button>}
               {gameStage === 'live' && contextEvent?.type !== 'meeting' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}

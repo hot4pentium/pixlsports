@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { readScheduleDraft } from '@/features/schedule-draft';
 import {
   getMeetingPhase,
+  isMeetingUnscheduled,
   meetingStorageKey,
   readMeetingState,
   type MeetingAgendaItem as AgendaItem,
@@ -267,6 +268,7 @@ export function MeetingCapture() {
   const agendaProgress = state.agenda.length ? Math.round((completedAgenda / state.agenda.length) * 100) : 0;
   const ended = Boolean(state.endedAt);
   const phase = getMeetingPhase(context, state, currentTime);
+  const unscheduled = isMeetingUnscheduled(context);
 
   const updateState = (patch: Partial<MeetingState>) => {
     setState((current) => {
@@ -345,6 +347,13 @@ export function MeetingCapture() {
     setShareStatus('');
     setEditingEnded(false);
     setShowRecap(true);
+  };
+
+  const handleStartMeeting = () => {
+    if (!unscheduled || phase !== 'prep') return;
+    const startedAt = new Date().toISOString();
+    updateState({ startedAt });
+    setCurrentTime(new Date(startedAt));
   };
 
   const handleCopy = async () => {
@@ -518,9 +527,27 @@ export function MeetingCapture() {
               </form>
             </section>
           </div>
-          <p className="mt-6 text-center text-xs font-bold uppercase tracking-[0.16em] text-[#6f95b2]" data-testid="text-meeting-prep-boundary">
-            Live capture opens at the scheduled meeting time.
-          </p>
+          <div className="mt-6 flex flex-col items-center gap-3 text-center">
+            {unscheduled ? (
+              <>
+                <p className="max-w-xl text-sm leading-relaxed text-[#aec5d3]" data-testid="text-meeting-prep-boundary">
+                  No date or time is set. Start when everyone is ready, and capture the meeting locally on this device.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleStartMeeting}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 bg-[#e8a45c] px-6 py-3 text-xs font-bold uppercase tracking-[0.15em] text-[#18263a] transition-transform hover:-translate-y-0.5"
+                  data-testid="button-start-meeting"
+                >
+                  <MessageSquare className="h-4 w-4" /> Start meeting
+                </button>
+              </>
+            ) : (
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6f95b2]" data-testid="text-meeting-prep-boundary">
+                Live capture opens at the scheduled meeting time.
+              </p>
+            )}
+          </div>
         </main>
       </div>
     );
