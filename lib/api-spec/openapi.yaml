@@ -1143,6 +1143,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NotificationConfig"
+  /notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [notifications]
+      summary: Get schedule reminder preferences
+      responses:
+        "200":
+          description: Schedule reminder preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      operationId: updateNotificationPreferences
+      tags: [notifications]
+      summary: Update schedule reminder preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferencesUpdate"
+      responses:
+        "200":
+          description: Updated schedule reminder preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
   /notifications/subscriptions:
@@ -1354,6 +1387,18 @@ components:
       properties:
         available: { type: boolean }
         publicKey: { type: ["string", "null"], maxLength: 300 }
+    NotificationPreferences:
+      type: object
+      required: [oneHourBefore, dayOf]
+      properties:
+        oneHourBefore: { type: boolean }
+        dayOf: { type: boolean }
+    NotificationPreferencesUpdate:
+      type: object
+      required: [oneHourBefore, dayOf]
+      properties:
+        oneHourBefore: { type: boolean }
+        dayOf: { type: boolean }
     NotificationSubscriptionInput:
       type: object
       required: [endpoint, keys]

@@ -1,6 +1,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   integer,
   index,
   jsonb,
@@ -202,6 +203,13 @@ export const webPushSubscriptionsTable = pgTable("web_push_subscriptions", {
   endpointUnique: uniqueIndex("web_push_subscriptions_endpoint_unique").on(table.endpoint),
   ownerIndex: index("web_push_subscriptions_owner_index").on(table.ownerClerkUserId),
 }));
+
+export const plannerNotificationPreferencesTable = pgTable("planner_notification_preferences", {
+  ownerClerkUserId: text("owner_clerk_user_id").primaryKey(),
+  oneHourBefore: boolean("one_hour_before").notNull().default(true),
+  dayOf: boolean("day_of").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
 
 export const plannerNotificationDeliveriesTable = pgTable("planner_notification_deliveries", {
   id: uuid("id").defaultRandom().primaryKey(),

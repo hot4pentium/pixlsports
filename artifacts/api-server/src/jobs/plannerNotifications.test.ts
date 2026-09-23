@@ -9,7 +9,7 @@ import {
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import {
-  getPlannerReminderForTest,
+  getPlannerReminderTypesForTest,
   runPlannerNotificationJob,
 } from "./plannerNotifications";
 
@@ -34,39 +34,61 @@ test("planner reminders use each subscription's local event time", () => {
   ];
 
   for (const current of cases) {
-    assert.equal(
-      getPlannerReminderForTest(current.eventDate, current.eventTime, new Date(current.beforeReminder), current.timezone),
-      null,
+    assert.deepEqual(
+      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.beforeReminder), current.timezone),
+      [],
     );
-    assert.equal(
-      getPlannerReminderForTest(current.eventDate, current.eventTime, new Date(current.reminder), current.timezone),
-      "one_hour",
+    assert.deepEqual(
+      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.reminder), current.timezone),
+      ["one_hour"],
     );
-    assert.equal(
-      getPlannerReminderForTest(current.eventDate, current.eventTime, new Date(current.eventStart), current.timezone),
-      null,
+    assert.deepEqual(
+      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.eventStart), current.timezone),
+      [],
     );
   }
 });
 
 test("planner reminders keep one-hour timing correct across daylight-saving transitions", () => {
-  assert.equal(
-    getPlannerReminderForTest(
+  assert.deepEqual(
+    getPlannerReminderTypesForTest(
       "2026-03-08",
       "10:00",
       new Date("2026-03-08T13:00:00.000Z"),
       "America/New_York",
     ),
-    "one_hour",
+    ["one_hour"],
   );
-  assert.equal(
-    getPlannerReminderForTest(
+  assert.deepEqual(
+    getPlannerReminderTypesForTest(
       "2026-11-01",
       "10:00",
       new Date("2026-11-01T14:00:00.000Z"),
       "America/New_York",
     ),
-    "one_hour",
+    ["one_hour"],
+  );
+});
+
+test("day-of reminders arrive at 7 AM locally and can be selected independently", () => {
+  const eventDate = "2026-09-23";
+  const dayOf = { oneHourBefore: false, dayOf: true };
+
+  assert.deepEqual(
+    getPlannerReminderTypesForTest(eventDate, "18:00", new Date("2026-09-23T10:59:00.000Z"), "America/New_York", dayOf),
+    [],
+  );
+  assert.deepEqual(
+    getPlannerReminderTypesForTest(eventDate, "18:00", new Date("2026-09-23T11:00:00.000Z"), "America/New_York", dayOf),
+    ["day_of"],
+  );
+  assert.deepEqual(
+    getPlannerReminderTypesForTest(eventDate, "18:00", new Date("2026-09-23T22:00:00.000Z"), "America/New_York", dayOf),
+    [],
+  );
+  assert.deepEqual(
+    getPlannerReminderTypesForTest(eventDate, "18:00", new Date("2026-09-23T11:00:00.000Z"), "America/New_York", { oneHourBefore: true, dayOf: true }),
+    ["day_of"],
   );
 });
 

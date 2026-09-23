@@ -92,6 +92,8 @@ export * from './mediaUploadInputMediaRole';
 export * from './mediaUploadInputMediaType';
 export * from './notFoundResponse';
 export * from './notificationConfig';
+export * from './notificationPreferences';
+export * from './notificationPreferencesUpdate';
 export * from './notificationSubscriptionDeleteInput';
 export * from './notificationSubscriptionInput';
 export * from './notificationSubscriptionInputKeys';

@@ -80,6 +80,16 @@ export interface NotificationConfig {
   publicKey: string | null;
 }
 
+export interface NotificationPreferences {
+  oneHourBefore: boolean;
+  dayOf: boolean;
+}
+
+export interface NotificationPreferencesUpdate {
+  oneHourBefore: boolean;
+  dayOf: boolean;
+}
+
 export type NotificationSubscriptionInputKeys = {
   /**
      * @minLength 1

@@ -1,7 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { DeleteNotificationSubscriptionBody, SaveNotificationSubscriptionBody } from "@workspace/api-zod";
-import { db, webPushSubscriptionsTable } from "@workspace/db";
+import {
+  DeleteNotificationSubscriptionBody,
+  SaveNotificationSubscriptionBody,
+  UpdateNotificationPreferencesBody,
+} from "@workspace/api-zod";
+import { db, plannerNotificationPreferencesTable, webPushSubscriptionsTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { getWebPushConfig, sendPushNotificationToUser } from "../lib/webPush";
 
@@ -12,6 +16,54 @@ const router: IRouter = Router();
 router.get("/notifications/config", (_req, res): void => {
   const config = getWebPushConfig();
   res.json({ available: config.available, publicKey: config.available ? config.publicKey : null });
+});
+
+router.get("/notifications/preferences", requireAuth, async (_req, res): Promise<void> => {
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const [preferences] = await db
+    .select({
+      oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
+      dayOf: plannerNotificationPreferencesTable.dayOf,
+    })
+    .from(plannerNotificationPreferencesTable)
+    .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId))
+    .limit(1);
+
+  res.json({
+    oneHourBefore: preferences?.oneHourBefore ?? true,
+    dayOf: preferences?.dayOf ?? false,
+  });
+});
+
+router.patch("/notifications/preferences", requireAuth, async (req, res): Promise<void> => {
+  const parsed = UpdateNotificationPreferencesBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid notification preferences." }); return; }
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  try {
+    const [preferences] = await db
+      .insert(plannerNotificationPreferencesTable)
+      .values({
+        ownerClerkUserId,
+        oneHourBefore: parsed.data.oneHourBefore,
+        dayOf: parsed.data.dayOf,
+      })
+      .onConflictDoUpdate({
+        target: plannerNotificationPreferencesTable.ownerClerkUserId,
+        set: {
+          oneHourBefore: parsed.data.oneHourBefore,
+          dayOf: parsed.data.dayOf,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({
+        oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
+        dayOf: plannerNotificationPreferencesTable.dayOf,
+      });
+    res.json(preferences);
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to save notification preferences");
+    res.status(500).json({ error: "Unable to save notification preferences." });
+  }
 });
 
 router.post("/notifications/subscriptions", requireAuth, async (req, res): Promise<void> => {

@@ -3,6 +3,7 @@ import {
   cloudProjectsTable,
   db,
   plannerNotificationDeliveriesTable,
+  plannerNotificationPreferencesTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
@@ -10,6 +11,7 @@ import { sendPushNotificationToUser } from "../lib/webPush";
 
 const INTERVAL_MS = 15 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const MORNING_HOUR = 7;
 
 type PlannerEvent = {
   id: string;
@@ -27,7 +29,17 @@ type PlannerProject = {
   events: PlannerEvent[];
 };
 
-export type PlannerReminderType = "one_hour";
+export type PlannerReminderType = "one_hour" | "day_of";
+
+export type PlannerReminderPreferences = {
+  oneHourBefore: boolean;
+  dayOf: boolean;
+};
+
+const DEFAULT_REMINDER_PREFERENCES: PlannerReminderPreferences = {
+  oneHourBefore: true,
+  dayOf: false,
+};
 
 function asString(value: unknown) {
   return typeof value === "string" ? value : "";
@@ -64,6 +76,26 @@ function parsePlannerProject(value: unknown): PlannerProject | null {
       opponent: asString(event.opponent),
     })),
   };
+}
+
+function getLocalDateTime(now: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    return {
+      date: `${values.year}-${values.month}-${values.day}`,
+      hour: Number(values.hour),
+    };
+  } catch {
+    return getLocalDateTime(now, "UTC");
+  }
 }
 
 function parseEventTime(value: string) {
@@ -129,18 +161,38 @@ function getEventStart(eventDate: string, eventTime: string, timezone: string) {
   return new Date(corrected);
 }
 
-function getReminderType(
+function getReminderTypes(
   eventDate: string,
   eventTime: string,
   now: Date,
   timezone: string,
-): PlannerReminderType | null {
+  preferences: PlannerReminderPreferences = DEFAULT_REMINDER_PREFERENCES,
+): PlannerReminderType[] {
+  const reminders: PlannerReminderType[] = [];
+  const local = getLocalDateTime(now, timezone);
   const eventStart = getEventStart(eventDate, eventTime, timezone);
-  if (!eventStart) return null;
   const nowMs = now.getTime();
-  const eventStartMs = eventStart.getTime();
-  const reminderAtMs = eventStartMs - ONE_HOUR_MS;
-  return nowMs >= reminderAtMs && nowMs < eventStartMs ? "one_hour" : null;
+  const eventStartMs = eventStart?.getTime() ?? Number.POSITIVE_INFINITY;
+
+  if (
+    preferences.dayOf
+    && local.date === eventDate
+    && local.hour >= MORNING_HOUR
+    && nowMs < eventStartMs
+  ) {
+    reminders.push("day_of");
+  }
+
+  if (
+    preferences.oneHourBefore
+    && eventStart
+    && nowMs >= eventStartMs - ONE_HOUR_MS
+    && nowMs < eventStartMs
+  ) {
+    reminders.push("one_hour");
+  }
+
+  return reminders;
 }
 
 function eventLabel(event: PlannerEvent) {
@@ -164,19 +216,22 @@ function reminderPayload(
 ) {
   const label = eventLabel(event);
   return {
-    title: `Starting in 1 hour: ${label}`,
-    body: `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to capture the moment.`,
+    title: reminderType === "one_hour" ? `Starting in 1 hour: ${label}` : `Today: ${label}`,
+    body: reminderType === "one_hour"
+      ? `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to capture the moment.`
+      : `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to see the full week.`,
     url: "/studio",
   };
 }
 
-export function getPlannerReminderForTest(
+export function getPlannerReminderTypesForTest(
   eventDate: string,
   eventTime: string,
   now: Date,
   timezone: string,
+  preferences: PlannerReminderPreferences = DEFAULT_REMINDER_PREFERENCES,
 ) {
-  return getReminderType(eventDate, eventTime, now, timezone);
+  return getReminderTypes(eventDate, eventTime, now, timezone, preferences);
 }
 
 async function sendPlannerReminder(
@@ -236,6 +291,20 @@ export async function runPlannerNotificationJob(
   }
   if (owners.size === 0) return;
 
+  const preferenceRows = await db
+    .select({
+      ownerClerkUserId: plannerNotificationPreferencesTable.ownerClerkUserId,
+      oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
+      dayOf: plannerNotificationPreferencesTable.dayOf,
+    })
+    .from(plannerNotificationPreferencesTable);
+  const preferencesByOwner = new Map(
+    preferenceRows.map((row) => [row.ownerClerkUserId, {
+      oneHourBefore: row.oneHourBefore,
+      dayOf: row.dayOf,
+    }]),
+  );
+
   const projects = await db
     .select({
       id: cloudProjectsTable.id,
@@ -249,11 +318,13 @@ export async function runPlannerNotificationJob(
     if (!timezone) continue;
     const project = parsePlannerProject(row.project);
     if (!project) continue;
+    const preferences = preferencesByOwner.get(row.ownerClerkUserId) ?? DEFAULT_REMINDER_PREFERENCES;
     for (const event of project.events) {
       if (event.type === "game" && event.status === "final") continue;
-      const reminderType = getReminderType(event.date, event.time, now, timezone);
-      if (!reminderType) continue;
-      await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType, sendPush);
+      const reminderTypes = getReminderTypes(event.date, event.time, now, timezone, preferences);
+      for (const reminderType of reminderTypes) {
+        await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType, sendPush);
+      }
     }
   }
 }

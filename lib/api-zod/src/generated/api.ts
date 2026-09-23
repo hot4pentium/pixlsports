@@ -2227,6 +2227,29 @@ export const GetNotificationConfigResponse = zod.object({
 
 
 /**
+ * @summary Get schedule reminder preferences
+ */
+export const GetNotificationPreferencesResponse = zod.object({
+  "oneHourBefore": zod.boolean(),
+  "dayOf": zod.boolean()
+})
+
+
+/**
+ * @summary Update schedule reminder preferences
+ */
+export const UpdateNotificationPreferencesBody = zod.object({
+  "oneHourBefore": zod.boolean(),
+  "dayOf": zod.boolean()
+})
+
+export const UpdateNotificationPreferencesResponse = zod.object({
+  "oneHourBefore": zod.boolean(),
+  "dayOf": zod.boolean()
+})
+
+
+/**
  * @summary Register a browser push subscription
  */
 export const saveNotificationSubscriptionBodyEndpointMax = 2048;

@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Bell, Loader2, ShieldCheck, Smartphone } from 'lucide-react';
-import { getGetNotificationConfigQueryKey, getNotificationSubscriptionStatus, useDeleteNotificationSubscription, useGetNotificationConfig, useSaveNotificationSubscription, useSendTestNotification } from '@workspace/api-client-react';
+import {
+  getGetNotificationConfigQueryKey,
+  getGetNotificationPreferencesQueryKey,
+  getNotificationSubscriptionStatus,
+  useDeleteNotificationSubscription,
+  useGetNotificationConfig,
+  useGetNotificationPreferences,
+  useSaveNotificationSubscription,
+  useSendTestNotification,
+  useUpdateNotificationPreferences,
+} from '@workspace/api-client-react';
 
 function decodeBase64Url(value: string) {
   const padded = `${value}${'='.repeat((4 - value.length % 4) % 4)}`.replace(/-/g, '+').replace(/_/g, '/');
@@ -31,9 +41,25 @@ export function NotificationSettings() {
   const save = useSaveNotificationSubscription();
   const remove = useDeleteNotificationSubscription();
   const test = useSendTestNotification();
-  const [enabled, setEnabled] = useState(false);
-  const [message, setMessage] = useState('');
   const available = Boolean(config.data?.available && config.data.publicKey && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
+  const preferences = useGetNotificationPreferences({
+    query: {
+      enabled: available,
+      refetchOnWindowFocus: true,
+      queryKey: getGetNotificationPreferencesQueryKey(),
+    },
+  });
+  const updatePreferences = useUpdateNotificationPreferences();
+  const [enabled, setEnabled] = useState(false);
+  const [oneHourBefore, setOneHourBefore] = useState(true);
+  const [dayOf, setDayOf] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (!preferences.data) return;
+    setOneHourBefore(preferences.data.oneHourBefore);
+    setDayOf(preferences.data.dayOf);
+  }, [preferences.data]);
 
   useEffect(() => {
     if (!available) return;
@@ -92,13 +118,28 @@ export function NotificationSettings() {
     catch { setMessage('The test alert could not be sent. Check your notification setup.'); }
   }
 
+  async function updateReminderPreferences(next: { oneHourBefore: boolean; dayOf: boolean }) {
+    const previous = { oneHourBefore, dayOf };
+    setOneHourBefore(next.oneHourBefore);
+    setDayOf(next.dayOf);
+    setMessage('');
+    try {
+      await updatePreferences.mutateAsync({ data: next });
+      setMessage('Reminder preferences saved.');
+    } catch {
+      setOneHourBefore(previous.oneHourBefore);
+      setDayOf(previous.dayOf);
+      setMessage('Unable to save reminder preferences. Please try again.');
+    }
+  }
+
   const configUnavailable = !config.isLoading && !config.isError && !config.data?.available;
 
   return (
     <section className="space-y-4 border-t border-border/60 pt-6" data-testid="notification-settings">
       <h3 className="flex items-center gap-2 border-b border-border/50 pb-2 text-xs font-bold uppercase tracking-widest text-primary"><Bell className="h-4 w-4" /> Phone Alerts</h3>
       <div className="border border-primary/20 bg-primary/5 p-4">
-        <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to the week</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Get reminders for tomorrow’s and today’s games, practices, and meetings—even when Pixl Sports is closed. You can turn this off anytime on this device.</p></div></div>
+         <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to the week</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Choose when Pixl Sports reminds you about games, practices, and meetings—even when the app is closed. Alerts follow the time zone saved for this device.</p></div></div>
         {config.isLoading && <p className="mt-3 text-sm font-medium text-muted-foreground" role="status">Checking phone alert availability…</p>}
         {configUnavailable && <p className="mt-3 text-sm font-medium text-muted-foreground">Phone alerts are not configured on this deployment yet.</p>}
         {config.isError && (
@@ -116,7 +157,37 @@ export function NotificationSettings() {
             </button>
           </div>
         )}
-        {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
+         {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
+         {available && (
+           <div className="mt-5 border-t border-border/60 pt-4" data-testid="notification-preferences">
+             <p className="text-xs font-bold uppercase tracking-widest text-foreground">Schedule reminders</p>
+             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">The one-hour reminder opens the Capture window for games. The day-of reminder arrives at 7:00 AM.</p>
+             <div className="mt-3 space-y-2">
+               <label className="flex items-start gap-3 text-sm">
+                 <input
+                   type="checkbox"
+                   checked={oneHourBefore}
+                   onChange={(event) => void updateReminderPreferences({ oneHourBefore: event.target.checked, dayOf })}
+                   disabled={preferences.isLoading || updatePreferences.isPending}
+                   className="mt-0.5 h-4 w-4 accent-primary"
+                   data-testid="checkbox-reminder-one-hour"
+                 />
+                 <span><span className="font-semibold">One hour before</span><span className="block text-xs text-muted-foreground">Get the prompt to capture the moment.</span></span>
+               </label>
+               <label className="flex items-start gap-3 text-sm">
+                 <input
+                   type="checkbox"
+                   checked={dayOf}
+                   onChange={(event) => void updateReminderPreferences({ oneHourBefore, dayOf: event.target.checked })}
+                   disabled={preferences.isLoading || updatePreferences.isPending}
+                   className="mt-0.5 h-4 w-4 accent-primary"
+                   data-testid="checkbox-reminder-day-of"
+                 />
+                 <span><span className="font-semibold">Day of the event</span><span className="block text-xs text-muted-foreground">Get a planning reminder at 7:00 AM.</span></span>
+               </label>
+             </div>
+           </div>
+         )}
         {enabled && <p className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><ShieldCheck className="h-4 w-4" /> This device is connected</p>}
         {message && <p className="mt-3 text-sm font-medium text-muted-foreground" role="status">{message}</p>}
       </div>
