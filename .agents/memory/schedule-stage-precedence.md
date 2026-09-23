@@ -20,3 +20,9 @@ For a fan-owned tracked game, persist its completion time with the final schedul
 **Why:** Ending tracking previously changed only the status, so the dashboard could immediately jump from Capture to preparation for the next event and skip Send. A completion timestamp distinguishes that transition from an old final game.
 
 **How to apply:** Keep the post-game window bounded and require the explicit final status plus a valid timestamp; do not let legacy or stale completed games override future practice, meeting, or game guidance.
+
+Completed meetings belong to history rather than the active weekly path. Once a meeting ends, recommend the next upcoming calendar event; if none exists, return the path to Plan. An active game still has priority.
+
+**Why:** The recap already remains available in Previous meetings, so leaving Share active makes the path appear stuck on an event that is over.
+
+**How to apply:** Exclude completed meeting IDs from upcoming-event selection, retain their local recap records, and cover reload, next-event, no-event, and active-game cases together.

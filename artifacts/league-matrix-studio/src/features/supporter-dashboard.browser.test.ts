@@ -1434,62 +1434,6 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       Boolean,
     );
 
-     await connection.evaluate(`localStorage.setItem('pixlsports-meeting-capture:guest:ended-meeting', JSON.stringify({
-       context: {
-         id: 'ended-meeting',
-         date: '2020-09-22',
-         time: '17:00',
-         location: 'Northside Clubhouse',
-         title: 'Weekly Team Meeting'
-       },
-       notes: 'Review the completed meeting.',
-       participants: [],
-       agenda: [],
-       decisions: [],
-       followUps: [],
-       startedAt: '2020-09-22T17:00:00.000Z',
-       endedAt: '2020-09-22T18:00:00.000Z'
-     }))`, page.sessionId);
-     await connection.evaluate(`window.__setSupporterDashboardEvents([
-       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' },
-       { id: 'next-practice', type: 'practice', date: '2999-01-01', time: '18:30', location: 'Northside Gym' }
-     ])`, page.sessionId);
-     await waitFor(
-       connection,
-       page.sessionId,
-       'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"',
-       Boolean,
-     );
-     assert.equal(
-       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
-       true,
-       'ending a meeting must keep its recap in Previous meetings',
-     );
-     assert.match(
-       await connection.evaluate<string>('document.querySelector(\'[data-testid="button-review-meeting-ended-meeting"]\')?.getAttribute("href") || ""', page.sessionId),
-       /gameId=ended-meeting.*view=review/,
-     );
-     assert.match(
-       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-       /Get ready for practice/,
-     );
-
-     await connection.evaluate(`window.__setSupporterDashboardEvents([
-       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' }
-     ])`, page.sessionId);
-     await waitFor(
-       connection,
-       page.sessionId,
-       'document.querySelector(\'[data-testid="week-path-content"]\')?.getAttribute("data-selected-path") === "plan"',
-       Boolean,
-     );
-     assert.equal(
-       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
-       true,
-       'the completed recap must remain available when the path returns to Plan',
-     );
-     await connection.evaluate(`localStorage.removeItem('pixlsports-meeting-capture:guest:ended-meeting')`, page.sessionId);
-
     await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'practice-1', type: 'practice', date: '2026-09-22', time: '18:30', location: 'Northside Gym', notes: 'Bring water' }])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"', Boolean);
     assert.match(
@@ -1899,6 +1843,158 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('completed meetings leave the recap in history while the weekly path advances', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-dashboard-ended-meeting-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-ended-meeting-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+    await waitFor(connection, page.sessionId, 'Boolean(window.__setSupporterDashboardEvents)', Boolean);
+
+    const completedMeetingRecord = {
+      context: {
+        id: 'ended-meeting',
+        date: '2020-09-22',
+        time: '17:00',
+        location: 'Northside Clubhouse',
+        title: 'Weekly Team Meeting',
+      },
+      notes: 'Review the completed meeting.',
+      participants: [],
+      agenda: [],
+      decisions: [],
+      followUps: [],
+      startedAt: '2020-09-22T17:00:00.000Z',
+      endedAt: '2020-09-22T18:00:00.000Z',
+    };
+    const upcomingEvents = [
+      { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' },
+      { id: 'next-practice', type: 'practice', date: '2999-01-01', time: '18:30', location: 'Northside Gym' },
+    ];
+    await connection.evaluate(
+      `localStorage.setItem('pixlsports-meeting-capture:guest:ended-meeting', ${JSON.stringify(JSON.stringify(completedMeetingRecord))})`,
+      page.sessionId,
+    );
+    await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(upcomingEvents)})`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
+      true,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="button-review-meeting-ended-meeting"]\')?.getAttribute("href") || ""', page.sessionId),
+      /gameId=ended-meeting.*view=review/,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+      /Get ready for practice/,
+    );
+
+    await reloadPage(connection, page);
+    await waitFor(connection, page.sessionId, 'Boolean(window.__setSupporterDashboardEvents)', Boolean);
+    await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(upcomingEvents)})`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
+      true,
+      'the recap must survive a dashboard reload',
+    );
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' }
+    ])`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "plan"',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
+      true,
+    );
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' },
+      { id: 'active-game', type: 'game', date: '2999-01-01', time: '18:30', location: 'Eastside Gym', opponent: 'Rivals', status: 'live' }
+    ])`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "live"',
+      Boolean,
+    );
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
     if (browser && browserMonitor) {
       if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
