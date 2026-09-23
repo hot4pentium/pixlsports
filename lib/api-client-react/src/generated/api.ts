@@ -51,6 +51,7 @@ import type {
   MediaUploadInput,
   NotFoundResponse,
   NotificationConfig,
+  NotificationDisplayReceiptInput,
   NotificationPreferences,
   NotificationPreferencesUpdate,
   NotificationSubscriptionDeleteInput,
@@ -5194,5 +5195,94 @@ export const useSendTestNotification = <TError = ErrorType<UnauthorizedResponse 
         TContext
       > => {
       return useMutation(getSendTestNotificationMutationOptions(options));
+    }
+
+export const getAcknowledgeNotificationDisplayedUrl = (deliveryId: string,) => {
+
+
+
+
+  return `/api/notifications/deliveries/${deliveryId}/displayed`
+}
+
+/**
+ * @summary Acknowledge that a push notification was displayed by the device
+ */
+export const acknowledgeNotificationDisplayed = async (deliveryId: string,
+    notificationDisplayReceiptInput: NotificationDisplayReceiptInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getAcknowledgeNotificationDisplayedUrl(deliveryId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(notificationDisplayReceiptInput)
+  }
+);}
+
+
+
+
+
+export const getAcknowledgeNotificationDisplayedMutationKey = () => ['acknowledgeNotificationDisplayed'] as const;
+
+export const getAcknowledgeNotificationDisplayedMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeNotificationDisplayed>>, TError,AcknowledgeNotificationDisplayedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeNotificationDisplayed>>, TError,AcknowledgeNotificationDisplayedMutationVariables, TContext> => {
+
+const mutationKey = getAcknowledgeNotificationDisplayedMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeNotificationDisplayed>>, AcknowledgeNotificationDisplayedMutationVariables> = (props) => {
+          const {deliveryId,data} = props ?? {};
+
+          return  acknowledgeNotificationDisplayed(deliveryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcknowledgeNotificationDisplayedMutationResult = NonNullable<Awaited<ReturnType<typeof acknowledgeNotificationDisplayed>>>
+    export type AcknowledgeNotificationDisplayedMutationBody = BodyType<NotificationDisplayReceiptInput>
+    export type AcknowledgeNotificationDisplayedMutationError = ErrorType<BadRequestResponse | NotFoundResponse>
+    export type AcknowledgeNotificationDisplayedMutationVariables = {deliveryId: string;data: BodyType<NotificationDisplayReceiptInput>}
+
+    /**
+ * @summary Acknowledge that a push notification was displayed by the device
+ */
+export const useAcknowledgeNotificationDisplayed = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeNotificationDisplayed>>, TError,AcknowledgeNotificationDisplayedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acknowledgeNotificationDisplayed>>,
+        TError,
+        AcknowledgeNotificationDisplayedMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAcknowledgeNotificationDisplayedMutationOptions(options));
     }
 

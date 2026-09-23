@@ -2311,3 +2311,21 @@ export const GetNotificationSubscriptionStatusResponse = zod.object({
 export const SendTestNotificationResponse = zod.void()
 
 
+/**
+ * @summary Acknowledge that a push notification was displayed by the device
+ */
+export const AcknowledgeNotificationDisplayedParams = zod.object({
+  "deliveryId": zod.coerce.string().uuid()
+})
+
+export const acknowledgeNotificationDisplayedBodySubscriptionEndpointMax = 2048;
+
+
+
+export const AcknowledgeNotificationDisplayedBody = zod.object({
+  "subscriptionEndpoint": zod.string().url().max(acknowledgeNotificationDisplayedBodySubscriptionEndpointMax)
+})
+
+export const AcknowledgeNotificationDisplayedResponse = zod.void()
+
+

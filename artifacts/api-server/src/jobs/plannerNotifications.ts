@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import {
   cloudProjectsTable,
   db,
@@ -265,14 +266,17 @@ async function sendPlannerReminder(
     ))
     .limit(1);
   if (existingDelivery) return;
+  const deliveryId = randomUUID();
 
   const result = await sendPush(ownerClerkUserId, {
     ...reminderPayload(project, event, reminderType),
+    deliveryId,
     tag: `planner-${projectId}-${event.id}-${reminderType}-${event.date}`,
   });
   if (result.sent === 0) return;
 
   await db.insert(plannerNotificationDeliveriesTable).values({
+    id: deliveryId,
     projectId,
     eventId: event.id,
     notificationType: reminderType,

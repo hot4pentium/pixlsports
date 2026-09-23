@@ -1,11 +1,19 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
+  AcknowledgeNotificationDisplayedBody,
+  AcknowledgeNotificationDisplayedParams,
   DeleteNotificationSubscriptionBody,
   SaveNotificationSubscriptionBody,
   UpdateNotificationPreferencesBody,
 } from "@workspace/api-zod";
-import { db, plannerNotificationPreferencesTable, webPushSubscriptionsTable } from "@workspace/db";
+import {
+  cloudProjectsTable,
+  db,
+  plannerNotificationDeliveriesTable,
+  plannerNotificationPreferencesTable,
+  webPushSubscriptionsTable,
+} from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { getWebPushConfig, sendPushNotificationToUser } from "../lib/webPush";
 
@@ -146,6 +154,49 @@ router.delete("/notifications/subscriptions", requireAuth, async (req, res): Pro
   } catch (error) {
     req.log.error({ err: error }, "Unable to remove push subscription");
     res.status(500).json({ error: "Unable to remove push subscription." });
+  }
+});
+
+router.post("/notifications/deliveries/:deliveryId/displayed", async (req, res): Promise<void> => {
+  const params = AcknowledgeNotificationDisplayedParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid notification delivery." }); return; }
+  const parsed = AcknowledgeNotificationDisplayedBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid display receipt." }); return; }
+
+  try {
+    const [matchingDelivery] = await db
+      .select({ id: plannerNotificationDeliveriesTable.id })
+      .from(plannerNotificationDeliveriesTable)
+      .innerJoin(
+        cloudProjectsTable,
+        eq(cloudProjectsTable.id, plannerNotificationDeliveriesTable.projectId),
+      )
+      .innerJoin(
+        webPushSubscriptionsTable,
+        and(
+          eq(webPushSubscriptionsTable.ownerClerkUserId, cloudProjectsTable.ownerClerkUserId),
+          eq(webPushSubscriptionsTable.endpoint, parsed.data.subscriptionEndpoint),
+        ),
+      )
+      .where(eq(plannerNotificationDeliveriesTable.id, params.data.deliveryId))
+      .limit(1);
+
+    if (!matchingDelivery) {
+      res.status(404).json({ error: "Notification delivery not found." });
+      return;
+    }
+
+    await db
+      .update(plannerNotificationDeliveriesTable)
+      .set({ displayedAt: new Date() })
+      .where(and(
+        eq(plannerNotificationDeliveriesTable.id, params.data.deliveryId),
+        isNull(plannerNotificationDeliveriesTable.displayedAt),
+      ));
+    res.status(204).end();
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to record notification display receipt");
+    res.status(500).json({ error: "Unable to record notification display receipt." });
   }
 });
 

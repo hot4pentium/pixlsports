@@ -219,6 +219,7 @@ export const plannerNotificationDeliveriesTable = pgTable("planner_notification_
   eventId: text("event_id").notNull(),
   notificationType: text("notification_type").notNull(),
   eventDate: text("event_date").notNull(),
+  displayedAt: timestamp("displayed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   deliveryUnique: uniqueIndex("planner_notification_deliveries_key_unique").on(

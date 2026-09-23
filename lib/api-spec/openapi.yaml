@@ -1265,6 +1265,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /notifications/deliveries/{deliveryId}/displayed:
+    post:
+      operationId: acknowledgeNotificationDisplayed
+      tags: [notifications]
+      summary: Acknowledge that a push notification was displayed by the device
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationDisplayReceiptInput"
+      responses:
+        "204":
+          description: Display receipt recorded
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   parameters:
     ProjectId:
@@ -1422,6 +1447,11 @@ components:
       properties:
         owned: { type: boolean }
         ownedByAnotherAccount: { type: boolean }
+    NotificationDisplayReceiptInput:
+      type: object
+      required: [subscriptionEndpoint]
+      properties:
+        subscriptionEndpoint: { type: string, format: uri, maxLength: 2048 }
     HealthStatus:
       type: object
       properties:

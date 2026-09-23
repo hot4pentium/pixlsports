@@ -124,6 +124,11 @@ export interface NotificationSubscriptionStatus {
   ownedByAnotherAccount: boolean;
 }
 
+export interface NotificationDisplayReceiptInput {
+  /** @maxLength 2048 */
+  subscriptionEndpoint: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

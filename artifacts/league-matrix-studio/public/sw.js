@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v8`;
+const CACHE_NAME = `${CACHE_PREFIX}-v9`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 
@@ -17,6 +17,22 @@ function resolveAppUrl(value) {
   const normalized = value.startsWith('/') ? value.slice(1) : value;
   const resolved = new URL(normalized, scope.href);
   return isInScope(resolved) ? resolved.href : scope.href;
+}
+
+async function acknowledgeDisplayed(deliveryId) {
+  if (typeof deliveryId !== 'string' || !deliveryId) return;
+  const subscription = await self.registration.pushManager.getSubscription();
+  if (!subscription?.endpoint) return;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(`${self.location.origin}/api/notifications/deliveries/${encodeURIComponent(deliveryId)}/displayed`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscriptionEndpoint: subscription.endpoint }),
+    });
+    if (response.ok) return;
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+  }
 }
 
 self.addEventListener('install', (event) => {
@@ -49,11 +65,12 @@ self.addEventListener('push', (event) => {
   const body = typeof payload.body === 'string' ? payload.body : '';
   const tag = typeof payload.tag === 'string' ? payload.tag : 'pixl-sports-notification';
   const url = resolveAppUrl(payload.url);
-  event.waitUntil(self.registration.showNotification(title, {
+  const display = self.registration.showNotification(title, {
     body, tag, data: { url },
     icon: `${getScopePath()}pwa-icon-192.png`,
     badge: `${getScopePath()}pwa-icon-192.png`,
-  }));
+  });
+  event.waitUntil(display.then(() => acknowledgeDisplayed(payload.deliveryId)).catch(() => undefined));
 });
 
 self.addEventListener('notificationclick', (event) => {
