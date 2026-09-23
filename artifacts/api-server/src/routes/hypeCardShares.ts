@@ -29,6 +29,7 @@ import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth"
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { parseHttpByteRange } from "../lib/httpByteRange";
 import { sendPushNotificationToUser } from "../lib/webPush";
 
 const router: IRouter = Router();
@@ -624,6 +625,40 @@ router.get("/hype-card-shares/:shareToken/media/:mediaKind", async (req, res): P
   }
   try {
     const file = await objectStorage.getObjectEntityFile(objectPath);
+    if (params.data.mediaKind === "video") {
+      const [metadata] = await file.getMetadata();
+      const size = Number(metadata.size);
+      if (!Number.isSafeInteger(size) || size < 1) {
+        throw new Error("Hype Card video size is unavailable");
+      }
+      const rangeHeader = req.get("range");
+      const range = rangeHeader ? parseHttpByteRange(rangeHeader, size) : null;
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Type", share.videoContentType ?? "video/mp4");
+      res.setHeader("Cache-Control", "private, max-age=300");
+      res.setHeader("Content-Disposition", "inline");
+      if (rangeHeader && !range) {
+        res.status(416).setHeader("Content-Range", `bytes */${size}`).end();
+        return;
+      }
+      if (range) {
+        res.status(206).setHeader("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
+      }
+      res.setHeader("Content-Length", String(range ? range.end - range.start + 1 : size));
+      const stream = file.createReadStream(range ?? undefined);
+      stream.on("error", (error) => {
+        req.log.error({ err: error }, "Unable to stream Hype Card video");
+        if (res.headersSent) res.destroy(error);
+        else {
+          res.removeHeader("Content-Length");
+          res.removeHeader("Content-Range");
+          res.status(500).json({ error: "Unable to serve Hype Card video" });
+        }
+      });
+      res.on("close", () => stream.destroy());
+      stream.pipe(res);
+      return;
+    }
     const response = await objectStorage.downloadObject(file, 300);
     res.status(response.status);
     response.headers.forEach((value, key) => res.setHeader(key, value));
