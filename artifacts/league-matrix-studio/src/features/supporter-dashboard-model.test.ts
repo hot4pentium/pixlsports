@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getSupporterGameStage,
+  getNextUpcomingSupporterEvent,
   getSupporterPreparationContext,
   getSupporterScheduleSelection,
   getSupporterPreparationCopy,
@@ -76,6 +77,19 @@ test('a saved September 21 game selection cannot hide the next September 24 prac
   assert.equal(recommendation?.event.id, 'practice-24');
   assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', false, now)?.id, 'practice-24');
   assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', true, now), undefined);
+});
+
+test('Coming up shows the closest future event even when it is also the prep recommendation', () => {
+  const now = new Date('2026-09-22T21:19:00');
+  const oldGame = { id: 'game-21', type: 'game' as const, date: '2026-09-21', time: '18:30', status: 'upcoming' as const };
+  const game = { id: 'game-23', type: 'game' as const, date: '2026-09-23', time: '17:00', status: 'upcoming' as const };
+  const practice = { id: 'practice-24', type: 'practice' as const, date: '2026-09-24', time: '18:30' };
+  const events = [practice, oldGame, game];
+
+  assert.equal(getSupporterWeekRecommendation(events, now)?.event.id, 'game-23');
+  assert.equal(getNextUpcomingSupporterEvent(events, now)?.id, 'game-23');
+  assert.equal(getNextUpcomingSupporterEvent([oldGame, practice], now)?.id, 'practice-24');
+  assert.equal(getNextUpcomingSupporterEvent([oldGame], now), undefined);
 });
 
 test('preparation copy names each event type and has a no-event fallback', () => {

@@ -288,6 +288,18 @@ export function getActiveSupporterGame<T extends SupporterGameLike>(
     ?? games.at(-1);
 }
 
+export function getNextUpcomingSupporterEvent<T extends SupporterWeekEventLike>(
+  events: readonly T[],
+  now = new Date(),
+): T | undefined {
+  return events
+    .filter((event) => getSupporterGameStage(event, now) === 'upcoming')
+    .sort((left, right) => (
+      left.date.localeCompare(right.date)
+      || left.time.localeCompare(right.time)
+    ))[0];
+}
+
 export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>(
   events: readonly T[],
   now = new Date(),
@@ -303,12 +315,7 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
-  const upcomingEvent = events
-    .filter((event) => getSupporterGameStage(event, now) === 'upcoming')
-    .sort((left, right) => (
-      left.date.localeCompare(right.date)
-      || left.time.localeCompare(right.time)
-    ))[0];
+  const upcomingEvent = getNextUpcomingSupporterEvent(events, now);
   if (upcomingEvent) {
     return {
       event: upcomingEvent,

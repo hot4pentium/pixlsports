@@ -9,6 +9,7 @@ import {
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
+  getNextUpcomingSupporterEvent,
   getSupporterGameStage,
   getSupporterPreparationContext,
   getSupporterPreparationCopy,
@@ -551,6 +552,7 @@ export function SupporterDashboardView({
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? events[0];
+  const nextUpcomingEvent = getNextUpcomingSupporterEvent(events);
   const scheduleCardEvent = weekRecommendation?.event ?? nextGame;
   const scheduleCardLabel = scheduleCardEvent?.type === 'practice'
     ? 'Practice'
@@ -758,11 +760,8 @@ export function SupporterDashboardView({
 
           {/* Upcoming Section */}
           {(() => {
-             const futureEvents = events
-                .filter(e => mobileFeaturedEvent && e.id !== mobileFeaturedEvent.id && e.date >= mobileFeaturedEvent.date)
-                .sort((a,b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
-             if (futureEvents.length === 0) return null;
-             const nextUp = futureEvents[0];
+              const nextUp = nextUpcomingEvent;
+              if (!nextUp) return null;
              return (
               <section className="mt-2 mb-4" data-testid="section-mobile-coming-up" aria-labelledby="mobile-coming-up-heading">
                 <div className="flex items-center justify-between mb-4 px-1">
