@@ -242,33 +242,33 @@ function PreviousMeetingsSection({
   records: ReturnType<typeof listCompletedMeetingRecords>;
 }) {
   return (
-    <section className="border border-border bg-card p-5 sm:p-7" data-testid="section-previous-meetings" aria-labelledby="previous-meetings-heading">
+    <section className="previous-meetings-panel border border-border bg-card p-5 sm:p-7" data-testid="section-previous-meetings" aria-labelledby="previous-meetings-heading">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Your local notebook</p>
-          <h2 id="previous-meetings-heading" className="mt-2 font-display text-3xl uppercase tracking-wide">Previous meetings</h2>
+          <h2 id="previous-meetings-heading" className="previous-meetings-heading mt-2 font-display text-3xl uppercase tracking-wide">Previous meetings</h2>
         </div>
-        <p className="text-xs font-medium text-muted-foreground">Saved on this device</p>
+        <p className="previous-meetings-caption text-xs font-medium">Saved on this device</p>
       </div>
       {records.length === 0 ? (
         <div className="py-8 text-sm text-muted-foreground" data-testid="meeting-history-empty">
-          <p className="font-bold uppercase tracking-widest text-foreground">No completed meetings yet</p>
-          <p className="mt-2 max-w-lg leading-relaxed">When you end a meeting, its recap will stay here so you can review it later.</p>
+          <p className="previous-meetings-empty-title font-bold uppercase tracking-widest">No completed meetings yet</p>
+          <p className="previous-meetings-empty-copy mt-2 max-w-lg leading-relaxed">When you end a meeting, its recap will stay here so you can review it later.</p>
         </div>
       ) : (
         <div className="mt-4 grid gap-2">
           {records.map((record) => (
             <div key={record.context.id} className="flex flex-col gap-3 border border-border/70 bg-background p-4 sm:flex-row sm:items-center sm:justify-between" data-testid={`meeting-history-item-${record.context.id}`}>
               <div className="min-w-0">
-                <h3 className="break-words font-display text-xl uppercase tracking-wide">{record.context.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <h3 className="previous-meeting-title break-words font-display text-xl uppercase tracking-wide">{record.context.title}</h3>
+                <p className="previous-meeting-meta mt-1 text-sm">
                   {formatDateDisplay(record.context.date)} · {formatTimeDisplay(record.context.time)}
                   {record.context.location ? ` · ${record.context.location}` : ''}
                 </p>
               </div>
               <Link
                 href={`/studio/checklist?gameId=${encodeURIComponent(record.context.id)}&eventType=meeting&view=review`}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-primary/60 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:bg-primary/10"
+                className="previous-meeting-review inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-primary/60 px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors hover:border-primary hover:bg-primary/10"
                 data-testid={`button-review-meeting-${record.context.id}`}
               >
                 Review recap <ArrowRight className="h-4 w-4" />
@@ -703,6 +703,7 @@ export function SupporterDashboardView({
     : mobileFeaturedEvent?.type === 'meeting'
       ? `${profile.teamName || 'Your team'} meeting`
     : `${profile.teamName || 'Your team'}${mobileFeaturedEvent?.opponent ? ` vs ${mobileFeaturedEvent.opponent}` : ''}`;
+  const mobileFeaturedDateParts = mobileFeaturedEvent ? getEventDateParts(mobileFeaturedEvent.date) : null;
 
   return (
     <>
@@ -789,8 +790,8 @@ export function SupporterDashboardView({
             {mobileFeaturedEvent ? (
               <div className="flex items-start gap-4">
                 <div className="mobile-featured-event-date" aria-hidden="true">
-                  <span>{formatDateDisplay(mobileFeaturedEvent.date).split(' ')[0]}</span>
-                  <strong>{formatDateDisplay(mobileFeaturedEvent.date).split(' ')[1]}</strong>
+                  <span>{mobileFeaturedDateParts?.month}</span>
+                  <strong>{mobileFeaturedDateParts?.day}</strong>
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[22px] font-bold font-display tracking-tight text-[#12213A] leading-tight mb-1.5 break-words">{mobileFeaturedTitle}</h2>
