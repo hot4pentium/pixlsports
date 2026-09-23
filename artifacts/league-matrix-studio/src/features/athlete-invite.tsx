@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,6 +18,9 @@ import {
   Smartphone,
   Trophy,
   Trash2,
+  Upload,
+  Video,
+  X,
   TrendingDown,
   TrendingUp,
   Zap,
@@ -28,7 +32,9 @@ import {
   getListProjectsQueryKey,
   getListHypeCardSharesQueryKey,
   downloadHypeCardShare,
+  requestHypeCardShareUploadUrl,
   useCreateAthleteInvite,
+  useCreateHypeCardShare,
   useGetAthleteInvite,
   useListAthleteInvites,
   useListProjects,
@@ -47,6 +53,7 @@ import { HypeCardReplyComposer } from './public-hype-card';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
+import { MAX_HOSTED_VIDEO_BYTES, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const hostedVideoQuery = { shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 };
@@ -421,6 +428,260 @@ type OwnedAthleteInvite = {
   liveTrackerShareToken: string | null;
 };
 
+function directVideoSlug(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'athlete-highlight';
+}
+
+function OwnerVideoUpload({
+  invite,
+  atLimit,
+  onPosted,
+}: {
+  invite: Pick<OwnedAthleteInvite, 'inviteToken' | 'athleteName' | 'teamName'>;
+  atLimit: boolean;
+  onPosted: () => Promise<void>;
+}) {
+  const createShare = useCreateHypeCardShare();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [duration, setDuration] = useState(0);
+  const [trimStart, setTrimStart] = useState(0);
+  const [trimEnd, setTrimEnd] = useState(0);
+  const [message, setMessage] = useState('');
+  const [stage, setStage] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+  }, [videoUrl]);
+
+  const reset = () => {
+    abortRef.current?.abort();
+    setFile(null);
+    setDuration(0);
+    setTrimStart(0);
+    setTrimEnd(0);
+    setStage('');
+    setProgress(0);
+    setMessage('');
+    setVideoUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!nextFile) return;
+    if (!nextFile.type.startsWith('video/')) {
+      setMessage('Choose a video file.');
+      return;
+    }
+    if (nextFile.size > 120 * 1024 * 1024) {
+      setMessage('Video is too large. Choose a video under 120MB.');
+      return;
+    }
+    abortRef.current?.abort();
+    setMessage('');
+    setStage('');
+    setProgress(0);
+    setFile(nextFile);
+    setVideoUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(nextFile);
+    });
+    setDuration(0);
+    setTrimStart(0);
+    setTrimEnd(0);
+  };
+
+  const handleMetadata = () => {
+    const video = videoRef.current;
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) {
+      setMessage('This video has an invalid duration.');
+      return;
+    }
+    setDuration(video.duration);
+    setTrimStart(0);
+    setTrimEnd(Math.min(15, video.duration));
+    setMessage(video.duration > 15 ? 'The first 15 seconds are selected. Adjust the segment below if needed.' : '');
+  };
+
+  const handleStartChange = (value: number) => {
+    const nextStart = Math.max(0, Math.min(value, Math.max(0, duration - 0.1)));
+    setTrimStart(nextStart);
+    setTrimEnd((currentEnd) => Math.max(nextStart + 0.1, Math.min(duration, nextStart + 15, currentEnd)));
+  };
+
+  const handleEndChange = (value: number) => {
+    setTrimEnd(Math.max(trimStart + 0.1, Math.min(duration, trimStart + 15, value)));
+  };
+
+  const publish = async () => {
+    const video = videoRef.current;
+    if (!file || !video || !duration) {
+      setMessage('Choose a video and wait for its preview to load.');
+      return;
+    }
+    if (trimEnd <= trimStart || trimEnd - trimStart > 15.1) {
+      setMessage('Choose a segment between 0.1 and 15 seconds.');
+      return;
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setUploading(true);
+    setMessage('');
+    setProgress(0);
+    setStage('Preparing a web-friendly video…');
+    try {
+      const prepared = await prepareHypeCardShareMedia(
+        video,
+        { trimStart, trimEnd },
+        (value) => setProgress(value * 0.55),
+        { signal: controller.signal, quality: 'standard' },
+      );
+      if (prepared.video.size > MAX_HOSTED_VIDEO_BYTES) {
+        throw new Error('The prepared video is too large for the Athlete Hype Page. Choose a shorter segment.');
+      }
+      const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
+      setStage('Uploading the prepared video and poster…');
+      const [videoUpload, posterUpload] = await Promise.all([
+        requestHypeCardShareUploadUrl({ mediaKind: 'video', contentType: videoContentType }),
+        requestHypeCardShareUploadUrl({ mediaKind: 'poster', contentType: 'image/jpeg' }),
+      ]);
+      const transferred = { video: 0, poster: 0 };
+      const updateProgress = () => {
+        const total = prepared.video.size + prepared.poster.size;
+        setProgress(0.55 + (total ? (transferred.video + transferred.poster) / total : 0) * 0.3);
+      };
+      await Promise.all([
+        uploadHypeCardShareMedia(videoUpload.uploadUrl, prepared.video, videoContentType, controller.signal, (value) => {
+          transferred.video = prepared.video.size * value;
+          updateProgress();
+        }),
+        uploadHypeCardShareMedia(posterUpload.uploadUrl, prepared.poster, 'image/jpeg', controller.signal, (value) => {
+          transferred.poster = prepared.poster.size * value;
+          updateProgress();
+        }),
+      ]);
+      setStage('Adding the video to the Athlete Hype Page…');
+      const label = file.name.replace(/\.[^.]+$/, '').trim() || 'Video highlight';
+      const uniqueKey = `${invite.inviteToken}:${Date.now()}:${directVideoSlug(file.name)}`;
+      await createShare.mutateAsync({
+        data: {
+          title: `${invite.athleteName} · ${label}`.slice(0, 200),
+          slug: `${directVideoSlug(invite.athleteName)}-${directVideoSlug(label)}-${Date.now()}`.slice(0, 80),
+          shareKey: uniqueKey,
+          shareMode: 'card',
+          mediaType: 'video',
+          mediaUploadClaimId: videoUpload.claimId,
+          posterUploadClaimId: posterUpload.claimId,
+          expiresInDays: 365,
+          manifest: {
+            version: 1,
+            shareKey: uniqueKey,
+            project: {
+              version: 3,
+              headline: label,
+              mediaType: 'video',
+              mediaId: null,
+              downloadMediaId: null,
+              posterMediaId: null,
+              logoMediaId: null,
+              videoFit: 'fit',
+              videoPrepared: true,
+              videoMeta: {
+                name: file.name,
+                type: videoContentType,
+                size: prepared.video.size,
+                duration: prepared.duration,
+              },
+              trimStart: 0,
+              trimEnd: prepared.duration,
+              playerName: invite.athleteName,
+              teamName: invite.teamName,
+              jerseyNumber: '',
+              position: '',
+            },
+          },
+        },
+      });
+      await onPosted();
+      setProgress(1);
+      setStage('');
+      setMessage('Video added to the Athlete Hype Page.');
+      setFile(null);
+      setDuration(0);
+      setTrimStart(0);
+      setTrimEnd(0);
+      setVideoUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return null;
+      });
+    } catch (error) {
+      const cancelled = error instanceof Error && error.name === 'AbortError';
+      setMessage(cancelled ? 'Video upload cancelled. The original video remains on this device.' : error instanceof Error ? error.message : 'The video could not be added.');
+      setStage('');
+    } finally {
+      setUploading(false);
+      abortRef.current = null;
+    }
+  };
+
+  return (
+    <section className="mt-5 border border-white/15 bg-black/10 p-4 sm:p-5" aria-labelledby="add-athlete-video">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">New highlight</p>
+          <h4 id="add-athlete-video" className="mt-1 font-display text-2xl uppercase">Add a video here</h4>
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose, trim, and post a clip from this page. You do not need to open Hype Card Creator unless you want a designed card.</p>
+        </div>
+        <label className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground ${atLimit || uploading ? 'pointer-events-none opacity-50' : 'hover:bg-primary/90'}`}>
+          <Upload className="h-4 w-4" /> Add video
+          <input type="file" accept="video/*" className="sr-only" onChange={handleFileChange} disabled={atLimit || uploading} />
+        </label>
+      </div>
+      {atLimit && <p className="mt-3 text-xs font-medium text-amber-200">This page has 10 active videos. Delete one before adding another.</p>}
+      {file && videoUrl && (
+        <div className="mt-5 grid gap-4 border-t border-white/15 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
+          <video ref={videoRef} src={videoUrl} controls playsInline preload="metadata" onLoadedMetadata={handleMetadata} className="max-h-72 w-full bg-black object-contain" />
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/70"><Video className="h-4 w-4 text-primary" /> {duration ? `${duration.toFixed(1)} seconds` : 'Reading video…'}</div>
+            {duration > 0 && (
+              <div className="space-y-4">
+                <label className="block text-xs font-bold uppercase tracking-wider text-white/70">
+                  Start: {trimStart.toFixed(1)}s
+                  <input type="range" min="0" max={Math.max(0, duration - 0.1)} step="0.1" value={trimStart} onChange={(event) => handleStartChange(Number(event.target.value))} className="mt-2 w-full accent-[hsl(var(--primary))]" />
+                </label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-white/70">
+                  End: {trimEnd.toFixed(1)}s
+                  <input type="range" min={Math.min(duration, trimStart + 0.1)} max={Math.min(duration, trimStart + 15)} step="0.1" value={trimEnd} onChange={(event) => handleEndChange(Number(event.target.value))} className="mt-2 w-full accent-[hsl(var(--primary))]" />
+                </label>
+                <p className="text-xs text-white/55">Selected segment: {(trimEnd - trimStart).toFixed(1)}s. Maximum 15 seconds.</p>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => void publish()} disabled={uploading || !duration} className="inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50">
+                {uploading ? `${Math.round(progress * 100)}%` : 'Post video'}
+              </button>
+              <button type="button" onClick={uploading ? () => abortRef.current?.abort() : reset} className="inline-flex min-h-10 items-center gap-2 border border-white/25 px-4 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10">
+                {uploading ? 'Cancel' : <><X className="h-4 w-4" /> Remove</>}
+              </button>
+            </div>
+            {(stage || message) && <p className="text-xs font-medium leading-relaxed text-white/65" role={message.includes('added') ? 'status' : 'alert'} aria-live="polite">{stage || message}</p>}
+          </div>
+        </div>
+      )}
+      {!file && message && <p className="mt-3 text-xs font-medium text-amber-200" role="alert">{message}</p>}
+    </section>
+  );
+}
+
 function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const queryClient = useQueryClient();
   const updateInvite = useUpdateAthleteInvite();
@@ -591,6 +852,16 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           </div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{hostedVideos.length} / 10</span>
         </div>
+        <OwnerVideoUpload
+          invite={invite}
+          atLimit={hostedVideos.length >= 10}
+          onPosted={async () => {
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery) }),
+              queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+            ]);
+          }}
+        />
         {mediaLoading ? (
           <p role="status" className="mt-4 text-sm text-white/55">Checking posted media…</p>
         ) : mediaError ? (

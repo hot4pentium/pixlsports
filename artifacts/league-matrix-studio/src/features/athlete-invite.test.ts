@@ -62,6 +62,13 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /data-testid="hosted-video-list"/);
   assert.match(source, /data-testid="section-manage-athlete-videos"/);
   assert.match(source, /Manage posted videos/);
+  assert.match(source, /function OwnerVideoUpload/);
+  assert.match(source, /Add a video here/);
+  assert.match(source, /data-testid="section-manage-athlete-videos"/);
+  assert.match(source, /prepareHypeCardShareMedia/);
+  assert.match(source, /requestHypeCardShareUploadUrl/);
+  assert.match(source, /expiresInDays: 365/);
+  assert.match(source, /The original video remains on this device/);
   assert.match(source, /data-testid="hosted-video-title"/);
   assert.match(source, /data-testid="button-download-hosted-video"/);
   assert.match(source, /data-testid="button-remove-hosted-video"/);
