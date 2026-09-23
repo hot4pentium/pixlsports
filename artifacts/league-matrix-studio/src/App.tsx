@@ -17,11 +17,10 @@ import {
   useCancelAccount,
   useReactivateAccount,
   getGetAccountLifecycleQueryKey,
-  useGetSupporterPhoto,
+  getGetSupporterPhotoQueryKey,
   useRequestSupporterPhotoUploadUrl,
   useSaveSupporterPhoto,
   useDeleteSupporterPhoto,
-  getGetSupporterPhotoQueryKey,
   useCreateChecklistShare,
   useDeleteChecklistShare,
   useGetChecklistShare,
@@ -82,7 +81,11 @@ import {
   getScheduleInstallInstructions,
   isIosDevice,
 } from '@/features/schedule-install';
-import { clearSupporterPhotoCache, updateSupporterPhotoCache } from '@/features/supporter-photo-cache';
+import {
+  clearSupporterPhotoCache,
+  updateSupporterPhotoCache,
+  useCachedSupporterPhoto,
+} from '@/features/supporter-photo-cache';
 import { fetchScheduleShareWithCache } from '@/features/schedule-offline';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
@@ -1452,9 +1455,7 @@ function SupporterStudio() {
   const queryClient = useQueryClient();
   const profile = supporterProfileFromUser(user);
   const localSchedule = readScheduleDraft();
-  const { data: athletePhoto } = useGetSupporterPhoto({
-    query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
-  });
+  const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const { data: accountAccess } = useGetAccountAccess({
     query: {
       enabled: Boolean(isSignedIn),
@@ -1534,8 +1535,8 @@ function SupporterStudio() {
            }}
            onOpenChecklist={() => setLocation('/studio/checklist')}
            onSignOut={() => signOut({ redirectUrl: basePath || "/" })}
-          athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
-          athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
+           athletePhotoUrl={athletePhoto.imageUrl}
+           athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}
         />
       </main>
     </StudioLayout>
@@ -1554,9 +1555,7 @@ function SupporterProfilePage() {
   const requestPhotoUpload = useRequestSupporterPhotoUploadUrl();
   const savePhoto = useSaveSupporterPhoto();
   const deletePhoto = useDeleteSupporterPhoto();
-  const { data: athletePhoto } = useGetSupporterPhoto({
-    query: { enabled: Boolean(isSignedIn), retry: false, queryKey: getGetSupporterPhotoQueryKey() },
-  });
+  const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending || deletePhoto.isPending;
 
   useEffect(() => {
@@ -1642,8 +1641,8 @@ function SupporterProfilePage() {
           }}
           onSave={() => void saveProfile()}
           onCancel={() => setLocation('/studio')}
-          athletePhotoUrl={athletePhoto ? `${athletePhoto.url}?v=${encodeURIComponent(String(athletePhoto.updatedAt))}` : undefined}
-          athletePhotoCrop={athletePhoto ? { x: athletePhoto.cropX, y: athletePhoto.cropY, zoom: athletePhoto.cropZoom } : undefined}
+           athletePhotoUrl={athletePhoto.imageUrl}
+           athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}
           pendingPhotoUrl={pendingPhoto?.url}
           pendingPhotoCrop={pendingPhotoCrop}
           photoBusy={photoBusy}
@@ -1655,7 +1654,10 @@ function SupporterProfilePage() {
           onPhotoRemove={() => {
             setPhotoError('');
             deletePhoto.mutate(undefined, {
-              onSuccess: () => clearSupporterPhotoCache(queryClient),
+               onSuccess: () => {
+                 clearSupporterPhotoCache(queryClient);
+                 athletePhoto.clearLocalCache();
+               },
               onError: () => setPhotoError('We could not remove the photo. Please try again.'),
             });
           }}

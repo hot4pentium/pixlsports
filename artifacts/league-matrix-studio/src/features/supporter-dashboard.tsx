@@ -79,6 +79,17 @@ export interface AthletePhotoCrop {
   zoom: number;
 }
 
+function athleteInitials(name: string): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+  return initials || 'A';
+}
+
 interface AthleteCardPreviewProps {
   profile: SupporterProfile;
   athletePhotoUrl?: string;
@@ -110,7 +121,9 @@ function AthleteCardPreview({
               <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
             </div>
           ) : hasAthlete ? (
-            <User className="h-6 w-6 opacity-20" />
+            <span className="font-display text-xl font-bold text-primary" aria-label={`${athleteInitials(profile.athleteName)} initials`}>
+              {athleteInitials(profile.athleteName)}
+            </span>
           ) : (
             <Users className="h-6 w-6 opacity-20" />
           )}
@@ -977,7 +990,9 @@ export function SupporterDashboardView({
                       <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
                     </div>
                   ) : hasAthlete ? (
-                    <User className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
+                    <span className="font-display text-2xl font-bold text-primary sm:text-3xl" aria-label={`${athleteInitials(profile.athleteName)} initials`}>
+                      {athleteInitials(profile.athleteName)}
+                    </span>
                   ) : (
                     <Users className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
                   )}

@@ -2,7 +2,52 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { getGetSupporterPhotoQueryKey } from '@workspace/api-client-react';
-import { clearSupporterPhotoCache, updateSupporterPhotoCache } from './supporter-photo-cache';
+import {
+  clearCachedSupporterPhoto,
+  clearSupporterPhotoCache,
+  readCachedSupporterPhoto,
+  updateSupporterPhotoCache,
+  writeCachedSupporterPhoto,
+} from './supporter-photo-cache';
+
+function createStorage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+}
+
+const cachedPhoto = {
+  url: '/api/supporter-photo/image',
+  contentType: 'image/jpeg',
+  size: 456,
+  cropX: 12,
+  cropY: 88,
+  cropZoom: 110,
+  updatedAt: '2026-09-17T19:00:00.000Z',
+};
+
+test('local supporter photo metadata is isolated by signed-in account', () => {
+  const storage = createStorage();
+
+  writeCachedSupporterPhoto(storage, 'user-a', cachedPhoto);
+
+  assert.deepEqual(readCachedSupporterPhoto(storage, 'user-a'), cachedPhoto);
+  assert.equal(readCachedSupporterPhoto(storage, 'user-b'), null);
+
+  clearCachedSupporterPhoto(storage, 'user-a');
+
+  assert.equal(readCachedSupporterPhoto(storage, 'user-a'), null);
+});
+
+test('invalid local supporter photo metadata falls back to the remote query', () => {
+  const storage = createStorage();
+  storage.setItem('pixlsports-supporter-photo:user-a', JSON.stringify({ url: '/api/supporter-photo/image' }));
+
+  assert.equal(readCachedSupporterPhoto(storage, 'user-a'), null);
+});
 
 test('successful photo removal notifies the active view with no photo immediately', () => {
   const queryClient = new QueryClient();

@@ -46,3 +46,4 @@
 - [Planner reminder preferences](planner-reminder-preferences.md) — store alert choices per account while keeping local scheduling based on the push subscription time zone.
 - [Planner subscription time zones](planner-subscription-timezones.md) — never derive reminder timing from an arbitrary push subscription row when accounts have multiple devices.
 - [Push display receipts](push-display-receipts.md) — service-worker receipts confirm OS display acceptance, not that a user saw or read the alert.
+- [Cached startup browser timing](cached-startup-browser-timing.md) — compare cached readiness with delayed refresh completion instead of timing Vite dev-server startup tightly.

@@ -674,6 +674,7 @@ import { HypeCardEditor } from './src/features/hype-card';
 import { ChecklistPage } from './src/App';
 import { MeetingCapture } from './src/features/meeting-capture';
 import { SupporterDashboardView, SupporterProfileView } from './src/features/supporter-dashboard';
+import { useCachedSupporterPhoto } from './src/features/supporter-photo-cache';
 import { LiveTrackerGame } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
 import { defaultProject, readHypeCardProject } from './src/features/hype-card-types';
@@ -927,6 +928,28 @@ function LocalHypeCardFlowHarness() {
   });
 }
 
+function CachedPhotoStartupHarness() {
+  const photo = useCachedSupporterPhoto('user-startup', true);
+  return createElement('div', null,
+    createElement('output', { 'data-testid': 'cached-photo-url' }, photo.imageUrl || 'none'),
+    createElement(SupporterDashboardView, {
+      profile,
+      userId: 'user-startup',
+      events: [],
+      nextGameIsUpcoming: false,
+      projects: [],
+      scheduleSource: null,
+      connectionLabel: '',
+      athletePhotoUrl: photo.imageUrl,
+      athletePhotoCrop: photo.data
+        ? { x: photo.data.cropX, y: photo.data.cropY, zoom: photo.data.cropZoom }
+        : undefined,
+      onOpenStatTracker: () => {},
+      onOpenChecklist: () => {},
+    }),
+  );
+}
+
 function ChecklistContextHarness() {
   const [location] = useLocation();
   const [, setRouteVersion] = useState(0);
@@ -1017,6 +1040,26 @@ export function mount() {
         headers: { 'Content-Type': 'application/json' },
       }));
     }
+    if (requestUrl.endsWith('/api/supporter-photo')) {
+      return new Promise((resolve) => {
+        window.setTimeout(() => {
+          window.__pixlSupporterPhotoMetadataResolved = true;
+          window.__pixlSupporterPhotoMetadataResolvedAt = performance.now();
+          resolve(new Response(JSON.stringify({
+            url: '/api/supporter-photo/image',
+            contentType: 'image/png',
+            size: 68,
+            cropX: 50,
+            cropY: 50,
+            cropZoom: 100,
+            updatedAt: '2026-09-23T12:00:00.000Z',
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }));
+        }, 1_500);
+      });
+    }
     return originalFetch(input, init);
   };
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -1025,6 +1068,24 @@ export function mount() {
     root.render(createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
         createElement(ProfilePropagationHarness),
+      ),
+    ));
+    return;
+  }
+  if (window.location.search.includes('cached-photo-startup')) {
+    window.localStorage.setItem('pixlsports-supporter-photo:user-startup', JSON.stringify({
+      url: '/api/supporter-photo/image',
+      contentType: 'image/png',
+      size: 68,
+      cropX: 50,
+      cropY: 50,
+      cropZoom: 100,
+      updatedAt: '2026-09-23T12:00:00.000Z',
+    }));
+    window.__pixlSupporterPhotoMetadataResolved = false;
+    root.render(createElement(Router, null,
+      createElement(QueryClientProvider, { client: queryClient },
+        createElement(CachedPhotoStartupHarness),
       ),
     ));
     return;
@@ -1098,6 +1159,120 @@ function htmlSource(harnessFilename: string) {
 </html>
 `;
 }
+
+test('cached supporter photo renders before a slow metadata refresh', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-photo-startup-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-photo-startup-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?cached-photo-startup`);
+
+    const firstDashboard = await waitFor<{
+      dashboardVisible: boolean;
+      avatarVisible: boolean;
+      metadataResolved: boolean;
+      elapsedMs: number;
+    }>(
+      connection,
+      page.sessionId,
+      `(() => {
+        const dashboard = document.querySelector('[data-testid="athlete-summary"]');
+        const cachedPhotoUrl = document.querySelector('[data-testid="cached-photo-url"]')?.textContent || '';
+        return {
+          dashboardVisible: Boolean(dashboard),
+          avatarVisible: cachedPhotoUrl !== 'none' && cachedPhotoUrl.length > 0,
+          metadataResolved: Boolean(window.__pixlSupporterPhotoMetadataResolved),
+          elapsedMs: performance.now(),
+        };
+      })()`,
+      (result) => result.dashboardVisible && result.avatarVisible,
+      20_000,
+    );
+
+    assert.equal(firstDashboard.metadataResolved, false, 'cached startup must not wait for photo metadata refresh');
+    assert.ok(
+      firstDashboard.elapsedMs < 5_000,
+      `cached dashboard startup took ${Math.round(firstDashboard.elapsedMs)}ms`,
+    );
+    const metadataResolvedAt = await waitFor<number>(
+      connection,
+      page.sessionId,
+      'window.__pixlSupporterPhotoMetadataResolvedAt || 0',
+      (value) => value > 0,
+      5_000,
+    );
+    assert.ok(
+      firstDashboard.elapsedMs < metadataResolvedAt,
+      `dashboard first paint at ${Math.round(firstDashboard.elapsedMs)}ms must precede photo metadata at ${Math.round(metadataResolvedAt)}ms`,
+    );
+    console.log('Cached supporter photo startup timing', JSON.stringify({
+      firstDashboardMs: Math.round(firstDashboard.elapsedMs),
+      metadataRefreshDelayMs: 1_500,
+      metadataResolvedMs: Math.round(metadataResolvedAt),
+      avatarVisibleBeforeRefresh: firstDashboard.avatarVisible,
+    }));
+  } finally {
+    if (page && connection) {
+      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
 
 async function pressKey(connection: DevToolsConnection, sessionId: string, key: string, code: string, keyCode: number) {
   await connection.send('Input.dispatchKeyEvent', {
