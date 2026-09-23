@@ -176,8 +176,7 @@
     linear-gradient(#142a46, #142a46) padding-box,
     linear-gradient(115deg, #ff7055 0%, #ffb06b 48%, #ef5b39 100%) border-box;
   box-shadow: 0 14px 36px rgba(4, 15, 32, 0.22);
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
+  overflow: hidden;
 }
 
 .landing-sports-banner {
@@ -186,59 +185,9 @@
   height: auto;
 }
 
-.landing-sports-banner-hint {
-  display: none;
-}
-
-.landing-sports-banner-mobile-heading {
-  display: none;
-}
-
 @media (max-width: 767px) {
-  .landing-sports-banner-mobile-heading {
-    display: block;
-    margin-bottom: 0.5rem;
-    text-align: center;
-  }
-
-  .landing-sports-banner-mobile-heading p {
-    color: #89bbff;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  .landing-sports-banner-mobile-heading h2 {
-    margin-top: 0.5rem;
-    color: #fff;
-    font-size: clamp(1.65rem, 7vw, 2.5rem);
-    line-height: 1.05;
-    text-transform: uppercase;
-  }
-
-  .landing-sports-banner-mobile-heading h2 span {
-    color: #82b8ff;
-  }
-
   .landing-sports-banner-scroll {
-    height: 155px;
-    overflow-y: hidden;
-  }
-
-  .landing-sports-banner {
-    width: 900px;
-    max-width: none;
-    margin-top: -125px;
-  }
-
-  .landing-sports-banner-hint {
-    display: block;
-    margin-top: 0.5rem;
-    color: var(--landing-gray);
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-align: center;
+    touch-action: pan-y;
   }
 }
 

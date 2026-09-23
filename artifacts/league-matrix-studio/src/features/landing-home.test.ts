@@ -7,7 +7,7 @@ const landingStyles = readFileSync(new URL('../landing-unified.css', import.meta
 const landingPage = landingSource.slice(landingSource.indexOf('export function PublicLandingPage'));
 
 test('uploaded sports banner replaces the photo grid below the hero actions', () => {
-  assert.match(landingSource, /homepagesportsbanner_1790120971871\.png/);
+  assert.match(landingSource, /homepagesportsbanner_1790122043371\.png/);
   assert.match(landingSource, /data-testid="landing-sports-banner"/);
   assert.doesNotMatch(landingSource, /landing-sport-tile/);
   assert.match(landingSource, /soccer, football, basketball, volleyball, baseball, and softball/);
@@ -75,12 +75,11 @@ test('checklist video uses the phone crop without a native player shell', () => 
   assert.match(landingSource, /bg-\[#FFF1EA\]/);
 });
 
-test('banner stays full width on desktop and scrolls within its own region on phones', () => {
-  assert.match(landingStyles, /\.landing-sports-banner-scroll \{[\s\S]*overflow-x: auto;/);
+test('uploaded banner fits without scrolling on mobile and desktop', () => {
+  assert.match(landingStyles, /\.landing-sports-banner-scroll \{[\s\S]*overflow: hidden;/);
   assert.match(landingStyles, /\.landing-sports-banner \{[\s\S]*width: 100%;/);
-  assert.match(landingStyles, /@media \(max-width: 767px\) \{[\s\S]*\.landing-sports-banner \{[\s\S]*width: 900px;/);
-  assert.match(landingSource, /role="region" aria-label="Supported sports banner" tabIndex=\{0\}/);
-  assert.match(landingSource, /Swipe to see all six sports/);
+  assert.match(landingStyles, /@media \(max-width: 767px\) \{[\s\S]*\.landing-sports-banner-scroll \{[\s\S]*touch-action: pan-y;/);
+  assert.doesNotMatch(landingSource, /landing-sports-mobile-grid|Swipe to see all six sports/);
 });
 
 test('landing neutral sections use a subtle moving texture with a reduced-motion fallback', () => {

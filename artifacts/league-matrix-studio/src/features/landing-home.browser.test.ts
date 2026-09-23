@@ -124,7 +124,8 @@ async function readLandingLayout(
 ): Promise<LandingLayout> {
   return connection.evaluate<LandingLayout>(`(() => {
     const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
-    const banner = rect('.landing-sports-banner-scroll');
+    const bannerElement = document.querySelector('.landing-sports-banner-scroll');
+    const banner = bannerElement?.getBoundingClientRect();
     const image = rect('[data-testid="landing-sports-banner"]');
     const cta = rect('[data-testid="link-hero-explore-tools"]');
     const showcase = rect('[data-testid="landing-sport-showcase"]');
@@ -135,8 +136,8 @@ async function readLandingLayout(
       ctaBottom: cta?.bottom ?? -1,
       showcaseTop: showcase?.top ?? -1,
       banner: {
-        clientWidth: document.querySelector('.landing-sports-banner-scroll')?.clientWidth ?? -1,
-        scrollWidth: document.querySelector('.landing-sports-banner-scroll')?.scrollWidth ?? -1,
+        clientWidth: bannerElement?.clientWidth ?? -1,
+        scrollWidth: bannerElement?.scrollWidth ?? -1,
         left: banner?.left ?? -1,
         right: banner?.right ?? -1,
         imageWidth: image?.width ?? -1,
@@ -176,7 +177,7 @@ async function readLandingLayout(
   })()`, page.sessionId);
 }
 
-test('landing sports banner scrolls on phones without overflowing the page', async () => {
+test('landing sports stay fixed on phones without overflowing the page', async () => {
   const portProbe = createServer();
   const port = await listen(portProbe);
   await new Promise<void>((resolveClose, rejectClose) => {
@@ -237,8 +238,9 @@ test('landing sports banner scrolls on phones without overflowing the page', asy
       assert.ok(layout.bodyScrollWidth <= width, `body overflows at ${width}px`);
       assert.ok(layout.banner.left >= 0, `banner starts outside the viewport at ${width}px`);
       assert.ok(layout.banner.right <= width, `banner ends outside the viewport at ${width}px`);
-      assert.ok(layout.banner.scrollWidth > layout.banner.clientWidth, `banner should scroll within ${width}px`);
-      assert.ok(layout.banner.imageWidth >= 900, `banner should remain readable at ${width}px`);
+      assert.ok(layout.banner.scrollWidth <= layout.banner.clientWidth, `sports card scrolls at ${width}px`);
+      assert.ok(layout.banner.imageWidth > 0 && layout.banner.imageWidth <= layout.banner.clientWidth, `graphic does not fit at ${width}px`);
+      assert.ok(Math.abs(layout.banner.imageWidth / layout.banner.imageHeight - 2146 / 733) < 0.01);
       assert.ok(layout.ctaBottom <= layout.showcaseTop, `hero CTA is not above banner at ${width}px`);
       assert.equal(layout.texture.sectionCount, 2);
       assert.equal(layout.texture.animationName, 'landing-background-drift');
@@ -312,7 +314,8 @@ test('landing sports banner scrolls on phones without overflowing the page', asy
     }, true);
     pages.push(reducedMotionPage);
     const reducedMotionBefore = await readLandingLayout(connection, reducedMotionPage);
-    assert.ok(reducedMotionBefore.banner.imageWidth >= 900);
+    assert.ok(reducedMotionBefore.banner.imageWidth > 0);
+    assert.ok(reducedMotionBefore.banner.scrollWidth <= reducedMotionBefore.banner.clientWidth);
     assert.equal(reducedMotionBefore.checklistVideo.autoplay, false);
     assert.equal(reducedMotionBefore.texture.animationName, 'none');
     await connection.evaluate('window.scrollTo(0, 500)', reducedMotionPage.sessionId);

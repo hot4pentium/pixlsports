@@ -8,7 +8,7 @@ import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
 import gameDayChecklist from '@/assets/game-day-checklist-768.webp';
 import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
 import sidelineParents from '../../../../attached_assets/generated_images/sideline-parents.jpg';
-import sportsBanner from '../../../../attached_assets/homepagesportsbanner_1790120971871.png';
+import sportsBanner from '../../../../attached_assets/homepagesportsbanner_1790122043371.png';
 import planChecklistVideo from '../../../../attached_assets/Officialprep_1789962901507.mp4';
 import planChecklistPoster from '../../../../attached_assets/Officialprep_1789962901507-poster.webp';
 
@@ -111,11 +111,7 @@ function LandingFooter() {
 function LandingSportShowcase() {
   return (
     <div className="landing-sports-banner-wrap" data-testid="landing-sport-showcase">
-      <div className="landing-sports-banner-mobile-heading">
-        <p>Supported sports</p>
-        <h2 className="font-display">One game-week flow. <span>Six sports.</span></h2>
-      </div>
-      <div className="landing-sports-banner-scroll" role="region" aria-label="Supported sports banner" tabIndex={0}>
+      <div className="landing-sports-banner-scroll">
         <img
           src={sportsBanner}
           alt="Supported sports: one game-week flow for soccer, football, basketball, volleyball, baseball, and softball. Plan it. Follow it. Celebrate it."
@@ -125,7 +121,6 @@ function LandingSportShowcase() {
           data-testid="landing-sports-banner"
         />
       </div>
-      <p className="landing-sports-banner-hint">Swipe to see all six sports</p>
     </div>
   );
 }
