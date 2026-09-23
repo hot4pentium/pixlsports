@@ -774,15 +774,28 @@ export function SupporterDashboardView({
 
           {/* Next Event Card */}
           <div className="bg-white rounded-[20px] p-5 shadow-sm border border-black/5" data-testid="card-mobile-featured-event">
-            <div className="flex items-center gap-2 mb-3 text-[11px] font-bold uppercase tracking-widest text-black/40">
-              <span>NEXT EVENT</span>
+            <div className="mobile-featured-event-header">
+              <div className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">
+                <span className="mobile-featured-event-kicker-dot" aria-hidden="true" />
+                <span>{currentStage.kicker}</span>
+                {scheduleSource && <><span className="mobile-featured-event-divider" aria-hidden="true">·</span><span className="mobile-featured-event-schedule">Your schedule</span></>}
+              </div>
+              {mobileFeaturedEvent && (
+                <span className="mobile-featured-event-badge">
+                  {gameStage === 'live' ? 'Live' : gameStage === 'completed' ? 'Final' : 'Next'}
+                </span>
+              )}
             </div>
             {mobileFeaturedEvent ? (
               <div className="flex items-start gap-4">
-                <CalendarDays className="w-7 h-7 text-[#2474F5] shrink-0 mt-0.5" />
+                <div className="mobile-featured-event-date" aria-hidden="true">
+                  <span>{formatDateDisplay(mobileFeaturedEvent.date).split(' ')[0]}</span>
+                  <strong>{formatDateDisplay(mobileFeaturedEvent.date).split(' ')[1]}</strong>
+                </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[22px] font-bold font-display tracking-tight text-[#12213A] leading-tight mb-1.5 break-words">{mobileFeaturedTitle}</h2>
                   <div className="text-[15px] font-medium text-black/60 flex items-center gap-1.5 flex-wrap mb-1">
+                    <CalendarDays className="mobile-featured-event-meta-icon" aria-hidden="true" />
                     <span className="whitespace-nowrap">{formatDateDisplay(mobileFeaturedEvent.date)}</span>
                     <span className="text-black/30 font-bold">•</span>
                     <span className="whitespace-nowrap">{formatTimeDisplay(mobileFeaturedEvent.time)}</span>
