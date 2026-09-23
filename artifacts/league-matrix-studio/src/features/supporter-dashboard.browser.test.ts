@@ -1490,7 +1490,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         stepCount: number;
         recommendationVisible: boolean;
         bottomNavVisible: boolean;
+         bottomNavPosition: string;
          bottomNavZIndex: string;
+         bottomNavLeft: number;
+         bottomNavRight: number;
          bottomNavBottom: number;
          bottomNavHeight: number;
          mobileContentPaddingBottom: string;
@@ -1533,7 +1536,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
           stepCount: document.querySelectorAll('[data-testid="section-mobile-weekly-path"] li').length,
           recommendationVisible: isVisible(recommendation),
           bottomNavVisible: isVisible(bottomNav),
+           bottomNavPosition: bottomNav instanceof HTMLElement ? getComputedStyle(bottomNav).position : '',
            bottomNavZIndex: bottomNav instanceof HTMLElement ? getComputedStyle(bottomNav).zIndex : '',
+           bottomNavLeft: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().left) : -1,
+           bottomNavRight: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().right) : -1,
            bottomNavBottom: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().bottom) : -1,
            bottomNavHeight: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().height) : -1,
            mobileContentPaddingBottom: mobileRoot instanceof HTMLElement ? getComputedStyle(mobileRoot).paddingBottom : '',
@@ -1562,7 +1568,10 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         stepCount: 4,
         recommendationVisible: true,
         bottomNavVisible: true,
+          bottomNavPosition: 'fixed',
          bottomNavZIndex: '60',
+          bottomNavLeft: 0,
+          bottomNavRight: width,
          bottomNavBottom: width === 768 ? 1024 : 844,
          bottomNavHeight: 88,
          mobileContentPaddingBottom: '112px',
