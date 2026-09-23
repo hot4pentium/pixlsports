@@ -41,3 +41,4 @@
 - [Schedule stage precedence](schedule-stage-precedence.md) — a saved upcoming/live status must not keep a past event ahead of a future practice.
 - [Tracker mobile start actions](tracker-mobile-start-actions.md) — keep the compact scheduled-game actions accessible when the larger setup card is hidden on mobile.
 - [Hype Page video streaming](hype-page-video-streaming.md) — public video responses need bounded byte ranges; large open-ended ranges fail through the published proxy.
+- [Hosted clip duration validation](hosted-clip-duration-validation.md) — a browser-recorded Hype Page MP4 can be much longer than the selected trim despite reporting the trim duration in its manifest.

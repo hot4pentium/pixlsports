@@ -139,6 +139,7 @@ export async function exportVideoCanvas(
 
   return new Promise((resolve, reject) => {
     let animationFrameId: number;
+    let recordingTimeoutId: number | undefined;
     const duration = endTime - startTime;
     const originalLoop = videoElement.loop;
     const wasPaused = videoElement.paused;
@@ -146,6 +147,8 @@ export async function exportVideoCanvas(
 
     const cleanup = () => {
       cancelAnimationFrame(animationFrameId);
+      window.clearTimeout(recordingTimeoutId);
+      signal.removeEventListener('abort', onAbort);
       videoElement.loop = originalLoop;
       if (wasPaused) videoElement.pause();
       audioElement?.pause();
@@ -166,14 +169,15 @@ export async function exportVideoCanvas(
       reject(e);
     };
 
-    signal.addEventListener('abort', () => {
+    const onAbort = () => {
       cancelled = true;
       cleanup();
       if (recorder.state !== 'inactive') {
         recorder.stop();
       }
       reject(new Error('Export cancelled'));
-    });
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
 
     const drawLoop = () => {
       if (signal.aborted) return;
@@ -209,6 +213,12 @@ export async function exportVideoCanvas(
           await new Promise<void>((res) => videoElement.addEventListener('seeked', () => res(), { once: true }));
         }
         recorder.start(1000);
+        recordingTimeoutId = window.setTimeout(() => {
+          cancelled = true;
+          cleanup();
+          if (recorder.state !== 'inactive') recorder.stop();
+          reject(new Error('Video recording took too long for the selected segment.'));
+        }, Math.ceil(duration * 1600 + 3000));
         if (audioIncluded && audioElement) {
           await audioElement.play();
         }

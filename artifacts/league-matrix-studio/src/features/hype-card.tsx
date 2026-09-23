@@ -2530,7 +2530,7 @@ export function HypeCardEditor() {
         ]);
         setShareProgress(0.9);
 
-        const duration = Math.max(0.1, project.trimEnd - project.trimStart);
+        const duration = prepared.duration;
         mediaKind = 'video';
         claimId = videoUpload.claimId;
         posterClaimId = posterUpload.claimId;
