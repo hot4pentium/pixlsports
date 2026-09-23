@@ -41,6 +41,48 @@ const MAX_MANIFEST_BYTES = 400 * 1024;
 const UPLOAD_CLAIM_LIFETIME_MS = 2 * 60 * 60 * 1000;
 const REPLY_RATE_WINDOW_MS = 60 * 60 * 1000;
 const REPLY_RATE_LIMIT = 5;
+const MEDIA_NAME_MAX_LENGTH = 80;
+const DEFAULT_MEDIA_NAME = "Game Day highlight";
+
+function isDeviceFilename(value: string) {
+  return /^(?:IMG|VID|MOV|DSC|PXL|Screenshot)[ _-]?\d+(?:\.[a-z0-9]{1,8})?$/i.test(value)
+    || /^[a-z0-9_-]{1,24}\.[a-z0-9]{1,8}$/i.test(value);
+}
+
+function safeMediaName(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (
+    !trimmed
+    || trimmed.length > MEDIA_NAME_MAX_LENGTH
+    || isDeviceFilename(trimmed)
+    || /[\u0000-\u001f\u007f\\/<>{}[\]|`$]/u.test(trimmed)
+  ) return null;
+  return trimmed;
+}
+
+function fallbackMediaName(manifest: unknown) {
+  const project = manifest && typeof manifest === "object" && !Array.isArray(manifest)
+    && (manifest as Record<string, unknown>).project
+    && typeof (manifest as Record<string, unknown>).project === "object"
+    && !Array.isArray((manifest as Record<string, unknown>).project)
+    ? (manifest as { project: Record<string, unknown> }).project
+    : {};
+  return safeMediaName(project.mediaName) ?? safeMediaName(project.headline) ?? DEFAULT_MEDIA_NAME;
+}
+
+function displayMediaName(share: Pick<typeof hypeCardSharesTable.$inferSelect, "mediaName" | "manifest">) {
+  return safeMediaName(share.mediaName) ?? fallbackMediaName(share.manifest);
+}
+
+function publicShareTitle(share: typeof hypeCardSharesTable.$inferSelect) {
+  const title = share.title.trim();
+  return title
+    && !/(?:IMG|VID|MOV|DSC|PXL|Screenshot)[ _-]?\d+(?:\.[a-z0-9]{1,8})?/i.test(title)
+    && !/[\\/<>{}[\]|`$]/u.test(title)
+    ? title
+    : displayMediaName(share);
+}
 
 function activeShareWhere(publicToken: string) {
   return and(
@@ -60,7 +102,14 @@ function replyRateLimitKey(req: Request, shareId: string) {
 function publicManifest(manifest: unknown) {
   if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) return manifest;
   const { shareKey: _shareKey, ...safeManifest } = manifest as Record<string, unknown>;
-  return safeManifest;
+  const project = safeManifest.project;
+  if (!project || typeof project !== "object" || Array.isArray(project)) return safeManifest;
+  const { videoMeta, ...safeProject } = project as Record<string, unknown>;
+  if (videoMeta && typeof videoMeta === "object" && !Array.isArray(videoMeta)) {
+    const { name: _name, ...safeVideoMeta } = videoMeta as Record<string, unknown>;
+    safeProject.videoMeta = safeVideoMeta;
+  }
+  return { ...safeManifest, project: safeProject };
 }
 
 async function shareResponse(
@@ -85,7 +134,8 @@ async function shareResponse(
   return CreateHypeCardShareResponse.parse({
     shareToken: share.publicToken,
     slug: share.slug,
-    title: share.title,
+    title: includeOwnerDetails ? share.title : publicShareTitle(share),
+    mediaName: displayMediaName(share),
     manifest: includeOwnerDetails ? share.manifest : publicManifest(share.manifest),
     shareMode: share.shareMode === "stats" ? "stats" : "card",
     mediaType: share.mediaType,
@@ -384,6 +434,14 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
 
   try {
     const ownerClerkUserId = getRequiredClerkUserId(res);
+    const mediaName = parsed.data.shareMode === "stats"
+      ? null
+      : parsed.data.mediaName === undefined || parsed.data.mediaName === null
+        ? fallbackMediaName(parsed.data.manifest)
+        : safeMediaName(parsed.data.mediaName);
+    if (parsed.data.shareMode !== "stats" && !mediaName) {
+      throw new Error("INVALID_MEDIA_NAME");
+    }
     const { created, replaced } = await db.transaction(async (tx) => {
       const shareMode = parsed.data.shareMode ?? "card";
       const manifestShareKey = parsed.data.manifest && typeof parsed.data.manifest.shareKey === "string"
@@ -483,6 +541,7 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
         publicToken: randomBytes(24).toString("base64url"),
         slug: parsed.data.slug,
         title: parsed.data.title,
+        mediaName,
         manifest: parsed.data.manifest,
         shareKey,
           shareMode,
@@ -540,6 +599,10 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
     }
     if (error instanceof Error && error.message === "TRACKER_PROJECT_INVALID") {
       res.status(400).json({ error: "Tracker project not found or is not a stat-tracker project owned by this account." });
+      return;
+    }
+    if (error instanceof Error && error.message === "INVALID_MEDIA_NAME") {
+      res.status(400).json({ error: "Choose a media name up to 80 characters without a filename or path." });
       return;
     }
     req.log.error({ err: error }, "Unable to create Hype Card share");

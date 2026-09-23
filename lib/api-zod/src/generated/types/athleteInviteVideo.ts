@@ -10,6 +10,8 @@ export interface AthleteInviteVideo {
   shareToken: string;
   /** @maxLength 160 */
   title: string;
+  /** @maxLength 80 */
+  mediaName: string;
   /** @maxLength 40 */
   jerseyNumber: string;
   /** @maxLength 100 */

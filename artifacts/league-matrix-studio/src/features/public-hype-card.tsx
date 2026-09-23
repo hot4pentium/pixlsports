@@ -129,7 +129,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       <main className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1280px] items-center gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="relative mx-auto w-full max-w-[660px] overflow-hidden rounded-[22px] shadow-[0_30px_100px_rgba(0,0,0,.65)]" style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}>
           {share.mediaType === 'image' ? (
-            <img src={share.mediaUrl ?? ''} alt={share.title} className="h-full w-full object-contain" />
+            <img src={share.mediaUrl ?? ''} alt={share.mediaName} className="h-full w-full object-contain" />
           ) : (
             <>
               <PreviewArtwork project={project} videoUrl={share.videoUrl ?? undefined} videoRef={videoRef} poster={share.posterUrl ?? undefined} ns="public-share" testId="public-hype-card" muted={isMuted} />

@@ -90,7 +90,7 @@ function hostedVideoLabels(manifest: unknown, fallbackTitle: string) {
     : {};
   const label = (value: unknown) => typeof value === 'string' ? value.trim() : '';
   return {
-    title: label(project.headline) || fallbackTitle,
+    title: fallbackTitle || label(project.mediaName) || label(project.headline) || 'Game Day highlight',
     jerseyNumber: label(project.jerseyNumber),
     position: label(project.position),
   };
@@ -432,6 +432,13 @@ function directVideoSlug(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'athlete-highlight';
 }
 
+function directMediaName(value: string) {
+  const cleaned = value.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned && !/^(?:IMG|VID|MOV|DSC|PXL|Screenshot)[ ]?\d+$/i.test(cleaned)
+    ? cleaned.slice(0, 80)
+    : 'Game Day highlight';
+}
+
 function OwnerVideoUpload({
   invite,
   atLimit,
@@ -453,6 +460,7 @@ function OwnerVideoUpload({
   const [stage, setStage] = useState('');
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [mediaName, setMediaName] = useState('Game Day highlight');
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -468,6 +476,7 @@ function OwnerVideoUpload({
     setStage('');
     setProgress(0);
     setMessage('');
+    setMediaName('Game Day highlight');
     setVideoUrl((current) => {
       if (current) URL.revokeObjectURL(current);
       return null;
@@ -491,6 +500,7 @@ function OwnerVideoUpload({
     setStage('');
     setProgress(0);
     setFile(nextFile);
+    setMediaName(directMediaName(nextFile.name));
     setVideoUrl((current) => {
       if (current) URL.revokeObjectURL(current);
       return URL.createObjectURL(nextFile);
@@ -572,11 +582,17 @@ function OwnerVideoUpload({
       ]);
       setStage('Adding the video to the Athlete Hype Page…');
       setProgress((current) => monotonicProgress(current, 0.9));
-      const label = file.name.replace(/\.[^.]+$/, '').trim() || 'Video highlight';
+      const label = mediaName.trim();
+      if (!label) {
+        setMessage('Add a moment name before posting.');
+        setUploading(false);
+        return;
+      }
       const uniqueKey = `${invite.inviteToken}:${Date.now()}:${directVideoSlug(file.name)}`;
       await createShare.mutateAsync({
         data: {
           title: `${invite.athleteName} · ${label}`.slice(0, 200),
+          mediaName: label,
           slug: `${directVideoSlug(invite.athleteName)}-${directVideoSlug(label)}-${Date.now()}`.slice(0, 80),
           shareKey: uniqueKey,
           shareMode: 'card',
@@ -590,6 +606,7 @@ function OwnerVideoUpload({
             project: {
               version: 3,
               headline: label,
+              mediaName: label,
               mediaType: 'video',
               mediaId: null,
               downloadMediaId: null,
@@ -667,6 +684,20 @@ function OwnerVideoUpload({
                 <p className="text-xs text-white/55">Selected segment: {(trimEnd - trimStart).toFixed(1)}s. Maximum 15 seconds.</p>
               </div>
             )}
+            <label className="block text-xs font-bold uppercase tracking-wider text-white/70" htmlFor="owner-media-name">
+              Moment name
+              <input
+                id="owner-media-name"
+                value={mediaName}
+                onChange={(event) => setMediaName(event.target.value)}
+                maxLength={80}
+                className="mt-2 min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-medium normal-case tracking-normal text-white"
+                placeholder="Game Day highlight"
+                aria-describedby="owner-media-name-help"
+                data-testid="input-owner-media-name"
+              />
+              <span id="owner-media-name-help" className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-white/50">Shown to supporters; the device filename stays private.</span>
+            </label>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => void publish()} disabled={uploading || !duration} className="inline-flex min-h-10 items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50">
                 {uploading ? `${Math.max(1, Math.round(progress * 100))}%` : 'Post video'}
@@ -871,7 +902,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         ) : hostedVideos.length > 0 ? (
           <ul className="mt-4 divide-y divide-white/15 border-y border-white/15" data-testid="hosted-video-list">
             {hostedVideos.map((video) => {
-              const labels = hostedVideoLabels(video.manifest, video.title);
+              const labels = hostedVideoLabels(video.manifest, video.mediaName);
               return (
                 <li key={video.shareToken} className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center" data-testid="hosted-video-item">
                   <div className="min-w-0">
@@ -891,7 +922,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         )}
         {hostedImage && !mediaError && (
           <div className="mt-5 border-t border-white/15 pt-4" data-testid="hosted-image-hype-card">
-            <p className="text-sm font-bold">{hostedImage.title}</p>
+            <p className="text-sm font-bold">{hostedImage.mediaName}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void downloadMedia(hostedImage, 'image')}><Download className="mr-2 h-4 w-4" />Download image</Button>
               <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => void removeMedia(hostedImage, hostedImageQuery)} disabled={deleteHypeCard.isPending}><Trash2 className="mr-2 h-4 w-4" />Delete image</Button>

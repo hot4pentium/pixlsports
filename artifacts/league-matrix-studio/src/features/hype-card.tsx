@@ -73,6 +73,13 @@ import { getUserProfile, seedHypeCardFromSupporterProfile } from './supporter-da
 import { LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from './privacy-copy';
 import { PreviewArtwork } from './hype-card-preview';
 
+const DEFAULT_MEDIA_NAME = 'Game Day highlight';
+const cleanMediaName = (value: string | undefined | null) => {
+  const cleaned = (value ?? '').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned && !/^(?:IMG|VID|MOV|DSC|PXL|Screenshot)[ ]?\d+$/i.test(cleaned)
+    ? cleaned.slice(0, 80)
+    : DEFAULT_MEDIA_NAME;
+};
 
 function isOwnedHypeCardShare(share: HypeCardShare | OwnedHypeCardShare): share is OwnedHypeCardShare {
   return 'trackerProjectId' in share && 'expiresInDays' in share;
@@ -1082,6 +1089,7 @@ export function HypeCardEditor() {
   const [shareMode, setShareMode] = useState<'card' | 'stats'>('card');
   const [shareVideoQuality, setShareVideoQuality] = useState<HypeCardShareQuality>('standard');
   const [shareVideoTooLargeQuality, setShareVideoTooLargeQuality] = useState<HypeCardShareQuality | null>(null);
+  const [shareMediaName, setShareMediaName] = useState(DEFAULT_MEDIA_NAME);
   const { data: athleteInvites } = useListAthleteInvites({
     query: {
       enabled: Boolean(isSignedIn),
@@ -2427,11 +2435,13 @@ export function HypeCardEditor() {
       setShareTrackerProjectId('none');
       setShareSport(profile.sport ?? existingShare.sport ?? 'basketball');
       setShareExpiresInDays(String(existingShare.expiresInDays));
+      setShareMediaName(existingShare.mediaName);
     } else {
       setShareMode('card');
       setShareTrackerProjectId('none');
       setShareSport(profile.sport ?? 'basketball');
       setShareExpiresInDays('30');
+      setShareMediaName(cleanMediaName(project.headline || project.videoMeta?.name));
     }
     setShareDialogOpen(true);
   };
@@ -2587,13 +2597,17 @@ export function HypeCardEditor() {
         throw cancellation;
       }
       setShareStage(isStatsOnly ? 'Saving the finalized stats link…' : 'Saving the Athlete Hype Page video…');
+      const shareManifestProject = isStatsOnly
+        ? null
+        : { ...shareProject, mediaName: shareMediaName.trim() };
       const created = await createHypeShare.mutateAsync({
         data: {
+          mediaName: shareMediaName.trim(),
           title: `${project.playerName || project.teamName || 'Pixl Sports'} · ${project.headline}`,
           slug: slugify(`${project.teamName}-${project.playerName}-${project.headline}`).slice(0, 80) || 'hype-card',
           manifest: isStatsOnly
             ? { version: 1, shareKey, shareMode: 'stats' }
-            : { version: 1, shareKey, project: shareProject },
+            : { version: 1, shareKey, project: shareManifestProject },
           shareKey,
           shareMode,
           mediaType: mediaKind,
@@ -3300,6 +3314,21 @@ export function HypeCardEditor() {
                      ))}
                    </SelectContent>
                  </Select>
+               </div>
+             )}
+             {shareMode === 'card' && (
+               <div className="space-y-2">
+                 <Label htmlFor="share-media-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Moment name</Label>
+                 <Input
+                   id="share-media-name"
+                   value={shareMediaName}
+                   onChange={(event) => setShareMediaName(event.target.value)}
+                   maxLength={80}
+                   placeholder="Game Day highlight"
+                   aria-describedby="share-media-name-help"
+                   data-testid="input-share-media-name"
+                 />
+                 <p id="share-media-name-help" className="text-xs font-medium text-muted-foreground">Shown on the Athlete Hype Page. Your device filename stays private.</p>
                </div>
              )}
             {shareMode === 'stats' && (

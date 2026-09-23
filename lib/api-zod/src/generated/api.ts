@@ -1052,7 +1052,11 @@ export const GetAthleteInviteParams = zod.object({
   "inviteToken": zod.coerce.string().regex(getAthleteInvitePathInviteTokenRegExp)
 })
 
+export const getAthleteInviteResponseHypeCardOneMediaNameMax = 80;
+
 export const getAthleteInviteResponseVideosItemTitleMax = 160;
+
+export const getAthleteInviteResponseVideosItemMediaNameMax = 80;
 
 export const getAthleteInviteResponseVideosItemJerseyNumberMax = 40;
 
@@ -1092,6 +1096,7 @@ export const GetAthleteInviteResponse = zod.object({
   "hypeCard": zod.union([zod.object({
   "shareToken": zod.string(),
   "title": zod.string(),
+  "mediaName": zod.string().max(getAthleteInviteResponseHypeCardOneMediaNameMax),
   "mediaType": zod.enum(['image', 'video']),
   "posterUrl": zod.string().nullable(),
   "createdAt": zod.coerce.date()
@@ -1099,6 +1104,7 @@ export const GetAthleteInviteResponse = zod.object({
   "videos": zod.array(zod.object({
   "shareToken": zod.string(),
   "title": zod.string().max(getAthleteInviteResponseVideosItemTitleMax),
+  "mediaName": zod.string().max(getAthleteInviteResponseVideosItemMediaNameMax),
   "jerseyNumber": zod.string().max(getAthleteInviteResponseVideosItemJerseyNumberMax),
   "position": zod.string().max(getAthleteInviteResponseVideosItemPositionMax),
   "videoUrl": zod.string(),
@@ -1263,6 +1269,8 @@ export const ListHypeCardSharesQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listHypeCardSharesQueryLimitMax).default(listHypeCardSharesQueryLimitDefault)
 })
 
+export const listHypeCardSharesResponseOneMediaNameMax = 80;
+
 export const listHypeCardSharesResponseOneStatsOneGamesPlayedMin = 0;
 
 export const listHypeCardSharesResponseOneStatsOneScoreMin = 0;
@@ -1287,6 +1295,7 @@ export const ListHypeCardSharesResponseItem = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "mediaName": zod.string().max(listHypeCardSharesResponseOneMediaNameMax),
   "manifest": zod.record(zod.string(), zod.unknown()),
   "shareMode": zod.enum(['card', 'stats']),
   "mediaType": zod.enum(['image', 'video']),
@@ -1328,6 +1337,8 @@ export const createHypeCardShareBodySlugMax = 80;
 
 
 export const createHypeCardShareBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const createHypeCardShareBodyMediaNameMax = 80;
+
 export const createHypeCardShareBodyShareKeyMax = 200;
 
 export const createHypeCardShareBodyShareModeDefault = `card`;
@@ -1343,6 +1354,7 @@ export const CreateHypeCardShareBody = zod.object({
   "title": zod.string().min(1).max(createHypeCardShareBodyTitleMax),
   "slug": zod.string().min(1).max(createHypeCardShareBodySlugMax).regex(createHypeCardShareBodySlugRegExp),
   "manifest": zod.record(zod.string(), zod.unknown()),
+  "mediaName": zod.string().min(1).max(createHypeCardShareBodyMediaNameMax).optional(),
   "shareKey": zod.string().min(1).max(createHypeCardShareBodyShareKeyMax).optional(),
   "shareMode": zod.enum(['card', 'stats']).default(createHypeCardShareBodyShareModeDefault),
   "mediaType": zod.enum(['image', 'video']),
@@ -1354,6 +1366,8 @@ export const CreateHypeCardShareBody = zod.object({
   "expiresInDays": zod.number().int().min(1).max(createHypeCardShareBodyExpiresInDaysMax).default(createHypeCardShareBodyExpiresInDaysDefault),
   "replaceShareToken": zod.string().regex(createHypeCardShareBodyReplaceShareTokenRegExp).nullish()
 })
+
+export const createHypeCardShareResponseMediaNameMax = 80;
 
 export const createHypeCardShareResponseStatsOneGamesPlayedMin = 0;
 
@@ -1377,6 +1391,7 @@ export const CreateHypeCardShareResponse = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "mediaName": zod.string().max(createHypeCardShareResponseMediaNameMax),
   "manifest": zod.record(zod.string(), zod.unknown()),
   "shareMode": zod.enum(['card', 'stats']),
   "mediaType": zod.enum(['image', 'video']),
@@ -1429,6 +1444,8 @@ export const GetHypeCardShareParams = zod.object({
   "shareToken": zod.coerce.string().regex(getHypeCardSharePathShareTokenRegExp)
 })
 
+export const getHypeCardShareResponseMediaNameMax = 80;
+
 export const getHypeCardShareResponseStatsOneGamesPlayedMin = 0;
 
 export const getHypeCardShareResponseStatsOneScoreMin = 0;
@@ -1451,6 +1468,7 @@ export const GetHypeCardShareResponse = zod.object({
   "shareToken": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
+  "mediaName": zod.string().max(getHypeCardShareResponseMediaNameMax),
   "manifest": zod.record(zod.string(), zod.unknown()),
   "shareMode": zod.enum(['card', 'stats']),
   "mediaType": zod.enum(['image', 'video']),

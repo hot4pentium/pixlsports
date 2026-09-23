@@ -95,6 +95,7 @@ export const hypeCardSharesTable = pgTable("hype_card_shares", {
   publicToken: text("public_token").notNull(),
   slug: text("slug").notNull(),
   title: text("title").notNull(),
+  mediaName: text("media_name"),
   manifest: jsonb("manifest").notNull(),
   shareKey: text("share_key"),
   shareMode: text("share_mode").notNull().default("card"),

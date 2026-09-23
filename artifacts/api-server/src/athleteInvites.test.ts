@@ -85,6 +85,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
             position: "Guard",
           },
         },
+        mediaName: "Full-court finish",
         shareMode: "card",
         mediaType: "video",
         videoObjectPath: "/test/athlete-invite.mp4",
@@ -99,8 +100,8 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         ownerClerkUserId: ownerId,
         publicToken: imageToken,
         slug: "latest-image",
-        title: "Celebration image",
-        manifest: { project: { headline: "Celebration image" } },
+        title: "Jordan · IMG_485",
+        manifest: { project: { headline: "IMG_485" } },
         shareMode: "card",
         mediaType: "image",
         videoObjectPath: "/test/athlete-invite-image.jpg",
@@ -136,11 +137,13 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal(publicResponse.status, 200);
     const invite = GetAthleteInviteResponse.parse(await publicResponse.json());
     assert.equal(invite.hypeCard?.shareToken, imageToken);
+    assert.equal(invite.hypeCard?.mediaName, "Game Day highlight");
     assert.equal(invite.hypeCard?.mediaType, "image");
     assert.equal(invite.hypeCard?.posterUrl, `/api/hype-card-shares/${imageToken}/media/video`);
     assert.equal(invite.videos.length, 1);
     assert.equal(invite.videos[0]?.shareToken, hypeToken);
-    assert.equal(invite.videos[0]?.title, "Game winner");
+    assert.equal(invite.videos[0]?.title, "Full-court finish");
+    assert.equal(invite.videos[0]?.mediaName, "Full-court finish");
     assert.equal(invite.videos[0]?.jerseyNumber, "23");
     assert.equal(invite.videos[0]?.position, "Guard");
     assert.equal(invite.videos[0]?.videoUrl, `/api/hype-card-shares/${hypeToken}/media/video`);
@@ -242,6 +245,10 @@ test("athlete pages expose at most ten active videos newest first and ignore ima
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
     (req as any).log = { error: () => undefined, warn: () => undefined };
     next();
   });

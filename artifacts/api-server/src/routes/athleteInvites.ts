@@ -144,16 +144,39 @@ function cleanVideoLabel(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
-function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
+function safeMediaName(value: unknown) {
+  const label = cleanVideoLabel(value, 80);
+  return label
+    && !/^(?:IMG|VID|MOV|DSC|PXL|Screenshot)[ _-]?\d+(?:\.[a-z0-9]{1,8})?$/i.test(label)
+    && !/[\u0000-\u001f\u007f\\/<>{}[\]|`$]/u.test(label)
+    ? label
+    : "";
+}
+
+function manifestProject(share: typeof hypeCardSharesTable.$inferSelect) {
   const manifest = share.manifest && typeof share.manifest === "object" && !Array.isArray(share.manifest)
     ? share.manifest as Record<string, unknown>
     : {};
-  const project = manifest.project && typeof manifest.project === "object" && !Array.isArray(manifest.project)
+  return manifest.project && typeof manifest.project === "object" && !Array.isArray(manifest.project)
     ? manifest.project as Record<string, unknown>
     : {};
+}
+
+function athleteMediaName(share: typeof hypeCardSharesTable.$inferSelect) {
+  const project = manifestProject(share);
+  return safeMediaName(share.mediaName)
+    || safeMediaName(project.mediaName)
+    || safeMediaName(project.headline)
+    || "Game Day highlight";
+}
+
+function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
+  const project = manifestProject(share);
+  const mediaName = athleteMediaName(share);
   return {
     shareToken: share.publicToken,
-    title: cleanVideoLabel(project.headline, 160) || cleanVideoLabel(share.title, 160) || "Highlight",
+    title: mediaName,
+    mediaName,
     jerseyNumber: cleanVideoLabel(project.jerseyNumber, 40),
     position: cleanVideoLabel(project.position, 100),
     videoUrl: `/api/hype-card-shares/${share.publicToken}/media/video`,
@@ -287,7 +310,8 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     sport: invite.sport,
     hypeCard: latestImage ? {
       shareToken: latestImage.publicToken,
-      title: latestImage.title,
+      title: athleteMediaName(latestImage),
+      mediaName: athleteMediaName(latestImage),
       mediaType: "image",
       posterUrl: latestImage.videoObjectPath
         ? `/api/hype-card-shares/${latestImage.publicToken}/media/video`

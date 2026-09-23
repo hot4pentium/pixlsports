@@ -47,3 +47,4 @@
 - [Planner subscription time zones](planner-subscription-timezones.md) — never derive reminder timing from an arbitrary push subscription row when accounts have multiple devices.
 - [Push display receipts](push-display-receipts.md) — service-worker receipts confirm OS display acceptance, not that a user saw or read the alert.
 - [Cached startup browser timing](cached-startup-browser-timing.md) — compare cached readiness with delayed refresh completion instead of timing Vite dev-server startup tightly.
+- [Hype Page media naming](hype-page-media-naming.md) — display names are separate metadata; public manifests must redact device filenames from video metadata.

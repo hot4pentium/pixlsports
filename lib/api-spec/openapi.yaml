@@ -1719,6 +1719,10 @@ components:
         manifest:
           type: object
           additionalProperties: true
+        mediaName:
+          type: string
+          minLength: 1
+          maxLength: 80
         shareKey:
           type: string
           minLength: 1
@@ -1880,7 +1884,7 @@ components:
             $ref: "#/components/schemas/HypeCardReplyInboxGroup"
     HypeCardShare:
       type: object
-      required: [shareToken, slug, title, manifest, shareMode, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
+      required: [shareToken, slug, title, mediaName, manifest, shareMode, mediaType, mediaUrl, videoUrl, posterUrl, stats, expiresAt, createdAt]
       properties:
         shareToken:
           type: string
@@ -1888,6 +1892,9 @@ components:
           type: string
         title:
           type: string
+        mediaName:
+          type: string
+          maxLength: 80
         manifest:
           type: object
           additionalProperties: true
@@ -1956,19 +1963,21 @@ components:
         $ref: "#/components/schemas/OwnedAthleteInvite"
     AthleteInviteHypeCard:
       type: object
-      required: [shareToken, title, mediaType, posterUrl, createdAt]
+      required: [shareToken, title, mediaName, mediaType, posterUrl, createdAt]
       properties:
         shareToken: { type: string }
         title: { type: string }
+        mediaName: { type: string, maxLength: 80 }
         mediaType: { type: string, enum: [image, video] }
         posterUrl: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
     AthleteInviteVideo:
       type: object
-      required: [shareToken, title, jerseyNumber, position, videoUrl, posterUrl, createdAt]
+      required: [shareToken, title, mediaName, jerseyNumber, position, videoUrl, posterUrl, createdAt]
       properties:
         shareToken: { type: string }
         title: { type: string, maxLength: 160 }
+        mediaName: { type: string, maxLength: 80 }
         jerseyNumber: { type: string, maxLength: 40 }
         position: { type: string, maxLength: 100 }
         videoUrl: { type: string }

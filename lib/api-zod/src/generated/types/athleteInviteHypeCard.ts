@@ -10,6 +10,8 @@ import type { AthleteInviteHypeCardMediaType } from './athleteInviteHypeCardMedi
 export interface AthleteInviteHypeCard {
   shareToken: string;
   title: string;
+  /** @maxLength 80 */
+  mediaName: string;
   mediaType: AthleteInviteHypeCardMediaType;
   /** @nullable */
   posterUrl: string | null;

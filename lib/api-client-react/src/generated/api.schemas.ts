@@ -478,6 +478,11 @@ export interface HypeCardShareInput {
   manifest: HypeCardShareInputManifest;
   /**
      * @minLength 1
+     * @maxLength 80
+     */
+  mediaName?: string;
+  /**
+     * @minLength 1
      * @maxLength 200
      */
   shareKey?: string;
@@ -637,6 +642,8 @@ export interface HypeCardShare {
   shareToken: string;
   slug: string;
   title: string;
+  /** @maxLength 80 */
+  mediaName: string;
   manifest: HypeCardShareManifest;
   shareMode: HypeCardShareShareMode;
   mediaType: HypeCardShareMediaType;
@@ -709,6 +716,8 @@ export const AthleteInviteHypeCardMediaType = {
 export interface AthleteInviteHypeCard {
   shareToken: string;
   title: string;
+  /** @maxLength 80 */
+  mediaName: string;
   mediaType: AthleteInviteHypeCardMediaType;
   /** @nullable */
   posterUrl: string | null;
@@ -719,6 +728,8 @@ export interface AthleteInviteVideo {
   shareToken: string;
   /** @maxLength 160 */
   title: string;
+  /** @maxLength 80 */
+  mediaName: string;
   /** @maxLength 40 */
   jerseyNumber: string;
   /** @maxLength 100 */

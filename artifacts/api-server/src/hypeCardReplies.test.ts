@@ -11,6 +11,7 @@ import {
 } from "@workspace/db";
 import {
   CreateHypeCardShareReplyResponse,
+  GetHypeCardShareResponse,
   ListHypeCardSharesResponse,
   ListHypeCardShareRepliesResponse,
 } from "@workspace/api-zod";
@@ -45,8 +46,8 @@ test("anonymous replies enforce ownership, read state, active shares, and an ato
       ownerClerkUserId: ownerId,
       publicToken,
       slug: "reply-test",
-      title: "Reply test",
-      manifest: {},
+      title: "Jordan · IMG_485",
+      manifest: { project: { headline: "IMG_485", videoMeta: { name: "IMG_485.MP4" } } },
       mediaType: "image",
       videoObjectPath: "/test/reply-image",
       videoContentType: "image/jpeg",
@@ -61,6 +62,12 @@ test("anonymous replies enforce ownership, read state, active shares, and an ato
     assert.ok(address && typeof address === "object");
     const baseUrl = `http://127.0.0.1:${address.port}/api/hype-card-shares/${publicToken}/replies`;
     const shareUrl = `http://127.0.0.1:${address.port}/api/hype-card-shares/${publicToken}`;
+    const publicShareResponse = await fetch(shareUrl);
+    assert.equal(publicShareResponse.status, 200);
+    const publicShare = GetHypeCardShareResponse.parse(await publicShareResponse.json());
+    assert.equal(publicShare.title, "Game Day highlight");
+    assert.equal(publicShare.mediaName, "Game Day highlight");
+    assert.equal((publicShare.manifest.project as { videoMeta?: { name?: string } }).videoMeta?.name, undefined);
     const sendReply = () => fetch(baseUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },

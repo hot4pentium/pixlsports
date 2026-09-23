@@ -14,6 +14,8 @@ export interface HypeCardShare {
   shareToken: string;
   slug: string;
   title: string;
+  /** @maxLength 80 */
+  mediaName: string;
   manifest: HypeCardShareManifest;
   shareMode: HypeCardShareShareMode;
   mediaType: HypeCardShareMediaType;

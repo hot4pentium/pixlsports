@@ -25,6 +25,11 @@ export interface HypeCardShareInput {
   manifest: HypeCardShareInputManifest;
   /**
      * @minLength 1
+     * @maxLength 80
+     */
+  mediaName?: string;
+  /**
+     * @minLength 1
      * @maxLength 200
      */
   shareKey?: string;
