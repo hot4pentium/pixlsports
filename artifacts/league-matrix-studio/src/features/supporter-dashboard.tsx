@@ -277,6 +277,9 @@ export function SupporterDashboardView({
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null, currentTime);
   const weekRecommendation = getSupporterWeekRecommendation(events, currentTime);
+  const activeMeetingEvent = weekRecommendation?.kind === 'meeting' && weekRecommendation.stage === 'live'
+    ? weekRecommendation.event
+    : undefined;
   const recommendedPreparationEvent = getSupporterPreparationContext(
     weekRecommendation,
     gameEvents,
@@ -285,7 +288,7 @@ export function SupporterDashboardView({
     currentTime,
   );
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
-  const contextEvent = recommendedPreparationEvent ?? nextGame;
+  const contextEvent = activeMeetingEvent ?? recommendedPreparationEvent ?? nextGame;
   const gameStage: SupporterGameStage = contextEvent
     ? getSupporterGameStage(contextEvent, currentTime)
     : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
@@ -299,7 +302,15 @@ export function SupporterDashboardView({
     && nextGame.id !== recommendedGame.id
     && gameStage === 'completed',
   );
-  const currentStage = contextEvent && gameStage === 'upcoming'
+  const currentStage = activeMeetingEvent && gameStage === 'live'
+    ? {
+      ...stageCopy.live,
+      label: 'Join the meeting',
+      kicker: 'Meeting in progress',
+      description: 'Keep the agenda and meeting details together while you are in the room.',
+      accent: 'Meeting',
+    }
+    : contextEvent && gameStage === 'upcoming'
     ? {
       ...stageCopy[gameStage],
       kicker: contextEvent.type === 'practice' ? 'Practice next' : contextEvent.type === 'meeting' ? 'Meeting next' : stageCopy[gameStage].kicker,
@@ -362,9 +373,9 @@ export function SupporterDashboardView({
     {
       id: 'live',
       number: '03',
-      label: 'Capture the game',
-      Icon: Activity,
-      href: recommendedStatTrackerHref,
+      label: activeMeetingEvent ? 'Join the meeting' : 'Capture the game',
+      Icon: activeMeetingEvent ? ClipboardCheck : Activity,
+      href: activeMeetingEvent ? checklistHrefForGame(activeMeetingEvent) : recommendedStatTrackerHref,
       active: Boolean(weekRecommendation && weekRecommendation.stage === 'live'),
     },
     {
@@ -457,12 +468,19 @@ export function SupporterDashboardView({
       description: preparationCopy.description,
       action: 'Open checklist',
     },
-    live: {
-      eyebrow: '03 / Capture window',
-      title: 'Capture today’s game.',
-      description: 'Your capture window is open. Track the action and save the moments that matter.',
-      action: 'Start game day',
-    },
+    live: activeMeetingEvent
+      ? {
+        eyebrow: '03 / Meeting in progress',
+        title: 'Stay with the meeting.',
+        description: 'Open the meeting checklist to keep the agenda, materials, and next steps together.',
+        action: 'Open meeting checklist',
+      }
+      : {
+        eyebrow: '03 / Capture window',
+        title: 'Capture today’s game.',
+        description: 'Your capture window is open. Track the action and save the moments that matter.',
+        action: 'Start game day',
+      },
     completed: {
       eyebrow: '04 / Celebration',
       title: 'Celebrate the moment.',
@@ -566,6 +584,8 @@ export function SupporterDashboardView({
       : 'Game Day';
   const mobileFeaturedTitle = mobileFeaturedEvent?.type === 'practice'
     ? `${profile.teamName || 'Your team'} practice`
+    : mobileFeaturedEvent?.type === 'meeting'
+      ? `${profile.teamName || 'Your team'} meeting`
     : `${profile.teamName || 'Your team'}${mobileFeaturedEvent?.opponent ? ` vs ${mobileFeaturedEvent.opponent}` : ''}`;
 
   return (
@@ -986,7 +1006,8 @@ export function SupporterDashboardView({
             <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               {gameStage === 'upcoming' && contextEvent && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
-              {gameStage === 'live' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
+              {gameStage === 'live' && contextEvent?.type === 'meeting' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-meeting-checklist"><ClipboardCheck className="h-4 w-4" /> Open meeting checklist</button>}
+              {gameStage === 'live' && contextEvent?.type !== 'meeting' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
               {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
               {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
             </div>

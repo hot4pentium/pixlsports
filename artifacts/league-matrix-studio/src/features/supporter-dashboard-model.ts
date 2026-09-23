@@ -340,6 +340,18 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
+  const activeMeeting = events.find((event) => (
+    event.type === 'meeting' && getSupporterGameStage(event, now) === 'live'
+  ));
+
+  if (activeMeeting) {
+    return {
+      event: activeMeeting,
+      kind: 'meeting',
+      stage: 'live',
+    };
+  }
+
   const recentCompletedGame = games
     .filter((game) => game.status === 'final' && typeof game.completedAt === 'string')
     .filter((game) => {

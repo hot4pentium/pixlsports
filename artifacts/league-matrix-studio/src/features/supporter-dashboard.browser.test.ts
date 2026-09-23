@@ -1265,6 +1265,40 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       false,
     );
 
+    await connection.evaluate(`window.__setSupporterDashboardEvents([{
+      id: 'meeting-1',
+      type: 'meeting',
+      date: '2026-09-23',
+      time: '17:00',
+      location: 'Northside Clubhouse',
+      notes: 'Bring the agenda',
+      status: 'live'
+    }])`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "live"',
+      Boolean,
+    );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+      /Meeting in progress|Open meeting checklist/,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-context-stat-tracker"]\'))', page.sessionId),
+      false,
+      'an active meeting must not expose the stat tracker action',
+    );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-context-meeting-checklist"]\'))', page.sessionId),
+      true,
+    );
+    await connection.evaluate(`document.querySelector('[data-testid="btn-desktop-recommendation-action"]')?.click()`, page.sessionId);
+    assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
+    assert.match(await connection.evaluate<string>('location.search', page.sessionId), /gameId=meeting-1/);
+    assert.match(await connection.evaluate<string>('location.search', page.sessionId), /eventType=meeting/);
+    await connection.evaluate(`window.history.pushState({}, '', '/');`, page.sessionId);
+
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
       { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'Visitors', status: 'upcoming' }

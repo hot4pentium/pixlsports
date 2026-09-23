@@ -47,6 +47,23 @@ test('upcoming practice and meeting events become preparation recommendations', 
   assert.equal(getSupporterWeekRecommendation([meeting], now)?.kind, 'meeting');
 });
 
+test('an active meeting becomes a live meeting recommendation instead of a game capture recommendation', () => {
+  const now = new Date('2026-09-23T18:00:00');
+  const meeting = {
+    id: 'meeting',
+    type: 'meeting' as const,
+    date: '2026-09-23',
+    time: '17:00',
+    location: 'Northside Clubhouse',
+  };
+
+  assert.deepEqual(getSupporterWeekRecommendation([meeting], now), {
+    event: meeting,
+    kind: 'meeting',
+    stage: 'live',
+  });
+});
+
 test('the next practice is recommended before a later upcoming game', () => {
   const now = new Date('2026-09-22T12:00:00');
   const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-24', time: '18:30' };
