@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  applyChecklistEventType,
   completedChecklistCount,
   createGamedayChecklist,
   getChecklistTemplate,
@@ -56,6 +57,27 @@ test('uses event-specific starter items without changing the game template', () 
   );
   assert.equal(createGamedayChecklist().items[0]?.label, 'Pack the uniform and game shoes');
   assert.equal(getChecklistTemplate('game'), getChecklistTemplate());
+});
+
+test('switching an existing checklist to a meeting replaces its starter form', () => {
+  const gameChecklist = {
+    ...createGamedayChecklist('game'),
+    selectedGame: {
+      id: 'game-1',
+      type: 'game' as const,
+      date: '2026-09-23',
+      time: '18:00',
+      location: 'Field',
+      opponent: 'Riverside',
+    },
+    items: [{ id: 'custom', label: 'Custom game task', completed: true }],
+  };
+
+  const meetingChecklist = applyChecklistEventType(gameChecklist, 'meeting');
+
+  assert.equal(meetingChecklist.title, 'Meeting Checklist');
+  assert.deepEqual(meetingChecklist.items, getChecklistTemplate('meeting'));
+  assert.equal(meetingChecklist.selectedGame?.type, 'game');
 });
 
 test('uses event-specific checklist copy while keeping game copy unchanged', () => {

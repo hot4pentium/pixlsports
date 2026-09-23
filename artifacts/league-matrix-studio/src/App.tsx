@@ -104,9 +104,9 @@ import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import {
   completedChecklistCount,
+  applyChecklistEventType,
   createGamedayChecklist,
   gamedayChecklistStorageKey,
-  getChecklistTemplate,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
   getChecklistResetConfirmation,
@@ -3114,12 +3114,11 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     if (!requestedGame) return;
     requestedGameApplied.current = true;
     const eventType = requestedGame.type ?? requestedEventType.current ?? 'game';
+    const currentEventType = latestChecklist.current.selectedGame?.type ?? 'game';
+    const eventTypeChanged = currentEventType !== eventType;
+    const shouldApplyTemplate = !storedChecklistLoaded.current || eventTypeChanged;
     const next = {
-      ...latestChecklist.current,
-      ...(storedChecklistLoaded.current ? {} : {
-        title: eventType === 'practice' ? 'Practice Checklist' : eventType === 'meeting' ? 'Meeting Checklist' : latestChecklist.current.title,
-        items: getChecklistTemplate(eventType).map((item) => ({ ...item })),
-      }),
+      ...(shouldApplyTemplate ? applyChecklistEventType(latestChecklist.current, eventType) : latestChecklist.current),
       selectedGame: {
         id: requestedGame.id,
         type: eventType,
@@ -3352,8 +3351,12 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
                   value={displayedEvent?.id ?? ''}
                   onChange={(event) => {
                     const nextEvent = calendarEvents.find((candidate) => candidate.id === event.target.value);
+                     const currentEventType = latestChecklist.current.selectedGame?.type ?? 'game';
+                     const nextChecklist = nextEvent && currentEventType !== nextEvent.type
+                       ? applyChecklistEventType(latestChecklist.current, nextEvent.type)
+                       : latestChecklist.current;
                     updateChecklist({
-                      ...latestChecklist.current,
+                       ...nextChecklist,
                       selectedGame: nextEvent
                         ? {
                             id: nextEvent.id,
