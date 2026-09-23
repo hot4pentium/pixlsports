@@ -596,6 +596,13 @@
   box-shadow: 0 8px 22px rgba(11, 31, 58, .06);
 }
 
+.pixl-dashboard-mobile > header a,
+.pixl-dashboard-mobile > header button,
+.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] a,
+.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button {
+  touch-action: manipulation;
+}
+
 .pixl-dashboard-mobile > header img {
   height: 34px;
   max-width: 110px;

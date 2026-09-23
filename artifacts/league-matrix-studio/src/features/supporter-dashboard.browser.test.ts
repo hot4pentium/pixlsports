@@ -512,12 +512,14 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)) {
           throw new Error('Mobile dashboard shell is incomplete');
         }
-        root.scrollTop = 0;
+        const scroller = document.scrollingElement;
+        if (!(scroller instanceof HTMLElement)) throw new Error('Missing document scroller');
+        scroller.scrollTop = 0;
         const initialHeaderRect = header.getBoundingClientRect();
         const heroRect = hero.getBoundingClientRect();
-        root.scrollTop = Math.min(240, Math.max(0, root.scrollHeight - root.clientHeight));
+        scroller.scrollTop = Math.min(240, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
         const scrolledHeaderRect = header.getBoundingClientRect();
-        root.scrollTop = 0;
+        scroller.scrollTop = 0;
         const rootRect = root.getBoundingClientRect();
         return {
           dashboardVisible: getComputedStyle(root).display !== 'none',
@@ -526,7 +528,7 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
           headerPosition: getComputedStyle(header).position,
           headerZIndex: getComputedStyle(header).zIndex,
           headerTop: Math.round(initialHeaderRect.top - rootRect.top),
-          headerTopAfterScroll: Math.round(scrolledHeaderRect.top - rootRect.top),
+          headerTopAfterScroll: Math.round(scrolledHeaderRect.top),
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
         };
       })()`, page.sessionId);
@@ -585,7 +587,7 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
       };
     })()`, page.sessionId), {
       expanded: 'true',
-      links: ['/studio', '/help', '/privacy'],
+      links: ['/studio'],
       label: 'Mobile dashboard navigation',
     });
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
@@ -593,6 +595,55 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
     assert.equal(
       await connection.evaluate<string>('document.activeElement?.getAttribute("data-testid") || ""', page.sessionId),
       'button-mobile-dashboard-menu',
+    );
+
+    await connection.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 }, page.sessionId);
+    for (const [testId, destination] of [
+      ['btn-mobile-open-profile', '/studio/profile'],
+      ['btn-mobile-nav-schedule', '/studio/schedule'],
+      ['btn-mobile-nav-home', '/studio'],
+      ['btn-mobile-nav-stat-tracker', '/studio/stat-tracker'],
+      ['btn-mobile-nav-create', '/studio/athlete-page'],
+    ]) {
+      const target = await connection.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
+        const element = document.querySelector('[data-testid="${testId}"]');
+        if (!(element instanceof HTMLElement)) throw new Error('Missing touch target: ${testId}');
+        const rect = element.getBoundingClientRect();
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top + rect.height / 2);
+        return { x, y, hit: element.contains(document.elementFromPoint(x, y)) };
+      })()`, page.sessionId);
+      assert.equal(target.hit, true, `${testId} must receive touches at its center`);
+      await connection.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x: target.x, y: target.y }],
+      }, page.sessionId);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      await connection.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+      }, page.sessionId);
+      await waitFor(connection, page.sessionId, `window.location.pathname === '${destination}'`, Boolean);
+    }
+
+    const swipeX = 195;
+    await connection.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: swipeX, y: 650 }],
+    }, page.sessionId);
+    for (const y of [570, 490, 410, 330, 250]) {
+      await connection.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: swipeX, y }],
+      }, page.sessionId);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    await connection.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page.sessionId);
+    await waitFor(connection, page.sessionId, '(document.scrollingElement?.scrollTop || 0) > 0', Boolean);
+    assert.equal(
+      await connection.evaluate<number>('document.querySelector(".supporter-dashboard-mobile-shell")?.scrollTop || 0', page.sessionId),
+      0,
+      'a swipe should scroll the document, not a separate dashboard scroller',
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

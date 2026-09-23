@@ -563,7 +563,7 @@ export function SupporterDashboardView({
   return (
     <>
       {/* MOBILE VIEW */}
-      <div className="supporter-dashboard-mobile-shell fixed inset-0 z-0 pixl-dashboard-mobile overflow-y-auto overflow-x-hidden pb-[calc(7rem+env(safe-area-inset-bottom))] flex-col">
+      <div className="supporter-dashboard-mobile-shell relative z-0 min-h-dvh w-full pixl-dashboard-mobile pb-[calc(7rem+env(safe-area-inset-bottom))] flex-col">
         {/* Mobile Header */}
         <header className="bg-white flex items-center justify-between px-4 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
           <div className="flex items-center gap-2">
