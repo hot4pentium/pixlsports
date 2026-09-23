@@ -15,6 +15,8 @@ import {
   getGetAccountAccessQueryKey,
   useGetAccountLifecycle,
   useCancelAccount,
+  usePauseAccount,
+  useResumeAccount,
   useReactivateAccount,
   getGetAccountLifecycleQueryKey,
   getGetSupporterPhotoQueryKey,
@@ -1195,7 +1197,6 @@ function Studio({ role }: { role: UserRole }) {
       }
     }
   });
-  const cancelAccount = useCancelAccount();
 
   const visibleTools = roleToolKinds[role];
 
@@ -1396,54 +1397,6 @@ function Studio({ role }: { role: UserRole }) {
           </div>
         </div>
 
-        <section className="mt-8 border border-destructive/30 bg-destructive/5 p-6 clip-angled-sm" data-testid="account-cancellation-panel">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
-          <h2 className="mt-2 font-display text-3xl uppercase tracking-wide">Cancel Pixl Sports access.</h2>
-              <p className="mt-2 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">
-                Your studio locks immediately. Your account and cloud work stay recoverable for 90 days after your latest sign-in.
-              </p>
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <button type="button" className="shrink-0 border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground" data-testid="button-open-cancel-account">
-                  Cancel account
-                </button>
-              </DialogTrigger>
-              <DialogContent className="border-destructive sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="font-display text-3xl uppercase tracking-wide">Lock your studio?</DialogTitle>
-                  <DialogDescription className="text-left leading-relaxed">
-                    You will lose studio access immediately. Sign in within 90 days to extend recovery or reactivate without losing your cloud projects, role, or team settings.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <DialogClose asChild>
-                    <button type="button" className="border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest">Keep account</button>
-                  </DialogClose>
-                  <button
-                    type="button"
-                    disabled={cancelAccount.isPending}
-                    onClick={() => {
-                      cancelAccount.mutate(undefined, {
-                        onSuccess: (lifecycle) => {
-                          queryClient.setQueryData(getGetAccountLifecycleQueryKey(), lifecycle);
-                          queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
-                        },
-                      });
-                    }}
-                    className="bg-destructive px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-destructive-foreground disabled:opacity-60"
-                    data-testid="button-confirm-cancel-account"
-                  >
-                    {cancelAccount.isPending ? 'Cancelling…' : 'Cancel and lock'}
-                  </button>
-                </DialogFooter>
-                {cancelAccount.isError && <p className="text-sm font-bold text-destructive">Cancellation failed. Try again.</p>}
-              </DialogContent>
-            </Dialog>
-          </div>
-        </section>
       </main>
     </StudioLayout>
   );
@@ -1558,6 +1511,17 @@ function SupporterProfilePage() {
   const deletePhoto = useDeleteSupporterPhoto();
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending || deletePhoto.isPending;
+  const { data: lifecycle, isLoading: lifecycleLoading, isError: lifecycleError, refetch: refetchLifecycle } = useGetAccountLifecycle({
+    query: {
+      enabled: Boolean(isSignedIn && user?.id),
+      queryKey: [...getGetAccountLifecycleQueryKey(), user?.id],
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: 'always',
+    },
+  });
+  const pauseAccount = usePauseAccount();
+  const cancelAccount = useCancelAccount();
 
   useEffect(() => {
     if (user) setProfile(supporterProfileFromUser(user));
@@ -1663,6 +1627,79 @@ function SupporterProfilePage() {
             });
           }}
         />
+        <div className="mx-auto max-w-3xl px-5 pb-12 sm:px-8">
+          <section className="border border-border bg-card p-6 sm:p-8" aria-labelledby="account-info-heading" data-testid="account-information">
+            <h2 id="account-info-heading" className="font-display text-3xl uppercase tracking-wide">Account information</h2>
+            <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+              <div className="min-w-0">
+                <dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sign-in email</dt>
+                <dd className="mt-2 break-all text-sm font-semibold">{user.primaryEmailAddress?.emailAddress ?? 'No primary email available'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Subscriber plan</dt>
+                <dd className="mt-2 text-sm font-semibold" data-testid="account-plan">
+                  {lifecycleLoading ? 'Loading plan…' : lifecycleError || !lifecycle ? 'Plan unavailable — retry below' : ({ free: 'Free', plus: 'Plus', pro: 'Pro' } as const)[lifecycle.planTier]}
+                </dd>
+              </div>
+            </dl>
+            {lifecycleError && <button type="button" onClick={() => void refetchLifecycle()} className="mt-4 text-sm font-bold text-primary underline">Retry account information</button>}
+          </section>
+          <section className="mt-6 border-l-4 border-destructive bg-destructive/5 p-6 sm:p-8" aria-labelledby="account-danger-heading" data-testid="account-danger-zone">
+            <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
+            <h2 id="account-danger-heading" className="mt-2 font-display text-3xl uppercase tracking-wide">Danger zone</h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">These actions lock access to your studio immediately. Your sign-in remains available.</p>
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+              <Dialog onOpenChange={() => pauseAccount.reset()}>
+                <DialogTrigger asChild>
+                  <button type="button" disabled={!lifecycle || lifecycle.status !== 'active' || pauseAccount.isPending || cancelAccount.isPending} className="min-h-11 border border-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-open-pause-account">Pause account</button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="font-display text-3xl uppercase">Pause for 90 days?</DialogTitle>
+                    <DialogDescription className="text-left leading-relaxed">
+                      Your studio and shared content will be unavailable immediately. Your data is preserved, not queued for deletion. Access returns automatically after 90 days, or you can resume early. This does not pause any external billing.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <DialogClose asChild><button type="button" disabled={pauseAccount.isPending} className="border border-border px-4 py-2.5 text-xs font-bold uppercase">Keep account active</button></DialogClose>
+                    <button type="button" disabled={pauseAccount.isPending} onClick={() => pauseAccount.mutate(undefined, {
+                      onSuccess: (result) => {
+                        queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), user.id], result);
+                        queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
+                        setLocation('/studio');
+                      },
+                    })} className="bg-foreground px-4 py-2.5 text-xs font-bold uppercase text-background disabled:opacity-50" data-testid="button-confirm-pause-account">{pauseAccount.isPending ? 'Pausing…' : 'Pause and lock'}</button>
+                  </DialogFooter>
+                  {pauseAccount.isError && <p role="alert" className="text-sm text-destructive">Pause failed. Please try again.</p>}
+                </DialogContent>
+              </Dialog>
+              <Dialog onOpenChange={() => cancelAccount.reset()}>
+                <DialogTrigger asChild>
+                  <button type="button" disabled={!lifecycle || lifecycle.status !== 'active' || pauseAccount.isPending || cancelAccount.isPending} className="min-h-11 border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="button-open-cancel-account">Cancel account</button>
+                </DialogTrigger>
+                <DialogContent className="border-destructive sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="font-display text-3xl uppercase">Cancel your account?</DialogTitle>
+                    <DialogDescription className="text-left leading-relaxed">
+                      Your studio and shared content lock immediately. Your data enters a 90-day recovery window and may be permanently deleted after {new Date(Date.now() + (lifecycle?.retentionDays ?? 90) * 86_400_000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} if you do not return. Signing in during recovery extends this window; you can reactivate before it expires. This does not cancel any external billing.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <DialogClose asChild><button type="button" disabled={cancelAccount.isPending} className="border border-border px-4 py-2.5 text-xs font-bold uppercase">Keep account</button></DialogClose>
+                    <button type="button" disabled={cancelAccount.isPending} onClick={() => cancelAccount.mutate(undefined, {
+                      onSuccess: (result) => {
+                        queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), user.id], result);
+                        queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
+                        setLocation('/studio');
+                      },
+                    })} className="bg-destructive px-4 py-2.5 text-xs font-bold uppercase text-destructive-foreground disabled:opacity-50" data-testid="button-confirm-cancel-account">{cancelAccount.isPending ? 'Cancelling…' : 'Cancel and lock'}</button>
+                  </DialogFooter>
+                  {cancelAccount.isError && <p role="alert" className="text-sm text-destructive">Cancellation failed. Please try again.</p>}
+                </DialogContent>
+              </Dialog>
+            </div>
+          </section>
+        </div>
       </main>
     </StudioLayout>
   );
@@ -3936,10 +3973,18 @@ function StudioPortal() {
   );
 }
 
-function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt: string | Date | null; expired: boolean }) {
+function LockedAccountPage({ status, pauseEndsAt, deletionEligibleAt, expired, userId }: {
+  status: 'paused' | 'cancelled' | 'deletion_pending';
+  pauseEndsAt: string | Date | null;
+  deletionEligibleAt: string | Date | null;
+  expired: boolean;
+  userId: string;
+}) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const reactivate = useReactivateAccount();
+  const resume = useResumeAccount();
+  const paused = status === 'paused';
   const recoveryDate = deletionEligibleAt ? new Date(deletionEligibleAt) : null;
    const upgradeUrl = import.meta.env.VITE_BILLING_UPGRADE_URL
      ?? 'mailto:hello@pixlsports.com?subject=Pixl%20Sports%20upgrade';
@@ -3951,12 +3996,14 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
         <section className="relative w-full overflow-hidden border-l-4 border-primary bg-card p-7 text-white clip-angled-sm sm:p-10" data-testid="locked-account-page">
           <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
           <div className="relative z-10 max-w-3xl">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">{expired ? 'Recovery window ended' : 'Account locked'}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">{paused ? 'Account paused' : expired ? 'Recovery window ended' : 'Account cancelled'}</p>
             <h1 className="mt-4 font-display text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl">
               YOUR STUDIO IS<br /><span className="text-primary">ON HOLD.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/70 sm:text-lg">
-              {expired
+              {paused
+                ? `Your data is preserved and is not queued for deletion. Access will return automatically after ${pauseEndsAt ? new Date(pauseEndsAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'the pause ends'}, or you can resume now. This pause does not change external billing.`
+                : expired
                  ? 'Your 90-day recovery window has ended. Pixl Sports data is queued for permanent deletion and cannot be restored.'
                 : `Your projects, team settings, and account role are preserved. Reactivate before ${recoveryDate?.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) ?? 'the recovery deadline'} to return to the studio.`}
             </p>
@@ -3964,22 +4011,22 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
-                  disabled={reactivate.isPending}
+                  disabled={paused ? resume.isPending : reactivate.isPending}
                   onClick={() => {
-                    reactivate.mutate(undefined, {
-                      onSuccess: () => {
-                        queryClient.invalidateQueries({ queryKey: getGetAccountLifecycleQueryKey() });
-                        queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
-                        setLocation('/studio');
-                      },
-                    });
+                    const onSuccess = (result: { status: string }) => {
+                      queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), userId], result);
+                      queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
+                      setLocation('/studio');
+                    };
+                    if (paused) resume.mutate(undefined, { onSuccess });
+                    else reactivate.mutate(undefined, { onSuccess });
                   }}
                   className="inline-flex items-center justify-center gap-2 bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-60 clip-angled-sm"
-                  data-testid="button-reactivate-account"
+                  data-testid={paused ? 'button-resume-account' : 'button-reactivate-account'}
                 >
-                  {reactivate.isPending ? 'Reactivating…' : 'Reactivate account'} <ArrowRight className="h-4 w-4" />
+                  {paused ? resume.isPending ? 'Resuming…' : 'Resume account' : reactivate.isPending ? 'Reactivating…' : 'Reactivate account'} <ArrowRight className="h-4 w-4" />
                 </button>
-                <a
+                {!paused && <a
                   href={upgradeUrl}
                   target={upgradeUrl.startsWith('http') ? '_blank' : undefined}
                   rel={upgradeUrl.startsWith('http') ? 'noreferrer' : undefined}
@@ -3987,15 +4034,15 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
                   data-testid="button-review-upgrade"
                 >
                   Upgrade your account
-                </a>
+                </a>}
               </div>
             )}
-            {reactivate.isError && (
-              <p className="mt-5 text-sm font-bold text-primary" role="status">
-                Reactivation failed. Refresh and try again.
+            {(reactivate.isError || resume.isError) && (
+              <p className="mt-5 text-sm font-bold text-primary" role="alert">
+                {paused ? 'Resume failed. Refresh and try again.' : 'Reactivation failed. Refresh and try again.'}
               </p>
             )}
-            <p className="mt-8 text-xs font-bold uppercase tracking-widest text-white/45">Authentication remains available so you can sign out or return during recovery.</p>
+            <p className="mt-8 text-xs font-bold uppercase tracking-widest text-white/45">Authentication remains available so you can sign out or return later.</p>
           </div>
         </section>
       </main>
@@ -4005,8 +4052,8 @@ function LockedAccountPage({ deletionEligibleAt, expired }: { deletionEligibleAt
 
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { isLoaded, isSignedIn } = useUser();
-  const bypassLifecycle = location === '/studio/hype-card'
+  const { isLoaded, isSignedIn, user } = useUser();
+  const bypassLifecycle = (location === '/studio/hype-card' && !isSignedIn)
     || location.startsWith('/schedule/')
     || location.startsWith('/checklist/')
     || location.startsWith('/watch/')
@@ -4015,20 +4062,25 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     || location.startsWith('/player/')
     || location.startsWith('/sign-in')
     || location.startsWith('/sign-up');
-  const { data: lifecycle, isLoading } = useGetAccountLifecycle({
+  const { data: lifecycle, isLoading, isError, refetch } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
       staleTime: 0,
       refetchOnMount: 'always',
-      queryKey: getGetAccountLifecycleQueryKey(),
+      refetchOnWindowFocus: 'always',
+      refetchInterval: (query) => query.state.data?.status === 'paused' ? 30_000 : false,
+      queryKey: [...getGetAccountLifecycleQueryKey(), user?.id],
     },
   });
 
   if (!bypassLifecycle && (!isLoaded || (isSignedIn && isLoading))) {
     return <AccountLoadingScreen />;
   }
+  if (isSignedIn && !bypassLifecycle && (isError || !lifecycle)) {
+    return <div className="grid min-h-dvh place-content-center gap-4 bg-background p-6 text-center"><p role="alert">Could not check your account access.</p><button type="button" className="bg-primary px-5 py-3 font-bold text-primary-foreground" onClick={() => void refetch()}>Retry</button></div>;
+  }
   if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
-    return <LockedAccountPage deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} />;
+    return <LockedAccountPage status={lifecycle.status} pauseEndsAt={lifecycle.pauseEndsAt} deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} userId={user!.id} />;
   }
   return <>{children}</>;
 }

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PaidEntitlementEventPlanTier } from './paidEntitlementEventPlanTier';
 import type { PaidEntitlementEventType } from './paidEntitlementEventType';
 
 export interface PaidEntitlementEvent {
@@ -21,4 +22,6 @@ export interface PaidEntitlementEvent {
   ownerClerkUserId: string;
   paid: true;
   expiresAt: Date;
+  /** Defaults to Plus for legacy entitlement events. */
+  planTier?: PaidEntitlementEventPlanTier;
 }

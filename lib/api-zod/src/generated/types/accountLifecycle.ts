@@ -5,10 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AccountLifecyclePlanTier } from './accountLifecyclePlanTier';
 import type { AccountLifecycleStatus } from './accountLifecycleStatus';
 
 export interface AccountLifecycle {
   status: AccountLifecycleStatus;
+  /** @nullable */
+  pauseEndsAt: Date | null;
+  planTier: AccountLifecyclePlanTier;
   /** @nullable */
   cancelledAt: Date | null;
   /** @nullable */

@@ -17,6 +17,9 @@ import {
   reactivateAccount,
   reactivateAccountFromEntitlement,
   hasActivePaidEntitlement,
+  isAccountActive,
+  pauseAccount,
+  resumeAccount,
 } from "./lib/accountLifecycle";
 import { runExpiredAccountPurge } from "./jobs/purgeCancelledAccounts";
 import { getAccountAccessSnapshot } from "./routes/accountAccess";
@@ -44,6 +47,92 @@ test("paid eligibility requires active lifecycle and an unexpired entitlement", 
     await db.update(accountAccessTable).set({ lifecycleStatus: "cancelled" })
       .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
     assert.equal(await hasActivePaidEntitlement(ownerClerkUserId), false);
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("pause locks access without starting deletion and resumes only the paused account", async () => {
+  const ownerClerkUserId = `pause-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({ ownerClerkUserId, role: "fan", accessMode: "full" });
+    const paused = await pauseAccount(ownerClerkUserId);
+    assert.equal(paused?.status, "paused");
+    assert.equal(paused?.deletionEligibleAt, null);
+    assert.equal(paused?.cancelledAt, null);
+    assert.ok(paused?.pauseEndsAt);
+    assert.equal(await isAccountActive(ownerClerkUserId), false);
+    assert.ok(Math.abs(paused!.pauseEndsAt!.getTime() - Date.now() - 90 * 86_400_000) < 5_000);
+    assert.equal(await hasActivePaidEntitlement(ownerClerkUserId), false);
+    assert.equal((await cancelAccount(ownerClerkUserId))?.status, "paused");
+    assert.equal((await pauseAccount(ownerClerkUserId))?.pauseEndsAt?.getTime(), paused?.pauseEndsAt?.getTime());
+    assert.equal((await resumeAccount(ownerClerkUserId))?.status, "active");
+    assert.equal(await isAccountActive(ownerClerkUserId), true);
+    assert.equal(await resumeAccount(ownerClerkUserId), null);
+    assert.equal((await getAccountLifecycleSnapshot(ownerClerkUserId)).pauseEndsAt, null);
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("expired pause automatically restores access without entering the purge lifecycle", async () => {
+  const ownerClerkUserId = `pause-expired-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId, role: "fan", accessMode: "full",
+      lifecycleStatus: "paused", pauseEndsAt: new Date(Date.now() - 1_000),
+    });
+    const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
+    assert.equal(lifecycle.status, "active");
+    assert.equal(await isAccountActive(ownerClerkUserId), true);
+    assert.equal(lifecycle.pauseEndsAt, null);
+    assert.equal(lifecycle.deletionEligibleAt, null);
+    assert.equal((await cancelAccount(ownerClerkUserId))?.status, "cancelled");
+    assert.equal(await pauseAccount(ownerClerkUserId), null);
+    assert.equal(await resumeAccount(ownerClerkUserId), null);
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("simultaneous pause and cancellation never leave conflicting deadlines", async () => {
+  const ownerClerkUserId = `pause-race-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({ ownerClerkUserId, role: "fan", accessMode: "full" });
+    await Promise.all([pauseAccount(ownerClerkUserId), cancelAccount(ownerClerkUserId)]);
+    const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
+    assert.ok(lifecycle.status === "paused" || lifecycle.status === "cancelled");
+    if (lifecycle.status === "paused") {
+      assert.ok(lifecycle.pauseEndsAt);
+      assert.equal(lifecycle.deletionEligibleAt, null);
+    } else {
+      assert.equal(lifecycle.pauseEndsAt, null);
+      assert.ok(lifecycle.deletionEligibleAt);
+    }
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("named tiers are derived from unexpired signed entitlements, with legacy events mapped to Plus", async () => {
+  const ownerClerkUserId = `plan-test-${randomUUID()}`;
+  try {
+    await db.insert(accountAccessTable).values({ ownerClerkUserId, role: "fan", accessMode: "full" });
+    assert.equal((await getAccountLifecycleSnapshot(ownerClerkUserId)).planTier, "free");
+    await db.insert(accountEntitlementEventsTable).values({
+      providerEventId: randomUUID(), ownerClerkUserId,
+      entitlementExpiresAt: new Date(Date.now() + 60_000),
+    });
+    assert.equal((await getAccountLifecycleSnapshot(ownerClerkUserId)).planTier, "plus");
+    await db.insert(accountEntitlementEventsTable).values({
+      providerEventId: randomUUID(), ownerClerkUserId, planTier: "pro",
+      entitlementExpiresAt: new Date(Date.now() + 30_000),
+    });
+    assert.equal((await getAccountLifecycleSnapshot(ownerClerkUserId)).planTier, "pro");
+    await db.update(accountEntitlementEventsTable)
+      .set({ entitlementExpiresAt: new Date(Date.now() - 1_000) })
+      .where(eq(accountEntitlementEventsTable.ownerClerkUserId, ownerClerkUserId));
+    assert.equal((await getAccountLifecycleSnapshot(ownerClerkUserId)).planTier, "free");
   } finally {
     await deleteTestAccount(ownerClerkUserId);
   }

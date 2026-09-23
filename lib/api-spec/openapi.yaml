@@ -762,6 +762,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /account/pause:
+    post:
+      operationId: pauseAccount
+      tags: [account-access]
+      summary: Pause the authenticated account for 90 days without deletion
+      responses:
+        "200":
+          description: Paused account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account setup is incomplete or account is not active
+  /account/resume:
+    post:
+      operationId: resumeAccount
+      tags: [account-access]
+      summary: Resume a paused account early
+      responses:
+        "200":
+          description: Active account lifecycle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLifecycle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Account is not paused
   /account/reactivate:
     post:
       operationId: reactivateAccount
@@ -2061,6 +2093,7 @@ components:
         ownerClerkUserId: { type: string, minLength: 1, maxLength: 200 }
         paid: { type: boolean, const: true }
         expiresAt: { type: string, format: date-time }
+        planTier: { type: string, enum: [plus, pro], description: "Defaults to Plus for legacy entitlement events." }
     BillingWebhookResponse:
       type: object
       required: [ok, replayed, restored, status]
@@ -2103,11 +2136,17 @@ components:
         limitBytes: { type: integer, minimum: 1 }
     AccountLifecycle:
       type: object
-      required: [status, cancelledAt, lastActivityAt, deletionEligibleAt, retentionDays, expired]
+      required: [status, pauseEndsAt, planTier, cancelledAt, lastActivityAt, deletionEligibleAt, retentionDays, expired]
       properties:
         status:
           type: string
-          enum: [active, cancelled, deletion_pending]
+          enum: [active, paused, cancelled, deletion_pending]
+        pauseEndsAt:
+          type: ["string", "null"]
+          format: date-time
+        planTier:
+          type: string
+          enum: [free, plus, pro]
         cancelledAt:
           type: ["string", "null"]
           format: date-time

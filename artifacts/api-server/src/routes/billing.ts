@@ -13,6 +13,7 @@ type PaidEntitlementEvent = {
   ownerClerkUserId: string;
   paid: true;
   expiresAt: Date;
+  planTier?: "plus" | "pro";
 };
 
 function hasValidSignature(req: RawBodyRequest) {
@@ -41,6 +42,7 @@ function parsePaidEntitlementEvent(body: unknown): PaidEntitlementEvent | null {
     || event.ownerClerkUserId.length === 0
     || event.ownerClerkUserId.length > 200
     || typeof event.expiresAt !== "string"
+    || (event.planTier !== undefined && event.planTier !== "plus" && event.planTier !== "pro")
   ) {
     return null;
   }
@@ -53,6 +55,7 @@ function parsePaidEntitlementEvent(body: unknown): PaidEntitlementEvent | null {
     ownerClerkUserId: event.ownerClerkUserId,
     paid: true,
     expiresAt,
+    planTier: event.planTier as "plus" | "pro" | undefined,
   };
 }
 
@@ -75,6 +78,7 @@ router.post("/billing/webhook", async (req, res): Promise<void> => {
     providerEventId: event.id,
     ownerClerkUserId: event.ownerClerkUserId,
     expiresAt: event.expiresAt,
+    planTier: event.planTier,
   };
   const result = await reactivateAccountFromEntitlement(entitlement);
   res.json({

@@ -1747,7 +1747,9 @@ export const UpdateAccountAccessResponse = zod.object({
 
 
 export const GetAccountLifecycleResponse = zod.object({
-  "status": zod.enum(['active', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "pauseEndsAt": zod.coerce.date().nullable(),
+  "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
@@ -1763,7 +1765,45 @@ export const GetAccountLifecycleResponse = zod.object({
 
 
 export const CancelAccountResponse = zod.object({
-  "status": zod.enum(['active', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "pauseEndsAt": zod.coerce.date().nullable(),
+  "planTier": zod.enum(['free', 'plus', 'pro']),
+  "cancelledAt": zod.coerce.date().nullable(),
+  "lastActivityAt": zod.coerce.date().nullable(),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
+  "retentionDays": zod.number().int().min(1),
+  "expired": zod.boolean()
+})
+
+
+/**
+ * @summary Pause the authenticated account for 90 days without deletion
+ */
+
+
+
+export const PauseAccountResponse = zod.object({
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "pauseEndsAt": zod.coerce.date().nullable(),
+  "planTier": zod.enum(['free', 'plus', 'pro']),
+  "cancelledAt": zod.coerce.date().nullable(),
+  "lastActivityAt": zod.coerce.date().nullable(),
+  "deletionEligibleAt": zod.coerce.date().nullable(),
+  "retentionDays": zod.number().int().min(1),
+  "expired": zod.boolean()
+})
+
+
+/**
+ * @summary Resume a paused account early
+ */
+
+
+
+export const ResumeAccountResponse = zod.object({
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "pauseEndsAt": zod.coerce.date().nullable(),
+  "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
@@ -1779,7 +1819,9 @@ export const CancelAccountResponse = zod.object({
 
 
 export const ReactivateAccountResponse = zod.object({
-  "status": zod.enum(['active', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "pauseEndsAt": zod.coerce.date().nullable(),
+  "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
@@ -1807,7 +1849,8 @@ export const ReceiveBillingWebhookBody = zod.object({
   "id": zod.string().min(1).max(receiveBillingWebhookBodyIdMax),
   "ownerClerkUserId": zod.string().min(1).max(receiveBillingWebhookBodyOwnerClerkUserIdMax),
   "paid": zod.literal(true),
-  "expiresAt": zod.coerce.date()
+  "expiresAt": zod.coerce.date(),
+  "planTier": zod.enum(['plus', 'pro']).optional().describe('Defaults to Plus for legacy entitlement events.')
 })
 
 export const ReceiveBillingWebhookResponse = zod.object({

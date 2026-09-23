@@ -2,11 +2,15 @@ import { Router, type IRouter } from "express";
 import {
   CancelAccountResponse,
   GetAccountLifecycleResponse,
+  PauseAccountResponse,
+  ResumeAccountResponse,
   ReactivateAccountResponse,
 } from "@workspace/api-zod";
 import {
   cancelAccount,
   getAccountLifecycleSnapshot,
+  pauseAccount,
+  resumeAccount,
   reactivateAccount,
 } from "../lib/accountLifecycle";
 import {
@@ -24,11 +28,29 @@ router.get("/account/lifecycle", requireAuthenticatedIdentity, async (_req, res)
 
 router.post("/account/cancel", requireAuthenticatedIdentity, async (_req, res): Promise<void> => {
   const lifecycle = await cancelAccount(getRequiredClerkUserId(res));
-  if (!lifecycle) {
-    res.status(409).json({ error: "Complete account setup before cancelling." });
+  if (!lifecycle || lifecycle.status === "paused") {
+    res.status(409).json({ error: "Only an active account can be cancelled. Resume your pause first." });
     return;
   }
   res.json(CancelAccountResponse.parse(lifecycle));
+});
+
+router.post("/account/pause", requireAuthenticatedIdentity, async (_req, res): Promise<void> => {
+  const lifecycle = await pauseAccount(getRequiredClerkUserId(res));
+  if (!lifecycle) {
+    res.status(409).json({ error: "Only active accounts can be paused." });
+    return;
+  }
+  res.json(PauseAccountResponse.parse(lifecycle));
+});
+
+router.post("/account/resume", requireAuthenticatedIdentity, async (_req, res): Promise<void> => {
+  const lifecycle = await resumeAccount(getRequiredClerkUserId(res));
+  if (!lifecycle) {
+    res.status(409).json({ error: "This account cannot be resumed." });
+    return;
+  }
+  res.json(ResumeAccountResponse.parse(lifecycle));
 });
 
 router.post("/account/reactivate", requireAuthenticatedIdentity, async (_req, res): Promise<void> => {

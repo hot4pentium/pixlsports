@@ -42,8 +42,8 @@ export const requireAuth: RequestHandler = async (req, res, next): Promise<void>
       res.status(423).json({
         error: lifecycle.expired
           ? "Account recovery window has expired."
-          : "Account is cancelled and locked.",
-        code: lifecycle.expired ? "ACCOUNT_EXPIRED" : "ACCOUNT_LOCKED",
+          : lifecycle.status === "paused" ? "Account is paused." : "Account is cancelled and locked.",
+        code: lifecycle.expired ? "ACCOUNT_EXPIRED" : lifecycle.status === "paused" ? "ACCOUNT_PAUSED" : "ACCOUNT_LOCKED",
       });
       return;
     }

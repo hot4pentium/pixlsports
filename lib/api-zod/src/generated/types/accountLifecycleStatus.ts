@@ -11,6 +11,7 @@ export type AccountLifecycleStatus = typeof AccountLifecycleStatus[keyof typeof 
 
 export const AccountLifecycleStatus = {
   active: 'active',
+  paused: 'paused',
   cancelled: 'cancelled',
   deletion_pending: 'deletion_pending',
 } as const;

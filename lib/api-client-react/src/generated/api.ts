@@ -3237,6 +3237,154 @@ export const useCancelAccount = <TError = ErrorType<UnauthorizedResponse | Error
       return useMutation(getCancelAccountMutationOptions(options));
     }
 
+export const getPauseAccountUrl = () => {
+
+
+
+
+  return `/api/account/pause`
+}
+
+/**
+ * @summary Pause the authenticated account for 90 days without deletion
+ */
+export const pauseAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountLifecycle> => {
+
+  return customFetch<AccountLifecycle>(getPauseAccountUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPauseAccountMutationKey = () => ['pauseAccount'] as const;
+
+export const getPauseAccountMutationOptions = <TError = ErrorType<UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pauseAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pauseAccount>>, TError,void, TContext> => {
+
+const mutationKey = getPauseAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pauseAccount>>, void> = () => {
+
+
+          return  pauseAccount(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PauseAccountMutationResult = NonNullable<Awaited<ReturnType<typeof pauseAccount>>>
+
+    export type PauseAccountMutationError = ErrorType<UnauthorizedResponse | void>
+
+
+    /**
+ * @summary Pause the authenticated account for 90 days without deletion
+ */
+export const usePauseAccount = <TError = ErrorType<UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pauseAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pauseAccount>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPauseAccountMutationOptions(options));
+    }
+
+export const getResumeAccountUrl = () => {
+
+
+
+
+  return `/api/account/resume`
+}
+
+/**
+ * @summary Resume a paused account early
+ */
+export const resumeAccount = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountLifecycle> => {
+
+  return customFetch<AccountLifecycle>(getResumeAccountUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResumeAccountMutationKey = () => ['resumeAccount'] as const;
+
+export const getResumeAccountMutationOptions = <TError = ErrorType<UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resumeAccount>>, TError,void, TContext> => {
+
+const mutationKey = getResumeAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resumeAccount>>, void> = () => {
+
+
+          return  resumeAccount(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResumeAccountMutationResult = NonNullable<Awaited<ReturnType<typeof resumeAccount>>>
+
+    export type ResumeAccountMutationError = ErrorType<UnauthorizedResponse | void>
+
+
+    /**
+ * @summary Resume a paused account early
+ */
+export const useResumeAccount = <TError = ErrorType<UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeAccount>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resumeAccount>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getResumeAccountMutationOptions(options));
+    }
+
 export const getReactivateAccountUrl = () => {
 
 

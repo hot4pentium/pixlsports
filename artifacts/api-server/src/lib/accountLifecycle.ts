@@ -1,20 +1,21 @@
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
 
 export const ACCOUNT_RETENTION_DAYS = 90;
 export const PROJECT_MEDIA_QUOTA_BYTES = 1024 * 1024 * 1024;
 const ACCOUNT_RETENTION_MS = ACCOUNT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
-export type AccountLifecycleStatus = "active" | "cancelled" | "deletion_pending";
+export type AccountLifecycleStatus = "active" | "paused" | "cancelled" | "deletion_pending";
 
 export type PaidEntitlement = {
   providerEventId: string;
   ownerClerkUserId: string;
   expiresAt: Date;
+  planTier?: "plus" | "pro";
 };
 
 function asStatus(value: string | null | undefined): AccountLifecycleStatus {
-  if (value === "cancelled" || value === "deletion_pending") return value;
+  if (value === "paused" || value === "cancelled" || value === "deletion_pending") return value;
   return "active";
 }
 
@@ -33,6 +34,18 @@ export async function getAccountLifecycleSnapshot(
     .limit(1);
 
   const now = new Date();
+  if (access?.lifecycleStatus === "paused" && access.pauseEndsAt && access.pauseEndsAt <= now) {
+    const [resumed] = await db.update(accountAccessTable)
+      .set({ lifecycleStatus: "active", pauseEndsAt: null, updatedAt: now })
+      .where(and(
+        eq(accountAccessTable.id, access.id),
+        eq(accountAccessTable.lifecycleStatus, "paused"),
+        lte(accountAccessTable.pauseEndsAt, now),
+      )).returning();
+    if (resumed) access = resumed;
+    else [access] = await db.select().from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId)).limit(1);
+  }
   const status = asStatus(access?.lifecycleStatus);
   const expired = status === "deletion_pending"
     || (status === "cancelled"
@@ -65,8 +78,19 @@ export async function getAccountLifecycleSnapshot(
     }
   }
 
+  const [entitlement] = await db.select({ planTier: accountEntitlementEventsTable.planTier })
+    .from(accountEntitlementEventsTable)
+    .where(and(
+      eq(accountEntitlementEventsTable.ownerClerkUserId, ownerClerkUserId),
+      gt(accountEntitlementEventsTable.entitlementExpiresAt, now),
+    ))
+    .orderBy(desc(sql`case when ${accountEntitlementEventsTable.planTier} = 'pro' then 1 else 0 end`), desc(accountEntitlementEventsTable.entitlementExpiresAt))
+    .limit(1);
+
   return {
     status: asStatus(access?.lifecycleStatus),
+    pauseEndsAt: access?.pauseEndsAt ?? null,
+    planTier: entitlement?.planTier === "pro" ? "pro" as const : entitlement ? "plus" as const : "free" as const,
     cancelledAt: access?.cancelledAt ?? null,
     lastActivityAt: access?.lastActivityAt ?? null,
     deletionEligibleAt: access?.deletionEligibleAt ?? null,
@@ -75,12 +99,43 @@ export async function getAccountLifecycleSnapshot(
   };
 }
 
+export async function pauseAccount(ownerClerkUserId: string) {
+  const now = new Date();
+  const [updated] = await db.update(accountAccessTable).set({
+    lifecycleStatus: "paused",
+    pauseEndsAt: addRetentionWindow(now),
+    updatedAt: now,
+  }).where(and(
+    eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
+    eq(accountAccessTable.lifecycleStatus, "active"),
+  )).returning();
+  if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
+  const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
+  return lifecycle.status === "paused" ? lifecycle : null;
+}
+
+export async function resumeAccount(ownerClerkUserId: string) {
+  const now = new Date();
+  const [updated] = await db.update(accountAccessTable).set({
+    lifecycleStatus: "active",
+    pauseEndsAt: null,
+    updatedAt: now,
+  }).where(and(
+    eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
+    eq(accountAccessTable.lifecycleStatus, "paused"),
+  )).returning();
+  if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
+  return null;
+}
+
 export async function cancelAccount(ownerClerkUserId: string) {
+  await getAccountLifecycleSnapshot(ownerClerkUserId);
   const now = new Date();
   const [updated] = await db
     .update(accountAccessTable)
     .set({
       lifecycleStatus: "cancelled",
+      pauseEndsAt: null,
       cancelledAt: now,
       lastActivityAt: now,
       deletionEligibleAt: addRetentionWindow(now),
@@ -109,6 +164,7 @@ export async function reactivateAccount(ownerClerkUserId: string) {
     .update(accountAccessTable)
     .set({
       lifecycleStatus: "active",
+      pauseEndsAt: null,
       cancelledAt: null,
       deletionEligibleAt: null,
       purgeStartedAt: null,
@@ -146,6 +202,7 @@ export async function reactivateAccountFromEntitlement(entitlement: PaidEntitlem
       providerEventId: entitlement.providerEventId,
       ownerClerkUserId: entitlement.ownerClerkUserId,
       entitlementExpiresAt: entitlement.expiresAt,
+      planTier: entitlement.planTier ?? "plus",
     })
     .onConflictDoNothing({
       target: accountEntitlementEventsTable.providerEventId,

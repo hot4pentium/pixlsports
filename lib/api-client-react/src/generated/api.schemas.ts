@@ -889,6 +889,17 @@ export const PaidEntitlementEventType = {
   paid_entitlement: 'paid_entitlement',
 } as const;
 
+/**
+ * Defaults to Plus for legacy entitlement events.
+ */
+export type PaidEntitlementEventPlanTier = typeof PaidEntitlementEventPlanTier[keyof typeof PaidEntitlementEventPlanTier];
+
+
+export const PaidEntitlementEventPlanTier = {
+  plus: 'plus',
+  pro: 'pro',
+} as const;
+
 export interface PaidEntitlementEvent {
   type: PaidEntitlementEventType;
   /**
@@ -903,6 +914,8 @@ export interface PaidEntitlementEvent {
   ownerClerkUserId: string;
   paid: true;
   expiresAt: string;
+  /** Defaults to Plus for legacy entitlement events. */
+  planTier?: PaidEntitlementEventPlanTier;
 }
 
 /**
@@ -975,12 +988,25 @@ export type AccountLifecycleStatus = typeof AccountLifecycleStatus[keyof typeof 
 
 export const AccountLifecycleStatus = {
   active: 'active',
+  paused: 'paused',
   cancelled: 'cancelled',
   deletion_pending: 'deletion_pending',
 } as const;
 
+export type AccountLifecyclePlanTier = typeof AccountLifecyclePlanTier[keyof typeof AccountLifecyclePlanTier];
+
+
+export const AccountLifecyclePlanTier = {
+  free: 'free',
+  plus: 'plus',
+  pro: 'pro',
+} as const;
+
 export interface AccountLifecycle {
   status: AccountLifecycleStatus;
+  /** @nullable */
+  pauseEndsAt: string | null;
+  planTier: AccountLifecyclePlanTier;
   /** @nullable */
   cancelledAt: string | null;
   /** @nullable */

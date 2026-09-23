@@ -154,6 +154,7 @@ export const accountAccessTable = pgTable("account_access", {
   role: text("role").notNull(),
   accessMode: text("access_mode").notNull(),
   lifecycleStatus: text("lifecycle_status").notNull().default("active"),
+  pauseEndsAt: timestamp("pause_ends_at", { withTimezone: true }),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
   deletionEligibleAt: timestamp("deletion_eligible_at", { withTimezone: true }),
@@ -170,6 +171,7 @@ export const accountEntitlementEventsTable = pgTable("account_entitlement_events
   providerEventId: text("provider_event_id").notNull(),
   ownerClerkUserId: text("owner_clerk_user_id").notNull(),
   entitlementExpiresAt: timestamp("entitlement_expires_at", { withTimezone: true }).notNull(),
+  planTier: text("plan_tier").notNull().default("plus"),
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   providerEventUnique: uniqueIndex("account_entitlement_events_provider_event_unique").on(table.providerEventId),
