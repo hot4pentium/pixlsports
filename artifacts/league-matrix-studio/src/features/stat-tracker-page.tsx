@@ -272,13 +272,19 @@ export function StatTrackerUpcomingNotice({
   nextGame,
   onUseUpcomingGame,
   onDismiss,
+  onToggleManualSetup,
+  showManualSetup,
+  hiddenOnDesktop = false,
 }: {
   nextGame: ScheduledGame;
   onUseUpcomingGame: () => void;
   onDismiss: () => void;
+  onToggleManualSetup: () => void;
+  showManualSetup: boolean;
+  hiddenOnDesktop?: boolean;
 }) {
   return (
-    <section className="mb-6 flex flex-col gap-4 border border-primary/40 bg-primary/5 px-4 py-4 clip-angled-sm sm:flex-row sm:items-center sm:justify-between sm:px-5" data-testid="stat-tracker-upcoming-notice" aria-live="polite">
+    <section className={`mb-6 flex flex-col gap-4 border border-primary/40 bg-primary/5 px-4 py-4 clip-angled-sm sm:flex-row sm:items-center sm:justify-between sm:px-5 ${hiddenOnDesktop ? 'lg:hidden' : ''}`} data-testid="stat-tracker-upcoming-notice" aria-live="polite">
       <div className="flex min-w-0 items-start gap-3">
         <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary-ink" />
         <div className="min-w-0">
@@ -287,9 +293,12 @@ export function StatTrackerUpcomingNotice({
           <p className="mt-1 text-xs font-medium text-muted-foreground">Your tracker is ready to use this game’s details.</p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex w-full min-w-0 items-center gap-2 lg:w-auto lg:shrink-0">
         <button type="button" onClick={onUseUpcomingGame} data-testid="button-use-upcoming-game" className="inline-flex min-h-10 items-center justify-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110">Use this game</button>
-        <button type="button" onClick={onDismiss} aria-label="Dismiss upcoming game notification" data-testid="button-dismiss-upcoming-notice" className="inline-flex min-h-10 min-w-10 items-center justify-center border border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground"><X className="h-4 w-4" /></button>
+        <button type="button" onClick={onToggleManualSetup} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid="button-start-manual-game" className="ml-auto inline-flex min-h-10 items-center justify-center gap-1 border border-primary bg-primary/10 px-2 py-2 text-center text-[9px] font-bold uppercase leading-tight tracking-normal text-foreground hover:bg-primary/20 lg:hidden">
+          Start manual game <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
+        </button>
+        <button type="button" onClick={onDismiss} aria-label="Dismiss upcoming game notification" data-testid="button-dismiss-upcoming-notice" className="hidden min-h-10 min-w-10 items-center justify-center border border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground lg:inline-flex"><X className="h-4 w-4" /></button>
       </div>
     </section>
   );
@@ -323,8 +332,8 @@ export function StatTrackerStartPanel({
   onReviewPreviousGames: () => void;
 }) {
   return (
-    <div className="stat-tracker-light-text border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8">
-      <div className="flex items-start justify-between gap-4">
+    <div className={`stat-tracker-light-text border border-foreground/20 bg-muted/70 p-6 shadow-lg clip-angled-sm sm:p-8 ${nextGame ? 'contents lg:block' : ''}`}>
+      <div data-testid="stat-tracker-start-summary" className={`flex items-start justify-between gap-4 ${nextGame ? 'hidden lg:flex' : ''}`}>
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-accent">{nextGame ? 'Scheduled game' : 'Blank tracker'}</p>
           <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">{label}</h2>
@@ -332,10 +341,10 @@ export function StatTrackerStartPanel({
         </div>
         <Trophy className="h-7 w-7 text-primary-ink" />
       </div>
-      <button type="button" onClick={onToggleManualSetup} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid="button-start-manual-game" className="mt-6 inline-flex min-h-11 items-center gap-2 border border-primary bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-primary/20">
+      <button type="button" onClick={onToggleManualSetup} aria-expanded={showManualSetup} aria-controls="manual-game-setup" data-testid={nextGame ? 'button-start-manual-game-desktop' : 'button-start-manual-game'} className={`mt-6 min-h-11 items-center gap-2 border border-primary bg-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-primary/20 ${nextGame ? 'hidden lg:inline-flex' : 'inline-flex'}`}>
         <Clock3 className="h-4 w-4 text-primary-ink" /> Start manual game <ChevronDown className={`h-4 w-4 transition-transform ${showManualSetup ? 'rotate-180' : ''}`} />
       </button>
-      {showManualSetup && <div id="manual-game-setup" className="mt-6 border-t border-border pt-6">
+      {showManualSetup && <div id="manual-game-setup" className={`${nextGame ? 'stat-tracker-light-text border border-foreground/20 bg-muted/70 p-5 shadow-lg clip-angled-sm lg:mt-6 lg:border-x-0 lg:border-b-0 lg:border-t-border lg:bg-transparent lg:p-0 lg:pt-6 lg:shadow-none' : 'mt-6 border-t border-border pt-6'}`}>
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
             <input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} data-testid="input-stat-tracker-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
@@ -1510,11 +1519,14 @@ export function StatTrackerPage() {
         ))}
       </div>
 
-      {nextGame && !currentGame && showUpcomingNotice && (
+      {nextGame && !currentGame && (
         <StatTrackerUpcomingNotice
           nextGame={nextGame}
           onUseUpcomingGame={useNextGameForSetup}
           onDismiss={() => setShowUpcomingNotice(false)}
+          onToggleManualSetup={() => setShowManualSetup((value) => !value)}
+          showManualSetup={showManualSetup}
+          hiddenOnDesktop={!showUpcomingNotice}
         />
       )}
 

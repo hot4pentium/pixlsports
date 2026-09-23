@@ -39,3 +39,4 @@
 - [Browser fixture reloads](browser-fixture-reloads.md) — reload generated browser-test HTML through its direct fixture URL after route changes to avoid SPA fallback to the production shell.
 - [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject it automatically.
 - [Schedule stage precedence](schedule-stage-precedence.md) — a saved upcoming/live status must not keep a past event ahead of a future practice.
+- [Tracker mobile start actions](tracker-mobile-start-actions.md) — keep the compact scheduled-game actions accessible when the larger setup card is hidden on mobile.

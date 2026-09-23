@@ -182,10 +182,13 @@ function TrackerHarness() {
       hidden: true,
       'data-testid': 'tracker-next-game-source',
     }, nextGame?.id || 'none'),
-    !currentGame && nextGame && showNotice && createElement(StatTrackerUpcomingNotice, {
+    !currentGame && nextGame && createElement(StatTrackerUpcomingNotice, {
       nextGame,
       onUseUpcomingGame: () => setShowManualSetup(true),
       onDismiss: () => setShowNotice(false),
+      onToggleManualSetup: () => setShowManualSetup((value) => !value),
+      showManualSetup,
+      hiddenOnDesktop: !showNotice,
     }),
     currentGame
       ? createElement(LiveTrackerGame, {
@@ -331,8 +334,19 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     assert.match(noticeText, /Northside/);
     assert.match(noticeText, /2026/);
 
-    await connection.evaluate('document.querySelector("[data-testid=\\"button-dismiss-upcoming-notice\\"]")?.click()', page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") === null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const use = document.querySelector('[data-testid="button-use-upcoming-game"]')?.getBoundingClientRect();
+        const manual = document.querySelector('[data-testid="button-start-manual-game"]')?.getBoundingClientRect();
+        const summary = document.querySelector('[data-testid="stat-tracker-start-summary"]');
+        return Boolean(use && manual && summary
+          && manual.left >= use.right
+          && Math.abs(manual.top - use.top) < 2
+          && getComputedStyle(summary).display === 'none'
+          && document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+      })()`, page.sessionId),
+      true,
+    );
 
     await connection.evaluate('document.querySelector("[data-testid=\\"button-start-manual-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("#manual-game-setup") !== null', Boolean);
@@ -379,7 +393,6 @@ test('stat tracker protects scheduled, live football, and completed-game states 
 
     await connection.evaluate('window.location.search = "?sport=football&persistence=1"', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]") !== null', Boolean);
-    await connection.evaluate('document.querySelector("[data-testid=\\"button-dismiss-upcoming-notice\\"]")?.click()', page.sessionId);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-start-manual-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("#manual-game-setup") !== null', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-confirm-start-game\\"]")?.click()', page.sessionId);
