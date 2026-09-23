@@ -1,21 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Caveat:wght@600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&display=swap");
 @import 'tailwindcss';
 
 :root {
-  --color-primary: #44f18a;
-  --color-secondary: #b8ffcd;
-  --color-accent: #ffce62;
-  --color-bg-light: #f5f4ee;
-  --color-bg-dark: #0d1718;
-  --color-bg-muted: #e5e7df;
-  --color-text-primary: #102021;
-  --color-text-secondary: #8aa19a;
-  --color-text-muted: #657572;
-  --color-text-inverse: #f5f4ee;
-  --color-success: #44f18a;
-  --color-warning: #ffce62;
-  --color-error: #ff7969;
-  --font-display: 'Anton', sans-serif;
+  --color-primary: #55A4FF;
+  --color-secondary: #102B4D;
+  --color-accent: #FF6433;
+  --color-bg-light: #F3F6FA;
+  --color-bg-dark: #0B1F3A;
+  --color-bg-muted: #102B4D;
+  --color-text-primary: #0E2542;
+  --color-text-secondary: #8F9AAB;
+  --color-text-muted: #8F9AAB;
+  --color-text-inverse: #F3F6FA;
+  --color-success: #55A4FF;
+  --color-warning: #FF6433;
+  --color-error: #FF6433;
+  --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'DM Sans', sans-serif;
 }
@@ -50,7 +50,7 @@ body {
 * { box-sizing: border-box; }
 
 .phone-shadow {
-  box-shadow: 0 2.5vmin 8vmin rgba(0, 0, 0, .38), 0 0 0 .45vmin rgba(68, 241, 138, .13);
+  box-shadow: 0 2.5vmin 8vmin rgba(0, 0, 0, .38), 0 0 0 .45vmin rgba(85, 164, 255, .13);
 }
 
 .grain::after {
@@ -64,7 +64,7 @@ body {
 }
 
 .scanline {
-  background: linear-gradient(180deg, transparent, rgba(68,241,138,.24), transparent);
+  background: linear-gradient(180deg, transparent, rgba(85,164,255,.24), transparent);
   height: 12vh;
   width: 100%;
   animation: scan 5.5s linear infinite;
