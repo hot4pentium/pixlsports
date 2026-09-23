@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import {
   cloudProjectsTable,
   db,
@@ -294,7 +294,8 @@ export async function runPlannerNotificationJob(
       ownerClerkUserId: webPushSubscriptionsTable.ownerClerkUserId,
       timezone: webPushSubscriptionsTable.timezone,
     })
-    .from(webPushSubscriptionsTable);
+    .from(webPushSubscriptionsTable)
+    .orderBy(desc(webPushSubscriptionsTable.updatedAt));
   const owners = new Map<string, string>();
   for (const subscription of subscriptions) {
     if (!owners.has(subscription.ownerClerkUserId)) {

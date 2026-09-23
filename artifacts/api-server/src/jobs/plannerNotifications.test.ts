@@ -101,6 +101,68 @@ test("day-of reminders arrive at 7 AM locally and can be selected independently"
   );
 });
 
+test("planner job uses the most recently updated subscription timezone", async () => {
+  const ownerId = `planner-timezone-test-${randomUUID()}`;
+  const sent: Array<{ title: string }> = [];
+  let projectId: string | undefined;
+
+  try {
+    await db.insert(webPushSubscriptionsTable).values([
+      {
+        ownerClerkUserId: ownerId,
+        endpoint: `https://push.example.test/old-${randomUUID()}`,
+        p256dh: "old-p256dh",
+        auth: "old-auth",
+        timezone: "UTC",
+        updatedAt: new Date("2026-09-22T12:00:00.000Z"),
+      },
+      {
+        ownerClerkUserId: ownerId,
+        endpoint: `https://push.example.test/current-${randomUUID()}`,
+        p256dh: "current-p256dh",
+        auth: "current-auth",
+        timezone: "America/New_York",
+        updatedAt: new Date("2026-09-23T11:00:00.000Z"),
+      },
+    ]);
+    const [project] = await db.insert(cloudProjectsTable).values({
+      ownerClerkUserId: ownerId,
+      name: "Planner timezone test",
+      project: {
+        tool: "schedule",
+        teamName: "Test Team",
+        season: "2026",
+        events: [{
+          id: "meeting-1",
+          type: "meeting",
+          date: "2026-09-23",
+          time: "12:00",
+          location: "Main office",
+          opponent: "",
+        }],
+      },
+    }).returning();
+    projectId = project.id;
+
+    await runPlannerNotificationJob(new Date("2026-09-23T15:12:00.000Z"), {
+      sendPushNotificationToUser: async (_ownerId, payload) => {
+        sent.push({ title: payload.title });
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.deepEqual(sent, [{ title: "Starting in 1 hour: Team meeting" }]);
+  } finally {
+    if (projectId) {
+      await db.delete(plannerNotificationDeliveriesTable)
+        .where(eq(plannerNotificationDeliveriesTable.projectId, projectId));
+      await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, projectId));
+    }
+    await db.delete(webPushSubscriptionsTable)
+      .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerId));
+  }
+});
+
 test("planner job skips invalid dates, sends valid events, and deduplicates repeated runs", async () => {
   const ownerId = `planner-test-${randomUUID()}`;
   const endpoint = `https://push.example.test/${randomUUID()}`;
