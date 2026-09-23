@@ -26,6 +26,7 @@ function dateKey(offsetDays: number) {
 
 test("athlete invites evolve from owned sources and revoke without exposing private activity", async () => {
   const ownerId = `athlete-invite-${randomUUID()}`;
+  const otherId = `athlete-other-${randomUUID()}`;
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -42,6 +43,11 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: otherId,
       role: "fan",
       accessMode: "full",
     });
@@ -133,6 +139,32 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal(create.status, 201);
     const owned = await create.json() as { inviteToken: string };
     const publicUrl = `${listUrl}/${owned.inviteToken}`;
+    const otherHeaders = { "x-test-user": otherId };
+    const otherList = await fetch(listUrl, { headers: otherHeaders });
+    assert.equal(otherList.status, 200);
+    assert.deepEqual(await otherList.json(), []);
+    assert.equal((await fetch(publicUrl, { headers: otherHeaders })).status, 200);
+    assert.equal((await fetch(publicUrl, {
+      method: "PATCH",
+      headers: { ...otherHeaders, "content-type": "application/json" },
+      body: JSON.stringify({
+        athleteName: "Changed by another account",
+        teamName: "City Hoops",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "basketball",
+        trackerProjectId: null,
+        scheduleProjectId: null,
+        showHypeCard: false,
+        showStats: false,
+        showSchedule: false,
+        paused: true,
+      }),
+    })).status, 404);
+    assert.equal((await fetch(`${publicUrl}/live`, { method: "POST", headers: otherHeaders })).status, 404);
+    assert.equal((await fetch(`${publicUrl}/live`, { method: "DELETE", headers: otherHeaders })).status, 404);
+    assert.equal((await fetch(publicUrl, { method: "DELETE", headers: otherHeaders })).status, 404);
+    assert.equal((await fetch(publicUrl, { method: "PATCH", headers: { "content-type": "application/json" }, body: "{}" })).status, 401);
     const publicResponse = await fetch(publicUrl);
     assert.equal(publicResponse.status, 200);
     const invite = GetAthleteInviteResponse.parse(await publicResponse.json());
@@ -207,6 +239,11 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     });
     assert.equal(paused.status, 200);
     assert.equal((await fetch(publicUrl)).status, 404);
+    assert.equal((await fetch(publicUrl, { headers: otherHeaders })).status, 404);
+    const ownerPaused = await fetch(publicUrl, { headers: { "x-test-user": ownerId } });
+    assert.equal(ownerPaused.status, 200);
+    assert.equal(GetAthleteInviteResponse.parse(await ownerPaused.json()).inviteToken, owned.inviteToken);
+    assert.equal((await fetch(listUrl, { headers: { "x-test-user": ownerId } })).status, 200);
 
     const resumed = await fetch(publicUrl, {
       method: "PATCH",
@@ -236,6 +273,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
   }
 });
 
