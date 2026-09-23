@@ -1985,6 +1985,14 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       await connection.evaluate<string>('document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]")?.value || ""', page.sessionId),
       'We agreed to keep Wednesday practice focused on defense.',
     );
+
+    await connection.evaluate(`document.querySelector('[data-testid="button-back-to-checklist"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.location.search === ""', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"text-meeting-title\\"]"))', page.sessionId),
+      false,
+      'back to checklist must leave the query-driven meeting variant',
+    );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

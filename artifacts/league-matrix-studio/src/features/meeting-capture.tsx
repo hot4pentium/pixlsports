@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useLocation } from 'wouter';
 
 import { readScheduleDraft } from '@/features/schedule-draft';
 
@@ -283,7 +282,7 @@ function MeetingHeader({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-[#9ebbd1] transition-colors hover:text-[#f7c97a]"
+            className="inline-flex min-h-11 -mx-2 items-center gap-2 px-2 text-xs font-bold uppercase tracking-[0.15em] text-[#9ebbd1] touch-manipulation transition-colors hover:text-[#f7c97a]"
             data-testid="button-back-to-checklist"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -317,7 +316,6 @@ function MeetingHeader({
 
 export function MeetingCapture() {
   const { user } = useUser();
-  const [, setLocation] = useLocation();
   const context = useMemo(() => getMeetingContext(), []);
   const storageKey = `${meetingStoragePrefix}:${user?.id || 'guest'}:${context.id}`;
   const [state, setState] = useState<MeetingState>(() => readMeetingState(storageKey) ?? blankMeetingState());
@@ -451,7 +449,11 @@ export function MeetingCapture() {
   };
 
   const handleBack = () => {
-    setLocation('/studio/checklist');
+    // Meeting capture and the generic checklist intentionally share a pathname.
+    // Wouter ignores the query string, so a client-side location update would
+    // leave the meeting variant mounted. Preserve the artifact base path by
+    // navigating to the current pathname without its meeting query.
+    window.location.assign(`${window.location.pathname}${window.location.hash}`);
   };
 
   if (showRecap) {
