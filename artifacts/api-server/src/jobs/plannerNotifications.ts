@@ -12,6 +12,7 @@ import { sendPushNotificationToUser } from "../lib/webPush";
 const INTERVAL_MS = 15 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MORNING_HOUR = 7;
+const CAPTURE_OPEN_GRACE_MS = 3 * ONE_HOUR_MS;
 
 type PlannerEvent = {
   id: string;
@@ -29,7 +30,7 @@ type PlannerProject = {
   events: PlannerEvent[];
 };
 
-export type PlannerReminderType = "one_hour" | "day_of";
+export type PlannerReminderType = "one_hour" | "day_of" | "capture_open";
 
 export type PlannerReminderPreferences = {
   oneHourBefore: boolean;
@@ -190,6 +191,13 @@ function getReminderTypes(
     && nowMs < eventStartMs
   ) {
     reminders.push("one_hour");
+  } else if (
+    preferences.oneHourBefore
+    && eventStart
+    && nowMs >= eventStartMs
+    && nowMs < eventStartMs + CAPTURE_OPEN_GRACE_MS
+  ) {
+    reminders.push("capture_open");
   }
 
   return reminders;
@@ -216,10 +224,14 @@ function reminderPayload(
 ) {
   const label = eventLabel(event);
   return {
-    title: reminderType === "one_hour" ? `Starting in 1 hour: ${label}` : `Today: ${label}`,
-    body: reminderType === "one_hour"
-      ? `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to capture the moment.`
-      : `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to see the full week.`,
+    title: reminderType === "one_hour"
+      ? `Starting in 1 hour: ${label}`
+      : reminderType === "capture_open"
+        ? `Capture window open: ${label}`
+        : `Today: ${label}`,
+    body: reminderType === "day_of"
+      ? `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to see the full week.`
+      : `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to capture the moment.`,
     url: "/studio",
   };
 }

@@ -251,6 +251,26 @@ export function acknowledgeSupporterGameStage(
   }
 }
 
+function parseSupporterEventTime(value: string): { hour: number; minute: number } | null {
+  const twelveHour = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(value.trim());
+  if (twelveHour) {
+    const hour = Number(twelveHour[1]);
+    const minute = Number(twelveHour[2]);
+    if (hour < 1 || hour > 12 || minute > 59) return null;
+    return {
+      hour: (hour % 12) + (twelveHour[3].toUpperCase() === 'PM' ? 12 : 0),
+      minute,
+    };
+  }
+
+  const twentyFourHour = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!twentyFourHour) return null;
+  const hour = Number(twentyFourHour[1]);
+  const minute = Number(twentyFourHour[2]);
+  if (hour > 23 || minute > 59) return null;
+  return { hour, minute };
+}
+
 export function getSupporterGameStage(
   game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type'>,
   now = new Date(),
@@ -267,10 +287,10 @@ export function getSupporterGameStage(
   if (game.status === 'live') return 'live';
   if (game.date > todayKey) return 'upcoming';
 
-  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(game.time.trim());
-  if (!timeMatch) return game.type === 'game' || !game.type ? 'live' : 'upcoming';
+  const eventTime = parseSupporterEventTime(game.time);
+  if (!eventTime) return game.type === 'game' || !game.type ? 'live' : 'upcoming';
   const start = new Date(now);
-  start.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
+  start.setHours(eventTime.hour, eventTime.minute, 0, 0);
   const isGame = game.type === 'game' || !game.type;
   const captureStart = isGame ? start.getTime() - 60 * 60 * 1000 : start.getTime();
   if (captureStart > now.getTime()) return 'upcoming';

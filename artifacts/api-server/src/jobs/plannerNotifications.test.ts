@@ -44,6 +44,15 @@ test("planner reminders use each subscription's local event time", () => {
     );
     assert.deepEqual(
       getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.eventStart), current.timezone),
+      ["capture_open"],
+    );
+    assert.deepEqual(
+      getPlannerReminderTypesForTest(
+        current.eventDate,
+        current.eventTime,
+        new Date(new Date(current.eventStart).getTime() + 3 * 60 * 60 * 1000),
+        current.timezone,
+      ),
       [],
     );
   }

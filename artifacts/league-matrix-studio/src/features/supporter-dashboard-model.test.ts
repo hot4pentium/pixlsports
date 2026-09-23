@@ -74,6 +74,12 @@ test('the week path moves a game to Capture one hour before start', () => {
   assert.equal(getSupporterGameStage(event, new Date('2026-09-22T19:00:00')), 'live');
 });
 
+test('the week path handles imported AM/PM event times', () => {
+  const event = { type: 'practice' as const, date: '2026-09-22', time: '10:00 AM' };
+  assert.equal(getSupporterGameStage(event, new Date('2026-09-22T09:59:59')), 'upcoming');
+  assert.equal(getSupporterGameStage(event, new Date('2026-09-22T10:00:00')), 'live');
+});
+
 test('non-game events stay in preparation until their scheduled start', () => {
   const practice = { type: 'practice' as const, date: '2026-09-22', time: '18:00' };
   assert.equal(getSupporterGameStage(practice, new Date('2026-09-22T17:30:00')), 'upcoming');
