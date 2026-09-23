@@ -204,6 +204,10 @@
     gap: 18px;
     padding: 24px 28px 36px;
   }
+  .pixl-dashboard .previous-meetings-panel {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
   .pixl-dashboard > header {
     display: contents;
   }
