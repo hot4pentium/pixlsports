@@ -9,7 +9,6 @@ import {
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
-  getNextUpcomingSupporterEvent,
   getSupporterGameStage,
   getSupporterPreparationContext,
   getSupporterPreparationCopy,
@@ -559,7 +558,6 @@ export function SupporterDashboardView({
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? events[0];
-  const nextUpcomingEvent = getNextUpcomingSupporterEvent(events);
   const scheduleCardEvent = weekRecommendation?.event ?? nextGame;
   const scheduleCardLabel = scheduleCardEvent?.type === 'practice'
     ? 'Practice'
@@ -765,42 +763,6 @@ export function SupporterDashboardView({
              </div>
           </section>
 
-          {/* Upcoming Section */}
-          {(() => {
-              const nextUp = nextUpcomingEvent;
-              if (!nextUp) return null;
-             return (
-              <section className="mt-2 mb-4" data-testid="section-mobile-coming-up" aria-labelledby="mobile-coming-up-heading">
-                <div className="flex items-center justify-between mb-4 px-1">
-                  <h3 id="mobile-coming-up-heading" className="text-[28px] font-display font-black tracking-tight text-[#12213A]">Coming up</h3>
-                  <Link href={supporterToolRoutes.schedule} className="text-[#2474F5] text-[15px] font-bold flex items-center gap-1" data-testid="btn-mobile-view-schedule">View schedule <ArrowRight className="w-4 h-4" /></Link>
-                </div>
-
-                <Link href={supporterToolRoutes.schedule} className="w-full text-left bg-white rounded-[20px] p-5 shadow-sm border border-black/5 flex items-center justify-between" aria-label="View upcoming event details" data-testid="btn-mobile-coming-up-action">
-                   <div className="flex items-center gap-4 min-w-0">
-                     <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black/40 shrink-0 border border-black/5">
-                       <CalendarDays className="w-6 h-6" />
-                     </div>
-                     <div className="min-w-0 flex-1">
-                       <div className="text-[17px] font-bold text-[#12213A] break-words">{nextUp.type === 'game' ? `${profile.teamName || 'Team'} vs ${nextUp.opponent || 'TBD'}` : `${profile.teamName || 'Team'} ${nextUp.type}`}</div>
-                       <div className="text-[13px] font-medium text-black/50 flex items-center gap-1.5 flex-wrap mt-1">
-                         <span className="whitespace-nowrap">{formatDateDisplay(nextUp.date)}</span>
-                         <span className="text-black/30">•</span>
-                         <span className="whitespace-nowrap">{formatTimeDisplay(nextUp.time)}</span>
-                       </div>
-                       {nextUp.location && (
-                          <div className="text-[13px] font-medium text-black/50 flex items-start gap-1.5 mt-1">
-                            <MapPin className="w-3.5 h-3.5 text-black/30 shrink-0 mt-0.5" />
-                            <span className="break-words min-w-0">{nextUp.location}</span>
-                          </div>
-                       )}
-                     </div>
-                   </div>
-                   <ChevronRight className="w-6 h-6 text-black/20 shrink-0 ml-2" />
-                </Link>
-              </section>
-             );
-          })()}
         </div>
 
         <footer className="mx-4 mt-8 flex items-center justify-center gap-6 border-t border-[#12213A]/15 pt-5 text-xs font-bold uppercase tracking-wider text-[#334969]">
