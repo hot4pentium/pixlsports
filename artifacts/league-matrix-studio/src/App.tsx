@@ -2399,7 +2399,7 @@ function ScheduleEventCard({
         <select
           value={event.type}
           onChange={(e) => onChange(event.id, { type: e.target.value as ScheduleEventType, opponent: e.target.value === 'game' ? event.opponent : '' })}
-          className="min-w-0 flex-1 border border-border bg-card px-3 py-2 text-xs font-bold uppercase tracking-wider text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm"
+          className="min-h-11 min-w-0 flex-1 touch-manipulation border border-border bg-card px-3 py-3 text-xs font-bold uppercase tracking-wider text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary clip-angled-sm"
           aria-label={`Event ${index + 1} type`}
           data-testid={`select-event-type-${index}`}
         >
