@@ -1143,7 +1143,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
             {visibleTools.map((key) => {
               const tool = toolData[key];
               return (
-              <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>
+              <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors lg:hidden ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>
                 {tool.label.replace(' Creator', '').replace(' Graphic Maker', '')}
               </Link>
               );
