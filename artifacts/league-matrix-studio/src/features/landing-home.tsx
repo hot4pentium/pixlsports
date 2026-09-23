@@ -92,7 +92,7 @@ function LandingFooter() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center md:items-start gap-4">
           <BrandMark />
-          <p className="text-sm font-medium text-landing-gray">We guide the week. You capture the moments.</p>
+          <p className="text-sm font-medium text-landing-gray">One place for the season, from plans to highlights.</p>
         </div>
         <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-bold uppercase tracking-wider text-landing-gray">
           <Link href="/studio" className="hover:text-landing-text transition-colors" data-testid="link-footer-tools">Tools</Link>
@@ -231,11 +231,11 @@ export function PublicLandingPage() {
                 YOUR SEASON, GUIDED
               </span>
               <h1 className="font-display text-5xl sm:text-6xl lg:text-[76px] font-extrabold leading-[0.92] text-landing-text mb-6">
-                <span className="landing-hero-slam inline-block">We guide your week.</span><br />
-                <span className="text-landing-primary">You capture the moments.</span>
+                <span className="landing-hero-slam inline-block">One place for</span><br />
+                <span className="text-landing-primary">the whole season.</span>
               </h1>
               <p className="mx-auto mb-10 max-w-2xl text-lg font-medium leading-[1.6] text-landing-text/75 sm:text-[21px]">
-                From planning the week to following game day and celebrating the final whistle, Pixl puts the right tool in front of you at every step.
+                Plan each week, follow game day, and keep the moments worth sharing.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link href="/sign-up" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
@@ -295,10 +295,10 @@ export function PublicLandingPage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="text-center max-w-3xl mx-auto mb-20">
               <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">
-                Your week, guided from start to finish.
+                Every week moves the season forward.
               </h2>
               <p className="text-lg sm:text-[21px] text-landing-text/75 font-medium leading-relaxed">
-                Pixl keeps the next step clear—from adding the schedule to following game day and sharing the moments afterward.
+                Plan the next game, follow the action, and share the moments—week after week.
               </p>
             </div>
 

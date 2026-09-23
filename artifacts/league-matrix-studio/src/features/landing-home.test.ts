@@ -17,6 +17,14 @@ test('uploaded sports banner replaces the photo grid below the hero actions', ()
   );
 });
 
+test('landing promises a season home while explaining the weekly rhythm', () => {
+  assert.match(landingSource, /One place for<\/span><br \/>/);
+  assert.match(landingSource, /the whole season\./);
+  assert.match(landingSource, /Plan each week, follow game day, and keep the moments worth sharing\./);
+  assert.match(landingSource, /Every week moves the season forward\./);
+  assert.doesNotMatch(landingSource, /Your week, guided from start to finish\./);
+});
+
 test('before-game-day guidance names the three intended actions', () => {
   assert.match(landingSource, /Build the schedule/);
   assert.match(landingSource, /Share your event card to keep others up to date/);
