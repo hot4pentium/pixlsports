@@ -283,10 +283,10 @@ function MeetingHeader({
             type="button"
             onClick={onBack}
             className="inline-flex min-h-11 -mx-2 items-center gap-2 px-2 text-xs font-bold uppercase tracking-[0.15em] text-[#9ebbd1] touch-manipulation transition-colors hover:text-[#f7c97a]"
-            data-testid="button-back-to-checklist"
+            data-testid="button-back-to-dashboard"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to checklist
+            Back to dashboard
           </button>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6e94b2]" data-testid="text-meeting-mode">
             <span className={`h-2 w-2 rounded-full ${ended ? 'bg-[#8b9aad]' : 'animate-pulse bg-[#f7c97a]'}`} />
@@ -449,11 +449,10 @@ export function MeetingCapture() {
   };
 
   const handleBack = () => {
-    // Meeting capture and the generic checklist intentionally share a pathname.
-    // Wouter ignores the query string, so a client-side location update would
-    // leave the meeting variant mounted. Preserve the artifact base path by
-    // navigating to the current pathname without its meeting query.
-    window.location.assign(`${window.location.pathname}${window.location.hash}`);
+    // Preserve the artifact base path while returning to the studio dashboard.
+    window.location.assign(
+      `${window.location.pathname.replace(/\/studio\/checklist$/, '/studio')}${window.location.hash}`,
+    );
   };
 
   if (showRecap) {
