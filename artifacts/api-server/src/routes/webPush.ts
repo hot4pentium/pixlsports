@@ -7,7 +7,9 @@ import { getWebPushConfig, sendPushNotificationToUser } from "../lib/webPush";
 
 const router: IRouter = Router();
 
-router.get("/notifications/config", requireAuth, (_req, res): void => {
+// The VAPID public key and availability are safe to read before Clerk finishes
+// initializing. Subscription changes and test alerts below remain authenticated.
+router.get("/notifications/config", (_req, res): void => {
   const config = getWebPushConfig();
   res.json({ available: config.available, publicKey: config.available ? config.publicKey : null });
 });

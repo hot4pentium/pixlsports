@@ -19,7 +19,15 @@ function getSubscriptionData(subscription: PushSubscription) {
 }
 
 export function NotificationSettings() {
-  const config = useGetNotificationConfig({ query: { retry: false, queryKey: getGetNotificationConfigQueryKey() } });
+  const config = useGetNotificationConfig({
+    query: {
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+      queryKey: getGetNotificationConfigQueryKey(),
+    },
+  });
   const save = useSaveNotificationSubscription();
   const remove = useDeleteNotificationSubscription();
   const test = useSendTestNotification();
@@ -84,13 +92,30 @@ export function NotificationSettings() {
     catch { setMessage('The test alert could not be sent. Check your notification setup.'); }
   }
 
+  const configUnavailable = !config.isLoading && !config.isError && !config.data?.available;
+
   return (
     <section className="space-y-4 border-t border-border/60 pt-6" data-testid="notification-settings">
       <h3 className="flex items-center gap-2 border-b border-border/50 pb-2 text-xs font-bold uppercase tracking-widest text-primary"><Bell className="h-4 w-4" /> Phone Alerts</h3>
       <div className="border border-primary/20 bg-primary/5 p-4">
         <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to the week</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">Get reminders for tomorrow’s and today’s games, practices, and meetings—even when Pixl Sports is closed. You can turn this off anytime on this device.</p></div></div>
-        {!config.isLoading && !config.data?.available && <p className="mt-3 text-sm font-medium text-muted-foreground">Phone alerts are not configured on this deployment yet.</p>}
-        {config.isError && <p className="mt-3 text-sm font-medium text-destructive">Could not check notification availability.</p>}
+        {config.isLoading && <p className="mt-3 text-sm font-medium text-muted-foreground" role="status">Checking phone alert availability…</p>}
+        {configUnavailable && <p className="mt-3 text-sm font-medium text-muted-foreground">Phone alerts are not configured on this deployment yet.</p>}
+        {config.isError && (
+          <div className="mt-3 flex flex-col gap-3 text-sm">
+            <p className="font-medium text-destructive">Could not check notification availability.</p>
+            <button
+              type="button"
+              onClick={() => void config.refetch()}
+              disabled={config.isFetching}
+              className="inline-flex min-h-10 w-fit items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+              data-testid="button-retry-notification-config"
+            >
+              {config.isFetching && <Loader2 className="h-4 w-4 animate-spin" />}
+              {config.isFetching ? 'Checking…' : 'Check Again'}
+            </button>
+          </div>
+        )}
         {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
         {enabled && <p className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><ShieldCheck className="h-4 w-4" /> This device is connected</p>}
         {message && <p className="mt-3 text-sm font-medium text-muted-foreground" role="status">{message}</p>}
