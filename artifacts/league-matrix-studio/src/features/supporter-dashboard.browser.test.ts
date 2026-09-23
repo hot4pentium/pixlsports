@@ -1991,10 +1991,18 @@ test('supporters can switch saved checklist event types and keep the latest one 
       scheduleDescription: 'Choose a practice from your saved schedule.',
     });
     assert.equal(selectedPractice.completionFeedback, '', 'switching events must clear the previous completion announcement');
-    assert.match(selectedPractice.readyHeading, /Practice ready\./);
-    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
-    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
+    assert.equal(selectedPractice.readyHeading, '', 'switching to practice must start the practice form incomplete');
+    assert.equal(
+      await connection.evaluate<string>(
+        `document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.getAttribute('aria-label') || ''`,
+        page.sessionId,
+      ),
+      'Check Pack practice gear and shoes',
+    );
+    for (let index = 0; index < 6; index += 1) {
+      await connection.evaluate(`document.querySelector('[data-testid^="button-checklist-toggle-"]:not([aria-label^="Uncheck"])')?.click()`, page.sessionId);
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+    }
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Practice ready") === true', Boolean);
 
     await connection.evaluate(`(() => {
@@ -2012,10 +2020,18 @@ test('supporters can switch saved checklist event types and keep the latest one 
       scheduleDescription: 'Choose a meeting from your saved schedule.',
     });
     assert.equal(selectedMeeting.completionFeedback, '', 'switching events must clear the practice completion announcement');
-    assert.match(selectedMeeting.readyHeading, /Meeting ready\./);
-    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
-    await connection.evaluate(`document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.click()`, page.sessionId);
+    assert.equal(selectedMeeting.readyHeading, '', 'switching to meeting must start the meeting form incomplete');
+    assert.equal(
+      await connection.evaluate<string>(
+        `document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.getAttribute('aria-label') || ''`,
+        page.sessionId,
+      ),
+      'Check Bring a notebook and pen',
+    );
+    for (let index = 0; index < 6; index += 1) {
+      await connection.evaluate(`document.querySelector('[data-testid^="button-checklist-toggle-"]:not([aria-label^="Uncheck"])')?.click()`, page.sessionId);
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
+    }
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Meeting ready") === true', Boolean);
 
     await connection.evaluate(`document.querySelector('[data-testid="button-add-checklist-item"]')?.click()`, page.sessionId);
