@@ -4120,6 +4120,8 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+export { SupporterProfilePage, AccountLifecycleGate, ClerkQueryClientCacheInvalidator, queryClient };
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
