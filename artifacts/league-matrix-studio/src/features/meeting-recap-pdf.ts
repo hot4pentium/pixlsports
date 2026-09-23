@@ -115,11 +115,12 @@ function drawBulletList(
   let nextY = y;
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9.5);
-  pdf.setTextColor(...(options.muted ? COLORS.muted : COLORS.ink));
+  if (options.muted) pdf.setTextColor(...COLORS.muted);
+  else pdf.setTextColor(...COLORS.ink);
 
   for (const item of items.length ? items : ['Not recorded']) {
     const marker = options.checks
-      ? item.startsWith('[x]') ? 'CHECKED' : 'OPEN';
+      ? (item.startsWith('[x]') ? 'CHECKED' : 'OPEN')
       : '-';
     const label = options.checks ? item.replace(/^\[[x ]\]\s*/, '') : item;
     const lines = pdf.splitTextToSize(label, width - (options.checks ? 13 : 7)) as string[];
@@ -128,7 +129,8 @@ function drawBulletList(
     nextY = ensureSpace(pdf, nextY, rowHeight, pageNumber);
 
     if (options.checks) {
-      pdf.setDrawColor(...(marker === 'CHECKED' ? COLORS.green : COLORS.line));
+      if (marker === 'CHECKED') pdf.setDrawColor(...COLORS.green);
+      else pdf.setDrawColor(...COLORS.line);
       pdf.setLineWidth(0.5);
       pdf.roundedRect(x, nextY + 1, 4, 4, 0.7, 0.7, marker === 'CHECKED' ? 'FD' : 'S');
       if (marker === 'CHECKED') {
@@ -137,7 +139,8 @@ function drawBulletList(
         pdf.setFontSize(6);
         pdf.text('x', x + 1.15, nextY + 1.1, { baseline: 'top' });
       }
-      pdf.setTextColor(...(options.muted ? COLORS.muted : COLORS.ink));
+      if (options.muted) pdf.setTextColor(...COLORS.muted);
+      else pdf.setTextColor(...COLORS.ink);
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9.5);
       pdf.text(lines, x + 9, nextY + 0.5, { baseline: 'top' });
@@ -145,7 +148,8 @@ function drawBulletList(
       pdf.setTextColor(...COLORS.orange);
       pdf.setFont('helvetica', 'bold');
       pdf.text('-', x, nextY + 0.5, { baseline: 'top' });
-      pdf.setTextColor(...(options.muted ? COLORS.muted : COLORS.ink));
+      if (options.muted) pdf.setTextColor(...COLORS.muted);
+      else pdf.setTextColor(...COLORS.ink);
       pdf.setFont('helvetica', 'normal');
       pdf.text(lines, x + 6, nextY + 0.5, { baseline: 'top' });
     }

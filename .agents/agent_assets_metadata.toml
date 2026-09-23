@@ -400,3 +400,17 @@ mtime_ms = 1789946237527
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/e326fee0-349e-4e76-83f4-c4e5b07bedc7/aa0739dd-0544-4af6-8d03-1781f9acc293"
 storage_version_token = "1789946248078879"
 content_type = "image/jpeg"
+
+[[outputs]]
+id = "nGzMugMtVYwE2Zze4bnNt"
+uri = "file://attached_assets/pixl-sports-team-meeting-recap.pdf"
+type = "pdf"
+title = "Pixl Sports meeting recap PDF preview"
+description = "A polished one-page recap generated from the meeting details in your screenshot, with branded header, metadata cards, agenda checkboxes, attendance, notes, decisions, follow-ups, and footer."
+logical_id = "769c4e13-e1bc-4e47-85cb-52d2d2879dc8"
+content_hash = "sha256:649c5337806f7184fd538827e7877bcb44bd731edbd3530a3d70e9a190cc3157"
+size = 19575
+mtime_ms = 1790201714273
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/769c4e13-e1bc-4e47-85cb-52d2d2879dc8/cf410d68-6cbd-4df4-9f01-6a695e0f846e"
+storage_version_token = "1790201789426263"
+content_type = "application/pdf"

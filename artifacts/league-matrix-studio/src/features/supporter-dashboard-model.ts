@@ -355,16 +355,23 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
-  const completedMeeting = events.find((event) => (
-    event.type === 'meeting' && completedMeetingIds.includes(event.id)
-  ));
+  const hasCompletedMeeting = completedMeetingIds.length > 0;
+  const upcomingEvent = getNextUpcomingSupporterEvent(
+    events.filter((event) => !completedMeetingIds.includes(event.id)),
+    now,
+  );
 
-  if (completedMeeting) {
-    return {
-      event: completedMeeting,
-      kind: 'meeting',
-      stage: 'completed',
-    };
+  // A finished meeting stays available through meeting history, but it must
+  // not keep the weekly path on Share. After ending a meeting, the path
+  // should advance to the next scheduled event or fall back to Plan.
+  if (hasCompletedMeeting) {
+    return upcomingEvent
+      ? {
+        event: upcomingEvent,
+        kind: upcomingEvent.type,
+        stage: 'upcoming',
+      }
+      : null;
   }
 
   const recentCompletedGame = games
@@ -385,7 +392,6 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
-  const upcomingEvent = getNextUpcomingSupporterEvent(events, now);
   if (upcomingEvent) {
     return {
       event: upcomingEvent,

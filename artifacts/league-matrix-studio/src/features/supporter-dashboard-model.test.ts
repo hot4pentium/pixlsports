@@ -64,7 +64,7 @@ test('an active meeting becomes a live meeting recommendation instead of a game 
   });
 });
 
-test('an ended local meeting becomes the Share recommendation before the next scheduled event', () => {
+test('an ended local meeting yields to the next scheduled event', () => {
   const now = new Date('2026-09-23T12:00:00');
   const meeting = {
     id: 'meeting',
@@ -75,9 +75,62 @@ test('an ended local meeting becomes the Share recommendation before the next sc
   const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-24', time: '18:00' };
 
   assert.deepEqual(getSupporterWeekRecommendation([practice, meeting], now, ['meeting']), {
-    event: meeting,
+    event: practice,
+    kind: 'practice',
+    stage: 'upcoming',
+  });
+});
+
+test('an ended local meeting returns the weekly path to Plan when no event is upcoming', () => {
+  const now = new Date('2026-09-23T12:00:00');
+  const meeting = {
+    id: 'meeting',
+    type: 'meeting' as const,
+    date: '2026-09-22',
+    time: '17:00',
+  };
+
+  assert.equal(getSupporterWeekRecommendation([meeting], now, ['meeting']), null);
+});
+
+test('an ended local meeting skips its own future calendar slot and chooses the next meeting', () => {
+  const now = new Date('2026-09-23T12:00:00');
+  const endedMeeting = {
+    id: 'ended-meeting',
+    type: 'meeting' as const,
+    date: '2026-09-24',
+    time: '17:00',
+  };
+  const nextMeeting = {
+    id: 'next-meeting',
+    type: 'meeting' as const,
+    date: '2026-09-25',
+    time: '17:00',
+  };
+
+  assert.deepEqual(getSupporterWeekRecommendation([endedMeeting, nextMeeting], now, ['ended-meeting']), {
+    event: nextMeeting,
     kind: 'meeting',
-    stage: 'completed',
+    stage: 'upcoming',
+  });
+});
+
+test('an active game remains higher priority than the next event after a meeting ends', () => {
+  const now = new Date('2026-09-23T18:00:00');
+  const activeGame = {
+    id: 'game',
+    type: 'game' as const,
+    date: '2026-09-23',
+    time: '17:00',
+    status: 'live' as const,
+  };
+  const nextPractice = { id: 'practice', type: 'practice' as const, date: '2026-09-24', time: '18:00' };
+  const endedMeeting = { id: 'meeting', type: 'meeting' as const, date: '2026-09-22', time: '17:00' };
+
+  assert.deepEqual(getSupporterWeekRecommendation([activeGame, nextPractice, endedMeeting], now, ['meeting']), {
+    event: activeGame,
+    kind: 'game',
+    stage: 'live',
   });
 });
 

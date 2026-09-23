@@ -1434,6 +1434,62 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       Boolean,
     );
 
+     await connection.evaluate(`localStorage.setItem('pixlsports-meeting-capture:guest:ended-meeting', JSON.stringify({
+       context: {
+         id: 'ended-meeting',
+         date: '2020-09-22',
+         time: '17:00',
+         location: 'Northside Clubhouse',
+         title: 'Weekly Team Meeting'
+       },
+       notes: 'Review the completed meeting.',
+       participants: [],
+       agenda: [],
+       decisions: [],
+       followUps: [],
+       startedAt: '2020-09-22T17:00:00.000Z',
+       endedAt: '2020-09-22T18:00:00.000Z'
+     }))`, page.sessionId);
+     await connection.evaluate(`window.__setSupporterDashboardEvents([
+       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' },
+       { id: 'next-practice', type: 'practice', date: '2999-01-01', time: '18:30', location: 'Northside Gym' }
+     ])`, page.sessionId);
+     await waitFor(
+       connection,
+       page.sessionId,
+       'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"',
+       Boolean,
+     );
+     assert.equal(
+       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
+       true,
+       'ending a meeting must keep its recap in Previous meetings',
+     );
+     assert.match(
+       await connection.evaluate<string>('document.querySelector(\'[data-testid="button-review-meeting-ended-meeting"]\')?.getAttribute("href") || ""', page.sessionId),
+       /gameId=ended-meeting.*view=review/,
+     );
+     assert.match(
+       await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+       /Get ready for practice/,
+     );
+
+     await connection.evaluate(`window.__setSupporterDashboardEvents([
+       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' }
+     ])`, page.sessionId);
+     await waitFor(
+       connection,
+       page.sessionId,
+       'document.querySelector(\'[data-testid="week-path-content"]\')?.getAttribute("data-selected-path") === "plan"',
+       Boolean,
+     );
+     assert.equal(
+       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
+       true,
+       'the completed recap must remain available when the path returns to Plan',
+     );
+     await connection.evaluate(`localStorage.removeItem('pixlsports-meeting-capture:guest:ended-meeting')`, page.sessionId);
+
     await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'practice-1', type: 'practice', date: '2026-09-22', time: '18:30', location: 'Northside Gym', notes: 'Bring water' }])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"', Boolean);
     assert.match(
@@ -2033,6 +2089,13 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
 
     await connection.evaluate(`document.querySelector('[data-testid="button-copy-recap"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-recap-actions\\"]")?.textContent || ""', (value) => value.length > 0);
+    await connection.evaluate(`document.querySelector('[data-testid="button-download-recap-pdf"]')?.click()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"status-download-recap-pdf\\"]")?.textContent || ""',
+      (value) => value.includes('PDF downloaded'),
+    );
     await connection.evaluate(`document.querySelector('[data-testid="button-return-to-editing"]')?.click()`, page.sessionId);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]")?.value || ""', page.sessionId),
