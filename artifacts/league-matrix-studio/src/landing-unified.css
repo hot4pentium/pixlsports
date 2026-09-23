@@ -147,6 +147,24 @@
   z-index: 1;
 }
 
+.new-landing > main > section.bg-landing-bg:first-child::before {
+  transform: translate3d(0, var(--landing-hero-parallax, 0px), 0);
+  will-change: transform, background-position;
+}
+
+.new-landing > main > section.bg-landing-bg:first-child::after {
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  content: '';
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 45% 35% at 18% 24%, rgba(76, 158, 255, 0.15), transparent 75%),
+    radial-gradient(ellipse 48% 45% at 82% 78%, rgba(255, 119, 78, 0.08), transparent 75%);
+  transform: translate3d(0, var(--landing-hero-parallax, 0px), 0);
+  will-change: transform;
+}
+
 .landing-sports-banner-wrap {
   margin-top: 2.75rem;
 }
@@ -241,5 +259,10 @@
 @media (prefers-reduced-motion: reduce) {
   .new-landing > main > section.bg-landing-bg::before {
     animation: none;
+  }
+
+  .new-landing > main > section.bg-landing-bg:first-child::before,
+  .new-landing > main > section.bg-landing-bg:first-child::after {
+    transform: none;
   }
 }

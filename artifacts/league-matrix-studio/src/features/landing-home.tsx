@@ -132,9 +132,37 @@ function LandingSportShowcase() {
 
 export function PublicLandingPage() {
   const prefersReducedMotion = usePrefersReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
   const checklistVideoRef = useRef<HTMLVideoElement>(null);
   const fullscreenDialogRef = useRef<HTMLDialogElement>(null);
   const fallbackVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+    if (prefersReducedMotion) {
+      hero.style.setProperty('--landing-hero-parallax', '0px');
+      return;
+    }
+
+    let frame = 0;
+    const updateParallax = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        const distance = Math.min(Math.max(window.scrollY, 0), hero.offsetHeight);
+        hero.style.setProperty('--landing-hero-parallax', `${Math.round(distance * 0.12)}px`);
+      });
+    };
+    updateParallax();
+    window.addEventListener('scroll', updateParallax, { passive: true });
+    window.addEventListener('resize', updateParallax);
+    return () => {
+      window.removeEventListener('scroll', updateParallax);
+      window.removeEventListener('resize', updateParallax);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     const video = checklistVideoRef.current;
@@ -196,7 +224,7 @@ export function PublicLandingPage() {
       <LandingNav />
       <main>
         {/* HERO SECTION */}
-        <section className="relative overflow-hidden bg-landing-bg pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pb-32">
+        <section ref={heroRef} className="relative overflow-hidden bg-landing-bg pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pb-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-4xl text-center">
               <span className="inline-block text-landing-orange font-extrabold uppercase tracking-widest text-xs mb-5">

@@ -267,6 +267,20 @@ test('landing sports banner scrolls on phones without overflowing the page', asy
            'document.fullscreenElement ? document.exitFullscreen() : document.querySelector("dialog[open]")?.close()',
            page.sessionId,
          );
+         await connection.evaluate('window.scrollTo(0, 500)', page.sessionId);
+         await waitFor(
+           connection,
+           page.sessionId,
+           'parseFloat(document.querySelector("main > section")?.style.getPropertyValue("--landing-hero-parallax") ?? "0")',
+           (offset) => offset > 0,
+         );
+         assert.notEqual(
+           await connection.evaluate<string>(
+             'getComputedStyle(document.querySelector("main > section"), "::after").transform',
+             page.sessionId,
+           ),
+           'none',
+         );
        }
     }
 
@@ -301,6 +315,14 @@ test('landing sports banner scrolls on phones without overflowing the page', asy
     assert.ok(reducedMotionBefore.banner.imageWidth >= 900);
     assert.equal(reducedMotionBefore.checklistVideo.autoplay, false);
     assert.equal(reducedMotionBefore.texture.animationName, 'none');
+    await connection.evaluate('window.scrollTo(0, 500)', reducedMotionPage.sessionId);
+    assert.equal(
+      await connection.evaluate<string>(
+        'document.querySelector("main > section")?.style.getPropertyValue("--landing-hero-parallax")',
+        reducedMotionPage.sessionId,
+      ),
+      '0px',
+    );
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_000));
     const reducedMotionAfter = await readLandingLayout(connection, reducedMotionPage);
     assert.equal(reducedMotionAfter.banner.imageWidth, reducedMotionBefore.banner.imageWidth);

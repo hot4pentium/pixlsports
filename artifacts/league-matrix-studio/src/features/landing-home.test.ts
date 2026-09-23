@@ -81,4 +81,7 @@ test('landing neutral sections use a subtle moving texture with a reduced-motion
   assert.match(landingStyles, /@keyframes landing-background-drift/);
   assert.match(landingStyles, /\.new-landing > main > section\.bg-landing-bg > \* \{[\s\S]*z-index: 1;/);
   assert.match(landingStyles, /\.new-landing > main > section\.bg-landing-bg::before \{[\s\S]*animation: none;/);
+  assert.match(landingSource, /--landing-hero-parallax/);
+  assert.match(landingStyles, /section\.bg-landing-bg:first-child::after \{[\s\S]*translate3d\(0, var\(--landing-hero-parallax, 0px\), 0\)/);
+  assert.match(landingStyles, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*section\.bg-landing-bg:first-child::after \{[\s\S]*transform: none;/);
 });
