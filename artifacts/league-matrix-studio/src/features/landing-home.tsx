@@ -397,18 +397,18 @@ export function PublicLandingPage() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left">After the final whistle</h3>
-                    <ul className="mx-auto w-full max-w-[560px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
+                    <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-bg lg:text-left">After the final whistle</h3>
+                    <ul className="mx-auto w-full max-w-[560px] space-y-4 text-[17px] font-medium text-landing-bg lg:mx-0">
                       <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-[#B33B1B]" aria-hidden="true" />
                         Celebrate the performance
                       </li>
                       <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-[#B33B1B]" aria-hidden="true" />
                         Create athlete graphics
                       </li>
                       <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
+                        <Check className="mt-1 h-5 w-5 shrink-0 text-[#B33B1B]" aria-hidden="true" />
                         Share highlights and memories
                       </li>
                     </ul>
