@@ -1136,6 +1136,10 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
   const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
   const isChecklistPage = location === '/studio/checklist' || location.startsWith('/checklist/');
+  const isEditorPage = location === '/studio/checklist'
+    || location.startsWith('/checklist/')
+    || location === '/studio/schedule'
+    || location.startsWith('/studio/schedule/');
   return (
     <div className="noise min-h-dvh bg-background flex flex-col">
       <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
@@ -1166,7 +1170,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
           </div>
         </div>
       )}
-      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''} ${isFanDashboard ? 'supporter-dashboard-page-background' : ''}`}>
+      <div className={`studio-page-background flex-1 flex flex-col ${landingBackground ? 'landing-page-background' : ''} ${isFanDashboard ? 'supporter-dashboard-page-background' : ''} ${isEditorPage ? 'studio-editor-page-background' : ''}`}>
         {children}
       </div>
       <div className={isFanDashboard ? 'hidden lg:block' : undefined}>
@@ -2275,9 +2279,9 @@ function ScheduleEditor() {
   ) : null;
 
   return (
-    <StudioLayout landingBackground>
-      <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <StudioLayout>
+      <main className="pixl-editor-main mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
+        <div className="pixl-editor-header mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
             <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
               <ArrowLeft className="h-5 w-5" />
@@ -2762,8 +2766,6 @@ function SchedulePreview({
     <div className="relative mx-auto w-full max-w-[976px] overflow-hidden border border-[#2878F5] bg-[#102B4D] p-2 sm:p-3 clip-angled-sm">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,107,53,.16),transparent_26%),radial-gradient(circle_at_85%_85%,rgba(36,116,245,.16),transparent_30%)]" />
       <div className="relative w-full max-w-[960px] overflow-hidden rounded-[28px] bg-[#102B4D] p-5 text-[#F3F6FA] shadow-[0_25px_70px_-24px_rgba(18,33,58,.65)] sm:p-8" data-testid="preview-canvas">
-        <div className="pointer-events-none absolute -right-24 -top-20 h-72 w-72 rounded-full border-[30px] border-[#FF6433]/80" />
-        <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-[#2474F5]/80" />
         <div className="pointer-events-none absolute right-1/4 top-1/3 h-24 w-24 rotate-12 border-[10px] border-[#F3F6FA]/10" />
         <div className="relative">
           <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.18em] text-[#F3F6FA]/70">
@@ -3319,7 +3321,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   if (shared && sharedLoading && !sharedError && !sharedChecklist && !hydrated) {
     return (
-      <div className="noise min-h-dvh bg-background">
+      <div className="noise studio-editor-fallback min-h-dvh bg-background">
         <SiteNav />
         <main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5">
           <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading shared checklist…</p>
@@ -3330,7 +3332,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   if (shared && (sharedError || !sharedChecklist)) {
     return (
-      <div className="noise min-h-dvh bg-background">
+      <div className="noise studio-editor-fallback min-h-dvh bg-background">
         <SiteNav />
         <main className="mx-auto flex min-h-[calc(100dvh-72px)] max-w-xl flex-col items-center justify-center px-5 py-12 text-center">
           <Link2Off className="h-11 w-11 text-primary" />
@@ -3353,8 +3355,8 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   return (
     <StudioLayout>
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-8 sm:py-8" data-testid="checklist-page">
-        <div className="mb-4 flex items-start justify-between gap-3 sm:mb-6 sm:items-end sm:gap-5">
+      <main className="pixl-editor-main mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-8 sm:py-8" data-testid="checklist-page">
+        <div className="pixl-editor-header mb-4 flex items-start justify-between gap-3 sm:mb-6 sm:items-end sm:gap-5">
           <div className="flex min-w-0 items-start gap-3 sm:gap-4">
             <Link href={shared ? '/studio/checklist' : '/studio'} className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio">
               <ArrowLeft className="h-5 w-5" />

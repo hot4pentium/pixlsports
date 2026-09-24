@@ -50,3 +50,5 @@
 - [Hype Page media naming](hype-page-media-naming.md) — display names are separate metadata; public manifests must redact device filenames from video metadata.
 - [Meeting workspace sharing](meeting-workspace-sharing.md) — meeting drafts stay local-first; owner cloud saves and read-only public recaps use separate access boundaries.
 - [Hosted clip audio policy](hosted-clip-audio-policy.md) — posting requires captured audio; local exports may remain silent with a warning.
+- [Week path video parity](week-path-video-parity.md) — edits to the animated artifact require refreshing the separate public landing clip and poster.
+- [First tracker project on Hype Pages](first-tracker-project-hype-pages.md) — pages created before the first tracker save need a safe same-owner project fallback.

@@ -377,6 +377,416 @@
   }
 }
 
+/*
+ * Shared dashboard treatment for schedule and gameday checklist.
+ * The page canvas stays light so the dark navy editor sections read as
+ * distinct work areas, matching the supporter dashboard composition.
+ */
+.studio-editor-page-background {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background: #f3f5f6;
+}
+
+.studio-editor-fallback {
+  position: relative;
+  isolation: isolate;
+  background: #f3f5f6;
+}
+
+.studio-editor-fallback::before {
+  display: none;
+}
+
+.studio-editor-page-background::before {
+  display: none;
+}
+
+.studio-editor-page-background .pixl-editor-main {
+  position: relative;
+  isolation: isolate;
+  color: #102b4d;
+}
+
+.studio-editor-page-background .pixl-editor-main::before {
+  display: none;
+}
+
+.studio-editor-page-background .pixl-editor-header {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(16 43 77 / 0.16);
+  background:
+    radial-gradient(circle at 92% 0%, rgb(85 164 255 / 0.15), transparent 16rem),
+    linear-gradient(145deg, #102b4d, #0b1f3a);
+  color: #f3f6fa;
+  padding: 1rem 1.125rem;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.8rem), calc(100% - 0.8rem) 100%, 0 100%);
+  box-shadow:
+    0 16px 30px rgb(15 23 42 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+.studio-editor-page-background .pixl-editor-header::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 3px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #2878f5 0%, #55a4ff 48%, #ff6433 100%);
+}
+
+.studio-editor-page-background .pixl-editor-header h1,
+.studio-editor-page-background .pixl-editor-header h2,
+.studio-editor-page-background .pixl-editor-header .text-foreground {
+  color: #f3f6fa !important;
+}
+
+.studio-editor-page-background .pixl-editor-main > .grid > section,
+.studio-editor-page-background .pixl-editor-main > .grid > aside,
+.studio-editor-page-background .pixl-editor-main > section {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(243 246 250 / 0.15);
+  background:
+    linear-gradient(145deg, rgb(16 43 77 / 0.94), rgb(10 32 61 / 0.88));
+  box-shadow:
+    0 18px 36px rgb(0 0 0 / 0.2),
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    inset 0 -32px 48px -42px rgb(0 0 0 / 0.9);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.8rem), calc(100% - 0.8rem) 100%, 0 100%);
+}
+
+.studio-editor-page-background .pixl-editor-main > .grid > section::before,
+.studio-editor-page-background .pixl-editor-main > .grid > aside::before,
+.studio-editor-page-background .pixl-editor-main > section::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #2878f5 0%, #55a4ff 48%, #ff6433 100%);
+}
+
+.studio-editor-page-background .pixl-editor-main > .grid > aside {
+  background:
+    linear-gradient(155deg, rgb(16 43 77 / 0.96), rgb(9 29 56 / 0.93));
+}
+
+.studio-editor-page-background .pixl-editor-main > section + section {
+  border-color: rgb(243 246 250 / 0.14);
+}
+
+.studio-editor-page-background .pixl-editor-main [data-testid="checklist-items"] > div > p,
+.studio-editor-page-background .pixl-editor-main label > span,
+.studio-editor-page-background .pixl-editor-main h1,
+.studio-editor-page-background .pixl-editor-main h2,
+.studio-editor-page-background .pixl-editor-main h3 {
+  font-family: var(--app-font-serif);
+}
+
+.studio-editor-page-background .pixl-editor-main [data-testid="checklist-items"] > div > p,
+.studio-editor-page-background .pixl-editor-main label > span {
+  letter-spacing: 0.16em;
+}
+
+@media (max-width: 767px) {
+  .studio-editor-page-background .pixl-editor-header {
+    padding: 0.875rem;
+  }
+
+  .studio-editor-page-background .pixl-editor-main > .grid > section,
+  .studio-editor-page-background .pixl-editor-main > .grid > aside,
+  .studio-editor-page-background .pixl-editor-main > section {
+    box-shadow:
+      0 12px 24px rgb(0 0 0 / 0.18),
+      inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+}
+
+.stat-tracker-editor-page .pixl-editor-tabs {
+  border-color: rgb(16 43 77 / 0.18);
+}
+
+.stat-tracker-editor-page .pixl-editor-tabs button {
+  color: #52627a;
+}
+
+.stat-tracker-editor-page .pixl-editor-tabs button[aria-selected='true'] {
+  border-color: #2878f5;
+  color: #102b4d;
+}
+
+.stat-tracker-editor-page [data-testid="stat-tracker-upcoming-notice"] {
+  color: #f3f6fa;
+}
+
+.stat-tracker-editor-page [data-testid="stat-tracker-save-recovery"] {
+  background: #fff1ed;
+  color: #b53b1d;
+}
+
+.stat-tracker-editor-page [data-testid="stat-tracker-setup"] > div:first-child {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(243 246 250 / 0.15);
+  background: linear-gradient(145deg, #102b4d, #0b1f3a);
+  color: #f3f6fa;
+}
+
+.stat-tracker-editor-page [data-testid="stat-tracker-setup"] > div:first-child::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #2878f5 0%, #55a4ff 48%, #ff6433 100%);
+}
+
+.stat-tracker-public-page {
+  background: #f3f5f6;
+}
+
+.stat-tracker-public-page > .bg-tech-grid {
+  display: none;
+}
+
+.stat-tracker-public-page .stat-tracker-public-main > header {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(16 43 77 / 0.16);
+  border-bottom: 0;
+  background: linear-gradient(145deg, #102b4d, #0b1f3a);
+  color: #f3f6fa;
+  padding: 1rem 1.125rem;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 0.8rem), calc(100% - 0.8rem) 100%, 0 100%);
+}
+
+.stat-tracker-public-page .stat-tracker-public-main > header::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  height: 3px;
+  pointer-events: none;
+  background: linear-gradient(90deg, #2878f5 0%, #55a4ff 48%, #ff6433 100%);
+}
+
+.stat-tracker-public-page .stat-tracker-public-main > header a,
+.stat-tracker-public-page .stat-tracker-public-main > header span {
+  color: #dbe7f4;
+}
+
+.stat-tracker-public-page .stat-tracker-public-main > main > section > div,
+.stat-tracker-public-page .stat-tracker-public-main > main > aside > div,
+.stat-tracker-public-page [data-testid="stat-tracker-stats-summary"] {
+  box-shadow:
+    0 16px 30px rgb(15 23 42 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+.stat-tracker-editor-page {
+  background: #f7fafc;
+}
+
+.stat-tracker-editor-page .pixl-editor-header,
+.stat-tracker-editor-page .pixl-editor-main > .grid > section,
+.stat-tracker-editor-page .pixl-editor-main > .grid > aside,
+.stat-tracker-editor-page .pixl-editor-main > section {
+  border-color: rgb(142 211 255 / 0.32);
+  background:
+    radial-gradient(circle at 96% 0%, rgb(102 196 255 / 0.16), transparent 17rem),
+    linear-gradient(145deg, #285c87, #1b466e);
+  box-shadow:
+    0 18px 36px rgb(15 50 82 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    inset 0 -32px 48px -42px rgb(3 20 38 / 0.65);
+}
+
+.stat-tracker-editor-page [data-testid="stat-tracker-setup"] > div:first-child {
+  border-color: rgb(142 211 255 / 0.32);
+  background:
+    radial-gradient(circle at 96% 0%, rgb(102 196 255 / 0.16), transparent 17rem),
+    linear-gradient(145deg, #285c87, #1b466e);
+}
+
+.stat-tracker-editor-page [data-testid="stat-tracker-setup"] input,
+.stat-tracker-editor-page [data-testid="stat-tracker-setup"] textarea {
+  border-color: rgb(175 220 248 / 0.3);
+  background: rgb(255 255 255 / 0.1);
+  color: #f7fbff;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-scoreboard"] {
+  border-color: rgb(142 211 255 / 0.48);
+  background: linear-gradient(145deg, #2b648f, #20527d) !important;
+  box-shadow:
+    0 14px 28px rgb(8 38 67 / 0.22),
+    inset 0 1px 0 rgb(255 255 255 / 0.16);
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-score-card-athlete"],
+.stat-tracker-editor-page [data-testid="live-tracker-score-card-opponent"] {
+  border-color: rgb(223 242 255 / 0.26);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"],
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] {
+  border-color: rgb(142 211 255 / 0.32);
+  background: linear-gradient(145deg, #285c87, #1b466e) !important;
+}
+
+.stat-tracker-editor-page [data-testid^="live-stat-card-"] {
+  border-color: rgb(190 226 249 / 0.28);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.stat-tracker-editor-page [data-testid^="live-stat-card-"]:hover {
+  background: rgb(92 184 255 / 0.2);
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .bg-background,
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] input {
+  border-color: rgb(190 226 249 / 0.28);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.stat-tracker-public-page .stat-tracker-public-main > main > section > [data-testid="stat-tracker-scores"],
+.stat-tracker-public-page [data-testid="stat-tracker-stats-summary"],
+.stat-tracker-public-page [data-testid="stat-tracker-recent-activity"] > div {
+  border-color: rgb(142 211 255 / 0.38);
+  background:
+    radial-gradient(circle at 96% 0%, rgb(102 196 255 / 0.16), transparent 17rem),
+    linear-gradient(145deg, #285c87, #1b466e);
+}
+
+.stat-tracker-public-page [data-testid="scoreboard-hero"] {
+  background: rgb(255 255 255 / 0.1) !important;
+}
+
+.stat-tracker-public-page [data-testid="stat-tracker-stats-summary"] .bg-background\/40 {
+  border-color: rgb(190 226 249 / 0.28);
+  background: rgb(255 255 255 / 0.1);
+}
+
+.stat-tracker-public-page[data-testid="public-stat-tracker-unavailable"] > div > div,
+.stat-tracker-public-page[data-testid="public-stat-tracker-page"] .max-w-sm {
+  border-color: rgb(142 211 255 / 0.38);
+  background:
+    radial-gradient(circle at 96% 0%, rgb(102 196 255 / 0.16), transparent 17rem),
+    linear-gradient(145deg, #285c87, #1b466e);
+  box-shadow:
+    0 18px 36px rgb(15 50 82 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.16);
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-layout"] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  overflow: visible;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-scoreboard"] {
+  border-color: rgb(85 164 255 / 0.48);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(85 164 255 / 0.2), transparent 16rem),
+    linear-gradient(145deg, #102b4d, #071a33) !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"],
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] {
+  border-color: #c9d9e8;
+  background: #ffffff !important;
+  color: #102b4d !important;
+  box-shadow:
+    0 16px 30px rgb(15 50 82 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .text-foreground,
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .text-primary-ink,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .text-foreground,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .text-primary-ink {
+  color: #102b4d !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .text-muted-foreground,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .text-muted-foreground {
+  color: #62748a !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .text-primary,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .text-primary {
+  color: #2878f5 !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .text-accent,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .text-accent {
+  color: #d95531 !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .border-border,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .border-border {
+  border-color: #c9d9e8 !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] .bg-background,
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] .bg-background {
+  background: #f7fafc !important;
+}
+
+.stat-tracker-editor-page [data-testid^="live-stat-card-"] {
+  border-color: #c9d9e8;
+  background: #f5f9fd !important;
+}
+
+.stat-tracker-editor-page [data-testid^="live-stat-card-"]:hover {
+  border-color: #2878f5;
+  background: #edf5ff !important;
+}
+
+.stat-tracker-editor-page [data-testid="football-yard-tracking"] {
+  border-color: #b8d1e8;
+  background: #eef6ff !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] button:not([data-testid^="athlete-stat-target-"]) {
+  color: #102b4d;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-stat-controls"] input {
+  border-color: #c9d9e8 !important;
+  background: #ffffff !important;
+  color: #102b4d !important;
+}
+
+.stat-tracker-editor-page [data-testid="live-tracker-recent-activity"] [data-testid^="recent-activity-"] {
+  border-color: #d8e3ee;
+}
+
+.stat-tracker-public-page [data-testid="stat-tracker-stats-summary"],
+.stat-tracker-public-page [data-testid="stat-tracker-recent-activity"] > div {
+  background: #ffffff;
+  color: #102b4d;
+}
+
+.stat-tracker-public-page [data-testid="stat-tracker-stats-summary"] .text-foreground,
+.stat-tracker-public-page [data-testid="stat-tracker-recent-activity"] .text-foreground {
+  color: #102b4d !important;
+}
+
+.stat-tracker-public-page [data-testid="stat-tracker-stats-summary"] .text-muted-foreground,
+.stat-tracker-public-page [data-testid="stat-tracker-recent-activity"] .text-muted-foreground {
+  color: #62748a !important;
+}
+
 .athlete-video-carousel {
   scrollbar-width: none;
 }

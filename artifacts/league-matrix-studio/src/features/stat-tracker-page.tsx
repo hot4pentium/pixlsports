@@ -1503,8 +1503,9 @@ export function StatTrackerPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
-      <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="studio-editor-page-background stat-tracker-editor-page min-h-dvh">
+      <div className="pixl-editor-main mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
+      <div className="pixl-editor-header mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link href="/studio" className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
@@ -1516,7 +1517,7 @@ export function StatTrackerPage() {
         {saveStatus && <StatTrackerSaveStatus status={saveStatus} />}
       </div>
 
-      <div className="mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">
+      <div className="pixl-editor-tabs mb-6 flex gap-2 overflow-x-auto border-b border-border pb-1" role="tablist" aria-label="Choose athlete sport">
         {(profile.sport ? [profile.sport] : sports).map((option) => (
           <button key={option} type="button" role="tab" aria-selected={sport === option} onClick={() => !currentGame && setSport(option)} disabled={Boolean(currentGame)} className={`shrink-0 border-b-4 px-4 py-3 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed ${sport === option ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             {getSportRule(option).label}
@@ -1675,6 +1676,7 @@ export function StatTrackerPage() {
         />
       )}
       {notice && <div className="fixed bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-primary bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary shadow-lg" role="status"><Check className="h-4 w-4" /> {notice}</div>}
+      </div>
     </div>
   );
 }

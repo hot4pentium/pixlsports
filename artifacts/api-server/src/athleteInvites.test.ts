@@ -595,3 +595,79 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
   }
 });
+
+test("an existing Hype Page finds its first finalized tracker project after the first game", async () => {
+  const ownerId = `athlete-first-game-${randomUUID()}`;
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInvitesRouter);
+  const server = app.listen(0);
+
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await db.insert(cloudProjectsTable).values({
+      ownerClerkUserId: ownerId,
+      name: "First game tracker",
+      project: {
+        tool: "stat-tracker",
+        games: [{
+          id: "first-final-game",
+          sport: "volleyball",
+          status: "final",
+          date: dateKey(0),
+          opponent: "Tigers",
+          score: 6,
+          opponentScore: 0,
+          stats: { ace: 4 },
+        }],
+      },
+    });
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const create = await fetch(`${baseUrl}/api/athlete-invites`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Volleyball",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "volleyball",
+        trackerProjectId: null,
+        scheduleProjectId: null,
+        showHypeCard: false,
+        showStats: true,
+        showSchedule: false,
+        paused: false,
+      }),
+    });
+    assert.equal(create.status, 201);
+    const created = await create.json() as { inviteToken: string };
+
+    const publicResponse = await fetch(`${baseUrl}/api/athlete-invites/${created.inviteToken}`);
+    assert.equal(publicResponse.status, 200);
+    const publicBody = GetAthleteInviteResponse.parse(await publicResponse.json());
+    assert.equal(publicBody.stats?.gamesPlayed, 1);
+    assert.equal(publicBody.stats?.stats.ace, 4);
+    assert.equal(publicBody.stats?.games[0]?.opponent, "Tigers");
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
+    await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+  }
+});

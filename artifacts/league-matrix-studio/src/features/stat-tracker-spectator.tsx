@@ -207,7 +207,7 @@ export function PublicStatTrackerPage() {
 
   if (isLoading && !data && !unavailable) {
     return (
-      <div className="min-h-dvh bg-background text-foreground" data-testid="public-stat-tracker-page">
+      <div className="stat-tracker-public-page min-h-dvh bg-background text-foreground" data-testid="public-stat-tracker-page">
         <div className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[1080px] items-center justify-center px-5 py-12 sm:px-8">
           <div className="w-full max-w-sm border border-primary/30 bg-card/80 p-6 text-center shadow-lg clip-angled">
             <div className="mx-auto flex h-12 w-12 items-center justify-center border border-primary/50 bg-primary/10 text-primary">
@@ -228,7 +228,7 @@ export function PublicStatTrackerPage() {
 
   if (unavailable || isError || !data) {
     return (
-      <div className="min-h-dvh bg-background text-foreground" data-testid="public-stat-tracker-unavailable">
+      <div className="stat-tracker-public-page min-h-dvh bg-background text-foreground" data-testid="public-stat-tracker-unavailable">
         <div className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[1080px] flex-col items-center justify-center px-5 py-12 text-center sm:px-8">
           <div className="border border-accent/40 bg-card p-8 clip-angled sm:p-12">
             <WifiOff className="mx-auto h-10 w-10 text-accent" />
@@ -266,9 +266,9 @@ export function PublicStatTrackerPage() {
   }[status.tone];
 
   return (
-    <div className="noise min-h-dvh overflow-hidden bg-background text-foreground" data-testid="public-stat-tracker-page">
+    <div className="noise stat-tracker-public-page min-h-dvh overflow-hidden bg-background text-foreground" data-testid="public-stat-tracker-page">
       <div className="pointer-events-none fixed inset-0 bg-tech-grid opacity-30" aria-hidden="true" />
-      <div className="relative mx-auto w-full max-w-[1180px] px-4 pb-16 pt-4 sm:px-8 sm:pt-7 lg:px-10">
+      <div className="stat-tracker-public-main relative mx-auto w-full max-w-[1180px] px-4 pb-16 pt-4 sm:px-8 sm:pt-7 lg:px-10">
         <header className="flex items-center justify-between border-b border-foreground/10 pb-4 sm:pb-5">
           <Link
             href="/"

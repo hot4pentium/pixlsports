@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --color-primary: #2878F5;
+  --color-primary-ink: #55A4FF;
+  --color-accent: #FF5A1F;
+  --color-accent-ink: #FF8C61;
+
+  --color-bg-dark: #0A1428;
+  --color-bg-muted: #132542;
+  --color-bg-light: #F8FAFC;
+
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #94A3B8;
+  --color-text-inverse: #0A1428;
+
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-ink: var(--color-primary-ink);
+  --color-accent: var(--color-accent);
+  --color-accent-ink: var(--color-accent-ink);
+  
+  --color-bg-dark: var(--color-bg-dark);
+  --color-bg-muted: var(--color-bg-muted);
+  --color-bg-light: var(--color-bg-light);
+  
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-inverse: var(--color-text-inverse);
+  
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.video-media-frame {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.video-media-frame > :is(img, video) {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  width: 100%;
+}
+
+.video-media-frame[data-media-fit='contain'] > :is(img, video) {
+  object-fit: contain;
+}
+
+.text-stroke {
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.15);
+  color: transparent;
+}
+
+.text-stroke-accent {
+  -webkit-text-stroke: 2px var(--color-accent);
+  color: transparent;
+}
+
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+.shadow-glow-primary {
+  box-shadow: 0 0 40px 10px rgba(40, 120, 245, 0.2);
+}
+
+.shadow-glow-accent {
+  box-shadow: 0 0 40px 10px rgba(255, 90, 31, 0.2);
+}
+
+.clip-diagonal {
+  clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
+}
+
+.bg-stadium-lights {
+  background-image: url('../public/images/stadium_lights.jpg');
+}
+
+.bg-player-hype {
+  background-image: url('../public/images/player_hype.jpg');
+}
+
+.bg-abstract-data {
+  background-image: url('../public/images/abstract_data.jpg');
+}

@@ -72,6 +72,44 @@ async function validateProject(
   return project && tool === expectedTool ? project : null;
 }
 
+async function findFallbackTrackerProject(
+  ownerClerkUserId: string,
+  sport: string,
+  status: "final" | "live",
+) {
+  // A page can be created before the first tracker save creates its cloud project.
+  // Resolve that initial project without exposing another owner's tracker data.
+  const projects = await db
+    .select()
+    .from(cloudProjectsTable)
+    .where(eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId))
+    .orderBy(desc(cloudProjectsTable.updatedAt));
+
+  return projects.find((project) => {
+    if (!project.project || typeof project.project !== "object" || Array.isArray(project.project)) return false;
+    const payload = project.project as { tool?: unknown; games?: unknown };
+    if (payload.tool !== "stat-tracker" || !Array.isArray(payload.games)) return false;
+    return payload.games.some((game) => (
+      game
+      && typeof game === "object"
+      && !Array.isArray(game)
+      && (game as { sport?: unknown; status?: unknown }).sport === sport
+      && (game as { sport?: unknown; status?: unknown }).status === status
+    ));
+  }) ?? null;
+}
+
+async function resolveTrackerProject(
+  projectId: string | null,
+  ownerClerkUserId: string,
+  sport: string,
+  status: "final" | "live",
+) {
+  return projectId
+    ? validateProject(projectId, ownerClerkUserId, "stat-tracker")
+    : findFallbackTrackerProject(ownerClerkUserId, sport, status);
+}
+
 async function validateSources(
   ownerClerkUserId: string,
   input: { trackerProjectId: string | null; scheduleProjectId: string | null },
@@ -248,6 +286,8 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
   const [trackerProject, scheduleProject, latestImages, videos, liveShare] = await Promise.all([
     invite.showStats && invite.trackerProjectId
       ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
+      : invite.showStats
+        ? findFallbackTrackerProject(invite.ownerClerkUserId, invite.sport, "final")
       : null,
     invite.showSchedule && invite.scheduleProjectId
       ? validateProject(invite.scheduleProjectId, invite.ownerClerkUserId, "schedule")
@@ -438,7 +478,7 @@ router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res):
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }
-  const project = await validateProject(invite.trackerProjectId, ownerClerkUserId, "stat-tracker");
+  const project = await resolveTrackerProject(invite.trackerProjectId, ownerClerkUserId, invite.sport, "live");
   const payload = project?.project && typeof project.project === "object"
     ? project.project as { games?: unknown }
     : null;

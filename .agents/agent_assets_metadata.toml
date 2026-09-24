@@ -414,3 +414,33 @@ mtime_ms = 1790201714273
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/769c4e13-e1bc-4e47-85cb-52d2d2879dc8/cf410d68-6cbd-4df4-9f01-6a695e0f846e"
 storage_version_token = "1790201789426263"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "WhSEdL8pFnd2RTZtTWJXc"
+uri = "file://artifacts/week-path-explainer/public/audio/bg_music.mp3"
+type = "audio"
+title = "week path background music"
+description = "Generated music: Energetic, warm sports-editorial instrumental background music scoring a 26-second youth-sports family game-week explainer. Tight rhythmic drums, warm bass, bright electric guitar ac…"
+logical_id = "28fff8e9-e5bb-4b36-87fd-ad09a52f672b"
+
+[[outputs]]
+id = "l41kCvPG0xkKmEcya97GM"
+uri = "file://artifacts/league-matrix-studio/public/week-path-explainer.mp4"
+type = "video"
+title = "The Week Path — four steps"
+description = "Download the revised 24-second 16:9 video: Plan, Prep, Capture, Send."
+logical_id = "eb09ad06-e6c2-4909-8a88-0338b12585fb"
+content_hash = "sha256:9d7b7c2a60309b058763572e1b014207d8b64483dc56263bb4861dfcee7ac95f"
+size = 2628784
+mtime_ms = 1790213687082
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/eb09ad06-e6c2-4909-8a88-0338b12585fb/6e72f49b-4776-42ce-8b23-98ec3d33742e"
+storage_version_token = "1790213711790899"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "wJPO1WV-7aBxax_16u5_8"
+uri = "file://artifacts/week-path-explainer/public/audio/bg_music_2.mp3"
+type = "audio"
+title = "generated_music"
+description = "Generated music: Energetic warm sports-editorial instrumental background music for a 24-second Pixl Sports game-week explainer: Plan, Prep, Capture, Send. Tight rhythmic drums, warm bass, bright elec…"
+logical_id = "7e781838-2019-4183-a447-5f1e80668d0a"

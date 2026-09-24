@@ -288,7 +288,7 @@ export function PublicLandingPage() {
         {/* GUIDED WEEK SECTION */}
         <section id="how-it-works" className="py-24 sm:py-32 bg-landing-bg">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-20">
+            <div className="text-center max-w-3xl mx-auto mb-10">
               <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">
                 Every week moves the season forward.
               </h2>
@@ -296,6 +296,29 @@ export function PublicLandingPage() {
                 Plan the next game, follow the action, and share the moments—week after week.
               </p>
             </div>
+
+            <figure className="landing-week-video mx-auto mb-16 max-w-4xl sm:mb-20" aria-labelledby="landing-week-video-title">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h3 id="landing-week-video-title" className="font-display text-2xl font-bold text-landing-text sm:text-3xl">See the week path in 24 seconds</h3>
+                <span className="text-xs font-semibold uppercase tracking-widest text-landing-primary">A quick look at Pixl Sports</span>
+              </div>
+              <video
+                controls
+                playsInline
+                preload="none"
+                poster={`${import.meta.env.BASE_URL}week-path-explainer-poster.webp`}
+                aria-label="The week path: a short video explaining the game week"
+                aria-describedby="landing-week-video-summary"
+                className="block aspect-video w-full rounded-2xl border border-landing-primary/10 bg-landing-pale-blue shadow-2xl"
+                data-testid="landing-week-path-video"
+              >
+                <source src={`${import.meta.env.BASE_URL}week-path-explainer.mp4`} type="video/mp4" />
+                Your browser does not support video playback.
+              </video>
+              <figcaption id="landing-week-video-summary" className="mt-4 text-sm leading-relaxed text-landing-text/75 sm:text-base">
+                Plan the week with a calendar card. Prep by checking off the game day list. Capture the game on the live stat-tracker scoreboard, then send the highlights with an Athlete Hype Page.
+              </figcaption>
+            </figure>
 
             <div className="relative">
               <div className="absolute bottom-24 left-[84px] top-24 hidden w-0.5 bg-landing-text/10 lg:block" aria-hidden="true" />
