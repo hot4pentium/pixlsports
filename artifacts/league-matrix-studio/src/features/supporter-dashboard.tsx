@@ -177,8 +177,6 @@ export interface SupporterDashboardViewProps {
   connectionLabel: string;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
-  onOpenStatTracker: () => void;
-  onOpenChecklist: () => void;
   onSignOut?: () => void;
 }
 
@@ -277,8 +275,6 @@ export function SupporterDashboardView({
   connectionLabel,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
-  onOpenStatTracker,
-  onOpenChecklist,
   onSignOut,
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
@@ -537,10 +533,6 @@ export function SupporterDashboardView({
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? activeJourneyEvents[0];
-  const scheduleCardEvent = weekRecommendation?.event ?? nextGame;
-  const scheduleCardLabel = scheduleCardEvent?.type === 'practice'
-    ? 'Practice'
-    : 'Game Day';
   const mobileFeaturedTitle = mobileFeaturedEvent?.type === 'practice'
     ? `${profile.teamName || 'Your team'} practice`
     : `${profile.teamName || 'Your team'}${mobileFeaturedEvent?.opponent ? ` vs ${mobileFeaturedEvent.opponent}` : ''}`;
@@ -1212,65 +1204,6 @@ export function SupporterDashboardView({
 
       </div>
 
-      {/* TOOL CHOOSER */}
-      <section id="all-tools" className="animate-slide-up delay-200">
-        <div className="border-b border-border pb-4">
-          <div className="flex w-full items-center justify-between gap-4">
-            <span id="all-tools-heading">
-              <span className="studio-textured-accent mb-1 block text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Choose a task</span>
-              <span className="font-display text-3xl uppercase tracking-wide">All tools</span>
-            </span>
-          </div>
-          <p className="mt-3 text-sm font-medium text-muted-foreground">The next best move is always close.</p>
-        </div>
-        <div
-          id="all-tools-panel"
-          className="mt-4 grid gap-2 sm:grid-cols-2"
-          data-testid="all-tools-panel"
-          aria-labelledby="all-tools-heading"
-        >
-            <Link href={supporterToolRoutes.hypeCard} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-hype">
-              <span className="flex min-w-0 items-center gap-3">
-                <Zap className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Hype Card</span>
-                  <span className="block text-xs font-medium text-muted-foreground">Celebrate a big moment.</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </Link>
-            <Link href={supporterToolRoutes.schedule} className="group flex items-center justify-between border border-border bg-card px-4 py-4 transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-schedule">
-              <span className="flex min-w-0 items-center gap-3">
-                <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">{scheduleCardEvent ? scheduleCardLabel : 'Game Day'}</span>
-                  <span className="block truncate text-xs font-medium text-muted-foreground">{scheduleCardEvent ? `${formatDateDisplay(scheduleCardEvent.date)} · ${scheduleCardEvent.type === 'game' ? formatTimeDisplay(scheduleCardEvent.time) : scheduleCardLabel}` : scheduleSource ? 'No upcoming game scheduled.' : 'Create or open a saved schedule.'}</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </Link>
-            <button type="button" onClick={onOpenStatTracker} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-stat-tracker">
-              <span className="flex min-w-0 items-center gap-3">
-                <Activity className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Stat Tracker</span>
-                  <span className="block text-xs font-medium text-muted-foreground">Track the game as it happens.</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </button>
-            <button type="button" onClick={onOpenChecklist} className="group flex items-center justify-between border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary hover:bg-primary/5 clip-angled-sm" data-testid="link-quick-checklist">
-              <span className="flex min-w-0 items-center gap-3">
-                <ClipboardCheck className="h-5 w-5 shrink-0 text-primary" />
-                <span className="min-w-0">
-                  <span className="block font-display text-xl uppercase tracking-wide">Checklist</span>
-                  <span className="block text-xs font-medium text-muted-foreground">Prepare with the whole team.</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-            </button>
-        </div>
-      </section>
     </div>
       </div>
     </>

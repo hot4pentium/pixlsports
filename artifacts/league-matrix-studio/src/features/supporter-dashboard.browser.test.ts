@@ -366,7 +366,7 @@ test('supporter browser assertion failures still clean up Chromium and generated
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
 
     assert.equal(await pathExists(fixtures.harnessPath), true);
     assert.equal(await pathExists(fixtures.htmlPath), true);
@@ -1543,15 +1543,13 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
      assert.equal(
        await connection.evaluate<boolean>(`(() => {
          const upcoming = document.querySelector('[data-testid="section-upcoming"]');
           const recent = document.querySelector('[data-testid="section-recent-hype-cards"]');
-         const tools = document.querySelector('#all-tools');
-         return Boolean(upcoming && recent && tools
-           && (upcoming.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING)
-           && (recent.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING));
+          const workspace = document.querySelector('[data-testid="section-desktop-workspace"]');
+          return Boolean(upcoming && recent && workspace && !document.querySelector('#all-tools'));
        })()`, page.sessionId),
        true,
      );
@@ -1594,7 +1592,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
 
     await reloadPage(connection, page);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
       false,
@@ -1605,14 +1603,14 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
 
     await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:upcoming")', page.sessionId);
     await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-close\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-close"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' }])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
@@ -1776,7 +1774,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-next-game-context\\"]") !== null', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
       false,
@@ -1821,39 +1819,38 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       /Get ready for practice.*Sep 22, 2026.*6:30 PM/,
     );
 
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
     assert.equal(await connection.evaluate<boolean>(
       'Boolean(document.querySelector(\'[data-testid="button-choose-task"]\'))',
       page.sessionId,
     ), false);
-    await connection.evaluate(`document.querySelector('[data-testid="link-quick-hype"]')?.focus()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-calendar"]')?.focus()`, page.sessionId);
 
-    const toolRoutes = await connection.evaluate<Record<string, string>>(`Object.fromEntries(
-      [...document.querySelectorAll('[data-testid^="link-quick-"]')].map((element) => [
-        element.getAttribute('data-testid'),
-        element.getAttribute('href') || 'callback',
+    const workspaceRoutes = await connection.evaluate<Record<string, string>>(`Object.fromEntries(
+      [...document.querySelectorAll('[data-testid^="link-desktop-workspace-"]')].map((element) => [
+        element.getAttribute('data-testid')?.replace('link-desktop-workspace-', ''),
+        element.getAttribute('href') || '',
       ]),
     )`, page.sessionId);
-    assert.deepEqual(toolRoutes, {
-      'link-quick-hype': '/studio/hype-card',
-      'link-quick-schedule': '/studio/schedule',
-      'link-quick-stat-tracker': 'callback',
-      'link-quick-checklist': 'callback',
-    });
+    assert.deepEqual(Object.keys(workspaceRoutes).sort(), ['calendar', 'hype', 'prep', 'stats']);
+    assert.match(workspaceRoutes.calendar, /^\/studio\/schedule(?:\?|$)/);
+    assert.match(workspaceRoutes.prep, /^\/studio\/checklist(?:\?|$)/);
+    assert.match(workspaceRoutes.stats, /^\/studio\/stat-tracker(?:\?|$)/);
+    assert.match(workspaceRoutes.hype, /^\/studio\/hype-card(?:\?|$)/);
 
     const focusedTools: string[] = [];
     for (let index = 0; index < 3; index += 1) {
       await pressKey(connection, page.sessionId, 'Tab', 'Tab', 9);
       focusedTools.push(await connection.evaluate<string>(
-        'document.activeElement?.getAttribute("data-testid") || ""',
+        'document.activeElement?.getAttribute("data-testid")?.replace("link-desktop-workspace-", "") || ""',
         page.sessionId,
       ));
     }
-    assert.deepEqual(focusedTools, ['link-quick-schedule', 'link-quick-stat-tracker', 'link-quick-checklist']);
+    assert.deepEqual(focusedTools, ['prep', 'stats', 'hype']);
 
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     assert.equal(await connection.evaluate<boolean>(
-      'Boolean(document.querySelector(\'[data-testid="all-tools-panel"]\'))',
+      'Boolean(document.querySelector(\'[data-testid="section-desktop-workspace"]\'))',
       page.sessionId,
     ), true);
 
@@ -2194,12 +2191,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     }, page.sessionId);
 
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="link-quick-stat-tracker"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-stats"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/stat-tracker');
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"all-tools-panel\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="link-quick-checklist"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-prep"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
   } finally {
     if (page && connection) {

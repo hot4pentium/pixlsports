@@ -75,7 +75,7 @@
 .pixl-dashboard > header > :first-child::after,
 .pixl-dashboard [data-testid="athlete-summary"]::after,
 .pixl-dashboard [data-testid="section-next-game-context"]::after,
-.pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools)::after {
+.pixl-dashboard > section:not([data-testid="section-next-game-context"])::after {
   content: "";
   position: absolute;
   z-index: 2;
@@ -108,8 +108,7 @@
 }
 .pixl-dashboard [data-testid="athlete-summary"] h2,
 .pixl-dashboard [data-testid="section-next-game-context"] h2,
-.pixl-dashboard [data-testid^="section-"] h2,
-.pixl-dashboard [data-testid="all-tools-heading"] {
+.pixl-dashboard [data-testid^="section-"] h2 {
   font-family: "Barlow Condensed", ui-sans-serif, sans-serif;
   text-transform: uppercase;
 }
@@ -153,38 +152,20 @@
   border-color: var(--pixl-acid);
 }
 
-.pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) {
+.pixl-dashboard > section:not([data-testid="section-next-game-context"]) {
   position: relative;
   background: rgba(16, 43, 77, .78);
   border: 1px solid rgba(243, 246, 250, .1);
   padding: 22px;
   clip-path: polygon(0 0, 100% 0, 100% 97%, 98% 100%, 0 100%);
 }
-.pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) h2 {
+.pixl-dashboard > section:not([data-testid="section-next-game-context"]) h2 {
   color: var(--pixl-paper);
-}
-.pixl-dashboard #all-tools {
-  grid-column: 1 / -1;
-  border-top: 1px solid rgba(243, 246, 250, .14);
-  padding-top: 22px;
 }
 
 .pixl-dashboard [data-testid="section-upcoming"],
 .pixl-dashboard [data-testid="section-recent-designs"] {
   grid-column: 1 / -1;
-}
-.pixl-dashboard #all-tools > div:first-child {
-  border-color: rgba(243, 246, 250, .14);
-}
-.pixl-dashboard #all-tools button,
-.pixl-dashboard #all-tools a {
-  border-color: rgba(243, 246, 250, .14);
-  background: var(--pixl-panel);
-}
-.pixl-dashboard #all-tools button:hover,
-.pixl-dashboard #all-tools a:hover {
-  border-color: var(--pixl-acid);
-  background: rgba(40, 120, 245, .14);
 }
 .pixl-dashboard .text-primary { color: var(--pixl-acid) !important; }
 .pixl-dashboard .bg-primary { background-color: var(--pixl-acid) !important; }
@@ -269,7 +250,7 @@
     font-size: clamp(3rem, 16vw, 5.2rem);
     overflow-wrap: anywhere;
   }
-  .pixl-dashboard > section:not([data-testid="section-next-game-context"]):not(#all-tools) {
+  .pixl-dashboard > section:not([data-testid="section-next-game-context"]) {
     padding: 16px;
   }
 }

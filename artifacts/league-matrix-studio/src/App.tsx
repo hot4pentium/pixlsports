@@ -1492,13 +1492,6 @@ function SupporterStudio() {
           projects={projects}
           scheduleSource={scheduleSource}
           connectionLabel={scheduleLabel}
-           onOpenStatTracker={() => {
-             const query = nextGame
-               ? `?date=${encodeURIComponent(nextGame.date)}&opponent=${encodeURIComponent(nextGame.opponent || '')}`
-               : '';
-             setLocation(`/studio/stat-tracker${query}`);
-           }}
-           onOpenChecklist={() => setLocation('/studio/checklist')}
            onSignOut={() => signOut({ redirectUrl: basePath || "/" })}
            athletePhotoUrl={athletePhoto.imageUrl}
            athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}
