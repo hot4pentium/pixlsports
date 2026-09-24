@@ -62,8 +62,8 @@ function LandingNav() {
           ) : (
             <Link href="/sign-in" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-sign-in">Sign In</Link>
           )}
-          <Link href="/sign-up" className="inline-flex items-center justify-center rounded-sm bg-landing-primary px-6 py-2.5 text-[15px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-landing-get-started-nav">
-            Get Started
+          <Link href="/studio" className="inline-flex items-center justify-center rounded-sm bg-landing-primary px-6 py-2.5 text-[15px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-landing-get-started-nav">
+            Open Studio
           </Link>
         </nav>
         <button type="button" className="grid min-h-11 min-w-11 place-items-center md:hidden text-landing-text" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} aria-controls="landing-mobile-menu" data-testid="button-landing-mobile-menu">
@@ -92,7 +92,7 @@ function LandingFooter() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center md:items-start gap-4">
           <BrandMark />
-          <p className="text-sm font-medium text-landing-gray">One place for the season, from plans to highlights.</p>
+          <p className="text-sm font-medium text-landing-gray">Simple tools for better seasons.</p>
         </div>
         <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-bold uppercase tracking-wider text-landing-gray">
           <Link href="/studio" className="hover:text-landing-text transition-colors" data-testid="link-footer-tools">Tools</Link>
@@ -230,11 +230,11 @@ export function PublicLandingPage() {
                 <span className="text-landing-primary">the whole season.</span>
               </h1>
               <p className="mx-auto mb-10 max-w-2xl text-lg font-medium leading-[1.6] text-landing-text/75 sm:text-[21px]">
-                Plan each week, follow game day, and keep the moments worth sharing.
+                Create polished schedules, game-day graphics, and shareable athlete moments without starting from scratch.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link href="/sign-up" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
-                  Get started free
+                <Link href="/studio" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
+                  Open Creative Studio
                 </Link>
                 <a href="#tools" className="group w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-landing-gray/30 bg-transparent px-8 py-[18px] text-[17px] font-bold text-landing-text hover:border-landing-primary hover:text-landing-orange transition-colors" data-testid="link-hero-explore-tools">
                   Explore the tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -256,7 +256,7 @@ export function PublicLandingPage() {
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Plan the week</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Keep schedules, locations, and team information together in one clear place.
+                  Turn season details into a clean, shareable schedule.
                 </p>
               </div>
               
@@ -267,7 +267,7 @@ export function PublicLandingPage() {
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Follow the game</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Track live stats, scores, and important moments as they happen.
+                  Keep game-day details and important moments easy to follow.
                 </p>
               </div>
 
@@ -428,7 +428,7 @@ export function PublicLandingPage() {
                   Tools made for the moments.
                 </h2>
                 <p className="text-lg sm:text-[21px] text-landing-text/75 mb-12 font-medium leading-relaxed">
-                  Every tool connects to a clear benefit, giving you everything you need without the bloat of management software.
+                  Choose a focused creative tool, customize your design, preview it, and export when it’s ready.
                 </p>
                 
                 <div className="space-y-8 relative">
@@ -439,7 +439,7 @@ export function PublicLandingPage() {
                        <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
                     </div>
                     <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
-                      Schedule Maker
+                      Schedule Graphic Maker
                     </h4>
                     <p className="text-[17px] text-landing-text/70 font-medium">Know what is happening next.</p>
                   </div>
@@ -466,7 +466,7 @@ export function PublicLandingPage() {
                        <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
                     </div>
                     <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
-                      Athlete Hype Card
+                      Hype-Card Creator
                     </h4>
                     <p className="text-[17px] text-landing-text/70 font-medium">Celebrate and share the moment.</p>
                   </div>
@@ -498,10 +498,10 @@ export function PublicLandingPage() {
                   BUILT FOR THE PEOPLE ON THE SIDELINE
                 </span>
                 <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">
-                  Stay connected without managing another complicated sports app.
+                  Create the moments your team will remember.
                 </h2>
                 <p className="text-lg sm:text-[21px] text-landing-text/75 mb-10 max-w-xl mx-auto lg:mx-0 font-medium leading-relaxed">
-                  Pixl organizes the information you need and helps you turn the moments you love into something worth sharing.
+                  Pixl gives coaches and families simple tools for schedules, game-day prep, and shareable graphics—without needing design experience.
                 </p>
               </div>
               <div className="flex-1 w-full relative">
@@ -524,14 +524,14 @@ export function PublicLandingPage() {
         <section id="pricing" className="scroll-mt-20 bg-landing-text py-24 sm:py-32 text-center">
           <div className="mx-auto max-w-4xl px-6 lg:px-8">
             <h2 className="font-display text-5xl sm:text-6xl lg:text-[72px] font-extrabold text-landing-white mb-6 leading-[0.92]">
-              Let Pixl guide your next game week.
+              Make something worth sharing.
             </h2>
             <p className="text-xl sm:text-[24px] text-landing-white/70 mb-12 max-w-2xl mx-auto font-medium">
-              Bring the schedule, the action, and the celebration together in one place.
+              Start with a focused tool, make it yours, and export something your team will be proud to share.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
-              <Link href="/sign-up" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-10 py-5 text-[19px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-md" data-testid="link-final-get-started">
-                Get started free
+              <Link href="/studio" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-10 py-5 text-[19px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-md" data-testid="link-final-get-started">
+                Open Creative Studio
               </Link>
               <a href="#tools" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md border-2 border-landing-white/20 bg-transparent px-10 py-5 text-[19px] font-bold text-landing-white hover:bg-landing-white hover:text-landing-text transition-colors" data-testid="link-final-explore-tools">
                 Explore the tools
