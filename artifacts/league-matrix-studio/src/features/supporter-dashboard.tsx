@@ -767,18 +767,39 @@ export function SupporterDashboardView({
           </div>
           </section>
 
+          <section
+            className="rounded-[20px] border-2 border-[#2474F5]/25 bg-white p-5 shadow-sm"
+            aria-labelledby="mobile-game-on-entry-heading"
+            data-testid="mobile-game-on-entry"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#2474F5]/10 text-[#2474F5]" aria-hidden="true">
+                <Zap className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#2474F5]">Game On Card</p>
+                <h2 id="mobile-game-on-entry-heading" className="mt-1 font-display text-xl font-black uppercase leading-tight text-[#12213A]">
+                  Share game day when you&apos;re ready.
+                </h2>
+              </div>
+            </div>
+            <p className="mt-3 text-sm font-medium leading-relaxed text-[#52657a]">
+              One shareable link for the game details, with shared stats and the Athlete Page when available.
+            </p>
+            <a
+              href="#game-on-card-panel"
+              className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#2474F5] px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-[#12213A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2474F5]"
+              data-testid="link-mobile-game-on-card"
+            >
+              <Zap className="h-4 w-4" aria-hidden="true" /> Create or manage your card <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </section>
+
           <section className="workspace-nav-panel" data-testid="section-mobile-workspace" aria-labelledby="mobile-workspace-heading">
             <div className="workspace-nav-heading">
               <p className="workspace-nav-eyebrow">Athlete workspace</p>
               <h2 id="mobile-workspace-heading">Everything for {profile.athleteName || 'your athlete'}</h2>
               <p>Open any tool whenever you need it. Your athlete stays at the center.</p>
-              <a
-                href="#game-on-card-panel"
-                className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 bg-[#2474F5] px-4 py-3 text-xs font-bold uppercase tracking-widest text-white"
-                data-testid="link-mobile-game-on-card"
-              >
-                <Zap className="h-4 w-4" aria-hidden="true" /> Create a Game On Card
-              </a>
             </div>
             <nav className="workspace-tool-grid" aria-label="Athlete workspace tools">
               {workspaceTools.map(({ id, label, description, Icon, href }) => (
@@ -1075,12 +1096,39 @@ export function SupporterDashboardView({
               {gameStage === 'live' && contextEvent?.type === 'practice' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
               {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
               {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
-              <a href="#game-on-card-panel" className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/30 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary" data-testid="link-desktop-game-on-card"><Zap className="h-4 w-4 text-primary" /> Create a Game On Card</a>
             </div>
           </div>
         </div>
         </section>
       </div>
+
+      <section
+        className="relative overflow-hidden border border-[#55A4FF]/30 bg-gradient-to-r from-[#0B1F3A] via-[#10284A] to-[#15335B] p-5 text-white shadow-[0_18px_36px_rgba(11,31,58,.2)] clip-angled sm:p-7"
+        aria-labelledby="desktop-game-on-entry-heading"
+        data-testid="desktop-game-on-entry"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-[#55A4FF]">
+              <Zap className="h-4 w-4" aria-hidden="true" /> Game On Card
+            </p>
+            <h2 id="desktop-game-on-entry-heading" className="mt-2 font-display text-3xl uppercase leading-none sm:text-4xl">
+              Share game day when you&apos;re ready.
+            </h2>
+            <p className="mt-3 text-sm font-medium leading-relaxed text-white/70 sm:text-base">
+              One shareable link for the game details, with shared stats and the Athlete Page when available.
+            </p>
+          </div>
+          <a
+            href="#game-on-card-panel"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-[#2474F5] px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-[#0B1F3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#55A4FF]"
+            data-testid="link-desktop-game-on-card"
+          >
+            Create or manage your card <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
+        </div>
+      </section>
 
       <section className="dashboard-week-path-panel workspace-panel animate-slide-up delay-200" data-testid="section-desktop-workspace" aria-labelledby="desktop-workspace-heading">
         <div className="workspace-panel-heading">
