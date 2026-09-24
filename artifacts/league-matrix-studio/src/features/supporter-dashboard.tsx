@@ -323,10 +323,6 @@ export function SupporterDashboardView({
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const stageReminderDialogRef = useRef<HTMLDivElement>(null);
-  const stageReminderActionRef = useRef<HTMLButtonElement>(null);
-  const previousReminderFocusRef = useRef<HTMLElement | null>(null);
-  const dismissStageReminderRef = useRef<() => void>(() => {});
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const meetingScope = userId || 'guest';
@@ -382,12 +378,6 @@ export function SupporterDashboardView({
   const completedMeetingEvent = weekRecommendation?.kind === 'meeting' && weekRecommendation.stage === 'completed'
     ? weekRecommendation.event
     : undefined;
-  const activePracticeEvent = weekRecommendation?.kind === 'practice' && weekRecommendation.stage === 'live'
-    ? weekRecommendation.event
-    : undefined;
-  const completedPracticeEvent = weekRecommendation?.kind === 'practice' && weekRecommendation.stage === 'completed'
-    ? weekRecommendation.event
-    : undefined;
   const recommendedPreparationEvent = getSupporterPreparationContext(
     weekRecommendation,
     gameEvents,
@@ -439,26 +429,17 @@ export function SupporterDashboardView({
           : 'Pack the details now so game day feels easy.',
     }
     : stageCopy[gameStage];
-  const stageReminderEvent = weekRecommendation?.event;
-  const stageReminderStage = weekRecommendation?.stage;
-  const planReminderKey = `pixlsports-supporter-plan-ack:${encodeURIComponent(userId || 'guest')}`;
-  const stageReminderKey = stageReminderEvent && stageReminderStage
-    ? getSupporterStageAcknowledgmentKey(stageReminderEvent.id, stageReminderStage)
-    : planReminderKey;
-  const [locallyAcknowledgedReminderKeys, setLocallyAcknowledgedReminderKeys] = useState<Set<string>>(() => new Set());
-  const hasDismissedStageReminder = locallyAcknowledgedReminderKeys.has(stageReminderKey)
-    || (typeof window !== 'undefined' && (
-      stageReminderEvent && stageReminderStage
-        ? hasAcknowledgedSupporterGameStage(window.localStorage, stageReminderEvent.id, stageReminderStage)
-        : (() => {
-          try {
-            return window.localStorage.getItem(planReminderKey) === '1';
-          } catch {
-            return false;
-          }
-        })()
-    ));
-  const showStageReminder = typeof window !== 'undefined' && !hasDismissedStageReminder;
+  const stageReminderGame = contextEvent?.type === 'game' ? contextEvent : undefined;
+  const stageReminderKey = stageReminderGame
+    ? getSupporterStageAcknowledgmentKey(stageReminderGame.id, gameStage)
+    : null;
+  const [, setReminderVersion] = useState(0);
+  const showStageReminder = Boolean(
+    stageReminderGame
+    && stageReminderKey
+    && typeof window !== 'undefined'
+    && !hasAcknowledgedSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage),
+  );
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
@@ -467,13 +448,6 @@ export function SupporterDashboardView({
     : contextEvent?.type === 'meeting'
       ? `${profile.teamName || 'Your team'} meeting`
       : gameTitle;
-  const stageReminderEventTitle = stageReminderEvent?.type === 'practice'
-    ? `${profile.teamName || 'Your team'} practice`
-    : stageReminderEvent?.type === 'meeting'
-      ? `${profile.teamName || 'Your team'} meeting`
-      : stageReminderEvent
-        ? `${profile.teamName || 'Your team'}${stageReminderEvent.opponent ? ` vs ${stageReminderEvent.opponent}` : ''}`
-        : '';
   const preparationCopy = getSupporterPreparationCopy(contextEvent?.type ?? weekRecommendation?.kind ?? null);
   const unscheduledMeeting = contextEvent?.type === 'meeting' && isMeetingUnscheduled(contextEvent);
   const preparationSchedule = contextEvent
