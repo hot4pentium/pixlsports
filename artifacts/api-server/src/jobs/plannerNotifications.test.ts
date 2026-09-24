@@ -151,7 +151,7 @@ test("planner job uses the most recently updated subscription timezone", async (
       },
     });
 
-    assert.deepEqual(sent, [{ title: "Starting in 1 hour: Team meeting" }]);
+    assert.deepEqual(sent, [{ title: "TEAM MEETING · IN 1 HOUR" }]);
   } finally {
     if (projectId) {
       await db.delete(plannerNotificationDeliveriesTable)
@@ -221,7 +221,7 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
 
     assert.equal(sent.length, 1);
     assert.equal(sent[0]?.ownerId, ownerId);
-    assert.equal(sent[0]?.title, "Starting in 1 hour: Game vs Falcons");
+    assert.equal(sent[0]?.title, "GAME DAY · IN 1 HOUR");
     assert.match(sent[0]?.tag ?? "", /event-1-one_hour-2026-03-10/);
 
     const deliveriesAfterRepeat = await db

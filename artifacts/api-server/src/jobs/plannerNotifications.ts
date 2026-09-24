@@ -224,15 +224,20 @@ function reminderPayload(
   reminderType: PlannerReminderType,
 ) {
   const label = eventLabel(event);
+  const eventTypeLabel = event.type === "game"
+    ? "GAME DAY"
+    : event.type === "practice"
+      ? "PRACTICE"
+      : "TEAM MEETING";
   return {
     title: reminderType === "one_hour"
-      ? `Starting in 1 hour: ${label}`
+      ? `${eventTypeLabel} · IN 1 HOUR`
       : reminderType === "capture_open"
-        ? `Capture window open: ${label}`
-        : `Today: ${label}`,
+        ? `${eventTypeLabel} · CAPTURE OPEN`
+        : `${eventTypeLabel} · TODAY`,
     body: reminderType === "day_of"
-      ? `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to see the full week.`
-      : `${project.teamName || "Your team"}${eventDetails(event)}. Open Pixl Sports to capture the moment.`,
+      ? `${label}${eventDetails(event)}. ${project.teamName || "Your team"} is on your schedule today. Open Pixl Sports to see the full week.`
+      : `${label}${eventDetails(event)}. ${project.teamName || "Your team"} is ready in Pixl Sports.`,
     url: "/studio",
   };
 }
