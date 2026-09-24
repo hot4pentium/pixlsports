@@ -39,6 +39,7 @@ import {
   clearStoredTrackerConflict,
   countStatEventsByAttribution,
   createGameSession,
+  createAthleteResultGame,
   endGame,
   footballYardMetricDefinitions,
   getFootballYardMetricId,
@@ -63,6 +64,7 @@ import {
   undoLastStatEvent,
   buildGameReport,
   type GameSession,
+  type AthleteResultCapture,
   type Sport,
   type StatTrackerData,
   type StatDefinition,
@@ -369,6 +371,133 @@ export function StatTrackerStartPanel({
         <button type="button" onClick={onReviewPreviousGames} data-testid="button-review-previous-games" className="inline-flex min-h-10 shrink-0 items-center gap-2 text-left text-xs font-bold uppercase tracking-widest text-primary-ink hover:text-foreground"><History className="h-4 w-4" /> Review previous games</button>
       </div>}
     </div>
+  );
+}
+
+export function AthleteResultPanel({
+  athleteName,
+  teamName,
+  rule,
+  date,
+  opponent,
+  notes,
+  saving,
+  onDateChange,
+  onOpponentChange,
+  onNotesChange,
+  onSave,
+  onOpenAdvanced,
+}: {
+  athleteName: string;
+  teamName: string;
+  rule: SportRule;
+  date: string;
+  opponent: string;
+  notes: string;
+  saving: boolean;
+  onDateChange: (value: string) => void;
+  onOpponentChange: (value: string) => void;
+  onNotesChange: (value: string) => void;
+  onSave: (capture: AthleteResultCapture) => void;
+  onOpenAdvanced: () => void;
+}) {
+  const [score, setScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
+  const [stats, setStats] = useState<Record<string, number>>({});
+  const [showStats, setShowStats] = useState(false);
+  const [skippedStats, setSkippedStats] = useState(false);
+  const statOptions = rule.stats.filter((stat) => !stat.liveHidden);
+  const athleteLabel = athleteName || 'Your athlete';
+  const setStatCount = (statId: string, value: number) => {
+    const nextValue = Math.max(0, Math.min(99, Math.floor(Number.isFinite(value) ? value : 0)));
+    setStats((current) => {
+      if (!nextValue) {
+        const next = { ...current };
+        delete next[statId];
+        return next;
+      }
+      return { ...current, [statId]: nextValue };
+    });
+    setSkippedStats(false);
+  };
+  const skipStats = () => {
+    setStats({});
+    setShowStats(false);
+    setSkippedStats(true);
+  };
+
+  return (
+    <section className="border border-border bg-card p-5 text-card-foreground clip-angled-sm sm:p-8" data-testid="athlete-result-panel" aria-labelledby="athlete-result-heading">
+      <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Athlete + result</p>
+          <h2 id="athlete-result-heading" className="mt-1 font-display text-3xl uppercase tracking-wide">{athleteLabel}</h2>
+          <p className="mt-2 max-w-2xl text-sm font-medium text-muted-foreground">Save the final score, then add only the stats or moments you want to remember.</p>
+        </div>
+        <Trophy className="h-7 w-7 shrink-0 text-primary-ink" />
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game date
+          <input required type="date" value={date} onChange={(event) => onDateChange(event.currentTarget.value)} data-testid="input-athlete-result-date" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+        </label>
+        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opponent
+          <input value={opponent} onChange={(event) => onOpponentChange(event.currentTarget.value)} placeholder="Opponent name (optional)" data-testid="input-athlete-result-opponent" className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
+        </label>
+      </div>
+
+      <fieldset className="mt-6">
+        <legend className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Final result</legend>
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          {([
+            ['athlete', teamName || athleteLabel, score, setScore],
+            ['opponent', opponent || 'Opponent', opponentScore, setOpponentScore],
+          ] as const).map(([side, label, value, setValue]) => (
+            <label key={side} className="border border-border bg-background p-3">
+              <span className="block truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+              <input type="number" min="0" step="1" inputMode="numeric" value={value} onChange={(event) => setValue(Math.max(0, Number.parseInt(event.currentTarget.value, 10) || 0))} data-testid={`input-athlete-result-score-${side}`} aria-label={`${label} final score`} className="mt-2 w-full border-0 bg-transparent p-0 font-display text-4xl text-foreground outline-none" />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="mt-6 border border-primary/30 bg-primary/5 p-4" data-testid="athlete-result-stats-choice">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-foreground">Optional athlete stats</p>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">Add totals after the game. Every total is credited to {athleteLabel}.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => { setShowStats((value) => !value); setSkippedStats(false); }} aria-expanded={showStats} data-testid="button-add-athlete-stats" className="inline-flex min-h-11 items-center gap-2 border border-primary bg-background px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary-ink hover:bg-primary/10">
+              {showStats ? 'Hide stats' : 'Add athlete stats'} <ChevronDown className={`h-4 w-4 transition-transform ${showStats ? 'rotate-180' : ''}`} />
+            </button>
+            <button type="button" onClick={skipStats} data-testid="button-skip-athlete-stats" className="inline-flex min-h-11 items-center border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-foreground">Skip stats</button>
+          </div>
+        </div>
+        {skippedStats && <p className="mt-3 text-xs font-bold text-primary-ink" role="status">Stats skipped. You can save the result and notes now.</p>}
+        {showStats && (
+          <div className="mt-4 grid gap-3 border-t border-primary/20 pt-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="athlete-result-stat-fields">
+            {statOptions.map((stat) => (
+              <label key={stat.id} className="border border-border bg-background p-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {stat.label}
+                <input type="number" min="0" max="99" step="1" inputMode="numeric" value={stats[stat.id] ?? 0} onChange={(event) => setStatCount(stat.id, Number.parseInt(event.currentTarget.value, 10) || 0)} data-testid={`input-athlete-result-stat-${stat.id}`} className="mt-2 w-full border border-border bg-card px-3 py-2 font-display text-2xl text-foreground outline-none focus:border-primary" />
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <label className="mt-6 block text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary-ink" /> Moments or notes</span>
+        <textarea value={notes} onChange={(event) => onNotesChange(event.currentTarget.value)} placeholder="A favorite moment, milestone, or anything to remember." rows={4} data-testid="input-athlete-result-notes" className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-primary" />
+      </label>
+
+      <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <button type="button" onClick={onOpenAdvanced} data-testid="button-open-advanced-team-stats" className="inline-flex min-h-11 items-center justify-center border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-foreground">Advanced team stats</button>
+        <button type="button" disabled={saving || !date} onClick={() => onSave({ date, opponent, score, opponentScore, notes, stats })} data-testid="button-save-athlete-result" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {saving ? 'Saving result…' : 'Save game result'}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -965,6 +1094,7 @@ export function StatTrackerPage() {
   const [notice, setNotice] = useState('');
   const [showUpcomingNotice, setShowUpcomingNotice] = useState(false);
   const [showManualSetup, setShowManualSetup] = useState(false);
+  const [showAdvancedSetup, setShowAdvancedSetup] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<TrackerSaveStatus | null>(null);
@@ -1271,10 +1401,11 @@ export function StatTrackerPage() {
     setDate(nextGame.date);
     setOpponent(nextGame.opponent);
     setShowUpcomingNotice(false);
-    setShowManualSetup(true);
+    setShowAdvancedSetup(false);
+    setShowManualSetup(false);
     setupSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.setTimeout(() => {
-      setupSectionRef.current?.querySelector<HTMLInputElement>('[data-testid="input-stat-tracker-date"]')?.focus();
+      setupSectionRef.current?.querySelector<HTMLInputElement>('[data-testid="input-athlete-result-date"]')?.focus();
     }, 350);
   };
 
@@ -1304,14 +1435,12 @@ export function StatTrackerPage() {
     await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
   };
 
-  const saveCompletedGame = async () => {
-    if (!currentGame) return;
-    const completed = endGame(currentGame);
+  const persistCompletedGame = async (completed: GameSession, share: StatTrackerShare | null = null) => {
     if (shareUpdateTimer.current) {
       window.clearTimeout(shareUpdateTimer.current);
       shareUpdateTimer.current = null;
     }
-    await publishTrackerShare(completed, activeTrackerShare ?? undefined);
+    await publishTrackerShare(completed, share ?? undefined);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final', completed.endedAt);
     const nextData = { ...data, games: [...data.games, completed] };
     setData(nextData);
@@ -1345,6 +1474,34 @@ export function StatTrackerPage() {
       announce('LOCAL COPY SAVED — CLOUD SYNC NEEDS ATTENTION');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveCompletedGame = async () => {
+    if (!currentGame) return;
+    await persistCompletedGame(endGame(currentGame), activeTrackerShare);
+  };
+
+  const saveAthleteResult = async (capture: AthleteResultCapture) => {
+    if (saving) return;
+    setError('');
+    setRetryAvailable(false);
+    setRevisionConflict(false);
+    setTrackerConflict(null);
+    setSelectedConflictResolution(null);
+    setSaveStatus(null);
+    activeScheduledGame.current = nextGame
+      && nextGame.date === capture.date
+      && nextGame.opponent === capture.opponent
+      ? nextGame
+      : undefined;
+    try {
+      const completed = createAthleteResultGame(sport, capture);
+      await persistCompletedGame(completed);
+      setNotes('');
+      setShowUpcomingNotice(false);
+    } catch (captureError) {
+      setError(captureError instanceof Error ? captureError.message : 'Could not save this result.');
     }
   };
 
@@ -1510,9 +1667,9 @@ export function StatTrackerPage() {
           <Link href="/studio" className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
           </Link>
-          <p className="text-xs font-bold uppercase tracking-widest text-accent">Live numbers</p>
-          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">STAT <span className="text-primary-ink studio-textured-heading-accent">TRACKER.</span></h1>
-          <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Tap each play as it happens. Finish the game to add it to your season history.</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Athlete game log</p>
+          <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">ATHLETE <span className="text-primary-ink studio-textured-heading-accent">STATS.</span></h1>
+          <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Save the result, optional athlete stats, and the moments you want to remember. Use Advanced team stats when you want live play-by-play.</p>
         </div>
         {saveStatus && <StatTrackerSaveStatus status={saveStatus} />}
       </div>
@@ -1530,7 +1687,10 @@ export function StatTrackerPage() {
           nextGame={nextGame}
           onUseUpcomingGame={useNextGameForSetup}
           onDismiss={() => setShowUpcomingNotice(false)}
-          onToggleManualSetup={() => setShowManualSetup((value) => !value)}
+          onToggleManualSetup={() => {
+            setShowAdvancedSetup(true);
+            setShowManualSetup((value) => !value);
+          }}
           showManualSetup={showManualSetup}
           hiddenOnDesktop={!showUpcomingNotice}
         />
@@ -1595,20 +1755,49 @@ export function StatTrackerPage() {
 
       {!currentGame ? (
         <section ref={setupSectionRef} className="grid scroll-mt-6 gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="stat-tracker-setup">
-          <StatTrackerStartPanel
-            nextGame={nextGame}
-            label={rule.label}
-            date={date}
-            opponent={opponent}
-            notes={notes}
-            showManualSetup={showManualSetup}
-            onToggleManualSetup={() => setShowManualSetup((value) => !value)}
-            onDateChange={(value) => { manuallyEditedSetup.current.date = true; setDate(value); }}
-            onOpponentChange={(value) => { manuallyEditedSetup.current.opponent = true; setOpponent(value); }}
-            onNotesChange={setNotes}
-            onStartGame={beginGame}
-            onReviewPreviousGames={reviewPreviousGames}
-          />
+          <div className="space-y-5">
+            <AthleteResultPanel
+              athleteName={profile.athleteName}
+              teamName={profile.teamName}
+              rule={rule}
+              date={date}
+              opponent={opponent}
+              notes={notes}
+              saving={saving}
+              onDateChange={(value) => { manuallyEditedSetup.current.date = true; setDate(value); }}
+              onOpponentChange={(value) => { manuallyEditedSetup.current.opponent = true; setOpponent(value); }}
+              onNotesChange={setNotes}
+              onSave={(capture) => void saveAthleteResult(capture)}
+              onOpenAdvanced={() => {
+                setShowAdvancedSetup(true);
+                setShowManualSetup(true);
+              }}
+            />
+            {showAdvancedSetup && (
+              <div data-testid="advanced-team-stats-setup">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-accent">Advanced team stats</p>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground">Use the full live scoreboard, play-by-play, team attribution, and supporter link.</p>
+                  </div>
+                  <button type="button" onClick={() => { setShowAdvancedSetup(false); setShowManualSetup(false); }} className="inline-flex min-h-10 min-w-10 items-center justify-center border border-border text-muted-foreground hover:border-primary hover:text-foreground" aria-label="Close advanced team stats setup"><X className="h-4 w-4" /></button>
+                </div>
+                <StatTrackerStartPanel
+                  label={rule.label}
+                  date={date}
+                  opponent={opponent}
+                  notes={notes}
+                  showManualSetup={showManualSetup}
+                  onToggleManualSetup={() => setShowManualSetup((value) => !value)}
+                  onDateChange={(value) => { manuallyEditedSetup.current.date = true; setDate(value); }}
+                  onOpponentChange={(value) => { manuallyEditedSetup.current.opponent = true; setOpponent(value); }}
+                  onNotesChange={setNotes}
+                  onStartGame={beginGame}
+                  onReviewPreviousGames={reviewPreviousGames}
+                />
+              </div>
+            )}
+          </div>
           <section className="border border-border bg-card p-6 text-card-foreground clip-angled-sm sm:p-8" data-testid="stat-tracker-season-snapshot">
             <p className="text-xs font-bold uppercase tracking-widest text-primary">Season snapshot</p>
             <div className="mt-5 grid grid-cols-2 gap-3">

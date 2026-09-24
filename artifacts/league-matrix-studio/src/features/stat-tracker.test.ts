@@ -11,6 +11,7 @@ import {
   buildGameReport,
   clearStoredTrackerConflict,
   countStatEventsByAttribution,
+  createAthleteResultGame,
   createGameSession,
   endGame,
   getPreferredTrackerSport,
@@ -40,6 +41,7 @@ import {
 } from './stat-tracker';
 import {
   getNextScheduledGame,
+  AthleteResultPanel,
   LiveTrackerGame,
   persistScheduledGameStatus,
   readLocalTrackerSession,
@@ -68,6 +70,74 @@ function renderedText(renderer: { toJSON: () => ReactTestRendererNode | ReactTes
   };
   return visit(renderer.toJSON());
 }
+
+test('athlete result capture preserves final score, notes, and athlete attribution without deriving score from stats', () => {
+  const completed = createAthleteResultGame('basketball', {
+    date: '2026-09-24',
+    opponent: 'Northside',
+    score: 52,
+    opponentScore: 48,
+    notes: 'Hit the go-ahead shot.',
+    stats: { 'three-point': 3, rebound: 5 },
+  }, new Date('2026-09-24T20:00:00.000Z'));
+
+  assert.equal(completed.status, 'final');
+  assert.equal(completed.score, 52);
+  assert.equal(completed.opponentScore, 48);
+  assert.equal(completed.notes, 'Hit the go-ahead shot.');
+  assert.deepEqual(completed.stats, { 'three-point': 3, rebound: 5 });
+  assert.equal(completed.events.length, 8);
+  assert.ok(completed.events.every((event) => event.attribution === 'athlete'));
+  assert.equal(completed.startedAt, '2026-09-24T20:00:00.000Z');
+  assert.equal(completed.endedAt, '2026-09-24T20:00:00.000Z');
+});
+
+test('athlete result panel defaults to result entry, supports skipping stats, and keeps advanced team stats separate', () => {
+  let savedCapture: Parameters<React.ComponentProps<typeof AthleteResultPanel>['onSave']>[0] | null = null;
+  let openedAdvanced = false;
+  let renderer!: ReturnType<typeof create>;
+
+  act(() => {
+    renderer = create(createElement(AthleteResultPanel, {
+      athleteName: 'Jordan Lee',
+      teamName: 'Falcons',
+      rule: getSportRule('basketball'),
+      date: '2026-09-24',
+      opponent: 'Northside',
+      notes: 'Great finish.',
+      saving: false,
+      onDateChange: () => {},
+      onOpponentChange: () => {},
+      onNotesChange: () => {},
+      onSave: (capture) => { savedCapture = capture; },
+      onOpenAdvanced: () => { openedAdvanced = true; },
+    }));
+  });
+
+  assert.ok(renderer.root.findByProps({ 'data-testid': 'athlete-result-panel' }));
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'athlete-result-stat-fields' }).length, 0);
+  assert.match(renderedText(renderer), /Optional athlete stats/);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'button-add-athlete-stats' }).props.onClick());
+  assert.ok(renderer.root.findByProps({ 'data-testid': 'input-athlete-result-stat-three-point' }));
+  act(() => renderer.root.findByProps({ 'data-testid': 'input-athlete-result-stat-three-point' }).props.onChange({ currentTarget: { value: '4' } }));
+  act(() => renderer.root.findByProps({ 'data-testid': 'button-skip-athlete-stats' }).props.onClick());
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'athlete-result-stat-fields' }).length, 0);
+  assert.match(renderedText(renderer), /Stats skipped/);
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'button-save-athlete-result' }).props.onClick());
+  assert.deepEqual(savedCapture, {
+    date: '2026-09-24',
+    opponent: 'Northside',
+    score: 0,
+    opponentScore: 0,
+    notes: 'Great finish.',
+    stats: {},
+  });
+
+  act(() => renderer.root.findByProps({ 'data-testid': 'button-open-advanced-team-stats' }).props.onClick());
+  assert.equal(openedAdvanced, true);
+});
 
 test('mobile live game keeps scoreboard and stat controls ahead of recent activity', () => {
   const game = createGameSession('basketball', { opponent: 'Northside' }, new Date('2026-09-17T12:00:00Z'));

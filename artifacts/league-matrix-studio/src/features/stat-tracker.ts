@@ -460,6 +460,59 @@ export function addStatEvent(
   };
 }
 
+export function addAthleteStatEvent(
+  game: GameSession,
+  statId: string,
+  now = new Date(),
+): GameSession {
+  const withEvent = addStatEvent(game, statId, now, 0, 'athlete');
+  return withEvent === game ? game : { ...withEvent, score: game.score };
+}
+
+export type AthleteResultCapture = {
+  date: string;
+  opponent: string;
+  score: number;
+  opponentScore: number;
+  notes: string;
+  stats: Record<string, number>;
+};
+
+export function createAthleteResultGame(
+  sport: Sport,
+  capture: AthleteResultCapture,
+  now = new Date(),
+): GameSession {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(capture.date)) {
+    throw new Error('Choose a valid game date.');
+  }
+  if (
+    !Number.isInteger(capture.score)
+    || capture.score < 0
+    || !Number.isInteger(capture.opponentScore)
+    || capture.opponentScore < 0
+  ) {
+    throw new Error('Scores must be whole numbers greater than or equal to zero.');
+  }
+
+  let game = createGameSession(sport, {
+    date: capture.date,
+    opponent: capture.opponent,
+    notes: capture.notes,
+  }, now);
+  for (const [statId, count] of Object.entries(capture.stats)) {
+    if (!Number.isInteger(count) || count < 1 || count > 99) continue;
+    for (let index = 0; index < count; index += 1) {
+      game = addAthleteStatEvent(game, statId, now);
+    }
+  }
+  return endGame({
+    ...game,
+    score: capture.score,
+    opponentScore: capture.opponentScore,
+  }, now);
+}
+
 export function addFootballPassReception(
   game: GameSession,
   now = new Date(),
