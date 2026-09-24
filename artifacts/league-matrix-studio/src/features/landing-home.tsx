@@ -267,7 +267,7 @@ export function PublicLandingPage() {
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Follow the game</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Keep game-day details and important moments easy to follow.
+                  Our Live Stat Tracker lets you log the big plays. Share with others to follow in real time.
                 </p>
               </div>
 
