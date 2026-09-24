@@ -673,6 +673,7 @@ import { ClerkProvider } from '@clerk/react';
 import { HypeCardEditor } from './src/features/hype-card';
 import { ChecklistPage } from './src/App';
 import { MeetingCapture } from './src/features/meeting-capture';
+import { NotificationSettings } from './src/features/notification-settings';
 import { SupporterDashboardView, SupporterProfileView } from './src/features/supporter-dashboard';
 import { useCachedSupporterPhoto } from './src/features/supporter-photo-cache';
 import { LiveTrackerGame } from './src/features/stat-tracker-page';
@@ -1034,6 +1035,38 @@ export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const requestUrl = typeof input === 'string' ? input : input.url;
+    if (window.location.search.includes('notification-preferences')) {
+      if (requestUrl.endsWith('/api/notifications/config')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          available: true,
+          publicKey: 'BROWSER_TEST_PUBLIC_KEY',
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      if (requestUrl.endsWith('/api/notifications/preferences')) {
+        const preferencesStorageKey = 'browser-test-notification-preferences';
+        const requestLogStorageKey = 'browser-test-notification-preference-requests';
+        const method = String(init?.method || 'GET').toUpperCase();
+        if (method === 'PATCH') {
+          const body = JSON.parse(String(init?.body || '{}'));
+          const requests = JSON.parse(window.localStorage.getItem(requestLogStorageKey) || '[]');
+          requests.push({ method, url: new URL(requestUrl, window.location.href).pathname, body });
+          window.localStorage.setItem(requestLogStorageKey, JSON.stringify(requests));
+          window.localStorage.setItem(preferencesStorageKey, JSON.stringify(body));
+          return Promise.resolve(new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }));
+        }
+        const preferences = JSON.parse(window.localStorage.getItem(preferencesStorageKey) || '{"oneHourBefore":true,"dayOf":false}');
+        return Promise.resolve(new Response(JSON.stringify(preferences), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+    }
     if (requestUrl.includes('/api/hype-card-shares/reply-inbox')) {
       return Promise.resolve(new Response(JSON.stringify({ groups: [], unreadCount: 0, totalCount: 0 }), {
         status: 200,
@@ -1062,6 +1095,14 @@ export function mount() {
     }
     return originalFetch(input, init);
   };
+  if (window.location.search.includes('notification-preferences')) {
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { ready: Promise.resolve({}) },
+    });
+    Object.defineProperty(window, 'PushManager', { configurable: true, value: function PushManager() {} });
+    Object.defineProperty(window, 'Notification', { configurable: true, value: { requestPermission: async () => 'denied' } });
+  }
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const root = createRoot(document.getElementById('test-root'));
   if (window.location.search.includes('profile-propagation')) {
@@ -1123,6 +1164,12 @@ export function mount() {
         ),
       )),
     );
+    return;
+  }
+  if (window.location.search.includes('notification-preferences')) {
+    root.render(createElement(QueryClientProvider, { client: queryClient },
+      createElement(NotificationSettings),
+    ));
     return;
   }
   const renderDashboard = () => root.render(
@@ -1291,6 +1338,149 @@ async function pressKey(connection: DevToolsConnection, sessionId: string, key: 
     nativeVirtualKeyCode: keyCode,
   }, sessionId);
 }
+
+test('notification reminder choices persist after reload and use the preferences API contract', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('notification-preferences-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-notification-preferences-'));
+
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?notification-preferences`,
+    );
+
+    const preferencesExpression = `(() => {
+      const oneHour = document.querySelector('[data-testid="checkbox-reminder-one-hour"]');
+      const dayOf = document.querySelector('[data-testid="checkbox-reminder-day-of"]');
+      return {
+        ready: oneHour instanceof HTMLInputElement && dayOf instanceof HTMLInputElement && !oneHour.disabled && !dayOf.disabled,
+        oneHourBefore: oneHour instanceof HTMLInputElement ? oneHour.checked : null,
+        dayOf: dayOf instanceof HTMLInputElement ? dayOf.checked : null,
+      };
+    })()`;
+    await waitFor(
+      connection,
+      page.sessionId,
+      preferencesExpression,
+      (value: { ready: boolean }) => value.ready,
+    );
+    assert.deepEqual(
+      await connection.evaluate(preferencesExpression, page.sessionId),
+      { ready: true, oneHourBefore: true, dayOf: false },
+    );
+
+    const clickPreference = async (testId: string, expectedRequestCount: number) => {
+      await connection!.evaluate(`document.querySelector('[data-testid="${testId}"]')?.click()`, page!.sessionId);
+      await waitFor(
+        connection!,
+        page!.sessionId,
+        `JSON.parse(localStorage.getItem('browser-test-notification-preference-requests') || '[]').length`,
+        (value: number) => value === expectedRequestCount,
+      );
+    };
+
+    await clickPreference('checkbox-reminder-one-hour', 1);
+    await clickPreference('checkbox-reminder-day-of', 2);
+    assert.deepEqual(
+      await connection.evaluate(preferencesExpression, page.sessionId),
+      { ready: true, oneHourBefore: false, dayOf: true },
+    );
+
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      preferencesExpression,
+      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null }) => (
+        value.ready && value.oneHourBefore === false && value.dayOf === true
+      ),
+    );
+
+    await clickPreference('checkbox-reminder-one-hour', 3);
+    await clickPreference('checkbox-reminder-day-of', 4);
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      preferencesExpression,
+      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null }) => (
+        value.ready && value.oneHourBefore === true && value.dayOf === false
+      ),
+    );
+
+    assert.deepEqual(
+      await connection.evaluate<Array<{
+        method: string;
+        url: string;
+        body: { oneHourBefore: boolean; dayOf: boolean };
+      }>>(`JSON.parse(localStorage.getItem('browser-test-notification-preference-requests') || '[]')`, page.sessionId),
+      [
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: false } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: true } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: true } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: false } },
+      ],
+    );
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
 
 test('supporter dashboard tools stay keyboard reachable and compact at phone and desktop widths', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
