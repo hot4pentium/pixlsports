@@ -73,6 +73,14 @@ test("public Game On Card hides private event prep and only exposes deliberate d
     shareId = createdShare.shareToken;
     shareToken = createdShare.shareToken;
 
+    await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: `${eventId}-other`,
+      athleteName: "Alex Tiger",
+      teamName: "Tigers",
+      game: { status: "live", opponent: "Falcons" },
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
     const response = await fetch(`http://127.0.0.1:${address.port}/api/game-on-cards/${shareToken}`);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("cache-control"), "no-store");
@@ -93,6 +101,7 @@ test("public Game On Card hides private event prep and only exposes deliberate d
     assert.doesNotMatch(publicJson, /PRIVATE (SNACKS|DRINKS|EVENT NOTES)/);
     assert.equal("prepShareToken" in card, false);
     assert.equal("statsShareToken" in card, false);
+    assert.equal("statsUpdatedAt" in card, false);
     assert.equal("athletePageToken" in card, false);
 
     const checklistBody = CreateChecklistShareBody.parse({
@@ -144,12 +153,24 @@ test("public Game On Card hides private event prep and only exposes deliberate d
     const linkedCard = GetGameOnCardResponse.parse(await linkedResponse.json());
     assert.equal(linkedCard.statsState, "live");
     assert.equal(linkedCard.statsShareToken, trackerShare.id);
+    assert.equal(linkedCard.statsUpdatedAt?.toISOString(), trackerShare.updatedAt.toISOString());
     assert.equal(linkedCard.athletePageState, "published");
     assert.equal(linkedCard.athleteName, "Alex Tiger");
     assert.ok(linkedCard.athletePageToken);
 
+    const refreshedAt = new Date("2026-10-03T15:20:00.000Z");
     await db.update(statTrackerSharesTable).set({
       game: { status: "final", opponent: "Ravens" },
+      updatedAt: refreshedAt,
+    }).where(eq(statTrackerSharesTable.id, trackerShare.id));
+    const refreshedResponse = await fetch(`http://127.0.0.1:${address.port}/api/game-on-cards/${shareToken}`);
+    const refreshedCard = GetGameOnCardResponse.parse(await refreshedResponse.json());
+    assert.equal(refreshedCard.statsState, "final");
+    assert.equal(refreshedCard.statsShareToken, trackerShare.id);
+    assert.equal(refreshedCard.statsUpdatedAt?.toISOString(), refreshedAt.toISOString());
+    assert.notEqual(refreshedCard.statsUpdatedAt?.toISOString(), linkedCard.statsUpdatedAt?.toISOString());
+
+    await db.update(statTrackerSharesTable).set({
       expiresAt: new Date(Date.now() - 60 * 1000),
     }).where(eq(statTrackerSharesTable.id, trackerShare.id));
     await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
@@ -158,6 +179,7 @@ test("public Game On Card hides private event prep and only exposes deliberate d
     assert.equal(completedCard.stage, "final");
     assert.equal(completedCard.statsState, "expired");
     assert.equal("statsShareToken" in completedCard, false);
+    assert.equal("statsUpdatedAt" in completedCard, false);
     assert.equal(completedCard.athletePageState, "paused");
     assert.equal("athletePageToken" in completedCard, false);
 

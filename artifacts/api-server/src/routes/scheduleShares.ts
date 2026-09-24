@@ -249,7 +249,10 @@ router.get("/game-on-cards/:shareToken", async (req, res): Promise<void> => {
       ...(checklistShare ? { prepShareToken: checklistShare.id } : {}),
       statsState,
       ...(activeStatTrackerShare && trackedStage
-        ? { statsShareToken: activeStatTrackerShare.id }
+        ? {
+          statsShareToken: activeStatTrackerShare.id,
+          statsUpdatedAt: activeStatTrackerShare.updatedAt.toISOString(),
+        }
         : {}),
       athletePageState: !athletePage ? "unpublished" : athletePage.paused ? "paused" : "published",
       ...(athletePage && !athletePage.paused

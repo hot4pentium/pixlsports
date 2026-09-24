@@ -276,6 +276,7 @@ export const GetGameOnCardResponse = zod.object({
   "prepShareToken": zod.string().uuid().optional(),
   "statsState": zod.enum(['not-shared', 'live', 'final', 'expired']),
   "statsShareToken": zod.string().uuid().optional(),
+  "statsUpdatedAt": zod.coerce.date().optional().describe('Last tracker share update, present only for an active event-specific live or final stats share.'),
   "athletePageState": zod.enum(['unpublished', 'paused', 'published']),
   "athletePageToken": zod.string().max(getGameOnCardResponseAthletePageTokenMax).optional(),
   "athleteName": zod.string().max(getGameOnCardResponseAthleteNameMax).optional()

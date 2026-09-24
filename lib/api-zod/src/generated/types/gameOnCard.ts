@@ -21,6 +21,8 @@ export interface GameOnCard {
   prepShareToken?: string;
   statsState: GameOnCardStatsState;
   statsShareToken?: string;
+  /** Last tracker share update, present only for an active event-specific live or final stats share. */
+  statsUpdatedAt?: Date;
   athletePageState: GameOnCardAthletePageState;
   /** @maxLength 100 */
   athletePageToken?: string;

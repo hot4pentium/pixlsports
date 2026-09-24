@@ -1720,6 +1720,10 @@ components:
         prepShareToken: { type: string, format: uuid }
         statsState: { type: string, enum: [not-shared, live, final, expired] }
         statsShareToken: { type: string, format: uuid }
+        statsUpdatedAt:
+          type: string
+          format: date-time
+          description: Last tracker share update, present only for an active event-specific live or final stats share.
         athletePageState: { type: string, enum: [unpublished, paused, published] }
         athletePageToken: { type: string, maxLength: 100 }
         athleteName: { type: string, maxLength: 200 }

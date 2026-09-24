@@ -628,6 +628,10 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
   const stageLabel = data.stage === 'final' ? 'Game complete' : data.stage === 'live' ? 'Game in progress' : 'Upcoming game';
   const prepHref = data.prepShareToken ? `/checklist/${data.prepShareToken}` : undefined;
   const statsHref = data.statsShareToken ? `/live/${data.statsShareToken}` : undefined;
+  const statsUpdatedAt = statsHref && data.statsUpdatedAt ? new Date(data.statsUpdatedAt) : undefined;
+  const statsUpdatedLabel = statsUpdatedAt && isValid(statsUpdatedAt)
+    ? format(statsUpdatedAt, 'MMM d, yyyy · h:mm a')
+    : undefined;
   const athletePageHref = data.athletePageToken ? `/player/${data.athletePageToken}` : undefined;
   const statsTitle = data.stage === 'final' ? 'Game stats' : 'Live stats';
   const statsDetail = data.statsState === 'expired'
@@ -720,6 +724,11 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
                   <p className="text-[10px] font-bold uppercase tracking-[.22em] text-white/50">{stageLabel}</p>
                   <h1 className="mt-2 font-display text-4xl uppercase tracking-wide sm:text-6xl">{statsTitle}</h1>
                   <p className="mt-4 max-w-xl text-base font-medium leading-relaxed text-white/70">{statsDetail}</p>
+                  {statsUpdatedLabel && (data.statsState === 'live' || data.statsState === 'final') && (
+                    <p className="mt-3 text-xs font-semibold text-white/65" data-testid="game-on-stats-updated">
+                      Stats last updated <time dateTime={data.statsUpdatedAt}>{statsUpdatedLabel}</time>
+                    </p>
+                  )}
                   {statsHref && (
                     <Link href={statsHref} className="mt-7 inline-flex min-h-12 w-fit items-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-white hover:text-[#0B1F3A]" data-testid="game-on-stats-link">
                       {data.statsState === 'final' ? 'View final stats' : 'Follow live stats'} <ArrowRight className="h-4 w-4" />
