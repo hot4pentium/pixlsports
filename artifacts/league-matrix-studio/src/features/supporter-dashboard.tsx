@@ -772,6 +772,13 @@ export function SupporterDashboardView({
               <p className="workspace-nav-eyebrow">Athlete workspace</p>
               <h2 id="mobile-workspace-heading">Everything for {profile.athleteName || 'your athlete'}</h2>
               <p>Open any tool whenever you need it. Your athlete stays at the center.</p>
+              <a
+                href="#game-on-card-panel"
+                className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 bg-[#2474F5] px-4 py-3 text-xs font-bold uppercase tracking-widest text-white"
+                data-testid="link-mobile-game-on-card"
+              >
+                <Zap className="h-4 w-4" aria-hidden="true" /> Create a Game On Card
+              </a>
             </div>
             <nav className="workspace-tool-grid" aria-label="Athlete workspace tools">
               {workspaceTools.map(({ id, label, description, Icon, href }) => (
@@ -1068,18 +1075,12 @@ export function SupporterDashboardView({
               {gameStage === 'live' && contextEvent?.type === 'practice' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
               {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
               {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
+              <a href="#game-on-card-panel" className="inline-flex min-h-12 items-center justify-center gap-2 border border-white/30 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-primary" data-testid="link-desktop-game-on-card"><Zap className="h-4 w-4 text-primary" /> Create a Game On Card</a>
             </div>
           </div>
         </div>
         </section>
       </div>
-
-      <GameOnCardPanel
-        profile={profile}
-        userId={userId}
-        events={events}
-        selectedEvent={contextEvent?.type === 'game' ? contextEvent : nextGame}
-      />
 
       <section className="dashboard-week-path-panel workspace-panel animate-slide-up delay-200" data-testid="section-desktop-workspace" aria-labelledby="desktop-workspace-heading">
         <div className="workspace-panel-heading">
@@ -1320,6 +1321,12 @@ export function SupporterDashboardView({
 
     </div>
       </div>
+      <GameOnCardPanel
+        profile={profile}
+        userId={userId}
+        events={events}
+        selectedEvent={contextEvent?.type === 'game' ? contextEvent : nextGame}
+      />
     </>
   );
 }

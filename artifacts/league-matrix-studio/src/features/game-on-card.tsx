@@ -336,6 +336,7 @@ export function GameOnCardPanel({
 
   return (
     <section
+      id="game-on-card-panel"
       className="mx-auto w-full max-w-[1400px] px-4 pb-5 sm:px-8"
       aria-labelledby="game-on-card-heading"
       data-testid="game-on-card-panel"
