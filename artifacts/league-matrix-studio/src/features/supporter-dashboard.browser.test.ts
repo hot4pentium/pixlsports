@@ -1064,13 +1064,15 @@ function ChecklistContextHarness() {
 function WorkspaceJourneyHarness() {
   const [location] = useLocation();
   const route = new URLSearchParams(window.location.search).get('route');
-  const events = [{
+  const defaultEvents = [{
     id: 'game-default', type: 'game', status: 'upcoming',
     date: '2026-10-12', time: '18:30', location: 'Main Gym', opponent: 'Falcons',
   }, {
     id: 'game-selected', type: 'game', status: 'upcoming',
     date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers',
   }];
+  const savedDraft = JSON.parse(window.localStorage.getItem('leaguematrix-schedule-draft') || 'null');
+  const events = Array.isArray(savedDraft?.events) ? savedDraft.events : defaultEvents;
   const tool = location.startsWith('/studio/') ? location : route ? '/studio/' + route : '';
   return createElement('main', { 'data-testid': 'workspace-journey-harness' },
     createElement('button', { type: 'button', 'data-testid': 'journey-return-dashboard', onClick: () => navigate('/') }, 'Dashboard'),
@@ -3151,6 +3153,137 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     const requests = JSON.parse((await readHype()).requests) as { path: string; method: string; body: string }[];
     assert.ok(requests.some((request) => request.path === '/api/projects' && request.method === 'GET'));
     assert.ok(requests.every((request) => request.method === 'GET'), 'prefill must never publish without an explicit action');
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('deleting selected games and practices falls back across Calendar and workspace tools', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-removed-workspace-event-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  let tempDirectory: string | undefined;
+  try {
+    const probe = createServer();
+    const { port: vitePort } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(vitePort), BASE_PATH: '/', REPL_ID: '' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-removed-workspace-event-'));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const { webSocketDebuggerUrl } = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`;
+    const fixtureRoute = (route: string, params = '') =>
+      `${fixtureUrl}?workspace-journey&viewer=workspace-journey&route=${route}${params}`;
+    page = await openPage(connection, `${fixtureUrl}?workspace-journey&viewer=workspace-journey`);
+    const session = page.sessionId;
+    const click = (id: string) => connection!.evaluate(
+      `document.querySelector('[data-testid="${id}"]')?.click()`, session,
+    );
+    const links = () => connection!.evaluate<Record<string, string>>(`Object.fromEntries(
+      ['calendar', 'prep', 'stats', 'hype'].map((tool) => [
+        tool, document.querySelector('[data-testid="link-desktop-workspace-' + tool + '"]')?.getAttribute('href') || ''
+      ])
+    )`, session);
+    const schedule = {
+      version: 1, teamName: 'Northside Comets', season: '2026', template: 0,
+      events: [
+        { id: 'game-default', type: 'game', status: 'upcoming', date: '2026-10-12', time: '18:30', location: 'Main Gym', opponent: 'Falcons', snacks: '', drinks: '', notes: '' },
+        { id: 'game-selected', type: 'game', status: 'upcoming', date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers', snacks: '', drinks: '', notes: '' },
+        { id: 'practice-selected', type: 'practice', date: '2026-10-14', time: '17:00', location: 'Practice Gym', opponent: '', snacks: '', drinks: '', notes: '' },
+      ],
+    };
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-calendar\\"]"))', Boolean);
+    await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, session);
+    await click('link-desktop-workspace-calendar');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
+    await click('button-select-schedule-event-1');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-remove-event-1\\"]"))', Boolean);
+    await click('button-remove-event-1');
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
+    assert.equal(await connection.evaluate('document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]") !== null', session), true, 'game remains in Calendar');
+    await waitFor(connection, session, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(e => e.id === "game-selected")', Boolean);
+    await click('journey-return-dashboard');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]"))', Boolean);
+    const afterGame = await links();
+    for (const [tool, href] of Object.entries(afterGame)) {
+      assert.ok(href, `${tool} has a destination`);
+      assert.doesNotMatch(href, /game-selected|Tigers|2026-10-13/, `${tool} must drop the deleted game`);
+    }
+    assert.match(afterGame.calendar, /eventId=game-default/);
+    assert.match(afterGame.prep, /gameId=game-default/);
+    assert.match(afterGame.stats, /eventId=game-default/);
+    assert.match(afterGame.hype, /eventId=game-default/);
+
+    await click('link-desktop-workspace-calendar');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
+    await click('button-select-schedule-event-1');
+    await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "practice-selected"', Boolean);
+    await click('button-remove-event-1');
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
+    await waitFor(connection, session, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(e => e.id === "practice-selected")', Boolean);
+    await click('journey-return-dashboard');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]"))', Boolean);
+    const afterPractice = await links();
+    for (const [tool, href] of Object.entries(afterPractice)) {
+      assert.ok(href, `${tool} has a destination after practice deletion`);
+      assert.doesNotMatch(href, /game-selected|practice-selected|Tigers|2026-10-14/, `${tool} must drop deleted event context`);
+    }
+    assert.match(afterPractice.calendar, /eventId=game-default/);
+    assert.match(afterPractice.prep, /gameId=game-default/);
+    assert.match(afterPractice.stats, /eventId=game-default/);
+    assert.match(afterPractice.hype, /eventId=game-default/);
+
+    await navigatePage(connection, page, fixtureRoute('checklist', `&${afterPractice.prep.split('?')[1]}`));
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-default"', Boolean);
+    await navigatePage(connection, page, fixtureRoute('stat-tracker', `&${afterPractice.stats.split('?')[1]}`));
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Falcons"', Boolean);
+    await navigatePage(connection, page, fixtureRoute('hype-card', `&${afterPractice.hype.split('?')[1]}`));
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready") === true', Boolean);
+    await navigatePage(connection, page, fixtureRoute('schedule', '&eventId=practice-selected'));
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
+    await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=practice-selected&eventType=practice'));
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"select-checklist-game\\"]"))', Boolean);
+    assert.notEqual(await connection.evaluate<string>('document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value || ""', session), 'practice-selected');
+    await navigatePage(connection, page, fixtureRoute('stat-tracker', '&date=2026-10-12&opponent=Falcons'));
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Falcons"', Boolean);
+    await navigatePage(connection, page, fixtureRoute('hype-card', '&date=2026-10-12&opponent=Falcons'));
+    await waitFor(connection, session, 'document.body?.innerText?.includes("Hype Cards") === true', Boolean);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
