@@ -124,6 +124,23 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /game-on-cards/owned:
+    get:
+      operationId: listOwnedGameOnCards
+      tags: [game-on-cards]
+      summary: List owned Game On Cards
+      description: Lists the caller's explicitly marked Game On Card shares containing exactly one game or practice event. Older device-saved cards remain available on their original device.
+      responses:
+        "200":
+          description: Owned Game On Cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleShare"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /game-on-cards/{shareToken}:
     parameters:
       - $ref: "#/components/parameters/ScheduleShareToken"
@@ -1674,6 +1691,10 @@ components:
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         teamSeason: { type: string, maxLength: 200 }
+        purpose:
+          type: string
+          enum: [game-on-card]
+          description: Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response.
         events:
           type: array
           maxItems: 50
@@ -1700,7 +1721,7 @@ components:
       required: [id, type, date, time, location, opponent]
       properties:
         id: { type: string }
-        type: { type: string, enum: [game] }
+        type: { type: string, enum: [game, practice] }
         status: { type: string, enum: [upcoming, live, final] }
         date: { type: string }
         time: { type: string }

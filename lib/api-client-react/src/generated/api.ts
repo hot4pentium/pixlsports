@@ -523,6 +523,84 @@ export const useDeleteScheduleShare = <TError = ErrorType<UnauthorizedResponse |
       return useMutation(getDeleteScheduleShareMutationOptions(options));
     }
 
+export const getListOwnedGameOnCardsUrl = () => {
+
+
+
+
+  return `/api/game-on-cards/owned`
+}
+
+/**
+ * Lists the caller's explicitly marked Game On Card shares containing exactly one game or practice event. Older device-saved cards remain available on their original device.
+ * @summary List owned Game On Cards
+ */
+export const listOwnedGameOnCards = async ( options?: Parameters<typeof customFetch>[1]): Promise<ScheduleShare[]> => {
+
+  return customFetch<ScheduleShare[]>(getListOwnedGameOnCardsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOwnedGameOnCardsQueryKey = () => {
+    return [
+    `/api/game-on-cards/owned`
+    ] as const;
+    }
+
+
+export const getListOwnedGameOnCardsQueryOptions = <TData = Awaited<ReturnType<typeof listOwnedGameOnCards>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOwnedGameOnCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOwnedGameOnCardsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOwnedGameOnCards>>> = ({ signal }) => listOwnedGameOnCards({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOwnedGameOnCards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOwnedGameOnCardsQueryResult = NonNullable<Awaited<ReturnType<typeof listOwnedGameOnCards>>>
+export type ListOwnedGameOnCardsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List owned Game On Cards
+ */
+
+export function useListOwnedGameOnCards<TData = Awaited<ReturnType<typeof listOwnedGameOnCards>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOwnedGameOnCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOwnedGameOnCardsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetGameOnCardUrl = (shareToken: string,) => {
 
 

@@ -197,6 +197,16 @@ export interface ScheduleEvent {
   notes: string;
 }
 
+/**
+ * Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response.
+ */
+export type ScheduleShareInputPurpose = typeof ScheduleShareInputPurpose[keyof typeof ScheduleShareInputPurpose];
+
+
+export const ScheduleShareInputPurpose = {
+  'game-on-card': 'game-on-card',
+} as const;
+
 export interface ScheduleShareInput {
   /**
      * @minLength 1
@@ -205,6 +215,8 @@ export interface ScheduleShareInput {
   title: string;
   /** @maxLength 200 */
   teamSeason: string;
+  /** Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response. */
+  purpose?: ScheduleShareInputPurpose;
   /** @maxItems 50 */
   events: ScheduleEvent[];
 }
@@ -222,6 +234,7 @@ export type GameOnCardEventType = typeof GameOnCardEventType[keyof typeof GameOn
 
 export const GameOnCardEventType = {
   game: 'game',
+  practice: 'practice',
 } as const;
 
 export type GameOnCardEventStatus = typeof GameOnCardEventStatus[keyof typeof GameOnCardEventStatus];

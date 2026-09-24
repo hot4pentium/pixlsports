@@ -143,6 +143,7 @@ export * from './scheduleEventStatus';
 export * from './scheduleEventType';
 export * from './scheduleShare';
 export * from './scheduleShareInput';
+export * from './scheduleShareInputPurpose';
 export * from './statTrackerConflict';
 export * from './statTrackerEvent';
 export * from './statTrackerEventAttribution';

@@ -11,4 +11,5 @@ export type GameOnCardEventType = typeof GameOnCardEventType[keyof typeof GameOn
 
 export const GameOnCardEventType = {
   game: 'game',
+  practice: 'practice',
 } as const;

@@ -48,6 +48,7 @@ export const createScheduleShareBodyEventsMax = 50;
 export const CreateScheduleShareBody = zod.object({
   "title": zod.string().min(1).max(createScheduleShareBodyTitleMax),
   "teamSeason": zod.string().max(createScheduleShareBodyTeamSeasonMax),
+  "purpose": zod.enum(['game-on-card']).optional().describe('Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response.'),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(createScheduleShareBodyEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
@@ -181,6 +182,7 @@ export const updateScheduleShareBodyEventsMax = 50;
 export const UpdateScheduleShareBody = zod.object({
   "title": zod.string().min(1).max(updateScheduleShareBodyTitleMax),
   "teamSeason": zod.string().max(updateScheduleShareBodyTeamSeasonMax),
+  "purpose": zod.enum(['game-on-card']).optional().describe('Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response.'),
   "events": zod.array(zod.object({
   "id": zod.string().min(1).max(updateScheduleShareBodyEventsItemIdMax),
   "type": zod.enum(['game', 'practice', 'meeting']),
@@ -245,6 +247,49 @@ export const DeleteScheduleShareResponse = zod.void()
 
 
 /**
+ * Lists the caller's explicitly marked Game On Card shares containing exactly one game or practice event. Older device-saved cards remain available on their original device.
+ * @summary List owned Game On Cards
+ */
+export const listOwnedGameOnCardsResponseEventsItemIdMax = 100;
+
+export const listOwnedGameOnCardsResponseEventsItemDateMax = 30;
+
+export const listOwnedGameOnCardsResponseEventsItemTimeMax = 30;
+
+export const listOwnedGameOnCardsResponseEventsItemLocationMax = 300;
+
+export const listOwnedGameOnCardsResponseEventsItemOpponentMax = 200;
+
+export const listOwnedGameOnCardsResponseEventsItemSnacksMax = 300;
+
+export const listOwnedGameOnCardsResponseEventsItemDrinksMax = 300;
+
+export const listOwnedGameOnCardsResponseEventsItemNotesMax = 1000;
+
+
+
+export const ListOwnedGameOnCardsResponseItem = zod.object({
+  "shareToken": zod.string().uuid(),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "events": zod.array(zod.object({
+  "id": zod.string().min(1).max(listOwnedGameOnCardsResponseEventsItemIdMax),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
+  "date": zod.string().max(listOwnedGameOnCardsResponseEventsItemDateMax),
+  "time": zod.string().max(listOwnedGameOnCardsResponseEventsItemTimeMax),
+  "location": zod.string().max(listOwnedGameOnCardsResponseEventsItemLocationMax),
+  "opponent": zod.string().max(listOwnedGameOnCardsResponseEventsItemOpponentMax),
+  "snacks": zod.string().max(listOwnedGameOnCardsResponseEventsItemSnacksMax),
+  "drinks": zod.string().max(listOwnedGameOnCardsResponseEventsItemDrinksMax),
+  "notes": zod.string().max(listOwnedGameOnCardsResponseEventsItemNotesMax)
+})),
+  "createdAt": zod.coerce.date()
+})
+export const ListOwnedGameOnCardsResponse = zod.array(ListOwnedGameOnCardsResponseItem)
+
+
+/**
  * Returns one sanitized event and only destinations the owner has deliberately shared.
  * @summary Get a public event-specific Game On Card
  */
@@ -264,7 +309,7 @@ export const GetGameOnCardResponse = zod.object({
   "teamSeason": zod.string(),
   "event": zod.object({
   "id": zod.string(),
-  "type": zod.enum(['game']),
+  "type": zod.enum(['game', 'practice']),
   "status": zod.enum(['upcoming', 'live', 'final']).optional(),
   "date": zod.string(),
   "time": zod.string(),

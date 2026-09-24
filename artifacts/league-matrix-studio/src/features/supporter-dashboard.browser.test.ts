@@ -509,6 +509,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         heroCornerRadius: string;
         heroCardsContained: boolean;
         heroKickerFits: boolean;
+        collectionVisible: boolean;
+        collectionLeadsHero: boolean;
+        collectionFits: boolean;
         gameOnEntryVisible: boolean;
         gameOnEntryFollowsHero: boolean;
         gameOnEntryPrecedesWorkspace: boolean;
@@ -517,6 +520,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const root = document.querySelector('.supporter-dashboard-mobile-shell');
         const header = document.querySelector('[data-testid="mobile-header"]');
         const hero = document.querySelector('[data-testid="mobile-hero-banner"]');
+        const collection = root?.querySelector('[data-testid="game-on-dashboard-collection"]');
         const gameOnEntry = document.querySelector('[data-testid="mobile-game-on-entry"]');
         const workspace = document.querySelector('[data-testid="section-mobile-workspace"]');
         const columns = document.querySelector('.mobile-hero-columns');
@@ -524,6 +528,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
         const eventKicker = document.querySelector('.mobile-featured-event-kicker');
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
+          || !(collection instanceof HTMLElement)
           || !(gameOnEntry instanceof HTMLElement) || !(workspace instanceof HTMLElement)
           || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
           || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
@@ -557,6 +562,10 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
             && eventRect.left >= heroRect.left
             && eventRect.right <= heroRect.right,
           heroKickerFits: eventKicker.scrollWidth <= eventKicker.clientWidth,
+          collectionVisible: getComputedStyle(collection).display !== 'none',
+          collectionLeadsHero: Boolean(collection.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING),
+          collectionFits: collection.getBoundingClientRect().left >= -1
+            && collection.getBoundingClientRect().right <= innerWidth + 1,
           gameOnEntryVisible: getComputedStyle(gameOnEntry).display !== 'none',
           gameOnEntryFollowsHero: Boolean(hero.compareDocumentPosition(gameOnEntry) & Node.DOCUMENT_POSITION_FOLLOWING),
           gameOnEntryPrecedesWorkspace: Boolean(gameOnEntry.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING),
@@ -576,6 +585,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         heroCornerRadius: '24px',
         heroCardsContained: true,
         heroKickerFits: true,
+        collectionVisible: true,
+        collectionLeadsHero: true,
+        collectionFits: true,
         gameOnEntryVisible: true,
         gameOnEntryFollowsHero: true,
         gameOnEntryPrecedesWorkspace: true,
@@ -595,10 +607,13 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       entryFollowsEvent: boolean;
       entryPrecedesWorkspace: boolean;
       entryTarget: string | null;
+      collectionLeadsHero: boolean;
     }>(`(() => {
       const entry = document.querySelector('[data-testid="desktop-game-on-entry"]');
       const event = document.querySelector('[data-testid="section-next-game-context"]');
       const workspace = document.querySelector('[data-testid="section-desktop-workspace"]');
+      const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
+      const hero = document.querySelector('.supporter-dashboard-desktop-shell .dashboard-hero-banner');
       if (!(entry instanceof HTMLElement) || !(event instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
         throw new Error('Desktop Game On Card entry is incomplete');
       }
@@ -607,13 +622,26 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         entryFollowsEvent: Boolean(event.compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING),
         entryPrecedesWorkspace: Boolean(entry.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING),
         entryTarget: entry.querySelector('a')?.getAttribute('href') || null,
+        collectionLeadsHero: Boolean(collection && hero && (collection.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING)),
       };
     })()`, page.sessionId), {
       entryVisible: true,
       entryFollowsEvent: true,
       entryPrecedesWorkspace: true,
       entryTarget: '#game-on-card-panel',
+      collectionLeadsHero: true,
     });
+
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-type\\"]")?.value === "game"', Boolean);
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-game-on-type"]');
+      if (!(select instanceof HTMLSelectElement)) throw new Error('Event type picker missing');
+      select.value = 'practice';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-type\\"]")?.value === "practice"', Boolean);
+    assert.equal(await connection.evaluate('document.querySelector("[data-testid=\\"input-game-on-opponent\\"]") === null', page.sessionId), true);
 
     assert.deepEqual(await connection.evaluate<{
       profileTag: string;
@@ -1145,6 +1173,11 @@ export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const requestUrl = typeof input === 'string' ? input : input.url;
+    if (new URL(requestUrl, window.location.href).pathname === '/api/game-on-cards/owned') {
+      return Promise.resolve(new Response('[]', {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
     if (
       window.location.search.includes('supporter-active-game-sync')
       && requestUrl.endsWith('/api/supporter/active-game')

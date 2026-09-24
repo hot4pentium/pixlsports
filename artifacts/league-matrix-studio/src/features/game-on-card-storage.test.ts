@@ -3,9 +3,12 @@ import test from 'node:test';
 
 import {
   gameOnCardStorageKey,
+  gameOnCardStorageListKey,
+  readSavedGameOnCards,
   readSavedGameOnCard,
   removeSavedGameOnCard,
   revokeGameOnCardForScheduleEvent,
+  upsertSavedGameOnCard,
   writeSavedGameOnCard,
   type SavedGameOnCard,
 } from './game-on-card-storage';
@@ -118,16 +121,138 @@ test('a failed server revocation keeps the saved card available for retry', asyn
 test('revocation does not remove a newer card saved while the request was pending', async () => {
   const storage = createStorage();
   const newerCard = savedCard('new-calendar-game', 'share-newer');
-  writeSavedGameOnCard('parent-user', savedCard('calendar-game'), storage);
+  upsertSavedGameOnCard('parent-user', savedCard('calendar-game'), storage);
 
   await revokeGameOnCardForScheduleEvent({
     userId: 'parent-user',
     eventId: 'calendar-game',
     storage,
-    revokeShare: async () => writeSavedGameOnCard('parent-user', newerCard, storage),
+    revokeShare: async () => upsertSavedGameOnCard('parent-user', newerCard, storage),
   });
 
-  assert.deepEqual(readSavedGameOnCard('parent-user', storage), newerCard);
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [newerCard]);
   assert.equal(gameOnCardStorageKey('parent-user'), 'pixlsports-game-on-card:parent-user');
   assert.equal(removeSavedGameOnCard('parent-user', 'share-linked', storage), false);
+});
+
+test('saved-card list upserts by token and keeps distinct cards and the legacy record', () => {
+  const storage = createStorage();
+  const legacy = savedCard('legacy-event', 'legacy-token');
+  const first = savedCard('event-one', 'share-one');
+  const second = savedCard('event-two', 'share-two');
+  const replacement = { ...first, title: 'Updated title' };
+  writeSavedGameOnCard('parent-user', legacy, storage);
+  upsertSavedGameOnCard('parent-user', first, storage);
+  upsertSavedGameOnCard('parent-user', second, storage);
+  upsertSavedGameOnCard('parent-user', replacement, storage);
+
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [
+    legacy,
+    replacement,
+    second,
+  ]);
+  assert.deepEqual(readSavedGameOnCard('parent-user', storage), legacy);
+  assert.notEqual(storage.getItem(gameOnCardStorageKey('parent-user')), null);
+});
+
+test('list reader returns only validated records and handles corrupt list JSON', () => {
+  const storage = createStorage();
+  const valid = savedCard('valid-event', 'valid-share');
+  storage.setItem(gameOnCardStorageListKey('parent-user'), JSON.stringify([
+    valid,
+    { ...valid, shareToken: 42 },
+    { ...valid, event: { ...valid.event, status: 'unknown' } },
+  ]));
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [valid]);
+
+  storage.setItem(gameOnCardStorageListKey('parent-user'), '{broken');
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), []);
+});
+
+test('a saved practice stays a practice after reload without changing legacy game records', () => {
+  const storage = createStorage();
+  const practice = {
+    ...savedCard('practice-event', 'practice-share'),
+    event: { ...savedCard('practice-event', 'practice-share').event, type: 'practice' as const, opponent: '' },
+  };
+  upsertSavedGameOnCard('parent-user', practice, storage);
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [practice]);
+  assert.equal(readSavedGameOnCards('parent-user', storage)[0]?.event.type, 'practice');
+});
+
+test('deleting an event revokes every linked list card and preserves independent cards', async () => {
+  const storage = createStorage();
+  const linkedOne = savedCard('calendar-game', 'linked-one');
+  const linkedTwo = savedCard('calendar-game', 'linked-two');
+  const independent = savedCard('standalone-game', 'independent');
+  upsertSavedGameOnCard('parent-user', linkedOne, storage);
+  upsertSavedGameOnCard('parent-user', linkedTwo, storage);
+  upsertSavedGameOnCard('parent-user', independent, storage);
+  const revoked: string[] = [];
+
+  const didRevoke = await revokeGameOnCardForScheduleEvent({
+    userId: 'parent-user',
+    eventId: 'calendar-game',
+    storage,
+    revokeShare: async (shareToken) => { revoked.push(shareToken); },
+  });
+
+  assert.equal(didRevoke, true);
+  assert.deepEqual(revoked, ['linked-one', 'linked-two']);
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [independent]);
+});
+
+test('calendar deletion also revokes owner-listed cards from another device without touching independent cards', async () => {
+  const storage = createStorage();
+  const independent = savedCard('standalone-game', 'independent');
+  upsertSavedGameOnCard('parent-user', independent, storage);
+  const revoked: string[] = [];
+  const didRevoke = await revokeGameOnCardForScheduleEvent({
+    userId: 'parent-user',
+    eventId: 'calendar-practice',
+    linkedShareTokens: ['remote-practice'],
+    storage,
+    revokeShare: async (shareToken) => { revoked.push(shareToken); },
+  });
+  assert.equal(didRevoke, true);
+  assert.deepEqual(revoked, ['remote-practice']);
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [independent]);
+});
+
+test('failed revocation preserves that list card and remaining cards for retry', async () => {
+  const storage = createStorage();
+  const first = savedCard('calendar-game', 'successful-token');
+  const failed = savedCard('calendar-game', 'failed-token');
+  const independent = savedCard('other-event', 'independent-token');
+  upsertSavedGameOnCard('parent-user', first, storage);
+  upsertSavedGameOnCard('parent-user', failed, storage);
+  upsertSavedGameOnCard('parent-user', independent, storage);
+
+  await assert.rejects(
+    revokeGameOnCardForScheduleEvent({
+      userId: 'parent-user',
+      eventId: 'calendar-game',
+      storage,
+      revokeShare: async (shareToken) => {
+        if (shareToken === 'failed-token') throw new Error('server unavailable');
+      },
+    }),
+    /server unavailable/,
+  );
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [failed, independent]);
+});
+
+test('token removal clears matching list and legacy entries only', () => {
+  const storage = createStorage();
+  const legacy = savedCard('legacy-event', 'same-token');
+  const matchingList = savedCard('list-event', 'same-token');
+  const unrelated = savedCard('other-event', 'other-token');
+  writeSavedGameOnCard('parent-user', legacy, storage);
+  upsertSavedGameOnCard('parent-user', matchingList, storage);
+  upsertSavedGameOnCard('parent-user', unrelated, storage);
+
+  assert.equal(removeSavedGameOnCard('parent-user', 'same-token', storage), true);
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), [unrelated]);
+  assert.equal(removeSavedGameOnCard('parent-user', undefined, storage), true);
+  assert.deepEqual(readSavedGameOnCards('parent-user', storage), []);
 });

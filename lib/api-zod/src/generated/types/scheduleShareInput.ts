@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ScheduleEvent } from './scheduleEvent';
+import type { ScheduleShareInputPurpose } from './scheduleShareInputPurpose';
 
 export interface ScheduleShareInput {
   /**
@@ -15,6 +16,8 @@ export interface ScheduleShareInput {
   title: string;
   /** @maxLength 200 */
   teamSeason: string;
+  /** Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response. */
+  purpose?: ScheduleShareInputPurpose;
   /** @maxItems 50 */
   events: ScheduleEvent[];
 }

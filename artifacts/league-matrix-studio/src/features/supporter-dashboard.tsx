@@ -3,7 +3,9 @@ import { Link, useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
+  getListOwnedGameOnCardsQueryKey,
   useGetSupporterActiveGame,
+  useListOwnedGameOnCards,
   useUpdateSupporterActiveGame,
 } from '@workspace/api-client-react';
 import {
@@ -33,6 +35,9 @@ import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import { GameOnCardPanel } from './game-on-card';
+import { GameOnDashboardCollection } from './game-on-dashboard-collection';
+import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
+import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
 import { trackEvent } from '../lib/analytics';
@@ -304,6 +309,28 @@ export function SupporterDashboardView({
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const ownedGameOnCardsQuery = useListOwnedGameOnCards({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getListOwnedGameOnCardsQueryKey(), userId ?? null],
+      refetchOnWindowFocus: true,
+    },
+  });
+  const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
+  const [cardSelection, setCardSelection] = useState<{ kind: 'new' | 'event' | 'share'; id?: string; nonce: number } | null>(null);
+  useEffect(() => {
+    setCardSelection(null);
+    setLocalGameOnCards(userId ? readSavedGameOnCards(userId) : []);
+    if (!userId) return;
+    const syncCards = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (event.key && event.key !== `pixlsports-game-on-card:${userId}` && event.key !== `pixlsports-game-on-cards:${userId}`) return;
+      setLocalGameOnCards(readSavedGameOnCards(userId));
+      void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
+    };
+    window.addEventListener('storage', syncCards);
+    return () => window.removeEventListener('storage', syncCards);
+  }, [userId, queryClient]);
   const selectionTouchedForUserRef = useRef<string | null>(null);
   const lastReconciledRemoteSelectionRef = useRef<{ userId: string; gameId: string | null } | null>(null);
   const [selectionSyncError, setSelectionSyncError] = useState(false);
@@ -336,6 +363,49 @@ export function SupporterDashboardView({
   );
   const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
   const contextEvent = recommendedPreparationEvent ?? nextGame;
+  const serverCardShares = ownedGameOnCardsQuery.data ?? [];
+  const serverCardTokens = new Set(serverCardShares.map((share) => share.shareToken));
+  const localCardShares: OwnedGameOnShare[] = localGameOnCards
+    .filter((card) => !serverCardTokens.has(card.shareToken))
+    .map((card) => ({
+      shareToken: card.shareToken,
+      title: card.title,
+      createdAt: card.savedAt,
+      events: [{ ...card.event, type: card.event.type ?? 'game' }],
+    }));
+  const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
+  const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime);
+  const selectedDashboardCard = dashboardCards.find((card) => card.id === cardSelection?.id);
+  const selectedCardShare = ownedGameOnShares.find((share) => share.shareToken === selectedDashboardCard?.shareToken);
+  const selectedSavedCard: SavedGameOnCard | null = selectedCardShare && selectedCardShare.events[0]
+    ? {
+      shareToken: selectedCardShare.shareToken,
+      title: selectedCardShare.title,
+      savedAt: selectedCardShare.createdAt,
+      event: {
+        id: selectedCardShare.events[0].id,
+        type: selectedCardShare.events[0].type === 'practice' ? 'practice' : 'game',
+        date: selectedCardShare.events[0].date,
+        time: selectedCardShare.events[0].time,
+        location: selectedCardShare.events[0].location,
+        opponent: selectedCardShare.events[0].opponent ?? '',
+        status: selectedCardShare.events[0].status ?? 'upcoming',
+      },
+    }
+    : null;
+  const selectedCardEvent = cardSelection?.kind === 'event'
+    ? events.find((event) => event.id === selectedDashboardCard?.eventId)
+    : undefined;
+  const openCardWorkspace = (kind: 'new' | 'event' | 'share', id?: string) => {
+    setCardSelection((previous) => ({ kind, id, nonce: (previous?.nonce ?? 0) + 1 }));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById('game-on-card-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  };
+  const handleGameOnCardChanged = () => {
+    if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
+    void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
+  };
   const gameStage: SupporterGameStage = contextEvent
       ? getSupporterGameStage(contextEvent, currentTime)
       : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
@@ -692,6 +762,14 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
+          <GameOnDashboardCollection
+            cards={dashboardCards}
+            onCreate={() => openCardWorkspace('new')}
+            onOpen={(id) => openCardWorkspace(id.startsWith('share:') ? 'share' : 'event', id)}
+          />
+          {ownedGameOnCardsQuery.isError && userId && (
+            <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
+          )}
           <section className="mobile-hero-banner" data-testid="mobile-hero-banner" aria-label="Athlete and next event">
           {/* Greeting */}
           <div>
@@ -936,6 +1014,14 @@ export function SupporterDashboardView({
             </button>
           </div>
         </div>
+      )}
+      <GameOnDashboardCollection
+        cards={dashboardCards}
+        onCreate={() => openCardWorkspace('new')}
+        onOpen={(id) => openCardWorkspace(id.startsWith('share:') ? 'share' : 'event', id)}
+      />
+      {ownedGameOnCardsQuery.isError && userId && (
+        <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
       )}
       <div className="dashboard-hero-banner">
         {/* HEADER */}
@@ -1370,10 +1456,14 @@ export function SupporterDashboardView({
     </div>
       </div>
       <GameOnCardPanel
+        key={cardSelection ? `${cardSelection.kind}:${cardSelection.id ?? ''}:${cardSelection.nonce}` : 'default'}
         profile={profile}
         userId={userId}
         events={events}
-        selectedEvent={contextEvent?.type === 'game' ? contextEvent : nextGame}
+        selectedEvent={cardSelection ? selectedCardEvent : contextEvent?.type !== 'meeting' ? contextEvent : nextGame}
+        selectedCard={cardSelection ? selectedSavedCard : undefined}
+        startFresh={cardSelection?.kind === 'new'}
+        onChanged={handleGameOnCardChanged}
       />
     </>
   );

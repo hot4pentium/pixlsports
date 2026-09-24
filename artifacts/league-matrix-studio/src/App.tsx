@@ -1,6 +1,8 @@
 import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
+  listOwnedGameOnCards,
+  getListOwnedGameOnCardsQueryKey,
   useDeleteProject,
   useCreateProject,
   useGetProject,
@@ -2101,11 +2103,19 @@ export function ScheduleEditor() {
   const removeEvent = async (id: string) => {
     setRemovingEventId(id);
     try {
+      // A card made on another device is still public, even if it is absent from this browser's saved-card list.
+      const linkedShareTokens = user?.id
+        ? (await listOwnedGameOnCards())
+          .filter((share) => share.events[0]?.id === id)
+          .map((share) => share.shareToken)
+        : [];
       const cardRevoked = await revokeGameOnCardForScheduleEvent({
         userId: user?.id,
         eventId: id,
+        linkedShareTokens,
         revokeShare: (shareToken) => deleteShare.mutateAsync({ shareToken }),
       });
+      if (cardRevoked) void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
       const removedIndex = events.findIndex((event) => event.id === id);
       const nextEvents = removeScheduleEvent(events, id);
       setEvents(nextEvents);
@@ -2120,7 +2130,7 @@ export function ScheduleEditor() {
           : 'EVENT REMOVED — SCHEDULE SAVED',
       );
     } catch {
-      setNoticeFor('GAME ON CARD LINK COULD NOT BE REVOKED — EVENT NOT REMOVED', 'error');
+      setNoticeFor('COULD NOT VERIFY OR REVOKE LINKED CARDS — EVENT NOT REMOVED. RECONNECT AND TRY AGAIN', 'error');
     } finally {
       setRemovingEventId(null);
     }

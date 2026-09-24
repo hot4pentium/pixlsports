@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getGetGameOnCardQueryKey,
   useGetGameOnCard,
@@ -29,11 +29,16 @@ import type { SupporterEvent } from './supporter-dashboard';
 import { buildWorkspaceToolHref } from './workspace-context';
 import {
   readSavedGameOnCard,
+  readSavedGameOnCards,
   removeSavedGameOnCard,
-  writeSavedGameOnCard,
+  upsertSavedGameOnCard,
   type GameOnCardEvent as GameOnDraft,
   type SavedGameOnCard,
 } from './game-on-card-storage';
+
+type GameOnEventType = 'game' | 'practice';
+type CardEvent = GameOnDraft & { type?: GameOnEventType };
+type LocalSavedGameOnCard = Omit<SavedGameOnCard, 'event'> & { event: CardEvent };
 
 type GameOnCardPanelProps = {
   profile: {
@@ -43,6 +48,9 @@ type GameOnCardPanelProps = {
   userId?: string | null;
   events: SupporterEvent[];
   selectedEvent?: SupporterEvent;
+  selectedCard?: SavedGameOnCard | null;
+  startFresh?: boolean;
+  onChanged?: () => void;
 };
 
 function createEventId() {
@@ -58,7 +66,7 @@ function dateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function blankDraft(): GameOnDraft {
+function blankDraft(type: GameOnEventType = 'game'): CardEvent {
   const suggestedDate = new Date();
   suggestedDate.setDate(suggestedDate.getDate() + 7);
   return {
@@ -68,18 +76,27 @@ function blankDraft(): GameOnDraft {
     location: '',
     opponent: '',
     status: 'upcoming',
+    type,
   };
 }
 
-function draftFromEvent(event: SupporterEvent): GameOnDraft {
+function draftFromEvent(event: SupporterEvent): CardEvent {
+  const type = event.type === 'practice' ? 'practice' : 'game';
   return {
     id: event.id,
     date: event.date,
     time: event.time,
     location: event.location,
-    opponent: event.opponent ?? '',
+    opponent: type === 'practice' ? '' : event.opponent ?? '',
     status: event.status ?? 'upcoming',
+    type,
   };
+}
+
+function eventFromSaved(saved: SavedGameOnCard): CardEvent {
+  const event = saved.event as CardEvent;
+  const type = event.type === 'practice' ? 'practice' : 'game';
+  return { ...event, type, opponent: type === 'practice' ? '' : event.opponent };
 }
 
 function appAbsoluteUrl(path: string) {
@@ -99,15 +116,15 @@ function prettyEventDate(value: string) {
   return isValid(parsed) ? format(parsed, 'EEEE, MMM d, yyyy') : value;
 }
 
-function publicEventPayload(event: GameOnDraft) {
+function publicEventPayload(event: CardEvent) {
   return {
     id: event.id,
-    type: 'game' as const,
+    type: event.type ?? 'game',
     status: event.status,
     date: event.date,
     time: event.time,
     location: event.location,
-    opponent: event.opponent.trim(),
+    opponent: event.type === 'practice' ? '' : event.opponent.trim(),
     snacks: '',
     drinks: '',
     notes: '',
@@ -119,52 +136,74 @@ export function GameOnCardPanel({
   userId,
   events,
   selectedEvent,
+  selectedCard,
+  startFresh = false,
+  onChanged,
 }: GameOnCardPanelProps) {
-  const games = events.filter((event) => event.type === 'game');
+  const scheduledEvents = events.filter((event) => event.type === 'game' || event.type === 'practice');
   const createShare = useCreateScheduleShare();
   const updateShare = useUpdateScheduleShare();
   const deleteShare = useDeleteScheduleShare();
-  const [saved, setSaved] = useState<SavedGameOnCard | null>(() => (
-    userId && typeof window !== 'undefined' ? readSavedGameOnCard(userId) : null
+  const selectionIdentity = startFresh
+    ? `fresh:${selectedEvent?.type ?? 'game'}:${selectedEvent?.id ?? ''}`
+    : selectedCard === null
+      ? `new:${selectedEvent?.type ?? 'game'}:${selectedEvent?.id ?? ''}`
+      : selectedCard
+        ? `card:${selectedCard.shareToken}`
+        : `default:${selectedEvent?.type ?? ''}:${selectedEvent?.id ?? ''}`;
+  const [saved, setSaved] = useState<LocalSavedGameOnCard | null>(() => {
+    if (!userId || typeof window === 'undefined' || startFresh || selectedCard === null) return null;
+    const initial = selectedCard ?? readSavedGameOnCard(userId) ?? readSavedGameOnCards(userId)[0] ?? null;
+    return initial as LocalSavedGameOnCard | null;
+  });
+  const [draft, setDraft] = useState<CardEvent>(() => (
+    !startFresh && selectedCard
+      ? eventFromSaved(selectedCard)
+      : selectedEvent && selectedEvent.type !== 'meeting'
+        ? draftFromEvent(selectedEvent)
+        : blankDraft()
   ));
-  const [draft, setDraft] = useState<GameOnDraft>(() => (
-    selectedEvent?.type === 'game' ? draftFromEvent(selectedEvent) : blankDraft()
+  const [sourceEventId, setSourceEventId] = useState(() => (
+    !startFresh && selectedCard
+      ? selectedCard.event.id
+      : selectedEvent && selectedEvent.type !== 'meeting'
+        ? selectedEvent.id
+        : 'new'
   ));
-  const [sourceEventId, setSourceEventId] = useState(selectedEvent?.type === 'game' ? selectedEvent.id : 'new');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const lastPrefillRef = useRef<string | null>(null);
-
   useEffect(() => {
     if (!userId) {
       setSaved(null);
-      setDraft(blankDraft());
-      setSourceEventId('new');
-      lastPrefillRef.current = null;
+      setDraft(startFresh
+        ? blankDraft(selectedEvent?.type === 'practice' ? 'practice' : 'game')
+        : selectedEvent && selectedEvent.type !== 'meeting'
+          ? draftFromEvent(selectedEvent)
+          : blankDraft());
+      setSourceEventId(!startFresh && selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new');
       return;
     }
-    const stored = readSavedGameOnCard(userId);
-    setSaved(stored);
-    if (stored) {
-      setDraft(stored.event);
-      setSourceEventId(games.some((game) => game.id === stored.event.id) ? stored.event.id : 'new');
-      lastPrefillRef.current = `saved:${stored.shareToken}`;
-    } else {
-      setDraft(blankDraft());
-      setSourceEventId('new');
-      lastPrefillRef.current = null;
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId || saved || !selectedEvent || selectedEvent.type !== 'game') return;
-    if (lastPrefillRef.current === selectedEvent.id) return;
-    setDraft(draftFromEvent(selectedEvent));
-    setSourceEventId(selectedEvent.id);
-    lastPrefillRef.current = selectedEvent.id;
-  }, [saved, selectedEvent, userId]);
+    const selectedSaved = startFresh || selectedCard === null
+      ? null
+      : selectedCard ?? readSavedGameOnCard(userId) ?? readSavedGameOnCards(userId)[0] ?? null;
+    const selectedDraft = startFresh
+      ? blankDraft(selectedEvent?.type === 'practice' ? 'practice' : 'game')
+      : selectedSaved
+        ? eventFromSaved(selectedSaved)
+        : selectedEvent && selectedEvent.type !== 'meeting'
+          ? draftFromEvent(selectedEvent)
+          : blankDraft();
+    setSaved(selectedSaved as LocalSavedGameOnCard | null);
+    setDraft(selectedDraft);
+    setSourceEventId(selectedSaved?.event.id ?? (
+      !startFresh && selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new'
+    ));
+    setIsEditing(false);
+    setError('');
+    setNotice('');
+  }, [userId, selectionIdentity]);
 
   const publicCard = useGetGameOnCard(saved?.shareToken ?? '', {
     query: {
@@ -176,17 +215,19 @@ export function GameOnCardPanel({
     },
   });
 
-  function saveCard(next: SavedGameOnCard) {
+  function saveCard(next: LocalSavedGameOnCard) {
     if (!userId) throw new Error('Sign in to save a Game On Card.');
-    writeSavedGameOnCard(userId, next);
+    upsertSavedGameOnCard(userId, next);
     setSaved(next);
     setIsEditing(false);
+    onChanged?.();
   }
 
-  function buildShareData(event: GameOnDraft) {
+  function buildShareData(event: CardEvent) {
     return {
       title: profile.teamName.trim() || 'Game On',
       teamSeason: '',
+      purpose: 'game-on-card' as const,
       events: [publicEventPayload(event)],
     };
   }
@@ -208,8 +249,9 @@ export function GameOnCardPanel({
       setError('Sign in to create a shareable Game On Card.');
       return;
     }
-    if (!draft.date || !draft.opponent.trim()) {
-      setError('Add a game date and opponent to continue.');
+    const isPractice = draft.type === 'practice';
+    if (!draft.date || (!isPractice && !draft.opponent.trim())) {
+      setError(isPractice ? 'Add a practice date to continue.' : 'Add a game date and opponent to continue.');
       return;
     }
 
@@ -218,7 +260,7 @@ export function GameOnCardPanel({
       const event = {
         ...draft,
         id: draft.id || createEventId(),
-        opponent: draft.opponent.trim(),
+        opponent: isPractice ? '' : draft.opponent.trim(),
         location: draft.location.trim(),
         time: draft.time.trim(),
       };
@@ -226,7 +268,7 @@ export function GameOnCardPanel({
       const share = saved
         ? await updateShare.mutateAsync({ shareToken: saved.shareToken, data })
         : await createShare.mutateAsync({ data });
-      const next: SavedGameOnCard = {
+      const next: LocalSavedGameOnCard = {
         shareToken: share.shareToken,
         event,
         title: data.title,
@@ -251,8 +293,9 @@ export function GameOnCardPanel({
       await deleteShare.mutateAsync({ shareToken: saved.shareToken });
       removeSavedGameOnCard(userId, saved.shareToken);
       setSaved(null);
-      setDraft(selectedEvent?.type === 'game' ? draftFromEvent(selectedEvent) : blankDraft());
-      setSourceEventId(selectedEvent?.type === 'game' ? selectedEvent.id : 'new');
+      onChanged?.();
+      setDraft(selectedEvent && selectedEvent.type !== 'meeting' ? draftFromEvent(selectedEvent) : blankDraft());
+      setSourceEventId(selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new');
       setNotice('Game On Card link revoked.');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to revoke the Game On Card. Try again.');
@@ -261,37 +304,38 @@ export function GameOnCardPanel({
     }
   }
 
-  function chooseScheduleGame(value: string) {
+  function chooseScheduleEvent(value: string) {
     setSourceEventId(value);
     if (value === 'new') {
-      setDraft(blankDraft());
+      setDraft(blankDraft(draft.type ?? 'game'));
       return;
     }
-    const event = games.find((game) => game.id === value);
+    const event = scheduledEvents.find((scheduledEvent) => scheduledEvent.id === value);
     if (event) setDraft(draftFromEvent(event));
   }
 
   const selectedPublicEvent = publicCard.data?.event;
-  const canCreate = Boolean(draft.date && draft.opponent.trim()) && !busy;
+  const isPractice = draft.type === 'practice';
+  const canCreate = Boolean(draft.date && (isPractice || draft.opponent.trim())) && !busy;
   const workspaceEvent = {
     id: draft.id,
-    type: 'game' as const,
+    type: draft.type ?? 'game',
     date: draft.date,
     time: draft.time,
     location: draft.location,
-    opponent: draft.opponent,
+    opponent: isPractice ? '' : draft.opponent,
   };
   const prepDetails = new URLSearchParams();
   for (const [key, value] of Object.entries({
     date: draft.date,
     time: draft.time,
     location: draft.location,
-    opponent: draft.opponent,
+    opponent: isPractice ? '' : draft.opponent,
   })) {
     if (value) prepDetails.set(key, value);
   }
   const prepToolHref = `${buildWorkspaceToolHref('prep', workspaceEvent)}&${prepDetails.toString()}&view=share`;
-  const statsToolHref = buildWorkspaceToolHref('stats', workspaceEvent);
+  const statsToolHref = isPractice ? undefined : buildWorkspaceToolHref('stats', workspaceEvent);
   const hypeToolHref = buildWorkspaceToolHref('hype', workspaceEvent);
 
   return (
@@ -309,23 +353,27 @@ export function GameOnCardPanel({
               <Trophy className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">On-demand game day sharing</p>
+              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">{isPractice ? 'On-demand practice sharing' : 'On-demand game day sharing'}</p>
               <p className="mt-1 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Game On Card</p>
             </div>
           </div>
           <h2 id="game-on-card-heading" className="mt-6 font-display text-4xl font-black leading-[.95] tracking-tight sm:text-5xl">
-            Share the game day.
+            {isPractice ? 'Share the practice.' : 'Share the game day.'}
           </h2>
           <p className="mt-3 max-w-3xl text-base font-medium leading-relaxed text-white/65 sm:text-[17px]">
-            One simple link for event details. Prep and stats appear only when you choose to share them.
+            {isPractice
+              ? 'One simple link for practice details. Prep stays private unless you choose to share it.'
+              : 'One simple link for event details. Prep and stats appear only when you choose to share them.'}
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/65">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[.04] px-3 py-2">
               <ShieldCheck className="h-3.5 w-3.5 text-[#55A4FF]" /> Private prep by default
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[.04] px-3 py-2">
-              <Activity className="h-3.5 w-3.5 text-[#55A4FF]" /> Stats appear when shared
-            </span>
+            {draft.type !== 'practice' && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[.04] px-3 py-2">
+                <Activity className="h-3.5 w-3.5 text-[#55A4FF]" /> Stats appear when shared
+              </span>
+            )}
           </div>
 
           <div className="mt-7">
@@ -337,7 +385,7 @@ export function GameOnCardPanel({
                       <Check className="h-3.5 w-3.5" /> Link is active
                     </p>
                     <p className="mt-2 truncate font-display text-xl uppercase">
-                      {saved.title}{saved.event.opponent ? ` vs ${saved.event.opponent}` : ''}
+                      {saved.title}{saved.event.type !== 'practice' && saved.event.opponent ? ` vs ${saved.event.opponent}` : ''}
                     </p>
                     <p className="mt-1 text-xs font-medium text-white/55">
                       {prettyEventDate(saved.event.date)}{saved.event.time ? ` · ${saved.event.time}` : ''}
@@ -368,7 +416,7 @@ export function GameOnCardPanel({
                     This saved card link is no longer available. Revoke it or create a new card.
                   </p>
                 )}
-                {selectedPublicEvent && (
+                {selectedPublicEvent && saved.event.type !== 'practice' && (
                   <div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/55">
                     <span className={publicCard.data?.prepState === 'shared' ? 'text-primary' : ''}>
                       {publicCard.data?.prepState === 'shared' ? 'Prep shared' : 'Prep private'}
@@ -385,11 +433,16 @@ export function GameOnCardPanel({
                   <Link href={prepToolHref} className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-open-prep">
                     <ClipboardCheck className="h-3.5 w-3.5" /> Prep / share if you choose
                   </Link>
-                  <Link href={statsToolHref} className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-open-stats">
-                    <Activity className="h-3.5 w-3.5" /> Track this game
-                  </Link>
+                  {statsToolHref && (
+                    <Link href={statsToolHref} className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-open-stats">
+                      <Activity className="h-3.5 w-3.5" /> Track this game
+                    </Link>
+                  )}
                   <Link href={hypeToolHref} className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-create-hype">
                     <Zap className="h-3.5 w-3.5" /> Make a Hype Card
+                  </Link>
+                  <Link href="/studio/athlete-page" className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-athlete-page">
+                    <Sparkles className="h-3.5 w-3.5" /> Athlete Hype Page
                   </Link>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-4 border-t border-white/10 pt-3">
@@ -405,7 +458,7 @@ export function GameOnCardPanel({
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">
-                    {saved ? 'Edit this card' : 'Start with one game'}
+                    {saved ? 'Edit this card' : isPractice ? 'Start with a practice' : 'Start with one game'}
                   </p>
                   <p className="mt-1 text-xs font-medium leading-relaxed text-white/55">
                     {profile.athleteName ? `For ${profile.athleteName}. ` : ''}
@@ -416,26 +469,42 @@ export function GameOnCardPanel({
                   <button type="button" onClick={() => { setIsEditing(false); setDraft(saved.event); }} className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-white/55 hover:text-white">Cancel</button>
                 )}
               </div>
-              {games.length > 0 && (
                 <label className="mb-3 block">
-                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Start from a scheduled game</span>
+                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Event type</span>
+                  <select
+                    value={draft.type ?? 'game'}
+                    onChange={(event) => {
+                      const type = event.target.value as GameOnEventType;
+                      setSourceEventId('new');
+                      setDraft((current) => ({ ...current, type, opponent: type === 'practice' ? '' : current.opponent }));
+                    }}
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-[#0B1F3A] px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
+                    data-testid="select-game-on-type"
+                  >
+                    <option value="game">Game</option>
+                    <option value="practice">Practice</option>
+                  </select>
+                </label>
+                {scheduledEvents.length > 0 && (
+                <label className="mb-3 block">
+                    <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Start from a scheduled game or practice</span>
                   <select
                     value={sourceEventId}
-                    onChange={(event) => chooseScheduleGame(event.target.value)}
+                      onChange={(event) => chooseScheduleEvent(event.target.value)}
                     className="min-h-11 w-full rounded-[10px] border border-white/20 bg-[#0B1F3A] px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
                     data-testid="select-game-on-source-event"
                   >
-                    <option value="new">Create one event card</option>
-                    {games.map((game) => (
-                      <option key={game.id} value={game.id}>
-                        {game.date || 'Date TBD'}{game.opponent ? ` · vs ${game.opponent}` : ''}
+                    <option value="new">Create an independent event card</option>
+                    {scheduledEvents.map((scheduledEvent) => (
+                      <option key={`${scheduledEvent.type}:${scheduledEvent.id}`} value={scheduledEvent.id}>
+                        {scheduledEvent.type === 'practice' ? 'Practice' : 'Game'} · {scheduledEvent.date || 'Date TBD'}{scheduledEvent.type === 'game' && scheduledEvent.opponent ? ` · vs ${scheduledEvent.opponent}` : ''}
                       </option>
                     ))}
                   </select>
                 </label>
               )}
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block sm:col-span-2">
+                {!isPractice && <label className="block sm:col-span-2">
                   <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Opponent <span className="text-primary">*</span></span>
                   <input
                     value={draft.opponent}
@@ -445,7 +514,7 @@ export function GameOnCardPanel({
                     className="min-h-11 w-full rounded-[10px] border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:border-[#55A4FF]"
                     data-testid="input-game-on-opponent"
                   />
-                </label>
+                </label>}
                 <label className="block">
                   <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Date <span className="text-primary">*</span></span>
                   <input
@@ -480,7 +549,7 @@ export function GameOnCardPanel({
               </div>
               <p className="mt-3 flex items-start gap-2 text-[11px] font-medium leading-relaxed text-white/50">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                Checklist notes and private prep are not copied. Share a checklist from Prep only when you choose.
+                {isPractice ? 'Practice notes and private prep are not copied. Share a checklist from Prep only when you choose.' : 'Checklist notes and private prep are not copied. Share a checklist from Prep only when you choose.'}
               </p>
               {error && <p className="mt-3 text-xs font-semibold text-red-200" role="alert" data-testid="game-on-card-error">{error}</p>}
               {notice && <p className="mt-3 text-xs font-semibold text-primary" role="status" aria-live="polite">{notice}</p>}
@@ -492,7 +561,7 @@ export function GameOnCardPanel({
                 data-testid="button-save-game-on-card"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
-                {busy ? 'Saving…' : saved ? 'Update Game On Card' : 'Create and share Game On Card'}
+                {busy ? 'Saving…' : saved ? 'Update Game On Card' : isPractice ? 'Create and share Practice Card' : 'Create and share Game On Card'}
                 {!busy && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>
@@ -583,8 +652,12 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
   }
 
   const data = card.data;
+  const isPractice = data.event.type === 'practice';
+  const showingStats = !isPractice && showStats;
   const dateLabel = prettyEventDate(data.event.date);
-  const stageLabel = data.stage === 'final' ? 'Game complete' : data.stage === 'live' ? 'Game in progress' : 'Upcoming game';
+  const stageLabel = isPractice
+    ? data.stage === 'final' ? 'Practice complete' : data.stage === 'live' ? 'Practice in progress' : 'Upcoming practice'
+    : data.stage === 'final' ? 'Game complete' : data.stage === 'live' ? 'Game in progress' : 'Upcoming game';
   const prepHref = data.prepShareToken ? `/checklist/${data.prepShareToken}` : undefined;
   const statsHref = data.statsShareToken ? `/live/${data.statsShareToken}` : undefined;
   const statsUpdatedAt = statsHref && data.statsUpdatedAt ? new Date(data.statsUpdatedAt) : undefined;
@@ -606,13 +679,13 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
       <header className="border-b border-[#e6ebf2] bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/" className="font-display text-2xl uppercase tracking-wide text-[#0B1F3A]">Pixl Sports</Link>
-          <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[#52657a]">Shared game day</span>
+          <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[#52657a]">{isPractice ? 'Shared practice' : 'Shared game day'}</span>
         </div>
       </header>
       <main className="mx-auto w-full max-w-3xl px-1 pb-10 pt-4 sm:px-8 sm:pt-8" data-testid="public-game-on-card">
         <section
           className="relative mx-auto w-full max-w-[600px] text-[#0B1F3A]"
-          aria-label={`Game On Card, ${showStats ? 'stats side' : 'event side'}`}
+          aria-label={`Game On Card, ${showingStats ? 'stats side' : 'event side'}`}
         >
           <img
             src={gameOnBadge}
@@ -629,16 +702,18 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
             </div>
 
             <div id="game-on-card-face" className="flex min-h-0 flex-1 flex-col pt-4 sm:pt-8" aria-live="polite">
-              {!showStats ? (
+              {!showingStats ? (
                 <div className="flex flex-1 flex-col" data-testid="game-on-front-face">
                   <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#2474F5] sm:text-xs">{stageLabel}</p>
                   <h1 className="mt-2 break-words font-display text-[clamp(1.8rem,6vw,3.6rem)] uppercase leading-[.95] tracking-wide">{data.title}</h1>
                   {data.athleteName && <p className="mt-2 text-xs font-semibold text-[#52657a] sm:text-base">Following {data.athleteName}</p>}
                   <div className="mt-5 border-t-2 border-[#0B1F3A] pt-4 sm:mt-10 sm:pt-7">
-                    <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#2474F5] sm:text-xs">Game day</p>
-                    <p className="mt-1 break-words font-display text-[clamp(1.65rem,5.5vw,3rem)] uppercase leading-none">
-                      {data.event.opponent ? `vs ${data.event.opponent}` : 'Game day'}
-                    </p>
+                    <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#2474F5] sm:text-xs">{isPractice ? 'Practice' : 'Game day'}</p>
+                    {!isPractice && (
+                      <p className="mt-1 break-words font-display text-[clamp(1.65rem,5.5vw,3rem)] uppercase leading-none">
+                        {data.event.opponent ? `vs ${data.event.opponent}` : 'Game day'}
+                      </p>
+                    )}
                     <p className="mt-3 flex items-start gap-2 text-xs font-bold leading-snug sm:text-base">
                       <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-[#2474F5]" aria-hidden="true" />
                       <span>{dateLabel}{data.event.time ? ` · ${data.event.time}` : ''}</span>
@@ -688,17 +763,19 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
                 </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowStats((current) => !current)}
-              aria-pressed={showStats}
-              aria-controls="game-on-card-face"
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 border border-[#0B1F3A] bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[.16em] text-[#0B1F3A] transition hover:bg-[#0B1F3A] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2474F5] sm:mt-6 sm:text-xs"
-              data-testid="game-on-flip-control"
-            >
-              <RotateCw className="h-4 w-4" aria-hidden="true" />
-              {showStats ? 'Show event' : 'Show stats'}
-            </button>
+            {!isPractice && (
+              <button
+                type="button"
+                onClick={() => setShowStats((current) => !current)}
+                aria-pressed={showingStats}
+                aria-controls="game-on-card-face"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 border border-[#0B1F3A] bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[.16em] text-[#0B1F3A] transition hover:bg-[#0B1F3A] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2474F5] sm:mt-6 sm:text-xs"
+                data-testid="game-on-flip-control"
+              >
+                <RotateCw className="h-4 w-4" aria-hidden="true" />
+                {showingStats ? 'Show event' : 'Show stats'}
+              </button>
+            )}
           </div>
         </section>
 
@@ -706,7 +783,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
           <div className="mb-3 flex items-end justify-between gap-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Follow the event</p>
-              <h2 id="game-on-destinations-heading" className="mt-1 font-display text-2xl uppercase tracking-wide text-[#0B1F3A]">Game day links</h2>
+              <h2 id="game-on-destinations-heading" className="mt-1 font-display text-2xl uppercase tracking-wide text-[#0B1F3A]">{isPractice ? 'Practice links' : 'Game day links'}</h2>
             </div>
             <span className="hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:block">Updates automatically</span>
           </div>

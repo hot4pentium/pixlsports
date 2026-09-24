@@ -264,6 +264,15 @@ test('public Game On Card flips by keyboard and limits links to the active face 
       await pressFlip(connection, page);
       await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-flip-control\\"]")?.getAttribute("aria-pressed")', (value) => value === 'false');
     }
+
+    await connection.evaluate('window.__setGameOnCard({ title: "Tigers practice", event: { ...window.__initialGameOnCard.event, type: "practice", opponent: "" }, stage: "upcoming", statsState: "not-shared", statsShareToken: undefined, statsUpdatedAt: undefined })', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-front-face\\"]")?.textContent', (text) => typeof text === 'string' && text.includes('Upcoming practice'));
+    const practiceState = await snapshot(connection, page);
+    assert.equal(practiceState.front, true);
+    assert.equal(practiceState.back, false);
+    assert.equal(practiceState.label, '');
+    assert.equal(practiceState.statsHref, null);
+    assert.doesNotMatch(practiceState.text, /Ravens|score|game stats/i);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
