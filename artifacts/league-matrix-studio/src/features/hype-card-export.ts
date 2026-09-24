@@ -7,6 +7,7 @@ export type VideoRecorderOptions = {
   videoBitsPerSecond?: number;
   audioBitsPerSecond?: number;
   requireAudio?: boolean;
+  onAudioCheck?: () => void;
 };
 
 export const AUDIO_CAPTURE_UNAVAILABLE_MESSAGE =
@@ -242,7 +243,7 @@ export async function exportVideoCanvas(
   onDrawFrame: (ctx: CanvasRenderingContext2D, videoFrame: HTMLVideoElement) => void,
   recorderOptions: VideoRecorderOptions = {},
 ): Promise<{ blob: Blob; mimeType: string; ext: string; audioIncluded: boolean }> {
-  const { requireAudio = false, ...mediaRecorderOptions } = recorderOptions;
+  const { requireAudio = false, onAudioCheck, ...mediaRecorderOptions } = recorderOptions;
   const support = checkExportSupport();
   
   let mimeType = '';
@@ -365,6 +366,7 @@ export async function exportVideoCanvas(
       void (async () => {
         let verifiedAudio = audioIncluded;
         if (includeAudio) {
+          onAudioCheck?.();
           try {
             verifiedAudio = await hasAudibleAudioSamples(blob, signal);
           } catch (error) {

@@ -188,6 +188,7 @@ test('required clip audio rejects a Safari-style silent prepared blob after reco
   const previousDateNow = Date.now;
   let clock = 0;
   let nextTimerId = 0;
+  let audioCheckStarted = false;
   const timers = new Map<number, true>();
   const schedule = (callback: () => void, delay = 0) => {
     const timerId = ++nextTimerId;
@@ -357,10 +358,16 @@ test('required clip audio rejects a Safari-style silent prepared blob after reco
         0,
         0.2,
         () => {},
-        { requireAudio: true },
+        {
+          requireAudio: true,
+          onAudioCheck: () => {
+            audioCheckStarted = true;
+          },
+        },
       ),
       (error: unknown) => error instanceof Error && error.name === 'AudioCaptureUnavailable',
     );
+    assert.equal(audioCheckStarted, true);
     assert.equal(sourceVideo.src, 'blob:original-video');
     assert.equal(sourceVideo.currentTime, sourceVideo.duration);
   } finally {

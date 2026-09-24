@@ -553,7 +553,14 @@ function OwnerVideoUpload({
         video,
         { trimStart, trimEnd },
         (value) => setProgress((current) => monotonicProgress(current, value * 0.55)),
-        { signal: controller.signal, quality: 'standard' },
+        {
+          signal: controller.signal,
+          quality: 'standard',
+          onAudioCheck: () => {
+            setStage('Checking audio before posting…');
+            setProgress((current) => monotonicProgress(current, 0.55));
+          },
+        },
       );
       if (prepared.video.size > MAX_HOSTED_VIDEO_BYTES) {
         throw new Error('The prepared video is too large for the Athlete Hype Page. Choose a shorter segment.');

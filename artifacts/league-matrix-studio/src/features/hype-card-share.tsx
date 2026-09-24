@@ -176,7 +176,11 @@ export async function prepareHypeCardShareMedia(
   video: HTMLVideoElement,
   project: Pick<HypeCardProject, 'trimStart' | 'trimEnd'>,
   onProgress: (progress: number) => void,
-  options: { signal?: AbortSignal; quality?: HypeCardShareQuality } = {},
+  options: {
+    signal?: AbortSignal;
+    quality?: HypeCardShareQuality;
+    onAudioCheck?: () => void;
+  } = {},
 ) {
   if (!video.videoWidth || !video.videoHeight) throw new Error('The video is still loading. Try again in a moment.');
   if (options.signal?.aborted) throw abortError();
@@ -232,7 +236,12 @@ export async function prepareHypeCardShareMedia(
           project.trimStart,
           project.trimEnd,
           (ctx, frame) => drawContained(ctx, frame, width, height),
-          { videoBitsPerSecond: level.bitrate, audioBitsPerSecond: quality === 'compact' ? 64_000 : 128_000, requireAudio: true },
+          {
+            videoBitsPerSecond: level.bitrate,
+            audioBitsPerSecond: quality === 'compact' ? 64_000 : 128_000,
+            requireAudio: true,
+            onAudioCheck: options.onAudioCheck,
+          },
         );
         if (!clip.audioIncluded) {
           throw audioCaptureUnavailableError();

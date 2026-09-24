@@ -46,6 +46,7 @@ test('linked exports create or reuse a stats URL and burn it into still and vide
   assert.match(editorSource, /Retry at lower quality/);
   assert.match(editorSource, /The lower-quality browser-prepared video is still over 35 MB/);
   assert.match(editorSource, /quality: shareVideoQuality/);
+  assert.match(editorSource, /onAudioCheck: \(\) => \{[\s\S]*?Checking audio before posting/);
   assert.match(editorSource, /MAX_HOSTED_VIDEO_BYTES/);
   assert.match(editorSource, /prepared\.video\.size > MAX_HOSTED_VIDEO_BYTES/);
   assert.match(editorSource, /uploadHypeCardShareMedia\(/);

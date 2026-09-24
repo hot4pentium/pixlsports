@@ -2497,6 +2497,10 @@ export function HypeCardEditor() {
           {
             signal: shareAbortController.signal,
             quality: shareVideoQuality,
+            onAudioCheck: () => {
+              setShareStage('Checking audio before posting…');
+              setShareProgress((current) => Math.max(current, 0.6));
+            },
           },
         );
         const videoContentType = prepared.videoContentType.startsWith('video/mp4') ? 'video/mp4' : 'video/webm';
