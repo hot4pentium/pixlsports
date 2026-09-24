@@ -487,7 +487,7 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
 
-    for (const width of [320, 390, 768]) {
+    for (const width of [320, 390, 430, 639, 640, 768]) {
       const height = width === 768 ? 1024 : 844;
       await connection.send('Emulation.setDeviceMetricsOverride', {
         width,
@@ -505,11 +505,21 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
         headerTop: number;
         headerTopAfterScroll: number;
         heroClearsHeader: boolean;
+        heroColumnCount: number;
+        heroCornerRadius: string;
+        heroCardsContained: boolean;
+        heroKickerFits: boolean;
       }>(`(() => {
         const root = document.querySelector('.supporter-dashboard-mobile-shell');
         const header = document.querySelector('[data-testid="mobile-header"]');
         const hero = document.querySelector('[data-testid="mobile-hero-banner"]');
-        if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)) {
+        const columns = document.querySelector('.mobile-hero-columns');
+        const athleteCard = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
+        const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
+        const eventKicker = document.querySelector('.mobile-featured-event-kicker');
+        if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
+          || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
+          || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
           throw new Error('Mobile dashboard shell is incomplete');
         }
         const scroller = document.scrollingElement;
@@ -517,6 +527,9 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
         scroller.scrollTop = 0;
         const initialHeaderRect = header.getBoundingClientRect();
         const heroRect = hero.getBoundingClientRect();
+        const athleteRect = athleteCard.getBoundingClientRect();
+        const eventRect = eventCard.getBoundingClientRect();
+        const gridColumns = getComputedStyle(columns).gridTemplateColumns.trim().split(/\\s+/);
         scroller.scrollTop = Math.min(240, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
         const scrolledHeaderRect = header.getBoundingClientRect();
         scroller.scrollTop = 0;
@@ -530,6 +543,13 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
           headerTop: Math.round(initialHeaderRect.top - rootRect.top),
           headerTopAfterScroll: Math.round(scrolledHeaderRect.top),
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
+          heroColumnCount: gridColumns.length,
+          heroCornerRadius: getComputedStyle(hero).borderRadius,
+          heroCardsContained: athleteRect.left >= heroRect.left
+            && athleteRect.right <= heroRect.right
+            && eventRect.left >= heroRect.left
+            && eventRect.right <= heroRect.right,
+          heroKickerFits: eventKicker.scrollWidth <= eventKicker.clientWidth,
         };
       })()`, page.sessionId);
       assert.deepEqual(result, {
@@ -541,6 +561,10 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
         headerTop: 0,
         headerTopAfterScroll: 0,
         heroClearsHeader: true,
+        heroColumnCount: width < 640 ? 1 : 2,
+        heroCornerRadius: '24px',
+        heroCardsContained: true,
+        heroKickerFits: true,
       }, `mobile header behavior at ${width}px`);
     }
 
@@ -1714,7 +1738,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="link-context-hype-card"]\')?.getAttribute("href") || ""', page.sessionId),
-      /gameId=game-1/,
+      /eventId=game-1/,
     );
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-return-to-recommended-game"]\'))', page.sessionId),
@@ -1769,7 +1793,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="link-context-hype-card"]\')?.getAttribute("href") || ""', page.sessionId),
-      /gameId=game-1/,
+      /eventId=game-1/,
     );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([])`, page.sessionId);
