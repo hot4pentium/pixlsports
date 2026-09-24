@@ -69,6 +69,14 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /requestHypeCardShareUploadUrl/);
   assert.match(source, /expiresInDays: 365/);
   assert.match(source, /The original video remains on this device/);
+  const prepareIndex = source.indexOf('const prepared = await prepareHypeCardShareMedia(');
+  const uploadIndex = source.indexOf('requestHypeCardShareUploadUrl(', prepareIndex);
+  const shareIndex = source.indexOf('await createShare.mutateAsync(', uploadIndex);
+  assert.ok(prepareIndex >= 0 && uploadIndex > prepareIndex && shareIndex > uploadIndex);
+  assert.ok(
+    source.indexOf('setFile(null)', shareIndex) > shareIndex,
+    'the selected original is cleared only after the share is created',
+  );
   assert.match(source, /setProgress\(0\.01\)/);
   assert.match(source, /monotonicProgress\(current, value \* 0\.55\)/);
   assert.match(source, /data-testid="hosted-video-title"/);

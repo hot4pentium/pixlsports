@@ -17,6 +17,7 @@ Copy this record per device/build. Keep invite and share tokens, account details
 | iPhone model / iOS version / Safari version | |
 | Network (Wi-Fi or cellular) and clip format, size, length, audio present | |
 | Baseline public video count and owner posted-video count | |
+| Silent prepared copy: rejection message, upload requests, share count, original still selected | |
 | Cancel during preparation: stage and highest observed %; result after refresh | |
 | Cancel during upload: stage and highest observed %; result after refresh | |
 | Forced failure: stage/error and result after refresh | |
@@ -26,7 +27,43 @@ Copy this record per device/build. Keep invite and share tokens, account details
 | Cleanup: deleted test post absent after public and owner refresh | |
 | Overall PASS/FAIL/NOT RUN, issue link or notes | |
 
-## 1. Cancel before a share is created
+## 1. Silent prepared audio is rejected before hosting
+
+This case verifies the Safari-specific recovery boundary. A media track can exist on
+the captured stream while the prepared recording contains only zero-valued samples.
+Use a short control video that has an audio track containing digital silence (not a
+video with no audio track). If the fixture is not already on the test phone, create
+one on a trusted workstation and transfer it privately to Photos:
+
+```sh
+ffmpeg -f lavfi -i color=c=black:s=640x360:r=24 \
+  -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=48000 \
+  -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest safari-silent-audio-control.mp4
+```
+
+1. With the disposable Hype Page open in iPhone Safari, open **Manage**, record the
+   owner and public video counts, and open Safari Web Inspector on a paired Mac if
+   available. Filter its Network tab to the media upload endpoint and the Hype Card
+   share-creation endpoint before starting.
+2. Tap **Add video**, choose the silent-audio control clip, wait for its preview,
+   and tap **Post video** with a unique moment name. The app must stop during
+   preparation with the audio-capture warning that says the video was not posted
+   and the original video is still selected on this device.
+3. Require that no prepared-media `PUT` request and no share-creation request was
+   sent. Refresh **Manage posted videos** and the public page: both counts and
+   names must match the baseline, with no partial or blank post.
+4. Confirm the original selected source is still present in the preview, can be
+   played/seeked, and still shows its selected trim. Do not tap **Remove** or
+   choose another file until this observation is recorded. If the source is gone,
+   the message is missing, either request occurred, or any share was created, mark
+   FAIL.
+
+If the phone cannot reproduce a zero-sample prepared output with this control
+fixture, record this case as **NOT RUN** rather than treating a missing failure as
+PASS. The automated sample helper test does not replace this physical-device
+check.
+
+## 2. Cancel before a share is created
 
 1. In iPhone Safari sign in as the owner. Open the disposable public Hype Page and tap **Manage** (or open its saved `/player/<invite-token>/manage` URL). Under **Manage posted videos**, record the baseline.
 2. Tap **Add video**, choose the clip from Photos, wait for its duration and preview, choose a 5–10 second segment, and enter a unique **Moment name** such as `safari-cancel-prep-...`. Tap **Post video**.
@@ -34,13 +71,13 @@ Copy this record per device/build. Keep invite and share tokens, account details
 4. Refresh the management page, then open and refresh the public Hype Page. The cancelled name must be absent from **Manage posted videos** and the public video carousel; previous baseline items remain unchanged.
 5. Repeat with a new name, but wait until **Uploading the prepared video and poster…** appears (55% or higher) before tapping **Cancel**. Verify the same absence after both refreshes. A slow connection or a 12–15 second segment can make this stage easier to catch. If the stage is too fast to cancel, record **NOT RUN** for upload cancellation, not PASS. Do not treat a tap after **Adding the video to the Athlete Hype Page…** as proof of safe cancellation: the final save may already be in flight. If a late tap results in a post, mark FAIL and remove it via **Delete**.
 
-## 2. Failed upload does not leave a partial share
+## 3. Failed upload does not leave a partial share
 
 1. Restore connectivity, select the same clip again with another unique name, and wait for metadata. Turn on Airplane Mode **before** tapping **Post video** (disable Wi-Fi as well). If the video cannot be prepared offline, this still tests a failed posting path; record the actual stage and error. Do not leave Safari or reload while preparation is in progress.
 2. Wait for an error and for the button to return to **Post video**. Do not retry the same attempt. If it hangs instead, record FAIL and the elapsed time.
 3. Restore connectivity. Refresh management and public pages and check that neither contains that name or a new blank/partial video. Compare both counts with the baseline. A leftover share is FAIL even if its video does not play. Never expose an incomplete post to real supporters.
 
-## 3. Complete post and playback through the production proxy
+## 4. Complete post and playback through the production proxy
 
 1. With connectivity restored, select the audible clip again and give it a new unique name. Tap **Post video**. Keep Safari foregrounded and the display awake until it finishes. Record a percentage **above the initial 1%** while **Preparing a web-friendly video…** is shown; a fixed 1% alone is not preparation progress. Record **Uploading the prepared video and poster…** and its highest percentage; **Adding the video to the Athlete Hype Page…** (around 90%) means the video and poster uploads have finished. Finally require **Video added to the Athlete Hype Page.** Do not infer upload success from the percentage alone.
 2. Confirm exactly one new matching title in **Manage posted videos**. Tap **Back to Hype Page**, refresh Safari, locate the new title in **Video highlights**, and play it. Confirm moving picture, **audible sound** (volume on/unmuted), and seeking near the end of the selected segment. A visible poster, a playing timer, or an audio track indicator without actual sound is not enough. Reload once more and replay, including on the same published URL when signed out/private browsing if access permits. A missing video, silent clip, or failed playback is FAIL.
@@ -61,4 +98,4 @@ Copy this record per device/build. Keep invite and share tokens, account details
 
 ## Result rule
 
-PASS requires all cancel and failure cases absent after refresh, preparation moving beyond 1%, a completed upload and final success, one newly posted video playing with picture **and audible sound** after refresh, and a 206 ranged response from the current production proxy. Record each observed value above. Any missing observation is **NOT RUN** for that case; any mismatch is **FAIL** with the device/iOS version, stage, percentage, redacted response details, and reproduction notes. Do not claim a physical-device pass based on local unit tests, Chromium, or this document alone.
+PASS requires the silent prepared-copy case to be rejected before either network mutation, the original source to remain available after that rejection, all cancel and failure cases to be absent after refresh, preparation moving beyond 1%, a completed upload and final success, one newly posted video playing with picture **and audible sound** after refresh, and a 206 ranged response from the current production proxy. Record each observed value above. Any missing observation is **NOT RUN** for that case; any mismatch is **FAIL** with the device/iOS version, stage, percentage, redacted response details, and reproduction notes. Do not claim a physical-device pass based on local unit tests, Chromium, or this document alone.
