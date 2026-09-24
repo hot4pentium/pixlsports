@@ -437,7 +437,7 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
-test('mobile supporter header stays pinned and keeps navigation accessible', { concurrency: false }, async () => {
+test('supporter dashboard keeps Game On Card prominent and mobile navigation accessible', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-mobile-header-test');
   let devServer: ChildProcess | undefined;
@@ -509,15 +509,22 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
         heroCornerRadius: string;
         heroCardsContained: boolean;
         heroKickerFits: boolean;
+        gameOnEntryVisible: boolean;
+        gameOnEntryFollowsHero: boolean;
+        gameOnEntryPrecedesWorkspace: boolean;
+        gameOnEntryTarget: string | null;
       }>(`(() => {
         const root = document.querySelector('.supporter-dashboard-mobile-shell');
         const header = document.querySelector('[data-testid="mobile-header"]');
         const hero = document.querySelector('[data-testid="mobile-hero-banner"]');
+        const gameOnEntry = document.querySelector('[data-testid="mobile-game-on-entry"]');
+        const workspace = document.querySelector('[data-testid="section-mobile-workspace"]');
         const columns = document.querySelector('.mobile-hero-columns');
         const athleteCard = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
         const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
         const eventKicker = document.querySelector('.mobile-featured-event-kicker');
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
+          || !(gameOnEntry instanceof HTMLElement) || !(workspace instanceof HTMLElement)
           || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
           || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
           throw new Error('Mobile dashboard shell is incomplete');
@@ -550,6 +557,10 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
             && eventRect.left >= heroRect.left
             && eventRect.right <= heroRect.right,
           heroKickerFits: eventKicker.scrollWidth <= eventKicker.clientWidth,
+          gameOnEntryVisible: getComputedStyle(gameOnEntry).display !== 'none',
+          gameOnEntryFollowsHero: Boolean(hero.compareDocumentPosition(gameOnEntry) & Node.DOCUMENT_POSITION_FOLLOWING),
+          gameOnEntryPrecedesWorkspace: Boolean(gameOnEntry.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING),
+          gameOnEntryTarget: gameOnEntry.querySelector('a')?.getAttribute('href') || null,
         };
       })()`, page.sessionId);
       assert.deepEqual(result, {
@@ -565,8 +576,44 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
         heroCornerRadius: '24px',
         heroCardsContained: true,
         heroKickerFits: true,
+        gameOnEntryVisible: true,
+        gameOnEntryFollowsHero: true,
+        gameOnEntryPrecedesWorkspace: true,
+        gameOnEntryTarget: '#game-on-card-panel',
       }, `mobile header behavior at ${width}px`);
     }
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"desktop-game-on-entry\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      entryVisible: boolean;
+      entryFollowsEvent: boolean;
+      entryPrecedesWorkspace: boolean;
+      entryTarget: string | null;
+    }>(`(() => {
+      const entry = document.querySelector('[data-testid="desktop-game-on-entry"]');
+      const event = document.querySelector('[data-testid="section-next-game-context"]');
+      const workspace = document.querySelector('[data-testid="section-desktop-workspace"]');
+      if (!(entry instanceof HTMLElement) || !(event instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
+        throw new Error('Desktop Game On Card entry is incomplete');
+      }
+      return {
+        entryVisible: getComputedStyle(entry).display !== 'none',
+        entryFollowsEvent: Boolean(event.compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING),
+        entryPrecedesWorkspace: Boolean(entry.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING),
+        entryTarget: entry.querySelector('a')?.getAttribute('href') || null,
+      };
+    })()`, page.sessionId), {
+      entryVisible: true,
+      entryFollowsEvent: true,
+      entryPrecedesWorkspace: true,
+      entryTarget: '#game-on-card-panel',
+    });
 
     assert.deepEqual(await connection.evaluate<{
       profileTag: string;

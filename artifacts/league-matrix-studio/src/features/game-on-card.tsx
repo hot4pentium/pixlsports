@@ -339,7 +339,7 @@ export function GameOnCardPanel({
   return (
     <section
       id="game-on-card-panel"
-      className="mx-auto w-full max-w-[1400px] px-4 pb-5 sm:px-8"
+      className="mx-auto w-full max-w-[1400px] scroll-mt-6 px-4 pb-5 sm:px-8"
       aria-labelledby="game-on-card-heading"
       data-testid="game-on-card-panel"
     >
@@ -351,7 +351,7 @@ export function GameOnCardPanel({
               <Trophy className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">Your next best step</p>
+              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">On-demand game day sharing</p>
               <p className="mt-1 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Game On Card</p>
             </div>
           </div>
@@ -715,7 +715,6 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
                   <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#2474F5] sm:text-xs">{stageLabel}</p>
                   <h1 className="mt-2 break-words font-display text-[clamp(1.8rem,6vw,3.6rem)] uppercase leading-[.95] tracking-wide">{statsTitle}</h1>
                   <div className="mt-5 border-t-2 border-[#0B1F3A] pt-4 sm:mt-10 sm:pt-7">
-                    <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#2474F5] sm:text-xs">{data.title}{data.event.opponent ? ` vs ${data.event.opponent}` : ''}</p>
                     <p className="mt-4 text-sm font-medium leading-relaxed text-[#42546b] sm:text-lg">{statsDetail}</p>
                     {statsUpdatedLabel && (data.statsState === 'live' || data.statsState === 'final') && (
                       <p className="mt-3 text-xs font-semibold text-[#52657a]" data-testid="game-on-stats-updated">
@@ -740,7 +739,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
               data-testid="game-on-flip-control"
             >
               <RotateCw className="h-4 w-4" aria-hidden="true" />
-              {showStats ? 'Show event side' : 'Flip to stats side'}
+              {showStats ? 'Show event' : 'Show stats'}
             </button>
           </div>
         </section>
