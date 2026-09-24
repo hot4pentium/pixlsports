@@ -106,6 +106,10 @@ import {
   type UserRole,
 } from '@/features/supporter-dashboard-model';
 import { readHypeCardProject, type HypeCardProject } from '@/features/hype-card-types';
+import {
+  readWorkspaceEventContext,
+  saveWorkspaceEventContext,
+} from '@/features/workspace-context';
 import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
 import {
@@ -1896,7 +1900,19 @@ function ScheduleEditor() {
     () => getScheduleWeekKey(storedDraft?.events[0]?.date ?? ''),
   );
   const [selectedEventId, setSelectedEventId] = useState(
-    () => storedDraft?.events[0]?.id ?? '',
+    () => {
+      const requestedId = typeof window === 'undefined'
+        ? ''
+        : new URLSearchParams(window.location.search).get('eventId') ?? '';
+      const storedId = typeof window === 'undefined'
+        ? ''
+        : readWorkspaceEventContext(window.localStorage)?.id ?? '';
+      return storedDraft?.events.some((event) => event.id === requestedId)
+        ? requestedId
+        : storedDraft?.events.some((event) => event.id === storedId)
+          ? storedId
+          : storedDraft?.events[0]?.id ?? '';
+    },
   );
   const [eventForm, setEventForm] = useState<ScheduleEvent | null>(null);
   const [shareToken, setShareToken] = useState(storedDraft?.shareToken ?? '');
@@ -1984,8 +2000,13 @@ function ScheduleEditor() {
     setEvents(loadedDraft.events);
     setShareToken(loadedDraft.shareToken ?? '');
     setShareUrl(loadedDraft.shareToken ? `${appOrigin}${basePath}/schedule/${loadedDraft.shareToken}` : '');
-    setSelectedEventId(loadedDraft.events[0]?.id ?? '');
-    setSelectedWeekKey(getScheduleWeekKey(loadedDraft.events[0]?.date ?? ''));
+    const requestedId = new URLSearchParams(window.location.search).get('eventId') ?? '';
+    const storedId = readWorkspaceEventContext(window.localStorage)?.id ?? '';
+    const selectedEvent = loadedDraft.events.find((event) => event.id === requestedId)
+      ?? loadedDraft.events.find((event) => event.id === storedId)
+      ?? loadedDraft.events[0];
+    setSelectedEventId(selectedEvent?.id ?? '');
+    setSelectedWeekKey(getScheduleWeekKey(selectedEvent?.date ?? ''));
     setSaved(true);
     cloudRevision.current = selectedCloudProject.revision;
   }, [selectedCloudProject, profileTeamName]);
@@ -2037,6 +2058,7 @@ function ScheduleEditor() {
 
   const openEventForm = (event: ScheduleEvent) => {
     setSelectedEventId(event.id);
+    saveWorkspaceEventContext(window.localStorage, event);
     setEventForm({ ...event });
   };
 
@@ -2058,6 +2080,7 @@ function ScheduleEditor() {
     const nextEvents = saveScheduleEvent(events, eventForm);
     setEvents(nextEvents);
     setSelectedEventId(eventForm.id);
+    saveWorkspaceEventContext(window.localStorage, eventForm);
     setSelectedWeekKey(getScheduleWeekKey(eventForm.date));
     setEventForm(null);
     await persistSchedule(

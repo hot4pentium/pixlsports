@@ -135,6 +135,14 @@ export function getNextScheduledGame(events: readonly ScheduledGame[] = (readSch
     })[0];
 }
 
+export function getSelectedScheduledGame(
+  events: readonly ScheduledGame[] | undefined,
+  eventId: string | null,
+): ScheduledGame | undefined {
+  if (!eventId) return undefined;
+  return events?.find((event) => event.type === 'game' && event.id === eventId);
+}
+
 function isScheduleProject(value: unknown): value is { tool: 'schedule'; events: ScheduleEvent[] } {
   return typeof value === 'object'
     && value !== null
@@ -1083,6 +1091,11 @@ export function StatTrackerPage() {
   const profile = getUserProfile(user);
   const localNextGame = useMemo(() => getNextScheduledGame(), []);
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const selectedScheduleEventId = searchParams.get('eventId');
+  const localSelectedGame = useMemo(
+    () => getSelectedScheduledGame(readScheduleDraft()?.events, selectedScheduleEventId),
+    [selectedScheduleEventId],
+  );
   const [sport, setSport] = useState<Sport>(profile.sport ?? 'basketball');
   const [storageAccountId, setStorageAccountId] = useState<string | null>(null);
   const [data, setData] = useState<StatTrackerData>(() => normalizeTrackerData(null));
@@ -1166,6 +1179,10 @@ export function StatTrackerPage() {
   const ownedScheduleNextGame = useMemo(
     () => getNextScheduledGame(ownedSchedule?.events),
     [ownedSchedule?.events],
+  );
+  const ownedScheduleSelectedGame = useMemo(
+    () => getSelectedScheduledGame(ownedSchedule?.events, selectedScheduleEventId),
+    [ownedSchedule?.events, selectedScheduleEventId],
   );
   const activeTrackerShare = useMemo(
     () => (currentGame ? trackerShares?.find((share) => share.game.id === currentGame.id) ?? null : null),
@@ -1292,7 +1309,10 @@ export function StatTrackerPage() {
   const totals = seasonTotals(data.games, sport);
   const yardTotals = seasonYardTotals(data.games, sport);
   const displayStats = rule.stats.filter((item) => !item.liveHidden && (showAllStats || item.featured));
-  const nextGame = ownedScheduleNextGame ?? localNextGame;
+  const nextGame = ownedScheduleSelectedGame
+    ?? localSelectedGame
+    ?? ownedScheduleNextGame
+    ?? localNextGame;
   const report = useMemo(() => {
     if (!selectedReportGameId) return null;
     return buildGameReport(data.games, sport, selectedReportGameId);

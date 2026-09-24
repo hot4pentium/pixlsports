@@ -561,12 +561,12 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
     })()`, page.sessionId), {
       profileTag: 'A',
       profileHref: '/studio/profile',
-      scheduleHref: '/studio/schedule',
+      scheduleHref: '/studio/schedule?eventId=game-1',
       workspaceRoutes: [
-        '/studio/schedule',
+        '/studio/schedule?eventId=game-1',
         '/studio/checklist?gameId=game-1&eventType=game',
-        '/studio/stat-tracker?date=2026-09-21&opponent=Rivals',
-        '/studio/athlete-page',
+        '/studio/stat-tracker?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
+        '/studio/hype-card?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
       ],
     });
 
@@ -609,7 +609,7 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
       ['btn-mobile-nav-home', '/studio'],
       ['btn-mobile-nav-prep', '/studio/checklist'],
       ['btn-mobile-nav-stat-tracker', '/studio/stat-tracker'],
-      ['btn-mobile-nav-hype', '/studio/athlete-page'],
+      ['btn-mobile-nav-hype', '/studio/hype-card'],
     ]) {
       const target = await connection.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
         const element = document.querySelector('[data-testid="${testId}"]');

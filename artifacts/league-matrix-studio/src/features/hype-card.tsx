@@ -158,15 +158,18 @@ function slugify(value: string) {
 type GameDayHypePrefill = {
   date: string;
   opponent: string;
+  eventType: 'game' | 'practice';
 };
 
 function readGameDayHypePrefill(): GameDayHypePrefill | null {
   if (typeof window === 'undefined') return null;
   const search = new URLSearchParams(window.location.search);
-  if (search.get('source') !== 'game-day') return null;
+  const source = search.get('source');
+  if (source !== 'game-day' && source !== 'workspace') return null;
   return {
     date: search.get('date') ?? '',
     opponent: search.get('opponent') ?? '',
+    eventType: search.get('eventType') === 'practice' ? 'practice' : 'game',
   };
 }
 
@@ -1202,7 +1205,8 @@ export function HypeCardEditor() {
       setProject((current) => seedHypeCardFromSupporterProfile(current, profile));
       profilePrefillAppliedRef.current = true;
     }
-    if (!gameDayPrefill || gameDayPrefillAppliedRef.current || !projects) return;
+    if (!gameDayPrefill || gameDayPrefillAppliedRef.current) return;
+    if (gameDayPrefill.eventType === 'game' && isSignedIn && !projects) return;
 
     const completedGames = trackerProjects.flatMap((trackerProject) => (
       normalizeTrackerData(trackerProject.project).games
@@ -1214,10 +1218,14 @@ export function HypeCardEditor() {
         && (!gameDayPrefill.opponent || game.opponent === gameDayPrefill.opponent)
       ));
     const context = [
-      gameDayPrefill.opponent ? `vs ${gameDayPrefill.opponent}` : '',
+      gameDayPrefill.eventType === 'practice'
+        ? 'Practice'
+        : gameDayPrefill.opponent ? `vs ${gameDayPrefill.opponent}` : 'Game day',
       formatGameDayDate(gameDayPrefill.date),
     ].filter(Boolean).join(' · ');
-    const statSummary = getGameDayStatSummary(matchingGame);
+    const statSummary = gameDayPrefill.eventType === 'game'
+      ? getGameDayStatSummary(matchingGame)
+      : '';
 
     setProject((current) => ({
       ...current,

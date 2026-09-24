@@ -28,6 +28,13 @@ import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
 import { trackEvent } from '../lib/analytics';
+import {
+  buildWorkspaceToolHref,
+  readWorkspaceEventContext,
+  saveWorkspaceEventContext,
+  workspaceEventContextStorageKey,
+  type WorkspaceEventContext,
+} from './workspace-context';
 import './supporter-dashboard-pixl.css';
 
 export interface SupporterProfile {
@@ -278,9 +285,11 @@ export function SupporterDashboardView({
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(() => (
-    typeof window === 'undefined' ? null : readSupporterActiveGame(window.localStorage)
-  ));
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return readWorkspaceEventContext(window.localStorage)?.id
+      ?? readSupporterActiveGame(window.localStorage);
+  });
   const [selectedThisSessionGameId, setSelectedThisSessionGameId] = useState<string | null>(null);
   useEffect(() => {
     const interval = window.setInterval(() => setCurrentTime(new Date()), 30_000);
@@ -291,11 +300,12 @@ export function SupporterDashboardView({
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null, currentTime);
   const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
+  const selectedWorkspaceEvent = activeJourneyEvents.find((event) => event.id === selectedGameId);
   const weekRecommendation = getSupporterWeekRecommendation(
     activeJourneyEvents,
     currentTime,
   );
-  const recommendedPreparationEvent = getSupporterPreparationContext(
+  const recommendedPreparationEvent = selectedWorkspaceEvent ?? getSupporterPreparationContext(
     weekRecommendation,
     gameEvents,
     selectedGameId,
@@ -351,15 +361,26 @@ export function SupporterDashboardView({
     ? `${preparationCopy.title.replace(/\.$/, '')} — ${preparationSchedule}`
     : preparationCopy.title;
   const contextDateParts = contextEvent ? getEventDateParts(contextEvent.date) : null;
-  const statTrackerHrefForGame = (game: SupporterEvent | undefined) => game
-    ? `${supporterToolRoutes.statTracker}?date=${encodeURIComponent(game.date)}&opponent=${encodeURIComponent(game.opponent || '')}`
-    : supporterToolRoutes.statTracker;
-  const checklistHrefForGame = (event: SupporterEvent | undefined, view?: 'share' | 'review') => event
-    ? `/studio/checklist?gameId=${encodeURIComponent(event.id)}&eventType=${encodeURIComponent(event.type)}${view ? `&view=${view}` : ''}`
-    : supporterToolRoutes.checklist;
+  const toToolContext = (event: SupporterEvent | undefined): WorkspaceEventContext | undefined => event
+    ? {
+      id: event.id,
+      type: event.type,
+      date: event.date,
+      time: event.time,
+      location: event.location,
+      opponent: event.opponent ?? '',
+    }
+    : undefined;
+  const statTrackerHrefForGame = (game: SupporterEvent | undefined) => (
+    buildWorkspaceToolHref('stats', toToolContext(game))
+  );
+  const checklistHrefForGame = (event: SupporterEvent | undefined, view?: 'share' | 'review') => {
+    const href = buildWorkspaceToolHref('prep', toToolContext(event));
+    return view && event ? `${href}&view=${view}` : href;
+  };
   const statTrackerHref = statTrackerHrefForGame(nextGame);
   const contextChecklistHref = checklistHrefForGame(contextEvent);
-  const hypeCardHref = supporterToolRoutes.athletePage;
+  const hypeCardHref = buildWorkspaceToolHref('hype', toToolContext(contextEvent));
   const recommendedStatTrackerHref = statTrackerHrefForGame(recommendedGame);
   const recommendedChecklistHref = checklistHrefForGame(weekRecommendation?.event);
   const workspaceTools = [
@@ -368,7 +389,7 @@ export function SupporterDashboardView({
       label: 'Calendar',
       description: 'Choose games, practices, and what is coming next.',
       Icon: CalendarDays,
-      href: supporterToolRoutes.schedule,
+      href: buildWorkspaceToolHref('calendar', toToolContext(contextEvent)),
     },
     {
       id: 'prep',
@@ -448,6 +469,13 @@ export function SupporterDashboardView({
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (event.key === workspaceEventContextStorageKey) {
+        const context = readWorkspaceEventContext(window.localStorage);
+        if (context && activeJourneyEvents.some((item) => item.id === context.id)) {
+          setSelectedGameId(context.id);
+        }
+        return;
+      }
       const syncEvent = parseSupporterStorageSyncEvent(event);
       if (!syncEvent) return;
 
@@ -464,7 +492,7 @@ export function SupporterDashboardView({
 
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, [gameEvents, stageReminderKey]);
+  }, [activeJourneyEvents, gameEvents, stageReminderKey]);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -486,8 +514,18 @@ export function SupporterDashboardView({
   const selectGame = (gameId: string) => {
     setSelectedGameId(gameId);
     setSelectedThisSessionGameId(gameId);
+    const selectedEvent = activeJourneyEvents.find((event) => event.id === gameId);
     try {
-      saveSupporterActiveGame(window.localStorage, gameId);
+      if (selectedEvent) {
+        saveWorkspaceEventContext(window.localStorage, {
+          ...selectedEvent,
+          opponent: selectedEvent.opponent ?? '',
+          snacks: '',
+          drinks: '',
+          notes: '',
+        });
+      }
+      if (selectedEvent?.type === 'game') saveSupporterActiveGame(window.localStorage, gameId);
     } catch {
       // The selection still works for this session when storage is unavailable.
     }
@@ -714,25 +752,25 @@ export function SupporterDashboardView({
              </div>
              <span className="text-[10px] font-bold">Home</span>
            </button>
-           <Link href={supporterToolRoutes.schedule} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
+            <Link href={buildWorkspaceToolHref('calendar', toToolContext(contextEvent))} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <CalendarDays className="w-[20px] h-[20px]" />
              </div>
              <span className="text-[10px] font-bold">Calendar</span>
            </Link>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.checklist)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Prep" data-testid="btn-mobile-nav-prep">
+            <button type="button" onClick={() => setLocation(contextChecklistHref)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Prep" data-testid="btn-mobile-nav-prep">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <ClipboardCheck className="w-[20px] h-[20px]" />
              </div>
              <span className="text-[10px] font-bold">Prep</span>
            </button>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Stats" data-testid="btn-mobile-nav-stat-tracker">
+            <button type="button" onClick={() => setLocation(statTrackerHrefForGame(contextEvent?.type === 'game' ? contextEvent : undefined))} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Stats" data-testid="btn-mobile-nav-stat-tracker">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <Activity className="w-[20px] h-[20px]" />
              </div>
              <span className="text-[10px] font-bold">Stats</span>
            </button>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.athletePage)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Hype" data-testid="btn-mobile-nav-hype">
+            <button type="button" onClick={() => setLocation(hypeCardHref)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Hype" data-testid="btn-mobile-nav-hype">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <Zap className="w-[20px] h-[20px]" />
              </div>
