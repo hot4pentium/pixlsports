@@ -2052,9 +2052,12 @@ export function HypeCardEditor() {
           console.warn('Video conversion unavailable; keeping original locally.', conversionError);
           preparedDownload = file;
           preparedPreview = file;
+          const silentAudio = conversionError instanceof Error && conversionError.name === 'AudioCaptureUnavailable';
           const stalled = conversionError instanceof Error && conversionError.message.toLowerCase().includes('stalled');
           const changedLength = conversionError instanceof Error && conversionError.message.includes('changed the clip length');
-          conversionWarning = changedLength
+          conversionWarning = silentAudio
+            ? 'The prepared video did not contain audible sound, so the original video was kept on this device.'
+            : changedLength
             ? 'Video preparation changed the clip length, so the original video was kept on this device instead.'
             : stalled
             ? 'Video preparation stopped because this browser was not making progress. The original video will stay local.'

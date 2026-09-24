@@ -1,4 +1,5 @@
 import { checkExportSupport } from './hype-card-media';
+import { audioCaptureUnavailableError, hasAudibleAudioSamples } from './hype-card-export';
 
 export type TranscodeProgressCallback = (progress: number) => void;
 
@@ -324,6 +325,11 @@ export async function transcodeVideoToMp4(
       );
       if (!preparedVideoDurationMatches(sourceDuration, preparedVideo.duration)) {
         throw new Error('Video preparation changed the clip length. The original clip will be kept locally.');
+      }
+      if (!await hasAudibleAudioSamples(result, signal)) {
+        throw audioCaptureUnavailableError(
+          'This browser produced a silent prepared video, so the original clip was kept on this device.',
+        );
       }
     } finally {
       preparedVideo.removeAttribute('src');

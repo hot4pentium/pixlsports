@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
-import { exportVideoCanvas, rasterizeSvgForDownload } from './hype-card-export';
+import { audioSamplesContainSignal, exportVideoCanvas, rasterizeSvgForDownload } from './hype-card-export';
 
 type CanvasCall = {
   width: number;
@@ -175,4 +175,10 @@ test('required clip audio fails before recording when Web Audio capture is unava
     if (previousRecorder) Object.defineProperty(globalThis, 'MediaRecorder', { configurable: true, value: previousRecorder });
     else delete (globalThis as { MediaRecorder?: unknown }).MediaRecorder;
   }
+});
+
+test('audio sample verification distinguishes Safari-style silent tracks from real samples', () => {
+  assert.equal(audioSamplesContainSignal(new Float32Array(2048)), false);
+  assert.equal(audioSamplesContainSignal(Float32Array.from([0, 0, 0.00002, 0])), true);
+  assert.equal(audioSamplesContainSignal(Float32Array.from([0, -0.00002, 0])), true);
 });

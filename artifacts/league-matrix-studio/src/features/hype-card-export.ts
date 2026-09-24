@@ -12,8 +12,8 @@ export type VideoRecorderOptions = {
 export const AUDIO_CAPTURE_UNAVAILABLE_MESSAGE =
   'This browser could not capture the clip audio, so the video was not posted. Your original video is still selected on this device. To post with sound, open the original video in a supported browser or on another device and try again.';
 
-export function audioCaptureUnavailableError(): Error {
-  const error = new Error(AUDIO_CAPTURE_UNAVAILABLE_MESSAGE);
+export function audioCaptureUnavailableError(message = AUDIO_CAPTURE_UNAVAILABLE_MESSAGE): Error {
+  const error = new Error(message);
   error.name = 'AudioCaptureUnavailable';
   return error;
 }
@@ -21,6 +21,8 @@ export function audioCaptureUnavailableError(): Error {
 const MEDIA_READY_TIMEOUT_MS = 10_000;
 const PLAYBACK_START_TIMEOUT_MS = 8_000;
 const NO_PROGRESS_TIMEOUT_MS = 8_000;
+const AUDIO_SAMPLE_CHECK_TIMEOUT_MS = 2_500;
+const AUDIO_SAMPLE_THRESHOLD = 0.00001;
 
 function abortError() {
   const error = new Error('Export cancelled');
@@ -105,6 +107,82 @@ function withTimeout<T>(promise: Promise<T>, message: string, signal: AbortSigna
       },
     );
   });
+}
+
+export function audioSamplesContainSignal(samples: ArrayLike<number>): boolean {
+  let peak = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    peak = Math.max(peak, Math.abs(samples[index] ?? 0));
+  }
+  return peak > AUDIO_SAMPLE_THRESHOLD;
+}
+
+/**
+ * Checks the recorded blob itself rather than trusting MediaStreamTrack presence.
+ * Safari can expose an audio track while its MediaRecorder output contains only
+ * zero-valued samples.
+ */
+export async function hasAudibleAudioSamples(blob: Blob, signal?: AbortSignal): Promise<boolean> {
+  const AudioContextConstructor = window.AudioContext
+    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) throw new Error('Web Audio is unavailable.');
+  const checkSignal = signal ?? new AbortController().signal;
+
+  const url = URL.createObjectURL(blob);
+  const audio = document.createElement('video');
+  audio.preload = 'auto';
+  audio.playsInline = true;
+  audio.muted = true;
+  audio.src = url;
+  audio.load();
+  let audioContext: AudioContext | null = null;
+  let source: MediaElementAudioSourceNode | null = null;
+  let analyser: AnalyserNode | null = null;
+  let gain: GainNode | null = null;
+
+  try {
+    await waitForMediaEvent(audio, 'loadedmetadata', 'Audio could not be checked.', checkSignal);
+    audioContext = new AudioContextConstructor();
+    await withTimeout(
+      audioContext.resume(),
+      'Video preparation stalled while checking audio.',
+      checkSignal,
+    );
+    source = audioContext.createMediaElementSource(audio);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0;
+    gain = audioContext.createGain();
+    gain.gain.value = 0;
+    source.connect(analyser);
+    analyser.connect(gain);
+    gain.connect(audioContext.destination);
+
+    // Start muted to satisfy Safari's media policy, then inspect the decoded
+    // stream after unmuting. The analyser is routed through a zero-gain node,
+    // so this never plays the check clip aloud.
+    await withTimeout(audio.play(), 'Video preparation stalled while checking audio.', checkSignal);
+    audio.muted = false;
+    const samples = new Float32Array(analyser.fftSize);
+    const deadline = Date.now() + AUDIO_SAMPLE_CHECK_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      if (signal?.aborted) throw abortError();
+      analyser.getFloatTimeDomainData(samples);
+      if (audioSamplesContainSignal(samples)) return true;
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
+    }
+    return false;
+  } finally {
+    source?.disconnect();
+    analyser?.disconnect();
+    gain?.disconnect();
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    audio.remove();
+    void audioContext?.close().catch(() => undefined);
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function svgToImage(svg: string, width: number, height: number): Promise<HTMLImageElement> {
@@ -284,7 +362,25 @@ export async function exportVideoCanvas(
       cleanup();
       if (cancelled) return;
       const blob = new Blob(chunks, { type: mimeType });
-      resolve({ blob, mimeType, ext, audioIncluded });
+      void (async () => {
+        let verifiedAudio = audioIncluded;
+        if (includeAudio) {
+          try {
+            verifiedAudio = await hasAudibleAudioSamples(blob, signal);
+          } catch (error) {
+            if (signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+              reject(error);
+              return;
+            }
+            verifiedAudio = false;
+          }
+        }
+        if (requireAudio && !verifiedAudio) {
+          reject(audioCaptureUnavailableError());
+          return;
+        }
+        resolve({ blob, mimeType, ext, audioIncluded: verifiedAudio });
+      })();
     };
 
     recorder.onerror = (e) => {
