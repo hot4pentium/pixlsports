@@ -1098,6 +1098,37 @@ export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const requestUrl = typeof input === 'string' ? input : input.url;
+    if (
+      window.location.search.includes('supporter-active-game-sync')
+      && requestUrl.endsWith('/api/supporter/active-game')
+    ) {
+      const method = String(init?.method || 'GET').toUpperCase();
+      const selectionKey = 'supporter-active-game-sync-server-selection';
+      const requestsKey = 'supporter-active-game-sync-requests';
+      const requests = JSON.parse(window.sessionStorage.getItem(requestsKey) || '[]');
+      const body = method === 'PUT' ? JSON.parse(String(init?.body || '{}')) : undefined;
+      requests.push({ method, body: body ?? null });
+      window.sessionStorage.setItem(requestsKey, JSON.stringify(requests));
+      if (method === 'PUT') {
+        if (
+          Object.keys(body).length !== 1
+          || !Object.prototype.hasOwnProperty.call(body, 'gameId')
+          || !(typeof body.gameId === 'string' || body.gameId === null)
+        ) {
+          return Promise.resolve(new Response(JSON.stringify({ error: 'Only a game ID may be saved.' }), {
+            status: 400, headers: { 'Content-Type': 'application/json' },
+          }));
+        }
+        window.sessionStorage.setItem(selectionKey, JSON.stringify(body.gameId));
+        return Promise.resolve(new Response(JSON.stringify({ gameId: body.gameId }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      const gameId = JSON.parse(window.sessionStorage.getItem(selectionKey) || 'null');
+      return Promise.resolve(new Response(JSON.stringify({ gameId }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
     if (window.sessionStorage.getItem('workspace-journey')) {
       const url = new URL(requestUrl, window.location.href);
       if (url.pathname.startsWith('/api/')) {
@@ -1185,6 +1216,30 @@ export function mount() {
   }
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const root = createRoot(document.getElementById('test-root'));
+  if (window.location.search.includes('supporter-active-game-sync')) {
+    dashboardEvents = [{
+      id: 'game-default',
+      type: 'game',
+      date: '2026-10-12',
+      time: '18:30',
+      location: 'Main Gym',
+      opponent: 'Falcons',
+      status: 'upcoming',
+    }, {
+      id: 'game-selected',
+      type: 'game',
+      date: '2026-10-13',
+      time: '19:00',
+      location: 'Away Gym',
+      opponent: 'Tigers',
+      status: 'upcoming',
+      notes: 'PRIVATE CHECKLIST NOTES',
+      checklistItems: ['PRIVATE CHECKLIST ITEM'],
+    }];
+    if (!window.sessionStorage.getItem('supporter-active-game-sync-server-selection')) {
+      window.sessionStorage.setItem('supporter-active-game-sync-server-selection', 'null');
+    }
+  }
   if (window.location.search.includes('workspace-journey')) {
     window.sessionStorage.setItem('workspace-journey', 'true');
     root.render(createElement(Router, null,
@@ -1266,6 +1321,7 @@ export function mount() {
       createElement(QueryClientProvider, { client: queryClient },
         createElement(SupporterDashboardView, {
           profile,
+          userId: window.location.search.includes('supporter-active-game-sync') ? 'supporter-sync-user' : undefined,
           events: dashboardEvents,
           nextGameIsUpcoming: true,
           projects: [],
@@ -2281,6 +2337,148 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-prep"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
+
+  } finally {
+    if (page && connection) {
+      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('supporter active game sync survives a device change and clears inaccessible games', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-active-game-sync-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-active-game-sync-browser-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-active-game-sync`,
+    );
+
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-default"',
+      Boolean,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]").some((request) => request.method === "GET")',
+      Boolean,
+    );
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-active-supporter-game"]');
+      if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector missing');
+      select.value = 'game-selected';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-server-selection") || "null") === "game-selected"',
+      Boolean,
+    );
+    const savedSelectionRequests = await connection.evaluate<Array<{ method: string; body: unknown }>>(
+      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")',
+      page.sessionId,
+    );
+    assert.deepEqual(
+      savedSelectionRequests.find((request) => request.method === 'PUT')?.body,
+      { gameId: 'game-selected' },
+    );
+    assert.doesNotMatch(JSON.stringify(savedSelectionRequests), /PRIVATE CHECKLIST NOTES|PRIVATE CHECKLIST ITEM/);
+
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('pixlsports-supporter-active-game');
+      localStorage.removeItem('pixlsports-workspace-event-context');
+    })()`, page.sessionId);
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-selected"',
+      Boolean,
+    );
+
+    await connection.evaluate(`(() => {
+      sessionStorage.setItem('supporter-active-game-sync-server-selection', JSON.stringify('deleted-game'));
+      localStorage.removeItem('pixlsports-supporter-active-game');
+      localStorage.removeItem('pixlsports-workspace-event-context');
+    })()`, page.sessionId);
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-default" && JSON.parse(sessionStorage.getItem("supporter-active-game-sync-server-selection") || "null") === null',
+      Boolean,
+    );
+    const finalSelectionRequests = await connection.evaluate<Array<{ method: string; body: unknown }>>(
+      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")',
+      page.sessionId,
+    );
+    const selectionWrites = finalSelectionRequests.filter((request) => request.method === 'PUT');
+    assert.ok(selectionWrites.some((request) => JSON.stringify(request.body) === JSON.stringify({ gameId: null })));
+    assert.ok(selectionWrites.every((request) => {
+      const body = request.body as Record<string, unknown>;
+      return Object.keys(body).length === 1 && Object.hasOwn(body, 'gameId');
+    }));
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

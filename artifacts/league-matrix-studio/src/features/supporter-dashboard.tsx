@@ -1,5 +1,11 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  getGetSupporterActiveGameQueryKey,
+  useGetSupporterActiveGame,
+  useUpdateSupporterActiveGame,
+} from '@workspace/api-client-react';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
@@ -19,6 +25,7 @@ import {
   parseSupporterStorageSyncEvent,
   readSupporterActiveGame,
   saveSupporterActiveGame,
+  supporterActiveGameStorageKey,
   supporterToolRoutes,
   type SupporterGameStage,
 } from './supporter-dashboard-model';
@@ -175,6 +182,7 @@ export interface SupporterDashboardViewProps {
   projects: SupporterProject[];
   scheduleSource: 'custom' | null;
   connectionLabel: string;
+  selectionSyncReady?: boolean;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
   onSignOut?: () => void;
@@ -268,19 +276,36 @@ const stageCopy: Record<SupporterGameStage, {
 
 export function SupporterDashboardView({
   profile,
+  userId,
   events,
   nextGameIsUpcoming,
   projects,
   scheduleSource,
   connectionLabel,
+  selectionSyncReady = true,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onSignOut,
 }: SupporterDashboardViewProps) {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const activeGameSelectionQueryKey = [...getGetSupporterActiveGameQueryKey(), userId ?? null];
+  const activeGameSelectionQuery = useGetSupporterActiveGame({
+    query: {
+      enabled: Boolean(userId && selectionSyncReady),
+      queryKey: activeGameSelectionQueryKey,
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+    },
+  });
+  const updateActiveGameSelection = useUpdateSupporterActiveGame();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const selectionTouchedForUserRef = useRef<string | null>(null);
+  const lastReconciledRemoteSelectionRef = useRef<{ userId: string; gameId: string | null } | null>(null);
+  const [selectionSyncError, setSelectionSyncError] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     return readWorkspaceEventContext(window.localStorage)?.id
@@ -509,10 +534,81 @@ export function SupporterDashboardView({
     setReminderVersion((version) => version + 1);
   };
 
+  const persistActiveGameSelection = (gameId: string | null) => {
+    if (!userId || !selectionSyncReady) return;
+    setSelectionSyncError(false);
+    void updateActiveGameSelection.mutateAsync({ data: { gameId } })
+      .then((selection) => {
+        queryClient.setQueryData(activeGameSelectionQueryKey, selection);
+      })
+      .catch(() => setSelectionSyncError(true));
+  };
+
+  const remoteSelectedGameId = activeGameSelectionQuery.data?.gameId ?? null;
+  useEffect(() => {
+    if (!userId || !selectionSyncReady || !activeGameSelectionQuery.isSuccess) return;
+    const previous = lastReconciledRemoteSelectionRef.current;
+    if (previous && previous.userId === userId && previous.gameId === remoteSelectedGameId) return;
+    lastReconciledRemoteSelectionRef.current = { userId, gameId: remoteSelectedGameId };
+    if (selectionTouchedForUserRef.current === userId) return;
+
+    if (remoteSelectedGameId) {
+      const remoteGame = gameEvents.find((game) => game.id === remoteSelectedGameId);
+      if (remoteGame) {
+        setSelectedGameId(remoteGame.id);
+        try {
+          saveSupporterActiveGame(window.localStorage, remoteGame.id);
+          saveWorkspaceEventContext(window.localStorage, {
+            ...remoteGame,
+            opponent: remoteGame.opponent ?? '',
+            snacks: '',
+            drinks: '',
+            notes: '',
+          });
+        } catch {
+          // The server remains authoritative when browser storage is unavailable.
+        }
+        return;
+      }
+
+      selectionTouchedForUserRef.current = userId;
+      setSelectedGameId(null);
+      setSelectedThisSessionGameId(null);
+      try {
+        window.localStorage.removeItem(supporterActiveGameStorageKey);
+        if (readWorkspaceEventContext(window.localStorage)?.id === remoteSelectedGameId) {
+          window.localStorage.removeItem(workspaceEventContextStorageKey);
+        }
+      } catch {
+        // A missing local cache does not prevent the server selection from clearing.
+      }
+      persistActiveGameSelection(null);
+      return;
+    }
+
+    const cachedGameId = readSupporterActiveGame(window.localStorage)
+      ?? readWorkspaceEventContext(window.localStorage)?.id
+      ?? null;
+    const cachedGame = gameEvents.find((game) => game.id === cachedGameId);
+    if (cachedGame) {
+      selectionTouchedForUserRef.current = userId;
+      setSelectedGameId(cachedGame.id);
+      persistActiveGameSelection(cachedGame.id);
+    }
+  }, [
+    activeGameSelectionQuery.isSuccess,
+    gameEvents,
+    persistActiveGameSelection,
+    remoteSelectedGameId,
+    selectionSyncReady,
+    userId,
+  ]);
+
   const selectGame = (gameId: string) => {
     setSelectedGameId(gameId);
     setSelectedThisSessionGameId(gameId);
     const selectedEvent = activeJourneyEvents.find((event) => event.id === gameId);
+    if (userId) selectionTouchedForUserRef.current = userId;
     try {
       if (selectedEvent) {
         saveWorkspaceEventContext(window.localStorage, {
@@ -523,7 +619,10 @@ export function SupporterDashboardView({
           notes: '',
         });
       }
-      if (selectedEvent?.type === 'game') saveSupporterActiveGame(window.localStorage, gameId);
+      if (selectedEvent?.type === 'game') {
+        saveSupporterActiveGame(window.localStorage, gameId);
+        persistActiveGameSelection(gameId);
+      }
     } catch {
       // The selection still works for this session when storage is unavailable.
     }
@@ -955,6 +1054,11 @@ export function SupporterDashboardView({
                   ))}
                 </select>
               </label>
+            )}
+            {selectionSyncError && (
+              <p className="mt-2 text-sm font-medium text-amber-100" role="status" data-testid="active-game-sync-error">
+                Your game is saved on this device, but could not sync to your account.
+              </p>
             )}
             <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">

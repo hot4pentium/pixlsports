@@ -90,6 +90,24 @@ export interface NotificationPreferencesUpdate {
   dayOf: boolean;
 }
 
+export interface SupporterActiveGame {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     * @nullable
+     */
+  gameId: string | null;
+}
+
+export interface SupporterActiveGameUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     * @nullable
+     */
+  gameId: string | null;
+}
+
 export type NotificationSubscriptionInputKeys = {
   /**
      * @minLength 1

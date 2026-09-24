@@ -238,6 +238,7 @@ export * from "./checklistShares";
 export * from "./meetingWorkspaces";
 export * from "./statTrackerShares";
 export * from "./athleteInvites";
+export * from "./supporterActiveGames";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,

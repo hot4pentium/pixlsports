@@ -147,6 +147,8 @@ export * from './statTrackerShare';
 export * from './statTrackerShareInput';
 export * from './statTrackerShareUpdate';
 export * from './storageQuota';
+export * from './supporterActiveGame';
+export * from './supporterActiveGameUpdate';
 export * from './supporterPhoto';
 export * from './supporterPhotoSave';
 export * from './supporterPhotoUpload';

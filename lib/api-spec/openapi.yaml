@@ -1286,6 +1286,41 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /supporter/active-game:
+    get:
+      operationId: getSupporterActiveGame
+      tags: [supporter]
+      summary: Get the signed-in supporter's active game selection
+      responses:
+        "200":
+          description: Active game selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterActiveGame"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateSupporterActiveGame
+      tags: [supporter]
+      summary: Save the signed-in supporter's active game selection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupporterActiveGameUpdate"
+      responses:
+        "200":
+          description: Saved active game selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupporterActiveGame"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /notifications/subscriptions:
     post:
       operationId: saveNotificationSubscription
@@ -1547,6 +1582,18 @@ components:
       properties:
         oneHourBefore: { type: boolean }
         dayOf: { type: boolean }
+    SupporterActiveGame:
+      type: object
+      additionalProperties: false
+      required: [gameId]
+      properties:
+        gameId: { type: ["string", "null"], minLength: 1, maxLength: 255 }
+    SupporterActiveGameUpdate:
+      type: object
+      additionalProperties: false
+      required: [gameId]
+      properties:
+        gameId: { type: ["string", "null"], minLength: 1, maxLength: 255 }
     NotificationSubscriptionInput:
       type: object
       required: [endpoint, keys]

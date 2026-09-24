@@ -13,6 +13,7 @@ import meetingWorkspacesRouter from "./meetingWorkspaces";
 import statTrackerSharesRouter from "./statTrackerShares";
 import webPushRouter from "./webPush";
 import athleteInvitesRouter from "./athleteInvites";
+import supporterActiveGameRouter from "./supporterActiveGame";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(checklistSharesRouter);
 router.use(meetingWorkspacesRouter);
 router.use(statTrackerSharesRouter);
   router.use(webPushRouter);
+router.use(supporterActiveGameRouter);
 
 export default router;

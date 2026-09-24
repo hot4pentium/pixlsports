@@ -2713,6 +2713,38 @@ export const UpdateNotificationPreferencesResponse = zod.object({
 
 
 /**
+ * @summary Get the signed-in supporter's active game selection
+ */
+export const getSupporterActiveGameResponseGameIdMax = 255;
+
+
+
+export const GetSupporterActiveGameResponse = zod.object({
+  "gameId": zod.string().min(1).max(getSupporterActiveGameResponseGameIdMax).nullable()
+})
+
+
+/**
+ * @summary Save the signed-in supporter's active game selection
+ */
+export const updateSupporterActiveGameBodyGameIdMax = 255;
+
+
+
+export const UpdateSupporterActiveGameBody = zod.object({
+  "gameId": zod.string().min(1).max(updateSupporterActiveGameBodyGameIdMax).nullable()
+})
+
+export const updateSupporterActiveGameResponseGameIdMax = 255;
+
+
+
+export const UpdateSupporterActiveGameResponse = zod.object({
+  "gameId": zod.string().min(1).max(updateSupporterActiveGameResponseGameIdMax).nullable()
+})
+
+
+/**
  * @summary Register a browser push subscription
  */
 export const saveNotificationSubscriptionBodyEndpointMax = 2048;

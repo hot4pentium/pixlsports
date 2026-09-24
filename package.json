@@ -8,6 +8,7 @@
     "test:account-lifecycle": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/accountLifecycle.test.ts",
     "test:projects": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/projects.test.ts",
     "test:supporter-photo-policy": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/supporterPhotoPolicy.test.ts",
+    "test:supporter-active-game": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/supporterActiveGame.test.ts",
     "test:checklist-sharing": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/checklistShares.test.ts src/features/checklist-sharing.browser.test.ts",
     "test:hype-card-replies": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/hypeCardReplies.test.ts",
     "test:athlete-invites": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/athleteInvites.test.ts",

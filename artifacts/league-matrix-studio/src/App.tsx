@@ -1422,19 +1422,21 @@ function SupporterStudio() {
   const profile = supporterProfileFromUser(user);
   const localSchedule = readScheduleDraft();
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
-  const { data: accountAccess } = useGetAccountAccess({
+  const accountAccessQuery = useGetAccountAccess({
     query: {
       enabled: Boolean(isSignedIn),
       staleTime: 15000,
       queryKey: getGetAccountAccessQueryKey(),
     },
   });
-  const { data: cloudProjects } = useListProjects({
+  const accountAccess = accountAccessQuery.data;
+  const cloudProjectsQuery = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
       queryKey: getListProjectsQueryKey(),
     },
   });
+  const cloudProjects = cloudProjectsQuery.data;
   const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
   const selectedCloudScheduleProject = getActiveCloudScheduleProject(cloudScheduleProjects);
   const cloudSchedule = selectedCloudScheduleProject
@@ -1493,6 +1495,14 @@ function SupporterStudio() {
           projects={projects}
           scheduleSource={scheduleSource}
           connectionLabel={scheduleLabel}
+          selectionSyncReady={Boolean(
+            !isSignedIn
+            || (
+              accountAccessQuery.isSuccess
+              && cloudProjectsQuery.isSuccess
+              && !cloudProjectsQuery.isFetching
+            ),
+          )}
            onSignOut={() => signOut({ redirectUrl: basePath || "/" })}
            athletePhotoUrl={athletePhoto.imageUrl}
            athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}

@@ -76,6 +76,8 @@ import type {
   StatTrackerShare,
   StatTrackerShareInput,
   StatTrackerShareUpdate,
+  SupporterActiveGame,
+  SupporterActiveGameUpdate,
   SupporterPhoto,
   SupporterPhotoSave,
   SupporterPhotoUpload,
@@ -5330,6 +5332,171 @@ export const useUpdateNotificationPreferences = <TError = ErrorType<BadRequestRe
         TContext
       > => {
       return useMutation(getUpdateNotificationPreferencesMutationOptions(options));
+    }
+
+export const getGetSupporterActiveGameUrl = () => {
+
+
+
+
+  return `/api/supporter/active-game`
+}
+
+/**
+ * @summary Get the signed-in supporter's active game selection
+ */
+export const getSupporterActiveGame = async ( options?: Parameters<typeof customFetch>[1]): Promise<SupporterActiveGame> => {
+
+  return customFetch<SupporterActiveGame>(getGetSupporterActiveGameUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSupporterActiveGameQueryKey = () => {
+    return [
+    `/api/supporter/active-game`
+    ] as const;
+    }
+
+
+export const getGetSupporterActiveGameQueryOptions = <TData = Awaited<ReturnType<typeof getSupporterActiveGame>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupporterActiveGame>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSupporterActiveGameQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSupporterActiveGame>>> = ({ signal }) => getSupporterActiveGame({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSupporterActiveGame>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSupporterActiveGameQueryResult = NonNullable<Awaited<ReturnType<typeof getSupporterActiveGame>>>
+export type GetSupporterActiveGameQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get the signed-in supporter's active game selection
+ */
+
+export function useGetSupporterActiveGame<TData = Awaited<ReturnType<typeof getSupporterActiveGame>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSupporterActiveGame>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSupporterActiveGameQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSupporterActiveGameUrl = () => {
+
+
+
+
+  return `/api/supporter/active-game`
+}
+
+/**
+ * @summary Save the signed-in supporter's active game selection
+ */
+export const updateSupporterActiveGame = async (supporterActiveGameUpdate: SupporterActiveGameUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SupporterActiveGame> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SupporterActiveGame>(getUpdateSupporterActiveGameUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(supporterActiveGameUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateSupporterActiveGameMutationKey = () => ['updateSupporterActiveGame'] as const;
+
+export const getUpdateSupporterActiveGameMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSupporterActiveGame>>, TError,UpdateSupporterActiveGameMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSupporterActiveGame>>, TError,UpdateSupporterActiveGameMutationVariables, TContext> => {
+
+const mutationKey = getUpdateSupporterActiveGameMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSupporterActiveGame>>, UpdateSupporterActiveGameMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateSupporterActiveGame(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSupporterActiveGameMutationResult = NonNullable<Awaited<ReturnType<typeof updateSupporterActiveGame>>>
+    export type UpdateSupporterActiveGameMutationBody = BodyType<SupporterActiveGameUpdate>
+    export type UpdateSupporterActiveGameMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type UpdateSupporterActiveGameMutationVariables = {data: BodyType<SupporterActiveGameUpdate>}
+
+    /**
+ * @summary Save the signed-in supporter's active game selection
+ */
+export const useUpdateSupporterActiveGame = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSupporterActiveGame>>, TError,UpdateSupporterActiveGameMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSupporterActiveGame>>,
+        TError,
+        UpdateSupporterActiveGameMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateSupporterActiveGameMutationOptions(options));
     }
 
 export const getSaveNotificationSubscriptionUrl = () => {
