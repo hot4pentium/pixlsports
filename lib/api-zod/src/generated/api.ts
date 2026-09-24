@@ -245,6 +245,44 @@ export const DeleteScheduleShareResponse = zod.void()
 
 
 /**
+ * Returns one sanitized event and only destinations the owner has deliberately shared.
+ * @summary Get a public event-specific Game On Card
+ */
+export const GetGameOnCardParams = zod.object({
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const getGameOnCardResponseAthletePageTokenMax = 100;
+
+export const getGameOnCardResponseAthleteNameMax = 200;
+
+
+
+export const GetGameOnCardResponse = zod.object({
+  "shareToken": zod.string().uuid(),
+  "title": zod.string(),
+  "teamSeason": zod.string(),
+  "event": zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['game']),
+  "status": zod.enum(['upcoming', 'live', 'final']).optional(),
+  "date": zod.string(),
+  "time": zod.string(),
+  "location": zod.string(),
+  "opponent": zod.string()
+}),
+  "stage": zod.enum(['upcoming', 'live', 'final']),
+  "prepState": zod.enum(['private', 'shared']),
+  "prepShareToken": zod.string().uuid().optional(),
+  "statsState": zod.enum(['not-shared', 'live', 'final', 'expired']),
+  "statsShareToken": zod.string().uuid().optional(),
+  "athletePageState": zod.enum(['unpublished', 'paused', 'published']),
+  "athletePageToken": zod.string().max(getGameOnCardResponseAthletePageTokenMax).optional(),
+  "athleteName": zod.string().max(getGameOnCardResponseAthleteNameMax).optional()
+})
+
+
+/**
  * Creates an edit link owned by the authenticated user.
  * @summary Create a collaborative Gameday Checklist share
  */

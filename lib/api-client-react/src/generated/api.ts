@@ -33,6 +33,7 @@ import type {
   ChecklistShareInput,
   ChecklistShareUpdate,
   Error,
+  GameOnCard,
   GetNotificationSubscriptionStatusParams,
   HealthStatus,
   HypeCardReplyInbox,
@@ -521,6 +522,84 @@ export const useDeleteScheduleShare = <TError = ErrorType<UnauthorizedResponse |
       > => {
       return useMutation(getDeleteScheduleShareMutationOptions(options));
     }
+
+export const getGetGameOnCardUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/game-on-cards/${shareToken}`
+}
+
+/**
+ * Returns one sanitized event and only destinations the owner has deliberately shared.
+ * @summary Get a public event-specific Game On Card
+ */
+export const getGameOnCard = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<GameOnCard> => {
+
+  return customFetch<GameOnCard>(getGetGameOnCardUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGameOnCardQueryKey = (shareToken: string,) => {
+    return [
+    `/api/game-on-cards/${shareToken}`
+    ] as const;
+    }
+
+
+export const getGetGameOnCardQueryOptions = <TData = Awaited<ReturnType<typeof getGameOnCard>>, TError = ErrorType<NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGameOnCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGameOnCardQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGameOnCard>>> = ({ signal }) => getGameOnCard(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGameOnCard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGameOnCardQueryResult = NonNullable<Awaited<ReturnType<typeof getGameOnCard>>>
+export type GetGameOnCardQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a public event-specific Game On Card
+ */
+
+export function useGetGameOnCard<TData = Awaited<ReturnType<typeof getGameOnCard>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGameOnCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGameOnCardQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateChecklistShareUrl = () => {
 

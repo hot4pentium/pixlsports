@@ -16,6 +16,8 @@ tags:
     description: Project media storage operations
   - name: schedule-shares
     description: Public schedule sharing operations
+  - name: game-on-cards
+    description: Event-specific Game On Card destinations
   - name: checklist-shares
     description: Collaborative Gameday Checklist sharing operations
   - name: meeting-workspaces
@@ -120,6 +122,23 @@ paths:
           description: Public schedule share revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /game-on-cards/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    get:
+      operationId: getGameOnCard
+      tags: [game-on-cards]
+      summary: Get a public event-specific Game On Card
+      description: Returns one sanitized event and only destinations the owner has deliberately shared.
+      responses:
+        "200":
+          description: Public Game On Card and current related destinations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameOnCard"
         "404":
           $ref: "#/components/responses/NotFound"
   /checklist-shares:
@@ -1676,6 +1695,34 @@ components:
         createdAt:
           type: string
           format: date-time
+    GameOnCardEvent:
+      type: object
+      required: [id, type, date, time, location, opponent]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [game] }
+        status: { type: string, enum: [upcoming, live, final] }
+        date: { type: string }
+        time: { type: string }
+        location: { type: string }
+        opponent: { type: string }
+    GameOnCard:
+      type: object
+      required: [shareToken, title, teamSeason, event, stage, prepState, statsState, athletePageState]
+      properties:
+        shareToken: { type: string, format: uuid }
+        title: { type: string }
+        teamSeason: { type: string }
+        event:
+          $ref: "#/components/schemas/GameOnCardEvent"
+        stage: { type: string, enum: [upcoming, live, final] }
+        prepState: { type: string, enum: [private, shared] }
+        prepShareToken: { type: string, format: uuid }
+        statsState: { type: string, enum: [not-shared, live, final, expired] }
+        statsShareToken: { type: string, format: uuid }
+        athletePageState: { type: string, enum: [unpublished, paused, published] }
+        athletePageToken: { type: string, maxLength: 100 }
+        athleteName: { type: string, maxLength: 200 }
     ChecklistItem:
       type: object
       required: [id, label, completed]

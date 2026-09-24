@@ -24,6 +24,7 @@
 - [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.
 - [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.
 - [Vite artifact entrypoints](vite-artifact-entrypoints.md) — use a relative HTML module entry so root and subpath production builds resolve the same current app.
+- [OpenAPI path nesting](openapi-path-nesting.md) — successful codegen does not guarantee operations stayed under the intended route.
 - [Landing responsive browser checks](landing-responsive-browser-checks.md) — distinguish page containment from intentional internal ticker scrolling across phone and desktop widths.
 - [Supporter-only product boundary](supporter-only-product-boundary.md) — center the parent’s athlete journey; team stats stay advanced and meetings leave the product flow.
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.

@@ -182,6 +182,9 @@ const StatTrackerPage = lazy(() =>
 const PublicStatTrackerPage = lazy(() =>
   import('@/features/stat-tracker-spectator').then(({ PublicStatTrackerPage }) => ({ default: PublicStatTrackerPage })),
 );
+const PublicGameOnCardPage = lazy(() =>
+  import('@/features/game-on-card').then(({ PublicGameOnCardPage }) => ({ default: PublicGameOnCardPage })),
+);
 const SupporterDashboardView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterDashboardView }) => ({ default: SupporterDashboardView })),
 );
@@ -3191,7 +3194,18 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
 
   useEffect(() => {
     if (shared || !hydrated || requestedGameApplied.current || !requestedGameId.current) return;
-    const requestedGame = calendarEvents.find((event) => event.id === requestedGameId.current);
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedGame = calendarEvents.find((event) => event.id === requestedGameId.current)
+      ?? (['date', 'time', 'location', 'opponent'].some((key) => searchParams.has(key))
+        ? {
+          id: requestedGameId.current,
+          type: requestedEventType.current === 'practice' ? 'practice' as const : 'game' as const,
+          date: searchParams.get('date') ?? '',
+          time: searchParams.get('time') ?? '',
+          location: searchParams.get('location') ?? '',
+          opponent: searchParams.get('opponent') ?? '',
+        }
+        : undefined);
     if (!requestedGame) return;
     requestedGameApplied.current = true;
     const eventType = requestedGame.type ?? requestedEventType.current ?? 'game';
@@ -4199,6 +4213,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
+              <Route path="/game-on/:shareToken" component={PublicGameOnCardPage} />
                <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
                <Route path="/meeting/:shareToken" component={PublicMeetingRecapPage} />
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />

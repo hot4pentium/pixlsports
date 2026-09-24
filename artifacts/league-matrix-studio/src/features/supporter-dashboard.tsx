@@ -32,6 +32,7 @@ import {
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
+import { GameOnCardPanel } from './game-on-card';
 import type { Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
 import { trackEvent } from '../lib/analytics';
@@ -1072,6 +1073,13 @@ export function SupporterDashboardView({
         </div>
         </section>
       </div>
+
+      <GameOnCardPanel
+        profile={profile}
+        userId={userId}
+        events={events}
+        selectedEvent={contextEvent?.type === 'game' ? contextEvent : nextGame}
+      />
 
       <section className="dashboard-week-path-panel workspace-panel animate-slide-up delay-200" data-testid="section-desktop-workspace" aria-labelledby="desktop-workspace-heading">
         <div className="workspace-panel-heading">

@@ -217,6 +217,85 @@ export interface ScheduleShare {
   createdAt: string;
 }
 
+export type GameOnCardEventType = typeof GameOnCardEventType[keyof typeof GameOnCardEventType];
+
+
+export const GameOnCardEventType = {
+  game: 'game',
+} as const;
+
+export type GameOnCardEventStatus = typeof GameOnCardEventStatus[keyof typeof GameOnCardEventStatus];
+
+
+export const GameOnCardEventStatus = {
+  upcoming: 'upcoming',
+  live: 'live',
+  final: 'final',
+} as const;
+
+export interface GameOnCardEvent {
+  id: string;
+  type: GameOnCardEventType;
+  status?: GameOnCardEventStatus;
+  date: string;
+  time: string;
+  location: string;
+  opponent: string;
+}
+
+export type GameOnCardStage = typeof GameOnCardStage[keyof typeof GameOnCardStage];
+
+
+export const GameOnCardStage = {
+  upcoming: 'upcoming',
+  live: 'live',
+  final: 'final',
+} as const;
+
+export type GameOnCardPrepState = typeof GameOnCardPrepState[keyof typeof GameOnCardPrepState];
+
+
+export const GameOnCardPrepState = {
+  private: 'private',
+  shared: 'shared',
+} as const;
+
+export type GameOnCardStatsState = typeof GameOnCardStatsState[keyof typeof GameOnCardStatsState];
+
+
+export const GameOnCardStatsState = {
+  'not-shared': 'not-shared',
+  live: 'live',
+  final: 'final',
+  expired: 'expired',
+} as const;
+
+export type GameOnCardAthletePageState = typeof GameOnCardAthletePageState[keyof typeof GameOnCardAthletePageState];
+
+
+export const GameOnCardAthletePageState = {
+  unpublished: 'unpublished',
+  paused: 'paused',
+  published: 'published',
+} as const;
+
+export interface GameOnCard {
+  shareToken: string;
+  title: string;
+  teamSeason: string;
+  event: GameOnCardEvent;
+  stage: GameOnCardStage;
+  prepState: GameOnCardPrepState;
+  prepShareToken?: string;
+  statsState: GameOnCardStatsState;
+  statsShareToken?: string;
+  athletePageState: GameOnCardAthletePageState;
+  /** @maxLength 100 */
+  athletePageToken?: string;
+  /** @maxLength 200 */
+  athleteName?: string;
+}
+
 export interface ChecklistItem {
   /**
      * @minLength 1
