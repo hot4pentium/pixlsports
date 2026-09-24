@@ -1,10 +1,10 @@
 ---
-name: Season-first positioning
-description: Approved hierarchy for Pixl Sports landing-page messaging.
+name: Athlete-first positioning
+description: Positioning hierarchy for Pixl Sports around parents celebrating one athlete.
 ---
 
-Lead with Pixl Sports as a home for the whole season. Use the weekly plan-follow-share rhythm to explain how it works, not as the product's main promise.
+Lead with helping parents celebrate their individual athlete. Keep the season as the continuity context across events; Calendar, Prep, Stats, and Hype are supporting ways to follow and celebrate that athlete.
 
-**Why:** Repeating "week" across the hero and major sections made the product sound like a short-lived game-week planner. The user approved reframing the season as the primary value while retaining week-by-week guidance.
+**Why:** The user is refocusing Pixl Sports from a week/event-led tool promise toward the parent’s ongoing relationship with and celebration of one athlete.
 
-**How to apply:** Keep season-long continuity prominent in future marketing copy; use weekly actions as supporting detail rather than replacing the broader season story.
+**How to apply:** Keep the athlete as the persistent identity across the main workspace. Use the season and selected event to organize context, not to make the week planner or team operations the product’s primary promise.

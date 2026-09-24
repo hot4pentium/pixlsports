@@ -1,10 +1,10 @@
 ---
-name: Meeting workspace sharing
-description: Ownership, local-draft, conflict, and public-recap boundaries for meeting capture.
+name: Legacy meeting records
+description: Preserve and secure existing meeting records while meetings leave the product flow.
 ---
 
-Meeting capture remains local-first. Loading or saving a cloud workspace must never erase an existing local draft; stale cross-device writes preserve the local copy and surface a conflict.
+Meetings are no longer part of the intended Pixl Sports product flow. Do not add new meeting entry points. Preserve existing agendas, drafts, and recaps unless the user explicitly approves deleting or migrating them.
 
-**Why:** Coaches may capture notes while offline or edit the same meeting on multiple devices. Silent replacement would lose attendance, decisions, or follow-ups.
+**Why:** The user chose to remove meetings while refocusing Pixl Sports on parents celebrating an individual athlete; removing a feature should not silently destroy historical user data.
 
-**How to apply:** Keep owner workspace reads and writes authenticated and revisioned. Public recap links use a separate opaque token, expose only the structured recap snapshot, and remain read-only without owner or account identifiers.
+**How to apply:** Do not surface meeting workflows in new navigation or recommendations. If legacy meeting data remains accessible, retain its existing authorization and privacy boundaries until a separate, explicit retirement plan is approved.

@@ -11,7 +11,7 @@
 - [Live role routing](live-role-routing.md) — studio role UI must derive from the current Clerk user on every render, not the initial session role.
 - [Checklist sharing test harness](checklist-sharing-test-harness.md) — direct route tests must provide Clerk-branded session auth; browser coverage uses installed Chromium CDP.
 - [Checklist owner sync](checklist-owner-sync.md) — after an edit link exists, owner and collaborator edits must update the same shared checklist; local saves alone are insufficient.
-- [Season-first positioning](season-first-positioning.md) — lead Pixl Sports messaging with the whole season; weekly guidance explains how it works.
+- [Athlete-first positioning](season-first-positioning.md) — lead with celebrating one athlete; use season context to support continuity.
 - [Public Hype Card boundaries](public-hype-card-boundaries.md) — player pages expose flattened media and finalized aggregates while rotating one owner/design URL server-side.
 - [Profile sport precedence](profile-sport-precedence.md) — a selected profile sport controls sport-specific tools; history chooses the sport only when the profile has none.
 - [TSX test JSX runtime](tsx-test-jsx-runtime.md) — TSX modules rendered by Node tests need a React binding even when Vite and TypeScript accept named-only React imports.
@@ -25,7 +25,7 @@
 - [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.
 - [Vite artifact entrypoints](vite-artifact-entrypoints.md) — use a relative HTML module entry so root and subpath production builds resolve the same current app.
 - [Landing responsive browser checks](landing-responsive-browser-checks.md) — distinguish page containment from intentional internal ticker scrolling across phone and desktop widths.
-- [Supporter-only product boundary](supporter-only-product-boundary.md) — Pixl Sports serves fans and parents only; profiles remain, but team-management paths must not return.
+- [Supporter-only product boundary](supporter-only-product-boundary.md) — center the parent’s athlete journey; team stats stay advanced and meetings leave the product flow.
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.
 - [Exported stats QR safe areas](exported-stats-qr-safe-areas.md) — linked stats overlays share one SVG foreground across stills and video, with format-specific protected lanes.
 - [Athlete Hype Page lifecycle](athlete-hype-page-lifecycle.md) — the durable page pauses in place while Game Day Live remains a separately revocable, short-lived session.
@@ -49,7 +49,7 @@
 - [Push display receipts](push-display-receipts.md) — service-worker receipts confirm OS display acceptance, not that a user saw or read the alert.
 - [Cached startup browser timing](cached-startup-browser-timing.md) — compare cached readiness with delayed refresh completion instead of timing Vite dev-server startup tightly.
 - [Hype Page media naming](hype-page-media-naming.md) — display names are separate metadata; public manifests must redact device filenames from video metadata.
-- [Meeting workspace sharing](meeting-workspace-sharing.md) — meeting drafts stay local-first; owner cloud saves and read-only public recaps use separate access boundaries.
+- [Legacy meeting records](meeting-workspace-sharing.md) — meetings leave the product flow; preserve existing records unless deletion is explicitly approved.
 - [Hosted clip audio policy](hosted-clip-audio-policy.md) — posting requires captured audio; local exports may remain silent with a warning.
 - [Week path video parity](week-path-video-parity.md) — edits to the animated artifact require refreshing the separate public landing clip and poster.
 - [First tracker project on Hype Pages](first-tracker-project-hype-pages.md) — pages created before the first tracker save need a safe same-owner project fallback.
