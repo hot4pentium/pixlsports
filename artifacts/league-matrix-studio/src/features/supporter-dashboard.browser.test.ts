@@ -2270,6 +2270,11 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       false,
       'scheduled prep must not expose a manual start action',
     );
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"input-prep-meeting-title\\"]"))', page.sessionId),
+      false,
+      'scheduled meeting titles must stay sourced from the schedule',
+    );
 
     const setField = async (selector: string, value: string) => {
       await connection!.evaluate(`(() => {
@@ -2402,8 +2407,19 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       false,
       'an unscheduled meeting must remain in prep until started',
     );
+    await setField('[data-testid="input-prep-meeting-title"]', 'Friday Family Meeting');
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"text-meeting-title\\"]")?.textContent || ""',
+      (value) => value === 'Friday Family Meeting',
+    );
     await connection.evaluate(`document.querySelector('[data-testid="button-start-meeting"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"textarea-meeting-notes\\"]"))', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-meeting-title\\"]")?.textContent || ""', page.sessionId),
+      'Friday Family Meeting',
+    );
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"button-start-meeting\\"]"))', page.sessionId),
       false,
@@ -2416,13 +2432,18 @@ test('meeting capture keeps live notes and turns the finished meeting into a sen
       await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-recap-content\\"]")?.textContent || ""', page.sessionId),
       /We started this conversation without a calendar slot/,
     );
+    assert.match(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"text-recap-content\\"]")?.textContent || ""', page.sessionId),
+      /PIXL SPORTS \/ FRIDAY FAMILY MEETING/,
+    );
     const unscheduledRecord = await connection.evaluate<{ startedAt: string | null; endedAt: string | null; notes: string }>(`(() => {
       const entry = Object.entries(localStorage).find(([key]) => key.endsWith(':meeting-unscheduled'));
-      return entry ? JSON.parse(entry[1]) : { startedAt: null, endedAt: null, notes: '' };
+      return entry ? JSON.parse(entry[1]) : { startedAt: null, endedAt: null, notes: '', context: null };
     })()`, page.sessionId);
     assert.ok(unscheduledRecord.startedAt, 'manual start must persist a local start time');
     assert.ok(unscheduledRecord.endedAt, 'ending must persist the local history record');
     assert.equal(unscheduledRecord.notes, 'We started this conversation without a calendar slot.');
+    assert.equal((unscheduledRecord as typeof unscheduledRecord & { context?: { title?: string } }).context?.title, 'Friday Family Meeting');
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

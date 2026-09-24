@@ -267,8 +267,13 @@ export function MeetingCapture() {
   const presentCount = state.participants.filter((participant) => participant.present).length;
   const agendaProgress = state.agenda.length ? Math.round((completedAgenda / state.agenda.length) * 100) : 0;
   const ended = Boolean(state.endedAt);
-  const phase = getMeetingPhase(context, state, currentTime);
-  const unscheduled = isMeetingUnscheduled(context);
+  const meetingContext = state.context
+    && state.context.id === context.id
+    && isMeetingUnscheduled(context)
+    ? { ...context, title: state.context.title }
+    : context;
+  const phase = getMeetingPhase(meetingContext, state, currentTime);
+  const unscheduled = isMeetingUnscheduled(meetingContext);
 
   const updateState = (patch: Partial<MeetingState>) => {
     setState((current) => {
@@ -356,8 +361,17 @@ export function MeetingCapture() {
     setCurrentTime(new Date(startedAt));
   };
 
+  const updateMeetingTitle = (title: string) => {
+    updateState({
+      context: {
+        ...meetingContext,
+        title,
+      },
+    });
+  };
+
   const handleCopy = async () => {
-    const text = recapText(context, state);
+    const text = recapText(meetingContext, state);
     try {
       if (!navigator.clipboard) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(text);
@@ -373,7 +387,7 @@ export function MeetingCapture() {
       return;
     }
     try {
-      await navigator.share({ title: `Pixl Sports recap: ${context.title}`, text: recapText(context, state) });
+      await navigator.share({ title: `Pixl Sports recap: ${meetingContext.title}`, text: recapText(meetingContext, state) });
       setShareStatus('Recap shared.');
     } catch {
       setShareStatus('Share was cancelled or could not be completed.');
@@ -382,7 +396,7 @@ export function MeetingCapture() {
 
   const handleDownloadPdf = () => {
     try {
-      downloadMeetingRecapPdf(context, state);
+      downloadMeetingRecapPdf(meetingContext, state);
       setPdfStatus('PDF downloaded.');
     } catch {
       setPdfStatus('PDF could not be created on this device. Copy the recap instead.');
@@ -401,7 +415,7 @@ export function MeetingCapture() {
   if (showRecapView) {
     return (
       <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
-        <MeetingHeader context={context} ended={ended} recap onBack={handleBack} />
+        <MeetingHeader context={meetingContext} ended={ended} recap onBack={handleBack} />
         <main className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div>
@@ -429,7 +443,7 @@ export function MeetingCapture() {
               <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[#f7c97a]"><CheckCircle2 className="h-4 w-4" /> Clean handoff</span>
               <span className="text-xs text-[#8aa9c1]" data-testid="text-recap-stats">{presentCount} present · {completedAgenda} of {state.agenda.length} agenda items complete</span>
             </div>
-            <pre className="whitespace-pre-wrap px-5 py-6 font-sans text-sm leading-7 text-[#edf2f1] sm:px-7 sm:py-8" data-testid="text-recap-content">{recapText(context, state)}</pre>
+            <pre className="whitespace-pre-wrap px-5 py-6 font-sans text-sm leading-7 text-[#edf2f1] sm:px-7 sm:py-8" data-testid="text-recap-content">{recapText(meetingContext, state)}</pre>
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button type="button" onClick={handleCopy} className="inline-flex items-center justify-center gap-2 bg-[#e8a45c] px-5 py-3 text-xs font-bold uppercase tracking-[0.15em] text-[#18263a] transition-transform hover:-translate-y-0.5" data-testid="button-copy-recap">
@@ -455,7 +469,7 @@ export function MeetingCapture() {
   if (phase === 'prep') {
     return (
       <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
-        <MeetingHeader context={context} ended={false} recap={false} prep onBack={handleBack} />
+        <MeetingHeader context={meetingContext} ended={false} recap={false} prep onBack={handleBack} />
         <main className="mx-auto max-w-4xl px-5 py-7 sm:px-8 sm:py-10">
           <div className="mb-8 border-b border-white/10 pb-6">
             <SectionLabel>Before the room</SectionLabel>
@@ -469,6 +483,24 @@ export function MeetingCapture() {
           </div>
 
           <div className="grid gap-5">
+            {unscheduled && (
+              <section className="border border-[#426481] bg-[#163858] p-5 sm:p-7" aria-labelledby="prep-meeting-title-heading" data-testid="section-prep-meeting-title">
+                <SectionLabel>Name the room</SectionLabel>
+                <h2 id="prep-meeting-title-heading" className="mt-3 font-display text-3xl uppercase leading-none">Meeting name</h2>
+                <p className="mt-3 text-sm leading-relaxed text-[#aec5d3]">Give this conversation a name so the recap is easy to find later.</p>
+                <label htmlFor="prep-meeting-title" className="sr-only">Meeting name</label>
+                <input
+                  id="prep-meeting-title"
+                  value={meetingContext.title}
+                  onChange={(event) => updateMeetingTitle(event.target.value)}
+                  onBlur={() => {
+                    if (!meetingContext.title.trim()) updateMeetingTitle('Team meeting');
+                  }}
+                  className="mt-5 w-full border border-[#41627e] bg-[#0c2643] px-3 py-3 text-sm text-[#f6f2e9] outline-none focus:border-[#f7c97a]"
+                  data-testid="input-prep-meeting-title"
+                />
+              </section>
+            )}
             <section className="border border-[#426481] bg-[#102b4d] p-5 sm:p-7" aria-labelledby="prep-agenda-heading">
               <div className="flex items-end justify-between gap-3">
                 <div>
@@ -555,7 +587,7 @@ export function MeetingCapture() {
 
   return (
     <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
-      <MeetingHeader context={context} ended={ended} recap={false} onBack={handleBack} />
+      <MeetingHeader context={meetingContext} ended={ended} recap={false} onBack={handleBack} />
       <main className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-10">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
           <div>
