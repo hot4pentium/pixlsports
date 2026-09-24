@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trophy,
+  RotateCw,
   Zap,
 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -580,6 +581,7 @@ function PublicDestination({
 
 export function PublicGameOnCardPage({ params }: { params: { shareToken?: string } }) {
   const shareToken = params.shareToken ?? '';
+  const [showStats, setShowStats] = useState(false);
   const card = useGetGameOnCard(shareToken, {
     query: {
       queryKey: getGetGameOnCardQueryKey(shareToken),
@@ -627,6 +629,14 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
   const prepHref = data.prepShareToken ? `/checklist/${data.prepShareToken}` : undefined;
   const statsHref = data.statsShareToken ? `/live/${data.statsShareToken}` : undefined;
   const athletePageHref = data.athletePageToken ? `/player/${data.athletePageToken}` : undefined;
+  const statsTitle = data.stage === 'final' ? 'Game stats' : 'Live stats';
+  const statsDetail = data.statsState === 'expired'
+    ? 'The temporary stats link has expired. The event details are still available on the front of this card.'
+    : data.statsState === 'live'
+      ? 'Follow the shared game stats as they update.'
+      : data.statsState === 'final'
+        ? 'Review the completed game stats.'
+        : 'Stats are not being shared for this event. Only the card owner can start and share the event-specific tracker.';
 
   return (
     <div className="noise min-h-dvh bg-background">
@@ -637,40 +647,84 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl px-4 py-7 sm:px-8 sm:py-12" data-testid="public-game-on-card">
-        <section className="relative overflow-hidden border border-[#173a62] bg-[#0B1F3A] p-6 text-white shadow-xl sm:p-10">
+        <section
+          className="relative overflow-hidden border border-[#173a62] bg-[#0B1F3A] text-white shadow-xl"
+          aria-label={`Game On Card, ${showStats ? 'stats side' : 'event side'}`}
+        >
           <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(135deg,transparent_0_47%,rgba(0,124,248,.5)_48%_50%,transparent_51%_100%)] [background-size:36px_36px]" />
-          <div className="relative">
-            <div className="inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-              <Zap className="h-3.5 w-3.5" /> Game On
-            </div>
-            <p className="mt-5 text-[10px] font-bold uppercase tracking-[.22em] text-white/50">{stageLabel}</p>
-            <h1 className="mt-2 font-display text-4xl uppercase leading-[.9] tracking-wide sm:text-6xl">{data.title}</h1>
-            {data.athleteName && <p className="mt-3 text-sm font-semibold text-white/70">Following {data.athleteName}</p>}
-            <div className="mt-7 grid gap-5 border-t border-white/15 pt-6 sm:grid-cols-2">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Next up</p>
-                <p className="mt-2 font-display text-3xl uppercase sm:text-4xl">
-                  {data.event.opponent ? `vs ${data.event.opponent}` : 'Game day'}
-                </p>
-                <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-white/70">
-                  <CalendarDays className="h-4 w-4 text-primary" /> {dateLabel}
-                </p>
-                {data.event.time && <p className="mt-1 text-sm font-semibold text-white/60">{data.event.time}</p>}
+          <div className="relative min-h-[430px] p-6 sm:min-h-[390px] sm:p-10">
+            <div className="flex items-start justify-between gap-4">
+              <div className="inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-primary">
+                {showStats ? <Activity className="h-3.5 w-3.5" /> : <Zap className="h-3.5 w-3.5" />}
+                {showStats ? statsTitle : 'Game On'}
               </div>
-              {data.event.location && (
-                <div className="sm:border-l sm:border-white/15 sm:pl-6">
-                  <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Where</p>
-                  <p className="mt-2 flex items-start gap-2 text-base font-semibold leading-relaxed text-white/85">
-                    <MapPin className="mt-1 h-4 w-4 shrink-0 text-primary" /> {data.event.location}
-                  </p>
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(data.event.location)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-white"
-                  >
-                    Open map <ExternalLink className="h-3 w-3" />
-                  </a>
+              <button
+                type="button"
+                onClick={() => setShowStats((current) => !current)}
+                aria-pressed={showStats}
+                aria-controls="game-on-card-face"
+                className="inline-flex min-h-11 items-center gap-2 border border-white/25 bg-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[.16em] text-white transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1F3A]"
+                data-testid="game-on-flip-control"
+              >
+                <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                {showStats ? 'Show event' : 'Show stats'}
+              </button>
+            </div>
+
+            <div id="game-on-card-face" className="mt-5" aria-live="polite">
+              {!showStats ? (
+                <div data-testid="game-on-front-face">
+                  <p className="text-[10px] font-bold uppercase tracking-[.22em] text-white/50">{stageLabel}</p>
+                  <h1 className="mt-2 font-display text-4xl uppercase leading-[.9] tracking-wide sm:text-6xl">{data.title}</h1>
+                  {data.athleteName && <p className="mt-3 text-sm font-semibold text-white/70">Following {data.athleteName}</p>}
+                  <div className="mt-7 grid gap-5 border-t border-white/15 pt-6 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Game</p>
+                      <p className="mt-2 font-display text-3xl uppercase sm:text-4xl">
+                        {data.event.opponent ? `vs ${data.event.opponent}` : 'Game day'}
+                      </p>
+                      <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-white/70">
+                        <CalendarDays className="h-4 w-4 text-primary" /> {dateLabel}
+                      </p>
+                      {data.event.time && <p className="mt-1 text-sm font-semibold text-white/60">{data.event.time}</p>}
+                    </div>
+                    <div className="sm:border-l sm:border-white/15 sm:pl-6">
+                      {data.event.location && (
+                        <>
+                          <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Where</p>
+                          <p className="mt-2 flex items-start gap-2 text-base font-semibold leading-relaxed text-white/85">
+                            <MapPin className="mt-1 h-4 w-4 shrink-0 text-primary" /> {data.event.location}
+                          </p>
+                          <a href={`https://maps.google.com/?q=${encodeURIComponent(data.event.location)}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-white">
+                            Open map <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </>
+                      )}
+                      <div className={data.event.location ? 'mt-5 border-t border-white/15 pt-5' : ''}>
+                        <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Athlete</p>
+                        {athletePageHref ? (
+                          <Link href={athletePageHref} className="mt-2 inline-flex min-h-11 items-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-white hover:text-[#0B1F3A]" data-testid="game-on-athlete-page-link">
+                            <Sparkles className="h-4 w-4" /> Visit {data.athleteName ? `${data.athleteName}’s page` : 'Athlete Page'}
+                          </Link>
+                        ) : (
+                          <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
+                            {data.athletePageState === 'paused' ? 'The Athlete Hype Page is currently paused.' : 'No Athlete Hype Page is published yet.'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-h-[285px] flex-col justify-center" data-testid="game-on-back-face">
+                  <p className="text-[10px] font-bold uppercase tracking-[.22em] text-white/50">{stageLabel}</p>
+                  <h1 className="mt-2 font-display text-4xl uppercase tracking-wide sm:text-6xl">{statsTitle}</h1>
+                  <p className="mt-4 max-w-xl text-base font-medium leading-relaxed text-white/70">{statsDetail}</p>
+                  {statsHref && (
+                    <Link href={statsHref} className="mt-7 inline-flex min-h-12 w-fit items-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:bg-white hover:text-[#0B1F3A]" data-testid="game-on-stats-link">
+                      {data.statsState === 'final' ? 'View final stats' : 'Follow live stats'} <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
@@ -695,32 +749,6 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
               href={prepHref}
               action="Open checklist"
               testId="game-on-prep-destination"
-            />
-            <PublicDestination
-              icon={Activity}
-              title={data.stage === 'final' ? 'Game stats' : 'Live stats'}
-              detail={data.statsState === 'expired'
-                ? 'The temporary stats link has expired. The event remains on this card.'
-                : data.statsState === 'live'
-                ? 'Follow the shared game stats as they update.'
-                : data.statsState === 'final'
-                  ? 'Review the completed game stats.'
-                  : 'Stats will appear here when the owner starts and shares the event-specific tracker.'}
-              href={statsHref}
-              action={data.statsState === 'final' ? 'View final stats' : 'Follow live stats'}
-              testId="game-on-stats-destination"
-            />
-            <PublicDestination
-              icon={Sparkles}
-              title={data.athleteName ? `${data.athleteName}’s Athlete Page` : 'Athlete Hype Page'}
-              detail={data.athletePageState === 'published'
-                ? 'See the athlete’s latest published updates.'
-                : data.athletePageState === 'paused'
-                  ? 'The athlete’s page is currently paused by its owner.'
-                  : 'The owner has not published an Athlete Hype Page yet.'}
-              href={athletePageHref}
-              action="Visit Athlete Page"
-              testId="game-on-athlete-page-destination"
             />
           </div>
         </section>
