@@ -17,7 +17,6 @@ import {
   Loader2,
   MapPin,
   ShieldCheck,
-  Sparkles,
   Trophy,
   Zap,
 } from 'lucide-react';
@@ -341,29 +340,36 @@ export function GameOnCardPanel({
       aria-labelledby="game-on-card-heading"
       data-testid="game-on-card-panel"
     >
-      <div className="relative overflow-hidden border border-white/15 bg-[#0B1F3A] text-white shadow-xl">
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(135deg,transparent_25%,rgba(0,124,248,.12)_25%,rgba(0,124,248,.12)_50%,transparent_50%,transparent_75%,rgba(0,124,248,.12)_75%)] bg-[length:28px_28px] opacity-60" />
-        <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_minmax(360px,.92fr)] lg:items-start">
-          <div>
-            <div className="inline-flex items-center gap-2 border border-primary/50 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.2em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" /> One link for game day
+      <div className="overflow-hidden rounded-[24px] border border-[#55A4FF]/25 bg-[#0B1F3A] text-white shadow-[0_18px_36px_rgba(11,31,58,.18)]">
+        <div className="h-[7px] bg-[linear-gradient(90deg,#2474F5_0%,#55A4FF_58%,#FF6433_100%)]" />
+        <div className="p-5 sm:p-7 lg:p-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#55A4FF]/40 bg-[#2878F5]/10 text-[#55A4FF]">
+              <Trophy className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">Your next best step</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Game On Card</p>
             </div>
-            <h2 id="game-on-card-heading" className="mt-4 font-display text-3xl uppercase tracking-wide sm:text-4xl">
-              Game On Card
-            </h2>
-            <p className="mt-2 max-w-xl text-sm font-medium leading-relaxed text-white/70">
-              Share one event without setting up a full calendar. Prep stays private until you deliberately share a checklist.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/60">
-              <span className="inline-flex items-center gap-1.5 border border-white/15 bg-white/5 px-3 py-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Private prep by default
-              </span>
-              <span className="inline-flex items-center gap-1.5 border border-white/15 bg-white/5 px-3 py-2">
-                <Activity className="h-3.5 w-3.5 text-primary" /> Stats appear when shared
-              </span>
-            </div>
+          </div>
+          <h2 id="game-on-card-heading" className="mt-6 font-display text-4xl font-black leading-[.95] tracking-tight sm:text-5xl">
+            Share the game day.
+          </h2>
+          <p className="mt-3 max-w-3xl text-base font-medium leading-relaxed text-white/65 sm:text-[17px]">
+            One simple link for event details. Prep and stats appear only when you choose to share them.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/65">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[.04] px-3 py-2">
+              <ShieldCheck className="h-3.5 w-3.5 text-[#55A4FF]" /> Private prep by default
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[.04] px-3 py-2">
+              <Activity className="h-3.5 w-3.5 text-[#55A4FF]" /> Stats appear when shared
+            </span>
+          </div>
+
+          <div className="mt-7">
             {saved && !isEditing && (
-              <div className="mt-6 border border-primary/40 bg-white/5 p-4" data-testid="game-on-card-saved">
+              <div className="rounded-[18px] border border-[#55A4FF]/30 bg-white/[.05] p-4 sm:p-5" data-testid="game-on-card-saved">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary">
@@ -434,7 +440,7 @@ export function GameOnCardPanel({
           </div>
 
           {(!saved || isEditing) && (
-            <div className="border border-white/15 bg-[#07172b]/85 p-4 sm:p-5" data-testid="game-on-card-form">
+            <div className="mt-7 rounded-[18px] border border-white/12 bg-[#07172b]/70 p-4 sm:p-6" data-testid="game-on-card-form">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">
@@ -455,7 +461,7 @@ export function GameOnCardPanel({
                   <select
                     value={sourceEventId}
                     onChange={(event) => chooseScheduleGame(event.target.value)}
-                    className="min-h-11 w-full border border-white/20 bg-[#0B1F3A] px-3 text-sm font-semibold text-white outline-none focus:border-primary"
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-[#0B1F3A] px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
                     data-testid="select-game-on-source-event"
                   >
                     <option value="new">Create one event card</option>
@@ -475,7 +481,7 @@ export function GameOnCardPanel({
                     onChange={(event) => setDraft((current) => ({ ...current, opponent: event.target.value }))}
                     maxLength={200}
                     placeholder="Who are they playing?"
-                    className="min-h-11 w-full border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:border-primary"
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:border-[#55A4FF]"
                     data-testid="input-game-on-opponent"
                   />
                 </label>
@@ -485,7 +491,7 @@ export function GameOnCardPanel({
                     type="date"
                     value={draft.date}
                     onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))}
-                    className="min-h-11 w-full border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white outline-none focus:border-primary"
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
                     data-testid="input-game-on-date"
                   />
                 </label>
@@ -495,7 +501,7 @@ export function GameOnCardPanel({
                     type="time"
                     value={draft.time}
                     onChange={(event) => setDraft((current) => ({ ...current, time: event.target.value }))}
-                    className="min-h-11 w-full border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white outline-none focus:border-primary"
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
                     data-testid="input-game-on-time"
                   />
                 </label>
@@ -506,7 +512,7 @@ export function GameOnCardPanel({
                     onChange={(event) => setDraft((current) => ({ ...current, location: event.target.value }))}
                     maxLength={300}
                     placeholder="Field, gym, or address"
-                    className="min-h-11 w-full border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:border-primary"
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:border-[#55A4FF]"
                     data-testid="input-game-on-location"
                   />
                 </label>
@@ -521,7 +527,7 @@ export function GameOnCardPanel({
                 type="button"
                 onClick={() => void handleCreateOrUpdate()}
                 disabled={!canCreate}
-                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 bg-primary px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] bg-[#2474F5] px-4 py-4 text-sm font-bold tracking-wide text-white shadow-[0_10px_20px_rgba(40,120,245,.2)] transition-colors hover:bg-[#2474F5]/90 disabled:cursor-not-allowed disabled:opacity-50"
                 data-testid="button-save-game-on-card"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
