@@ -548,21 +548,26 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
       profileTag: string;
       profileHref: string | null;
       scheduleHref: string | null;
-      stagesAreStatic: boolean;
+      workspaceRoutes: string[];
     }>(`(() => {
       const profileLink = document.querySelector('[data-testid="btn-mobile-open-profile"]');
-      const stages = Array.from(document.querySelectorAll('[data-testid^="mobile-stage-"]'));
+      const workspaceLinks = Array.from(document.querySelectorAll('[data-testid^="link-mobile-workspace-"]'));
       return {
         profileTag: profileLink?.tagName || '',
         profileHref: profileLink?.getAttribute('href') || null,
         scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
-        stagesAreStatic: stages.length === 4 && stages.every((stage) => stage.tagName === 'DIV'),
+        workspaceRoutes: workspaceLinks.map((link) => link.getAttribute('href') || ''),
       };
     })()`, page.sessionId), {
       profileTag: 'A',
       profileHref: '/studio/profile',
       scheduleHref: '/studio/schedule',
-      stagesAreStatic: true,
+      workspaceRoutes: [
+        '/studio/schedule',
+        '/studio/checklist?gameId=game-1&eventType=game',
+        '/studio/stat-tracker?date=2026-09-21&opponent=Rivals',
+        '/studio/athlete-page',
+      ],
     });
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -602,8 +607,9 @@ test('mobile supporter header stays pinned and keeps navigation accessible', { c
       ['btn-mobile-open-profile', '/studio/profile'],
       ['btn-mobile-nav-schedule', '/studio/schedule'],
       ['btn-mobile-nav-home', '/studio'],
+      ['btn-mobile-nav-prep', '/studio/checklist'],
       ['btn-mobile-nav-stat-tracker', '/studio/stat-tracker'],
-      ['btn-mobile-nav-create', '/studio/athlete-page'],
+      ['btn-mobile-nav-hype', '/studio/athlete-page'],
     ]) {
       const target = await connection.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
         const element = document.querySelector('[data-testid="${testId}"]');

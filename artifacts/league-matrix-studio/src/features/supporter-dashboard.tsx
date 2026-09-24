@@ -4,7 +4,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  Home, PlusSquare, Check, Sparkles, Menu, RotateCcw, Send
+  Home, Menu, RotateCcw, Send
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -468,136 +468,78 @@ export function SupporterDashboardView({
   const hypeCardHref = supporterToolRoutes.athletePage;
   const recommendedStatTrackerHref = statTrackerHrefForGame(recommendedGame);
   const recommendedChecklistHref = checklistHrefForGame(weekRecommendation?.event);
-  const weeklyPath = [
+  const workspaceTools = [
     {
-      id: 'plan',
-      number: '01',
-      label: 'Plan the week',
+      id: 'calendar',
+      label: 'Calendar',
+      description: 'Choose games, practices, and what is coming next.',
       Icon: CalendarDays,
       href: supporterToolRoutes.schedule,
-      active: !weekRecommendation,
     },
     {
-      id: 'upcoming',
-      number: '02',
+      id: 'prep',
       label: 'Prep',
+      description: 'Get equipment, timing, and travel details ready.',
       Icon: ClipboardCheck,
       href: recommendedChecklistHref,
-      active: Boolean(weekRecommendation && weekRecommendation.stage === 'upcoming'),
     },
     {
-      id: 'live',
-      number: '03',
-      label: activeMeetingEvent ? 'Join the meeting' : 'Capture the game',
-      Icon: activeMeetingEvent ? ClipboardCheck : Activity,
-      href: activeMeetingEvent ? checklistHrefForGame(activeMeetingEvent) : recommendedStatTrackerHref,
-      active: Boolean(weekRecommendation && weekRecommendation.stage === 'live'),
+      id: 'stats',
+      label: 'Stats',
+      description: 'Capture the game and remember what your athlete did.',
+      Icon: Activity,
+      href: recommendedStatTrackerHref,
     },
     {
-      id: 'completed',
-      number: '04',
-      label: completedMeetingEvent ? 'Share' : 'Send the hype',
-      Icon: completedMeetingEvent ? Send : Zap,
-      href: completedMeetingEvent ? checklistHrefForGame(completedMeetingEvent, 'share') : hypeCardHref,
-      active: Boolean(weekRecommendation && weekRecommendation.stage === 'completed'),
+      id: 'hype',
+      label: 'Hype',
+      description: 'Celebrate the athlete and share the moments that matter.',
+      Icon: Zap,
+      href: hypeCardHref,
     },
   ] as const;
-  type WeeklyPathId = typeof weeklyPath[number]['id'];
-  const weeklyPathThemes: Record<WeeklyPathId, {
-    accent: string;
-    border: string;
-    activeBorder: string;
-    surface: string;
-    number: string;
-    icon: string;
-    contentBorder: string;
-    contentSurface: string;
-    action: string;
-  }> = {
-    plan: {
-      accent: 'text-sky-300',
-      border: 'border-sky-300/70',
-      activeBorder: 'border-sky-300/35',
-      surface: 'bg-sky-300/10',
-      number: 'bg-sky-300 text-slate-950',
-      icon: 'text-sky-300',
-      contentBorder: 'border-sky-300/60',
-      contentSurface: 'bg-sky-300/[0.04]',
-      action: 'bg-sky-300 text-slate-950 hover:bg-sky-200',
-    },
-    upcoming: {
-      accent: 'text-amber-300',
-      border: 'border-amber-300/70',
-      activeBorder: 'border-amber-300/35',
-      surface: 'bg-amber-300/10',
-      number: 'bg-amber-300 text-slate-950',
-      icon: 'text-amber-300',
-      contentBorder: 'border-amber-300/60',
-      contentSurface: 'bg-amber-300/[0.04]',
-      action: 'bg-amber-300 text-slate-950 hover:bg-amber-200',
-    },
-    live: {
-      accent: 'text-emerald-300',
-      border: 'border-emerald-300/70',
-      activeBorder: 'border-emerald-300/35',
-      surface: 'bg-emerald-300/10',
-      number: 'bg-emerald-300 text-slate-950',
-      icon: 'text-emerald-300',
-      contentBorder: 'border-emerald-300/60',
-      contentSurface: 'bg-emerald-300/[0.04]',
-      action: 'bg-emerald-300 text-slate-950 hover:bg-emerald-200',
-    },
-    completed: {
-      accent: 'text-fuchsia-300',
-      border: 'border-fuchsia-300/70',
-      activeBorder: 'border-fuchsia-300/35',
-      surface: 'bg-fuchsia-300/10',
-      number: 'bg-fuchsia-300 text-slate-950',
-      icon: 'text-fuchsia-300',
-      contentBorder: 'border-fuchsia-300/60',
-      contentSurface: 'bg-fuchsia-300/[0.04]',
-      action: 'bg-fuchsia-300 text-slate-950 hover:bg-fuchsia-200',
-    },
-  };
-  const activePath = weeklyPath.find((step) => step.active) ?? weeklyPath[0];
-  const activePathIndex = weeklyPath.findIndex((step) => step.id === activePath.id);
-  const [pathCelebration, setPathCelebration] = useState('');
-  const previousActivePathIndex = useRef(activePathIndex);
-  const pathCelebrationTimer = useRef<number | null>(null);
-  const selectedPath = activePath;
-  const weeklyPathDetails: Record<WeeklyPathId, {
+  type WorkspaceToolId = typeof workspaceTools[number]['id'];
+  const recommendedToolId: WorkspaceToolId = !weekRecommendation
+    ? 'calendar'
+    : weekRecommendation.stage === 'upcoming'
+      ? 'prep'
+      : weekRecommendation.stage === 'live'
+        ? activeMeetingEvent ? 'prep' : 'stats'
+        : completedMeetingEvent ? 'prep' : 'hype';
+  const recommendedTool = workspaceTools.find((tool) => tool.id === recommendedToolId) ?? workspaceTools[0];
+  const recommendationDetails: Record<WorkspaceToolId, {
     eyebrow: string;
     title: string;
     description: string;
     action: string;
   }> = {
-    plan: {
-      eyebrow: '01 / Schedule',
-      title: 'Put the week in motion.',
+    calendar: {
+      eyebrow: 'Calendar',
+      title: 'Choose what is happening next.',
       description: 'Add or confirm your next event so Pixl can guide what comes next.',
       action: 'Open schedule',
     },
-    upcoming: {
-      eyebrow: '02 / Preparation',
+    prep: {
+      eyebrow: 'Prep',
       title: preparationTitle,
       description: preparationCopy.description,
       action: contextEvent?.type === 'meeting' ? 'Open agenda' : 'Open checklist',
     },
-    live: activeMeetingEvent
+    stats: activeMeetingEvent
       ? {
-        eyebrow: '03 / Meeting in progress',
+        eyebrow: 'Prep',
         title: 'Stay with the meeting.',
         description: 'Open the meeting checklist to keep the agenda, materials, and next steps together.',
         action: 'Open meeting checklist',
       }
       : {
-        eyebrow: '03 / Capture window',
+        eyebrow: 'Stats',
         title: 'Capture today’s game.',
         description: 'Your capture window is open. Track the action and save the moments that matter.',
         action: 'Start game day',
       },
-    completed: {
-      eyebrow: completedMeetingEvent ? '04 / Share' : '04 / Celebration',
+    hype: {
+      eyebrow: completedMeetingEvent ? 'Prep' : 'Hype',
       title: completedMeetingEvent ? 'Share the meeting recap.' : 'Celebrate the moment.',
       description: completedMeetingEvent
         ? 'Review the notes, decisions, and follow-ups, then share the recap from this device.'
@@ -605,28 +547,7 @@ export function SupporterDashboardView({
       action: completedMeetingEvent ? 'Open meeting recap' : 'Create hype card',
     },
   };
-  const selectedPathDetails = weeklyPathDetails[selectedPath.id];
-
-  useEffect(() => {
-    const previousIndex = previousActivePathIndex.current;
-    previousActivePathIndex.current = activePathIndex;
-    if (activePathIndex <= previousIndex || previousIndex < 0) return;
-    const completedStep = weeklyPath[activePathIndex - 1];
-    if (!completedStep) return;
-    trackEvent('weekly_path_advanced', {
-      source: 'supporter_dashboard',
-      from_stage: completedStep.id,
-      to_stage: activePath.id,
-      progress_count: activePathIndex,
-    });
-    if (pathCelebrationTimer.current !== null) window.clearTimeout(pathCelebrationTimer.current);
-    setPathCelebration(`${completedStep.label} complete. Next up: ${activePath.label}.`);
-    pathCelebrationTimer.current = window.setTimeout(() => setPathCelebration(''), 4200);
-  }, [activePath.id, activePathIndex]);
-
-  useEffect(() => () => {
-    if (pathCelebrationTimer.current !== null) window.clearTimeout(pathCelebrationTimer.current);
-  }, []);
+  const recommendedToolDetails = recommendationDetails[recommendedTool.id];
 
   useEffect(() => {
     if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
@@ -833,81 +754,61 @@ export function SupporterDashboardView({
           </div>
           </section>
 
-          {/* Four-Step Weekly Path */}
-           <section className="mt-2 px-1" data-testid="section-mobile-weekly-path" aria-label="Weekly progress">
-              <div className="mobile-week-path-intro">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
-                <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/55">Start with the schedule, then follow the next step as the week moves. The calendar marks what comes next.</p>
-              </div>
-
-              <ol className="mobile-week-path-steps m-0 grid list-none p-0">
-                {weeklyPath.map((step, index) => {
-                  const isActive = activePath.id === step.id;
-                  const isCompleted = index < activePathIndex;
-                  const StepIcon = step.Icon;
-
-                  return (
-                    <li key={step.id} aria-current={isActive ? 'step' : undefined}>
-                      <div
-                        aria-current={isActive ? 'step' : undefined}
-                        className={`mobile-week-path-step ${isActive ? 'is-selected is-active' : ''} ${isCompleted ? 'is-completed' : ''}`}
-                        data-testid={`mobile-stage-${step.id}`}
-                      >
-                        <span className="mobile-week-path-number" aria-hidden="true">
-                          {isCompleted ? <Check className="h-4 w-4" strokeWidth={3} /> : index + 1}
-                        </span>
-                        <span className="mobile-week-path-label">
-                          <span className="sr-only">Step {index + 1}: </span>
-                          {step.id === 'plan' ? 'Plan' : step.id === 'upcoming' ? 'Prep' : step.id === 'live' ? 'Capture' : completedMeetingEvent ? 'Share' : 'Send'}
-                        </span>
-                        <StepIcon className="mobile-week-path-icon h-4 w-4" aria-hidden="true" />
-                        <span className="mobile-week-path-state">
-                          {isActive ? 'Next' : isCompleted ? 'Done' : ''}
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-          </section>
-
-          {pathCelebration && (
-            <div className="mx-1 mt-3 flex items-center gap-3 rounded-[16px] border border-[#17A673]/20 bg-[#EAF8F2] px-4 py-3 text-[#0B6548] motion-safe:animate-pulse" role="status" aria-live="polite" data-testid="mobile-week-path-celebration">
-              <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
-              <p className="text-sm font-bold">{pathCelebration}</p>
+          <section className="workspace-nav-panel" data-testid="section-mobile-workspace" aria-labelledby="mobile-workspace-heading">
+            <div className="workspace-nav-heading">
+              <p className="workspace-nav-eyebrow">Athlete workspace</p>
+              <h2 id="mobile-workspace-heading">Everything for {profile.athleteName || 'your athlete'}</h2>
+              <p>Open any tool whenever you need it. Your athlete stays at the center.</p>
             </div>
-          )}
+            <nav className="workspace-tool-grid" aria-label="Athlete workspace tools">
+              {workspaceTools.map(({ id, label, description, Icon, href }) => (
+                <Link
+                  key={id}
+                  href={href}
+                  className={`workspace-tool-card ${id === recommendedTool.id ? 'is-recommended' : ''}`}
+                  data-testid={`link-mobile-workspace-${id}`}
+                >
+                  <span className="workspace-tool-icon"><Icon aria-hidden="true" /></span>
+                  <span className="workspace-tool-copy">
+                    <strong>{label}</strong>
+                    <span>{description}</span>
+                  </span>
+                  {id === recommendedTool.id && <span className="workspace-tool-badge">Suggested</span>}
+                  <ChevronRight aria-hidden="true" />
+                </Link>
+              ))}
+            </nav>
+          </section>
 
           {/* Recommendation Card */}
           <section className="bg-white rounded-[24px] overflow-hidden shadow-sm border border-black/5 mt-3" data-testid="card-mobile-recommendation" aria-labelledby="mobile-recommendation-heading">
              <div className="p-6">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="mobile-recommendation-icon grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#55A4FF]/40 bg-[#2878F5]/10 text-[#55A4FF]" aria-hidden="true">
-                    <selectedPath.Icon className="h-5 w-5" />
+                    <recommendedTool.Icon className="h-5 w-5" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-[#2474F5]">YOUR NEXT BEST STEP</p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/40">{selectedPath.id === activePath.id ? 'UP NEXT' : 'STAGE DETAILS'}</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/40">{recommendedToolDetails.eyebrow}</p>
                   </div>
                 </div>
-                <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{selectedPathDetails.title}</h2>
-                <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{selectedPathDetails.description}</p>
+                 <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{recommendedToolDetails.title}</h2>
+                 <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{recommendedToolDetails.description}</p>
 
                <button
                  type="button"
                  onClick={() => {
                    trackEvent('completion_next_action_clicked', {
-                     source: 'weekly_path_mobile',
-                      stage: selectedPath.id,
-                     progress_count: activePathIndex,
+                      source: 'athlete_workspace_mobile',
+                      tool: recommendedTool.id,
                    });
-                    setLocation(selectedPath.href);
+                     setLocation(recommendedTool.href);
                  }}
                  className="w-full bg-[#2474F5] hover:bg-[#2474F5]/90 text-white font-bold text-base py-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors shadow-sm"
                  data-testid="btn-mobile-recommendation-action"
                >
-                  <selectedPath.Icon className="w-5 h-5" />
-                  {selectedPathDetails.action}
+                  <recommendedTool.Icon className="w-5 h-5" />
+                  {recommendedToolDetails.action}
                </button>
 
                <p className="text-center text-[13px] font-medium text-black/40 mt-4">{mobileFeaturedEvent ? "Suggested from your next event" : "Add an event to get a recommendation"}</p>
@@ -938,19 +839,25 @@ export function SupporterDashboardView({
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <CalendarDays className="w-[20px] h-[20px]" />
              </div>
-             <span className="text-[10px] font-bold">Schedule</span>
+             <span className="text-[10px] font-bold">Calendar</span>
            </Link>
-           <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Game Day" data-testid="btn-mobile-nav-stat-tracker">
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.checklist)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Prep" data-testid="btn-mobile-nav-prep">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
-               <Users className="w-[20px] h-[20px]" />
+               <ClipboardCheck className="w-[20px] h-[20px]" />
              </div>
-             <span className="text-[10px] font-bold">Game Day</span>
+             <span className="text-[10px] font-bold">Prep</span>
            </button>
-             <button type="button" onClick={() => setLocation(supporterToolRoutes.athletePage)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Create" data-testid="btn-mobile-nav-create">
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.statTracker)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Stats" data-testid="btn-mobile-nav-stat-tracker">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
-               <PlusSquare className="w-[20px] h-[20px]" />
+               <Activity className="w-[20px] h-[20px]" />
              </div>
-             <span className="text-[10px] font-bold">Create</span>
+             <span className="text-[10px] font-bold">Stats</span>
+           </button>
+           <button type="button" onClick={() => setLocation(supporterToolRoutes.athletePage)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Hype" data-testid="btn-mobile-nav-hype">
+             <div className="w-8 h-8 rounded-full flex items-center justify-center">
+               <Zap className="w-[20px] h-[20px]" />
+             </div>
+             <span className="text-[10px] font-bold">Hype</span>
            </button>
         </nav>
       </div>
@@ -1153,81 +1060,67 @@ export function SupporterDashboardView({
         </section>
       </div>
 
-      <section className="dashboard-week-path-panel animate-slide-up delay-200">
-          <div className="dashboard-week-path-tabs flex flex-col justify-end">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Your week path</p>
-            <p className="mt-2 max-w-sm text-xs font-medium leading-relaxed text-white/50">Start with the schedule, then follow the next step as the week moves. The calendar marks what comes next.</p>
-            {pathCelebration && (
-              <div className="mt-4 flex items-start gap-2 border border-emerald-300/35 bg-emerald-300/10 px-3 py-3 text-emerald-200 motion-safe:animate-pulse" role="status" aria-live="polite" data-testid="desktop-week-path-celebration">
-                <Sparkles className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <p className="text-xs font-bold leading-relaxed">{pathCelebration}</p>
-              </div>
-            )}
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {weeklyPath.map(({ id, number, label, Icon, active }, index) => {
-                const theme = weeklyPathThemes[id];
-                const completed = index < activePathIndex;
-                return (
-                   <div
-                    key={id}
-                    aria-current={active ? 'step' : undefined}
-                     className={`dashboard-week-path-step flex items-center gap-3 border px-3 py-3 text-left ${active ? `${theme.border} ${theme.surface} text-white` : completed ? 'border-emerald-300/25 bg-emerald-300/[0.06] text-white/70' : 'border-white/10 bg-white/[0.03] text-white/45'}`}
-                    data-testid={`stage-${id}`}
-                  >
-                     <span className={`grid h-8 w-8 shrink-0 place-items-center text-xs font-bold ${active ? theme.number : completed ? 'bg-emerald-300 text-slate-950' : 'bg-white/10 text-white/60'}`}>{completed ? <Check className="h-4 w-4" /> : number}</span>
-                    <span className="min-w-0 text-xs font-bold uppercase tracking-widest">{label}</span>
-                     <Icon className={`h-4 w-4 shrink-0 ${active ? theme.icon : 'text-white/35'}`} />
-                    {active && (
-                      <span className={`dashboard-stage-next ml-auto inline-flex shrink-0 items-center gap-1 text-[9px] font-bold uppercase tracking-[0.16em] ${theme.accent}`} data-testid={`stage-${id}-next`}>
-                        UP NEXT
-                      </span>
-                    )}
-                    {completed && !active && (
-                      <span className="ml-auto text-[9px] font-bold uppercase tracking-[0.16em] text-sky-300">Complete</span>
-                    )}
-                   </div>
-                );
-              })}
-            </div>
-          </div>
+      <section className="dashboard-week-path-panel workspace-panel animate-slide-up delay-200" data-testid="section-desktop-workspace" aria-labelledby="desktop-workspace-heading">
+        <div className="workspace-panel-heading">
+          <p className="workspace-nav-eyebrow">Athlete workspace</p>
+          <h2 id="desktop-workspace-heading">Everything for {profile.athleteName || 'your athlete'}</h2>
+          <p>Calendar, Prep, Stats, and Hype are always open. Choose what you need without following a fixed path.</p>
+          <nav className="workspace-tool-grid" aria-label="Athlete workspace tools">
+            {workspaceTools.map(({ id, label, description, Icon, href }) => (
+              <Link
+                key={id}
+                href={href}
+                className={`workspace-tool-card ${id === recommendedTool.id ? 'is-recommended' : ''}`}
+                data-testid={`link-desktop-workspace-${id}`}
+              >
+                <span className="workspace-tool-icon"><Icon aria-hidden="true" /></span>
+                <span className="workspace-tool-copy">
+                  <strong>{label}</strong>
+                  <span>{description}</span>
+                </span>
+                {id === recommendedTool.id && <span className="workspace-tool-badge">Suggested</span>}
+                <ChevronRight aria-hidden="true" />
+              </Link>
+            ))}
+          </nav>
+        </div>
         <div
-          id="week-path-content"
+          id="workspace-recommendation"
           className="dashboard-week-path-recommendation"
-          data-testid="week-path-content"
-          data-selected-path={selectedPath.id}
+          data-testid="workspace-recommendation"
+          data-recommended-tool={recommendedTool.id}
           aria-labelledby="desktop-recommendation-heading"
         >
           <div className="dashboard-week-path-recommendation-inner">
             <div className="dashboard-week-path-recommendation-header">
               <span className="dashboard-week-path-recommendation-icon" aria-hidden="true">
-                <selectedPath.Icon />
+                <recommendedTool.Icon />
               </span>
               <div className="min-w-0">
                 <p className="dashboard-week-path-recommendation-eyebrow">Your next best step</p>
                 <p className="dashboard-week-path-recommendation-status">
-                  {selectedPath.id === activePath.id ? 'Up next' : 'Stage details'}
+                  {recommendedToolDetails.eyebrow}
                 </p>
               </div>
             </div>
             <h3 id="desktop-recommendation-heading" className="dashboard-week-path-recommendation-title">
-              {selectedPathDetails.title}
+              {recommendedToolDetails.title}
             </h3>
-            <p className="dashboard-week-path-recommendation-description">{selectedPathDetails.description}</p>
+            <p className="dashboard-week-path-recommendation-description">{recommendedToolDetails.description}</p>
             <button
               type="button"
               onClick={() => {
                 trackEvent('completion_next_action_clicked', {
-                  source: 'weekly_path_desktop',
-                  stage: selectedPath.id,
-                  progress_count: activePathIndex,
+                  source: 'athlete_workspace_desktop',
+                  tool: recommendedTool.id,
                 });
-                setLocation(selectedPath.href);
+                setLocation(recommendedTool.href);
               }}
               className="dashboard-week-path-recommendation-action"
               data-testid="btn-desktop-recommendation-action"
             >
-              <selectedPath.Icon aria-hidden="true" />
-              {selectedPathDetails.action}
+              <recommendedTool.Icon aria-hidden="true" />
+              {recommendedToolDetails.action}
             </button>
             <p className="dashboard-week-path-recommendation-note">
               {mobileFeaturedEvent ? 'Suggested from your next event' : 'Add an event to get a recommendation'}
