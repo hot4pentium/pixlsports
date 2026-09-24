@@ -1,5 +1,5 @@
 import type { HypeCardProject } from './hype-card-types';
-import { exportVideoCanvas } from './hype-card-export';
+import { audioCaptureUnavailableError, exportVideoCanvas } from './hype-card-export';
 
 export const MAX_HOSTED_VIDEO_BYTES = 35 * 1024 * 1024;
 export type HypeCardShareQuality = 'standard' | 'compact';
@@ -232,12 +232,10 @@ export async function prepareHypeCardShareMedia(
           project.trimStart,
           project.trimEnd,
           (ctx, frame) => drawContained(ctx, frame, width, height),
-          { videoBitsPerSecond: level.bitrate, audioBitsPerSecond: quality === 'compact' ? 64_000 : 128_000 },
+          { videoBitsPerSecond: level.bitrate, audioBitsPerSecond: quality === 'compact' ? 64_000 : 128_000, requireAudio: true },
         );
         if (!clip.audioIncluded) {
-          const error = new Error('This browser could not preserve the clip audio. Try posting from another browser or device.');
-          error.name = 'AudioCaptureUnavailable';
-          throw error;
+          throw audioCaptureUnavailableError();
         }
         const actualDuration = await readVideoDuration(clip.blob, options.signal);
         if (isUsableHostedVideo(actualDuration, expectedDuration, clip.blob.size)) {

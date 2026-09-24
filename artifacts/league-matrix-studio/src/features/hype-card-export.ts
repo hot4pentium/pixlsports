@@ -6,7 +6,17 @@ export type ImageExportFormat = 'png' | 'jpeg';
 export type VideoRecorderOptions = {
   videoBitsPerSecond?: number;
   audioBitsPerSecond?: number;
+  requireAudio?: boolean;
 };
+
+export const AUDIO_CAPTURE_UNAVAILABLE_MESSAGE =
+  'This browser could not capture the clip audio, so the video was not posted. Your original video is still selected on this device. To post with sound, open the original video in a supported browser or on another device and try again.';
+
+export function audioCaptureUnavailableError(): Error {
+  const error = new Error(AUDIO_CAPTURE_UNAVAILABLE_MESSAGE);
+  error.name = 'AudioCaptureUnavailable';
+  return error;
+}
 
 const MEDIA_READY_TIMEOUT_MS = 10_000;
 const PLAYBACK_START_TIMEOUT_MS = 8_000;
@@ -154,6 +164,7 @@ export async function exportVideoCanvas(
   onDrawFrame: (ctx: CanvasRenderingContext2D, videoFrame: HTMLVideoElement) => void,
   recorderOptions: VideoRecorderOptions = {},
 ): Promise<{ blob: Blob; mimeType: string; ext: string; audioIncluded: boolean }> {
+  const { requireAudio = false, ...mediaRecorderOptions } = recorderOptions;
   const support = checkExportSupport();
   
   let mimeType = '';
@@ -178,6 +189,7 @@ export async function exportVideoCanvas(
   const endTime = Math.max(startTime + 0.1, Math.min(trimEnd, sourceDuration));
   let audioElement: HTMLVideoElement | null = null;
   let audioContext: AudioContext | null = null;
+  let audioDecoding = false;
   
   // Add audio track if requested and available
   if (includeAudio) {
@@ -194,11 +206,13 @@ export async function exportVideoCanvas(
       audioElement.playsInline = true;
       audioElement.muted = false;
       audioElement.src = sourceUrl;
+      audioDecoding = true;
       await waitForMediaEvent(audioElement, 'loadedmetadata', 'Audio could not be decoded.', signal);
       audioElement.currentTime = startTime;
       if (startTime > 0.01) {
         await waitForMediaEvent(audioElement, 'seeked', 'Audio could not be decoded.', signal);
       }
+      audioDecoding = false;
       audioContext = new AudioContextConstructor();
       await withTimeout(audioContext.resume(), 'Video preparation stalled while starting audio.', signal);
       const audioSource = audioContext.createMediaElementSource(audioElement);
@@ -214,12 +228,20 @@ export async function exportVideoCanvas(
       audioElement = null;
       await audioContext?.close().catch(() => undefined);
       audioContext = null;
+      if (signal.aborted) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw abortError();
+      }
+      if (requireAudio) {
+        stream.getTracks().forEach((track) => track.stop());
+        throw audioDecoding ? err : audioCaptureUnavailableError();
+      }
     }
   }
 
   let recorder: MediaRecorder;
   try {
-    recorder = new MediaRecorder(stream, { mimeType, ...recorderOptions });
+    recorder = new MediaRecorder(stream, { mimeType, ...mediaRecorderOptions });
   } catch {
     stream.getTracks().forEach((track) => track.stop());
     audioElement?.remove();

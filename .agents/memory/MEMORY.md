@@ -49,3 +49,4 @@
 - [Cached startup browser timing](cached-startup-browser-timing.md) — compare cached readiness with delayed refresh completion instead of timing Vite dev-server startup tightly.
 - [Hype Page media naming](hype-page-media-naming.md) — display names are separate metadata; public manifests must redact device filenames from video metadata.
 - [Meeting workspace sharing](meeting-workspace-sharing.md) — meeting drafts stay local-first; owner cloud saves and read-only public recaps use separate access boundaries.
+- [Hosted clip audio policy](hosted-clip-audio-policy.md) — posting requires captured audio; local exports may remain silent with a warning.

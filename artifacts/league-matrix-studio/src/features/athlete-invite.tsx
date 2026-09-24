@@ -646,6 +646,7 @@ function OwnerVideoUpload({
       const cancelled = error instanceof Error && error.name === 'AbortError';
       setMessage(cancelled ? 'Video upload cancelled. The original video remains on this device.' : error instanceof Error ? error.message : 'The video could not be added.');
       setStage('');
+      setProgress(0);
     } finally {
       setUploading(false);
       abortRef.current = null;
@@ -706,7 +707,7 @@ function OwnerVideoUpload({
                 {uploading ? 'Cancel' : <><X className="h-4 w-4" /> Remove</>}
               </button>
             </div>
-            {(stage || message) && <p className="text-xs font-medium leading-relaxed text-white/65" role={message.includes('added') ? 'status' : 'alert'} aria-live="polite">{stage || message}</p>}
+            {(stage || message) && <p className="text-xs font-medium leading-relaxed text-white/65" role={message.includes('added') ? 'status' : 'alert'} aria-live="polite">{message || stage}</p>}
           </div>
         </div>
       )}

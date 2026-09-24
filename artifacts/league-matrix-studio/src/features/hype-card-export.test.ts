@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
-import { rasterizeSvgForDownload } from './hype-card-export';
+import { exportVideoCanvas, rasterizeSvgForDownload } from './hype-card-export';
 
 type CanvasCall = {
   width: number;
@@ -131,5 +131,48 @@ test('rasterizes long position badges correctly for PNG and JPG downloads', asyn
       delete (globalThis as { document?: unknown }).document;
     }
     Object.defineProperty(globalThis, 'URL', { configurable: true, value: originalUrl });
+  }
+});
+
+test('required clip audio fails before recording when Web Audio capture is unavailable', async () => {
+  const previousWindow = globalThis.window;
+  const previousRecorder = globalThis.MediaRecorder;
+  let recorderStarted = false;
+  let trackStopped = false;
+  const videoTrack = { stop: () => { trackStopped = true; } };
+  const stream = {
+    getVideoTracks: () => [videoTrack],
+    getTracks: () => [videoTrack],
+  };
+  class FakeRecorder {
+    static isTypeSupported = () => true;
+    constructor() { recorderStarted = true; }
+  }
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: {} });
+  Object.defineProperty(globalThis, 'MediaRecorder', { configurable: true, value: FakeRecorder });
+
+  try {
+    await assert.rejects(
+      exportVideoCanvas(
+        { captureStream: () => stream } as unknown as HTMLCanvasElement,
+        { duration: 10, currentSrc: 'blob:original-video' } as HTMLVideoElement,
+        24,
+        () => {},
+        new AbortController().signal,
+        true,
+        0,
+        10,
+        () => {},
+        { requireAudio: true },
+      ),
+      (error: unknown) => error instanceof Error && error.name === 'AudioCaptureUnavailable',
+    );
+    assert.equal(recorderStarted, false);
+    assert.equal(trackStopped, true);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', { configurable: true, value: previousWindow });
+    else delete (globalThis as { window?: unknown }).window;
+    if (previousRecorder) Object.defineProperty(globalThis, 'MediaRecorder', { configurable: true, value: previousRecorder });
+    else delete (globalThis as { MediaRecorder?: unknown }).MediaRecorder;
   }
 });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { getHypeCardNoticeTone, isHypeCardSuccessNotice } from './hype-card-notice';
+import { audioCaptureUnavailableError, AUDIO_CAPTURE_UNAVAILABLE_MESSAGE } from './hype-card-export';
 
 const editorSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 
@@ -33,11 +34,20 @@ test('classifies the editor reconnect, offline, and browser compatibility notice
     'Athlete Hype Page upload cancelled. Your Hype Card is still available for download on this device.',
     'Exported as WebM because MP4 encoding is not supported in this browser. If this video does not play on your phone, try exporting from a different browser like Chrome.',
     'The video exported without sound because this browser could not capture the clip audio.',
+    AUDIO_CAPTURE_UNAVAILABLE_MESSAGE,
   ];
 
   for (const notice of warningNotices) {
     assert.equal(getHypeCardNoticeTone(notice), 'warning', notice);
   }
+});
+
+test('audio capture failures explain why posting stopped without losing the selected original', () => {
+  const failure = audioCaptureUnavailableError();
+  assert.equal(failure.name, 'AudioCaptureUnavailable');
+  assert.match(failure.message, /audio.*not posted/i);
+  assert.match(failure.message, /original video is still selected on this device/i);
+  assert.match(failure.message, /supported browser or on another device/i);
 });
 
 test('keeps representative Hype Card failures in the error treatment', () => {
