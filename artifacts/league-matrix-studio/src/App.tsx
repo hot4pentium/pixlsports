@@ -78,6 +78,7 @@ import {
   type ScheduleEvent,
   type ScheduleEventType,
 } from '@/features/schedule-draft';
+import { revokeGameOnCardForScheduleEvent } from '@/features/game-on-card-storage';
 import { getGuestUsageKey } from '@/features/guest-access';
 import {
   getScheduleInstallAction,
@@ -1922,6 +1923,7 @@ export function ScheduleEditor() {
     },
   );
   const [eventForm, setEventForm] = useState<ScheduleEvent | null>(null);
+  const [removingEventId, setRemovingEventId] = useState<string | null>(null);
   const [shareToken, setShareToken] = useState(storedDraft?.shareToken ?? '');
   const [shareUrl, setShareUrl] = useState(() => (
     storedDraft?.shareToken
@@ -2096,15 +2098,32 @@ export function ScheduleEditor() {
     );
   };
 
-  const removeEvent = (id: string) => {
-    const removedIndex = events.findIndex((event) => event.id === id);
-    const nextEvents = removeScheduleEvent(events, id);
-    setEvents(nextEvents);
-    setEventForm(null);
-    if (id === selectedEventId) {
-      setSelectedEventId(nextEvents[Math.min(removedIndex, nextEvents.length - 1)]?.id ?? '');
+  const removeEvent = async (id: string) => {
+    setRemovingEventId(id);
+    try {
+      const cardRevoked = await revokeGameOnCardForScheduleEvent({
+        userId: user?.id,
+        eventId: id,
+        revokeShare: (shareToken) => deleteShare.mutateAsync({ shareToken }),
+      });
+      const removedIndex = events.findIndex((event) => event.id === id);
+      const nextEvents = removeScheduleEvent(events, id);
+      setEvents(nextEvents);
+      setEventForm(null);
+      if (id === selectedEventId) {
+        setSelectedEventId(nextEvents[Math.min(removedIndex, nextEvents.length - 1)]?.id ?? '');
+      }
+      void persistSchedule(
+        nextEvents,
+        cardRevoked
+          ? 'EVENT REMOVED — GAME ON CARD REVOKED'
+          : 'EVENT REMOVED — SCHEDULE SAVED',
+      );
+    } catch {
+      setNoticeFor('GAME ON CARD LINK COULD NOT BE REVOKED — EVENT NOT REMOVED', 'error');
+    } finally {
+      setRemovingEventId(null);
     }
-    void persistSchedule(nextEvents, 'EVENT REMOVED — SCHEDULE SAVED');
   };
 
   const moveEvent = (id: string, direction: -1 | 1) => {
@@ -2435,9 +2454,10 @@ export function ScheduleEditor() {
                 index={selectedEventIndex >= 0 ? selectedEventIndex : events.length}
                 count={events.length}
                 onChange={updateEvent}
-                onRemove={removeEvent}
+                onRemove={(id) => { void removeEvent(id); }}
                 onMove={moveEvent}
                 onSave={() => { void saveEventForm(); }}
+                isRemoving={removingEventId === eventForm.id || deleteShare.isPending}
                 isNew={!events.some((event) => event.id === eventForm.id)}
                 onCancel={() => setEventForm(null)}
               />
@@ -2457,6 +2477,7 @@ function ScheduleEventCard({
   onRemove,
   onMove,
   onSave,
+  isRemoving,
   isNew,
   onCancel,
 }: {
@@ -2467,6 +2488,7 @@ function ScheduleEventCard({
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
   onSave: () => void;
+  isRemoving: boolean;
   isNew: boolean;
   onCancel: () => void;
 }) {
@@ -2499,8 +2521,8 @@ function ScheduleEventCard({
             <button type="button" onClick={() => onMove(event.id, 1)} disabled={index === count - 1} className="grid h-8 w-8 place-items-center border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30" aria-label={`Move event ${index + 1} down`} data-testid={`button-move-event-down-${index}`}>
               <ChevronDown className="h-4 w-4" />
             </button>
-            <button type="button" onClick={() => onRemove(event.id)} className="inline-flex h-8 items-center gap-1.5 border border-border px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive hover:text-destructive" aria-label={`Delete event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
-              <Trash2 className="h-3.5 w-3.5" /> Delete
+            <button type="button" onClick={() => onRemove(event.id)} disabled={isRemoving} className="inline-flex h-8 items-center gap-1.5 border border-border px-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground transition-colors hover:border-destructive hover:text-destructive disabled:cursor-wait disabled:opacity-60" aria-label={`Delete event ${index + 1}`} data-testid={`button-remove-event-${index}`}>
+              <Trash2 className="h-3.5 w-3.5" /> {isRemoving ? 'Deleting…' : 'Delete'}
             </button>
           </div>
         )}

@@ -27,22 +27,13 @@ import { format, isValid, parseISO } from 'date-fns';
 import gameOnBadge from '../assets/game-on-badge.webp';
 import type { SupporterEvent } from './supporter-dashboard';
 import { buildWorkspaceToolHref } from './workspace-context';
-
-type GameOnDraft = {
-  id: string;
-  date: string;
-  time: string;
-  location: string;
-  opponent: string;
-  status: 'upcoming' | 'live' | 'final';
-};
-
-type SavedGameOnCard = {
-  shareToken: string;
-  event: GameOnDraft;
-  title: string;
-  savedAt: string;
-};
+import {
+  readSavedGameOnCard,
+  removeSavedGameOnCard,
+  writeSavedGameOnCard,
+  type GameOnCardEvent as GameOnDraft,
+  type SavedGameOnCard,
+} from './game-on-card-storage';
 
 type GameOnCardPanelProps = {
   profile: {
@@ -89,39 +80,6 @@ function draftFromEvent(event: SupporterEvent): GameOnDraft {
     opponent: event.opponent ?? '',
     status: event.status ?? 'upcoming',
   };
-}
-
-function gameOnStorageKey(userId: string) {
-  return `pixlsports-game-on-card:${userId}`;
-}
-
-function readSavedGameOnCard(userId: string): SavedGameOnCard | null {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(gameOnStorageKey(userId)) ?? 'null') as Partial<SavedGameOnCard> | null;
-    if (
-      !parsed
-      || typeof parsed.shareToken !== 'string'
-      || typeof parsed.title !== 'string'
-      || typeof parsed.savedAt !== 'string'
-      || !parsed.event
-      || typeof parsed.event.id !== 'string'
-      || typeof parsed.event.date !== 'string'
-      || typeof parsed.event.time !== 'string'
-      || typeof parsed.event.location !== 'string'
-      || typeof parsed.event.opponent !== 'string'
-    ) return null;
-    const status = parsed.event.status === 'live' || parsed.event.status === 'final'
-      ? parsed.event.status
-      : 'upcoming';
-    return {
-      shareToken: parsed.shareToken,
-      title: parsed.title,
-      savedAt: parsed.savedAt,
-      event: { ...parsed.event, status },
-    };
-  } catch {
-    return null;
-  }
 }
 
 function appAbsoluteUrl(path: string) {
@@ -220,7 +178,7 @@ export function GameOnCardPanel({
 
   function saveCard(next: SavedGameOnCard) {
     if (!userId) throw new Error('Sign in to save a Game On Card.');
-    window.localStorage.setItem(gameOnStorageKey(userId), JSON.stringify(next));
+    writeSavedGameOnCard(userId, next);
     setSaved(next);
     setIsEditing(false);
   }
@@ -291,7 +249,7 @@ export function GameOnCardPanel({
     setBusy(true);
     try {
       await deleteShare.mutateAsync({ shareToken: saved.shareToken });
-      window.localStorage.removeItem(gameOnStorageKey(userId));
+      removeSavedGameOnCard(userId, saved.shareToken);
       setSaved(null);
       setDraft(selectedEvent?.type === 'game' ? draftFromEvent(selectedEvent) : blankDraft());
       setSourceEventId(selectedEvent?.type === 'game' ? selectedEvent.id : 'new');
