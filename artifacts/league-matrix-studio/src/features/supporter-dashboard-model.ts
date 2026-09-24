@@ -328,9 +328,10 @@ export function getNextUpcomingSupporterEvent<T extends SupporterWeekEventLike>(
 export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>(
   events: readonly T[],
   now = new Date(),
-  completedMeetingIds: readonly string[] = [],
+  _completedMeetingIds: readonly string[] = [],
 ): SupporterWeekRecommendation<T> | null {
-  const games = events.filter((event) => event.type === 'game');
+  const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
+  const games = activeJourneyEvents.filter((event) => event.type === 'game');
   const liveGame = games.find((game) => getSupporterGameStage(game, now) === 'live');
 
   if (liveGame) {
@@ -341,38 +342,7 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
-  const activeMeeting = events.find((event) => (
-    event.type === 'meeting'
-    && !completedMeetingIds.includes(event.id)
-    && getSupporterGameStage(event, now) === 'live'
-  ));
-
-  if (activeMeeting) {
-    return {
-      event: activeMeeting,
-      kind: 'meeting',
-      stage: 'live',
-    };
-  }
-
-  const hasCompletedMeeting = completedMeetingIds.length > 0;
-  const upcomingEvent = getNextUpcomingSupporterEvent(
-    events.filter((event) => !completedMeetingIds.includes(event.id)),
-    now,
-  );
-
-  // A finished meeting stays available through meeting history, but it must
-  // not keep the weekly path on Share. After ending a meeting, the path
-  // should advance to the next scheduled event or fall back to Plan.
-  if (hasCompletedMeeting) {
-    return upcomingEvent
-      ? {
-        event: upcomingEvent,
-        kind: upcomingEvent.type,
-        stage: 'upcoming',
-      }
-      : null;
-  }
+  const upcomingEvent = getNextUpcomingSupporterEvent(activeJourneyEvents, now);
 
   const recentCompletedGame = games
     .filter((game) => game.status === 'final' && typeof game.completedAt === 'string')
@@ -417,7 +387,7 @@ export function getSupporterPreparationContext<T extends SupporterWeekEventLike>
   selectedThisSession = false,
   now = new Date(),
 ): T | undefined {
-  if (recommendation?.kind !== 'practice' && recommendation?.kind !== 'meeting') return undefined;
+  if (recommendation?.kind !== 'practice') return undefined;
   const selectedGame = games.find((game) => game.id === selectedGameId);
   // A stored selection for a completed game should not override the next practice.
   // An explicit selection made on this screen can still show an earlier game's details.

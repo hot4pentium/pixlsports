@@ -38,16 +38,16 @@ test('recent projects ignore unrelated cloud tools', () => {
   assert.deepEqual(mapRecentSupporterProjects(projects).map(({ id }) => id), ['card']);
 });
 
-test('upcoming practice and meeting events become preparation recommendations', () => {
+test('upcoming practices remain preparation recommendations while meetings leave the active journey', () => {
   const now = new Date('2026-09-22T12:00:00');
   const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-23', time: '17:00' };
   const meeting = { id: 'meeting', type: 'meeting' as const, date: '2026-09-23', time: '18:00' };
 
   assert.equal(getSupporterWeekRecommendation([practice], now)?.kind, 'practice');
-  assert.equal(getSupporterWeekRecommendation([meeting], now)?.kind, 'meeting');
+  assert.equal(getSupporterWeekRecommendation([meeting], now), null);
 });
 
-test('an active meeting becomes a live meeting recommendation instead of a game capture recommendation', () => {
+test('active meetings do not replace game and practice recommendations', () => {
   const now = new Date('2026-09-23T18:00:00');
   const meeting = {
     id: 'meeting',
@@ -57,10 +57,12 @@ test('an active meeting becomes a live meeting recommendation instead of a game 
     location: 'Northside Clubhouse',
   };
 
-  assert.deepEqual(getSupporterWeekRecommendation([meeting], now), {
-    event: meeting,
-    kind: 'meeting',
-    stage: 'live',
+  const practice = { id: 'practice', type: 'practice' as const, date: '2026-09-24', time: '18:00' };
+
+  assert.deepEqual(getSupporterWeekRecommendation([meeting, practice], now), {
+    event: practice,
+    kind: 'practice',
+    stage: 'upcoming',
   });
 });
 
@@ -93,7 +95,7 @@ test('an ended local meeting returns the weekly path to Plan when no event is up
   assert.equal(getSupporterWeekRecommendation([meeting], now, ['meeting']), null);
 });
 
-test('an ended local meeting skips its own future calendar slot and chooses the next meeting', () => {
+test('meeting-only schedules return the weekly path to Calendar', () => {
   const now = new Date('2026-09-23T12:00:00');
   const endedMeeting = {
     id: 'ended-meeting',
@@ -108,11 +110,7 @@ test('an ended local meeting skips its own future calendar slot and chooses the 
     time: '17:00',
   };
 
-  assert.deepEqual(getSupporterWeekRecommendation([endedMeeting, nextMeeting], now, ['ended-meeting']), {
-    event: nextMeeting,
-    kind: 'meeting',
-    stage: 'upcoming',
-  });
+  assert.equal(getSupporterWeekRecommendation([endedMeeting, nextMeeting], now, ['ended-meeting']), null);
 });
 
 test('an active game remains higher priority than the next event after a meeting ends', () => {
@@ -234,10 +232,9 @@ test('Coming up shows the closest future event even when it is also the prep rec
   assert.equal(getNextUpcomingSupporterEvent([oldGame], now), undefined);
 });
 
-test('preparation copy names each event type and has a no-event fallback', () => {
+test('active preparation copy names games and practices and has a no-event fallback', () => {
   assert.equal(getSupporterPreparationCopy('game').title, 'Get ready for game day.');
   assert.equal(getSupporterPreparationCopy('practice').title, 'Get ready for practice.');
-  assert.equal(getSupporterPreparationCopy('meeting').title, 'Get ready for your meeting.');
   assert.equal(getSupporterPreparationCopy(null).title, 'Get ready for your next event.');
   assert.match(getSupporterPreparationCopy(null).description, /Add an event/);
 });

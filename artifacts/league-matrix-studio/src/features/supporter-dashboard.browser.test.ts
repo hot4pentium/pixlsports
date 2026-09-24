@@ -1660,27 +1660,18 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "live"',
+      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "plan"',
       Boolean,
     );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
-      /Meeting in progress|Open meeting checklist/,
+    assert.doesNotMatch(
+      await connection.evaluate<string>('document.body.textContent || ""', page.sessionId),
+      /Meeting in progress|Open meeting checklist|Prepare meeting|Open agenda/,
     );
     assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-context-stat-tracker"]\'))', page.sessionId),
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid^="button-context-meeting"]\'))', page.sessionId),
       false,
-      'an active meeting must not expose the stat tracker action',
+      'meeting events must not create an active dashboard action',
     );
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-context-meeting-checklist"]\'))', page.sessionId),
-      true,
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="btn-desktop-recommendation-action"]')?.click()`, page.sessionId);
-    assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
-    assert.match(await connection.evaluate<string>('location.search', page.sessionId), /gameId=meeting-1/);
-    assert.match(await connection.evaluate<string>('location.search', page.sessionId), /eventType=meeting/);
-    await connection.evaluate(`window.history.pushState({}, '', '/');`, page.sessionId);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
@@ -2230,7 +2221,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
   }
 });
 
-test('completed meetings leave the recap in history while the weekly path advances', { concurrency: false }, async () => {
+test('completed meetings stay stored but disappear from the active dashboard flow', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-ended-meeting-test');
   let devServer: ChildProcess | undefined;
@@ -2306,64 +2297,40 @@ test('completed meetings leave the recap in history while the weekly path advanc
       page.sessionId,
     );
     await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(upcomingEvents)})`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"',
-      Boolean,
-    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "prep"', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
-      true,
+      false,
     );
     assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="button-review-meeting-ended-meeting"]\')?.getAttribute("href") || ""', page.sessionId),
-      /gameId=ended-meeting.*view=review/,
-    );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"]\')?.textContent || ""', page.sessionId),
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="workspace-recommendation"]\')?.textContent || ""', page.sessionId),
       /Get ready for practice/,
     );
 
     await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'Boolean(window.__setSupporterDashboardEvents)', Boolean);
     await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(upcomingEvents)})`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "upcoming"',
-      Boolean,
-    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "prep"', Boolean);
     assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
+      await connection.evaluate<boolean>('localStorage.getItem("pixlsports-meeting-capture:guest:ended-meeting") !== null', page.sessionId),
       true,
-      'the recap must survive a dashboard reload',
+      'removing meeting discovery must not delete the legacy record',
     );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' }
     ])`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "plan"',
-      Boolean,
-    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "calendar"', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
-      true,
+      false,
     );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' },
       { id: 'active-game', type: 'game', date: '2999-01-01', time: '18:30', location: 'Eastside Gym', opponent: 'Rivals', status: 'live' }
     ])`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "live"',
-      Boolean,
-    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "stats"', Boolean);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -2716,7 +2683,7 @@ test('supporters can switch saved checklist event types and keep the latest one 
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"week-path-content\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"checklist-context-harness\\"]"))', page.sessionId),
       true,
@@ -2767,7 +2734,7 @@ test('supporters can switch saved checklist event types and keep the latest one 
       template: 0,
     };
     await connection.evaluate(`window.localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, page.sessionId);
-    await connection.evaluate(`document.querySelector('[data-testid="btn-desktop-recommendation-action"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-prep"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
 
     const readChecklistContext = () => connection!.evaluate<{
@@ -2859,34 +2826,14 @@ test('supporters can switch saved checklist event types and keep the latest one 
     }
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Practice ready") === true', Boolean);
 
-    await connection.evaluate(`(() => {
-      const select = document.querySelector('[data-testid="select-checklist-game"]');
-      if (!(select instanceof HTMLSelectElement)) throw new Error('Checklist event selector is missing');
-      select.value = 'meeting-1';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    const selectedMeeting = await assertContext({
-      eventId: 'meeting-1',
-      heading: /MEETING\s*CHECKLIST/i,
-      selectorLabel: 'Checklist for meeting',
-      selectorAriaLabel: 'Choose which meeting this checklist is for',
-      summary: /MEETING/i,
-      scheduleDescription: 'Choose a meeting from your saved schedule.',
-    });
-    assert.equal(selectedMeeting.completionFeedback, '', 'switching events must clear the practice completion announcement');
-    assert.equal(selectedMeeting.readyHeading, '', 'switching to meeting must start the meeting form incomplete');
     assert.equal(
-      await connection.evaluate<string>(
-        `document.querySelector('[data-testid="button-checklist-toggle-uniform"]')?.getAttribute('aria-label') || ''`,
+      await connection.evaluate<boolean>(
+        `Array.from(document.querySelectorAll('[data-testid="select-checklist-game"] option')).some((option) => option.value === 'meeting-1')`,
         page.sessionId,
       ),
-      'Check Bring a notebook and pen',
+      false,
+      'legacy meeting events must not appear as a new checklist choice',
     );
-    for (let index = 0; index < 6; index += 1) {
-      await connection.evaluate(`document.querySelector('[data-testid^="button-checklist-toggle-"]:not([aria-label^="Uncheck"])')?.click()`, page.sessionId);
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
-    }
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Meeting ready") === true', Boolean);
 
     await connection.evaluate(`document.querySelector('[data-testid="button-add-checklist-item"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelectorAll(\'[data-testid^="input-checklist-item-custom-"]\').length === 1', Boolean);
@@ -2907,7 +2854,7 @@ test('supporters can switch saved checklist event types and keep the latest one 
       customItems: document.querySelectorAll('[data-testid^="input-checklist-item-custom-"]').length,
       completedItems: document.querySelectorAll('[data-completed="true"]').length,
     })`, page.sessionId);
-    assert.match(cancelledReset.confirmMessage, /custom items and completion state will be replaced with the meeting starter template/i);
+    assert.match(cancelledReset.confirmMessage, /custom items and completion state will be replaced with the practice starter template/i);
     assert.equal(cancelledReset.customItems, 1, 'cancelling reset must keep the custom item');
     assert.equal(cancelledReset.completedItems, 6, 'cancelling reset must keep completion state');
 
@@ -2920,25 +2867,25 @@ test('supporters can switch saved checklist event types and keep the latest one 
       await connection.evaluate(`document.querySelector('[data-testid^="button-checklist-toggle-"]:not([aria-label^="Uncheck"])')?.click()`, page.sessionId);
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 80));
     }
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Meeting ready") === true', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-completion-feedback\\"]")?.textContent?.includes("Practice ready") === true', Boolean);
 
     await navigatePage(
       connection,
       page,
-      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=mixed&gameId=meeting-1&eventType=meeting&route=checklist`,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?checklist-context&scenario=mixed&gameId=practice-1&eventType=practice&route=checklist`,
     );
     await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
     const afterReload = await assertContext({
-      eventId: 'meeting-1',
-      heading: /MEETING\s*CHECKLIST/i,
-      selectorLabel: 'Checklist for meeting',
-      selectorAriaLabel: 'Choose which meeting this checklist is for',
-      summary: /MEETING/i,
-      scheduleDescription: 'Choose a meeting from your saved schedule.',
+      eventId: 'practice-1',
+      heading: /PRACTICE\s*CHECKLIST/i,
+      selectorLabel: 'Checklist for practice',
+      selectorAriaLabel: 'Choose which practice this checklist is for',
+      summary: /PRACTICE/i,
+      scheduleDescription: 'Choose a practice from your saved schedule.',
     });
     assert.equal(afterReload.completionFeedback, '');
-    assert.match(afterReload.readyHeading, /Meeting ready\./);
+    assert.match(afterReload.readyHeading, /Practice ready\./);
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

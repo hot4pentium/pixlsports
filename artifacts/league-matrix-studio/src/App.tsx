@@ -2454,7 +2454,7 @@ function ScheduleEventCard({
         >
           <option value="game">Game</option>
           <option value="practice">Practice</option>
-          <option value="meeting">Meeting</option>
+          {event.type === 'meeting' && <option value="meeting" disabled>Meeting (legacy)</option>}
         </select>
         <span className="hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:block">{typeLabel} {index + 1}</span>
         {isNew ? (
@@ -2970,7 +2970,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const changeNumber = useRef(0);
   const activeShareToken = shared ? shareToken : checklist.shareToken;
 
-  const calendarEvents = localSchedule?.events ?? [];
+  const calendarEvents = localSchedule?.events.filter((event) => event.type !== 'meeting') ?? [];
   const liveSelectedEvent = calendarEvents.find((event) => event.id === checklist.selectedGame?.id);
   const displayedEvent = liveSelectedEvent ?? checklist.selectedGame;
   const displayedEventType: ChecklistEventType = liveSelectedEvent?.type ?? checklist.selectedGame?.type ?? 'game';
