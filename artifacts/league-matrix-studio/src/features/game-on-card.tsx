@@ -17,6 +17,7 @@ import {
   Loader2,
   MapPin,
   ShieldCheck,
+  Sparkles,
   Trophy,
   Zap,
 } from 'lucide-react';
