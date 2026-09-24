@@ -392,14 +392,16 @@ export function SupporterDashboardView({
       label: 'Prep',
       description: 'Get equipment, timing, and travel details ready.',
       Icon: ClipboardCheck,
-      href: recommendedChecklistHref,
+      href: selectedWorkspaceEvent ? checklistHrefForGame(selectedWorkspaceEvent) : recommendedChecklistHref,
     },
     {
       id: 'stats',
       label: 'Stats',
       description: 'Capture the game and remember what your athlete did.',
       Icon: Activity,
-      href: recommendedStatTrackerHref,
+      href: selectedWorkspaceEvent?.type === 'game'
+        ? statTrackerHrefForGame(selectedWorkspaceEvent)
+        : recommendedStatTrackerHref,
     },
     {
       id: 'hype',

@@ -107,6 +107,7 @@ import {
 } from '@/features/supporter-dashboard-model';
 import { readHypeCardProject, type HypeCardProject } from '@/features/hype-card-types';
 import {
+  buildWorkspaceToolHref,
   readWorkspaceEventContext,
   saveWorkspaceEventContext,
 } from '@/features/workspace-context';
@@ -1869,7 +1870,7 @@ function ProtectedEditor({ kind, children }: { kind: ToolKind; children: ReactNo
   return <>{children}</>;
 }
 
-function ScheduleEditor() {
+export function ScheduleEditor() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const cloudProjectId = params.id;
@@ -3364,7 +3365,14 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const progress = checklist.items.length ? Math.round((completed / checklist.items.length) * 100) : 0;
   const isChecklistComplete = checklist.items.length > 0 && completed === checklist.items.length;
   const trackerHref = displayedEvent
-    ? `/studio/stat-tracker?date=${encodeURIComponent(displayedEvent.date)}&opponent=${encodeURIComponent(displayedEvent.opponent || '')}`
+    ? buildWorkspaceToolHref('stats', {
+      id: displayedEvent.id,
+      type: displayedEvent.type ?? 'game',
+      date: displayedEvent.date,
+      time: displayedEvent.time,
+      location: displayedEvent.location,
+      opponent: displayedEvent.opponent || '',
+    })
     : '/studio/stat-tracker';
   const isSaving = createShare.isPending || updateShare.isPending;
   const canManageShare = shared ? Boolean(sharedChecklist?.canManage) : Boolean(checklist.shareToken && isSignedIn);

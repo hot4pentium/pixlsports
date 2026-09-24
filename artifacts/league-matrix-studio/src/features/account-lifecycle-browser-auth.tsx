@@ -7,12 +7,18 @@ const clerkListeners = new Set<(state: { user: ReturnType<typeof currentUser> })
 function currentUser() {
   if (!id) return null;
   const first = id.includes('-first-');
+  const workspaceJourney = id === 'workspace-journey';
   return {
     id,
     firstName: first ? 'Morgan' : 'Taylor',
     lastName: 'Supporter',
     primaryEmailAddress: { emailAddress: first ? 'morgan@example.test' : 'taylor@example.test' },
-    unsafeMetadata: { role: 'fan', displayName: first ? 'Morgan' : 'Taylor', teamName: first ? 'Falcons' : 'Otters', accessMode: 'full' },
+    unsafeMetadata: {
+      role: 'fan', displayName: first ? 'Morgan' : 'Taylor',
+      teamName: workspaceJourney ? 'Northside Comets' : first ? 'Falcons' : 'Otters',
+      accessMode: 'full',
+      ...(workspaceJourney ? { athleteName: 'Alexandria Montgomery-Williams', sport: 'basketball' } : {}),
+    },
     update: async () => undefined,
   };
 }

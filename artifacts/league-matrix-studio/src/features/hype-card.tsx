@@ -1198,9 +1198,7 @@ export function HypeCardEditor() {
   const trackerProjects = projects?.filter(p => p.project.tool === 'stat-tracker') || [];
 
   useEffect(() => {
-    if (!isLoaded || profilePrefillAppliedRef.current) {
-      return;
-    }
+    if (!isLoaded) return;
     if (!profilePrefillAppliedRef.current) {
       setProject((current) => seedHypeCardFromSupporterProfile(current, profile));
       profilePrefillAppliedRef.current = true;

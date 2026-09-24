@@ -701,12 +701,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router, useLocation } from 'wouter';
 import { ClerkProvider } from '@clerk/react';
 import { HypeCardEditor } from './src/features/hype-card';
-import { ChecklistPage } from './src/App';
+import { ChecklistPage, ScheduleEditor } from './src/App';
 import { MeetingCapture } from './src/features/meeting-capture';
 import { NotificationSettings } from './src/features/notification-settings';
 import { SupporterDashboardView, SupporterProfileView } from './src/features/supporter-dashboard';
 import { useCachedSupporterPhoto } from './src/features/supporter-photo-cache';
-import { LiveTrackerGame } from './src/features/stat-tracker-page';
+import { LiveTrackerGame, StatTrackerPage } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
 import { defaultProject, readHypeCardProject } from './src/features/hype-card-types';
 import { mapLocalSupporterHypeCard, mapRecentSupporterProjects, parseSupporterStorageSyncEvent, seedHypeCardFromSupporterProfile } from './src/features/supporter-dashboard-model';
@@ -1061,10 +1061,58 @@ function ChecklistContextHarness() {
   );
 }
 
+function WorkspaceJourneyHarness() {
+  const [location] = useLocation();
+  const route = new URLSearchParams(window.location.search).get('route');
+  const events = [{
+    id: 'game-default', type: 'game', status: 'upcoming',
+    date: '2026-10-12', time: '18:30', location: 'Main Gym', opponent: 'Falcons',
+  }, {
+    id: 'game-selected', type: 'game', status: 'upcoming',
+    date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers',
+  }];
+  const tool = location.startsWith('/studio/') ? location : route ? '/studio/' + route : '';
+  return createElement('main', { 'data-testid': 'workspace-journey-harness' },
+    createElement('button', { type: 'button', 'data-testid': 'journey-return-dashboard', onClick: () => navigate('/') }, 'Dashboard'),
+    tool === '/studio/schedule' ? createElement(ScheduleEditor)
+      : tool === '/studio/checklist' ? createElement(ChecklistPage)
+      : tool === '/studio/stat-tracker' ? createElement(StatTrackerPage)
+      : tool === '/studio/hype-card' ? createElement(HypeCardEditor)
+      : createElement(SupporterDashboardView, {
+        profile,
+        events,
+        nextGameIsUpcoming: true,
+        projects: [],
+        scheduleSource: 'custom',
+        connectionLabel: 'Northside · 2026',
+        onOpenProfile: () => {},
+        onOpenStatTracker: () => navigate('/studio/stat-tracker'),
+        onOpenChecklist: () => navigate('/studio/checklist'),
+      }),
+  );
+}
+
 export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const requestUrl = typeof input === 'string' ? input : input.url;
+    if (window.sessionStorage.getItem('workspace-journey')) {
+      const url = new URL(requestUrl, window.location.href);
+      if (url.pathname.startsWith('/api/')) {
+        const method = (init?.method || 'GET').toUpperCase();
+        const requests = JSON.parse(window.sessionStorage.getItem('workspace-journey-requests') || '[]');
+        requests.push({ path: url.pathname, method, body: String(init?.body || '') });
+        window.sessionStorage.setItem('workspace-journey-requests', JSON.stringify(requests));
+        if (method !== 'GET') return Promise.reject(new Error('Unexpected public mutation in workspace journey'));
+        const data = url.pathname === '/api/account/access' ? { accessMode: 'full', paid: false }
+          : url.pathname.endsWith('/supporter-photo') ? null
+          : url.pathname.includes('reply-inbox') ? { groups: [], unreadCount: 0, totalCount: 0 }
+          : [];
+        return Promise.resolve(new Response(JSON.stringify(data), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+    }
     if (window.location.search.includes('notification-preferences')) {
       if (requestUrl.endsWith('/api/notifications/config')) {
         return Promise.resolve(new Response(JSON.stringify({
@@ -1135,6 +1183,15 @@ export function mount() {
   }
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const root = createRoot(document.getElementById('test-root'));
+  if (window.location.search.includes('workspace-journey')) {
+    window.sessionStorage.setItem('workspace-journey', 'true');
+    root.render(createElement(Router, null,
+      createElement(QueryClientProvider, { client: queryClient },
+        createElement(WorkspaceJourneyHarness),
+      ),
+    ));
+    return;
+  }
   if (window.location.search.includes('profile-propagation')) {
     root.render(createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
@@ -2911,6 +2968,191 @@ test('supporters can switch saved checklist event types and keep the latest one 
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     }
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, and Hype without publishing private prep', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-workspace-journey-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  let tempDirectory: string | undefined;
+  try {
+    const probe = createServer();
+    const { port: vitePort } = await listen(probe);
+    await new Promise<void>((done) => probe.close(() => done()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(vitePort), BASE_PATH: '/', REPL_ID: '' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-workspace-journey-'));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const { webSocketDebuggerUrl } = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`;
+    const fixtureRoute = (route: string, params = '') =>
+      `${fixtureUrl}?workspace-journey&viewer=workspace-journey&route=${route}${params}`;
+    page = await openPage(connection, `${fixtureUrl}?workspace-journey&viewer=workspace-journey`);
+    const session = page.sessionId;
+    const click = (id: string) => connection!.evaluate(
+      `document.querySelector('[data-testid="${id}"]')?.click()`, session,
+    );
+    const path = () => connection!.evaluate<string>('location.pathname', session);
+    const selected = () => connection!.evaluate<string>(
+      'localStorage.getItem("pixlsports-workspace-event-context") || ""', session,
+    );
+    const schedule = {
+      version: 1, teamName: 'Northside Comets', season: '2026', template: 0,
+      events: [
+        { id: 'game-default', type: 'game', status: 'upcoming', date: '2026-10-12', time: '18:30', location: 'Main Gym', opponent: 'Falcons', snacks: '', drinks: '', notes: '' },
+        { id: 'game-selected', type: 'game', status: 'upcoming', date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers', snacks: '', drinks: '', notes: '' },
+      ],
+    };
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-calendar\\"]"))', Boolean);
+    await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, session);
+    await click('link-desktop-workspace-calendar');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"schedule-event-list\\"]"))', Boolean);
+    assert.equal(await path(), '/studio/schedule');
+    await click('button-select-schedule-event-1');
+    await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
+    await click('journey-return-dashboard');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]"))', Boolean);
+    const context = JSON.parse(await selected()) as Record<string, string>;
+    assert.deepEqual(context, {
+      id: 'game-selected', type: 'game', date: '2026-10-13',
+      time: '19:00', location: 'Away Gym', opponent: 'Tigers',
+    });
+    const prepHref = await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]")?.getAttribute("href") || ""', session,
+    );
+    assert.match(prepHref, /gameId=game-selected&eventType=game/);
+    await click('link-desktop-workspace-prep');
+    assert.equal(await path(), '/studio/checklist');
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
+    await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-selected&eventType=game'));
+    await reloadPage(connection, page);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
+    assert.match(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"checklist-selected-event-summary\\"]")?.textContent || ""', session,
+    ), /TIGERS/i);
+    const privateNote = 'PRIVATE PREP: meet by the blue gate';
+    const privateItem = 'PRIVATE ITEM: pack the striped socks';
+    await click('button-add-checklist-item');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid^=\\"input-checklist-item-custom-\\"]"))', Boolean);
+    await connection.evaluate(`(() => {
+      const update = (element, value) => {
+        const setter = Object.getOwnPropertyDescriptor(
+          element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value'
+        ).set;
+        setter.call(element, value);
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      update(document.querySelector('[data-testid^="input-checklist-item-custom-"]'), ${JSON.stringify(privateItem)});
+      update(document.querySelector('[data-testid="input-checklist-notes"]'), ${JSON.stringify(privateNote)});
+    })()`, session);
+    await waitFor(connection, session, `(() => {
+      const saved = localStorage.getItem('pixlsports-gameday-checklist:workspace-journey') || '';
+      return saved.includes(${JSON.stringify(privateNote)}) && saved.includes(${JSON.stringify(privateItem)});
+    })()`, Boolean);
+    await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-selected&eventType=game'));
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
+    assert.equal(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"input-checklist-notes\\"]")?.value || ""', session,
+    ), privateNote);
+    assert.equal(await connection.evaluate<string>(
+      'document.querySelector("[data-testid^=\\"input-checklist-item-custom-\\"]")?.value || ""', session,
+    ), privateItem);
+    await click('journey-return-dashboard');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-stats\\"]"))', Boolean);
+    const statsHref = await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"link-desktop-workspace-stats\\"]")?.getAttribute("href") || ""', session,
+    );
+    assert.match(statsHref, /eventId=game-selected/);
+    await click('link-desktop-workspace-stats');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"stat-tracker-setup\\"]"))', Boolean);
+    assert.equal(await path(), '/studio/stat-tracker');
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Tigers"', Boolean);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]")?.textContent?.includes("Tigers") === true', Boolean);
+    assert.ok(!(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]")?.textContent || ""', session,
+    )).includes('Falcons'), 'scheduled-game lookup must not fall back to the first recommendation');
+    assert.equal(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"input-athlete-result-date\\"]")?.value || ""', session,
+    ), '2026-10-13');
+    await navigatePage(connection, page, fixtureRoute('stat-tracker', '&source=workspace&eventId=game-selected&eventType=game&date=2026-10-13&opponent=Tigers'));
+    await reloadPage(connection, page);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Tigers"', Boolean);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]")?.textContent?.includes("Tigers") === true', Boolean);
+    await click('journey-return-dashboard');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-hype\\"]"))', Boolean);
+    const hypeHref = await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"link-desktop-workspace-hype\\"]")?.getAttribute("href") || ""', session,
+    );
+    assert.match(hypeHref, /eventId=game-selected/);
+    await click('link-desktop-workspace-hype');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready"))', Boolean);
+    assert.equal(await path(), '/studio/hype-card');
+    await waitFor(connection, session, `JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || 'null')?.project?.achievement?.includes('Tigers') === true`, Boolean);
+    const readHype = () => connection!.evaluate<{ text: string; inputs: string[]; stored: string; requests: string }>(`({
+      text: document.body.innerText,
+      inputs: Array.from(document.querySelectorAll('input')).map((node) => node.value),
+      stored: localStorage.getItem('leaguematrix-hype-card-project-v2') || '',
+      requests: sessionStorage.getItem('workspace-journey-requests') || '[]',
+    })`, session);
+    const hype = await readHype();
+    assert.match(hype.stored, /vs Tigers/);
+    assert.equal(JSON.parse(hype.stored).project.playerName, 'Alexandria Montgomery-Williams', 'athlete comes from the signed-in profile');
+    for (const secret of [privateNote, privateItem]) {
+      assert.ok(!JSON.stringify(hype).includes(secret), 'private checklist content must not reach Hype or public requests');
+      assert.ok(!(await selected()).includes(secret), 'workspace context must not include private checklist content');
+    }
+    await connection.evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent?.includes('4.'))?.click()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"walkthrough-publish-page\\"]"))', Boolean);
+    await navigatePage(connection, page, fixtureRoute('hype-card', '&source=workspace&eventId=game-selected&eventType=game&date=2026-10-13&opponent=Tigers'));
+    await reloadPage(connection, page);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready"))', Boolean);
+    const reloadedHype = await readHype();
+    assert.match(reloadedHype.stored, /vs Tigers/);
+    assert.equal(JSON.parse(reloadedHype.stored).project.playerName, 'Alexandria Montgomery-Williams');
+    for (const secret of [privateNote, privateItem]) {
+      assert.ok(!JSON.stringify(reloadedHype).includes(secret), 'reload must not copy private prep to Hype or public requests');
+    }
+    const requests = JSON.parse((await readHype()).requests) as { path: string; method: string; body: string }[];
+    assert.ok(requests.some((request) => request.path === '/api/projects' && request.method === 'GET'));
+    assert.ok(requests.every((request) => request.method === 'GET'), 'prefill must never publish without an explicit action');
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
     if (browser && browserMonitor) {
       if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
