@@ -278,7 +278,7 @@ export function PublicLandingPage() {
                 </div>
                 <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Celebrate the moment</h3>
                 <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Turn highlights into shareable graphics athletes and families are proud of.
+                  Bring highlights together on a Player Hype Page and turn standout moments into graphics worth sharing.
                 </p>
               </div>
             </div>
