@@ -34,7 +34,7 @@ import { PublicStatTrackerPage } from './src/features/stat-tracker-spectator';
 import { StatTrackerSharePanel } from './src/features/stat-tracker-page';
 import './src/index.css';
 
-const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:'2026-09-22T18:00:00.000Z', canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
+const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:'2026-09-25T18:00:00.000Z', canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
 let current = initial;
 let revoked = false;
 let poll404 = false;
@@ -81,7 +81,13 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
   const { port } = await listen(probe);
   await new Promise<void>((resolveClose, reject) => probe.close((error) => error ? reject(error) : resolveClose()));
   await writeFile(harnessPath, harnessSource(), 'utf8');
-  await writeFile(htmlPath, '<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1"><div id="root"></div><script type="module">import("/stat-tracker-spectator-test-harness.tsx")</script>', 'utf8');
+  await writeFile(htmlPath, `
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Stat tracker spectator browser test</title></head>
+  <body><div id="root"></div><script>window.__testErrors=[];window.addEventListener("error",(event)=>window.__testErrors.push({message:event.message,filename:event.filename,lineno:event.lineno,colno:event.colno,error:String(event.error)}));window.addEventListener("unhandledrejection",(event)=>window.__testErrors.push({message:String(event.reason)}));</script><script type="module">import('/stat-tracker-spectator-test-harness.tsx?browser-test=' + Date.now()).catch((error) => { document.body.dataset.testError = String(error); });</script></body>
+</html>
+`, 'utf8');
   const server = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], { cwd: appDirectory, env: { ...process.env, PORT: String(port), BASE_PATH:'/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' }, stdio:['ignore','pipe','pipe'] });
   const temp = await mkdtemp(resolve(tmpdir(), 'pixl-spectator-browser-'));
   let browser: ChildProcess | undefined; let monitor: ProcessMonitor | undefined; const serverMonitor = monitorProcess(server, 'Vite'); let connection: DevToolsConnection | undefined; let page: { sessionId:string; targetId:string } | undefined;

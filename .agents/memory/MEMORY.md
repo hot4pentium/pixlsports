@@ -39,7 +39,7 @@
 - [Wouter query routing](wouter-query-routing.md) — query-driven variants need browser search params because this app’s Wouter location value is pathname-only.
 - [Installed startup checks](installed-startup-browser-check.md) — delay worker installation and measure first content/tap separately so shell regressions are visible before offline assertions run.
 - [Browser fixture reloads](browser-fixture-reloads.md) — reload generated browser-test HTML through its direct fixture URL after route changes to avoid SPA fallback to the production shell.
-- [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject it automatically.
+- [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject them automatically.
 - [Schedule stage precedence](schedule-stage-precedence.md) — a saved upcoming/live status must not keep a past event ahead of a future practice.
 - [Tracker mobile start actions](tracker-mobile-start-actions.md) — keep the compact scheduled-game actions accessible when the larger setup card is hidden on mobile.
 - [Hype Page video streaming](hype-page-video-streaming.md) — public video responses need bounded byte ranges; large open-ended ranges fail through the published proxy.
