@@ -7,6 +7,7 @@ import {
   listCompletedMeetingRecords,
   meetingStorageKey,
   normalizeMeetingState,
+  shouldHydrateMeetingState,
 } from './meeting-capture-model';
 
 function makeStorage(entries: Record<string, string>): Storage {
@@ -60,6 +61,22 @@ test('legacy meeting records normalize without losing captured content', () => {
   assert.equal(state?.agenda[0]?.completed, true);
   assert.equal(state?.startedAt, null);
   assert.equal(state?.endedAt, '2026-09-25T18:00:00Z');
+});
+
+test('cloud hydration never replaces an existing local meeting draft', () => {
+  const cloud = {
+    notes: 'Cloud notes',
+    participants: [],
+    agenda: [],
+    decisions: [],
+    followUps: [],
+    startedAt: null,
+    endedAt: null,
+    context: { id: 'meeting-1', title: 'Cloud meeting', date: '', time: '', location: '' },
+  };
+  assert.equal(shouldHydrateMeetingState(null, cloud), true);
+  assert.equal(shouldHydrateMeetingState(normalizeMeetingState({ ...cloud, notes: 'Local notes' }), cloud), false);
+  assert.equal(shouldHydrateMeetingState(null, { notes: 'invalid' }), false);
 });
 
 test('completed meeting history is scoped and sorted by ended time', () => {

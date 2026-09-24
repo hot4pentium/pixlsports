@@ -9,6 +9,7 @@ import billingRouter from "./billing";
 import hypeCardSharesRouter from "./hypeCardShares";
 import supporterPhotoRouter from "./supporterPhoto";
 import checklistSharesRouter from "./checklistShares";
+import meetingWorkspacesRouter from "./meetingWorkspaces";
 import statTrackerSharesRouter from "./statTrackerShares";
 import webPushRouter from "./webPush";
 import athleteInvitesRouter from "./athleteInvites";
@@ -26,6 +27,7 @@ router.use(storageRouter);
 router.use(accountAccessRouter);
 router.use(supporterPhotoRouter);
 router.use(checklistSharesRouter);
+router.use(meetingWorkspacesRouter);
 router.use(statTrackerSharesRouter);
   router.use(webPushRouter);
 

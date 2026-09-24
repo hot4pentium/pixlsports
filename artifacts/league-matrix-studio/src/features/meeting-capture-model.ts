@@ -177,6 +177,10 @@ export function normalizeMeetingState(value: unknown): MeetingState | null {
   };
 }
 
+export function shouldHydrateMeetingState(localState: MeetingState | null, cloudState: unknown) {
+  return localState === null && normalizeMeetingState(cloudState) !== null;
+}
+
 export function readMeetingState(storage: Pick<Storage, 'getItem'>, key: string): MeetingState | null {
   try {
     const raw = storage.getItem(key);

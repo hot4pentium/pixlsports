@@ -18,6 +18,8 @@ tags:
     description: Public schedule sharing operations
   - name: checklist-shares
     description: Collaborative Gameday Checklist sharing operations
+  - name: meeting-workspaces
+    description: Authenticated meeting workspace persistence and public recap sharing
   - name: stat-tracker-shares
     description: Live stat tracker spectator sharing operations
   - name: hype-card-shares
@@ -197,6 +199,80 @@ paths:
           description: Checklist link revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /meeting-workspaces/{meetingId}:
+    parameters:
+      - $ref: "#/components/parameters/MeetingId"
+    get:
+      operationId: getMeetingWorkspace
+      tags: [meeting-workspaces]
+      summary: Get the authenticated owner's meeting workspace
+      responses:
+        "200":
+          description: Meeting workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingWorkspace"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: upsertMeetingWorkspace
+      tags: [meeting-workspaces]
+      summary: Save the authenticated owner's meeting workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MeetingWorkspaceUpdate"
+      responses:
+        "200":
+          description: Meeting workspace saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingWorkspace"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Expected revision is stale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingWorkspaceConflict"
+    delete:
+      operationId: deleteMeetingWorkspace
+      tags: [meeting-workspaces]
+      summary: Revoke the authenticated owner's meeting recap link
+      responses:
+        "204":
+          description: Meeting workspace revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /meeting-recaps/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/MeetingShareToken"
+    get:
+      operationId: getMeetingRecap
+      tags: [meeting-workspaces]
+      summary: Get a public read-only meeting recap
+      responses:
+        "200":
+          description: Public meeting recap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeetingRecap"
         "404":
           $ref: "#/components/responses/NotFound"
   /stat-tracker-shares:
@@ -1359,6 +1435,21 @@ components:
       schema:
         type: string
         format: uuid
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 160
+    MeetingShareToken:
+      name: shareToken
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{32,80}$"
     StatTrackerShareToken:
       name: shareToken
       in: path
@@ -1599,6 +1690,111 @@ components:
         error: { type: string }
         current:
           $ref: "#/components/schemas/ChecklistShare"
+    MeetingContext:
+      type: object
+      required: [id, date, time, location, title]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        date: { type: string, maxLength: 20 }
+        time: { type: string, maxLength: 20 }
+        location: { type: string, maxLength: 240 }
+        title: { type: string, minLength: 1, maxLength: 240 }
+    MeetingParticipant:
+      type: object
+      required: [id, name, role, present]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        role: { type: string, maxLength: 160 }
+        present: { type: boolean }
+    MeetingAgendaItem:
+      type: object
+      required: [id, label, completed]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        label: { type: string, minLength: 1, maxLength: 240 }
+        completed: { type: boolean }
+    MeetingDecision:
+      type: object
+      required: [id, text]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        text: { type: string, maxLength: 2000 }
+    MeetingFollowUp:
+      type: object
+      required: [id, task, owner, dueDate]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 160 }
+        task: { type: string, maxLength: 500 }
+        owner: { type: string, maxLength: 160 }
+        dueDate: { type: string, maxLength: 20 }
+    MeetingWorkspacePayload:
+      type: object
+      required: [notes, participants, agenda, decisions, followUps, startedAt, endedAt, context]
+      properties:
+        notes: { type: string, maxLength: 10000 }
+        participants:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingParticipant"
+        agenda:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingAgendaItem"
+        decisions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingDecision"
+        followUps:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MeetingFollowUp"
+        startedAt: { type: ["string", "null"], format: date-time }
+        endedAt: { type: ["string", "null"], format: date-time }
+        context:
+          $ref: "#/components/schemas/MeetingContext"
+    MeetingWorkspaceUpdate:
+      type: object
+      required: [workspace]
+      properties:
+        workspace:
+          $ref: "#/components/schemas/MeetingWorkspacePayload"
+        expectedRevision:
+          type: ["integer", "null"]
+          minimum: 1
+    MeetingWorkspace:
+      type: object
+      required: [id, ownerClerkUserId, ownerMeetingId, publicToken, workspace, revision, revokedAt, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        ownerClerkUserId: { type: string, minLength: 1, maxLength: 255 }
+        ownerMeetingId: { type: string, minLength: 1, maxLength: 160 }
+        publicToken: { type: string, pattern: "^[A-Za-z0-9_-]{32,80}$" }
+        workspace:
+          $ref: "#/components/schemas/MeetingWorkspacePayload"
+        revision: { type: integer, minimum: 1 }
+        revokedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MeetingRecap:
+      type: object
+      required: [workspace, revision, updatedAt]
+      properties:
+        workspace:
+          $ref: "#/components/schemas/MeetingWorkspacePayload"
+        revision: { type: integer, minimum: 1 }
+        updatedAt: { type: string, format: date-time }
+    MeetingWorkspaceConflict:
+      type: object
+      required: [error, current]
+      properties:
+        error: { type: string }
+        current:
+          $ref: "#/components/schemas/MeetingWorkspace"
     StatTrackerEvent:
       type: object
       required: [id, statId, createdAt, period, yards]

@@ -522,6 +522,408 @@ export const DeleteChecklistShareResponse = zod.void()
 
 
 /**
+ * @summary Get the authenticated owner's meeting workspace
+ */
+export const getMeetingWorkspacePathMeetingIdMax = 160;
+
+
+
+export const GetMeetingWorkspaceParams = zod.object({
+  "meetingId": zod.coerce.string().min(1).max(getMeetingWorkspacePathMeetingIdMax)
+})
+
+export const getMeetingWorkspaceResponseOwnerClerkUserIdMax = 255;
+
+export const getMeetingWorkspaceResponseOwnerMeetingIdMax = 160;
+
+export const getMeetingWorkspaceResponsePublicTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,80}$');
+export const getMeetingWorkspaceResponseWorkspaceNotesMax = 10000;
+
+export const getMeetingWorkspaceResponseWorkspaceParticipantsItemIdMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceParticipantsItemNameMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceParticipantsItemRoleMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceParticipantsMax = 100;
+
+export const getMeetingWorkspaceResponseWorkspaceAgendaItemIdMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceAgendaItemLabelMax = 240;
+
+export const getMeetingWorkspaceResponseWorkspaceAgendaMax = 100;
+
+export const getMeetingWorkspaceResponseWorkspaceDecisionsItemIdMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceDecisionsItemTextMax = 2000;
+
+export const getMeetingWorkspaceResponseWorkspaceDecisionsMax = 100;
+
+export const getMeetingWorkspaceResponseWorkspaceFollowUpsItemIdMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceFollowUpsItemTaskMax = 500;
+
+export const getMeetingWorkspaceResponseWorkspaceFollowUpsItemOwnerMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceFollowUpsItemDueDateMax = 20;
+
+export const getMeetingWorkspaceResponseWorkspaceFollowUpsMax = 100;
+
+export const getMeetingWorkspaceResponseWorkspaceContextIdMax = 160;
+
+export const getMeetingWorkspaceResponseWorkspaceContextDateMax = 20;
+
+export const getMeetingWorkspaceResponseWorkspaceContextTimeMax = 20;
+
+export const getMeetingWorkspaceResponseWorkspaceContextLocationMax = 240;
+
+export const getMeetingWorkspaceResponseWorkspaceContextTitleMax = 240;
+
+
+
+
+export const GetMeetingWorkspaceResponse = zod.object({
+  "id": zod.string().uuid(),
+  "ownerClerkUserId": zod.string().min(1).max(getMeetingWorkspaceResponseOwnerClerkUserIdMax),
+  "ownerMeetingId": zod.string().min(1).max(getMeetingWorkspaceResponseOwnerMeetingIdMax),
+  "publicToken": zod.string().regex(getMeetingWorkspaceResponsePublicTokenRegExp),
+  "workspace": zod.object({
+  "notes": zod.string().max(getMeetingWorkspaceResponseWorkspaceNotesMax),
+  "participants": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceParticipantsItemIdMax),
+  "name": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceParticipantsItemNameMax),
+  "role": zod.string().max(getMeetingWorkspaceResponseWorkspaceParticipantsItemRoleMax),
+  "present": zod.boolean()
+})).max(getMeetingWorkspaceResponseWorkspaceParticipantsMax),
+  "agenda": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceAgendaItemIdMax),
+  "label": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceAgendaItemLabelMax),
+  "completed": zod.boolean()
+})).max(getMeetingWorkspaceResponseWorkspaceAgendaMax),
+  "decisions": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceDecisionsItemIdMax),
+  "text": zod.string().max(getMeetingWorkspaceResponseWorkspaceDecisionsItemTextMax)
+})).max(getMeetingWorkspaceResponseWorkspaceDecisionsMax),
+  "followUps": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceFollowUpsItemIdMax),
+  "task": zod.string().max(getMeetingWorkspaceResponseWorkspaceFollowUpsItemTaskMax),
+  "owner": zod.string().max(getMeetingWorkspaceResponseWorkspaceFollowUpsItemOwnerMax),
+  "dueDate": zod.string().max(getMeetingWorkspaceResponseWorkspaceFollowUpsItemDueDateMax)
+})).max(getMeetingWorkspaceResponseWorkspaceFollowUpsMax),
+  "startedAt": zod.coerce.date().nullable(),
+  "endedAt": zod.coerce.date().nullable(),
+  "context": zod.object({
+  "id": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceContextIdMax),
+  "date": zod.string().max(getMeetingWorkspaceResponseWorkspaceContextDateMax),
+  "time": zod.string().max(getMeetingWorkspaceResponseWorkspaceContextTimeMax),
+  "location": zod.string().max(getMeetingWorkspaceResponseWorkspaceContextLocationMax),
+  "title": zod.string().min(1).max(getMeetingWorkspaceResponseWorkspaceContextTitleMax)
+})
+}),
+  "revision": zod.number().int().min(1),
+  "revokedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Save the authenticated owner's meeting workspace
+ */
+export const upsertMeetingWorkspacePathMeetingIdMax = 160;
+
+
+
+export const UpsertMeetingWorkspaceParams = zod.object({
+  "meetingId": zod.coerce.string().min(1).max(upsertMeetingWorkspacePathMeetingIdMax)
+})
+
+export const upsertMeetingWorkspaceBodyWorkspaceNotesMax = 10000;
+
+export const upsertMeetingWorkspaceBodyWorkspaceParticipantsItemIdMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceParticipantsItemNameMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceParticipantsItemRoleMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceParticipantsMax = 100;
+
+export const upsertMeetingWorkspaceBodyWorkspaceAgendaItemIdMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceAgendaItemLabelMax = 240;
+
+export const upsertMeetingWorkspaceBodyWorkspaceAgendaMax = 100;
+
+export const upsertMeetingWorkspaceBodyWorkspaceDecisionsItemIdMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceDecisionsItemTextMax = 2000;
+
+export const upsertMeetingWorkspaceBodyWorkspaceDecisionsMax = 100;
+
+export const upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemIdMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemTaskMax = 500;
+
+export const upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemOwnerMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemDueDateMax = 20;
+
+export const upsertMeetingWorkspaceBodyWorkspaceFollowUpsMax = 100;
+
+export const upsertMeetingWorkspaceBodyWorkspaceContextIdMax = 160;
+
+export const upsertMeetingWorkspaceBodyWorkspaceContextDateMax = 20;
+
+export const upsertMeetingWorkspaceBodyWorkspaceContextTimeMax = 20;
+
+export const upsertMeetingWorkspaceBodyWorkspaceContextLocationMax = 240;
+
+export const upsertMeetingWorkspaceBodyWorkspaceContextTitleMax = 240;
+
+
+
+
+export const UpsertMeetingWorkspaceBody = zod.object({
+  "workspace": zod.object({
+  "notes": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceNotesMax),
+  "participants": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceParticipantsItemIdMax),
+  "name": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceParticipantsItemNameMax),
+  "role": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceParticipantsItemRoleMax),
+  "present": zod.boolean()
+})).max(upsertMeetingWorkspaceBodyWorkspaceParticipantsMax),
+  "agenda": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceAgendaItemIdMax),
+  "label": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceAgendaItemLabelMax),
+  "completed": zod.boolean()
+})).max(upsertMeetingWorkspaceBodyWorkspaceAgendaMax),
+  "decisions": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceDecisionsItemIdMax),
+  "text": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceDecisionsItemTextMax)
+})).max(upsertMeetingWorkspaceBodyWorkspaceDecisionsMax),
+  "followUps": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemIdMax),
+  "task": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemTaskMax),
+  "owner": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemOwnerMax),
+  "dueDate": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceFollowUpsItemDueDateMax)
+})).max(upsertMeetingWorkspaceBodyWorkspaceFollowUpsMax),
+  "startedAt": zod.coerce.date().nullable(),
+  "endedAt": zod.coerce.date().nullable(),
+  "context": zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceContextIdMax),
+  "date": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceContextDateMax),
+  "time": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceContextTimeMax),
+  "location": zod.string().max(upsertMeetingWorkspaceBodyWorkspaceContextLocationMax),
+  "title": zod.string().min(1).max(upsertMeetingWorkspaceBodyWorkspaceContextTitleMax)
+})
+}),
+  "expectedRevision": zod.number().int().min(1).nullish()
+})
+
+export const upsertMeetingWorkspaceResponseOwnerClerkUserIdMax = 255;
+
+export const upsertMeetingWorkspaceResponseOwnerMeetingIdMax = 160;
+
+export const upsertMeetingWorkspaceResponsePublicTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,80}$');
+export const upsertMeetingWorkspaceResponseWorkspaceNotesMax = 10000;
+
+export const upsertMeetingWorkspaceResponseWorkspaceParticipantsItemIdMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceParticipantsItemNameMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceParticipantsItemRoleMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceParticipantsMax = 100;
+
+export const upsertMeetingWorkspaceResponseWorkspaceAgendaItemIdMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceAgendaItemLabelMax = 240;
+
+export const upsertMeetingWorkspaceResponseWorkspaceAgendaMax = 100;
+
+export const upsertMeetingWorkspaceResponseWorkspaceDecisionsItemIdMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceDecisionsItemTextMax = 2000;
+
+export const upsertMeetingWorkspaceResponseWorkspaceDecisionsMax = 100;
+
+export const upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemIdMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemTaskMax = 500;
+
+export const upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemOwnerMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemDueDateMax = 20;
+
+export const upsertMeetingWorkspaceResponseWorkspaceFollowUpsMax = 100;
+
+export const upsertMeetingWorkspaceResponseWorkspaceContextIdMax = 160;
+
+export const upsertMeetingWorkspaceResponseWorkspaceContextDateMax = 20;
+
+export const upsertMeetingWorkspaceResponseWorkspaceContextTimeMax = 20;
+
+export const upsertMeetingWorkspaceResponseWorkspaceContextLocationMax = 240;
+
+export const upsertMeetingWorkspaceResponseWorkspaceContextTitleMax = 240;
+
+
+
+
+export const UpsertMeetingWorkspaceResponse = zod.object({
+  "id": zod.string().uuid(),
+  "ownerClerkUserId": zod.string().min(1).max(upsertMeetingWorkspaceResponseOwnerClerkUserIdMax),
+  "ownerMeetingId": zod.string().min(1).max(upsertMeetingWorkspaceResponseOwnerMeetingIdMax),
+  "publicToken": zod.string().regex(upsertMeetingWorkspaceResponsePublicTokenRegExp),
+  "workspace": zod.object({
+  "notes": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceNotesMax),
+  "participants": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceParticipantsItemIdMax),
+  "name": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceParticipantsItemNameMax),
+  "role": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceParticipantsItemRoleMax),
+  "present": zod.boolean()
+})).max(upsertMeetingWorkspaceResponseWorkspaceParticipantsMax),
+  "agenda": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceAgendaItemIdMax),
+  "label": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceAgendaItemLabelMax),
+  "completed": zod.boolean()
+})).max(upsertMeetingWorkspaceResponseWorkspaceAgendaMax),
+  "decisions": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceDecisionsItemIdMax),
+  "text": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceDecisionsItemTextMax)
+})).max(upsertMeetingWorkspaceResponseWorkspaceDecisionsMax),
+  "followUps": zod.array(zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemIdMax),
+  "task": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemTaskMax),
+  "owner": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemOwnerMax),
+  "dueDate": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceFollowUpsItemDueDateMax)
+})).max(upsertMeetingWorkspaceResponseWorkspaceFollowUpsMax),
+  "startedAt": zod.coerce.date().nullable(),
+  "endedAt": zod.coerce.date().nullable(),
+  "context": zod.object({
+  "id": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceContextIdMax),
+  "date": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceContextDateMax),
+  "time": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceContextTimeMax),
+  "location": zod.string().max(upsertMeetingWorkspaceResponseWorkspaceContextLocationMax),
+  "title": zod.string().min(1).max(upsertMeetingWorkspaceResponseWorkspaceContextTitleMax)
+})
+}),
+  "revision": zod.number().int().min(1),
+  "revokedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Revoke the authenticated owner's meeting recap link
+ */
+export const deleteMeetingWorkspacePathMeetingIdMax = 160;
+
+
+
+export const DeleteMeetingWorkspaceParams = zod.object({
+  "meetingId": zod.coerce.string().min(1).max(deleteMeetingWorkspacePathMeetingIdMax)
+})
+
+export const DeleteMeetingWorkspaceResponse = zod.void()
+
+
+/**
+ * @summary Get a public read-only meeting recap
+ */
+export const getMeetingRecapPathShareTokenRegExp = new RegExp('^[A-Za-z0-9_-]{32,80}$');
+
+
+export const GetMeetingRecapParams = zod.object({
+  "shareToken": zod.coerce.string().regex(getMeetingRecapPathShareTokenRegExp)
+})
+
+export const getMeetingRecapResponseWorkspaceNotesMax = 10000;
+
+export const getMeetingRecapResponseWorkspaceParticipantsItemIdMax = 160;
+
+export const getMeetingRecapResponseWorkspaceParticipantsItemNameMax = 160;
+
+export const getMeetingRecapResponseWorkspaceParticipantsItemRoleMax = 160;
+
+export const getMeetingRecapResponseWorkspaceParticipantsMax = 100;
+
+export const getMeetingRecapResponseWorkspaceAgendaItemIdMax = 160;
+
+export const getMeetingRecapResponseWorkspaceAgendaItemLabelMax = 240;
+
+export const getMeetingRecapResponseWorkspaceAgendaMax = 100;
+
+export const getMeetingRecapResponseWorkspaceDecisionsItemIdMax = 160;
+
+export const getMeetingRecapResponseWorkspaceDecisionsItemTextMax = 2000;
+
+export const getMeetingRecapResponseWorkspaceDecisionsMax = 100;
+
+export const getMeetingRecapResponseWorkspaceFollowUpsItemIdMax = 160;
+
+export const getMeetingRecapResponseWorkspaceFollowUpsItemTaskMax = 500;
+
+export const getMeetingRecapResponseWorkspaceFollowUpsItemOwnerMax = 160;
+
+export const getMeetingRecapResponseWorkspaceFollowUpsItemDueDateMax = 20;
+
+export const getMeetingRecapResponseWorkspaceFollowUpsMax = 100;
+
+export const getMeetingRecapResponseWorkspaceContextIdMax = 160;
+
+export const getMeetingRecapResponseWorkspaceContextDateMax = 20;
+
+export const getMeetingRecapResponseWorkspaceContextTimeMax = 20;
+
+export const getMeetingRecapResponseWorkspaceContextLocationMax = 240;
+
+export const getMeetingRecapResponseWorkspaceContextTitleMax = 240;
+
+
+
+
+export const GetMeetingRecapResponse = zod.object({
+  "workspace": zod.object({
+  "notes": zod.string().max(getMeetingRecapResponseWorkspaceNotesMax),
+  "participants": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingRecapResponseWorkspaceParticipantsItemIdMax),
+  "name": zod.string().min(1).max(getMeetingRecapResponseWorkspaceParticipantsItemNameMax),
+  "role": zod.string().max(getMeetingRecapResponseWorkspaceParticipantsItemRoleMax),
+  "present": zod.boolean()
+})).max(getMeetingRecapResponseWorkspaceParticipantsMax),
+  "agenda": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingRecapResponseWorkspaceAgendaItemIdMax),
+  "label": zod.string().min(1).max(getMeetingRecapResponseWorkspaceAgendaItemLabelMax),
+  "completed": zod.boolean()
+})).max(getMeetingRecapResponseWorkspaceAgendaMax),
+  "decisions": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingRecapResponseWorkspaceDecisionsItemIdMax),
+  "text": zod.string().max(getMeetingRecapResponseWorkspaceDecisionsItemTextMax)
+})).max(getMeetingRecapResponseWorkspaceDecisionsMax),
+  "followUps": zod.array(zod.object({
+  "id": zod.string().min(1).max(getMeetingRecapResponseWorkspaceFollowUpsItemIdMax),
+  "task": zod.string().max(getMeetingRecapResponseWorkspaceFollowUpsItemTaskMax),
+  "owner": zod.string().max(getMeetingRecapResponseWorkspaceFollowUpsItemOwnerMax),
+  "dueDate": zod.string().max(getMeetingRecapResponseWorkspaceFollowUpsItemDueDateMax)
+})).max(getMeetingRecapResponseWorkspaceFollowUpsMax),
+  "startedAt": zod.coerce.date().nullable(),
+  "endedAt": zod.coerce.date().nullable(),
+  "context": zod.object({
+  "id": zod.string().min(1).max(getMeetingRecapResponseWorkspaceContextIdMax),
+  "date": zod.string().max(getMeetingRecapResponseWorkspaceContextDateMax),
+  "time": zod.string().max(getMeetingRecapResponseWorkspaceContextTimeMax),
+  "location": zod.string().max(getMeetingRecapResponseWorkspaceContextLocationMax),
+  "title": zod.string().min(1).max(getMeetingRecapResponseWorkspaceContextTitleMax)
+})
+}),
+  "revision": zod.number().int().min(1),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List active stat tracker shares owned by the authenticated user
  */
 export const listStatTrackerSharesResponseOneAthleteNameMax = 160;

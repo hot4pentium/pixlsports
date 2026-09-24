@@ -49,6 +49,10 @@ import type {
   MediaUpload,
   MediaUploadCompleteInput,
   MediaUploadInput,
+  MeetingRecap,
+  MeetingWorkspace,
+  MeetingWorkspaceConflict,
+  MeetingWorkspaceUpdate,
   NotFoundResponse,
   NotificationConfig,
   NotificationDisplayReceiptInput,
@@ -846,6 +850,323 @@ export const useDeleteChecklistShare = <TError = ErrorType<UnauthorizedResponse 
       > => {
       return useMutation(getDeleteChecklistShareMutationOptions(options));
     }
+
+export const getGetMeetingWorkspaceUrl = (meetingId: string,) => {
+
+
+
+
+  return `/api/meeting-workspaces/${meetingId}`
+}
+
+/**
+ * @summary Get the authenticated owner's meeting workspace
+ */
+export const getMeetingWorkspace = async (meetingId: string, options?: Parameters<typeof customFetch>[1]): Promise<MeetingWorkspace> => {
+
+  return customFetch<MeetingWorkspace>(getGetMeetingWorkspaceUrl(meetingId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMeetingWorkspaceQueryKey = (meetingId: string,) => {
+    return [
+    `/api/meeting-workspaces/${meetingId}`
+    ] as const;
+    }
+
+
+export const getGetMeetingWorkspaceQueryOptions = <TData = Awaited<ReturnType<typeof getMeetingWorkspace>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(meetingId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMeetingWorkspace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMeetingWorkspaceQueryKey(meetingId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMeetingWorkspace>>> = ({ signal }) => getMeetingWorkspace(meetingId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: meetingId !== null && meetingId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMeetingWorkspace>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMeetingWorkspaceQueryResult = NonNullable<Awaited<ReturnType<typeof getMeetingWorkspace>>>
+export type GetMeetingWorkspaceQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get the authenticated owner's meeting workspace
+ */
+
+export function useGetMeetingWorkspace<TData = Awaited<ReturnType<typeof getMeetingWorkspace>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ meetingId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMeetingWorkspace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMeetingWorkspaceQueryOptions(meetingId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertMeetingWorkspaceUrl = (meetingId: string,) => {
+
+
+
+
+  return `/api/meeting-workspaces/${meetingId}`
+}
+
+/**
+ * @summary Save the authenticated owner's meeting workspace
+ */
+export const upsertMeetingWorkspace = async (meetingId: string,
+    meetingWorkspaceUpdate: MeetingWorkspaceUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MeetingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MeetingWorkspace>(getUpsertMeetingWorkspaceUrl(meetingId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(meetingWorkspaceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpsertMeetingWorkspaceMutationKey = () => ['upsertMeetingWorkspace'] as const;
+
+export const getUpsertMeetingWorkspaceMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | MeetingWorkspaceConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertMeetingWorkspace>>, TError,UpsertMeetingWorkspaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertMeetingWorkspace>>, TError,UpsertMeetingWorkspaceMutationVariables, TContext> => {
+
+const mutationKey = getUpsertMeetingWorkspaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertMeetingWorkspace>>, UpsertMeetingWorkspaceMutationVariables> = (props) => {
+          const {meetingId,data} = props ?? {};
+
+          return  upsertMeetingWorkspace(meetingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertMeetingWorkspaceMutationResult = NonNullable<Awaited<ReturnType<typeof upsertMeetingWorkspace>>>
+    export type UpsertMeetingWorkspaceMutationBody = BodyType<MeetingWorkspaceUpdate>
+    export type UpsertMeetingWorkspaceMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | MeetingWorkspaceConflict>
+    export type UpsertMeetingWorkspaceMutationVariables = {meetingId: string;data: BodyType<MeetingWorkspaceUpdate>}
+
+    /**
+ * @summary Save the authenticated owner's meeting workspace
+ */
+export const useUpsertMeetingWorkspace = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | MeetingWorkspaceConflict>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertMeetingWorkspace>>, TError,UpsertMeetingWorkspaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertMeetingWorkspace>>,
+        TError,
+        UpsertMeetingWorkspaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpsertMeetingWorkspaceMutationOptions(options));
+    }
+
+export const getDeleteMeetingWorkspaceUrl = (meetingId: string,) => {
+
+
+
+
+  return `/api/meeting-workspaces/${meetingId}`
+}
+
+/**
+ * @summary Revoke the authenticated owner's meeting recap link
+ */
+export const deleteMeetingWorkspace = async (meetingId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteMeetingWorkspaceUrl(meetingId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMeetingWorkspaceMutationKey = () => ['deleteMeetingWorkspace'] as const;
+
+export const getDeleteMeetingWorkspaceMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMeetingWorkspace>>, TError,DeleteMeetingWorkspaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMeetingWorkspace>>, TError,DeleteMeetingWorkspaceMutationVariables, TContext> => {
+
+const mutationKey = getDeleteMeetingWorkspaceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMeetingWorkspace>>, DeleteMeetingWorkspaceMutationVariables> = (props) => {
+          const {meetingId} = props ?? {};
+
+          return  deleteMeetingWorkspace(meetingId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMeetingWorkspaceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMeetingWorkspace>>>
+
+    export type DeleteMeetingWorkspaceMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteMeetingWorkspaceMutationVariables = {meetingId: string}
+
+    /**
+ * @summary Revoke the authenticated owner's meeting recap link
+ */
+export const useDeleteMeetingWorkspace = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMeetingWorkspace>>, TError,DeleteMeetingWorkspaceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMeetingWorkspace>>,
+        TError,
+        DeleteMeetingWorkspaceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteMeetingWorkspaceMutationOptions(options));
+    }
+
+export const getGetMeetingRecapUrl = (shareToken: string,) => {
+
+
+
+
+  return `/api/meeting-recaps/${shareToken}`
+}
+
+/**
+ * @summary Get a public read-only meeting recap
+ */
+export const getMeetingRecap = async (shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<MeetingRecap> => {
+
+  return customFetch<MeetingRecap>(getGetMeetingRecapUrl(shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMeetingRecapQueryKey = (shareToken: string,) => {
+    return [
+    `/api/meeting-recaps/${shareToken}`
+    ] as const;
+    }
+
+
+export const getGetMeetingRecapQueryOptions = <TData = Awaited<ReturnType<typeof getMeetingRecap>>, TError = ErrorType<NotFoundResponse>>(shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMeetingRecap>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMeetingRecapQueryKey(shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMeetingRecap>>> = ({ signal }) => getMeetingRecap(shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMeetingRecap>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMeetingRecapQueryResult = NonNullable<Awaited<ReturnType<typeof getMeetingRecap>>>
+export type GetMeetingRecapQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get a public read-only meeting recap
+ */
+
+export function useGetMeetingRecap<TData = Awaited<ReturnType<typeof getMeetingRecap>>, TError = ErrorType<NotFoundResponse>>(
+ shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMeetingRecap>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMeetingRecapQueryOptions(shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListStatTrackerSharesUrl = () => {
 

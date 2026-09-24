@@ -286,6 +286,141 @@ export interface ChecklistConflict {
   current: ChecklistShare;
 }
 
+export interface MeetingContext {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  /** @maxLength 20 */
+  date: string;
+  /** @maxLength 20 */
+  time: string;
+  /** @maxLength 240 */
+  location: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  title: string;
+}
+
+export interface MeetingParticipant {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  /** @maxLength 160 */
+  role: string;
+  present: boolean;
+}
+
+export interface MeetingAgendaItem {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  label: string;
+  completed: boolean;
+}
+
+export interface MeetingDecision {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  /** @maxLength 2000 */
+  text: string;
+}
+
+export interface MeetingFollowUp {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  id: string;
+  /** @maxLength 500 */
+  task: string;
+  /** @maxLength 160 */
+  owner: string;
+  /** @maxLength 20 */
+  dueDate: string;
+}
+
+export interface MeetingWorkspacePayload {
+  /** @maxLength 10000 */
+  notes: string;
+  /** @maxItems 100 */
+  participants: MeetingParticipant[];
+  /** @maxItems 100 */
+  agenda: MeetingAgendaItem[];
+  /** @maxItems 100 */
+  decisions: MeetingDecision[];
+  /** @maxItems 100 */
+  followUps: MeetingFollowUp[];
+  /** @nullable */
+  startedAt: string | null;
+  /** @nullable */
+  endedAt: string | null;
+  context: MeetingContext;
+}
+
+export interface MeetingWorkspaceUpdate {
+  workspace: MeetingWorkspacePayload;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  expectedRevision?: number | null;
+}
+
+export interface MeetingWorkspace {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  ownerClerkUserId: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  ownerMeetingId: string;
+  /** @pattern ^[A-Za-z0-9_-]{32,80}$ */
+  publicToken: string;
+  workspace: MeetingWorkspacePayload;
+  /** @minimum 1 */
+  revision: number;
+  /** @nullable */
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MeetingRecap {
+  workspace: MeetingWorkspacePayload;
+  /** @minimum 1 */
+  revision: number;
+  updatedAt: string;
+}
+
+export interface MeetingWorkspaceConflict {
+  error: string;
+  current: MeetingWorkspace;
+}
+
 export type StatTrackerEventAttribution = typeof StatTrackerEventAttribution[keyof typeof StatTrackerEventAttribution];
 
 

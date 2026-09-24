@@ -168,6 +168,9 @@ const OwnerAthleteInviteManagePage = lazy(() =>
 const PublicHypeCardPage = lazy(() =>
   import('@/features/public-hype-card').then(({ PublicHypeCardPage }) => ({ default: PublicHypeCardPage })),
 );
+const PublicMeetingRecapPage = lazy(() =>
+  import('@/features/public-meeting-recap').then(({ PublicMeetingRecapPage }) => ({ default: PublicMeetingRecapPage })),
+);
 const StatTrackerPage = lazy(() =>
   import('@/features/stat-tracker-page').then(({ StatTrackerPage }) => ({ default: StatTrackerPage })),
 );
@@ -4161,6 +4164,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
                <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
+               <Route path="/meeting/:shareToken" component={PublicMeetingRecapPage} />
                <Route path="/h/:shareToken" component={PublicHypeCardPage} />
                <Route path="/watch/:slug/:shareToken" component={PublicHypeCardPage} />
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />

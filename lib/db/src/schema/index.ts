@@ -235,6 +235,7 @@ export const plannerNotificationDeliveriesTable = pgTable("planner_notification_
 }));
 
 export * from "./checklistShares";
+export * from "./meetingWorkspaces";
 export * from "./statTrackerShares";
 export * from "./athleteInvites";
 

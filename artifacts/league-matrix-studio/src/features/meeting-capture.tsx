@@ -19,7 +19,14 @@ import {
   X,
 } from 'lucide-react';
 import { useUser } from '@clerk/react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  getGetMeetingWorkspaceQueryKey,
+  useGetMeetingWorkspace,
+  useUpsertMeetingWorkspace,
+  type MeetingWorkspacePayload,
+} from '@workspace/api-client-react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { readScheduleDraft } from '@/features/schedule-draft';
 import {
@@ -27,6 +34,7 @@ import {
   isMeetingUnscheduled,
   meetingStorageKey,
   readMeetingState,
+  shouldHydrateMeetingState,
   type MeetingAgendaItem as AgendaItem,
   type MeetingContext,
   type MeetingDecision as Decision,
@@ -117,7 +125,9 @@ function formatEndedAt(value: string | null) {
     : date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function recapText(context: MeetingContext, state: MeetingState) {
+const meetingBasePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+export function recapText(context: MeetingContext, state: MeetingState) {
   const present = state.participants.filter((participant) => participant.present);
   const absent = state.participants.filter((participant) => !participant.present);
   const agenda = state.agenda.filter((item) => item.label.trim());
@@ -211,6 +221,7 @@ function MeetingHeader({
 
 export function MeetingCapture() {
   const { user } = useUser();
+  const queryClient = useQueryClient();
   const context = useMemo(() => getMeetingContext(), []);
   const storageKey = meetingStorageKey(user?.id || 'guest', context.id);
   const requestedView = useMemo(() => new URLSearchParams(window.location.search).get('view'), []);
@@ -224,14 +235,68 @@ export function MeetingCapture() {
   const [copyStatus, setCopyStatus] = useState('');
   const [shareStatus, setShareStatus] = useState('');
   const [pdfStatus, setPdfStatus] = useState('');
+  const [cloudStatus, setCloudStatus] = useState<'local' | 'loading' | 'saving' | 'synced' | 'failed' | 'conflict'>('local');
+  const [cloudRevision, setCloudRevision] = useState<number | null>(null);
+  const [publicToken, setPublicToken] = useState('');
+  const initialLocalState = useRef(readMeetingState(window.localStorage, storageKey));
+  const stateRef = useRef(state);
+  const changeVersion = useRef(0);
+  const hydratedCloud = useRef(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const workspace = useGetMeetingWorkspace(context.id, {
+    query: {
+      enabled: Boolean(user?.id),
+      queryKey: getGetMeetingWorkspaceQueryKey(context.id),
+      retry: false,
+    },
+  });
+  const saveWorkspace = useUpsertMeetingWorkspace();
+
+  useEffect(() => {
+    if (!user?.id) {
+      setCloudStatus('local');
+      return;
+    }
+    if (workspace.isLoading) {
+      setCloudStatus('loading');
+      return;
+    }
+    if (hydratedCloud.current) return;
+    hydratedCloud.current = true;
+    if (workspace.data) {
+      setCloudRevision(workspace.data.revision);
+      setPublicToken(workspace.data.publicToken);
+      const localState = initialLocalState.current;
+      if (shouldHydrateMeetingState(localState, workspace.data.workspace)) {
+        const hydratedState = workspace.data.workspace as MeetingState;
+        stateRef.current = hydratedState;
+        setState(hydratedState);
+        try {
+          window.localStorage.setItem(storageKey, JSON.stringify(workspace.data.workspace));
+        } catch {
+          // Local-first capture remains usable if storage is unavailable.
+        }
+        setCloudStatus('synced');
+      } else {
+        setCloudStatus(
+          localState && JSON.stringify(localState) === JSON.stringify(workspace.data.workspace)
+            ? 'synced'
+            : 'local',
+        );
+      }
+    } else {
+      setCloudStatus('local');
+    }
+  }, [storageKey, user?.id, workspace.data, workspace.isLoading]);
 
   useEffect(() => {
     if (storageKey === loadedKey) return;
     const restored = readMeetingState(window.localStorage, storageKey);
     const guestKey = meetingStorageKey('guest', context.id);
     const guestState = restored ? null : readMeetingState(window.localStorage, guestKey);
-    setState(restored ?? guestState ?? blankMeetingState(context));
+    const nextState = restored ?? guestState ?? blankMeetingState(context);
+    stateRef.current = nextState;
+    setState(nextState);
     if (!restored && guestState && storageKey !== guestKey) {
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(guestState));
@@ -240,6 +305,11 @@ export function MeetingCapture() {
       }
     }
     setLoadedKey(storageKey);
+    initialLocalState.current = restored ?? guestState;
+    changeVersion.current = 0;
+    hydratedCloud.current = false;
+    setCloudRevision(null);
+    setPublicToken('');
     setShowRecap(requestedView === 'share' || requestedView === 'review');
     setEditingEnded(false);
   }, [context, loadedKey, requestedView, storageKey]);
@@ -260,7 +330,13 @@ export function MeetingCapture() {
 
   useEffect(() => {
     if (state.context?.id === context.id) return;
-    setState((current) => ({ ...current, context }));
+    changeVersion.current += 1;
+    setCloudStatus('local');
+    setState((current) => {
+      const next = { ...current, context };
+      stateRef.current = next;
+      return next;
+    });
   }, [context, state.context?.id]);
 
   const completedAgenda = state.agenda.filter((item) => item.completed).length;
@@ -276,8 +352,11 @@ export function MeetingCapture() {
   const unscheduled = isMeetingUnscheduled(meetingContext);
 
   const updateState = (patch: Partial<MeetingState>) => {
+    changeVersion.current += 1;
+    setCloudStatus('local');
     setState((current) => {
       const next = { ...current, ...patch };
+      stateRef.current = next;
       try {
         window.localStorage.setItem(storageKey, JSON.stringify(next));
       } catch {
@@ -370,6 +449,65 @@ export function MeetingCapture() {
     });
   };
 
+  const workspacePayload = (): MeetingWorkspacePayload => ({
+    notes: state.notes,
+    participants: state.participants,
+    agenda: state.agenda,
+    decisions: state.decisions,
+    followUps: state.followUps,
+    startedAt: state.startedAt,
+    endedAt: state.endedAt,
+    context: meetingContext,
+  });
+
+  const saveToTeamWorkspace = async () => {
+    if (!user?.id) {
+      setCloudStatus('failed');
+      setShareStatus('Sign in to save this meeting across devices.');
+      return null;
+    }
+    const savedVersion = changeVersion.current;
+    setCloudStatus('saving');
+    try {
+      const saved = await saveWorkspace.mutateAsync({
+        meetingId: context.id,
+        data: {
+          workspace: workspacePayload(),
+          expectedRevision: cloudRevision,
+        },
+      });
+      setCloudRevision(saved.revision);
+      setPublicToken(saved.publicToken);
+      setCloudStatus(changeVersion.current === savedVersion ? 'synced' : 'local');
+      await queryClient.invalidateQueries({ queryKey: getGetMeetingWorkspaceQueryKey(context.id) });
+      return saved;
+    } catch (error) {
+      const apiError = error as { status?: number; data?: { current?: { revision?: number } } };
+      if (apiError.status === 409) {
+        const revision = apiError.data?.current?.revision;
+        if (typeof revision === 'number') setCloudRevision(revision);
+        setCloudStatus('conflict');
+      } else {
+        setCloudStatus('failed');
+      }
+      return null;
+    }
+  };
+
+  const publicRecapUrl = publicToken
+    ? `${window.location.origin}${meetingBasePath}/meeting/${encodeURIComponent(publicToken)}`
+    : '';
+
+  const handleCopyShareLink = async () => {
+    if (!publicRecapUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicRecapUrl);
+      setShareStatus('Share link copied.');
+    } catch {
+      setShareStatus('Copy was not available. Select the share link instead.');
+    }
+  };
+
   const handleCopy = async () => {
     const text = recapText(meetingContext, state);
     try {
@@ -382,15 +520,20 @@ export function MeetingCapture() {
   };
 
   const handleShare = async () => {
-    if (!navigator.share) {
-      setShareStatus('Web Share is not available on this device. Copy the recap instead.');
+    const saved = await saveToTeamWorkspace();
+    const token = saved?.publicToken ?? publicToken;
+    if (!token) {
+      if (!user?.id) setShareStatus('Sign in to create a durable team recap link.');
+      else setShareStatus('Save failed. Your local recap is still safe; try again.');
       return;
     }
+    const url = `${window.location.origin}${meetingBasePath}/meeting/${encodeURIComponent(token)}`;
     try {
-      await navigator.share({ title: `Pixl Sports recap: ${meetingContext.title}`, text: recapText(meetingContext, state) });
-      setShareStatus('Recap shared.');
+      if (!navigator.share) throw new Error('Web Share unavailable');
+      await navigator.share({ title: `Pixl Sports recap: ${meetingContext.title}`, url });
+      setShareStatus('Recap link shared.');
     } catch {
-      setShareStatus('Share was cancelled or could not be completed.');
+      setShareStatus('Share was cancelled or unavailable. Copy the link below.');
     }
   };
 
@@ -409,6 +552,39 @@ export function MeetingCapture() {
       `${window.location.pathname.replace(/\/studio\/checklist$/, '/studio')}${window.location.hash}`,
     );
   };
+
+  const cloudStatusLabel = {
+    local: user?.id ? 'Local draft · not saved to team workspace' : 'Local-only · sign in to save across devices',
+    loading: 'Checking team workspace…',
+    saving: 'Saving to team workspace…',
+    synced: 'Synced to team workspace',
+    failed: 'Save failed · your local draft is safe',
+    conflict: 'Stale conflict · another device changed the cloud copy',
+  }[cloudStatus];
+  const cloudControls = (
+    <section className="mt-5 border border-[#426481] bg-[#163858] p-4" data-testid="meeting-cloud-controls">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#f7c97a]" data-testid="status-meeting-cloud">{cloudStatusLabel}</p>
+        <button
+          type="button"
+          onClick={() => void saveToTeamWorkspace()}
+          disabled={!user?.id || cloudStatus === 'loading' || cloudStatus === 'saving'}
+          className="inline-flex min-h-10 items-center justify-center border border-[#e8a45c] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#f7c97a] disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="button-save-meeting-workspace"
+        >
+          {cloudStatus === 'saving' ? 'Saving…' : 'Save to team workspace'}
+        </button>
+      </div>
+      {!user?.id && <p className="mt-2 text-xs leading-relaxed text-[#aec5d3]" data-testid="text-meeting-cloud-sign-in">Sign in to reopen this meeting on another device or make a team recap link.</p>}
+      {cloudStatus === 'conflict' && <p className="mt-2 text-xs leading-relaxed text-[#f08e73]" data-testid="status-meeting-cloud-conflict">The cloud copy was kept. Your local edits are still here; review them before saving again.</p>}
+      {publicRecapUrl && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3 sm:flex-row sm:items-center" data-testid="meeting-share-link">
+          <a href={publicRecapUrl} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm text-[#f7c97a] underline" data-testid="link-meeting-share-url">{publicRecapUrl}</a>
+          <button type="button" onClick={() => void handleCopyShareLink()} className="inline-flex min-h-10 items-center justify-center gap-2 border border-[#6385a0] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#f6f2e9]" data-testid="button-copy-meeting-share-link"><Copy className="h-4 w-4" /> Copy link</button>
+        </div>
+      )}
+    </section>
+  );
 
   const showRecapView = ended && (showRecap || (phase === 'share' && !editingEnded));
 
@@ -461,6 +637,7 @@ export function MeetingCapture() {
             {pdfStatus && <p data-testid="status-download-recap-pdf">{pdfStatus}</p>}
             {shareStatus && <p data-testid="status-share-recap">{shareStatus}</p>}
           </div>
+          {cloudControls}
         </main>
       </div>
     );
@@ -580,6 +757,7 @@ export function MeetingCapture() {
               </p>
             )}
           </div>
+          {cloudControls}
         </main>
       </div>
     );
@@ -745,6 +923,7 @@ export function MeetingCapture() {
             <button type="button" onClick={addFollowUp} className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[#f7c97a] hover:text-[#ffe0a8]" data-testid="button-add-follow-up"><Plus className="h-4 w-4" /> Add follow-up</button>
           </section>
         </div>
+        {cloudControls}
       </main>
     </div>
   );
