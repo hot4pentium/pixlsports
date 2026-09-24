@@ -16,6 +16,7 @@
     "test:athlete-owner-boundary-browser": "tsx --test --test-concurrency=1 src/features/athlete-owner-boundary.browser.test.ts",
     "test:account-lifecycle-browser": "tsx --test --test-concurrency=1 src/features/account-lifecycle.browser.test.ts",
     "test:schedule-install-browser": "tsx --test --test-concurrency=1 src/features/schedule-install.browser.test.ts",
+    "test:game-on-card-browser": "tsx --test --test-concurrency=1 src/features/game-on-card.browser.test.ts",
     "test:supporter-dashboard-browser": "tsx --test --test-concurrency=1 src/features/supporter-dashboard.browser.test.ts",
     "test:supporter-dashboard-browser-cleanup": "tsx --test --test-concurrency=1 --test-name-pattern=\"assertion failures still clean up\" src/features/supporter-dashboard.browser.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
