@@ -230,7 +230,7 @@ export function PublicLandingPage() {
                 <span className="text-landing-primary">the whole season.</span>
               </h1>
               <p className="mx-auto mb-10 max-w-2xl text-lg font-medium leading-[1.6] text-landing-text/75 sm:text-[21px]">
-                Create polished schedules, game-day graphics, and shareable athlete moments without starting from scratch.
+                Plan each week. Share game day with family wherever they are. Celebrate the moments together.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link href="/studio" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
