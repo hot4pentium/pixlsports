@@ -53,7 +53,6 @@ type GameOnCardPanelProps = {
   initialDraft?: SupporterEvent;
   initialSourceEventId?: string;
   onDraftChange?: (event: SupporterEvent, sourceEventId: string) => void;
-  onCancelDraft?: () => void;
   onChanged?: (selectedId?: string) => void;
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   existingCardTokensByEventId?: Record<string, string>;
@@ -139,7 +138,6 @@ export function GameOnCardPanel({
   initialDraft,
   initialSourceEventId,
   onDraftChange,
-  onCancelDraft,
   onChanged,
   onSaveCalendarEvent,
   existingCardTokensByEventId,

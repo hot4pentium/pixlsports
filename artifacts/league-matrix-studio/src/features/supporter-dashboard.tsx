@@ -473,7 +473,6 @@ export function SupporterDashboardView({
         initialDraft={newCardDraft?.event}
         initialSourceEventId={newCardDraft?.sourceEventId}
         onDraftChange={updateNewCardDraft}
-        onCancelDraft={cancelNewCardDraft}
         onSaveCalendarEvent={onSaveCalendarEvent}
         existingCardTokensByEventId={Object.fromEntries(dashboardCards.filter((entry) => entry.shareToken).map((entry) => [entry.eventId, entry.shareToken!]))}
         onChanged={handleGameOnCardChanged}

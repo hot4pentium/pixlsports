@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type UIEvent } from 'react';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Swords } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Swords, X } from 'lucide-react';
 import { buildWorkspaceToolHref } from './workspace-context';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
@@ -17,12 +17,14 @@ export type DashboardGameOnCard = {
   location: string;
   status: 'Draft' | 'Published' | 'Live' | 'Complete';
   isPublished: boolean;
+  isUnsavedDraft?: boolean;
 };
 
 type GameOnDashboardCollectionProps = {
   cards: DashboardGameOnCard[];
   onCreate: () => void;
   onOpen: (id: string) => void;
+  onCancelDraft?: () => void;
   selectedId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
   statTrackerUserId?: string | null;
@@ -59,9 +61,10 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, selected, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName }: {
+function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName }: {
   card: DashboardGameOnCard;
   onOpen: (id: string) => void;
+  onCancelDraft?: () => void;
   selected: boolean;
   renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
   panel: 'prep' | 'tracker' | null;
@@ -155,6 +158,17 @@ function CollectionCard({ card, onOpen, selected, renderSelectedCard, panel, onO
             </span>
           </button>
           <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`}>
+            {card.isUnsavedDraft && (
+              <button
+                type="button"
+                onClick={onCancelDraft}
+                className="game-on-collection__cancel-draft"
+                aria-label="Cancel this unsaved Game On card"
+                data-testid={`button-cancel-game-on-draft-${card.id}`}
+              >
+                <X size={15} aria-hidden="true" /> Cancel draft
+              </button>
+            )}
             <button type="button" onClick={() => onOpen(card.id)} data-testid={`button-edit-calendar-${card.id}`}>
               <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
             </button>
@@ -233,6 +247,7 @@ export function GameOnDashboardCollection({
   cards,
   onCreate,
   onOpen,
+  onCancelDraft,
   selectedId,
   renderSelectedCard,
   statTrackerUserId,
@@ -356,6 +371,7 @@ export function GameOnDashboardCollection({
                      key={card.id}
                      card={card}
                       onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
+                      onCancelDraft={onCancelDraft}
                      selected={selectedId === card.id}
                      renderSelectedCard={renderSelectedCard}
                       panel={openPanel?.cardId === card.id ? openPanel.panel : null}
@@ -376,6 +392,7 @@ export function GameOnDashboardCollection({
                      key={card.id}
                      card={card}
                       onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
+                      onCancelDraft={onCancelDraft}
                      selected={selectedId === card.id}
                      renderSelectedCard={renderSelectedCard}
                       panel={openPanel?.cardId === card.id ? openPanel.panel : null}

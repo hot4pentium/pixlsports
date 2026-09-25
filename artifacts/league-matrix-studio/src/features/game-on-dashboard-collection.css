@@ -467,6 +467,15 @@
   background: #e9f4ff;
 }
 .game-on-collection__actions svg { flex: 0 0 auto; color: #2878f5; }
+.game-on-collection__actions .game-on-collection__cancel-draft {
+  border-color: #e6b7ae;
+  color: #923e32;
+}
+.game-on-collection__actions .game-on-collection__cancel-draft:hover {
+  border-color: #c56a5b;
+  background: #fff2ef;
+}
+.game-on-collection__actions .game-on-collection__cancel-draft svg { color: #b34b3c; }
 
 .game-on-inline { display: grid; gap: 18px; font-family: 'DM Sans', var(--app-font-sans), sans-serif; }
 .game-on-inline__section { display: grid; gap: 10px; min-width: 0; padding-bottom: 17px; border-bottom: 1px solid #c3d8ec; }
