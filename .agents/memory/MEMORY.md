@@ -63,3 +63,4 @@
 - [Game On card focus boundaries](game-on-badge-panel-focus.md) — keep interactive panels in the modal, out of compact grid tiles, and return focus to visible actions.
 - [Game On status filtering](game-on-status-filtering.md) — hide nonmatching cards without unmounting editors, so filtering preserves in-progress changes.
 - [Concurrent merge patch context](concurrent-merge-patch-context.md) — after active task merges, re-check latest source before retrying patches so merged behavior remains intact.
+- [Living card Hypes boundary](living-card-hypes-boundary.md) — invite-bound encouragement must stay separate from expiring media replies and retain an owner-off setting across older update paths.

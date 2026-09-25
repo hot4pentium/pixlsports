@@ -947,6 +947,7 @@ export interface AthleteInviteInput {
   showHypeCard: boolean;
   showStats: boolean;
   showSchedule: boolean;
+  hypesEnabled?: boolean;
   paused?: boolean;
 }
 
@@ -980,6 +981,7 @@ export interface OwnedAthleteInvite {
   showHypeCard: boolean;
   showStats: boolean;
   showSchedule: boolean;
+  hypesEnabled: boolean;
   paused: boolean;
   /** @nullable */
   liveTrackerShareToken: string | null;
@@ -987,6 +989,33 @@ export interface OwnedAthleteInvite {
   photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AthleteInviteHypeInputReaction = typeof AthleteInviteHypeInputReaction[keyof typeof AthleteInviteHypeInputReaction];
+
+
+export const AthleteInviteHypeInputReaction = {
+  'Let\'s_go!': 'Let\'s go!',
+  'Great_job!': 'Great job!',
+  'Proud_of_you!': 'Proud of you!',
+} as const;
+
+export interface AthleteInviteHypeInput {
+  reaction: AthleteInviteHypeInputReaction;
+  /** @maxLength 240 */
+  message?: string;
+}
+
+export interface AthleteInviteHypeAccepted {
+  accepted: boolean;
+}
+
+export interface AthleteInviteHype {
+  id: string;
+  reaction: string;
+  /** @nullable */
+  message: string | null;
+  createdAt: string;
 }
 
 export type OwnedAthleteInviteList = OwnedAthleteInvite[];
@@ -1667,6 +1696,7 @@ export const PublicAthleteFanCardSport = {
 
 export interface PublicAthleteFanCard {
   inviteToken: string;
+  hypesEnabled: boolean;
   athleteName: string;
   teamName: string;
   seasonName: string;

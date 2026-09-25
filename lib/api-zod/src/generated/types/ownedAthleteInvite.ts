@@ -26,6 +26,7 @@ export interface OwnedAthleteInvite {
   showHypeCard: boolean;
   showStats: boolean;
   showSchedule: boolean;
+  hypesEnabled: boolean;
   paused: boolean;
   /** @nullable */
   liveTrackerShareToken: string | null;

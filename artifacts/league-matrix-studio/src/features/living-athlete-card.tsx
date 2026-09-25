@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw } from 'lucide-react';
 import { Link } from 'wouter';
-import { getGetAthleteFanCardQueryKey, useGetAthleteFanCard, type PublicAthleteFanCard } from '@workspace/api-client-react';
+import { getGetAthleteFanCardQueryKey, useGetAthleteFanCard, useSendAthleteInviteHype, type PublicAthleteFanCard, type AthleteInviteHypeInput } from '@workspace/api-client-react';
 
 import './living-athlete-card.css';
 
@@ -51,6 +51,10 @@ export function LivingAthleteCardPage({
   const [side, setSide] = useState<CardSide>('front');
   const [brokenPhoto, setBrokenPhoto] = useState(false);
   const [failedVideos, setFailedVideos] = useState<string[]>([]);
+  const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>("Let's go!");
+  const [message, setMessage] = useState('');
+  const [hypeFeedback, setHypeFeedback] = useState('');
+  const sendHype = useSendAthleteInviteHype();
   const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
     query: {
@@ -64,7 +68,7 @@ export function LivingAthleteCardPage({
 
   const photoUrl = invite?.photoUrl ?? null;
 
-  useEffect(() => { setSide('front'); }, [inviteToken]);
+  useEffect(() => { setSide('front'); setHypeFeedback(''); setMessage(''); }, [inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
   useEffect(() => {
     if (!invite) return;
@@ -105,6 +109,20 @@ export function LivingAthleteCardPage({
     if (side === next) return;
     videosRef.current?.querySelectorAll('video').forEach((video) => video.pause());
     setSide(next);
+  };
+  const submitHype = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setHypeFeedback('');
+    try {
+      await sendHype.mutateAsync({ inviteToken, data: { reaction, ...(message.trim() ? { message: message.trim() } : {}) } });
+      setMessage('');
+      setHypeFeedback(`Your ${reaction} Hype was sent. Thanks for cheering ${invite.athleteName} on!`);
+    } catch (error) {
+      const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
+      setHypeFeedback(status === 429 ? 'You have sent several Hypes. Please try again in an hour.'
+        : status === 404 ? 'This card is no longer accepting Hypes. Refresh to check its status.'
+        : 'Your Hype could not be sent. Please try again.');
+    }
   };
 
   return (
@@ -284,6 +302,23 @@ export function LivingAthleteCardPage({
               )}
             </section>
             {followControls && <div className="living-card-follow">{followControls}</div>}
+            <section className="living-card-hypes" aria-labelledby="living-card-hypes-title">
+              <span className="living-card-story-kicker">From the stands</span>
+              <h3 id="living-card-hypes-title">Send some Hype.</h3>
+              {invite.hypesEnabled ? (
+                <form onSubmit={(event) => void submitHype(event)} data-testid="form-fan-card-hype">
+                  <p>Send {invite.athleteName} a little encouragement. Only the card owner can read messages. Please keep it kind.</p>
+                  <label htmlFor="fan-card-reaction">Your cheer</label>
+                  <select id="fan-card-reaction" value={reaction} onChange={(event) => setReaction(event.target.value as AthleteInviteHypeInput['reaction'])}>
+                    <option>Let's go!</option><option>Great job!</option><option>Proud of you!</option>
+                  </select>
+                  <label htmlFor="fan-card-message">Short message (optional)</label>
+                  <textarea id="fan-card-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} rows={3} placeholder="A few words of encouragement" />
+                  <button type="submit" disabled={sendHype.isPending}>{sendHype.isPending ? 'Sending…' : 'Send Hype'}</button>
+                </form>
+              ) : <p>Hypes are turned off for this card.</p>}
+              <p role="status" aria-live="polite" className="living-card-hype-feedback" data-testid="fan-card-hype-feedback">{hypeFeedback}</p>
+            </section>
             <Link className="living-card-original" href={`/player/${encodeURIComponent(inviteToken)}`} data-testid="link-original-hype-page">
               Visit the original Hype Page <ArrowUpRight aria-hidden="true" />
             </Link>

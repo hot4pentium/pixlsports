@@ -1461,6 +1461,7 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "hypesEnabled": zod.boolean(),
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
@@ -1495,6 +1496,7 @@ export const CreateAthleteInviteBody = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "hypesEnabled": zod.boolean().optional(),
   "paused": zod.boolean().default(createAthleteInviteBodyPausedDefault)
 })
 
@@ -1515,6 +1517,7 @@ export const CreateAthleteInviteResponse = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "hypesEnabled": zod.boolean(),
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
@@ -1667,6 +1670,7 @@ export const UpdateAthleteInviteBody = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "hypesEnabled": zod.boolean().optional(),
   "paused": zod.boolean().default(updateAthleteInviteBodyPausedDefault)
 })
 
@@ -1687,6 +1691,7 @@ export const UpdateAthleteInviteResponse = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "hypesEnabled": zod.boolean(),
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
@@ -1768,6 +1773,7 @@ export const getAthleteFanCardResponseLiveScoreboardOneTeamNameMax = 160;
 
 export const GetAthleteFanCardResponse = zod.object({
   "inviteToken": zod.string(),
+  "hypesEnabled": zod.boolean(),
   "athleteName": zod.string(),
   "teamName": zod.string(),
   "seasonName": zod.string(),
@@ -1834,6 +1840,63 @@ export const GetAthleteFanCardResponse = zod.object({
 }),zod.null()]),
   "updatedAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary Send encouragement to an active living athlete card
+ */
+export const sendAthleteInviteHypePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const SendAthleteInviteHypeParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(sendAthleteInviteHypePathInviteTokenRegExp)
+})
+
+export const sendAthleteInviteHypeBodyMessageMax = 240;
+
+
+
+export const SendAthleteInviteHypeBody = zod.object({
+  "reaction": zod.enum(['Let\'s go!', 'Great job!', 'Proud of you!']),
+  "message": zod.string().max(sendAthleteInviteHypeBodyMessageMax).optional()
+})
+
+export const SendAthleteInviteHypeResponse = zod.object({
+  "accepted": zod.boolean()
+})
+
+
+/**
+ * @summary Review Hypes as the card owner
+ */
+export const listAthleteInviteHypesPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ListAthleteInviteHypesParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(listAthleteInviteHypesPathInviteTokenRegExp)
+})
+
+export const ListAthleteInviteHypesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "reaction": zod.string(),
+  "message": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAthleteInviteHypesResponse = zod.array(ListAthleteInviteHypesResponseItem)
+
+
+/**
+ * @summary Remove an unwanted Hype as the card owner
+ */
+export const deleteAthleteInviteHypePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const DeleteAthleteInviteHypeParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(deleteAthleteInviteHypePathInviteTokenRegExp),
+  "hypeId": zod.coerce.string().uuid()
+})
+
+export const DeleteAthleteInviteHypeResponse = zod.void()
 
 
 /**

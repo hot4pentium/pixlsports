@@ -536,6 +536,71 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/hypes:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: sendAthleteInviteHype
+      tags: [athlete-invites]
+      summary: Send encouragement to an active living athlete card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteHypeInput"
+      responses:
+        "201":
+          description: Hype received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteHypeAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          description: Too many Hypes from this visitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: listAthleteInviteHypes
+      tags: [athlete-invites]
+      summary: Review Hypes as the card owner
+      responses:
+        "200":
+          description: Most recent Hypes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AthleteInviteHype"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/hypes/{hypeId}:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: path
+        name: hypeId
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      operationId: deleteAthleteInviteHype
+      tags: [athlete-invites]
+      summary: Remove an unwanted Hype as the card owner
+      responses:
+        "204":
+          description: Hype removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/live:
     parameters:
       - in: path
@@ -2505,10 +2570,11 @@ components:
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showSchedule: { type: boolean }
+        hypesEnabled: { type: boolean }
         paused: { type: boolean, default: false }
     OwnedAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, paused, liveTrackerShareToken, photoUrl, createdAt, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, hypesEnabled, paused, liveTrackerShareToken, photoUrl, createdAt, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -2522,11 +2588,31 @@ components:
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showSchedule: { type: boolean }
+        hypesEnabled: { type: boolean }
         paused: { type: boolean }
         liveTrackerShareToken: { type: ["string", "null"] }
         photoUrl: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    AthleteInviteHypeInput:
+      type: object
+      required: [reaction]
+      properties:
+        reaction: { type: string, enum: ["Let's go!", "Great job!", "Proud of you!"] }
+        message: { type: string, maxLength: 240 }
+    AthleteInviteHypeAccepted:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: boolean }
+    AthleteInviteHype:
+      type: object
+      required: [id, reaction, message, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reaction: { type: string }
+        message: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
     OwnedAthleteInviteList:
       type: array
       items:
@@ -2931,9 +3017,10 @@ components:
         teamName: { type: string, maxLength: 160 }
     PublicAthleteFanCard:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, replies, liveScoreboard, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, replies, liveScoreboard, hypesEnabled, updatedAt]
       properties:
         inviteToken: { type: string }
+        hypesEnabled: { type: boolean }
         athleteName: { type: string }
         teamName: { type: string }
         seasonName: { type: string }

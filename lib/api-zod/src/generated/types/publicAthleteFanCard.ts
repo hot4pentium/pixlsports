@@ -15,6 +15,7 @@ import type { PublicAthleteFanCardSport } from './publicAthleteFanCardSport';
 
 export interface PublicAthleteFanCard {
   inviteToken: string;
+  hypesEnabled: boolean;
   athleteName: string;
   teamName: string;
   seasonName: string;

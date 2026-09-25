@@ -29,6 +29,7 @@ import { Link } from 'wouter';
 import {
   getListAthleteInvitesQueryKey,
   getGetAthleteInviteQueryKey,
+  getListAthleteInviteHypesQueryKey,
   getListProjectsQueryKey,
   getListHypeCardSharesQueryKey,
   downloadHypeCardShare,
@@ -43,6 +44,8 @@ import {
   useStartAthleteInviteLive,
   useStopAthleteInviteLive,
   useUpdateAthleteInvite,
+  useListAthleteInviteHypes,
+  useDeleteAthleteInviteHype,
   type AthleteInviteInput,
   type AthleteInviteScheduleEvent,
 } from '@workspace/api-client-react';
@@ -198,6 +201,7 @@ export function AthleteInviteManager() {
     showHypeCard,
     showStats: showStats && (trackerProjectId === 'none' || trackerProjects.some((project) => project.id === trackerProjectId)),
     showSchedule: showSchedule && (scheduleProjectId === 'none' || scheduleProjects.some((project) => project.id === scheduleProjectId)),
+    hypesEnabled: existing?.hypesEnabled ?? true,
     paused: existing?.paused ?? false,
   });
   const save = async (event: React.FormEvent) => {
@@ -436,6 +440,7 @@ type OwnedAthleteInvite = {
   showHypeCard: boolean;
   showStats: boolean;
   showSchedule: boolean;
+  hypesEnabled: boolean;
   paused: boolean;
   inviteToken: string;
   liveTrackerShareToken: string | null;
@@ -747,6 +752,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [showHypeCard, setShowHypeCard] = useState(invite.showHypeCard);
   const [showStats, setShowStats] = useState(invite.showStats);
   const [showSchedule, setShowSchedule] = useState(invite.showSchedule);
+  const [hypesEnabled, setHypesEnabled] = useState(invite.hypesEnabled);
+  const { data: hypes, isLoading: hypesLoading, isError: hypesError } = useListAthleteInviteHypes(invite.inviteToken, {
+    query: { queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken), refetchOnMount: 'always', refetchInterval: 30_000 },
+  });
+  const deleteHype = useDeleteAthleteInviteHype();
   const [timezone, setTimezone] = useState(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   const [notice, setNotice] = useState('');
   const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
@@ -772,8 +782,9 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     setShowHypeCard(invite.showHypeCard);
     setShowStats(invite.showStats);
     setShowSchedule(invite.showSchedule);
+    setHypesEnabled(invite.hypesEnabled);
     setTimezone(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.timezone]);
+  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.hypesEnabled, invite.timezone]);
 
   const payload = (paused = invite.paused): AthleteInviteInput => ({
     athleteName: invite.athleteName,
@@ -787,6 +798,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     showHypeCard,
     showStats,
     showSchedule,
+    hypesEnabled,
     paused,
   });
   const refreshPage = async () => {
@@ -876,6 +888,16 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       setNotice('The posted media could not be removed.');
     }
   };
+  const removeHype = async (id: string) => {
+    setNotice('');
+    try {
+      await deleteHype.mutateAsync({ inviteToken: invite.inviteToken, hypeId: id });
+      await queryClient.invalidateQueries({ queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken) });
+      setNotice('Hype removed.');
+    } catch {
+      setNotice('The Hype could not be removed. Please try again.');
+    }
+  };
 
   return (
     <section className="mt-8 border border-primary/60 bg-[#102A4C] p-5 text-white sm:p-7" aria-labelledby="owner-hype-page-management" data-testid="owner-hype-page-management">
@@ -922,6 +944,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <OwnerToggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
         <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
+        <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} onChange={setHypesEnabled} />
         <label className="mt-4 block max-w-sm text-xs font-bold uppercase tracking-widest text-white/70">
           Schedule time zone for fan event alerts
           <input value={timezone} onChange={(event) => setTimezone(event.target.value)} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
@@ -929,6 +952,20 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         </label>
         <Button type="submit" disabled={updateInvite.isPending} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Update Hype Page</Button>
       </form>
+
+      <section className="mt-7 border-t border-white/15 pt-6" aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
+        <h3 id="owner-fan-hypes" className="font-display text-2xl uppercase">Fan Hypes</h3>
+        <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Hypes are on for the living card.' : 'Hypes are off. Earlier messages remain available to you.'}</p>
+        {hypesLoading ? <p role="status" className="mt-4 text-sm">Loading Hypes…</p>
+          : hypesError ? <p role="alert" className="mt-4 text-sm">Could not load Hypes. Refresh to try again.</p>
+          : hypes?.length ? <ul className="mt-4 space-y-3">{hypes.map((hype) => (
+            <li key={hype.id} className="flex items-start justify-between gap-4 border border-white/20 p-4">
+              <div><strong>{hype.reaction}</strong>{hype.message && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{hype.message}</p>}
+                <time className="mt-2 block text-xs text-white/50" dateTime={hype.createdAt}>{new Date(hype.createdAt).toLocaleString()}</time></div>
+              <button type="button" disabled={deleteHype.isPending} onClick={() => void removeHype(hype.id)} className="shrink-0 text-xs font-bold uppercase text-primary hover:underline">Remove</button>
+            </li>
+          ))}</ul> : <p className="mt-4 text-sm text-white/60">No Hypes yet.</p>}
+      </section>
 
       <div className="mt-7 border-t border-white/15 pt-6" aria-live="polite" data-testid="section-manage-athlete-videos">
         <div className="flex items-end justify-between gap-4">

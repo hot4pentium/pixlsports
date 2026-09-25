@@ -1,9 +1,15 @@
-import { randomBytes } from "crypto";
-import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { createHash, randomBytes } from "crypto";
+import { and, count, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAthleteInviteBody,
   CreateAthleteInviteResponse,
+  SendAthleteInviteHypeBody,
+  SendAthleteInviteHypeParams,
+  SendAthleteInviteHypeResponse,
+  ListAthleteInviteHypesParams,
+  ListAthleteInviteHypesResponse,
+  DeleteAthleteInviteHypeParams,
   DeleteAthleteInviteParams,
   GetAthleteInviteParams,
   GetAthleteInviteResponse,
@@ -20,6 +26,7 @@ import {
 } from "@workspace/api-zod";
 import {
   athleteInvitesTable,
+  athleteInviteHypesTable,
   cloudProjectsTable,
   db,
   hypeCardShareRepliesTable,
@@ -50,6 +57,7 @@ function ownedInviteResponse(invite: InviteRow) {
     showHypeCard: invite.showHypeCard,
     showStats: invite.showStats,
     showSchedule: invite.showSchedule,
+    hypesEnabled: invite.hypesEnabled,
     paused: invite.paused,
     liveTrackerShareToken: invite.liveTrackerShareToken,
     photoUrl: invite.photoObjectPath
@@ -427,7 +435,86 @@ router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> 
   }
   const { liveGame: _liveGame, ...card } = await publicAthleteInviteData(invite, false);
   void _liveGame;
-  res.json(GetAthleteFanCardResponse.parse(card));
+  res.json(GetAthleteFanCardResponse.parse({ ...card, hypesEnabled: invite.hypesEnabled }));
+});
+
+router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<void> => {
+  const params = SendAthleteInviteHypeParams.safeParse(req.params);
+  const body = SendAthleteInviteHypeBody.safeParse(req.body);
+  if (!params.success || !body.success || (body.data.message && /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(body.data.message))) {
+    res.status(400).json({ error: "Choose an encouragement and keep the message under 240 characters." });
+    return;
+  }
+  const [invite] = await db.select().from(athleteInvitesTable).where(eq(athleteInvitesTable.publicToken, params.data.inviteToken));
+  if (!invite || invite.paused || !invite.hypesEnabled || !(await isAccountActive(invite.ownerClerkUserId))) {
+    res.status(404).json({ error: "This card is not accepting Hypes." });
+    return;
+  }
+  const rateLimitKey = createHash("sha256")
+    .update(`${process.env.SESSION_SECRET ?? "pixl-athlete-hypes"}:${invite.id}:${(req.ip || req.socket.remoteAddress || "unknown").trim()}`)
+    .digest("hex");
+  const accepted = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${rateLimitKey}))`);
+    // Lock the invite row so a concurrent pause or disable cannot race an accepted Hype.
+    const rows = await tx.execute(sql`select id from athlete_invites where id = ${invite.id} and paused = false and hypes_enabled = true for update`);
+    if (!rows.rows.length) return false;
+    const [recent] = await tx.select({ value: count() }).from(athleteInviteHypesTable).where(and(
+      eq(athleteInviteHypesTable.rateLimitKey, rateLimitKey),
+      gt(athleteInviteHypesTable.createdAt, new Date(Date.now() - 60 * 60 * 1000)),
+    ));
+    if ((recent?.value ?? 0) >= 3) return "limited";
+    await tx.insert(athleteInviteHypesTable).values({
+      inviteId: invite.id,
+      reaction: body.data.reaction,
+      message: body.data.message?.trim() || null,
+      rateLimitKey,
+    });
+    return true;
+  });
+  if (accepted === "limited") {
+    res.setHeader("Retry-After", "3600");
+    res.status(429).json({ error: "You've sent several Hypes. Please try again later." });
+    return;
+  }
+  if (!accepted) {
+    res.status(404).json({ error: "This card is not accepting Hypes." });
+    return;
+  }
+  res.status(201).json(SendAthleteInviteHypeResponse.parse({ accepted: true }));
+});
+
+router.get("/athlete-invites/:inviteToken/hypes", requireAuth, async (req, res): Promise<void> => {
+  const params = ListAthleteInviteHypesParams.safeParse(req.params);
+  if (!params.success) { res.status(404).json({ error: "Card not found" }); return; }
+  const [invite] = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  ));
+  if (!invite) { res.status(404).json({ error: "Card not found" }); return; }
+  const hypes = await db.select({
+    id: athleteInviteHypesTable.id,
+    reaction: athleteInviteHypesTable.reaction,
+    message: athleteInviteHypesTable.message,
+    createdAt: athleteInviteHypesTable.createdAt,
+  }).from(athleteInviteHypesTable).where(eq(athleteInviteHypesTable.inviteId, invite.id))
+    .orderBy(desc(athleteInviteHypesTable.createdAt)).limit(100);
+  res.json(ListAthleteInviteHypesResponse.parse(hypes));
+});
+
+router.delete("/athlete-invites/:inviteToken/hypes/:hypeId", requireAuth, async (req, res): Promise<void> => {
+  const params = DeleteAthleteInviteHypeParams.safeParse(req.params);
+  if (!params.success) { res.status(404).json({ error: "Hype not found" }); return; }
+  const [invite] = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  ));
+  if (!invite) { res.status(404).json({ error: "Hype not found" }); return; }
+  const [deleted] = await db.delete(athleteInviteHypesTable).where(and(
+    eq(athleteInviteHypesTable.id, params.data.hypeId),
+    eq(athleteInviteHypesTable.inviteId, invite.id),
+  )).returning({ id: athleteInviteHypesTable.id });
+  if (!deleted) { res.status(404).json({ error: "Hype not found" }); return; }
+  res.status(204).send();
 });
 
 router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Promise<void> => {

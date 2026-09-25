@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const athleteInvitesTable = pgTable("athlete_invites", {
@@ -17,6 +17,7 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   showHypeCard: boolean("show_hype_card").notNull().default(true),
   showStats: boolean("show_stats").notNull().default(true),
   showSchedule: boolean("show_schedule").notNull().default(true),
+  hypesEnabled: boolean("hypes_enabled").notNull().default(true),
   paused: boolean("paused").notNull().default(false),
   liveTrackerShareToken: text("live_tracker_share_token"),
   photoObjectPath: text("photo_object_path"),
@@ -34,3 +35,15 @@ export const insertAthleteInviteSchema = createInsertSchema(athleteInvitesTable)
 });
 export type InsertAthleteInvite = z.infer<typeof insertAthleteInviteSchema>;
 export type AthleteInvite = typeof athleteInvitesTable.$inferSelect;
+
+export const athleteInviteHypesTable = pgTable("athlete_invite_hypes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  inviteId: uuid("invite_id").notNull().references(() => athleteInvitesTable.id, { onDelete: "cascade" }),
+  reaction: text("reaction").notNull(),
+  message: text("message"),
+  rateLimitKey: text("rate_limit_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  inviteIndex: index("athlete_invite_hypes_invite_created_index").on(table.inviteId, table.createdAt),
+  rateIndex: index("athlete_invite_hypes_rate_created_index").on(table.rateLimitKey, table.createdAt),
+}));

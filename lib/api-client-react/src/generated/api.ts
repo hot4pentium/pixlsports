@@ -28,6 +28,9 @@ import type {
   AthleteInviteFanFollowCreated,
   AthleteInviteFanFollowInput,
   AthleteInviteFanFollowPreferences,
+  AthleteInviteHype,
+  AthleteInviteHypeAccepted,
+  AthleteInviteHypeInput,
   AthleteInviteInput,
   AthleteInviteLiveSession,
   AthleteInviteManifest,
@@ -2302,6 +2305,248 @@ export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthlet
 
 
 
+
+export const getSendAthleteInviteHypeUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/hypes`
+}
+
+/**
+ * @summary Send encouragement to an active living athlete card
+ */
+export const sendAthleteInviteHype = async (inviteToken: string,
+    athleteInviteHypeInput: AthleteInviteHypeInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteHypeAccepted> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInviteHypeAccepted>(getSendAthleteInviteHypeUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteHypeInput)
+  }
+);}
+
+
+
+
+
+export const getSendAthleteInviteHypeMutationKey = () => ['sendAthleteInviteHype'] as const;
+
+export const getSendAthleteInviteHypeMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAthleteInviteHype>>, TError,SendAthleteInviteHypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendAthleteInviteHype>>, TError,SendAthleteInviteHypeMutationVariables, TContext> => {
+
+const mutationKey = getSendAthleteInviteHypeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendAthleteInviteHype>>, SendAthleteInviteHypeMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  sendAthleteInviteHype(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendAthleteInviteHypeMutationResult = NonNullable<Awaited<ReturnType<typeof sendAthleteInviteHype>>>
+    export type SendAthleteInviteHypeMutationBody = BodyType<AthleteInviteHypeInput>
+    export type SendAthleteInviteHypeMutationError = ErrorType<BadRequestResponse | NotFoundResponse | Error>
+    export type SendAthleteInviteHypeMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteHypeInput>}
+
+    /**
+ * @summary Send encouragement to an active living athlete card
+ */
+export const useSendAthleteInviteHype = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAthleteInviteHype>>, TError,SendAthleteInviteHypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendAthleteInviteHype>>,
+        TError,
+        SendAthleteInviteHypeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendAthleteInviteHypeMutationOptions(options));
+    }
+
+export const getListAthleteInviteHypesUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/hypes`
+}
+
+/**
+ * @summary Review Hypes as the card owner
+ */
+export const listAthleteInviteHypes = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteHype[]> => {
+
+  return customFetch<AthleteInviteHype[]>(getListAthleteInviteHypesUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAthleteInviteHypesQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/hypes`
+    ] as const;
+    }
+
+
+export const getListAthleteInviteHypesQueryOptions = <TData = Awaited<ReturnType<typeof listAthleteInviteHypes>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAthleteInviteHypes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAthleteInviteHypesQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAthleteInviteHypes>>> = ({ signal }) => listAthleteInviteHypes(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAthleteInviteHypes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAthleteInviteHypesQueryResult = NonNullable<Awaited<ReturnType<typeof listAthleteInviteHypes>>>
+export type ListAthleteInviteHypesQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary Review Hypes as the card owner
+ */
+
+export function useListAthleteInviteHypes<TData = Awaited<ReturnType<typeof listAthleteInviteHypes>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAthleteInviteHypes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAthleteInviteHypesQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteAthleteInviteHypeUrl = (inviteToken: string,
+    hypeId: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/hypes/${hypeId}`
+}
+
+/**
+ * @summary Remove an unwanted Hype as the card owner
+ */
+export const deleteAthleteInviteHype = async (inviteToken: string,
+    hypeId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAthleteInviteHypeUrl(inviteToken,hypeId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAthleteInviteHypeMutationKey = () => ['deleteAthleteInviteHype'] as const;
+
+export const getDeleteAthleteInviteHypeMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInviteHype>>, TError,DeleteAthleteInviteHypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInviteHype>>, TError,DeleteAthleteInviteHypeMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAthleteInviteHypeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAthleteInviteHype>>, DeleteAthleteInviteHypeMutationVariables> = (props) => {
+          const {inviteToken,hypeId} = props ?? {};
+
+          return  deleteAthleteInviteHype(inviteToken,hypeId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAthleteInviteHypeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAthleteInviteHype>>>
+
+    export type DeleteAthleteInviteHypeMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteAthleteInviteHypeMutationVariables = {inviteToken: string;hypeId: string}
+
+    /**
+ * @summary Remove an unwanted Hype as the card owner
+ */
+export const useDeleteAthleteInviteHype = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInviteHype>>, TError,DeleteAthleteInviteHypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAthleteInviteHype>>,
+        TError,
+        DeleteAthleteInviteHypeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAthleteInviteHypeMutationOptions(options));
+    }
 
 export const getStartAthleteInviteLiveUrl = (inviteToken: string,) => {
 
