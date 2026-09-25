@@ -16,9 +16,9 @@ const gameOnCollection = readFileSync(new URL('./game-on-dashboard-collection.ts
 const gameOnNavigation = readFileSync(new URL('./game-on-navigation.ts', import.meta.url), 'utf8');
 
 test('calendar preview uses the landing-page card and keeps creation controls inside it', () => {
-  assert.match(schedulePreview, /bg-\[#12213A\]/);
-  assert.match(schedulePreview, /bg-\[#FF6B35\]/);
-  assert.match(schedulePreview, /max-w-\[976px\].*bg-\[#E8F1FF\].*p-2.*sm:p-3/);
+  assert.match(schedulePreview, /bg-\[#102B4D\]/);
+  assert.match(schedulePreview, /bg-\[#FF6433\]/);
+  assert.match(schedulePreview, /max-w-\[976px\].*bg-\[#102B4D\].*p-2.*sm:p-3/);
   assert.doesNotMatch(schedulePreview, /min-h-\[600px\]|min-h-\[760px\]/);
   assert.match(
     schedulePreview,

@@ -437,6 +437,117 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
+test('dashboard Add an event action scrolls to the visible Game On section', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-add-event-navigation-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-add-event-navigation-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]"))', Boolean);
+    await connection.evaluate('window.__setSupporterDashboardEvents([])', page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('[data-testid="button-context-game-on"]')
+      && document.getElementById('game-on-dashboard-collection')?.getClientRects().length)`, Boolean);
+    await connection.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    }, page.sessionId);
+
+    const collectionTopBeforeAdd = await connection.evaluate<number>(
+      `document.getElementById('game-on-dashboard-collection')?.getBoundingClientRect().top ?? -1`,
+      page.sessionId,
+    );
+    assert.ok(collectionTopBeforeAdd > 0, 'the Game On section should start below the viewport top');
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-context-game-on"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `location.pathname === '/studio'`, Boolean);
+    const afterAdd = await connection.evaluate<{
+      idCount: number;
+      top: number;
+      scrollY: number;
+      desktopShellVisible: boolean;
+      mobileShellVisible: boolean;
+    }>(`(() => {
+      const collection = document.getElementById('game-on-dashboard-collection');
+      return {
+        idCount: document.querySelectorAll('#game-on-dashboard-collection').length,
+        top: collection?.getBoundingClientRect().top ?? -1,
+        scrollY: window.scrollY,
+        desktopShellVisible: Boolean(document.querySelector('.supporter-dashboard-desktop-shell')?.getClientRects().length),
+        mobileShellVisible: Boolean(document.querySelector('.supporter-dashboard-mobile-shell')?.getClientRects().length),
+      };
+    })()`, page.sessionId);
+    assert.equal(afterAdd.idCount, 1, JSON.stringify(afterAdd));
+    assert.ok(afterAdd.scrollY > 0, JSON.stringify(afterAdd));
+    assert.ok(afterAdd.top < collectionTopBeforeAdd, JSON.stringify(afterAdd));
+    assert.ok(afterAdd.top < 1000, JSON.stringify(afterAdd));
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
 test('supporter dashboard keeps Game On Card prominent and mobile navigation accessible', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-mobile-header-test');
@@ -5108,6 +5219,20 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     await click('btn-mobile-nav-schedule');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"schedule-event-list\\"]"))', Boolean);
     assert.equal(await path(), '/studio/schedule');
+    await connection.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    }, session);
+    await connection.evaluate('window.scrollTo(0, 0)', session);
+    await click('button-add-event');
+    await waitFor(connection, session, `location.pathname === '/studio'
+      && (() => {
+        const collection = document.getElementById('game-on-dashboard-collection');
+        return document.querySelectorAll('#game-on-dashboard-collection').length === 1
+          && Boolean(collection?.getClientRects().length)
+          && (Math.abs(collection.getBoundingClientRect().top) < 2 || window.scrollY > 0);
+      })()`, Boolean);
+    await click('btn-mobile-nav-schedule');
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"schedule-event-list\\"]"))', Boolean);
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
     await click('journey-return-dashboard');
