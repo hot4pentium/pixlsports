@@ -147,7 +147,12 @@ test('player-page owner tools remain private across account changes and pause', 
       .then((result) => result.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
 
-    const open = async (viewer: 'owner' | 'other' | 'visitor', view: 'public' | 'manage', imageHighlight = false) => {
+    const open = async (
+      viewer: 'owner' | 'other' | 'visitor',
+      view: 'public' | 'manage',
+      imageHighlight = false,
+      hash = '',
+    ) => {
       const target = await connection!.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
       const { sessionId } = await connection!.send<{ sessionId: string }>('Target.attachToTarget', {
         targetId: target.targetId, flatten: true,
@@ -169,7 +174,7 @@ test('player-page owner tools remain private across account changes and pause', 
         })();
       ` }, sessionId);
       await connection!.send('Page.navigate', {
-        url: `http://127.0.0.1:${vitePort}/athlete-owner-boundary-test.html?viewer=${viewer}&view=${view}`,
+        url: `http://127.0.0.1:${vitePort}/athlete-owner-boundary-test.html?viewer=${viewer}&view=${view}${hash}`,
       }, sessionId);
       return sessionId;
     };
@@ -299,8 +304,14 @@ test('player-page owner tools remain private across account changes and pause', 
     for (const session of [otherManage, visitorManage]) {
       assert.equal(await connection.evaluate(element('[data-testid="owner-hype-page-management"]'), session), false);
     }
-    const ownerManage = await open('owner', 'manage');
+    const signInRedirect = await connection.evaluate<string>(
+      "new URL(document.querySelector('a[href*=\"redirect_url\"]')?.href || window.location.href).searchParams.get('redirect_url') || ''",
+      visitorManage,
+    );
+    assert.equal(signInRedirect, `/player/${token}/manage#owner-fan-hypes`);
+    const ownerManage = await open('owner', 'manage', false, '#owner-fan-hypes');
     await waitFor(connection, ownerManage, element('[data-testid="owner-hype-page-management"]'), Boolean, 30_000);
+    await waitFor(connection, ownerManage, "document.activeElement?.id === 'owner-fan-hypes'", Boolean, 30_000);
     for (const label of ['Pause Hype Page', 'Start Game Day Live', 'Visible sections', 'Manage posted videos', 'Add a video here']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
     }

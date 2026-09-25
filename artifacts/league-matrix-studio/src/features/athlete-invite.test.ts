@@ -65,6 +65,12 @@ test('posting a Hype Card opens the living fan card without replacing the origin
   assert.match(source, /data-testid="hosted-video-list"/);
   assert.match(source, /data-testid="section-manage-athlete-videos"/);
   assert.match(source, /Manage posted videos/);
+  assert.match(source, /window\.location\.hash !== '#owner-fan-hypes'/);
+  assert.match(source, /target\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/);
+  assert.match(source, /target\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /redirect_url=\$\{encodeURIComponent\(redirectUrl\)\}/);
+  assert.match(source, /#owner-fan-hypes/);
+  assert.match(source, /When browser alerts are enabled, new Hypes open directly here/);
   assert.match(source, /function OwnerVideoUpload/);
   assert.match(source, /Add a video here/);
   assert.match(source, /data-testid="section-manage-athlete-videos"/);

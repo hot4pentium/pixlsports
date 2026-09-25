@@ -785,6 +785,13 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     setHypesEnabled(invite.hypesEnabled);
     setTimezone(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.hypesEnabled, invite.timezone]);
+  useEffect(() => {
+    if (window.location.hash !== '#owner-fan-hypes') return;
+    const target = document.getElementById('owner-fan-hypes');
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.focus({ preventScroll: true });
+  }, [invite.inviteToken]);
 
   const payload = (paused = invite.paused): AthleteInviteInput => ({
     athleteName: invite.athleteName,
@@ -954,8 +961,9 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </form>
 
       <section className="mt-7 border-t border-white/15 pt-6" aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
-        <h3 id="owner-fan-hypes" className="font-display text-2xl uppercase">Fan Hypes</h3>
+        <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Hypes</h3>
         <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Hypes are on for the living card.' : 'Hypes are off. Earlier messages remain available to you.'}</p>
+        <p className="mt-2 text-xs text-white/50">When browser alerts are enabled, new Hypes open directly here. Alert previews do not show fan messages.</p>
         {hypesLoading ? <p role="status" className="mt-4 text-sm">Loading Hypes…</p>
           : hypesError ? <p role="alert" className="mt-4 text-sm">Could not load Hypes. Refresh to try again.</p>
           : hypes?.length ? <ul className="mt-4 space-y-3">{hypes.map((hype) => (
@@ -1041,11 +1049,12 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
     return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading management tools…</p></PublicShell>;
   }
   if (!isSignedIn) {
+    const redirectUrl = `${basePath}/player/${encodeURIComponent(inviteToken)}/manage#owner-fan-hypes`;
     return (
       <PublicShell>
         <div className="max-w-md text-center">
           <h1 className="font-display text-5xl uppercase">Sign in to manage this Hype Page</h1>
-          <Link href="/sign-in" className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link>
+          <Link href={`${basePath}/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`} className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link>
         </div>
       </PublicShell>
     );

@@ -36,6 +36,7 @@ import {
 
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
+import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotification";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 
@@ -463,13 +464,13 @@ router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<voi
       gt(athleteInviteHypesTable.createdAt, new Date(Date.now() - 60 * 60 * 1000)),
     ));
     if ((recent?.value ?? 0) >= 3) return "limited";
-    await tx.insert(athleteInviteHypesTable).values({
+    const [hype] = await tx.insert(athleteInviteHypesTable).values({
       inviteId: invite.id,
       reaction: body.data.reaction,
       message: body.data.message?.trim() || null,
       rateLimitKey,
-    });
-    return true;
+    }).returning({ id: athleteInviteHypesTable.id });
+    return hype?.id ?? false;
   });
   if (accepted === "limited") {
     res.setHeader("Retry-After", "3600");
@@ -480,6 +481,8 @@ router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<voi
     res.status(404).json({ error: "This card is not accepting Hypes." });
     return;
   }
+  void notifyAthleteInviteHypeOwner(invite, accepted)
+    .catch((error) => req.log.warn({ err: error, inviteId: invite.id }, "Unable to send athlete invite fan Hype push"));
   res.status(201).json(SendAthleteInviteHypeResponse.parse({ accepted: true }));
 });
 
