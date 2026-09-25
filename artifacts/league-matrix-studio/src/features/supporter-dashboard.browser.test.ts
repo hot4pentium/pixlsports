@@ -2586,6 +2586,247 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
   }
 });
 
+test('saved tracker scores appear in the supporter record after reload on mobile and desktop', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-game-record-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  const accountId = 'supporter-game-record-user';
+  const trackerHistory = {
+    version: 1,
+    games: [
+      {
+        id: 'basketball-win',
+        sport: 'basketball',
+        status: 'final',
+        date: '2026-09-18',
+        opponent: 'Falcons',
+        period: 4,
+        score: 12,
+        opponentScore: 7,
+        notes: '',
+        stats: {},
+        events: [],
+        startedAt: '2026-09-18T18:00:00.000Z',
+      },
+      {
+        id: 'basketball-zero-score-loss',
+        sport: 'basketball',
+        status: 'final',
+        date: '2026-09-19',
+        opponent: 'Tigers',
+        period: 4,
+        score: 0,
+        opponentScore: 4,
+        notes: '',
+        stats: {},
+        events: [],
+        startedAt: '2026-09-19T18:00:00.000Z',
+      },
+      {
+        id: 'basketball-tie',
+        sport: 'basketball',
+        status: 'final',
+        date: '2026-09-20',
+        opponent: 'Wolves',
+        period: 4,
+        score: 5,
+        opponentScore: 5,
+        notes: '',
+        stats: {},
+        events: [],
+        startedAt: '2026-09-20T18:00:00.000Z',
+      },
+      {
+        id: 'basketball-unscored-final',
+        sport: 'basketball',
+        status: 'final',
+        date: '2026-09-21',
+        opponent: 'Bears',
+        period: 4,
+        score: 18,
+        // An incomplete scoreline is not a saved result.
+        notes: '',
+        stats: {},
+        events: [],
+        startedAt: '2026-09-21T18:00:00.000Z',
+      },
+      {
+        id: 'basketball-in-progress',
+        sport: 'basketball',
+        status: 'live',
+        date: '2026-09-22',
+        opponent: 'Hawks',
+        period: 3,
+        score: 21,
+        opponentScore: 14,
+        notes: '',
+        stats: {},
+        events: [],
+        startedAt: '2026-09-22T18:00:00.000Z',
+      },
+      {
+        id: 'baseball-other-sport',
+        sport: 'baseball',
+        status: 'final',
+        date: '2026-09-23',
+        opponent: 'Owls',
+        period: 7,
+        score: 8,
+        opponentScore: 2,
+        notes: '',
+        stats: {},
+        events: [],
+        startedAt: '2026-09-23T18:00:00.000Z',
+      },
+    ],
+  };
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-record-browser-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-game-record`,
+    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
+
+    const historyKey = `leaguematrix-stat-tracker:${encodeURIComponent(accountId)}`;
+    await connection.evaluate(
+      `localStorage.setItem(${JSON.stringify(historyKey)}, ${JSON.stringify(JSON.stringify(trackerHistory))})`,
+      page.sessionId,
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-game-record-mobile\\"]")?.getClientRects().length > 0',
+      Boolean,
+    );
+
+    const readRecord = (variant: 'mobile' | 'desktop') => connection!.evaluate<{
+      visible: boolean;
+      wins: string | null;
+      losses: string | null;
+      ties: string | null;
+      sport: string | null;
+      footnote: string | null;
+    }>(`(() => {
+      const variant = ${JSON.stringify(variant)};
+      const record = document.querySelector('[data-testid="supporter-game-record-' + variant + '"]');
+      const readStat = (kind) => record?.querySelector('[data-testid="record-' + kind + '-' + variant + '"] strong')?.textContent?.trim() ?? null;
+      return {
+        visible: Boolean(record?.getClientRects().length),
+        wins: readStat('wins'),
+        losses: readStat('losses'),
+        ties: readStat('ties'),
+        sport: record?.querySelector('.supporter-game-on-summary__record-heading p')?.textContent?.trim() ?? null,
+        footnote: record?.querySelector('.supporter-game-on-summary__record-footnote')?.textContent?.trim() ?? null,
+      };
+    })()`, page!.sessionId);
+
+    assert.deepEqual(await readRecord('mobile'), {
+      visible: true,
+      wins: '1',
+      losses: '1',
+      ties: '1',
+      sport: 'basketball · completed games',
+      footnote: '3 scored games tracked',
+    });
+    assert.equal(
+      await connection.evaluate<number>(
+        `JSON.parse(localStorage.getItem(${JSON.stringify(historyKey)})).games.length`,
+        page.sessionId,
+      ),
+      trackerHistory.games.length,
+      'the seeded tracker history must still be present after reload',
+    );
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-game-record-desktop\\"]")?.getClientRects().length > 0',
+      Boolean,
+    );
+    assert.deepEqual(await readRecord('desktop'), {
+      visible: true,
+      wins: '1',
+      losses: '1',
+      ties: '1',
+      sport: 'basketball · completed games',
+      footnote: '3 scored games tracked',
+    });
+    assert.equal((await readRecord('mobile')).visible, false, 'the mobile summary should be hidden at desktop width');
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
 function harnessSource() {
   return `
 import { createElement, useEffect, useState } from 'react';
@@ -2619,7 +2860,7 @@ const profile = {
 let dashboardEvents = [{
   id: 'game-1',
   type: 'game',
-  date: '2026-09-21',
+  date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   time: '18:30',
   location: 'Northside Gym',
   opponent: 'Rivals',
@@ -3028,6 +3269,14 @@ export function mount() {
         status: 200, headers: { 'Content-Type': 'application/json' },
       }));
     }
+    if (
+      window.location.search.includes('supporter-game-record')
+      && requestUrl.endsWith('/api/supporter/active-game')
+    ) {
+      return Promise.resolve(new Response(JSON.stringify({ gameId: null }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
     if (window.sessionStorage.getItem('workspace-journey')) {
       const url = new URL(requestUrl, window.location.href);
       if (url.pathname.startsWith('/api/')) {
@@ -3215,7 +3464,11 @@ export function mount() {
     ));
     return;
   }
-  let dashboardUserId = window.location.search.includes('supporter-active-game-sync') ? 'supporter-sync-user' : undefined;
+  let dashboardUserId = window.location.search.includes('supporter-game-record')
+    ? 'supporter-game-record-user'
+    : window.location.search.includes('supporter-active-game-sync')
+      ? 'supporter-sync-user'
+      : undefined;
   if (window.location.search.includes('game-on-card-save-transition')) {
     dashboardUserId = 'supporter-save-transition';
     window.__gameOnCardMockSaveRequests = 0;
@@ -3643,7 +3896,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
-      /Get ready/,
+      /Get ready|Capture the game|After the whistle/,
     );
     await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-got-it"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);

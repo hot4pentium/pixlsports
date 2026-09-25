@@ -783,7 +783,8 @@
 .supporter-game-on-summary__event [data-testid="button-context-checklist"],
 .supporter-game-on-summary__event [data-testid="button-context-stat-tracker"],
 .supporter-game-on-summary__event [data-testid="link-context-hype-card"],
-.supporter-game-on-summary__event [data-testid="button-context-game-on"] {
+.supporter-game-on-summary__event [data-testid="button-context-game-on"],
+.supporter-game-on-summary__event [data-testid="link-context-schedule"] {
   min-height: 36px;
   padding: 8px 12px;
   border-radius: 6px;
