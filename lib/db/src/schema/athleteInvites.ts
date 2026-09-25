@@ -11,6 +11,7 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   seasonName: text("season_name").notNull(),
   seasonEndsAt: timestamp("season_ends_at", { withTimezone: true }).notNull(),
   sport: text("sport").notNull(),
+  timezone: text("timezone"),
   trackerProjectId: uuid("tracker_project_id"),
   scheduleProjectId: uuid("schedule_project_id"),
   showHypeCard: boolean("show_hype_card").notNull().default(true),
@@ -18,6 +19,7 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   showSchedule: boolean("show_schedule").notNull().default(true),
   paused: boolean("paused").notNull().default(false),
   liveTrackerShareToken: text("live_tracker_share_token"),
+  photoObjectPath: text("photo_object_path"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

@@ -5,6 +5,8 @@ import { startHypeCardSharePurgeSchedule } from "./jobs/purgeHypeCardShares";
 import { startSupporterPhotoUploadPurgeSchedule } from "./jobs/purgeSupporterPhotoUploads";
 import { startProjectMediaUploadClaimPurgeSchedule } from "./jobs/purgeProjectMediaUploadClaims";
 import { startPlannerNotificationSchedule } from "./jobs/plannerNotifications";
+import { startAthleteInviteFanAlertSchedule } from "./jobs/athleteInviteFanAlerts";
+import { startAthleteInvitePhotoUploadPurgeSchedule } from "./jobs/purgeAthleteInvitePhotoUploads";
 
 const rawPort = process.env["PORT"];
 
@@ -32,4 +34,6 @@ app.listen(port, (err) => {
   startSupporterPhotoUploadPurgeSchedule();
   startProjectMediaUploadClaimPurgeSchedule();
   startPlannerNotificationSchedule();
+  startAthleteInviteFanAlertSchedule();
+  startAthleteInvitePhotoUploadPurgeSchedule();
 });

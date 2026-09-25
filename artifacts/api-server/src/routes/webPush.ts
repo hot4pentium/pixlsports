@@ -15,7 +15,7 @@ import {
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
-import { getWebPushConfig, sendPushNotificationToUser } from "../lib/webPush";
+import { getWebPushConfig, isAllowedPushEndpoint, sendPushNotificationToUser } from "../lib/webPush";
 
 const router: IRouter = Router();
 
@@ -80,7 +80,10 @@ router.post("/notifications/subscriptions", requireAuth, async (req, res): Promi
   const ownerClerkUserId = getRequiredClerkUserId(res);
   try {
     const endpoint = new URL(parsed.data.endpoint);
-    if (endpoint.protocol !== "https:") { res.status(400).json({ error: "Push endpoint must use HTTPS." }); return; }
+    if (!isAllowedPushEndpoint(endpoint.toString())) {
+      res.status(400).json({ error: "Push endpoint must belong to a supported browser push service." });
+      return;
+    }
     const userAgent = req.get("user-agent")?.slice(0, 500) ?? null;
     const [existing] = await db.select({ ownerClerkUserId: webPushSubscriptionsTable.ownerClerkUserId })
       .from(webPushSubscriptionsTable)
@@ -123,7 +126,7 @@ router.get("/notifications/subscriptions/status", requireAuth, async (req, res):
   const endpoint = typeof req.query.endpoint === "string" ? req.query.endpoint : "";
   try {
     const parsedEndpoint = new URL(endpoint);
-    if (parsedEndpoint.protocol !== "https:" || endpoint.length > 2048) throw new Error("invalid");
+    if (parsedEndpoint.protocol !== "https:" || parsedEndpoint.href.length > 2048) throw new Error("invalid");
     const [existing] = await db.select({ ownerClerkUserId: webPushSubscriptionsTable.ownerClerkUserId })
       .from(webPushSubscriptionsTable)
       .where(eq(webPushSubscriptionsTable.endpoint, parsedEndpoint.toString())).limit(1);
@@ -141,14 +144,15 @@ router.delete("/notifications/subscriptions", requireAuth, async (req, res): Pro
   const parsed = DeleteNotificationSubscriptionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid push subscription." }); return; }
   try {
-    if (new URL(parsed.data.endpoint).protocol !== "https:") {
+    const endpoint = new URL(parsed.data.endpoint);
+    if (endpoint.protocol !== "https:" || endpoint.href.length > 2048) {
       res.status(400).json({ error: "Push endpoint must use HTTPS." });
       return;
     }
     const ownerClerkUserId = getRequiredClerkUserId(res);
     await db.delete(webPushSubscriptionsTable).where(and(
       eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId),
-      eq(webPushSubscriptionsTable.endpoint, parsed.data.endpoint),
+      eq(webPushSubscriptionsTable.endpoint, endpoint.toString()),
     ));
     res.status(204).end();
   } catch (error) {

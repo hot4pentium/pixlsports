@@ -1,7 +1,11 @@
 import { createClerkClient } from "@clerk/express";
-import { and, eq, isNull, lte, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import {
   accountAccessTable,
+  athleteInviteFanDeliveriesTable,
+  athleteInviteFanRateLimitsTable,
+  athleteInviteFansTable,
+  athleteInvitePhotoUploadClaimsTable,
   athleteInvitesTable,
   cloudProjectsTable,
   db,
@@ -99,6 +103,14 @@ async function purgeAccount(
     .select({ objectPath: supporterPhotosTable.objectPath })
     .from(supporterPhotosTable)
     .where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
+  const invites = await db
+    .select({ id: athleteInvitesTable.id, photoObjectPath: athleteInvitesTable.photoObjectPath })
+    .from(athleteInvitesTable)
+    .where(eq(athleteInvitesTable.ownerClerkUserId, account.ownerClerkUserId));
+  const invitePhotoClaims = await db
+    .select({ objectPath: athleteInvitePhotoUploadClaimsTable.objectPath })
+    .from(athleteInvitePhotoUploadClaimsTable)
+    .where(eq(athleteInvitePhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
 
   for (const item of media) {
     try {
@@ -131,6 +143,16 @@ async function purgeAccount(
       if (!(error instanceof ObjectNotFoundError)) throw error;
     }
   }
+  for (const objectPath of new Set([
+    ...invites.flatMap((invite) => invite.photoObjectPath ? [invite.photoObjectPath] : []),
+    ...invitePhotoClaims.map((claim) => claim.objectPath),
+  ])) {
+    try {
+      await dependencies.deleteObject(objectPath);
+    } catch (error) {
+      if (!(error instanceof ObjectNotFoundError)) throw error;
+    }
+  }
 
   await db.transaction(async (tx) => {
     await tx.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
@@ -139,6 +161,16 @@ async function purgeAccount(
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+    if (invites.length) {
+      const inviteIds = invites.map((invite) => invite.id);
+      await tx.delete(athleteInviteFansTable).where(inArray(athleteInviteFansTable.inviteId, inviteIds));
+      await tx.delete(athleteInviteFanDeliveriesTable)
+        .where(inArray(athleteInviteFanDeliveriesTable.inviteId, inviteIds));
+    }
+    await tx.delete(athleteInvitePhotoUploadClaimsTable)
+      .where(eq(athleteInvitePhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(athleteInviteFanRateLimitsTable)
+      .where(eq(athleteInviteFanRateLimitsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(supporterPhotosTable).where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));

@@ -934,6 +934,12 @@ export interface AthleteInviteInput {
   seasonName: string;
   seasonEndsAt: string;
   sport: AthleteInviteInputSport;
+  /**
+     * IANA timezone identifier used for schedule event alerts.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone: string;
   /** @nullable */
   trackerProjectId: string | null;
   /** @nullable */
@@ -944,14 +950,44 @@ export interface AthleteInviteInput {
   paused?: boolean;
 }
 
-export type OwnedAthleteInvite = AthleteInviteInput & ({
+export type OwnedAthleteInviteSport = typeof OwnedAthleteInviteSport[keyof typeof OwnedAthleteInviteSport];
+
+
+export const OwnedAthleteInviteSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface OwnedAthleteInvite {
   inviteToken: string;
-  createdAt: string;
-  updatedAt: string;
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  seasonEndsAt: string;
+  sport: OwnedAthleteInviteSport;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  timezone: string | null;
+  /** @nullable */
+  trackerProjectId: string | null;
+  /** @nullable */
+  scheduleProjectId: string | null;
+  showHypeCard: boolean;
+  showStats: boolean;
+  showSchedule: boolean;
   paused: boolean;
   /** @nullable */
   liveTrackerShareToken: string | null;
-});
+  /** @nullable */
+  photoUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type OwnedAthleteInviteList = OwnedAthleteInvite[];
 
@@ -1056,6 +1092,8 @@ export interface PublicAthleteInvite {
   seasonName: string;
   seasonEndsAt: string;
   sport: PublicAthleteInviteSport;
+  /** @nullable */
+  photoUrl: string | null;
   hypeCard: AthleteInviteHypeCard | null;
   /** @maxItems 10 */
   videos: AthleteInviteVideo[];
@@ -1065,6 +1103,126 @@ export interface PublicAthleteInvite {
   liveGame: AthleteInviteLiveSessionPublic | null;
   updatedAt: string;
 }
+
+export type AthleteInvitePhotoUploadInputContentType = typeof AthleteInvitePhotoUploadInputContentType[keyof typeof AthleteInvitePhotoUploadInputContentType];
+
+
+export const AthleteInvitePhotoUploadInputContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface AthleteInvitePhotoUploadInput {
+  contentType: AthleteInvitePhotoUploadInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 5242880
+     */
+  size: number;
+}
+
+export interface AthleteInvitePhotoUpload {
+  uploadUrl: string;
+  objectPath: string;
+}
+
+export interface AthleteInvitePhotoConfirmInput {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  objectPath: string;
+}
+
+export interface AthleteInvitePhoto {
+  /** @nullable */
+  photoUrl: string | null;
+}
+
+export type AthleteInviteManifestDisplay = typeof AthleteInviteManifestDisplay[keyof typeof AthleteInviteManifestDisplay];
+
+
+export const AthleteInviteManifestDisplay = {
+  standalone: 'standalone',
+} as const;
+
+export type AthleteInviteManifestIconSizes = typeof AthleteInviteManifestIconSizes[keyof typeof AthleteInviteManifestIconSizes];
+
+
+export const AthleteInviteManifestIconSizes = {
+  '192x192': '192x192',
+  '512x512': '512x512',
+} as const;
+
+export type AthleteInviteManifestIconPurpose = typeof AthleteInviteManifestIconPurpose[keyof typeof AthleteInviteManifestIconPurpose];
+
+
+export const AthleteInviteManifestIconPurpose = {
+  any: 'any',
+  maskable: 'maskable',
+  any_maskable: 'any maskable',
+} as const;
+
+export interface AthleteInviteManifestIcon {
+  src: string;
+  sizes: AthleteInviteManifestIconSizes;
+  type: 'image/png';
+  purpose?: AthleteInviteManifestIconPurpose;
+}
+
+export interface AthleteInviteManifest {
+  id: string;
+  name: string;
+  short_name: string;
+  start_url: string;
+  scope: string;
+  display: AthleteInviteManifestDisplay;
+  /** @minItems 2 */
+  icons: AthleteInviteManifestIcon[];
+}
+
+export type AthleteInviteFanFollowInputKeys = {
+  /**
+     * @minLength 40
+     * @maxLength 256
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  p256dh: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  auth: string;
+};
+
+export interface AthleteInviteFanFollowInput {
+  /** @maxLength 2048 */
+  endpoint: string;
+  keys: AthleteInviteFanFollowInputKeys;
+  liveAlerts: boolean;
+  eventAlerts: boolean;
+}
+
+export interface AthleteInviteFanFollowPreferences {
+  liveAlerts: boolean;
+  eventAlerts: boolean;
+}
+
+export interface AthleteInviteFanFollow {
+  liveAlerts: boolean;
+  eventAlerts: boolean;
+  active: boolean;
+}
+
+export type AthleteInviteFanFollowCreated = AthleteInviteFanFollow & {
+  /**
+     * @minLength 40
+     * @maxLength 100
+     */
+  followToken: string;
+};
 
 /**
  * @nullable
@@ -1470,6 +1628,60 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   media: Media[];
+}
+
+export type AthleteInviteLiveScoreboardStatus = typeof AthleteInviteLiveScoreboardStatus[keyof typeof AthleteInviteLiveScoreboardStatus];
+
+
+export const AthleteInviteLiveScoreboardStatus = {
+  live: 'live',
+  final: 'final',
+} as const;
+
+export interface AthleteInviteLiveScoreboard {
+  /** @minimum 0 */
+  score: number;
+  /** @minimum 0 */
+  opponentScore: number;
+  /** @maxLength 200 */
+  opponent: string;
+  status: AthleteInviteLiveScoreboardStatus;
+  /** @nullable */
+  period?: number | null;
+  /** @maxLength 100 */
+  athleteName: string;
+  /** @maxLength 160 */
+  teamName: string;
+}
+
+export type PublicAthleteFanCardSport = typeof PublicAthleteFanCardSport[keyof typeof PublicAthleteFanCardSport];
+
+
+export const PublicAthleteFanCardSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface PublicAthleteFanCard {
+  inviteToken: string;
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  seasonEndsAt: string;
+  sport: PublicAthleteFanCardSport;
+  /** @nullable */
+  photoUrl: string | null;
+  hypeCard: AthleteInviteHypeCard | null;
+  /** @maxItems 10 */
+  videos: AthleteInviteVideo[];
+  stats: HypeCardShareStats | null;
+  scheduleEvents: AthleteInviteScheduleEvent[];
+  replies: AthleteInviteReply[];
+  liveScoreboard: AthleteInviteLiveScoreboard | null;
+  updatedAt: string;
 }
 
 export type ProjectList = Project[];

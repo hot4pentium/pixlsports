@@ -1,0 +1,174 @@
+.living-card-page {
+  --lc-ink: #07172b;
+  --lc-navy: #102b4d;
+  --lc-blue: #2878f5;
+  --lc-sky: #8ecbff;
+  --lc-orange: #ff7849;
+  --lc-paper: #edf3f6;
+  --lc-muted: #a9bfd3;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--lc-ink);
+  color: var(--lc-paper);
+  font-family: 'DM Sans', sans-serif;
+  position: relative;
+  isolation: isolate;
+}
+.living-card-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .25;
+  background: radial-gradient(ellipse at 52% 18%, #285d95 0, transparent 55%), linear-gradient(90deg, #7ab8ff14 1px, transparent 1px), linear-gradient(#7ab8ff14 1px, transparent 1px);
+  background-size: auto, 72px 72px, 72px 72px;
+}
+.living-card-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: .045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.living-card-page * { box-sizing: border-box; }
+.living-card-page a { color: inherit; text-decoration: none; }
+.living-card-page button { cursor: pointer; }
+.living-card-page :focus-visible { outline: 2px solid var(--lc-orange); outline-offset: 4px; }
+.living-card-header { border-bottom: 1px solid #c9e3fb21; background: #071525cf; }
+.living-card-header-inner { max-width: 1460px; min-height: 76px; margin: auto; padding: 12px clamp(22px, 4vw, 64px); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.living-card-brand img { display: block; width: auto; max-width: 155px; height: 41px; object-fit: contain; }
+.living-card-header-label { color: var(--lc-muted); font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; text-align: right; }
+.living-card-main { max-width: 1340px; margin: auto; padding: clamp(36px, 5vw, 78px) clamp(20px, 5vw, 72px) 90px; }
+.living-card-intro { display: flex; align-items: end; justify-content: space-between; gap: 22px; border-bottom: 1px solid #c9e3fb30; padding-bottom: 23px; margin-bottom: clamp(26px, 4vw, 50px); }
+.living-card-eyebrow, .living-card-overline { display: block; font-size: 10px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; color: var(--lc-sky); }
+.living-card-intro h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; text-transform: uppercase; font-size: clamp(42px, 6.7vw, 96px); line-height: .84; letter-spacing: -.025em; margin: 13px 0 0; }
+.living-card-intro h1 span { color: var(--lc-orange); }
+.living-card-intro-note { max-width: 218px; margin: 0; color: var(--lc-muted); font-size: 12px; line-height: 1.5; }
+.living-card-layout { display: grid; grid-template-columns: minmax(0, 620px) minmax(280px, 1fr); gap: clamp(32px, 5vw, 84px); align-items: start; }
+.living-card-stage { min-width: 0; }
+.living-card-frame-outer { position: relative; padding: 9px; border: 1px solid #9fcaef62; border-radius: 25px; background: linear-gradient(130deg, #a4cdeb6b, #152c49 23%, #0b2039 77%, #ff784977); box-shadow: 0 31px 75px #010811aa, 0 0 0 7px #91c8f40a; }
+.living-card-frame-outer::after { content: ''; position: absolute; top: 16px; bottom: 16px; right: -18px; width: 1px; background: linear-gradient(transparent, #80bcf594, transparent); }
+.living-card-frame { position: relative; height: clamp(520px, 64vw, 730px); border: 1px solid #ffffff35; border-radius: 17px; overflow: hidden; background: #0d2544; perspective: 1200px; }
+.living-card-face { position: absolute; inset: 0; backface-visibility: hidden; overflow: hidden; transform-origin: center; animation: lc-reveal .42s cubic-bezier(.2,.75,.2,1) both; }
+@keyframes lc-reveal { from { opacity: 0; transform: rotateY(-8deg) scale(.985); } to { opacity: 1; transform: rotateY(0) scale(1); } }
+.living-card-photo { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; display: block; }
+.living-card-photo-fallback { height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, #2e6093, transparent 53%), repeating-linear-gradient(110deg, transparent 0 48px, #a2caff0d 49px 50px), #0b2544; }
+.living-card-photo-fallback span { font: 900 clamp(170px, 27vw, 360px)/1 'Barlow Condensed', sans-serif; color: #b5d8f71a; text-shadow: 1px 1px #c7eaff5c; }
+.living-card-photo-fallback small { position: absolute; top: 56%; color: #e2eff8af; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; }
+.living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #07172b87 0, transparent 22%, transparent 44%, #07172b50 60%, #061427 83%); }
+.living-card-corner { position: absolute; top: 28px; left: 28px; right: 28px; display: flex; align-items: start; justify-content: space-between; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .19em; text-transform: uppercase; }
+.living-card-edition { padding: 8px 10px; background: #07172bd9; border: 1px solid #badbfa69; }
+.living-card-number { color: #d4eaff; text-align: right; }
+.living-card-front-bottom { position: absolute; inset: auto 0 0; padding: 70px clamp(24px, 5vw, 47px) 32px; background: linear-gradient(transparent, #061427d9 25%, #061427 80%); }
+.living-card-front-bottom::before { content: ''; position: absolute; left: clamp(24px, 5vw, 47px); top: 76px; height: 3px; width: 53px; background: var(--lc-orange); }
+.living-card-front-bottom .living-card-overline { padding-top: 22px; }
+.living-card-athlete-name { margin: 10px 0 13px; font: 900 clamp(61px, 11vw, 122px)/.77 'Barlow Condensed', sans-serif; letter-spacing: -.025em; text-transform: uppercase; overflow-wrap: anywhere; max-width: 100%; }
+.living-card-front-meta { padding-top: 18px; border-top: 1px solid #c9e3fb45; display: flex; justify-content: space-between; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: #d9eafa; }
+.living-card-front-meta span:last-child { color: var(--lc-orange); text-align: right; }
+.living-card-face-alt { padding: clamp(23px, 5vw, 42px); background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); display: flex; flex-direction: column; overflow-y: auto; scrollbar-color: #6fa9d6 #0b2544; }
+.living-card-face-alt::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--lc-blue), var(--lc-sky), var(--lc-orange)); }
+.living-card-alt-top { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+.living-card-alt-top span:last-child { font-size: 10px; letter-spacing: .16em; font-weight: 800; color: var(--lc-orange); text-transform: uppercase; text-align: right; }
+.living-card-alt-title { margin: 32px 0 9px; font: 900 clamp(54px, 9vw, 93px)/.84 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: -.02em; }
+.living-card-alt-subtitle { color: var(--lc-muted); line-height: 1.5; font-size: 13px; margin: 0 0 27px; }
+.living-card-scoreboard { margin: 0 0 22px; border: 1px solid #ff784989; background: #091c32; padding: 16px; }
+.living-card-scoreboard-heading { display: flex; align-items: center; gap: 8px; color: var(--lc-orange); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.living-card-scoreboard-heading span { margin-left: auto; color: var(--lc-muted); font-size: 9px; }
+.living-card-scoreboard-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.living-card-scoreboard-row strong { color: #fff; font: 900 42px/1 'Barlow Condensed', sans-serif; white-space: nowrap; }
+.living-card-scoreboard p { color: var(--lc-muted); font-size: 11px; line-height: 1.5; margin: 0; }
+.living-card-stats-lead { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #b4d6ee3b; border: 1px solid #b4d6ee3b; }
+.living-card-stat-feature { padding: 18px; background: #12375c; }
+.living-card-stat-feature strong { display: block; font: 800 clamp(44px, 7vw, 73px)/1 'Barlow Condensed', sans-serif; }
+.living-card-stat-feature span, .living-card-stat-cell span { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--lc-muted); }
+.living-card-stat-feature:last-child strong { color: var(--lc-orange); }
+.living-card-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #b4d6ee30; border: 1px solid #b4d6ee30; margin-top: 14px; }
+.living-card-stat-cell { background: #0b2948; padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; gap: 7px; }
+.living-card-stat-cell span { overflow-wrap: anywhere; }
+.living-card-stat-cell strong { font: 800 28px/1 'Barlow Condensed', sans-serif; flex: none; }
+.living-card-final-games { margin-top: 25px; }
+.living-card-final-games h3 { margin: 0 0 10px; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--lc-sky); }
+.living-card-final-games ol { list-style: none; padding: 0; margin: 0; }
+.living-card-final-games li { border-top: 1px solid #b4d6ee30; padding: 10px 0; display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: 12px; }
+.living-card-final-games li small { display: block; color: var(--lc-muted); margin-top: 2px; }
+.living-card-final-games li strong { color: var(--lc-orange); white-space: nowrap; font: 800 21px 'Barlow Condensed', sans-serif; }
+.living-card-empty { margin: auto 0; padding: 30px 0; border-top: 1px solid #b4d6ee45; }
+.living-card-empty h3 { margin: 10px 0; font: 800 33px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-empty p { font-size: 13px; color: var(--lc-muted); line-height: 1.6; max-width: 260px; }
+.living-card-video-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.living-card-video-list li { border-top: 1px solid #b4d6ee45; padding-top: 13px; }
+.living-card-video-heading { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 9px; }
+.living-card-video-heading strong { font: 800 21px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-video-heading span { color: var(--lc-sky); font-size: 10px; font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
+.living-card-video-list video { display: block; width: 100%; max-height: 210px; aspect-ratio: 16 / 9; object-fit: contain; background: #061426; border: 1px solid #cde8fc55; }
+.living-card-video-error { margin: 0; padding: 18px; color: var(--lc-muted); border: 1px solid #cde8fc55; }
+.living-card-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 23px; }
+.living-card-control { appearance: none; min-height: 64px; padding: 10px; border: 1px solid #b2d3ee4d; background: #1534538c; color: #c0d2e3; display: flex; align-items: center; justify-content: center; gap: 10px; font: 800 11px 'DM Sans', sans-serif; letter-spacing: .14em; text-transform: uppercase; transition: background .2s, color .2s, transform .2s; }
+.living-card-control:hover { background: #225480; color: var(--lc-paper); transform: translateY(-2px); }
+.living-card-control[aria-pressed="true"] { background: var(--lc-paper); border-color: var(--lc-paper); color: var(--lc-navy); }
+.living-card-control svg { width: 17px; height: 17px; flex: none; }
+.living-card-instruction { text-align: center; margin: 13px 0 0; color: #91acc3; font-size: 11px; }
+.living-card-story { padding-top: 10px; }
+.living-card-story-kicker { display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--lc-orange); }
+.living-card-story-kicker::before { content: ''; height: 2px; width: 28px; background: var(--lc-orange); }
+.living-card-story h2 { margin: 22px 0 0; font: 900 clamp(53px, 6.8vw, 90px)/.88 'Barlow Condensed', sans-serif; letter-spacing: -.02em; text-transform: uppercase; }
+.living-card-story h2 em { font-style: normal; color: var(--lc-orange); }
+.living-card-story-copy { margin: 22px 0 0; max-width: 450px; color: #b6cadb; font-size: 15px; line-height: 1.7; }
+.living-card-story-divider { margin: 37px 0 0; height: 1px; background: linear-gradient(90deg, #7dadcf77, transparent); }
+.living-card-next { margin-top: 32px; }
+.living-card-next-head { display: flex; gap: 10px; align-items: center; color: var(--lc-sky); font-size: 10px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+.living-card-next-head svg { width: 16px; }
+.living-card-next h3 { margin: 14px 0 5px; font: 800 clamp(33px, 4vw, 49px)/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-next p { color: #bdd1e0; line-height: 1.5; font-size: 13px; margin: 7px 0; }
+.living-card-next-date { color: var(--lc-orange) !important; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.living-card-live { display: inline-flex; align-items: center; gap: 9px; padding: 12px 15px; margin-top: 16px; background: #ff7849; color: #112039 !important; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; transition: transform .2s, background .2s; }
+.living-card-live:hover { transform: translateY(-2px); background: #ff9a72; }
+.living-card-live svg { width: 16px; height: 16px; }
+.living-card-follow { margin-top: 31px; }
+.living-card-original { display: inline-flex; gap: 9px; align-items: center; margin-top: 34px; padding: 13px 0; border-bottom: 1px solid #b4d6ee7a; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: var(--lc-paper) !important; transition: color .2s; }
+.living-card-original:hover { color: var(--lc-orange) !important; }
+.living-card-original svg { width: 15px; height: 15px; }
+.living-card-footer { margin-top: 85px; padding-top: 20px; border-top: 1px solid #c9e3fb2b; display: flex; justify-content: space-between; gap: 12px; color: #8baac0; font-size: 10px; letter-spacing: .13em; text-transform: uppercase; font-weight: 700; }
+.living-card-state { max-width: 600px; margin: 14vh auto; text-align: center; padding: 20px; }
+.living-card-state h1 { font: 900 clamp(46px, 7vw, 76px)/.9 'Barlow Condensed', sans-serif; text-transform: uppercase; margin: 20px 0 12px; }
+.living-card-state p { color: var(--lc-muted); line-height: 1.6; }
+.living-card-state button { margin-top: 20px; background: var(--lc-orange); border: 0; padding: 13px 22px; font-weight: 800; text-transform: uppercase; color: var(--lc-ink); }
+.living-card-skeleton { max-width: 1100px; margin: 8vh auto; padding: 30px; display: grid; grid-template-columns: minmax(0, 500px) 1fr; gap: 60px; }
+.living-card-skeleton > div { min-height: 600px; border-radius: 22px; background: linear-gradient(110deg, #153553 8%, #1d4465 22%, #153553 38%); background-size: 220% 100%; animation: lc-shimmer 1.6s linear infinite; }
+.living-card-skeleton aside span { display: block; height: 35px; margin-bottom: 21px; width: 85%; background: #1b3956; border-radius: 3px; }
+.living-card-skeleton aside span:nth-child(2) { height: 100px; width: 95%; }
+.living-card-skeleton aside span:nth-child(3) { width: 65%; }
+@keyframes lc-shimmer { to { background-position-x: -220%; } }
+@media (max-width: 800px) {
+  .living-card-layout { grid-template-columns: 1fr; gap: 46px; }
+  .living-card-stage { max-width: 590px; width: 100%; margin: auto; }
+  .living-card-story { max-width: 590px; width: 100%; margin: auto; }
+  .living-card-frame { height: min(132vw, 730px); min-height: 510px; }
+  .living-card-skeleton { grid-template-columns: 1fr; }
+  .living-card-skeleton > div { min-height: 510px; }
+}
+@media (max-width: 520px) {
+  .living-card-header-inner { min-height: 66px; }
+  .living-card-brand img { max-width: 125px; height: 34px; }
+  .living-card-header-label { font-size: 8px; max-width: 130px; }
+  .living-card-main { padding: 31px 17px 55px; }
+  .living-card-intro { display: block; }
+  .living-card-intro-note { margin-top: 14px; }
+  .living-card-frame { min-height: 500px; height: 137vw; max-height: 650px; }
+  .living-card-corner { left: 18px; right: 18px; top: 18px; }
+  .living-card-front-bottom { padding: 60px 23px 23px; }
+  .living-card-front-bottom::before { left: 23px; top: 65px; }
+  .living-card-athlete-name { font-size: clamp(57px, 14vw, 88px); }
+  .living-card-control { min-height: 62px; gap: 5px; flex-direction: column; font-size: 10px; letter-spacing: .08em; }
+  .living-card-face-alt { padding: 23px; }
+  .living-card-alt-title { margin-top: 22px; }
+  .living-card-stat-cell { padding: 12px 8px; }
+  .living-card-stat-cell strong { font-size: 23px; }
+  .living-card-footer { margin-top: 58px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .living-card-page *, .living-card-page *::before, .living-card-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

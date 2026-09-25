@@ -29,7 +29,7 @@
 - [Supporter-only product boundary](supporter-only-product-boundary.md) — center the parent’s athlete journey; team stats stay advanced and meetings leave the product flow.
 - [Stats-only Hype Card sharing](stats-only-hype-card-sharing.md) — local video sharing uses a hosted finalized-stats link without uploading the exported media.
 - [Exported stats QR safe areas](exported-stats-qr-safe-areas.md) — linked stats overlays share one SVG foreground across stills and video, with format-specific protected lanes.
-- [Athlete Hype Page lifecycle](athlete-hype-page-lifecycle.md) — the durable page pauses in place while Game Day Live remains a separately revocable, short-lived session.
+- [Athlete fan card and Hype Page lifecycle](athlete-hype-page-lifecycle.md) — share the fan card first, preserve the original page, and keep live sessions temporary.
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
 - [Approved dashboard visual direction](approved-dashboard-visual-direction.md) — the supporter dashboard’s navy sports-editorial gradient, chevrons, and responsive path treatment are approved.
 - [Planner push notifications](planner-push-notifications.md) — server-side planner reminders use the device time zone and durable delivery keys.

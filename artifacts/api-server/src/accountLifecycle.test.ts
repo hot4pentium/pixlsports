@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
-import { count, eq } from "drizzle-orm";
+import { count, eq, inArray } from "drizzle-orm";
 import {
   accountAccessTable,
   accountEntitlementEventsTable,
+  athleteInviteFanDeliveriesTable,
+  athleteInviteFanRateLimitsTable,
+  athleteInviteFansTable,
+  athleteInvitePhotoUploadClaimsTable,
+  athleteInvitesTable,
   cloudProjectsTable,
   db,
   guestUsageEventsTable,
@@ -25,6 +30,19 @@ import { runExpiredAccountPurge } from "./jobs/purgeCancelledAccounts";
 import { getAccountAccessSnapshot } from "./routes/accountAccess";
 
 async function deleteTestAccount(ownerClerkUserId: string) {
+  const invites = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable)
+    .where(eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId));
+  if (invites.length) {
+    const inviteIds = invites.map((invite) => invite.id);
+    await db.delete(athleteInviteFansTable).where(inArray(athleteInviteFansTable.inviteId, inviteIds));
+    await db.delete(athleteInviteFanDeliveriesTable)
+      .where(inArray(athleteInviteFanDeliveriesTable.inviteId, inviteIds));
+  }
+  await db.delete(athleteInvitePhotoUploadClaimsTable)
+    .where(eq(athleteInvitePhotoUploadClaimsTable.ownerClerkUserId, ownerClerkUserId));
+  await db.delete(athleteInviteFanRateLimitsTable)
+    .where(eq(athleteInviteFanRateLimitsTable.ownerClerkUserId, ownerClerkUserId));
+  await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(projectMediaUploadClaimsTable).where(eq(projectMediaUploadClaimsTable.ownerClerkUserId, ownerClerkUserId));
   await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId));
@@ -288,6 +306,89 @@ test("purge retries each destructive phase and allows a fresh account row", asyn
     });
     const fresh = await getAccountLifecycleSnapshot(ownerClerkUserId);
     assert.equal(fresh.status, "active");
+  } finally {
+    await deleteTestAccount(ownerClerkUserId);
+  }
+});
+
+test("account purge removes Athlete Hype Page photos, claims, follows, deliveries, and rate rows", async () => {
+  const ownerClerkUserId = `purge-athlete-invite-${randomUUID()}`;
+  const photoPath = `/objects/athlete-invite-photos/${randomUUID()}.webp`;
+  const claimPath = `/objects/uploads/${randomUUID()}`;
+  const deletedObjects = new Set<string>();
+  try {
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId,
+      role: "fan",
+      accessMode: "full",
+      lifecycleStatus: "cancelled",
+      cancelledAt: new Date(Date.now() - 91 * 86_400_000),
+      lastActivityAt: new Date(Date.now() - 91 * 86_400_000),
+      deletionEligibleAt: new Date(Date.now() - 1_000),
+    });
+    const [invite] = await db.insert(athleteInvitesTable).values({
+      ownerClerkUserId,
+      publicToken: randomUUID().replaceAll("-", "") + randomUUID().replaceAll("-", ""),
+      athleteName: "Purge Athlete",
+      teamName: "Team",
+      seasonName: "Season",
+      seasonEndsAt: new Date(Date.now() + 86_400_000),
+      sport: "basketball",
+      timezone: "UTC",
+      showHypeCard: true,
+      showStats: true,
+      showSchedule: true,
+      paused: false,
+      photoObjectPath: photoPath,
+    }).returning();
+    await db.insert(athleteInvitePhotoUploadClaimsTable).values({
+      inviteId: invite!.id,
+      ownerClerkUserId,
+      objectPath: claimPath,
+      contentType: "image/jpeg",
+      size: 123,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    await db.insert(athleteInviteFansTable).values({
+      inviteId: invite!.id,
+      endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID().replaceAll("-", "")}`,
+      p256dh: "encrypted-key",
+      auth: "auth-secret",
+      followTokenHash: randomUUID().replaceAll("-", ""),
+      liveAlerts: true,
+      eventAlerts: true,
+    });
+    await db.insert(athleteInviteFanDeliveriesTable).values({
+      inviteId: invite!.id,
+      eventKey: "event",
+      notificationType: "event_alert",
+    });
+    await db.insert(athleteInviteFanRateLimitsTable).values({
+      rateKey: randomUUID().replaceAll("-", ""),
+      ownerClerkUserId,
+      windowStartedAt: new Date(),
+      attempts: 1,
+    });
+
+    await runExpiredAccountPurge({
+      ownerClerkUserId,
+      dependencies: {
+        deleteObject: async (path) => { deletedObjects.add(path); },
+        deleteClerkUser: async () => undefined,
+      },
+    });
+
+    assert.deepEqual(deletedObjects, new Set([photoPath, claimPath]));
+    assert.deepEqual(await db.select().from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId)), []);
+    assert.deepEqual(await db.select().from(athleteInvitePhotoUploadClaimsTable)
+      .where(eq(athleteInvitePhotoUploadClaimsTable.ownerClerkUserId, ownerClerkUserId)), []);
+    assert.deepEqual(await db.select().from(athleteInviteFansTable)
+      .where(eq(athleteInviteFansTable.inviteId, invite!.id)), []);
+    assert.deepEqual(await db.select().from(athleteInviteFanDeliveriesTable)
+      .where(eq(athleteInviteFanDeliveriesTable.inviteId, invite!.id)), []);
+    assert.deepEqual(await db.select().from(athleteInviteFanRateLimitsTable)
+      .where(eq(athleteInviteFanRateLimitsTable.ownerClerkUserId, ownerClerkUserId)), []);
   } finally {
     await deleteTestAccount(ownerClerkUserId);
   }

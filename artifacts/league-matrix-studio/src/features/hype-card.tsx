@@ -2666,6 +2666,7 @@ export function HypeCardEditor() {
               teamName: athleteHypePage.teamName,
               seasonName: athleteHypePage.seasonName,
               seasonEndsAt: athleteHypePage.seasonEndsAt,
+              timezone: athleteHypePage.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '',
               sport: athleteHypePage.sport,
               trackerProjectId: athleteHypePage.trackerProjectId,
               scheduleProjectId: athleteHypePage.scheduleProjectId,
@@ -2677,7 +2678,7 @@ export function HypeCardEditor() {
           });
           await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
         }
-        setLocation(athleteHypePage ? `/player/${athleteHypePage.inviteToken}` : '/studio/athlete-page');
+        setLocation(athleteHypePage ? `/fan/${athleteHypePage.inviteToken}` : '/studio/athlete-page');
       }
     } catch (error) {
       console.error(error);

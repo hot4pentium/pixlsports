@@ -5,13 +5,32 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { AthleteInviteInput } from './athleteInviteInput';
+import type { OwnedAthleteInviteSport } from './ownedAthleteInviteSport';
 
-export type OwnedAthleteInvite = AthleteInviteInput & ({
+export interface OwnedAthleteInvite {
   inviteToken: string;
-  createdAt: Date;
-  updatedAt: Date;
+  athleteName: string;
+  teamName: string;
+  seasonName: string;
+  seasonEndsAt: Date;
+  sport: OwnedAthleteInviteSport;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  timezone: string | null;
+  /** @nullable */
+  trackerProjectId: string | null;
+  /** @nullable */
+  scheduleProjectId: string | null;
+  showHypeCard: boolean;
+  showStats: boolean;
+  showSchedule: boolean;
   paused: boolean;
   /** @nullable */
   liveTrackerShareToken: string | null;
-});
+  /** @nullable */
+  photoUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}

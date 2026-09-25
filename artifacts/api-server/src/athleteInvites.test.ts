@@ -12,6 +12,7 @@ import {
   statTrackerSharesTable,
 } from "@workspace/db";
 import {
+  GetAthleteFanCardResponse,
   GetAthleteInviteResponse,
   StartAthleteInviteLiveResponse,
 } from "@workspace/api-zod";
@@ -120,6 +121,24 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     const address = server.address();
     assert.ok(address && typeof address === "object");
     const listUrl = `http://127.0.0.1:${address.port}/api/athlete-invites`;
+    const invalidTimezone = await fetch(listUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "basketball",
+        timezone: "not/an-iana-timezone",
+        trackerProjectId: tracker.id,
+        scheduleProjectId: schedule.id,
+        showHypeCard: true,
+        showStats: true,
+        showSchedule: true,
+      }),
+    });
+    assert.equal(invalidTimezone.status, 400);
     const create = await fetch(listUrl, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": ownerId },
@@ -129,6 +148,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "basketball",
+        timezone: "America/Los_Angeles",
         trackerProjectId: tracker.id,
         scheduleProjectId: schedule.id,
         showHypeCard: true,
@@ -153,6 +173,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "basketball",
+        timezone: "America/Los_Angeles",
         trackerProjectId: null,
         scheduleProjectId: null,
         showHypeCard: false,
@@ -168,6 +189,11 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     const publicResponse = await fetch(publicUrl);
     assert.equal(publicResponse.status, 200);
     const invite = GetAthleteInviteResponse.parse(await publicResponse.json());
+    const fanBeforeLive = await fetch(`${publicUrl}/fan`);
+    assert.equal(fanBeforeLive.status, 200);
+    const fanBeforeLiveBody = await fanBeforeLive.json() as Record<string, unknown>;
+    assert.equal("liveGame" in fanBeforeLiveBody, false);
+    assert.equal(GetAthleteFanCardResponse.parse(fanBeforeLiveBody).liveScoreboard, null);
     assert.equal(invite.hypeCard?.shareToken, imageToken);
     assert.equal(invite.hypeCard?.mediaName, "Game Day highlight");
     assert.equal(invite.hypeCard?.mediaType, "image");
@@ -206,6 +232,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "basketball",
+        timezone: "America/Los_Angeles",
         trackerProjectId: null,
         scheduleProjectId: null,
         showHypeCard: false,
@@ -229,6 +256,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "basketball",
+        timezone: "America/Los_Angeles",
         trackerProjectId: null,
         scheduleProjectId: null,
         showHypeCard: false,
@@ -254,6 +282,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "basketball",
+        timezone: "America/Los_Angeles",
         trackerProjectId: null,
         scheduleProjectId: null,
         showHypeCard: false,
@@ -446,6 +475,7 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
       seasonName: "Fall 2026",
       seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
       sport: "basketball",
+      timezone: "America/Los_Angeles",
       trackerProjectId: tracker.id,
       scheduleProjectId: null,
       showHypeCard: false,
@@ -485,6 +515,22 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     const livePublic = GetAthleteInviteResponse.parse(livePublicBody);
     assert.equal(livePublic.stats?.gamesPlayed, 1);
     assert.equal(livePublic.stats?.stats.points, 18);
+    const fanCardResponse = await fetch(`${publicUrl}/fan`);
+    assert.equal(fanCardResponse.status, 200);
+    const fanCardBody = await fanCardResponse.json() as Record<string, unknown>;
+    assert.equal("liveGame" in fanCardBody, false);
+    const fanCard = GetAthleteFanCardResponse.parse(fanCardBody);
+    assert.deepEqual(fanCard.liveScoreboard, {
+      score: 8,
+      opponentScore: 7,
+      opponent: "Stars",
+      status: "live",
+      period: 2,
+      athleteName: "Jordan",
+      teamName: "City Hoops",
+    });
+    assert.equal(JSON.stringify(fanCard.liveScoreboard).includes("events"), false);
+    assert.equal(JSON.stringify(fanCardBody).includes("never expose this live snapshot"), false);
 
     const stopped = await fetch(liveUrl, {
       method: "DELETE",
@@ -647,6 +693,7 @@ test("an existing Hype Page finds its first finalized tracker project after the 
         seasonName: "Fall 2026",
         seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
         sport: "volleyball",
+        timezone: "America/Los_Angeles",
         trackerProjectId: null,
         scheduleProjectId: null,
         showHypeCard: false,

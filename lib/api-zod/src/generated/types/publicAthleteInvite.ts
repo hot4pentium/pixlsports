@@ -20,6 +20,8 @@ export interface PublicAthleteInvite {
   seasonName: string;
   seasonEndsAt: Date;
   sport: PublicAthleteInviteSport;
+  /** @nullable */
+  photoUrl: string | null;
   hypeCard: AthleteInviteHypeCard | null;
   /** @maxItems 10 */
   videos: AthleteInviteVideo[];

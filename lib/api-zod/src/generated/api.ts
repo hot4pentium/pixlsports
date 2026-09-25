@@ -1444,33 +1444,29 @@ export const GetStatTrackerShareEventsResponse = zod.unknown()
 /**
  * @summary List athlete invites owned by the authenticated user
  */
-export const listAthleteInvitesResponseOneAthleteNameMax = 100;
+export const listAthleteInvitesResponseTimezoneMax = 100;
 
-export const listAthleteInvitesResponseOneTeamNameMax = 160;
 
-export const listAthleteInvitesResponseOneSeasonNameMax = 100;
-
-export const listAthleteInvitesResponseOnePausedDefault = false;
 
 export const ListAthleteInvitesResponseItem = zod.object({
-  "athleteName": zod.string().min(1).max(listAthleteInvitesResponseOneAthleteNameMax),
-  "teamName": zod.string().max(listAthleteInvitesResponseOneTeamNameMax),
-  "seasonName": zod.string().min(1).max(listAthleteInvitesResponseOneSeasonNameMax),
+  "inviteToken": zod.string(),
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "timezone": zod.string().max(listAthleteInvitesResponseTimezoneMax).nullable(),
   "trackerProjectId": zod.string().uuid().nullable(),
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
-  "paused": zod.boolean().default(listAthleteInvitesResponseOnePausedDefault)
-}).and(zod.object({
-  "inviteToken": zod.string(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date(),
   "paused": zod.boolean(),
-  "liveTrackerShareToken": zod.string().nullable()
-}))
+  "liveTrackerShareToken": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
 export const ListAthleteInvitesResponse = zod.array(ListAthleteInvitesResponseItem)
 
 
@@ -1483,6 +1479,8 @@ export const createAthleteInviteBodyTeamNameMax = 160;
 
 export const createAthleteInviteBodySeasonNameMax = 100;
 
+export const createAthleteInviteBodyTimezoneMax = 100;
+
 export const createAthleteInviteBodyPausedDefault = false;
 
 export const CreateAthleteInviteBody = zod.object({
@@ -1491,6 +1489,7 @@ export const CreateAthleteInviteBody = zod.object({
   "seasonName": zod.string().min(1).max(createAthleteInviteBodySeasonNameMax),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "timezone": zod.string().min(1).max(createAthleteInviteBodyTimezoneMax).describe('IANA timezone identifier used for schedule event alerts.'),
   "trackerProjectId": zod.string().uuid().nullable(),
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
@@ -1499,33 +1498,29 @@ export const CreateAthleteInviteBody = zod.object({
   "paused": zod.boolean().default(createAthleteInviteBodyPausedDefault)
 })
 
-export const createAthleteInviteResponseOneAthleteNameMax = 100;
+export const createAthleteInviteResponseTimezoneMax = 100;
 
-export const createAthleteInviteResponseOneTeamNameMax = 160;
 
-export const createAthleteInviteResponseOneSeasonNameMax = 100;
-
-export const createAthleteInviteResponseOnePausedDefault = false;
 
 export const CreateAthleteInviteResponse = zod.object({
-  "athleteName": zod.string().min(1).max(createAthleteInviteResponseOneAthleteNameMax),
-  "teamName": zod.string().max(createAthleteInviteResponseOneTeamNameMax),
-  "seasonName": zod.string().min(1).max(createAthleteInviteResponseOneSeasonNameMax),
+  "inviteToken": zod.string(),
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "timezone": zod.string().max(createAthleteInviteResponseTimezoneMax).nullable(),
   "trackerProjectId": zod.string().uuid().nullable(),
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
-  "paused": zod.boolean().default(createAthleteInviteResponseOnePausedDefault)
-}).and(zod.object({
-  "inviteToken": zod.string(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date(),
   "paused": zod.boolean(),
-  "liveTrackerShareToken": zod.string().nullable()
-}))
+  "liveTrackerShareToken": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
 
 
 /**
@@ -1581,6 +1576,7 @@ export const GetAthleteInviteResponse = zod.object({
   "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "photoUrl": zod.string().nullable(),
   "hypeCard": zod.union([zod.object({
   "shareToken": zod.string(),
   "title": zod.string(),
@@ -1655,6 +1651,8 @@ export const updateAthleteInviteBodyTeamNameMax = 160;
 
 export const updateAthleteInviteBodySeasonNameMax = 100;
 
+export const updateAthleteInviteBodyTimezoneMax = 100;
+
 export const updateAthleteInviteBodyPausedDefault = false;
 
 export const UpdateAthleteInviteBody = zod.object({
@@ -1663,6 +1661,7 @@ export const UpdateAthleteInviteBody = zod.object({
   "seasonName": zod.string().min(1).max(updateAthleteInviteBodySeasonNameMax),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "timezone": zod.string().min(1).max(updateAthleteInviteBodyTimezoneMax).describe('IANA timezone identifier used for schedule event alerts.'),
   "trackerProjectId": zod.string().uuid().nullable(),
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
@@ -1671,33 +1670,29 @@ export const UpdateAthleteInviteBody = zod.object({
   "paused": zod.boolean().default(updateAthleteInviteBodyPausedDefault)
 })
 
-export const updateAthleteInviteResponseOneAthleteNameMax = 100;
+export const updateAthleteInviteResponseTimezoneMax = 100;
 
-export const updateAthleteInviteResponseOneTeamNameMax = 160;
 
-export const updateAthleteInviteResponseOneSeasonNameMax = 100;
-
-export const updateAthleteInviteResponseOnePausedDefault = false;
 
 export const UpdateAthleteInviteResponse = zod.object({
-  "athleteName": zod.string().min(1).max(updateAthleteInviteResponseOneAthleteNameMax),
-  "teamName": zod.string().max(updateAthleteInviteResponseOneTeamNameMax),
-  "seasonName": zod.string().min(1).max(updateAthleteInviteResponseOneSeasonNameMax),
+  "inviteToken": zod.string(),
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "timezone": zod.string().max(updateAthleteInviteResponseTimezoneMax).nullable(),
   "trackerProjectId": zod.string().uuid().nullable(),
   "scheduleProjectId": zod.string().uuid().nullable(),
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
-  "paused": zod.boolean().default(updateAthleteInviteResponseOnePausedDefault)
-}).and(zod.object({
-  "inviteToken": zod.string(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date(),
   "paused": zod.boolean(),
-  "liveTrackerShareToken": zod.string().nullable()
-}))
+  "liveTrackerShareToken": zod.string().nullable(),
+  "photoUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
 
 
 /**
@@ -1712,6 +1707,133 @@ export const DeleteAthleteInviteParams = zod.object({
 })
 
 export const DeleteAthleteInviteResponse = zod.void()
+
+
+/**
+ * Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
+ * @summary Get an athlete fan card with a sanitized live scoreboard
+ */
+export const getAthleteFanCardPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteFanCardParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteFanCardPathInviteTokenRegExp)
+})
+
+export const getAthleteFanCardResponseHypeCardOneMediaNameMax = 80;
+
+export const getAthleteFanCardResponseVideosItemTitleMax = 160;
+
+export const getAthleteFanCardResponseVideosItemMediaNameMax = 80;
+
+export const getAthleteFanCardResponseVideosItemJerseyNumberMax = 40;
+
+export const getAthleteFanCardResponseVideosItemPositionMax = 100;
+
+export const getAthleteFanCardResponseVideosMax = 10;
+
+export const getAthleteFanCardResponseStatsOneGamesPlayedMin = 0;
+
+export const getAthleteFanCardResponseStatsOneScoreMin = 0;
+
+export const getAthleteFanCardResponseStatsOneGamesItemDateMax = 30;
+
+export const getAthleteFanCardResponseStatsOneGamesItemOpponentMax = 240;
+
+export const getAthleteFanCardResponseStatsOneGamesItemScoreMin = 0;
+
+export const getAthleteFanCardResponseStatsOneGamesItemOpponentScoreMin = 0;
+
+export const getAthleteFanCardResponseStatsOneGamesItemStatsMinOne = 0;
+
+export const getAthleteFanCardResponseStatsOneGamesItemAthleteStatsMinOne = 0;
+
+export const getAthleteFanCardResponseStatsOneStatsMinOne = 0;
+
+export const getAthleteFanCardResponseRepliesItemReactionMax = 40;
+
+export const getAthleteFanCardResponseRepliesItemMessageMax = 240;
+
+export const getAthleteFanCardResponseLiveScoreboardOneScoreMin = 0;
+
+export const getAthleteFanCardResponseLiveScoreboardOneOpponentScoreMin = 0;
+
+export const getAthleteFanCardResponseLiveScoreboardOneOpponentMax = 200;
+
+export const getAthleteFanCardResponseLiveScoreboardOneAthleteNameMax = 100;
+
+export const getAthleteFanCardResponseLiveScoreboardOneTeamNameMax = 160;
+
+
+
+export const GetAthleteFanCardResponse = zod.object({
+  "inviteToken": zod.string(),
+  "athleteName": zod.string(),
+  "teamName": zod.string(),
+  "seasonName": zod.string(),
+  "seasonEndsAt": zod.coerce.date(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "photoUrl": zod.string().nullable(),
+  "hypeCard": zod.union([zod.object({
+  "shareToken": zod.string(),
+  "title": zod.string(),
+  "mediaName": zod.string().max(getAthleteFanCardResponseHypeCardOneMediaNameMax),
+  "mediaType": zod.enum(['image', 'video']),
+  "posterUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "videos": zod.array(zod.object({
+  "shareToken": zod.string(),
+  "title": zod.string().max(getAthleteFanCardResponseVideosItemTitleMax),
+  "mediaName": zod.string().max(getAthleteFanCardResponseVideosItemMediaNameMax),
+  "jerseyNumber": zod.string().max(getAthleteFanCardResponseVideosItemJerseyNumberMax),
+  "position": zod.string().max(getAthleteFanCardResponseVideosItemPositionMax),
+  "videoUrl": zod.string(),
+  "posterUrl": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})).max(getAthleteFanCardResponseVideosMax),
+  "stats": zod.union([zod.object({
+  "athleteName": zod.string(),
+  "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
+  "gamesPlayed": zod.number().int().min(getAthleteFanCardResponseStatsOneGamesPlayedMin),
+  "score": zod.number().int().min(getAthleteFanCardResponseStatsOneScoreMin),
+  "games": zod.array(zod.object({
+  "date": zod.string().max(getAthleteFanCardResponseStatsOneGamesItemDateMax),
+  "opponent": zod.string().max(getAthleteFanCardResponseStatsOneGamesItemOpponentMax),
+  "score": zod.number().int().min(getAthleteFanCardResponseStatsOneGamesItemScoreMin),
+  "opponentScore": zod.number().int().min(getAthleteFanCardResponseStatsOneGamesItemOpponentScoreMin),
+  "stats": zod.record(zod.string(), zod.number().int().min(getAthleteFanCardResponseStatsOneGamesItemStatsMinOne)),
+  "athleteStats": zod.record(zod.string(), zod.number().int().min(getAthleteFanCardResponseStatsOneGamesItemAthleteStatsMinOne))
+})),
+  "stats": zod.record(zod.string(), zod.number().int().min(getAthleteFanCardResponseStatsOneStatsMinOne)),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
+  "scheduleEvents": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['game', 'practice', 'meeting']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "date": zod.string(),
+  "time": zod.string(),
+  "location": zod.string(),
+  "opponent": zod.string(),
+  "notes": zod.string()
+})),
+  "replies": zod.array(zod.object({
+  "reaction": zod.string().max(getAthleteFanCardResponseRepliesItemReactionMax),
+  "message": zod.string().max(getAthleteFanCardResponseRepliesItemMessageMax).nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "liveScoreboard": zod.union([zod.object({
+  "score": zod.number().min(getAthleteFanCardResponseLiveScoreboardOneScoreMin),
+  "opponentScore": zod.number().min(getAthleteFanCardResponseLiveScoreboardOneOpponentScoreMin),
+  "opponent": zod.string().max(getAthleteFanCardResponseLiveScoreboardOneOpponentMax),
+  "status": zod.enum(['live', 'final']),
+  "period": zod.number().nullish(),
+  "athleteName": zod.string().max(getAthleteFanCardResponseLiveScoreboardOneAthleteNameMax),
+  "teamName": zod.string().max(getAthleteFanCardResponseLiveScoreboardOneTeamNameMax)
+}),zod.null()]),
+  "updatedAt": zod.coerce.date()
+})
 
 
 /**
@@ -1742,6 +1864,255 @@ export const StopAthleteInviteLiveParams = zod.object({
 })
 
 export const StopAthleteInviteLiveResponse = zod.void()
+
+
+/**
+ * @summary Request an owner-only athlete page photo upload
+ */
+export const requestAthleteInvitePhotoUploadUrlPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const RequestAthleteInvitePhotoUploadUrlParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(requestAthleteInvitePhotoUploadUrlPathInviteTokenRegExp)
+})
+
+export const requestAthleteInvitePhotoUploadUrlBodySizeMax = 5242880;
+
+
+
+export const RequestAthleteInvitePhotoUploadUrlBody = zod.object({
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp']),
+  "size": zod.number().int().min(1).max(requestAthleteInvitePhotoUploadUrlBodySizeMax)
+})
+
+export const RequestAthleteInvitePhotoUploadUrlResponse = zod.object({
+  "uploadUrl": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Confirm a completed owner-only athlete page photo upload
+ */
+export const confirmAthleteInvitePhotoPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ConfirmAthleteInvitePhotoParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(confirmAthleteInvitePhotoPathInviteTokenRegExp)
+})
+
+export const confirmAthleteInvitePhotoBodyObjectPathMax = 500;
+
+
+
+export const ConfirmAthleteInvitePhotoBody = zod.object({
+  "objectPath": zod.string().min(1).max(confirmAthleteInvitePhotoBodyObjectPathMax)
+})
+
+export const ConfirmAthleteInvitePhotoResponse = zod.object({
+  "photoUrl": zod.string().nullable()
+})
+
+
+/**
+ * @summary Remove the owner-only athlete page photo
+ */
+export const removeAthleteInvitePhotoPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const RemoveAthleteInvitePhotoParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(removeAthleteInvitePhotoPathInviteTokenRegExp)
+})
+
+export const RemoveAthleteInvitePhotoResponse = zod.void()
+
+
+/**
+ * @summary Serve the current photo for an active athlete invite
+ */
+export const serveAthleteInvitePhotoPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ServeAthleteInvitePhotoParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(serveAthleteInvitePhotoPathInviteTokenRegExp)
+})
+
+export const ServeAthleteInvitePhotoResponse = zod.unknown()
+
+
+/**
+ * @summary Serve an active athlete invite install icon
+ */
+export const serveAthleteInviteIconPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ServeAthleteInviteIconParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(serveAthleteInviteIconPathInviteTokenRegExp),
+  "size": zod.union([zod.literal(192),zod.literal(512)])
+})
+
+export const ServeAthleteInviteIconResponse = zod.unknown()
+
+
+/**
+ * Accepts an optional basePath query containing only safe slash-separated path segments for deployments mounted below the domain root.
+ * @summary Get an install manifest scoped to an active athlete fan page
+ */
+export const getAthleteInviteManifestPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteManifestParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInviteManifestPathInviteTokenRegExp)
+})
+
+export const getAthleteInviteManifestResponseIconsMin = 2;
+
+
+
+export const GetAthleteInviteManifestResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "short_name": zod.string(),
+  "start_url": zod.string(),
+  "scope": zod.string(),
+  "display": zod.enum(['standalone']),
+  "icons": zod.array(zod.object({
+  "src": zod.string(),
+  "sizes": zod.enum(['192x192', '512x512']),
+  "type": zod.literal("image/png"),
+  "purpose": zod.enum(['any', 'maskable', 'any maskable']).optional()
+})).min(getAthleteInviteManifestResponseIconsMin)
+})
+
+
+/**
+ * New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
+ * @summary Follow an active athlete invite anonymously on this device
+ */
+export const createAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const CreateAthleteInviteFanFollowParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(createAthleteInviteFanFollowPathInviteTokenRegExp)
+})
+
+export const createAthleteInviteFanFollowBodyEndpointMax = 2048;
+
+export const createAthleteInviteFanFollowBodyKeysP256dhMin = 40;
+export const createAthleteInviteFanFollowBodyKeysP256dhMax = 256;
+
+
+export const createAthleteInviteFanFollowBodyKeysP256dhRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const createAthleteInviteFanFollowBodyKeysAuthMin = 8;
+export const createAthleteInviteFanFollowBodyKeysAuthMax = 128;
+
+
+export const createAthleteInviteFanFollowBodyKeysAuthRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const CreateAthleteInviteFanFollowBody = zod.object({
+  "endpoint": zod.string().url().max(createAthleteInviteFanFollowBodyEndpointMax),
+  "keys": zod.object({
+  "p256dh": zod.string().min(createAthleteInviteFanFollowBodyKeysP256dhMin).max(createAthleteInviteFanFollowBodyKeysP256dhMax).regex(createAthleteInviteFanFollowBodyKeysP256dhRegExp),
+  "auth": zod.string().min(createAthleteInviteFanFollowBodyKeysAuthMin).max(createAthleteInviteFanFollowBodyKeysAuthMax).regex(createAthleteInviteFanFollowBodyKeysAuthRegExp)
+}),
+  "liveAlerts": zod.boolean(),
+  "eventAlerts": zod.boolean()
+})
+
+export const createAthleteInviteFanFollowResponseTwoFollowTokenMin = 40;
+export const createAthleteInviteFanFollowResponseTwoFollowTokenMax = 100;
+
+
+
+export const CreateAthleteInviteFanFollowResponse = zod.object({
+  "liveAlerts": zod.boolean(),
+  "eventAlerts": zod.boolean(),
+  "active": zod.boolean()
+}).and(zod.object({
+  "followToken": zod.string().min(createAthleteInviteFanFollowResponseTwoFollowTokenMin).max(createAthleteInviteFanFollowResponseTwoFollowTokenMax)
+}))
+
+
+/**
+ * A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
+ * @summary Get device follow preferences and active status
+ */
+export const getAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteFanFollowParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInviteFanFollowPathInviteTokenRegExp)
+})
+
+export const getAthleteInviteFanFollowHeaderXFanFollowTokenMin = 40;
+export const getAthleteInviteFanFollowHeaderXFanFollowTokenMax = 100;
+
+
+
+export const GetAthleteInviteFanFollowHeader = zod.object({
+  "X-Fan-Follow-Token": zod.string().min(getAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(getAthleteInviteFanFollowHeaderXFanFollowTokenMax)
+})
+
+export const GetAthleteInviteFanFollowResponse = zod.object({
+  "liveAlerts": zod.boolean(),
+  "eventAlerts": zod.boolean(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
+ * @summary Update alert preferences using the device follow token
+ */
+export const updateAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const UpdateAthleteInviteFanFollowParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(updateAthleteInviteFanFollowPathInviteTokenRegExp)
+})
+
+export const updateAthleteInviteFanFollowHeaderXFanFollowTokenMin = 40;
+export const updateAthleteInviteFanFollowHeaderXFanFollowTokenMax = 100;
+
+
+
+export const UpdateAthleteInviteFanFollowHeader = zod.object({
+  "X-Fan-Follow-Token": zod.string().min(updateAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(updateAthleteInviteFanFollowHeaderXFanFollowTokenMax)
+})
+
+export const UpdateAthleteInviteFanFollowBody = zod.object({
+  "liveAlerts": zod.boolean(),
+  "eventAlerts": zod.boolean()
+})
+
+export const UpdateAthleteInviteFanFollowResponse = zod.object({
+  "liveAlerts": zod.boolean(),
+  "eventAlerts": zod.boolean(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Remove this device follow
+ */
+export const deleteAthleteInviteFanFollowPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const DeleteAthleteInviteFanFollowParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(deleteAthleteInviteFanFollowPathInviteTokenRegExp)
+})
+
+export const deleteAthleteInviteFanFollowHeaderXFanFollowTokenMin = 40;
+export const deleteAthleteInviteFanFollowHeaderXFanFollowTokenMax = 100;
+
+
+
+export const DeleteAthleteInviteFanFollowHeader = zod.object({
+  "X-Fan-Follow-Token": zod.string().min(deleteAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(deleteAthleteInviteFanFollowHeaderXFanFollowTokenMax)
+})
+
+export const DeleteAthleteInviteFanFollowResponse = zod.void()
 
 
 /**

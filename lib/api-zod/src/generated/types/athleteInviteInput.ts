@@ -22,6 +22,12 @@ export interface AthleteInviteInput {
   seasonName: string;
   seasonEndsAt: Date;
   sport: AthleteInviteInputSport;
+  /**
+     * IANA timezone identifier used for schedule event alerts.
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone: string;
   /** @nullable */
   trackerProjectId: string | null;
   /** @nullable */

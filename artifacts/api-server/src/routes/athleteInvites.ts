@@ -7,6 +7,8 @@ import {
   DeleteAthleteInviteParams,
   GetAthleteInviteParams,
   GetAthleteInviteResponse,
+  GetAthleteFanCardParams,
+  GetAthleteFanCardResponse,
   ListAthleteInvitesResponse,
   StartAthleteInviteLiveParams,
   StartAthleteInviteLiveResponse,
@@ -28,6 +30,7 @@ import {
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
+import { isIanaTimezone } from "../lib/timezone";
 
 const router: IRouter = Router();
 
@@ -41,6 +44,7 @@ function ownedInviteResponse(invite: InviteRow) {
     seasonName: invite.seasonName,
     seasonEndsAt: invite.seasonEndsAt,
     sport: invite.sport,
+    timezone: invite.timezone,
     trackerProjectId: invite.trackerProjectId,
     scheduleProjectId: invite.scheduleProjectId,
     showHypeCard: invite.showHypeCard,
@@ -48,6 +52,9 @@ function ownedInviteResponse(invite: InviteRow) {
     showSchedule: invite.showSchedule,
     paused: invite.paused,
     liveTrackerShareToken: invite.liveTrackerShareToken,
+    photoUrl: invite.photoObjectPath
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
+      : null,
     createdAt: invite.createdAt,
     updatedAt: invite.updatedAt,
   };
@@ -225,6 +232,125 @@ function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
   };
 }
 
+async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
+  const [trackerProject, scheduleProject, latestImages, videos, liveShare] = await Promise.all([
+    invite.showStats && invite.trackerProjectId
+      ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
+      : invite.showStats
+        ? findFallbackTrackerProject(invite.ownerClerkUserId, invite.sport, "final")
+        : null,
+    invite.showSchedule && invite.scheduleProjectId
+      ? validateProject(invite.scheduleProjectId, invite.ownerClerkUserId, "schedule")
+      : null,
+    invite.showHypeCard
+      ? db.select().from(hypeCardSharesTable).where(and(
+        eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+        eq(hypeCardSharesTable.shareMode, "card"),
+        eq(hypeCardSharesTable.mediaType, "image"),
+        isNull(hypeCardSharesTable.revokedAt),
+        gt(hypeCardSharesTable.expiresAt, new Date()),
+      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(1)
+      : Promise.resolve([]),
+    invite.showHypeCard
+      ? db.select().from(hypeCardSharesTable).where(and(
+        eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+        eq(hypeCardSharesTable.shareMode, "card"),
+        eq(hypeCardSharesTable.mediaType, "video"),
+        isNull(hypeCardSharesTable.revokedAt),
+        gt(hypeCardSharesTable.expiresAt, new Date()),
+      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(10)
+      : Promise.resolve([]),
+    invite.liveTrackerShareToken
+      ? db.select().from(statTrackerSharesTable).where(and(
+        eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+        eq(statTrackerSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+        gt(statTrackerSharesTable.expiresAt, new Date()),
+      )).then(([share]) => share ?? null)
+      : Promise.resolve(null),
+  ]);
+  const latestImage = latestImages[0] ?? null;
+  const latestVideo = videos[0] ?? null;
+  const replies = videos.length
+    ? await db.select().from(hypeCardShareRepliesTable).where(
+      inArray(hypeCardShareRepliesTable.shareId, videos.map((share) => share.id)),
+    ).orderBy(desc(hypeCardShareRepliesTable.createdAt)).limit(50)
+    : [];
+  const stats = trackerProject && isHypeCardSport(invite.sport)
+    ? computeHypeCardShareStats(
+      trackerProject.project,
+      invite.athleteName,
+      invite.sport,
+      trackerProject.updatedAt,
+    )
+    : null;
+  const scheduleEvents = scheduleProject ? cleanScheduleEvents(scheduleProject.project) : [];
+  const updatedAt = new Date(Math.max(
+    invite.updatedAt.getTime(),
+    trackerProject?.updatedAt.getTime() ?? 0,
+    scheduleProject?.updatedAt.getTime() ?? 0,
+    latestImage?.createdAt.getTime() ?? 0,
+    latestVideo?.createdAt.getTime() ?? 0,
+  ));
+  const liveGame = liveShare
+    && liveShare.game
+    && typeof liveShare.game === "object"
+    && (liveShare.game as { status?: unknown }).status !== "final"
+    ? liveShare.game as Record<string, unknown>
+    : null;
+  const liveScoreboard = liveGame && typeof liveGame.score === "number" && Number.isFinite(liveGame.score)
+    && liveGame.score >= 0 && typeof liveGame.opponentScore === "number"
+    && Number.isFinite(liveGame.opponentScore) && liveGame.opponentScore >= 0
+    ? {
+      score: liveGame.score,
+      opponentScore: liveGame.opponentScore,
+      opponent: typeof liveGame.opponent === "string" ? liveGame.opponent.slice(0, 200) : "",
+      status: "live" as const,
+      ...(typeof liveGame.period === "number" && Number.isInteger(liveGame.period) && liveGame.period > 0
+        ? { period: liveGame.period }
+        : {}),
+      athleteName: invite.athleteName,
+      teamName: invite.teamName,
+    }
+    : null;
+
+  return {
+    inviteToken: invite.publicToken,
+    athleteName: invite.athleteName,
+    teamName: invite.teamName,
+    seasonName: invite.seasonName,
+    seasonEndsAt: invite.seasonEndsAt,
+    sport: invite.sport,
+    photoUrl: invite.photoObjectPath && (!invite.paused || isOwner)
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
+      : null,
+    hypeCard: latestImage ? {
+      shareToken: latestImage.publicToken,
+      title: athleteMediaName(latestImage),
+      mediaName: athleteMediaName(latestImage),
+      mediaType: "image" as const,
+      posterUrl: latestImage.videoObjectPath
+        ? `/api/hype-card-shares/${latestImage.publicToken}/media/video`
+        : null,
+      createdAt: latestImage.createdAt,
+    } : null,
+    videos: videos.map(athleteVideoResponse),
+    stats,
+    scheduleEvents,
+    replies: replies.map((reply) => ({
+      reaction: reply.reaction,
+      message: reply.message,
+      createdAt: reply.createdAt,
+    })),
+    liveGame: liveShare && liveGame ? {
+      shareToken: liveShare.id,
+      gameId: liveShare.gameId,
+      expiresAt: liveShare.expiresAt,
+    } : null,
+    liveScoreboard,
+    updatedAt,
+  };
+}
+
 router.get("/athlete-invites", requireAuth, async (_req, res): Promise<void> => {
   const invites = await db
     .select()
@@ -236,7 +362,7 @@ router.get("/athlete-invites", requireAuth, async (_req, res): Promise<void> => 
 
 router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateAthleteInviteBody.safeParse(req.body);
-  if (!parsed.success) {
+  if (!parsed.success || !isIanaTimezone(parsed.data?.timezone)) {
     res.status(400).json({ error: "Choose an athlete, season, and page details." });
     return;
   }
@@ -283,107 +409,31 @@ router.get("/athlete-invites/:inviteToken", async (req, res): Promise<void> => {
     return;
   }
 
-  const [trackerProject, scheduleProject, latestImages, videos, liveShare] = await Promise.all([
-    invite.showStats && invite.trackerProjectId
-      ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
-      : invite.showStats
-        ? findFallbackTrackerProject(invite.ownerClerkUserId, invite.sport, "final")
-      : null,
-    invite.showSchedule && invite.scheduleProjectId
-      ? validateProject(invite.scheduleProjectId, invite.ownerClerkUserId, "schedule")
-      : null,
-    invite.showHypeCard
-      ? db.select().from(hypeCardSharesTable).where(and(
-        eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
-        eq(hypeCardSharesTable.shareMode, "card"),
-        eq(hypeCardSharesTable.mediaType, "image"),
-        isNull(hypeCardSharesTable.revokedAt),
-        gt(hypeCardSharesTable.expiresAt, new Date()),
-      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(1)
-      : Promise.resolve([]),
-    invite.showHypeCard
-      ? db.select().from(hypeCardSharesTable).where(and(
-        eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
-        eq(hypeCardSharesTable.shareMode, "card"),
-        eq(hypeCardSharesTable.mediaType, "video"),
-        isNull(hypeCardSharesTable.revokedAt),
-        gt(hypeCardSharesTable.expiresAt, new Date()),
-      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(10)
-      : Promise.resolve([]),
-    invite.liveTrackerShareToken
-      ? db.select().from(statTrackerSharesTable).where(and(
-        eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
-        gt(statTrackerSharesTable.expiresAt, new Date()),
-      )).then(([share]) => share ?? null)
-      : Promise.resolve(null),
-  ]);
-  const latestImage = latestImages[0] ?? null;
-  const latestVideo = videos[0] ?? null;
-  const replies = videos.length
-    ? await db.select().from(hypeCardShareRepliesTable).where(
-      inArray(hypeCardShareRepliesTable.shareId, videos.map((share) => share.id)),
-    ).orderBy(desc(hypeCardShareRepliesTable.createdAt)).limit(50)
-    : [];
-  const stats = trackerProject && isHypeCardSport(invite.sport)
-    ? computeHypeCardShareStats(
-      trackerProject.project,
-      invite.athleteName,
-      invite.sport,
-      trackerProject.updatedAt,
-    )
-    : null;
-  const scheduleEvents = scheduleProject ? cleanScheduleEvents(scheduleProject.project) : [];
-  const updatedAt = new Date(Math.max(
-    invite.updatedAt.getTime(),
-    trackerProject?.updatedAt.getTime() ?? 0,
-    scheduleProject?.updatedAt.getTime() ?? 0,
-    latestImage?.createdAt.getTime() ?? 0,
-    latestVideo?.createdAt.getTime() ?? 0,
-  ));
+  res.json(GetAthleteInviteResponse.parse(await publicAthleteInviteData(invite, isOwner)));
+});
 
-  res.json(GetAthleteInviteResponse.parse({
-    inviteToken: invite.publicToken,
-    athleteName: invite.athleteName,
-    teamName: invite.teamName,
-    seasonName: invite.seasonName,
-    seasonEndsAt: invite.seasonEndsAt,
-    sport: invite.sport,
-    hypeCard: latestImage ? {
-      shareToken: latestImage.publicToken,
-      title: athleteMediaName(latestImage),
-      mediaName: athleteMediaName(latestImage),
-      mediaType: "image",
-      posterUrl: latestImage.videoObjectPath
-        ? `/api/hype-card-shares/${latestImage.publicToken}/media/video`
-        : null,
-      createdAt: latestImage.createdAt,
-    } : null,
-    videos: videos.map(athleteVideoResponse),
-    stats,
-    scheduleEvents,
-    replies: replies.map((reply) => ({
-      reaction: reply.reaction,
-      message: reply.message,
-      createdAt: reply.createdAt,
-    })),
-    liveGame: liveShare
-      && liveShare.game
-      && typeof liveShare.game === "object"
-      && (liveShare.game as { status?: unknown }).status !== "final"
-      ? {
-        shareToken: liveShare.id,
-        gameId: liveShare.gameId,
-        expiresAt: liveShare.expiresAt,
-      }
-      : null,
-    updatedAt,
-  }));
+router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> => {
+  const params = GetAthleteFanCardParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Athlete invite not found" });
+    return;
+  }
+  const [invite] = await db.select().from(athleteInvitesTable)
+    .where(eq(athleteInvitesTable.publicToken, params.data.inviteToken)).limit(1);
+  if (!invite || invite.paused
+    || !(await isAccountActive(invite.ownerClerkUserId))) {
+    res.status(404).json({ error: "Athlete invite not found" });
+    return;
+  }
+  const { liveGame: _liveGame, ...card } = await publicAthleteInviteData(invite, false);
+  void _liveGame;
+  res.json(GetAthleteFanCardResponse.parse(card));
 });
 
 router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateAthleteInviteParams.safeParse(req.params);
   const parsed = UpdateAthleteInviteBody.safeParse(req.body);
-  if (!params.success || !parsed.success) {
+  if (!params.success || !parsed.success || !isIanaTimezone(parsed.data?.timezone)) {
     res.status(400).json({ error: "Choose an athlete, season, and page details." });
     return;
   }
@@ -523,6 +573,9 @@ router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res):
     liveTrackerShareToken: share.id,
     updatedAt: new Date(),
   }).where(eq(athleteInvitesTable.id, invite.id));
+  void import("./athleteInviteFeatures").then(({ notifyStartedAthleteInviteLive }) => (
+    notifyStartedAthleteInviteLive(invite.id, share.id, game.id)
+  )).catch((error) => req.log.error({ err: error }, "Unable to dispatch Athlete Hype Page live alerts"));
   res.status(201).json(StartAthleteInviteLiveResponse.parse({
     shareToken: share.id,
     gameId: share.gameId,

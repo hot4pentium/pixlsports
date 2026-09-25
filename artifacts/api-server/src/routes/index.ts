@@ -13,6 +13,7 @@ import meetingWorkspacesRouter from "./meetingWorkspaces";
 import statTrackerSharesRouter from "./statTrackerShares";
 import webPushRouter from "./webPush";
 import athleteInvitesRouter from "./athleteInvites";
+import athleteInviteFeaturesRouter from "./athleteInviteFeatures";
 import supporterActiveGameRouter from "./supporterActiveGame";
 
 const router: IRouter = Router();
@@ -24,6 +25,7 @@ router.use(projectsRouter);
 router.use(scheduleSharesRouter);
 router.use(hypeCardSharesRouter);
 router.use(athleteInvitesRouter);
+router.use(athleteInviteFeaturesRouter);
 router.use(storageRouter);
 router.use(accountAccessRouter);
 router.use(supporterPhotoRouter);

@@ -24,8 +24,17 @@ import type {
   AccountAccessInput,
   AccountLifecycle,
   AccountUsageConsumeInput,
+  AthleteInviteFanFollow,
+  AthleteInviteFanFollowCreated,
+  AthleteInviteFanFollowInput,
+  AthleteInviteFanFollowPreferences,
   AthleteInviteInput,
   AthleteInviteLiveSession,
+  AthleteInviteManifest,
+  AthleteInvitePhoto,
+  AthleteInvitePhotoConfirmInput,
+  AthleteInvitePhotoUpload,
+  AthleteInvitePhotoUploadInput,
   BadRequestResponse,
   BillingWebhookResponse,
   ChecklistConflict,
@@ -70,6 +79,7 @@ import type {
   ProjectInput,
   ProjectList,
   ProjectUpdate,
+  PublicAthleteFanCard,
   PublicAthleteInvite,
   ScheduleShare,
   ScheduleShareInput,
@@ -2215,6 +2225,84 @@ export const useDeleteAthleteInvite = <TError = ErrorType<UnauthorizedResponse |
       return useMutation(getDeleteAthleteInviteMutationOptions(options));
     }
 
+export const getGetAthleteFanCardUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/fan`
+}
+
+/**
+ * Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
+ * @summary Get an athlete fan card with a sanitized live scoreboard
+ */
+export const getAthleteFanCard = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicAthleteFanCard> => {
+
+  return customFetch<PublicAthleteFanCard>(getGetAthleteFanCardUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteFanCardQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/fan`
+    ] as const;
+    }
+
+
+export const getGetAthleteFanCardQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteFanCard>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteFanCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteFanCardQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteFanCard>>> = ({ signal }) => getAthleteFanCard(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteFanCard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteFanCardQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteFanCard>>>
+export type GetAthleteFanCardQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get an athlete fan card with a sanitized live scoreboard
+ */
+
+export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthleteFanCard>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteFanCard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteFanCardQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getStartAthleteInviteLiveUrl = (inviteToken: string,) => {
 
 
@@ -2361,6 +2449,827 @@ export const useStopAthleteInviteLive = <TError = ErrorType<UnauthorizedResponse
         TContext
       > => {
       return useMutation(getStopAthleteInviteLiveMutationOptions(options));
+    }
+
+export const getRequestAthleteInvitePhotoUploadUrlUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/photo/upload-url`
+}
+
+/**
+ * @summary Request an owner-only athlete page photo upload
+ */
+export const requestAthleteInvitePhotoUploadUrl = async (inviteToken: string,
+    athleteInvitePhotoUploadInput: AthleteInvitePhotoUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInvitePhotoUpload> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInvitePhotoUpload>(getRequestAthleteInvitePhotoUploadUrlUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInvitePhotoUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestAthleteInvitePhotoUploadUrlMutationKey = () => ['requestAthleteInvitePhotoUploadUrl'] as const;
+
+export const getRequestAthleteInvitePhotoUploadUrlMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAthleteInvitePhotoUploadUrl>>, TError,RequestAthleteInvitePhotoUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestAthleteInvitePhotoUploadUrl>>, TError,RequestAthleteInvitePhotoUploadUrlMutationVariables, TContext> => {
+
+const mutationKey = getRequestAthleteInvitePhotoUploadUrlMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestAthleteInvitePhotoUploadUrl>>, RequestAthleteInvitePhotoUploadUrlMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  requestAthleteInvitePhotoUploadUrl(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestAthleteInvitePhotoUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestAthleteInvitePhotoUploadUrl>>>
+    export type RequestAthleteInvitePhotoUploadUrlMutationBody = BodyType<AthleteInvitePhotoUploadInput>
+    export type RequestAthleteInvitePhotoUploadUrlMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type RequestAthleteInvitePhotoUploadUrlMutationVariables = {inviteToken: string;data: BodyType<AthleteInvitePhotoUploadInput>}
+
+    /**
+ * @summary Request an owner-only athlete page photo upload
+ */
+export const useRequestAthleteInvitePhotoUploadUrl = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestAthleteInvitePhotoUploadUrl>>, TError,RequestAthleteInvitePhotoUploadUrlMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestAthleteInvitePhotoUploadUrl>>,
+        TError,
+        RequestAthleteInvitePhotoUploadUrlMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestAthleteInvitePhotoUploadUrlMutationOptions(options));
+    }
+
+export const getConfirmAthleteInvitePhotoUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/photo`
+}
+
+/**
+ * @summary Confirm a completed owner-only athlete page photo upload
+ */
+export const confirmAthleteInvitePhoto = async (inviteToken: string,
+    athleteInvitePhotoConfirmInput: AthleteInvitePhotoConfirmInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInvitePhoto> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInvitePhoto>(getConfirmAthleteInvitePhotoUrl(inviteToken),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInvitePhotoConfirmInput)
+  }
+);}
+
+
+
+
+
+export const getConfirmAthleteInvitePhotoMutationKey = () => ['confirmAthleteInvitePhoto'] as const;
+
+export const getConfirmAthleteInvitePhotoMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAthleteInvitePhoto>>, TError,ConfirmAthleteInvitePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAthleteInvitePhoto>>, TError,ConfirmAthleteInvitePhotoMutationVariables, TContext> => {
+
+const mutationKey = getConfirmAthleteInvitePhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAthleteInvitePhoto>>, ConfirmAthleteInvitePhotoMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  confirmAthleteInvitePhoto(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAthleteInvitePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAthleteInvitePhoto>>>
+    export type ConfirmAthleteInvitePhotoMutationBody = BodyType<AthleteInvitePhotoConfirmInput>
+    export type ConfirmAthleteInvitePhotoMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type ConfirmAthleteInvitePhotoMutationVariables = {inviteToken: string;data: BodyType<AthleteInvitePhotoConfirmInput>}
+
+    /**
+ * @summary Confirm a completed owner-only athlete page photo upload
+ */
+export const useConfirmAthleteInvitePhoto = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAthleteInvitePhoto>>, TError,ConfirmAthleteInvitePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAthleteInvitePhoto>>,
+        TError,
+        ConfirmAthleteInvitePhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmAthleteInvitePhotoMutationOptions(options));
+    }
+
+export const getRemoveAthleteInvitePhotoUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/photo`
+}
+
+/**
+ * @summary Remove the owner-only athlete page photo
+ */
+export const removeAthleteInvitePhoto = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRemoveAthleteInvitePhotoUrl(inviteToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveAthleteInvitePhotoMutationKey = () => ['removeAthleteInvitePhoto'] as const;
+
+export const getRemoveAthleteInvitePhotoMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeAthleteInvitePhoto>>, TError,RemoveAthleteInvitePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeAthleteInvitePhoto>>, TError,RemoveAthleteInvitePhotoMutationVariables, TContext> => {
+
+const mutationKey = getRemoveAthleteInvitePhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeAthleteInvitePhoto>>, RemoveAthleteInvitePhotoMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  removeAthleteInvitePhoto(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveAthleteInvitePhotoMutationResult = NonNullable<Awaited<ReturnType<typeof removeAthleteInvitePhoto>>>
+
+    export type RemoveAthleteInvitePhotoMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type RemoveAthleteInvitePhotoMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Remove the owner-only athlete page photo
+ */
+export const useRemoveAthleteInvitePhoto = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeAthleteInvitePhoto>>, TError,RemoveAthleteInvitePhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeAthleteInvitePhoto>>,
+        TError,
+        RemoveAthleteInvitePhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveAthleteInvitePhotoMutationOptions(options));
+    }
+
+export const getServeAthleteInvitePhotoUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/photo/image`
+}
+
+/**
+ * @summary Serve the current photo for an active athlete invite
+ */
+export const serveAthleteInvitePhoto = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getServeAthleteInvitePhotoUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getServeAthleteInvitePhotoQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/photo/image`
+    ] as const;
+    }
+
+
+export const getServeAthleteInvitePhotoQueryOptions = <TData = Awaited<ReturnType<typeof serveAthleteInvitePhoto>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof serveAthleteInvitePhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getServeAthleteInvitePhotoQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof serveAthleteInvitePhoto>>> = ({ signal }) => serveAthleteInvitePhoto(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof serveAthleteInvitePhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ServeAthleteInvitePhotoQueryResult = NonNullable<Awaited<ReturnType<typeof serveAthleteInvitePhoto>>>
+export type ServeAthleteInvitePhotoQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Serve the current photo for an active athlete invite
+ */
+
+export function useServeAthleteInvitePhoto<TData = Awaited<ReturnType<typeof serveAthleteInvitePhoto>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof serveAthleteInvitePhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getServeAthleteInvitePhotoQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getServeAthleteInviteIconUrl = (inviteToken: string,
+    size: 192 | 512,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/icon/${size}.png`
+}
+
+/**
+ * @summary Serve an active athlete invite install icon
+ */
+export const serveAthleteInviteIcon = async (inviteToken: string,
+    size: 192 | 512, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getServeAthleteInviteIconUrl(inviteToken,size),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getServeAthleteInviteIconQueryKey = (inviteToken: string,
+    size: 192 | 512,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/icon/${size}.png`
+    ] as const;
+    }
+
+
+export const getServeAthleteInviteIconQueryOptions = <TData = Awaited<ReturnType<typeof serveAthleteInviteIcon>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string,
+    size: 192 | 512, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof serveAthleteInviteIcon>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getServeAthleteInviteIconQueryKey(inviteToken,size);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof serveAthleteInviteIcon>>> = ({ signal }) => serveAthleteInviteIcon(inviteToken,size, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined && size !== null && size !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof serveAthleteInviteIcon>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ServeAthleteInviteIconQueryResult = NonNullable<Awaited<ReturnType<typeof serveAthleteInviteIcon>>>
+export type ServeAthleteInviteIconQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Serve an active athlete invite install icon
+ */
+
+export function useServeAthleteInviteIcon<TData = Awaited<ReturnType<typeof serveAthleteInviteIcon>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string,
+    size: 192 | 512, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof serveAthleteInviteIcon>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getServeAthleteInviteIconQueryOptions(inviteToken,size,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAthleteInviteManifestUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/manifest.webmanifest`
+}
+
+/**
+ * Accepts an optional basePath query containing only safe slash-separated path segments for deployments mounted below the domain root.
+ * @summary Get an install manifest scoped to an active athlete fan page
+ */
+export const getAthleteInviteManifest = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteManifest> => {
+
+  return customFetch<AthleteInviteManifest>(getGetAthleteInviteManifestUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteManifestQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/manifest.webmanifest`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteManifestQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInviteManifest>>, TError = ErrorType<BadRequestResponse | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteManifest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteManifestQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInviteManifest>>> = ({ signal }) => getAthleteInviteManifest(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteManifest>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteManifestQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInviteManifest>>>
+export type GetAthleteInviteManifestQueryError = ErrorType<BadRequestResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get an install manifest scoped to an active athlete fan page
+ */
+
+export function useGetAthleteInviteManifest<TData = Awaited<ReturnType<typeof getAthleteInviteManifest>>, TError = ErrorType<BadRequestResponse | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteManifest>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteManifestQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAthleteInviteFanFollowUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/follows`
+}
+
+/**
+ * New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
+ * @summary Follow an active athlete invite anonymously on this device
+ */
+export const createAthleteInviteFanFollow = async (inviteToken: string,
+    athleteInviteFanFollowInput: AthleteInviteFanFollowInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanFollowCreated> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInviteFanFollowCreated>(getCreateAthleteInviteFanFollowUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteFanFollowInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAthleteInviteFanFollowMutationKey = () => ['createAthleteInviteFanFollow'] as const;
+
+export const getCreateAthleteInviteFanFollowMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteFanFollow>>, TError,CreateAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteFanFollow>>, TError,CreateAthleteInviteFanFollowMutationVariables, TContext> => {
+
+const mutationKey = getCreateAthleteInviteFanFollowMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAthleteInviteFanFollow>>, CreateAthleteInviteFanFollowMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  createAthleteInviteFanFollow(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAthleteInviteFanFollowMutationResult = NonNullable<Awaited<ReturnType<typeof createAthleteInviteFanFollow>>>
+    export type CreateAthleteInviteFanFollowMutationBody = BodyType<AthleteInviteFanFollowInput>
+    export type CreateAthleteInviteFanFollowMutationError = ErrorType<BadRequestResponse | NotFoundResponse | Error>
+    export type CreateAthleteInviteFanFollowMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteFanFollowInput>}
+
+    /**
+ * @summary Follow an active athlete invite anonymously on this device
+ */
+export const useCreateAthleteInviteFanFollow = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteFanFollow>>, TError,CreateAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAthleteInviteFanFollow>>,
+        TError,
+        CreateAthleteInviteFanFollowMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAthleteInviteFanFollowMutationOptions(options));
+    }
+
+export const getGetAthleteInviteFanFollowUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/follows/me`
+}
+
+/**
+ * A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
+ * @summary Get device follow preferences and active status
+ */
+export const getAthleteInviteFanFollow = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanFollow> => {
+
+  return customFetch<AthleteInviteFanFollow>(getGetAthleteInviteFanFollowUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteFanFollowQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/follows/me`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteFanFollowQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInviteFanFollow>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteFanFollow>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteFanFollowQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInviteFanFollow>>> = ({ signal }) => getAthleteInviteFanFollow(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteFanFollow>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteFanFollowQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInviteFanFollow>>>
+export type GetAthleteInviteFanFollowQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get device follow preferences and active status
+ */
+
+export function useGetAthleteInviteFanFollow<TData = Awaited<ReturnType<typeof getAthleteInviteFanFollow>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteFanFollow>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteFanFollowQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAthleteInviteFanFollowUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/follows/me`
+}
+
+/**
+ * Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
+ * @summary Update alert preferences using the device follow token
+ */
+export const updateAthleteInviteFanFollow = async (inviteToken: string,
+    athleteInviteFanFollowPreferences: AthleteInviteFanFollowPreferences, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteFanFollow> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInviteFanFollow>(getUpdateAthleteInviteFanFollowUrl(inviteToken),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteFanFollowPreferences)
+  }
+);}
+
+
+
+
+
+export const getUpdateAthleteInviteFanFollowMutationKey = () => ['updateAthleteInviteFanFollow'] as const;
+
+export const getUpdateAthleteInviteFanFollowMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>, TError,UpdateAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>, TError,UpdateAthleteInviteFanFollowMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAthleteInviteFanFollowMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>, UpdateAthleteInviteFanFollowMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  updateAthleteInviteFanFollow(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAthleteInviteFanFollowMutationResult = NonNullable<Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>>
+    export type UpdateAthleteInviteFanFollowMutationBody = BodyType<AthleteInviteFanFollowPreferences>
+    export type UpdateAthleteInviteFanFollowMutationError = ErrorType<BadRequestResponse | NotFoundResponse>
+    export type UpdateAthleteInviteFanFollowMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteFanFollowPreferences>}
+
+    /**
+ * @summary Update alert preferences using the device follow token
+ */
+export const useUpdateAthleteInviteFanFollow = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>, TError,UpdateAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAthleteInviteFanFollow>>,
+        TError,
+        UpdateAthleteInviteFanFollowMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAthleteInviteFanFollowMutationOptions(options));
+    }
+
+export const getDeleteAthleteInviteFanFollowUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/follows/me`
+}
+
+/**
+ * @summary Remove this device follow
+ */
+export const deleteAthleteInviteFanFollow = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAthleteInviteFanFollowUrl(inviteToken),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAthleteInviteFanFollowMutationKey = () => ['deleteAthleteInviteFanFollow'] as const;
+
+export const getDeleteAthleteInviteFanFollowMutationOptions = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInviteFanFollow>>, TError,DeleteAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInviteFanFollow>>, TError,DeleteAthleteInviteFanFollowMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAthleteInviteFanFollowMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAthleteInviteFanFollow>>, DeleteAthleteInviteFanFollowMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  deleteAthleteInviteFanFollow(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAthleteInviteFanFollowMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAthleteInviteFanFollow>>>
+
+    export type DeleteAthleteInviteFanFollowMutationError = ErrorType<NotFoundResponse>
+    export type DeleteAthleteInviteFanFollowMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Remove this device follow
+ */
+export const useDeleteAthleteInviteFanFollow = <TError = ErrorType<NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAthleteInviteFanFollow>>, TError,DeleteAthleteInviteFanFollowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAthleteInviteFanFollow>>,
+        TError,
+        DeleteAthleteInviteFanFollowMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAthleteInviteFanFollowMutationOptions(options));
     }
 
 export const getListHypeCardSharesUrl = (params?: ListHypeCardSharesParams,) => {

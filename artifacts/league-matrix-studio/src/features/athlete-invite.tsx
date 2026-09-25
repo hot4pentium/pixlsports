@@ -50,6 +50,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { HypeCardReplyComposer } from './public-hype-card';
+import { FanCardPhotoManager } from './fan-card-photo-manager';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
@@ -75,6 +76,10 @@ function inviteUrl(token: string) {
     ? 'https://pixlsports.com'
     : window.location.origin;
   return `${origin}${basePath}/player/${token}`;
+}
+
+function fanCardUrl(token: string) {
+  return inviteUrl(token).replace(`/player/${token}`, `/fan/${token}`);
 }
 
 function seasonEndIso(value: string) {
@@ -112,6 +117,7 @@ export function AthleteInviteManager() {
   const [teamName, setTeamName] = useState(profile.teamName);
   const [seasonName, setSeasonName] = useState(() => `Season ${new Date().getFullYear()}`);
   const [seasonEndsAt, setSeasonEndsAt] = useState(defaultSeasonEnd);
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   const [sport, setSport] = useState<Exclude<Sport, 'softball'>>(defaultSport);
   const [trackerProjectId, setTrackerProjectId] = useState('none');
   const [scheduleProjectId, setScheduleProjectId] = useState('none');
@@ -152,6 +158,7 @@ export function AthleteInviteManager() {
     setTeamName(existing.teamName);
     setSeasonName(existing.seasonName);
     setSeasonEndsAt(inputDate(existing.seasonEndsAt));
+    setTimezone(existing.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
     setSport(existing.sport);
     setTrackerProjectId(existing.trackerProjectId ?? 'none');
     setScheduleProjectId(existing.scheduleProjectId ?? 'none');
@@ -180,6 +187,7 @@ export function AthleteInviteManager() {
     teamName: teamName.trim(),
     seasonName: seasonName.trim(),
     seasonEndsAt: seasonEndIso(seasonEndsAt),
+    timezone,
     sport,
     trackerProjectId: trackerProjectId === 'none' || !trackerProjects.some((project) => project.id === trackerProjectId)
       ? null
@@ -213,13 +221,13 @@ export function AthleteInviteManager() {
   };
   const copy = async () => {
     if (!existing) return;
-    await navigator.clipboard.writeText(inviteUrl(existing.inviteToken));
-    setNotice('Invite URL copied.');
+    await navigator.clipboard.writeText(fanCardUrl(existing.inviteToken));
+    setNotice('Fan Hype Card URL copied.');
   };
   const share = async () => {
     if (!existing) return;
-    const url = inviteUrl(existing.inviteToken);
-    if (navigator.share) await navigator.share({ title: `${existing.athleteName} athlete page`, text: `Follow ${existing.athleteName}'s season.`, url });
+    const url = fanCardUrl(existing.inviteToken);
+    if (navigator.share) await navigator.share({ title: `${existing.athleteName} Hype Card`, text: `Follow ${existing.athleteName}'s season.`, url });
     else await copy();
   };
   const toggleAvailability = async () => {
@@ -332,9 +340,9 @@ export function AthleteInviteManager() {
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8">
         <div className="flex flex-col justify-between gap-5 border-l-4 border-primary pl-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Page</p>
+           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Card</p>
             <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
-            <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Post video moments to one evolving Hype Page with finalized stats, schedule, replies, and optional Game Day Live.</p>
+             <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, new highlights, finalized stats, and the next event. The original Hype Page stays available too.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
@@ -375,15 +383,15 @@ export function AthleteInviteManager() {
             )}
           </div>
           {existing ? (
-            <Link
-              href={`/player/${existing.inviteToken}`}
-              className="border border-primary bg-primary/10 p-5 text-left transition-colors hover:bg-primary/15"
-              data-testid="card-create-hype-page"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-              <h2 className="mt-2 font-display text-3xl uppercase">Access your Hype Page</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Open the stable page and manage it there.</p>
-            </Link>
+            <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
+              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Share with fans</p>
+              <h2 className="mt-2 font-display text-3xl uppercase">Living Hype Card</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable card for the athlete’s season. The original Hype Page remains available separately.</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href={`/fan/${existing.inviteToken}`} className="inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-open-fan-hype-card">Open fan card</Link>
+                <Link href={`/player/${existing.inviteToken}`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-open-original-hype-page">Original Hype Page</Link>
+              </div>
+            </div>
           ) : (
             <button
               type="button"
@@ -393,8 +401,8 @@ export function AthleteInviteManager() {
               data-testid="card-create-hype-page"
             >
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-              <h2 className="mt-2 font-display text-3xl uppercase">Create a Hype Page</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Keep this athlete’s story current at one stable URL.</p>
+               <h2 className="mt-2 font-display text-3xl uppercase">Create the athlete card</h2>
+               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable fan card and keep the original Hype Page alongside it.</p>
             </button>
           )}
         </section>
@@ -402,7 +410,12 @@ export function AthleteInviteManager() {
         {selectedPath === 'page' && !existing && (
           <form onSubmit={save} className="mt-8 max-w-xl">
             <aside className="space-y-5">
-              <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update Hype Page' : 'Create Hype Page'}</Button>
+              <label className="block text-xs font-bold uppercase tracking-widest">
+                Schedule time zone
+                <input value={timezone} onChange={(event) => setTimezone(event.target.value)} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-border bg-background px-3 text-sm font-normal normal-case tracking-normal" data-testid="input-athlete-schedule-timezone" />
+                <span className="mt-2 block text-xs font-normal normal-case tracking-normal text-muted-foreground">Use the time zone where your scheduled events begin, such as America/New_York. Fan event alerts use this time zone.</span>
+              </label>
+              <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update athlete card' : 'Create athlete card'}</Button>
               {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
             </aside>
           </form>
@@ -426,6 +439,8 @@ type OwnedAthleteInvite = {
   paused: boolean;
   inviteToken: string;
   liveTrackerShareToken: string | null;
+  photoUrl: string | null;
+  timezone: string | null;
 };
 
 function directVideoSlug(value: string) {
@@ -732,6 +747,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [showHypeCard, setShowHypeCard] = useState(invite.showHypeCard);
   const [showStats, setShowStats] = useState(invite.showStats);
   const [showSchedule, setShowSchedule] = useState(invite.showSchedule);
+  const [timezone, setTimezone] = useState(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   const [notice, setNotice] = useState('');
   const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
     query: {
@@ -756,13 +772,15 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     setShowHypeCard(invite.showHypeCard);
     setShowStats(invite.showStats);
     setShowSchedule(invite.showSchedule);
-  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule]);
+    setTimezone(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.timezone]);
 
   const payload = (paused = invite.paused): AthleteInviteInput => ({
     athleteName: invite.athleteName,
     teamName: invite.teamName,
     seasonName: invite.seasonName,
     seasonEndsAt: invite.seasonEndsAt,
+    timezone,
     sport: invite.sport,
     trackerProjectId: invite.trackerProjectId,
     scheduleProjectId: invite.scheduleProjectId,
@@ -791,6 +809,15 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const copy = async () => {
     await navigator.clipboard.writeText(inviteUrl(invite.inviteToken));
     setNotice('Hype Page URL copied.');
+  };
+  const copyFanCard = async () => {
+    await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
+    setNotice('Fan Hype Card URL copied.');
+  };
+  const shareFanCard = async () => {
+    const url = fanCardUrl(invite.inviteToken);
+    if (navigator.share) await navigator.share({ title: `${invite.athleteName} Hype Card`, text: `Follow ${invite.athleteName}'s season.`, url });
+    else await copyFanCard();
   };
   const share = async () => {
     const url = inviteUrl(invite.inviteToken);
@@ -861,13 +888,26 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Back to studio</Link>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mt-5">
+        <h3 className="font-display text-2xl uppercase">Share the fan Hype Card</h3>
+        <p className="mt-1 text-xs text-white/55">This is the main link for family and fans. It stays with this athlete as their season updates.</p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Link2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <input readOnly value={fanCardUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="Fan Hype Card URL" data-testid="input-fan-hype-card-url" />
+          <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copyFanCard} data-testid="button-copy-fan-hype-card"><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
+          <Button type="button" className="rounded-none" onClick={shareFanCard} data-testid="button-share-fan-hype-card"><Share2 className="mr-2 h-4 w-4" />Share</Button>
+          <Link href={`/fan/${invite.inviteToken}`} className="inline-flex min-h-10 items-center border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-preview-fan-hype-card">Preview</Link>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-col gap-3 border-t border-white/15 pt-5 sm:flex-row sm:items-center">
+        <span className="text-xs font-bold uppercase tracking-widest text-white/55">Original Hype Page</span>
         <Link2 className="h-5 w-5 shrink-0 text-primary" />
         <input readOnly value={inviteUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="Hype Page URL" data-testid="input-athlete-invite-url" />
         <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copy}><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
         <Button type="button" className="rounded-none" onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button>
       </div>
       <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — visitors cannot open this page until you resume it.' : 'Live — this stable URL stays with the athlete.'}</p>
+      <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
         <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
           <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
@@ -882,6 +922,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <OwnerToggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
         <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
+        <label className="mt-4 block max-w-sm text-xs font-bold uppercase tracking-widest text-white/70">
+          Schedule time zone for fan event alerts
+          <input value={timezone} onChange={(event) => setTimezone(event.target.value)} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
+          <span className="mt-2 block text-xs font-normal normal-case tracking-normal text-white/50">Enter the time zone where events begin, such as America/New_York.</span>
+        </label>
         <Button type="submit" disabled={updateInvite.isPending} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Update Hype Page</Button>
       </form>
 

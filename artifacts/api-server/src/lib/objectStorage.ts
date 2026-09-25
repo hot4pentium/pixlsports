@@ -41,6 +41,28 @@ export class ObjectNotFoundError extends Error {
 export class ObjectStorageService {
   constructor() {}
 
+  async savePrivateObjectEntity(
+    contents: Buffer,
+    contentType: string,
+    ownerClerkUserId: string,
+  ): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir().replace(/\/+$/, '');
+    const entityId = `athlete-invite-photos/${randomUUID()}.webp`;
+    const { bucketName, objectName } = parseObjectPath(`${privateObjectDir}/${entityId}`);
+    const file = objectStorageClient.bucket(bucketName).file(objectName);
+    try {
+      await file.save(contents, {
+        resumable: false,
+        metadata: { contentType, cacheControl: "no-store" },
+      });
+      await setObjectAclPolicy(file, { owner: ownerClerkUserId, visibility: "private" });
+    } catch (error) {
+      await file.delete({ ignoreNotFound: true }).catch(() => undefined);
+      throw error;
+    }
+    return `/objects/${entityId}`;
+  }
+
   getPublicObjectSearchPaths(): Array<string> {
     const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
     const paths = Array.from(

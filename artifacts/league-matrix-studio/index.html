@@ -23,6 +23,17 @@
     <meta name="twitter:image:alt" content="Pixl Sports Studio logo" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%pwa-icon.svg" />
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <script>
+      (() => {
+        const base = '%BASE_URL%';
+        const fanPath = `${base}fan/`;
+        if (!location.pathname.startsWith(fanPath)) return;
+        const token = location.pathname.slice(fanPath.length);
+        if (!/^[A-Za-z0-9_-]{32,100}$/.test(token)) return;
+        document.querySelector('link[rel="manifest"]').href =
+          `/api/athlete-invites/${token}/manifest.webmanifest?basePath=${encodeURIComponent(base)}`;
+      })();
+    </script>
     <meta name="theme-color" content="#00e86b" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

@@ -28,6 +28,8 @@ tags:
     description: Interactive Hype Card sharing operations
   - name: athlete-invites
     description: Durable Athlete Hype Page sharing operations
+  - name: athlete-invite-fans
+    description: Anonymous fan follows and alerts for Athlete Hype Pages
   - name: account-access
     description: Authenticated account role and Guest usage
   - name: supporter-photos
@@ -517,6 +519,23 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/fan:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getAthleteFanCard
+      tags: [athlete-invites]
+      summary: Get an athlete fan card with a sanitized live scoreboard
+      description: Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
+      responses:
+        "200":
+          description: Public athlete fan card and optional sanitized live scoreboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAthleteFanCard"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/live:
     parameters:
       - in: path
@@ -555,6 +574,220 @@ paths:
           description: Live session stopped
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/photo/upload-url:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: requestAthleteInvitePhotoUploadUrl
+      tags: [athlete-invites]
+      summary: Request an owner-only athlete page photo upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInvitePhotoUploadInput"
+      responses:
+        "200":
+          description: Presigned private upload URL and object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInvitePhotoUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/photo:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    put:
+      operationId: confirmAthleteInvitePhoto
+      tags: [athlete-invites]
+      summary: Confirm a completed owner-only athlete page photo upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInvitePhotoConfirmInput"
+      responses:
+        "200":
+          description: Confirmed public photo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInvitePhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: removeAthleteInvitePhoto
+      tags: [athlete-invites]
+      summary: Remove the owner-only athlete page photo
+      responses:
+        "204":
+          description: Photo removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/photo/image:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: serveAthleteInvitePhoto
+      tags: [athlete-invites]
+      summary: Serve the current photo for an active athlete invite
+      responses:
+        "200":
+          description: Athlete page photo
+          content:
+            image/webp: {}
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/icon/{size}.png:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: path
+        name: size
+        required: true
+        schema:
+          type: integer
+          enum: [192, 512]
+    get:
+      operationId: serveAthleteInviteIcon
+      tags: [athlete-invites]
+      summary: Serve an active athlete invite install icon
+      responses:
+        "200":
+          description: PNG icon with the exact requested dimensions
+          content:
+            image/png: {}
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/manifest.webmanifest:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: getAthleteInviteManifest
+      tags: [athlete-invites]
+      summary: Get an install manifest scoped to an active athlete fan page
+      description: Accepts an optional basePath query containing only safe slash-separated path segments for deployments mounted below the domain root.
+      responses:
+        "200":
+          description: Dynamic install manifest for this athlete
+          content:
+            application/manifest+json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteManifest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/follows:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: createAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Follow an active athlete invite anonymously on this device
+      description: New follows are accepted only while this invite is active. The same browser subscription may follow different invites independently.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteFanFollowInput"
+      responses:
+        "201":
+          description: Device follow created; keep the returned token private
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollowCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: This browser subscription is already following this invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Follow creation rate limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Web Push VAPID keys are not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}/follows/me:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: header
+        name: X-Fan-Follow-Token
+        required: true
+        schema:
+          type: string
+          minLength: 40
+          maxLength: 100
+    get:
+      operationId: getAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Get device follow preferences and active status
+      description: A valid follow token remains usable to manage its own preferences or remove the follow while the invite is paused; active is false until the invite can send alerts again.
+      responses:
+        "200":
+          description: Current fan follow preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollow"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Update alert preferences using the device follow token
+      description: Existing follows may be updated while paused; the response reports active false until the invite can send alerts again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteFanFollowPreferences"
+      responses:
+        "200":
+          description: Updated fan follow preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteFanFollow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAthleteInviteFanFollow
+      tags: [athlete-invite-fans]
+      summary: Remove this device follow
+      responses:
+        "204":
+          description: Follow removed
         "404":
           $ref: "#/components/responses/NotFound"
   /hype-card-shares:
@@ -1471,6 +1704,13 @@ paths:
           $ref: "#/components/responses/NotFound"
 components:
   parameters:
+    AthleteInviteToken:
+      in: path
+      name: inviteToken
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{24,80}$"
     ProjectId:
       name: projectId
       in: path
@@ -2242,7 +2482,7 @@ components:
           format: date-time
     AthleteInviteInput:
       type: object
-      required: [athleteName, teamName, seasonName, seasonEndsAt, sport, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule]
+      required: [athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule]
       properties:
         athleteName: { type: string, minLength: 1, maxLength: 100 }
         teamName: { type: string, maxLength: 160 }
@@ -2251,6 +2491,11 @@ components:
         sport:
           type: string
           enum: [baseball, basketball, football, soccer, volleyball]
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: IANA timezone identifier used for schedule event alerts.
         trackerProjectId:
           type: ["string", "null"]
           format: uuid
@@ -2262,21 +2507,26 @@ components:
         showSchedule: { type: boolean }
         paused: { type: boolean, default: false }
     OwnedAthleteInvite:
-      allOf:
-        - $ref: "#/components/schemas/AthleteInviteInput"
-        - type: object
-          required: [inviteToken, createdAt, updatedAt, paused, liveTrackerShareToken]
-          properties:
-            inviteToken:
-              type: string
-            createdAt:
-              type: string
-              format: date-time
-            updatedAt:
-              type: string
-              format: date-time
-            paused: { type: boolean }
-            liveTrackerShareToken: { type: ["string", "null"] }
+      type: object
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, paused, liveTrackerShareToken, photoUrl, createdAt, updatedAt]
+      properties:
+        inviteToken: { type: string }
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        seasonEndsAt: { type: string, format: date-time }
+        sport: { type: string, enum: [baseball, basketball, football, soccer, volleyball] }
+        timezone: { type: ["string", "null"], maxLength: 100 }
+        trackerProjectId: { type: ["string", "null"], format: uuid }
+        scheduleProjectId: { type: ["string", "null"], format: uuid }
+        showHypeCard: { type: boolean }
+        showStats: { type: boolean }
+        showSchedule: { type: boolean }
+        paused: { type: boolean }
+        liveTrackerShareToken: { type: ["string", "null"] }
+        photoUrl: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     OwnedAthleteInviteList:
       type: array
       items:
@@ -2334,7 +2584,7 @@ components:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"
     PublicAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, hypeCard, videos, stats, scheduleEvents, replies, liveGame, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, replies, liveGame, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -2344,6 +2594,7 @@ components:
         sport:
           type: string
           enum: [baseball, basketball, football, soccer, volleyball]
+        photoUrl: { type: ["string", "null"] }
         hypeCard:
           anyOf:
             - $ref: "#/components/schemas/AthleteInviteHypeCard"
@@ -2372,6 +2623,84 @@ components:
         updatedAt:
           type: string
           format: date-time
+    AthleteInvitePhotoUploadInput:
+      type: object
+      required: [contentType, size]
+      properties:
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+    AthleteInvitePhotoUpload:
+      type: object
+      required: [uploadUrl, objectPath]
+      properties:
+        uploadUrl: { type: string, format: uri }
+        objectPath: { type: string }
+    AthleteInvitePhotoConfirmInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, minLength: 1, maxLength: 500 }
+    AthleteInvitePhoto:
+      type: object
+      required: [photoUrl]
+      properties:
+        photoUrl: { type: ["string", "null"] }
+    AthleteInviteManifest:
+      type: object
+      required: [id, name, short_name, start_url, scope, display, icons]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        short_name: { type: string }
+        start_url: { type: string }
+        scope: { type: string }
+        display: { type: string, enum: [standalone] }
+        icons:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/AthleteInviteManifestIcon"
+    AthleteInviteManifestIcon:
+      type: object
+      required: [src, sizes, type]
+      properties:
+        src: { type: string }
+        sizes: { type: string, enum: ["192x192", "512x512"] }
+        type: { type: string, const: image/png }
+        purpose: { type: string, enum: [any, maskable, "any maskable"] }
+    AthleteInviteFanFollowInput:
+      type: object
+      required: [endpoint, keys, liveAlerts, eventAlerts]
+      properties:
+        endpoint: { type: string, format: uri, maxLength: 2048 }
+        keys:
+          type: object
+          required: [p256dh, auth]
+          properties:
+            p256dh: { type: string, minLength: 40, maxLength: 256, pattern: "^[A-Za-z0-9_-]+$" }
+            auth: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]+$" }
+        liveAlerts: { type: boolean }
+        eventAlerts: { type: boolean }
+    AthleteInviteFanFollowPreferences:
+      type: object
+      required: [liveAlerts, eventAlerts]
+      properties:
+        liveAlerts: { type: boolean }
+        eventAlerts: { type: boolean }
+    AthleteInviteFanFollow:
+      type: object
+      required: [liveAlerts, eventAlerts, active]
+      properties:
+        liveAlerts: { type: boolean }
+        eventAlerts: { type: boolean }
+        active: { type: boolean }
+    AthleteInviteFanFollowCreated:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteFanFollow"
+        - type: object
+          required: [followToken]
+          properties:
+            followToken: { type: string, minLength: 40, maxLength: 100 }
     OwnedHypeCardShare:
       allOf:
         - $ref: "#/components/schemas/HypeCardShare"
@@ -2589,6 +2918,56 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Media"
+    AthleteInviteLiveScoreboard:
+      type: object
+      required: [score, opponentScore, opponent, status, athleteName, teamName]
+      properties:
+        score: { type: number, minimum: 0 }
+        opponentScore: { type: number, minimum: 0 }
+        opponent: { type: string, maxLength: 200 }
+        status: { type: string, enum: [live, final] }
+        period: { type: ["number", "null"] }
+        athleteName: { type: string, maxLength: 100 }
+        teamName: { type: string, maxLength: 160 }
+    PublicAthleteFanCard:
+      type: object
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, replies, liveScoreboard, updatedAt]
+      properties:
+        inviteToken: { type: string }
+        athleteName: { type: string }
+        teamName: { type: string }
+        seasonName: { type: string }
+        seasonEndsAt: { type: string, format: date-time }
+        sport:
+          type: string
+          enum: [baseball, basketball, football, soccer, volleyball]
+        photoUrl: { type: ["string", "null"] }
+        hypeCard:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteHypeCard"
+            - type: "null"
+        videos:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AthleteInviteVideo"
+        stats:
+          anyOf:
+            - $ref: "#/components/schemas/HypeCardShareStats"
+            - type: "null"
+        scheduleEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        replies:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteReply"
+        liveScoreboard:
+          anyOf:
+            - $ref: "#/components/schemas/AthleteInviteLiveScoreboard"
+            - type: "null"
+        updatedAt: { type: string, format: date-time }
     ProjectList:
       type: array
       items:

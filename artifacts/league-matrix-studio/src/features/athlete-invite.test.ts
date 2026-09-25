@@ -17,14 +17,14 @@ test('public Athlete Hype Pages keep replies on-page and update recent reactions
   assert.doesNotMatch(source, /Send your own reply →/);
 });
 
-test('posting a Hype Card opens the Athlete Hype Page with the newly active card', () => {
+test('posting a Hype Card opens the living fan card without replacing the original Hype Page', () => {
   assert.match(
     hypeCardSource,
     /const athleteHypePage = athleteInvites\?\.\[0\] \?\? null;/,
   );
   assert.match(
     hypeCardSource,
-    /await queryClient\.invalidateQueries\(\{ queryKey: getListHypeCardSharesQueryKey\(\) \}\);[\s\S]*?if \(!isStatsOnly && !linkedExport\) \{[\s\S]*?setLocation\(athleteHypePage \? `\/player\/\$\{athleteHypePage\.inviteToken\}` : '\/studio\/athlete-page'\);/,
+    /await queryClient\.invalidateQueries\(\{ queryKey: getListHypeCardSharesQueryKey\(\) \}\);[\s\S]*?if \(!isStatsOnly && !linkedExport\) \{[\s\S]*?setLocation\(athleteHypePage \? `\/fan\/\$\{athleteHypePage\.inviteToken\}` : '\/studio\/athlete-page'\);/,
   );
   assert.match(
     hypeCardSource,
@@ -38,6 +38,9 @@ test('posting a Hype Card opens the Athlete Hype Page with the newly active card
   assert.match(source, /setSelectedPath\('card'\)/);
   assert.match(source, /setSelectedPath\('page'\)/);
   assert.match(source, /href=\{`\/player\/\$\{existing\.inviteToken\}`\}/);
+  assert.match(source, /href=\{`\/fan\/\$\{existing\.inviteToken\}`\}/);
+  assert.match(source, /value=\{fanCardUrl\(invite\.inviteToken\)\}/);
+  assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
   assert.match(source, /\{selectedPath === 'page' && !existing && \(/);
   assert.match(source, /How it works/);
   assert.match(source, /Open the Hype Card editor and create the card/);
