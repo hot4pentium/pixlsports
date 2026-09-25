@@ -1049,6 +1049,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const selectedGameAthleteStats = selectedGameOption
     ? Object.entries(selectedGameOption.game.athleteStats).sort(([left], [right]) => left.localeCompare(right))
     : [];
+  const hasHighlights = invite.videos.length > 0 || Boolean(invite.hypeCard?.posterUrl);
   const trendValues = selectedTrend
     ? trendGames.map((game) => selectedTrend.id === 'score' ? game.score : game.stats[selectedTrend.id] ?? 0)
     : [];
@@ -1092,22 +1093,26 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
             <h1 className="mt-2 max-w-full font-display text-[clamp(2.75rem,13vw,4rem)] uppercase leading-[.88] [overflow-wrap:anywhere] sm:mt-3 sm:text-7xl">{invite.athleteName}</h1>
             <p className="mt-2 text-sm font-bold uppercase tracking-widest text-white/45 [overflow-wrap:anywhere] sm:mt-4">{invite.teamName || 'Athlete season page'}</p>
           </div>
-          <div className="athlete-highlights-heading col-span-2 row-start-2 flex min-w-0 flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:border-0 lg:pt-0">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
-              <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Video highlights</h2>
-              <p className="mt-3 max-w-md text-xs font-medium leading-relaxed text-white/55">The latest plays, captured and ready to replay.</p>
+          {hasHighlights && (
+            <div className="athlete-highlights-heading col-span-2 row-start-2 flex min-w-0 flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:border-0 lg:pt-0" data-testid="athlete-highlights-heading">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
+                <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">{invite.videos.length > 0 ? 'Video highlights' : 'Highlights'}</h2>
+                <p className="mt-3 max-w-md text-xs font-medium leading-relaxed text-white/55">
+                  {invite.videos.length > 0 ? 'The latest plays, captured and ready to replay.' : 'A season moment, saved to revisit.'}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {invite.videos.length > 1 && (
+                  <>
+                    <button type="button" onClick={() => moveToVideo(activeVideoIndex - 1)} disabled={activeVideoIndex === 0} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous video" data-testid="button-previous-athlete-video"><ChevronLeft className="h-5 w-5" /></button>
+                    <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite.videos.length}</span>
+                    <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {invite.videos.length > 1 && (
-                <>
-                  <button type="button" onClick={() => moveToVideo(activeVideoIndex - 1)} disabled={activeVideoIndex === 0} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous video" data-testid="button-previous-athlete-video"><ChevronLeft className="h-5 w-5" /></button>
-                  <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite.videos.length}</span>
-                  <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
-                </>
-              )}
-            </div>
-          </div>
+          )}
           {ownerInvite && (
             <Link
               href={`/player/${inviteToken}/manage`}
@@ -1120,8 +1125,26 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
           )}
         </header>
 
-        <section className="mt-5" aria-labelledby="athlete-video-highlights">
+        <section
+          className="mt-5"
+          aria-labelledby={hasHighlights ? 'athlete-video-highlights' : undefined}
+          aria-label={hasHighlights ? undefined : 'Athlete highlights'}
+        >
           <div className="athlete-highlights-panel p-3 sm:p-4">
+            {invite.hypeCard?.posterUrl && (
+              <figure className="mx-auto mb-4 max-w-3xl overflow-hidden border border-white/15 bg-black/20" data-testid="athlete-image-highlight">
+                <img
+                  src={invite.hypeCard.posterUrl}
+                  alt={`${invite.athleteName} — ${invite.hypeCard.title}`}
+                  className="max-h-[70vh] w-full bg-black object-contain"
+                  data-testid="athlete-highlight-image"
+                />
+                <figcaption className="border-t border-white/10 px-4 py-3">
+                  <p className="font-display text-xl uppercase">{invite.hypeCard.title}</p>
+                  <p className="mt-1 text-[9px] font-bold uppercase tracking-[.2em] text-white/45">Photo highlight</p>
+                </figcaption>
+              </figure>
+            )}
             {invite.videos.length > 0 ? (
               <ol
                 ref={videoCarouselRef}
@@ -1188,12 +1211,12 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                   );
                 })}
               </ol>
-            ) : (
+            ) : !invite.hypeCard?.posterUrl ? (
               <div className="border border-white/10 bg-white/5 p-7" data-testid="athlete-video-empty-state">
                 <p className="font-display text-3xl uppercase">Highlights are coming</p>
                 <p className="mt-2 text-sm text-white/50">Check back after the next big moment.</p>
               </div>
-            )}
+            ) : null}
           </div>
         </section>
 
