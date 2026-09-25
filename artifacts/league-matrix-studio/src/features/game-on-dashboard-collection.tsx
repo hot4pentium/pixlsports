@@ -153,7 +153,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
                 {practice ? 'Practice' : 'Game'}
               </span>
-              <span className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
+              <span hidden={!selected} className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
                 <span className="game-on-collection__status-dot" aria-hidden="true" />
                 {statusLabel}
               </span>
@@ -164,12 +164,12 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 <span className="game-on-collection__date-day">{date.day}</span>
                 <span className="game-on-collection__date-weekday">{date.weekday}</span>
               </span>
-              <span className="game-on-collection__card-content">
+              <span hidden={!selected} className="game-on-collection__card-content">
                 <span className="game-on-collection__athlete" data-testid={`text-game-on-athlete-${card.id}`}>{card.athleteName || 'Your athlete'}</span>
                 <span className="game-on-collection__opponent" data-testid={`text-game-on-opponent-${card.id}`}>{title}</span>
               </span>
             </span>
-            <span className="game-on-collection__card-footer">
+            <span hidden={!selected} className="game-on-collection__card-footer">
               <span className="game-on-collection__details">
                 <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span>{displayTime(card.time)}</span></span>
                 <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span>{card.location || 'Location TBD'}</span></span>
@@ -177,7 +177,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
               <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
             </span>
           </button>
-          <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`}>
+          <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`} hidden={!selected}>
             {card.isUnsavedDraft && (
               <button
                 type="button"
@@ -227,7 +227,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                   >
                     <Activity size={15} aria-hidden="true" />
                     <span className="game-on-collection__action-label--full">Open Stat Tracker</span>
-                    <span className="game-on-collection__action-label--compact" aria-hidden="true">Stats</span>
+                    <span className="game-on-collection__action-label--compact" aria-hidden="true">Stat Tracker</span>
                   </button>
                 )}
               </>
@@ -397,7 +397,7 @@ export function GameOnDashboardCollection({
         </LayoutGroup>
         {cards.length > 0 && (
           <div className="game-on-collection__bottom">
-            <p className="game-on-collection__hint">Open a card to edit details. Calendar, Prep, and Stat Tracker stay on the card.</p>
+            <p className="game-on-collection__hint">Tap a card to view details and tools.</p>
           </div>
         )}
       </div>
