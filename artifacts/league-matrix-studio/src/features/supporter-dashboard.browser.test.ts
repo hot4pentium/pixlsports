@@ -1555,6 +1555,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       if (announcement.textContent?.trim()) throw new Error('The completion announcement should be empty before the game ends');
       window.__gameOnCompletionAnnouncementLastText = '';
       window.__gameOnCompletionAnnouncementMutations = 0;
+      window.__gameOnCompletionAnnouncementMessages = [];
       window.__gameOnCompletionAnnouncementObserver = new MutationObserver((records) => {
         const currentAnnouncement = document.querySelector(selector);
         const currentText = currentAnnouncement?.textContent?.trim() || '';
@@ -1563,6 +1564,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         )));
         if (currentText && (currentText !== window.__gameOnCompletionAnnouncementLastText || regionInserted)) {
           window.__gameOnCompletionAnnouncementMutations += 1;
+          window.__gameOnCompletionAnnouncementMessages.push(currentText);
           window.__gameOnCompletionAnnouncementLastText = currentText;
         }
       });
@@ -1620,14 +1622,17 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.deepEqual(await connection.evaluate<{
       announcement: string;
       announcementMutations: number;
+      announcementMessages: string[];
       activeElementTestId: string;
     }>(`(() => ({
       announcement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
       announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
+      announcementMessages: window.__gameOnCompletionAnnouncementMessages || [],
       activeElementTestId: document.activeElement?.getAttribute('data-testid') || '',
     }))()`, page.sessionId), {
       announcement: 'Game vs Rivals is complete.',
       announcementMutations: firstAnnouncementMutations,
+      announcementMessages: ['Game vs Rivals is complete.'],
       activeElementTestId: 'status-inline-tracker-completed',
     }, 'an unrelated dashboard rerender must not repeat the completion announcement or steal focus');
     assert.deepEqual(await connection.evaluate<{
@@ -1676,6 +1681,95 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     );
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+
+    await connection.evaluate(`(() => {
+       const secondGameDate = new Date(window.__dashboardInlineGameDate + 'T12:00:00');
+       secondGameDate.setDate(secondGameDate.getDate() + 2);
+       const dateKey = [
+         secondGameDate.getFullYear(),
+         String(secondGameDate.getMonth() + 1).padStart(2, '0'),
+         String(secondGameDate.getDate()).padStart(2, '0'),
+       ].join('-');
+       window.__dashboardSecondGameDate = dateKey;
+       window.__setSupporterDashboardEvents([
+         ...window.__getSupporterDashboardEvents(),
+         { id: 'game-2', type: 'game', date: dateKey, time: '19:00', location: 'Northside Gym', opponent: 'Falcons', status: 'live' },
+       ]);
+     })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+       .some((card) => card.getClientRects().length > 0
+         && card.querySelector('.game-on-collection__opponent')?.textContent?.includes('Falcons')
+         && card.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Live')`, Boolean);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.deepEqual(await connection.evaluate<{
+       announcement: string;
+       announcementMutations: number;
+       announcementMessages: string[];
+    }>(`(() => ({
+       announcement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+       announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
+       announcementMessages: window.__gameOnCompletionAnnouncementMessages || [],
+    }))()`, page.sessionId), {
+       announcement: 'Game vs Rivals is complete.',
+       announcementMutations: 1,
+       announcementMessages: ['Game vs Rivals is complete.'],
+    }, 'adding another scheduled game must not repeat or replace the first completion announcement');
+    await connection.evaluate(`(() => {
+       const game = Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+         .find((card) => card.getClientRects().length > 0
+           && card.querySelector('.game-on-collection__opponent')?.textContent?.includes('Falcons'));
+       if (!game) throw new Error('The second scheduled game card is missing');
+       if (!game.classList.contains('game-on-collection__card--selected')) {
+         const summary = game.querySelector('.game-on-collection__summary');
+         summary?.scrollIntoView({ block: 'center' });
+         summary?.click();
+       }
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+       .some((card) => card.classList.contains('game-on-collection__card--selected')
+         && card.querySelector('.game-on-collection__opponent')?.textContent?.includes('Falcons')
+         && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card--selected [data-testid^="button-open-stat-tracker-"]'))
+       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-inline-scoreboard"]') !== null
+       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-inline-end-game"]')?.getClientRects().length`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-inline-tracker-completed"]') !== null
+       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() === 'Game vs Falcons is complete.'
+       && Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+         .find((card) => card.querySelector('.game-on-collection__opponent')?.textContent?.includes('Falcons'))
+         ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'`, Boolean);
+    await waitFor(connection, page.sessionId, 'window.__gameOnCompletionAnnouncementMutations === 2', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+       announcement: string;
+       announcementMutations: number;
+       announcementMessages: string[];
+    }>(`(() => ({
+       announcement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+       announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
+       announcementMessages: window.__gameOnCompletionAnnouncementMessages || [],
+    }))()`, page.sessionId), {
+       announcement: 'Game vs Falcons is complete.',
+       announcementMutations: 2,
+       announcementMessages: ['Game vs Rivals is complete.', 'Game vs Falcons is complete.'],
+    }, 'completing a second scheduled game should announce its own opponent exactly once');
+    await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.deepEqual(await connection.evaluate<{
+       announcement: string;
+       announcementMutations: number;
+       announcementMessages: string[];
+    }>(`(() => ({
+       announcement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+       announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
+       announcementMessages: window.__gameOnCompletionAnnouncementMessages || [],
+    }))()`, page.sessionId), {
+       announcement: 'Game vs Falcons is complete.',
+       announcementMutations: 2,
+       announcementMessages: ['Game vs Rivals is complete.', 'Game vs Falcons is complete.'],
+    }, 'an unrelated rerender after both games must not repeat either completion announcement');
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -1793,7 +1887,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       activeElementTestId: 'status-inline-tracker-completed',
       activeElementInsidePhoneTracker: true,
       phoneAnnouncement: 'Game vs Rivals is complete.',
-      desktopAnnouncement: 'Game vs Rivals is complete.',
+      desktopAnnouncement: 'Game vs Falcons is complete.',
       announcementMutations: 1,
     });
     assert.equal(
