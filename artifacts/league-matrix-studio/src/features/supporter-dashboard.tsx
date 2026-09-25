@@ -40,9 +40,12 @@ import {
   GameOnDashboardCollection,
   type GameOnCardRenderOptions,
 } from './game-on-dashboard-collection';
+import { navigateToGameOnSection } from './game-on-navigation';
 import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
-import { readStoredTrackerData, type Sport } from './stat-tracker';
+import { getTrackerStorageKeys, readStoredTrackerData, type Sport } from './stat-tracker';
+import { buildSupporterGameRecord } from './supporter-game-record-model';
+import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { NotificationSettings } from './notification-settings';
 import { trackEvent } from '../lib/analytics';
 import {
@@ -53,6 +56,7 @@ import {
   type WorkspaceEventContext,
 } from './workspace-context';
 import './supporter-dashboard-pixl.css';
+import './supporter-game-on-summary.css';
 
 export interface SupporterProfile {
   displayName: string;
@@ -84,6 +88,30 @@ export interface SupporterProject {
   updatedAt: string | Date;
   href: string;
   thumbnailProject?: unknown;
+}
+
+function readRecordedScoreGameIds(storage: Storage, accountId: string) {
+  try {
+    const stored = JSON.parse(storage.getItem(getTrackerStorageKeys(accountId).history) ?? '{}') as {
+      games?: unknown;
+    };
+    if (!Array.isArray(stored.games)) return new Set<string>();
+    return new Set(
+      stored.games.flatMap((entry): string[] => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const game = entry as Record<string, unknown>;
+        return typeof game.id === 'string'
+          && typeof game.score === 'number'
+          && Number.isFinite(game.score)
+          && typeof game.opponentScore === 'number'
+          && Number.isFinite(game.opponentScore)
+          ? [game.id]
+          : [];
+      }),
+    );
+  } catch {
+    return new Set<string>();
+  }
 }
 
 export interface SupporterScheduleOption {
@@ -378,6 +406,13 @@ export function SupporterDashboardView({
   }, []);
 
   const hasAthlete = Boolean(profile.athleteName);
+  const summaryAthleteAvatar = athletePhotoUrl ? (
+    <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt="" />
+  ) : hasAthlete ? (
+    <span>{athleteInitials(profile.athleteName)}</span>
+  ) : (
+    <Users className="h-5 w-5" aria-hidden="true" />
+  );
   const gameEvents = events.filter((event) => event.type === 'game');
   const recommendedGame = getActiveSupporterGame(gameEvents, null, currentTime);
   const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
@@ -406,9 +441,11 @@ export function SupporterDashboardView({
       events: [{ ...card.event, type: card.event.type ?? 'game' }],
     }));
   const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
-  const completedLocalGames = userId
-    ? readStoredTrackerData(window.localStorage, userId).games.filter((game) => game.status === 'final')
-    : [];
+  const trackerData = userId ? readStoredTrackerData(window.localStorage, userId) : null;
+  const completedLocalGames = trackerData?.games.filter((game) => game.status === 'final') ?? [];
+  const scoredGameIds = userId ? readRecordedScoreGameIds(window.localStorage, userId) : new Set<string>();
+  const recordSport = profile.sport ?? trackerData?.games.find((game) => game.status === 'final')?.sport ?? null;
+  const gameRecord = buildSupporterGameRecord(trackerData?.games ?? [], scoredGameIds, recordSport);
   const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime, completedLocalGames);
   const newDraftCollectionCard = newCardDraft ? {
     id: newCardDraft.id,
@@ -583,7 +620,6 @@ export function SupporterDashboardView({
   const preparationTitle = preparationSchedule
     ? `${preparationCopy.title.replace(/\.$/, '')} — ${preparationSchedule}`
     : preparationCopy.title;
-  const contextDateParts = contextEvent ? getEventDateParts(contextEvent.date) : null;
   const toToolContext = (event: SupporterEvent | undefined): WorkspaceEventContext | undefined => event
     ? {
       id: event.id,
@@ -755,16 +791,157 @@ export function SupporterDashboardView({
     }
   };
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-  const firstName = profile.displayName ? profile.displayName.split(' ')[0] : 'Supporter';
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const summaryGameStage = recommendedGameStage ?? 'upcoming';
+  const recommendedGameTitle = recommendedGame
+    ? `${profile.teamName || 'Your team'}${recommendedGame.opponent ? ` vs ${recommendedGame.opponent}` : ''}`
+    : 'No upcoming game';
 
-  const mobileFeaturedEvent = weekRecommendation?.event ?? getActiveSupporterGame(gameEvents, null) ?? activeJourneyEvents[0];
-  const mobileFeaturedTitle = mobileFeaturedEvent?.type === 'practice'
-    ? `${profile.teamName || 'Your team'} practice`
-    : `${profile.teamName || 'Your team'}${mobileFeaturedEvent?.opponent ? ` vs ${mobileFeaturedEvent.opponent}` : ''}`;
-  const mobileFeaturedDateParts = mobileFeaturedEvent ? getEventDateParts(mobileFeaturedEvent.date) : null;
+  const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
+    <>
+      <div className="supporter-game-on-summary__event-top">
+        <div className="supporter-game-on-summary__event-kicker">
+          <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
+          <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">{recommendedGame ? 'Next game' : 'No upcoming game'}</span>
+          {recommendedGame && scheduleSource && <span className="supporter-game-on-summary__schedule-source">· Your schedule</span>}
+        </div>
+        {recommendedGame && (
+          <span className="supporter-game-on-summary__event-badge">
+            {summaryGameStage === 'live' ? 'Live now' : summaryGameStage === 'completed' ? 'Final' : 'Up next'}
+          </span>
+        )}
+      </div>
+
+      {recommendedGame ? (
+        <>
+          <p
+            className="supporter-game-on-summary__event-date"
+            data-testid={variant === 'desktop' ? 'next-event-date' : 'mobile-next-event-date'}
+          >
+            {formatDateDisplay(recommendedGame.date)}
+          </p>
+          <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
+            {recommendedGameTitle}
+          </h2>
+          <div className="supporter-game-on-summary__event-details">
+            <span>{formatTimeDisplay(recommendedGame.time)}</span>
+            {recommendedGame.location && (
+              <span className="supporter-game-on-summary__event-location">
+                <MapPin size={14} aria-hidden="true" />
+                {recommendedGame.location}
+              </span>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="supporter-game-on-summary__event-date">YOUR SCHEDULE</p>
+          <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
+            {recommendedGameTitle}
+          </h2>
+          <p className="supporter-game-on-summary__event-empty">
+            {gameEvents.length === 0 ? 'Add a game to see your next matchup here.' : 'No upcoming game is scheduled right now.'}
+          </p>
+        </>
+      )}
+
+      {contextEvent && contextEvent.id !== recommendedGame?.id && (
+        <div className="supporter-game-on-summary__tool-context" data-testid="supporter-tool-context">
+          <span>PREP &amp; TOOLS FOCUS</span>
+          <strong>{contextTitle}</strong>
+          <span>{formatDateDisplay(contextEvent.date)} · {formatTimeDisplay(contextEvent.time)}</span>
+        </div>
+      )}
+
+      {isViewingPastGame && (
+            <div
+              className="supporter-game-on-summary__past-notice"
+              data-testid={variant === 'desktop' ? 'past-game-notice' : 'mobile-past-game-notice'}
+            >
+              <p>COMPLETED GAME</p>
+              <span>You&apos;re viewing a past game. The newer game marked Next in your week path is still your recommended next step.</span>
+              {recommendedGame && (
+                <button
+                  type="button"
+                  onClick={() => selectGame(recommendedGame.id)}
+                  data-testid={variant === 'desktop' ? 'button-return-to-recommended-game' : undefined}
+                >
+                  Return to recommended game <ArrowRight size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+      )}
+      {gameEvents.length > 1 && (
+            <label className="supporter-game-on-summary__active-game">
+              <span>Active game</span>
+              <select
+                value={nextGame?.id ?? ''}
+                onChange={(event) => selectGame(event.target.value)}
+                aria-label="Choose the active game"
+                data-testid={variant === 'desktop' ? 'select-active-supporter-game' : undefined}
+              >
+                {gameEvents.map((game) => (
+                  <option key={game.id} value={game.id}>
+                    {formatDateDisplay(game.date)} · {game.opponent || 'Opponent TBD'}
+                  </option>
+                ))}
+              </select>
+            </label>
+      )}
+      {selectionSyncError && (
+            <p className="supporter-game-on-summary__sync-error" role="status" data-testid="active-game-sync-error">
+              Your game is saved on this device, but could not sync to your account.
+            </p>
+      )}
+
+      <div className="supporter-game-on-summary__event-actions">
+        {gameStage === 'upcoming' && contextEvent && (
+          <button
+            type="button"
+            onClick={() => setLocation(contextChecklistHref)}
+            data-testid={variant === 'desktop' ? 'button-context-checklist' : undefined}
+          >
+            <ClipboardCheck size={15} aria-hidden="true" /> Open checklist
+          </button>
+        )}
+        {gameStage === 'live' && contextEvent?.type === 'game' && (
+          <button
+            type="button"
+            onClick={() => setLocation(statTrackerHref)}
+            data-testid={variant === 'desktop' ? 'button-context-stat-tracker' : undefined}
+          >
+            <Activity size={15} aria-hidden="true" /> Track the game
+          </button>
+        )}
+        {gameStage === 'live' && contextEvent?.type === 'practice' && (
+          <button
+            type="button"
+            onClick={() => setLocation(contextChecklistHref)}
+            data-testid={variant === 'desktop' ? 'button-context-checklist' : undefined}
+          >
+            <ClipboardCheck size={15} aria-hidden="true" /> Open checklist
+          </button>
+        )}
+        {gameStage === 'completed' && (
+          <Link
+            href={hypeCardHref}
+            data-testid={variant === 'desktop' ? 'link-context-hype-card' : undefined}
+          >
+            <Zap size={15} aria-hidden="true" /> Make a Hype Card
+          </Link>
+        )}
+        {!contextEvent && (
+          <button
+            type="button"
+            onClick={() => navigateToGameOnSection(setLocation)}
+            data-testid={variant === 'desktop' ? 'button-context-game-on' : undefined}
+          >
+            <CalendarDays size={15} aria-hidden="true" /> Add an event
+          </button>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -818,80 +995,18 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
-          <section className="mobile-hero-banner" data-testid="mobile-hero-banner" aria-label="Athlete and next event">
-          {/* Greeting */}
-          <div>
-            <h1 className="text-[34px] font-black font-display tracking-tight text-[#12213A] leading-none" data-testid="text-mobile-greeting">Good {greeting}, {firstName}.</h1>
-          </div>
-
-          <div className="mobile-hero-columns">
-          {/* Athlete Switcher Row */}
-          <AthleteCardPreview
-            profile={profile}
-            athletePhotoUrl={athletePhotoUrl}
-            athletePhotoCrop={athletePhotoCrop}
-            href={supporterToolRoutes.profile}
-            testId="btn-mobile-athlete-switcher"
-          />
-
-          {/* Next Event Card */}
-          <div className="bg-white rounded-[20px] p-5 shadow-sm border border-black/5" data-testid="card-mobile-featured-event">
-            <div className="mobile-featured-event-header">
-              <div className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">
-                <span className="mobile-featured-event-kicker-dot" aria-hidden="true" />
-                <span>{currentStage.kicker}</span>
-                {scheduleSource && <><span className="mobile-featured-event-divider" aria-hidden="true">·</span><span className="mobile-featured-event-schedule">Your schedule</span></>}
-              </div>
-              {mobileFeaturedEvent && (
-                <span className="mobile-featured-event-badge">
-                  {gameStage === 'live' ? 'Live' : gameStage === 'completed' ? 'Final' : 'Next'}
-                </span>
-              )}
-            </div>
-            {mobileFeaturedEvent ? (
-              <div className="flex items-start gap-4">
-                <div className="mobile-featured-event-date" aria-hidden="true">
-                  <span>{mobileFeaturedDateParts?.month}</span>
-                  <strong>{mobileFeaturedDateParts?.day}</strong>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-[22px] font-bold font-display tracking-tight text-[#12213A] leading-tight mb-1.5 break-words">{mobileFeaturedTitle}</h2>
-                  <div className="text-[15px] font-medium text-black/60 flex items-center gap-1.5 flex-wrap mb-1">
-                    <CalendarDays className="mobile-featured-event-meta-icon" aria-hidden="true" />
-                    <span className="whitespace-nowrap">{formatDateDisplay(mobileFeaturedEvent.date)}</span>
-                    <span className="text-black/30 font-bold">•</span>
-                    <span className="whitespace-nowrap">{formatTimeDisplay(mobileFeaturedEvent.time)}</span>
-                  </div>
-                  {mobileFeaturedEvent.location && (
-                    <div className="text-[15px] font-medium text-black/60 flex items-start gap-1.5 mt-1.5">
-                      <MapPin className="w-4 h-4 text-black/40 shrink-0 mt-0.5" />
-                      <span className="break-words min-w-0">{mobileFeaturedEvent.location}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-               <p className="text-sm font-medium text-black/60">No upcoming events. Add a game to get recommendations.</p>
-            )}
-            <Link
-              href={supporterToolRoutes.profile}
-              className="mobile-athlete-details"
-              aria-label="View or change athlete"
-              data-testid="btn-mobile-athlete-details"
-            >
-              <span className="mobile-athlete-details-name">{hasAthlete ? profile.athleteName : 'Unassigned'}</span>
-              {hasAthlete && (profile.jerseyNumber || profile.teamName) && (
-                <span className="mobile-athlete-details-meta">
-                  {profile.jerseyNumber && <span>#{profile.jerseyNumber}</span>}
-                  {profile.jerseyNumber && profile.teamName && <span aria-hidden="true">•</span>}
-                  {profile.teamName && <span>{profile.teamName}</span>}
-                </span>
-              )}
-              <ChevronRight className="mobile-athlete-details-arrow" aria-hidden="true" />
-            </Link>
-          </div>
-          </div>
-          </section>
+          <SupporterGameOnSummary
+            variant="mobile"
+            athleteName={profile.athleteName}
+            teamName={profile.teamName}
+            jerseyNumber={profile.jerseyNumber}
+            athleteAvatar={summaryAthleteAvatar}
+            profileHref={supporterToolRoutes.profile}
+            sport={recordSport}
+            record={gameRecord}
+          >
+            {renderGameOnEventContent('mobile')}
+          </SupporterGameOnSummary>
           <GameOnDashboardCollection
             cards={collectionCards}
             onCreate={openCardWorkspace}
@@ -997,170 +1112,18 @@ export function SupporterDashboardView({
           </div>
         </div>
       )}
-      <div className="dashboard-hero-banner">
-        {/* HEADER */}
-        <header className="dashboard-header animate-slide-up">
-          <section className="athlete-hero-depth relative overflow-hidden border border-border/20 bg-foreground text-background clip-angled" aria-labelledby="athlete-summary-heading" data-testid="athlete-summary">
-            <div className="absolute inset-0 bg-tech-grid-dark opacity-20 pointer-events-none" />
-            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-[80px] mix-blend-screen pointer-events-none" />
-            <div className="relative flex items-center gap-4 bg-[#111316] p-4 sm:gap-5 sm:p-5">
-              <div className="relative shrink-0">
-                <div className="dashboard-athlete-avatar flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-background text-foreground shadow-[0_0_26px_rgba(22,232,120,0.25)] sm:h-20 sm:w-20" data-testid="desktop-athlete-photo">
-                  {athletePhotoUrl ? (
-                    <div className="h-full w-full overflow-hidden rounded-full">
-                      <AthletePhoto url={athletePhotoUrl} crop={athletePhotoCrop} alt={`${profile.athleteName || 'Athlete'} profile`} />
-                    </div>
-                  ) : hasAthlete ? (
-                    <span className="font-display text-2xl font-bold text-primary sm:text-3xl" aria-label={`${athleteInitials(profile.athleteName)} initials`}>
-                      {athleteInitials(profile.athleteName)}
-                    </span>
-                  ) : (
-                    <Users className="h-8 w-8 opacity-20 sm:h-10 sm:w-10" />
-                  )}
-                </div>
-                <Link
-                  href={supporterToolRoutes.profile}
-                  className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-foreground text-background transition-transform hover:scale-110 sm:h-7 sm:w-7"
-                  aria-label="Edit athlete profile"
-                  title="Edit athlete profile"
-                  data-testid="btn-edit-athlete-avatar"
-                >
-                  <PenSquare className="h-3 w-3" />
-                </Link>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="dashboard-welcome mb-3 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/65">
-                  <Activity className="h-3.5 w-3.5 text-primary" />
-                  {profile.displayName ? `GOOD ${greeting.toUpperCase()}, ${firstName.toUpperCase()}` : 'YOUR SPORTS HOME'}
-                </div>
-                <h2 id="athlete-summary-heading" className="mt-1 break-words font-display text-2xl uppercase leading-none tracking-wide text-white sm:text-3xl">
-                  {hasAthlete ? profile.athleteName : 'Unassigned'}
-                </h2>
-                {hasAthlete ? (
-                  <div className="dashboard-athlete-meta mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-widest text-white/65 sm:text-xs">
-                    {profile.jerseyNumber && <span><span className="text-primary">#</span>{profile.jerseyNumber}</span>}
-                    {profile.jerseyNumber && profile.teamName && <span className="opacity-40">•</span>}
-                    {profile.teamName && <span data-testid="athlete-team-name">{profile.teamName}</span>}
-                    {(profile.position || profile.relationship) && <span className="basis-full pt-1 text-[9px] tracking-[0.16em] text-white/45">{[profile.position, profile.relationship].filter(Boolean).join(' · ')}</span>}
-                  </div>
-                ) : (
-                  <Link href={supporterToolRoutes.profile} className="mt-2 inline-block text-left text-xs font-medium text-white/65 underline decoration-primary underline-offset-4 hover:text-white" data-testid="btn-setup-athlete">
-                    Set up athlete details
-                  </Link>
-                )}
-              </div>
-              <div className="relative z-10 shrink-0">
-                <HypeCardReplyInboxTrigger className="!px-2.5 !py-2" />
-              </div>
-            </div>
-          </section>
-        </header>
-
-        <section
-          className="animate-slide-up delay-100 relative overflow-hidden border border-foreground/10 bg-[#111316] text-white clip-angled"
-          data-testid="section-next-game-context"
-          aria-labelledby="next-game-heading"
-        >
-        <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-25" />
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
-        <div className="relative grid gap-8 p-5 sm:p-8 lg:grid-cols-[1.2fr_.8fr] lg:gap-12 lg:p-10">
-          <div className="dashboard-event-primary">
-            <div className="dashboard-event-top">
-            {contextDateParts && (
-              <div className="dashboard-event-date-row flex shrink-0 flex-wrap items-end gap-3" data-testid="next-event-date">
-                <div className="dashboard-event-date flex flex-col items-center justify-center border border-white/20 bg-white/10 px-4 py-2 text-center">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">{contextDateParts.month}</span>
-                  <span className="font-display text-4xl leading-none text-white">{contextDateParts.day}</span>
-                  <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/45">{contextDateParts.dayOfWeek}</span>
-                </div>
-              </div>
-            )}
-              <div className="dashboard-event-copy min-w-0">
-                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-                  {currentStage.kicker}
-                  {scheduleSource && <span className="text-white/45">· Your schedule</span>}
-                </div>
-                <div className="dashboard-event-title-row mt-3 flex flex-wrap items-center gap-x-4 gap-y-3">
-                  <h2 id="next-game-heading" className="max-w-2xl break-words font-display text-4xl leading-[0.92] tracking-tight sm:text-6xl" data-testid="next-game-heading">
-                    {contextEvent ? contextTitle : 'Make the next game count.'}
-                  </h2>
-                  {contextEvent && (
-                    <span className="dashboard-event-badge inline-flex items-center bg-[#FF6433] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white">
-                      {gameStage === 'live' ? 'Live now' : gameStage === 'completed' ? 'Final' : 'Up next'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            {isViewingPastGame && (
-              <div
-                className="mt-5 max-w-2xl break-words border-l-2 border-fuchsia-300 bg-fuchsia-300/[0.08] px-4 py-3"
-                data-testid="past-game-notice"
-              >
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-200">Completed game</p>
-                <p className="mt-1 break-words text-sm font-medium leading-relaxed text-white/70">
-                  You&apos;re viewing a past game. The newer game marked Next in your week path is still your recommended next step.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (recommendedGame) selectGame(recommendedGame.id);
-                  }}
-                  className="mt-4 inline-flex min-h-10 max-w-full flex-wrap items-center justify-center gap-2 border border-fuchsia-200/50 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-fuchsia-100 transition-colors hover:border-fuchsia-100 hover:bg-fuchsia-200/10"
-                  data-testid="button-return-to-recommended-game"
-                >
-                  Return to recommended game <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-            {contextEvent ? (
-              <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-white/65">
-                <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-primary" />{formatDateDisplay(contextEvent.date)}</span>
-                <span className="text-white/30">·</span>
-                <span>{formatTimeDisplay(contextEvent.time)}</span>
-                {contextEvent.location && <><span className="text-white/30">·</span><span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-primary" />{contextEvent.location}</span></>}
-              </div>
-            ) : (
-              <p className="mt-5 max-w-lg text-sm font-medium leading-relaxed text-white/65">
-                Add a game or practice to the schedule and Pixl Sports will put the right action front and center.
-              </p>
-            )}
-            {gameEvents.length > 1 && (
-              <label className="mt-5 block max-w-md">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Active game</span>
-                <select
-                  value={nextGame?.id ?? ''}
-                  onChange={(event) => selectGame(event.target.value)}
-                  className="mt-2 w-full border border-white/20 bg-[#111316] px-3 py-3 text-sm font-bold uppercase tracking-wide text-white outline-none focus:border-primary"
-                  aria-label="Choose the active game"
-                  data-testid="select-active-supporter-game"
-                >
-                  {gameEvents.map((game) => (
-                    <option key={game.id} value={game.id}>
-                      {formatDateDisplay(game.date)} · {game.opponent || 'Opponent TBD'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {selectionSyncError && (
-              <p className="mt-2 text-sm font-medium text-amber-100" role="status" data-testid="active-game-sync-error">
-                Your game is saved on this device, but could not sync to your account.
-              </p>
-            )}
-            <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/70">{currentStage.description}</p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {gameStage === 'upcoming' && contextEvent && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
-              {gameStage === 'live' && contextEvent?.type === 'game' && <button type="button" onClick={() => setLocation(statTrackerHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-stat-tracker"><Activity className="h-4 w-4" /> Track the game</button>}
-              {gameStage === 'live' && contextEvent?.type === 'practice' && <button type="button" onClick={() => setLocation(contextChecklistHref)} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="button-context-checklist"><ClipboardCheck className="h-4 w-4" /> Open checklist</button>}
-              {gameStage === 'completed' && <Link href={hypeCardHref} className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 clip-angled-sm" data-testid="link-context-hype-card"><Zap className="h-4 w-4" /> Make a Hype Card</Link>}
-              {!contextEvent && <Link href="/studio/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-context-schedule"><CalendarDays className="h-4 w-4" /> Add an event</Link>}
-            </div>
-          </div>
-        </div>
-        </section>
-      </div>
+      <SupporterGameOnSummary
+        variant="desktop"
+        athleteName={profile.athleteName}
+        teamName={profile.teamName}
+        jerseyNumber={profile.jerseyNumber}
+        athleteAvatar={summaryAthleteAvatar}
+        profileHref={supporterToolRoutes.profile}
+        sport={recordSport}
+        record={gameRecord}
+      >
+        {renderGameOnEventContent('desktop')}
+      </SupporterGameOnSummary>
       <GameOnDashboardCollection
         cards={collectionCards}
         onCreate={openCardWorkspace}

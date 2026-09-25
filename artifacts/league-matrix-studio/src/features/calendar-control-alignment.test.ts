@@ -11,6 +11,9 @@ const schedulePreview = appSource.slice(
   appSource.indexOf('function SchedulePreview'),
   appSource.indexOf('function PublicSchedulePage'),
 );
+const supporterDashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+const gameOnCollection = readFileSync(new URL('./game-on-dashboard-collection.tsx', import.meta.url), 'utf8');
+const gameOnNavigation = readFileSync(new URL('./game-on-navigation.ts', import.meta.url), 'utf8');
 
 test('calendar preview uses the landing-page card and keeps creation controls inside it', () => {
   assert.match(schedulePreview, /bg-\[#12213A\]/);
@@ -24,6 +27,14 @@ test('calendar preview uses the landing-page card and keeps creation controls in
   assert.doesNotMatch(schedulePreview, /schedule-bottom-actions/);
   assert.doesNotMatch(appSource, /schedule-template-picker/);
   assert.match(appSource, /await persistSchedule\(/);
+});
+
+test('Add event actions lead to the visible Game On section instead of opening Schedule Maker flow', () => {
+  assert.match(scheduleEditor, /onAddEvent=\{\(\) => navigateToGameOnSection\(setLocation\)\}/);
+  assert.match(supporterDashboard, /onClick=\{\(\) => navigateToGameOnSection\(setLocation\)\}/);
+  assert.match(gameOnCollection, /id=\{isActiveShell \? GAME_ON_COLLECTION_ID : undefined\}/);
+  assert.match(gameOnNavigation, /navigate\('\/studio'\)/);
+  assert.match(gameOnNavigation, /scrollIntoView/);
 });
 
 test('public schedule recipients get the same card without creation controls', () => {

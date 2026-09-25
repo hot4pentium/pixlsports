@@ -4,6 +4,7 @@ import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, 
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
+import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
 import type { Sport } from './stat-tracker';
@@ -467,7 +468,7 @@ export function GameOnDashboardCollection({
   };
 
   return (
-    <section ref={setCollectionRef} id="game-on-dashboard-collection" className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
+    <section ref={setCollectionRef} id={isActiveShell ? GAME_ON_COLLECTION_ID : undefined} className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="status-game-completion-announcement">
         {completionAnnouncement}
       </p>

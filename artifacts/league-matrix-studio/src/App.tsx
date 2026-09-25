@@ -61,8 +61,8 @@ import type {
   SupporterProfile,
   SupporterProject,
 } from '@/features/supporter-dashboard';
+import { navigateToGameOnSection } from '@/features/game-on-navigation';
 import {
-  createBlankScheduleEvent,
   createScheduleAutosaveQueue,
   getActiveCloudScheduleProject,
   getCloudScheduleProjects,
@@ -2147,13 +2147,6 @@ export function ScheduleEditor() {
     ));
   };
 
-  const openNewEventForm = () => {
-    setSaved(false);
-    setSaveStatus(null);
-    setSelectedEventId('');
-    setEventForm(createBlankScheduleEvent('game'));
-  };
-
   const openEventForm = (event: ScheduleEvent) => {
     setSelectedEventId(event.id);
     saveWorkspaceEventContext(window.localStorage, event);
@@ -2460,7 +2453,7 @@ export function ScheduleEditor() {
               teamName={teamName}
               season={season}
               events={events}
-              onAddEvent={openNewEventForm}
+              onAddEvent={() => navigateToGameOnSection(setLocation)}
             />
           </section>
 

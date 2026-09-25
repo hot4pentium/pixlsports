@@ -836,7 +836,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       statusVisibleAndClear: boolean;
     }>(`(() => {
       const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
-      const hero = document.querySelector('.supporter-dashboard-desktop-shell .dashboard-hero-banner');
+      const hero = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="desktop-game-on-summary"]');
       const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
       if (!(collection instanceof HTMLElement) || !(hero instanceof HTMLElement) || !(grid instanceof HTMLElement)) throw new Error('Desktop Game On collection is missing');
       const columnCount = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length;
@@ -4064,7 +4064,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="next-game-heading"]\')?.textContent || ""', page.sessionId),
-      /ChampionshipOpponentWithAnUnreasonablyLongName/,
+      /RegionalTournamentVisitorsWithAnUnreasonablyLongName/,
     );
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -4100,7 +4100,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       };
     })()`, page.sessionId);
     assert.deepEqual(desktopPastGameLayout, {
-      contextOverflow: true,
+      contextOverflow: false,
       noticeOverflow: false,
       titleVisible: true,
       hypeCardVisible: true,
@@ -4112,7 +4112,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="next-game-heading"]\')?.textContent || ""', page.sessionId),
-      /ChampionshipOpponentWithAnUnreasonablyLongName/,
+      /RegionalTournamentVisitorsWithAnUnreasonablyLongName/,
     );
     const desktopLayout = await connection.evaluate<{ summaryOverflow: boolean; heroToolCards: number }>(`(() => {
       const summary = document.querySelector('[data-testid="athlete-summary"]');

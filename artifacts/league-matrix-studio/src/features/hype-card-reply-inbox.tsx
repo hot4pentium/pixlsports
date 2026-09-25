@@ -10,13 +10,13 @@ import type {
   HypeCardShareReply,
 } from '@workspace/api-client-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { MessageCircleHeart, Trash2, Loader2, AlertTriangle, Inbox } from 'lucide-react';
+import { ArrowRight, MessageCircleHeart, Trash2, Loader2, AlertTriangle, Inbox } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
-export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter' }: { className?: string, variant?: 'supporter' }) {
+export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter' }: { className?: string, variant?: 'supporter' | 'dashboard' }) {
   const [open, setOpen] = useState(false);
   const [targetToken, setTargetToken] = useState<string | null>(null);
 
@@ -87,8 +87,53 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
 
   const unreadCount = data?.unreadCount || 0;
   const totalCount = data?.totalCount || 0;
+  const latestReplies = useMemo(() => (
+    (data?.groups ?? [])
+      .flatMap((group) => group.replies.map((reply) => ({ reply, title: group.title })))
+      .sort((left, right) => Date.parse(right.reply.createdAt) - Date.parse(left.reply.createdAt))
+      .slice(0, 2)
+  ), [data]);
 
-  const triggerContent = (
+  const triggerContent = variant === 'dashboard' ? (
+    <button
+      type="button"
+      className={`reply-inbox-summary-trigger ${className}`}
+      aria-label={`Open replies inbox, ${totalCount} ${totalCount === 1 ? 'reply' : 'replies'}`}
+      data-testid="btn-reply-inbox"
+    >
+      <span className="reply-inbox-summary-trigger__header">
+        <span className="reply-inbox-summary-trigger__label">
+          <MessageCircleHeart size={15} aria-hidden="true" />
+          <span>Replies · <span data-testid="reply-inbox-total-count">{isLoading ? '…' : isError ? '—' : totalCount}</span></span>
+        </span>
+        {unreadCount > 0 && (
+          <span className="reply-inbox-summary-trigger__unread">{unreadCount} new</span>
+        )}
+      </span>
+      {isLoading ? (
+        <span className="reply-inbox-summary-trigger__empty">Loading recent replies…</span>
+      ) : isError ? (
+        <span className="reply-inbox-summary-trigger__empty">Replies are unavailable right now.</span>
+      ) : latestReplies.length > 0 ? (
+        <span className="reply-inbox-summary-trigger__items">
+          {latestReplies.map(({ reply, title }) => (
+            <span className="reply-inbox-summary-trigger__item" key={reply.id}>
+              <span className="reply-inbox-summary-trigger__reaction" aria-hidden="true">{reply.reaction}</span>
+              <span className="reply-inbox-summary-trigger__copy">
+                <span className="reply-inbox-summary-trigger__share-title">{title}</span>
+                <span className="reply-inbox-summary-trigger__message">{reply.message || 'Reacted to your Hype Card'}</span>
+              </span>
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span className="reply-inbox-summary-trigger__empty">Your Hype Card replies will show up here.</span>
+      )}
+      <span className="reply-inbox-summary-trigger__footer">
+        View all replies <ArrowRight size={14} aria-hidden="true" />
+      </span>
+    </button>
+  ) : (
     <button
       type="button"
       className={`group flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
