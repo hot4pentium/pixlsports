@@ -634,6 +634,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.deepEqual(await connection.evaluate<{
       expanded: boolean;
       detailVisible: boolean;
+      factsVisible: boolean;
+      editorOnFront: boolean;
       options: string[];
       optionsAreTouchFriendly: boolean;
     }>(`(() => {
@@ -645,16 +647,35 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       return {
         expanded: card.classList.contains('game-on-collection__card--expanded'),
         detailVisible: Boolean(card.querySelector('.game-on-collection__opponent')?.getClientRects().length),
+        factsVisible: Boolean(card.querySelector('.game-on-collection__date')?.getClientRects().length)
+          && Array.from(card.querySelectorAll('.game-on-collection__detail-value')).map((value) => value.textContent?.trim()).join('|') === '6:30 PM|Northside Gym',
+        editorOnFront: Boolean(card.querySelector('.game-on-collection__flip-front [data-testid^="game-on-inline-editor-"]')),
         options: options.filter((option) => option.getClientRects().length > 0)
-          .map((option) => option.getAttribute('aria-label') || ''),
+          .map((option) => option.textContent?.trim() || ''),
         optionsAreTouchFriendly: options.length === 3 && options.every((option) => option.getBoundingClientRect().height >= 44),
       };
     })()`, page.sessionId), {
       expanded: true,
       detailVisible: true,
-      options: ['Edit Calendar details', 'Open Prep', 'Open Stat Tracker'],
+      factsVisible: true,
+      editorOnFront: false,
+      options: ['Prep', 'Stat Tracker', 'Details'],
       optionsAreTouchFriendly: true,
     });
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-edit-calendar-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-details-open') === 'true'
+        && card.querySelector('.game-on-collection__flip-back [data-testid="input-inline-date"]')?.getClientRects().length)`, Boolean);
+    assert.equal(await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-details-open') === 'true'
+        && card.querySelector('.game-on-collection__flip-back [data-testid^="game-on-inline-editor-"]')
+        && card.querySelector('.game-on-collection__flip-front [data-testid^="game-on-inline-editor-"]') === null)`, page.sessionId), true,
+    'Details should flip to the event editor, not leave the editor on the badge front');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-calendar-editor-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-details-open') === 'false' && card.classList.contains('game-on-collection__card--selected'))`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-open-card-prep-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
@@ -971,15 +992,24 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         game.querySelector('[data-testid^="button-open-game-on-card-"]')?.click();
       }
     })()`, page.sessionId);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card--selected [data-testid^="button-edit-calendar-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll("[data-testid=\\"button-inline-open-stat-tracker\\"]")).some((button) => button.getClientRects().length > 0)', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid="button-inline-open-stat-tracker"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-tracker-open') === 'true')`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-tracker-open') === 'false')`, Boolean);
+    assert.equal(await connection.evaluate('document.activeElement?.classList.contains("game-on-collection__action--tracker")', page.sessionId), true,
+      'returning from the inline tracker should focus the visible badge action');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card--selected [data-testid^="button-edit-calendar-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll("[data-testid=\\"button-inline-open-prep\\"]")).some((button) => button.getClientRects().length > 0)', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid="button-inline-open-prep"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('[data-testid^="game-on-inline-prep-game-1"]')).some((panel) => panel.getClientRects().length > 0)`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-card-prep-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-prep-open') === 'false')`, Boolean);
+    assert.equal(await connection.evaluate('document.activeElement?.classList.contains("game-on-collection__action--prep")', page.sessionId), true,
+      'returning from inline Prep should focus the visible badge action');
 
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 

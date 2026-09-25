@@ -421,10 +421,11 @@
   margin-top: auto;
   padding-top: 24px;
 }
-.game-on-collection__details { display: grid; gap: 5px; min-width: 0; }
-.game-on-collection__detail { display: flex; align-items: center; gap: 7px; min-width: 0; color: #345573; font-size: 12px; font-weight: 650; }
+.game-on-collection__details { display: grid; gap: 7px; min-width: 0; }
+.game-on-collection__detail { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; color: #345573; font-size: 12px; font-weight: 650; }
 .game-on-collection__detail svg { flex-shrink: 0; color: #2878f5; }
-.game-on-collection__detail span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-on-collection__detail-label { color: #64809b; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.game-on-collection__detail-value { min-width: 0; overflow-wrap: anywhere; }
 .game-on-collection__card-arrow {
   display: grid;
   flex: 0 0 32px;
@@ -450,33 +451,47 @@
 }
 .game-on-collection__actions {
   display: grid;
-  gap: 7px;
-  padding: 0 16px 16px;
+  gap: 8px;
+  padding: 0 18px 18px;
 }
 .game-on-collection__actions :is(button, a) {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 9px;
+  justify-content: center;
+  gap: 6px;
   min-width: 0;
-  min-height: 38px;
-  padding: 8px 10px;
+  min-height: 58px;
+  padding: 9px 8px;
   border: 1px solid #c1d5e8;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
   color: #17467b;
-  font: 800 10px/1.25 'DM Sans', var(--app-font-sans), sans-serif;
-  letter-spacing: .035em;
-  text-align: left;
+  font: 800 11px/1.2 'DM Sans', var(--app-font-sans), sans-serif;
+  letter-spacing: .06em;
+  text-align: center;
   text-decoration: none;
+  text-transform: uppercase;
   cursor: pointer;
+  transition: transform .18s ease, background-color .18s ease, box-shadow .18s ease;
 }
 .game-on-collection__actions :is(button, a):hover {
   border-color: #70b4ff;
   background: #e9f4ff;
+  transform: translateY(-2px);
 }
 .game-on-collection__actions svg { flex: 0 0 auto; color: #2878f5; }
+.game-on-collection__actions .game-on-collection__action--prep { border-color: #1d66ce; background: #2878f5; color: #fff; box-shadow: 0 3px 0 #164d9a; }
+.game-on-collection__actions .game-on-collection__action--prep:hover { background: #1766e4; }
+.game-on-collection__actions .game-on-collection__action--prep svg { color: #fff; }
+.game-on-collection__actions .game-on-collection__action--tracker { border-color: #17467b; background: #12355c; color: #fff; box-shadow: 0 3px 0 #071e38; }
+.game-on-collection__actions .game-on-collection__action--tracker:hover { background: #1b4b7c; }
+.game-on-collection__actions .game-on-collection__action--tracker svg { color: #9fceff; }
+.game-on-collection__actions .game-on-collection__action--details { border-color: #8cb8e2; background: #e7f2ff; color: #14559e; box-shadow: 0 3px 0 #b5cfe8; }
+.game-on-collection__actions .game-on-collection__action--details:hover { background: #d2e8ff; }
 .game-on-collection__actions .game-on-collection__cancel-draft {
+  flex-direction: row;
+  min-height: 44px;
   border-color: #e6b7ae;
   color: #923e32;
 }
@@ -485,7 +500,6 @@
   background: #fff2ef;
 }
 .game-on-collection__actions .game-on-collection__cancel-draft svg { color: #b34b3c; }
-.game-on-collection__action-label--compact { display: none; }
 
 .game-on-inline { display: grid; gap: 18px; font-family: 'DM Sans', var(--app-font-sans), sans-serif; }
 .game-on-inline__section { display: grid; gap: 10px; min-width: 0; padding-bottom: 17px; border-bottom: 1px solid #c3d8ec; }
@@ -612,28 +626,31 @@
 }
 .game-on-collection__grid .game-on-collection__actions {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-  padding: 0 9px 10px;
+  gap: 8px;
+  padding: 0 18px 20px;
 }
+.game-on-collection__grid .game-on-collection__actions--practice { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .game-on-collection__grid .game-on-collection__actions :is(button, a) {
   justify-content: center;
-  gap: 4px;
-  min-height: 38px;
-  padding: 5px 4px;
-  font-size: 8px;
-  letter-spacing: 0;
+  gap: 6px;
+  min-height: 58px;
+  padding: 9px 6px;
+  font-size: 11px;
+  letter-spacing: .05em;
   text-align: center;
 }
-.game-on-collection__grid .game-on-collection__actions svg { width: 13px; height: 13px; }
+.game-on-collection__grid .game-on-collection__actions svg { width: 18px; height: 18px; }
 .game-on-collection__grid .game-on-collection__cancel-draft { grid-column: 1 / -1; }
 .game-on-collection__grid .game-on-collection__card--expanded {
   grid-column: 1 / -1;
-  min-height: 520px;
+  justify-self: center;
+  max-width: 620px;
+  min-height: 380px;
   aspect-ratio: auto;
 }
 .game-on-collection__grid .game-on-collection__card--expanded .game-on-collection__summary {
-  flex: 0 0 auto;
-  min-height: 320px;
+  flex: 1 0 auto;
+  min-height: 255px;
 }
 .game-on-collection__grid .game-on-collection__card--tracker-open,
 .game-on-collection__grid .game-on-collection__card--calendar-open,
@@ -708,23 +725,22 @@
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__date-day {
     font-size: clamp(28px, 11vw, 42px);
   }
-  .game-on-collection__grid .game-on-collection__actions { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 5px; padding: 7px 8px 10px; }
+  .game-on-collection__grid .game-on-collection__actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px 10px 15px; }
+  .game-on-collection__grid .game-on-collection__actions--practice { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-on-collection__grid .game-on-collection__actions :is(button, a) {
     justify-content: center;
     gap: 5px;
-    min-height: 44px;
-    padding: 6px 5px;
-    font-size: 8px;
+    min-height: 58px;
+    padding: 7px 4px;
+    font-size: 10px;
     line-height: 1.15;
-    letter-spacing: .01em;
+    letter-spacing: .02em;
     text-align: center;
   }
-  .game-on-collection__grid .game-on-collection__actions svg { width: 14px; height: 14px; }
-  .game-on-collection__action-label--full { display: none; }
-  .game-on-collection__action-label--compact { display: inline; }
+  .game-on-collection__grid .game-on-collection__actions svg { width: 16px; height: 16px; }
   .game-on-collection__grid .game-on-collection__card--expanded .game-on-collection__summary {
-    flex: 0 0 auto;
-    min-height: 300px;
+    flex: 1 0 auto;
+    min-height: 240px;
     aspect-ratio: auto;
   }
   .game-on-collection__grid .game-on-collection__card--expanded,

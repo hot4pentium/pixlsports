@@ -164,7 +164,7 @@ export function GameOnInlineEditor({
 
   const calendarSection = (
     <div className="game-on-inline__section">
-      <h3 tabIndex={view === 'calendar' ? -1 : undefined}><CalendarDays size={17} aria-hidden="true" /> Calendar details</h3>
+      <h3 tabIndex={-1}><CalendarDays size={17} aria-hidden="true" /> Event details</h3>
       <p>{scheduledEvent ? 'Changes here also update this Calendar event.' : 'This card is independent of Calendar.'}</p>
       <div className="game-on-inline__fields">
         {!isPractice && <label className="game-on-inline__wide">Opponent

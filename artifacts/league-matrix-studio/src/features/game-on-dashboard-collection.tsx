@@ -54,7 +54,7 @@ function dateParts(value: string) {
       return {
         month: new Intl.DateTimeFormat('en', { month: 'short' }).format(date),
         day: String(day),
-        weekday: new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date),
+        weekday: `${new Intl.DateTimeFormat('en', { weekday: 'short' }).format(date)} · ${year}`,
       };
     }
   }
@@ -108,8 +108,8 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   };
   const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
-  const hasEditor = selected && !calendarOpen && Boolean(renderSelectedCard);
-  const canOpenCardTools = !card.isUnsavedDraft || selected;
+  const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
+  const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
     if (frontFaceRef.current) frontFaceRef.current.inert = panelOpen;
     if (backFaceRef.current) backFaceRef.current.inert = !panelOpen;
@@ -129,12 +129,13 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
       layout={!reduceMotion}
       layoutId={reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
-      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
       data-tracker-open={trackerOpen ? 'true' : 'false'}
       data-prep-open={prepOpen ? 'true' : 'false'}
       data-calendar-open={calendarOpen ? 'true' : 'false'}
+      data-details-open={calendarOpen ? 'true' : 'false'}
       role="listitem"
     >
       <div className="game-on-collection__flip-inner">
@@ -143,7 +144,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
             type="button"
             className="game-on-collection__summary"
             onClick={() => onOpen(card.id)}
-            aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
+            aria-label={`${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
             aria-expanded={renderSelectedCard ? selected : undefined}
             aria-controls={hasEditor ? editorId : undefined}
             data-testid={`button-open-game-on-card-${card.id}`}
@@ -171,13 +172,13 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
             </span>
             <span hidden={!selected} className="game-on-collection__card-footer">
               <span className="game-on-collection__details">
-                <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span>{displayTime(card.time)}</span></span>
-                <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span>{card.location || 'Location TBD'}</span></span>
+                <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span className="game-on-collection__detail-label">Time</span><span className="game-on-collection__detail-value">{displayTime(card.time)}</span></span>
+                <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span className="game-on-collection__detail-label">Location</span><span className="game-on-collection__detail-value">{card.location || 'Location TBD'}</span></span>
               </span>
               <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
             </span>
           </button>
-          <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`} hidden={!selected}>
+          <div className={`game-on-collection__actions${practice ? ' game-on-collection__actions--practice' : ''}`} aria-label={`${practice ? 'Practice' : 'Game'} badge actions`} hidden={!selected}>
             {card.isUnsavedDraft && (
               <button
                 type="button"
@@ -189,22 +190,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 <X size={15} aria-hidden="true" /> Cancel draft
               </button>
             )}
-            {canOpenCardTools && (
+            {!card.isUnsavedDraft && (
               <>
-              <button
-                type="button"
-                  onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
-                aria-label="Edit Calendar details"
-                  aria-expanded={calendarOpen}
-                  aria-controls={calendarOpen ? `panel-inline-calendar-${card.id}` : undefined}
-                  data-testid={`button-edit-calendar-${card.id}`}
-              >
-                  <CalendarDays size={15} aria-hidden="true" />
-                  <span className="game-on-collection__action-label--full">Edit Calendar details</span>
-                  <span className="game-on-collection__action-label--compact" aria-hidden="true">Calendar</span>
-              </button>
                 <button
                   type="button"
+                  className="game-on-collection__action--prep"
                   onClick={(event) => onOpenPanel(card.id, 'prep', event.currentTarget)}
                   aria-label="Open Prep"
                   aria-expanded={prepOpen}
@@ -213,12 +203,12 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                   data-testid={`button-open-card-prep-${card.id}`}
                 >
                   <ClipboardCheck size={15} aria-hidden="true" />
-                  <span className="game-on-collection__action-label--full">Open Prep</span>
-                  <span className="game-on-collection__action-label--compact" aria-hidden="true">Prep</span>
+                  <span>Prep</span>
                 </button>
                 {!practice && (
                   <button
                     type="button"
+                    className="game-on-collection__action--tracker"
                     onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
                     aria-label="Open Stat Tracker"
                     aria-expanded={trackerOpen}
@@ -226,10 +216,21 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                     data-testid={`button-open-stat-tracker-${card.id}`}
                   >
                     <Activity size={15} aria-hidden="true" />
-                    <span className="game-on-collection__action-label--full">Open Stat Tracker</span>
-                    <span className="game-on-collection__action-label--compact" aria-hidden="true">Stat Tracker</span>
+                    <span>Stat Tracker</span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="game-on-collection__action--details"
+                  onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
+                  aria-label="Details: edit event"
+                  aria-expanded={calendarOpen}
+                  aria-controls={calendarOpen ? `panel-inline-calendar-${card.id}` : undefined}
+                  data-testid={`button-edit-calendar-${card.id}`}
+                >
+                  <CalendarDays size={15} aria-hidden="true" />
+                  <span>Details</span>
+                </button>
               </>
             )}
           </div>
@@ -251,18 +252,19 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
           aria-hidden={!panelOpen}
           data-testid={`panel-inline-tracker-${card.id}`}
         >
-          {calendarOpen ? (
-            <div id={`panel-inline-calendar-${card.id}`} data-testid={`panel-inline-calendar-${card.id}`}>
+          {hasDetails && (
+            <div id={`panel-inline-calendar-${card.id}`} data-testid={`panel-inline-calendar-${card.id}`} hidden={!calendarOpen}>
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-calendar-editor-${card.id}`}>
-                <ArrowLeft size={15} aria-hidden="true" /> Back to Game On card
+                <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
               {renderSelectedCard?.(card, {
-                view: 'calendar',
+                view: 'details',
                 onOpenPrep: (trigger) => onOpenPanel(card.id, 'prep', trigger),
                 onOpenTracker: (trigger) => onOpenPanel(card.id, 'tracker', trigger),
               })}
             </div>
-          ) : prepOpen ? (
+          )}
+          {prepOpen && (
             <div id={`panel-inline-prep-${card.id}`} data-testid={`panel-inline-prep-${card.id}`}>
               <GameOnInlinePrepChecklist
                 key={`${prepUserId ?? statTrackerUserId ?? 'anonymous'}:${eventId}`}
@@ -271,24 +273,23 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 onClose={onClosePanel}
               />
             </div>
-          ) : (
+          )}
+          {trackerOpen && !practice && (
             <>
               <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-stat-tracker-${card.id}`}>
-                <ArrowLeft size={15} aria-hidden="true" /> Back to Game On card
+                <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
-              {trackerOpen && !practice && (
-                <GameOnInlineStatTracker
-                  userId={statTrackerUserId}
-                  sport={statTrackerSport ?? null}
-                  athleteName={statTrackerAthleteName ?? card.athleteName}
-                  teamName={statTrackerTeamName ?? ''}
-                  eventId={eventId}
-                  date={card.date}
-                  time={card.time}
-                  location={card.location}
-                  opponent={card.opponent}
-                />
-              )}
+              <GameOnInlineStatTracker
+                userId={statTrackerUserId}
+                sport={statTrackerSport ?? null}
+                athleteName={statTrackerAthleteName ?? card.athleteName}
+                teamName={statTrackerTeamName ?? ''}
+                eventId={eventId}
+                date={card.date}
+                time={card.time}
+                location={card.location}
+                opponent={card.opponent}
+              />
             </>
           )}
         </div>
@@ -323,9 +324,18 @@ export function GameOnDashboardCollection({
       panelTriggerRef.current?.focus();
     }
   }, [openPanel]);
+  useLayoutEffect(() => {
+    if (!openPanel || selectedId === openPanel.cardId) return;
+    restorePanelFocusRef.current = false;
+    panelTriggerRef.current = null;
+    setOpenPanel(null);
+  }, [openPanel, selectedId]);
 
   const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => {
-    panelTriggerRef.current = trigger;
+    const frontAction = trigger.closest('.game-on-collection__flip-back')
+      ?.closest('.game-on-collection__card')
+      ?.querySelector<HTMLButtonElement>(`.game-on-collection__action--${panel === 'calendar' ? 'details' : panel}`);
+    panelTriggerRef.current = frontAction ?? trigger;
     setOpenPanel({ cardId: id, panel });
   };
   const closeCardPanel = () => {
@@ -397,7 +407,7 @@ export function GameOnDashboardCollection({
         </LayoutGroup>
         {cards.length > 0 && (
           <div className="game-on-collection__bottom">
-            <p className="game-on-collection__hint">Tap a card to view details and tools.</p>
+            <p className="game-on-collection__hint">Tap a card to open its badge and choose a tool.</p>
           </div>
         )}
       </div>

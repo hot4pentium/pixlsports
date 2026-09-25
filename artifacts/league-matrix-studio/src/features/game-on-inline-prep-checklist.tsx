@@ -80,7 +80,7 @@ export function GameOnInlinePrepChecklist({
         onClick={onClose}
         data-testid={`button-close-card-prep-${event.id}`}
       >
-        <ArrowLeft size={15} aria-hidden="true" /> Back to Game On card
+        <ArrowLeft size={15} aria-hidden="true" /> Back to badge
       </button>
       <div className="game-on-prep__heading">
         <p className="game-on-prep__eyebrow"><ClipboardCheck size={14} aria-hidden="true" /> {event.type === 'practice' ? 'Practice Prep' : 'Game Day Prep'}</p>
