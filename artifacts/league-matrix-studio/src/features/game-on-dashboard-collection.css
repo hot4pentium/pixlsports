@@ -741,9 +741,6 @@
   .game-on-collection__empty { align-items: flex-start; gap: 16px; }
   .game-on-collection__empty-mark { flex-basis: 54px; height: 54px; }
 }
-@media (max-width: 900px) and (min-width: 601px) {
-  .game-on-collection__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (prefers-reduced-motion: reduce) {
   .game-on-collection *, .game-on-collection *::before, .game-on-collection *::after {
     scroll-behavior: auto !important;

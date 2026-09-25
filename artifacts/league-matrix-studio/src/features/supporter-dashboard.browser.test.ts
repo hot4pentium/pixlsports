@@ -613,7 +613,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         collectionVisible: true,
         heroAboveCollection: true,
         heroDomBeforeCollection: true,
-        collectionColumnCount: width <= 600 ? 3 : width <= 900 ? 2 : 3,
+        collectionColumnCount: 3,
         collectionFits: true,
         squareCard: true,
         mobileToolsUsable: true,
