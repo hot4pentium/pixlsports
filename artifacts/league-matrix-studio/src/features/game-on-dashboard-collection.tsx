@@ -143,7 +143,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
             type="button"
             className="game-on-collection__summary"
             onClick={() => onOpen(card.id)}
-            aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${statusLabel}`}
+            aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
             aria-expanded={renderSelectedCard ? selected : undefined}
             aria-controls={hasEditor ? editorId : undefined}
             data-testid={`button-open-game-on-card-${card.id}`}
@@ -194,31 +194,40 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
               <button
                 type="button"
                   onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
+                aria-label="Edit Calendar details"
                   aria-expanded={calendarOpen}
                   aria-controls={calendarOpen ? `panel-inline-calendar-${card.id}` : undefined}
                   data-testid={`button-edit-calendar-${card.id}`}
               >
-                  <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
+                  <CalendarDays size={15} aria-hidden="true" />
+                  <span className="game-on-collection__action-label--full">Edit Calendar details</span>
+                  <span className="game-on-collection__action-label--compact" aria-hidden="true">Calendar</span>
               </button>
                 <button
                   type="button"
                   onClick={(event) => onOpenPanel(card.id, 'prep', event.currentTarget)}
+                  aria-label="Open Prep"
                   aria-expanded={prepOpen}
                   aria-controls={prepOpen ? `panel-inline-prep-${card.id}` : undefined}
                   data-prep-href={buildWorkspaceToolHref('prep', eventContext)}
                   data-testid={`button-open-card-prep-${card.id}`}
                 >
-                  <ClipboardCheck size={15} aria-hidden="true" /> Open Prep
+                  <ClipboardCheck size={15} aria-hidden="true" />
+                  <span className="game-on-collection__action-label--full">Open Prep</span>
+                  <span className="game-on-collection__action-label--compact" aria-hidden="true">Prep</span>
                 </button>
                 {!practice && (
                   <button
                     type="button"
                     onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
+                    aria-label="Open Stat Tracker"
                     aria-expanded={trackerOpen}
                     aria-controls={`panel-inline-tracker-${card.id}`}
                     data-testid={`button-open-stat-tracker-${card.id}`}
                   >
-                    <Activity size={15} aria-hidden="true" /> Open Stat Tracker
+                    <Activity size={15} aria-hidden="true" />
+                    <span className="game-on-collection__action-label--full">Open Stat Tracker</span>
+                    <span className="game-on-collection__action-label--compact" aria-hidden="true">Stats</span>
                   </button>
                 )}
               </>

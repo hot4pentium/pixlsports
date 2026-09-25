@@ -515,6 +515,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         collectionColumnCount: number;
         collectionFits: boolean;
         squareCard: boolean;
+        mobileToolsUsable: boolean;
         eventActionsVisible: boolean;
         removedPanels: boolean;
       }>(`(() => {
@@ -544,7 +545,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const initialHeaderRect = header.getBoundingClientRect();
         const heroRect = hero.getBoundingClientRect();
         const collectionRect = collection.getBoundingClientRect();
-        const cardRect = card.getBoundingClientRect();
+        const squareTile = innerWidth <= 600 ? card.querySelector('.game-on-collection__summary') : card;
+        if (!(squareTile instanceof HTMLElement)) throw new Error('Game On tile face is missing');
+        const cardRect = squareTile.getBoundingClientRect();
+        const cardActions = Array.from(card.querySelectorAll('.game-on-collection__actions > button'));
+        const tileRect = card.querySelector('.game-on-collection__summary')?.getBoundingClientRect();
         const athleteRect = athleteCard.getBoundingClientRect();
         const eventRect = eventCard.getBoundingClientRect();
         const heroColumns = getComputedStyle(columns).gridTemplateColumns.trim().split(/\\s+/);
@@ -576,6 +581,18 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
           collectionFits: collection.getBoundingClientRect().left >= -1
             && collection.getBoundingClientRect().right <= innerWidth + 1,
           squareCard: Math.abs(cardRect.width / cardRect.height - 1) < 0.05,
+          mobileToolsUsable: innerWidth > 600 || Boolean(
+            tileRect
+            && cardActions.length >= 2
+            && cardActions.every((action) => {
+              const rect = action.getBoundingClientRect();
+              return rect.width > 0
+                && rect.height >= 44
+                && rect.top >= tileRect.bottom - 1
+                && rect.right <= innerWidth + 1
+                && getComputedStyle(action.querySelector('.game-on-collection__action-label--compact')).display !== 'none';
+            }),
+          ),
           eventActionsVisible: [edit, prep, stats].every((action) => getComputedStyle(action).display !== 'none'),
           removedPanels: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="section-desktop-workspace"], [data-testid="card-mobile-recommendation"], [data-testid="workspace-recommendation"]'),
         };
@@ -596,9 +613,10 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         collectionVisible: true,
         heroAboveCollection: true,
         heroDomBeforeCollection: true,
-        collectionColumnCount: width <= 600 ? 1 : width <= 900 ? 2 : 3,
+        collectionColumnCount: width <= 600 ? 3 : width <= 900 ? 2 : 3,
         collectionFits: true,
         squareCard: true,
+        mobileToolsUsable: true,
         eventActionsVisible: true,
         removedPanels: true,
       }, `mobile header behavior at ${width}px`);
@@ -772,7 +790,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         profileHref: profileLink?.getAttribute('href') || null,
         scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
         prepHref: prep?.getAttribute('data-prep-href') || '',
-         trackerAction: stats?.textContent?.trim() || null,
+         trackerAction: stats?.getAttribute('aria-label') || null,
         hypeHref: document.querySelector('[data-testid="link-mobile-independent-hype"]')?.getAttribute('href') || null,
         oldPanelsRemoved: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="card-mobile-recommendation"]'),
       };
