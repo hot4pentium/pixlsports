@@ -622,6 +622,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
 
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-type\\"]")?.value === "game"', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"input-game-on-date\\"]")?.value || ""', page.sessionId),
+      '',
+      'a new independent Game On card should not start with a preset date',
+    );
     assert.deepEqual(await connection.evaluate<{
       editorInsideSelectedCard: boolean;
       bottomPanelRemoved: boolean;
@@ -659,7 +664,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected .game-on-collection__opponent")?.textContent?.trim()',
       page.sessionId,
     ), 'Practice', 'the selected card face should reflect the edited practice type');
-    await connection.evaluate(`document.querySelector('[data-testid="button-cancel-game-on-card"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-cancel-game-on-draft-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"panel-game-on-card-draft\\"]") === null', Boolean);
     assert.equal(await connection.evaluate(
       'document.querySelectorAll(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]").length',
@@ -679,7 +684,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"panel-game-on-card-draft\\"]") === null',
       page.sessionId,
     ), true, 'the draft editor should render only in the active mobile dashboard shell');
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-cancel-game-on-card"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="button-cancel-game-on-draft-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"panel-game-on-card-draft\\"]") === null', Boolean);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
@@ -702,7 +707,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       'document.querySelectorAll(".supporter-dashboard-desktop-shell .game-on-collection__card").length',
       page.sessionId,
     ), 1, 'starting from a scheduled game should replace, not duplicate, that event in the collection');
-    await connection.evaluate(`document.querySelector('[data-testid="button-cancel-game-on-card"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-cancel-game-on-draft-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"panel-game-on-card-draft\\"]") === null', Boolean);
     assert.equal(await connection.evaluate(
       'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"card-game-on-draft:game-1\\"]") !== null',

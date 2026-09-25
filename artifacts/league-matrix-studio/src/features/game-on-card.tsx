@@ -65,19 +65,10 @@ function createEventId() {
     : `game-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function dateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 function blankDraft(type: GameOnEventType = 'game'): CardEvent {
-  const suggestedDate = new Date();
-  suggestedDate.setDate(suggestedDate.getDate() + 7);
   return {
     id: createEventId(),
-    date: dateInputValue(suggestedDate),
+    date: '',
     time: '',
     location: '',
     opponent: '',
@@ -504,12 +495,12 @@ export function GameOnCardPanel({
                     Only event details are public on this card.
                   </p>
                 </div>
-                {(saved || embedded) && (
+                {saved && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (embedded && !saved) onCancelDraft?.();
-                      else if (saved) { setIsEditing(false); setDraft(saved.event); }
+                      setIsEditing(false);
+                      setDraft(saved.event);
                     }}
                     className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-white/55 hover:text-white"
                     data-testid="button-cancel-game-on-card"

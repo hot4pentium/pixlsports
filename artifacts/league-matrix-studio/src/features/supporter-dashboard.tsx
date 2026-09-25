@@ -405,6 +405,7 @@ export function SupporterDashboardView({
     location: newCardDraft?.event.location ?? '',
     status: 'Draft' as const,
     isPublished: false,
+    isUnsavedDraft: true,
   } : null;
   const replacedScheduleEventId = cardSelection?.kind === 'new' && newCardDraft?.sourceEventId !== 'new'
     ? newCardDraft?.sourceEventId
@@ -776,6 +777,7 @@ export function SupporterDashboardView({
             cards={collectionCards}
             onCreate={openCardWorkspace}
             onOpen={selectCard}
+            onCancelDraft={cancelNewCardDraft}
             selectedId={cardSelection?.id}
             renderSelectedCard={renderMobileSelectedGameOnCard}
             statTrackerUserId={userId}
@@ -950,6 +952,7 @@ export function SupporterDashboardView({
         cards={collectionCards}
         onCreate={openCardWorkspace}
         onOpen={selectCard}
+        onCancelDraft={cancelNewCardDraft}
         selectedId={cardSelection?.id}
         renderSelectedCard={renderDesktopSelectedGameOnCard}
         statTrackerUserId={userId}
