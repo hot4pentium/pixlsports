@@ -1174,10 +1174,22 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       hypeHref: '/studio/hype-card?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
       oldPanelsRemoved: true,
     });
-    await connection.evaluate(`window.__setSupporterDashboardEvents([
-      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals' },
-      { id: 'practice-1', type: 'practice', date: '2026-09-22', time: '18:30', location: 'Northside Gym' }
-    ])`, page.sessionId);
+    await connection.evaluate(`(() => {
+      const today = new Date();
+      const dateKey = (date) => [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+      ].join('-');
+      const inlineGameDate = dateKey(today);
+      const practiceDate = new Date(today);
+      practiceDate.setDate(practiceDate.getDate() + 1);
+      window.__dashboardInlineGameDate = inlineGameDate;
+      window.__setSupporterDashboardEvents([
+        { id: 'game-1', type: 'game', date: inlineGameDate, time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
+        { id: 'practice-1', type: 'practice', date: dateKey(practiceDate), time: '18:30', location: 'Northside Gym' }
+      ]);
+    })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.querySelector(".game-on-collection__kind")?.textContent?.includes("Practice"))', Boolean);
     assert.deepEqual(await connection.evaluate<{ practicePrep: boolean; practiceStats: boolean; gameStats: boolean }>(`(() => {
       const cards = Array.from(document.querySelectorAll('.game-on-collection__card'));
@@ -1214,6 +1226,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
+    const inlineGameDate = await connection.evaluate<string>('window.__dashboardInlineGameDate', page.sessionId);
     assert.deepEqual(await connection.evaluate<{
       open: string | null;
       fullTrackerHref: string | null;
@@ -1224,7 +1237,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       firstScore: document.querySelector('[data-testid="game-on-inline-score-value-athlete"]')?.textContent || null,
     }))()`, page.sessionId), {
       open: 'true',
-      fullTrackerHref: '/studio/stat-tracker?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
+      fullTrackerHref: `/studio/stat-tracker?source=workspace&eventId=game-1&eventType=game&date=${inlineGameDate}&opponent=Rivals`,
       firstScore: '0',
     });
     await connection.evaluate(`document.querySelector('[data-testid^="button-tap-stat-"][data-testid$="-two-point-team"]')?.click()`, page.sessionId);
@@ -1310,6 +1323,19 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-toggle-game-pause"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.includes('Live')
       && JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status === 'live'`, Boolean);
+    const cardStatusBeforeEnd = await connection.evaluate<{
+      cards: Array<{ id: string; kind: string; status: string; visible: boolean }>;
+      eventStatus: string | null;
+    }>(`(() => ({
+      cards: Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card')).map((card) => ({
+        id: card.getAttribute('data-testid') || '',
+        kind: card.querySelector('.game-on-collection__kind')?.textContent?.trim() || '',
+        status: card.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() || '',
+        visible: Boolean(card.getClientRects().length),
+      })),
+      eventStatus: window.__getSupporterDashboardEvents?.().find((event) => event.id === 'game-1')?.status || null,
+    }))()`, page.sessionId);
+    assert.equal(cardStatusBeforeEnd.cards.find((card) => card.kind.includes('Game'))?.status, 'Live', JSON.stringify(cardStatusBeforeEnd));
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
     assert.deepEqual(await connection.evaluate<{
@@ -1321,7 +1347,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       return {
         confirmationVisible: Boolean(document.querySelector('[data-testid="confirm-inline-end-game"]')?.textContent?.includes('End this game?')),
         activeGameStatus: JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status || null,
-        historyFinalCount: history.games.filter((item) => item.date === '2026-09-21' && item.opponent === 'Rivals' && item.status === 'final').length,
+        historyFinalCount: history.games.filter((item) => item.date === window.__dashboardInlineGameDate && item.opponent === 'Rivals' && item.status === 'final').length,
       };
     })()`, page.sessionId), {
       confirmationVisible: true,
@@ -1332,16 +1358,94 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await waitFor(connection, page.sessionId, `!document.querySelector('[data-testid="confirm-inline-end-game"]')
       && document.activeElement?.getAttribute('data-testid') === 'button-inline-end-game'
       && JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status === 'live'`, Boolean);
+    await connection.evaluate(`(() => {
+      const selector = '.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]';
+      const announcement = document.querySelector(selector);
+      if (!(announcement instanceof HTMLElement)) throw new Error('Game On completion announcement is missing');
+      if (announcement.textContent?.trim()) throw new Error('The completion announcement should be empty before the game ends');
+      window.__gameOnCompletionAnnouncementLastText = '';
+      window.__gameOnCompletionAnnouncementMutations = 0;
+      window.__gameOnCompletionAnnouncementObserver = new MutationObserver((records) => {
+        const currentAnnouncement = document.querySelector(selector);
+        const currentText = currentAnnouncement?.textContent?.trim() || '';
+        const regionInserted = records.some((record) => Array.from(record.addedNodes).some((node) => (
+          node instanceof Element && (node.matches(selector) || node.querySelector(selector))
+        )));
+        if (currentText && (currentText !== window.__gameOnCompletionAnnouncementLastText || regionInserted)) {
+          window.__gameOnCompletionAnnouncementMutations += 1;
+          window.__gameOnCompletionAnnouncementLastText = currentText;
+        }
+      });
+      window.__gameOnCompletionAnnouncementObserver.observe(document.body, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    })()`, page.sessionId);
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-inline-tracker-completed\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector("[data-testid=\\"status-inline-tracker-completed\\"]") !== null
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() === 'Game vs Rivals is complete.'
+      && Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+        .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'`, Boolean);
+    await waitFor(connection, page.sessionId, 'window.__gameOnCompletionAnnouncementMutations === 1', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      dashboardStillOpen: boolean;
+      activeElementTestId: string;
+      announcement: string;
+      announcementMutations: number;
+    }>(`(() => ({
+      dashboardStillOpen: Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]')?.getClientRects().length),
+      activeElementTestId: document.activeElement?.getAttribute('data-testid') || '',
+      announcement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+      announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
+    }))()`, page.sessionId), {
+      dashboardStillOpen: true,
+      activeElementTestId: 'status-inline-tracker-completed',
+      announcement: 'Game vs Rivals is complete.',
+      announcementMutations: 1,
+    });
+    await connection.send('Accessibility.enable', {}, page.sessionId);
+    const accessibilityTree = await connection.send<{
+      nodes: Array<{
+        role?: { value?: string };
+        name?: { value?: string };
+        properties?: Array<{ name?: string; value?: { value?: unknown } }>;
+      }>;
+    }>('Accessibility.getFullAXTree', {}, page.sessionId);
+    assert.ok(
+      accessibilityTree.nodes.some((node) => node.role?.value === 'status'
+        && node.properties?.some((property) => property.name === 'live' && property.value?.value === 'polite')),
+      'the completed-game message should appear as a polite status in Chromium’s accessibility tree',
+    );
+    assert.ok(
+      accessibilityTree.nodes.some((node) => node.name?.value === 'Game vs Rivals is complete.'),
+      'the completed-game announcement text should be exposed to assistive technology',
+    );
+    const firstAnnouncementMutations = await connection.evaluate<number>(`window.__gameOnCompletionAnnouncementMutations || 0`, page.sessionId);
+    await connection.evaluate(`window.__setSupporterDashboardEvents(window.__getSupporterDashboardEvents())`, page.sessionId);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.deepEqual(await connection.evaluate<{
+      announcement: string;
+      announcementMutations: number;
+      activeElementTestId: string;
+    }>(`(() => ({
+      announcement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+      announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
+      activeElementTestId: document.activeElement?.getAttribute('data-testid') || '',
+    }))()`, page.sessionId), {
+      announcement: 'Game vs Rivals is complete.',
+      announcementMutations: firstAnnouncementMutations,
+      activeElementTestId: 'status-inline-tracker-completed',
+    }, 'an unrelated dashboard rerender must not repeat the completion announcement or steal focus');
     assert.deepEqual(await connection.evaluate<{
       activeGame: string | null;
       completed: { status: string; score: number; statCount: number; attribution: string } | null;
     }>(`(() => {
       const history = JSON.parse(localStorage.getItem('leaguematrix-stat-tracker:dashboard-inline-stat-test') || '{"games":[]}');
-      const completed = history.games.find((item) => item.date === '2026-09-21' && item.opponent === 'Rivals');
+      const completed = history.games.find((item) => item.date === window.__dashboardInlineGameDate && item.opponent === 'Rivals');
       return {
         activeGame: localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test'),
         completed: completed ? {
@@ -1367,8 +1471,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
     assert.equal(
-      await connection.evaluate<string>(`Array.from(document.querySelectorAll('[data-testid^="status-game-on-card-"]'))
-        .find((status) => status.getClientRects().length > 0)?.textContent?.trim() || ''`, page.sessionId),
+      await connection.evaluate<string>(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+        .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() || ''`, page.sessionId),
       'Complete',
       'ending the inline tracker must finalize its linked Calendar badge',
     );
