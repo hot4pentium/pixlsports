@@ -169,24 +169,27 @@
   text-transform: uppercase;
 }
 
-.game-on-quick-tracker__stats-heading > button {
+.game-on-quick-tracker__undo {
   display: inline-flex;
+  width: 100%;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 38px;
-  padding: 6px 8px;
+  min-height: 44px;
+  padding: 8px 12px;
   border: 1px solid #c1d5e8;
   border-radius: 5px;
   background: #fff;
   color: #345573;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 900;
+  letter-spacing: .04em;
   text-transform: uppercase;
   cursor: pointer;
 }
 
-.game-on-quick-tracker__stats-heading > button:disabled { opacity: .45; cursor: not-allowed; }
+.game-on-quick-tracker__undo:hover:not(:disabled) { border-color: #70b4ff; background: #e9f4ff; }
+.game-on-quick-tracker__undo:disabled { opacity: .45; cursor: not-allowed; }
 
 .game-on-quick-tracker__stat-grid {
   display: grid;

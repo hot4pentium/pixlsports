@@ -350,9 +350,6 @@ export function GameOnInlineStatTracker({
                 {Object.values(game.stats).reduce((sum, count) => sum + count, 0)} plays · {game.score} pts
               </p>
             </div>
-            <button type="button" disabled={game.status !== 'live' || game.events.length === 0} onClick={() => updateGame(undoLastStatEvent)} aria-label="Undo last stat" data-testid="button-inline-stat-undo">
-              <RotateCcw size={15} aria-hidden="true" /> Undo
-            </button>
           </div>
 
           <div className="game-on-quick-tracker__stat-grid">
@@ -385,6 +382,16 @@ export function GameOnInlineStatTracker({
               );
             })}
           </div>
+          <button
+            type="button"
+            className="game-on-quick-tracker__undo"
+            disabled={game.status !== 'live' || game.events.length === 0}
+            onClick={() => updateGame(undoLastStatEvent)}
+            aria-label="Undo last stat"
+            data-testid="button-inline-stat-undo"
+          >
+            <RotateCcw size={15} aria-hidden="true" /> Undo last stat
+          </button>
           {error && <p className="game-on-quick-tracker__save-warning" role="alert">{error}</p>}
           {confirmEndGame ? (
             <div

@@ -1708,7 +1708,79 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       fullTrackerHref: `/studio/stat-tracker?source=workspace&eventId=game-1&eventType=game&date=${inlineGameDate}&opponent=Rivals`,
       firstScore: '0',
     });
-    await connection.evaluate(`document.querySelector('[data-testid^="button-tap-stat-"][data-testid$="-two-point-team"]')?.click()`, page.sessionId);
+    assert.deepEqual(await connection.evaluate<{
+      undoDisabled: boolean;
+      undoLabel: string;
+      followsStatGrid: boolean;
+      precedesGameActions: boolean;
+      minHeight: number;
+      fillsStatWidth: boolean;
+    }>(`(() => {
+      const tracker = Array.from(document.querySelectorAll('[data-testid^="game-on-inline-stat-tracker-"]'))
+        .find((element) => element.getClientRects().length > 0);
+      const statGrid = tracker?.querySelector('.game-on-quick-tracker__stat-grid');
+      const undo = tracker?.querySelector('[data-testid="button-inline-stat-undo"]');
+      const gameActions = tracker?.querySelector('[data-testid="inline-tracker-game-actions"]');
+      const undoRect = undo?.getBoundingClientRect();
+      const statGridRect = statGrid?.getBoundingClientRect();
+      return {
+        undoDisabled: Boolean(undo?.disabled),
+        undoLabel: undo?.getAttribute('aria-label') || '',
+        followsStatGrid: Boolean(undo && statGrid && statGrid.nextElementSibling === undo),
+        precedesGameActions: Boolean(undo && gameActions && (undo.compareDocumentPosition(gameActions) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        minHeight: Math.round(undoRect?.height || 0),
+        fillsStatWidth: Boolean(undoRect && statGridRect && undoRect.width >= statGridRect.width - 1),
+      };
+    })()`, page.sessionId), {
+      undoDisabled: true,
+      undoLabel: 'Undo last stat',
+      followsStatGrid: true,
+      precedesGameActions: true,
+      minHeight: 44,
+      fillsStatWidth: true,
+    });
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-tap-stat-"][data-testid$="-two-point-team"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-score-value-athlete\\"]")?.textContent === "2"', Boolean);
+    await waitFor(connection, page.sessionId, `(() => {
+      const tracker = Array.from(document.querySelectorAll('[data-testid^="game-on-inline-stat-tracker-"]'))
+        .find((element) => element.getClientRects().length > 0);
+      return tracker?.querySelector('[data-testid="button-inline-stat-undo"]')?.disabled === false;
+    })()`, Boolean);
+    await connection.evaluate(`(() => {
+      const tracker = Array.from(document.querySelectorAll('[data-testid^="game-on-inline-stat-tracker-"]'))
+        .find((element) => element.getClientRects().length > 0);
+      tracker?.querySelector('[data-testid="button-inline-stat-undo"]')?.focus();
+    })()`, page.sessionId);
+    assert.equal(await connection.evaluate<boolean>('document.activeElement?.getAttribute("data-testid") === "button-inline-stat-undo"', page.sessionId), true);
+    await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 }, page.sessionId);
+    await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 }, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const tracker = Array.from(document.querySelectorAll('[data-testid^="game-on-inline-stat-tracker-"]'))
+        .find((element) => element.getClientRects().length > 0);
+      const statCard = tracker?.querySelector('[data-testid="card-inline-stat-two-point"]');
+      return tracker?.querySelector('[data-testid="game-on-inline-score-value-athlete"]')?.textContent === '0'
+        && statCard?.querySelector('strong')?.textContent === '0'
+        && tracker?.querySelector('[data-testid="button-inline-stat-undo"]')?.disabled === true;
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      score: number;
+      statCount: number;
+      eventCount: number;
+    }>(`(() => {
+      const stored = JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null');
+      return {
+        score: stored?.score,
+        statCount: stored?.stats?.['two-point'] ?? 0,
+        eventCount: stored?.events?.length ?? 0,
+      };
+    })()`, page.sessionId), {
+      score: 0,
+      statCount: 0,
+      eventCount: 0,
+    });
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-tap-stat-"][data-testid$="-two-point-team"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-score-value-athlete\\"]")?.textContent === "2"', Boolean);
     assert.deepEqual(await connection.evaluate<{
       score: number;
@@ -1776,12 +1848,19 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.deepEqual(await connection.evaluate<{
       status: string;
       statsDisabled: boolean;
-    }>(`(() => ({
-      status: document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.trim() || '',
-      statsDisabled: Boolean(document.querySelector('[data-testid="button-tap-stat-game-1-two-point-team"]')?.disabled),
-    }))()`, page.sessionId), {
+      undoDisabled: boolean;
+    }>(`(() => {
+      const tracker = Array.from(document.querySelectorAll('[data-testid^="game-on-inline-stat-tracker-"]'))
+        .find((element) => element.getClientRects().length > 0);
+      return {
+        status: tracker?.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.trim() || '',
+        statsDisabled: Boolean(tracker?.querySelector('[data-testid="button-tap-stat-game-1-two-point-team"]')?.disabled),
+        undoDisabled: Boolean(tracker?.querySelector('[data-testid="button-inline-stat-undo"]')?.disabled),
+      };
+    })()`, page.sessionId), {
       status: 'Paused',
       statsDisabled: true,
+      undoDisabled: true,
     });
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-tracker-open") === "false"', Boolean);
