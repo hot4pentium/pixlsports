@@ -1,7 +1,7 @@
 import React, { Component, lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 import { ArrowLeft, FileText, RotateCcw } from 'lucide-react';
 
-import { countStatEventsByAttribution, footballYardMetricDefinitions, type GameReport, type SportRule } from './stat-tracker';
+import { countStatEventsByAttribution, footballYardMetricDefinitions, isYardageTrackingAvailable, type GameReport, type SportRule } from './stat-tracker';
 
 type ReportChartsProps = {
   report: GameReport;
@@ -169,7 +169,7 @@ export function GameReportView({
                      </div>
                    );
                  })}</div>
-                {selectedGame.sport === 'football' && (
+                {isYardageTrackingAvailable(selectedGame.sport) && (
                   <div className="mt-6 border-t border-border pt-6" data-testid="report-yardage">
                     <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Yardage</h3>
                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">

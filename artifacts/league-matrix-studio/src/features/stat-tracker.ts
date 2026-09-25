@@ -1,6 +1,13 @@
 export type Sport = 'baseball' | 'basketball' | 'football' | 'soccer' | 'softball' | 'volleyball';
 export type GameStatus = 'setup' | 'live' | 'paused' | 'final';
 
+export const YARDAGE_TRACKING_FEATURE_ENABLED = false;
+const YARDAGE_TRACKING_SPORTS: readonly Sport[] = ['football'];
+
+export function isYardageTrackingAvailable(sport: Sport) {
+  return YARDAGE_TRACKING_FEATURE_ENABLED && YARDAGE_TRACKING_SPORTS.includes(sport);
+}
+
 export type StatDefinition = {
   id: string;
   label: string;

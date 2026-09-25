@@ -48,6 +48,7 @@ import {
   getTrackerConflict,
   getTrackerStorageKeys,
   getTrackerSyncRecovery,
+  isYardageTrackingAvailable,
   mergeTrackerData,
   normalizeTrackerData,
   readStoredActiveGame,
@@ -635,7 +636,7 @@ type LiveTrackerGameProps = {
 };
 
 function latestYardEventIds(game: GameSession) {
-  if (game.sport !== 'football' || game.trackYards !== true) return {};
+  if (!isYardageTrackingAvailable(game.sport) || game.trackYards !== true) return {};
   return game.events.reduce<Record<string, string>>((eventIds, event) => {
     if (getFootballYardMetricId(event.statId)) {
       const controlId = event.statId === 'pass-yard' || event.statId === 'reception'
@@ -686,7 +687,7 @@ export function LiveTrackerGame({
     onGameChange(resolved);
   };
   const eventLabel = (statId: string) => rule.stats.find((item) => item.id === statId)?.label ?? statId;
-  const yardTrackingEnabled = currentGame.sport === 'football' && currentGame.trackYards === true;
+  const yardTrackingEnabled = isYardageTrackingAvailable(currentGame.sport) && currentGame.trackYards === true;
 
   useEffect(() => {
     currentGameRef.current = currentGame;
@@ -852,7 +853,7 @@ export function LiveTrackerGame({
       </div>
       <div data-testid="live-tracker-stat-controls" className="order-2 min-w-0 border border-border bg-card p-4 clip-angled-sm sm:p-7 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <div className="mb-5 flex min-w-0 items-end justify-between gap-4"><div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-widest text-accent">Tap a stat</p><h2 className="mt-1 break-words font-display text-3xl uppercase tracking-wide">{athleteName || 'Athlete'}</h2></div><span className="shrink-0 text-right text-xs font-bold uppercase tracking-widest text-muted-foreground">Count / points<br /><strong className="whitespace-nowrap text-foreground">{Object.values(currentGame.stats).reduce((sum, count) => sum + count, 0)} plays / {currentGame.score} pts</strong></span></div>
-        {currentGame.sport === 'football' && (
+        {isYardageTrackingAvailable(currentGame.sport) && (
           <div className="mb-5 border border-primary/30 bg-primary/5 p-3" data-testid="football-yard-tracking">
             <label className="flex cursor-pointer items-start gap-3 text-xs font-bold uppercase tracking-widest text-foreground">
               <input
@@ -877,7 +878,7 @@ export function LiveTrackerGame({
             : displayStats
           ).map((item) => {
             const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
-            const yardMetricId = currentGame.sport === 'football'
+            const yardMetricId = isYardageTrackingAvailable(currentGame.sport)
               ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))
               : null;
             const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
@@ -1098,7 +1099,7 @@ export function LiveTrackerGame({
         <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>
         <div className="space-y-2">
           {currentGame.events.slice(-5).reverse().map((event) => {
-            const yardMetricId = currentGame.sport === 'football' ? getFootballYardMetricId(event.statId) : null;
+            const yardMetricId = isYardageTrackingAvailable(currentGame.sport) ? getFootballYardMetricId(event.statId) : null;
             const isSelectedYardEvent = activeYardEventIds[event.statId] === event.id;
             const nextAttribution: StatAttribution = event.attribution === 'athlete' ? 'team' : 'athlete';
             const nextAttributionLabel = nextAttribution === 'athlete' ? athleteTargetName : (teamName || 'team');
@@ -1883,7 +1884,7 @@ export function StatTrackerPage() {
             </div>
             <div className="mt-7 space-y-3">
               {rule.stats.filter((item) => totals.stats[item.id]).slice(0, 5).map((item) => <div key={item.id} className="flex items-center justify-between border-b border-border pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-muted-foreground">{item.label}</span><span className="font-display text-2xl text-foreground">{totals.stats[item.id]}</span></div>)}
-              {sport === 'football' && footballYardMetricDefinitions
+              {isYardageTrackingAvailable(sport) && footballYardMetricDefinitions
                 .filter((metric) => yardTotals[metric.id])
                 .map((metric) => <div key={metric.id} className="flex items-center justify-between border-b border-border pb-2 text-sm"><span className="font-bold uppercase tracking-wider text-muted-foreground">{metric.label}</span><span className="font-display text-2xl text-foreground">{yardTotals[metric.id]} <span className="text-xs text-muted-foreground">YDS</span></span></div>)}
               {!totals.gamesPlayed && <p className="text-sm text-muted-foreground">Finish your first game to build the season view.</p>}

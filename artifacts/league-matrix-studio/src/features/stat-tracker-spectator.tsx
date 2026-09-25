@@ -21,6 +21,7 @@ import {
   type StatTrackerShare,
   type StatTrackerEvent,
 } from "@workspace/api-client-react";
+import { isYardageTrackingAvailable } from "./stat-tracker";
 
 function formatDate(value: string) {
   if (!value) return "";
@@ -254,7 +255,9 @@ export function PublicStatTrackerPage() {
   const status = getStatusCopy(game.status);
   const allStats = [
     ...Object.entries(game.stats || {}).map(([key, value]) => ({ key, value: String(value) })),
-    ...Object.entries(game.yardStats || {}).map(([key, value]) => ({ key, value: `${value} yds` })),
+    ...(isYardageTrackingAvailable(game.sport)
+      ? Object.entries(game.yardStats || {}).map(([key, value]) => ({ key, value: `${value} yds` }))
+      : []),
   ];
   const recentEvents = groupCompletedPassEvents(game.events.slice().reverse());
   const updatedTime = new Date(data.updatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
@@ -413,7 +416,7 @@ export function PublicStatTrackerPage() {
                         <div className="flex items-start justify-between gap-3">
                           <span className="min-w-0 truncate text-sm font-bold text-foreground">
                             {event.isCompletedPass ? "Completed pass" : formatStatKey(event.statId)}
-                            {event.yards != null ? ` · ${event.yards} yds` : ""}
+                            {isYardageTrackingAvailable(game.sport) && event.yards != null ? ` · ${event.yards} yds` : ""}
                           </span>
                           <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                             {formatEventTime(event.createdAt)}
