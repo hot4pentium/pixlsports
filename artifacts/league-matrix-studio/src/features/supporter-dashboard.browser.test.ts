@@ -485,7 +485,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?game-on-card-save-transition`);
 
     for (const width of [320, 390, 430, 639, 640, 768]) {
       const height = width === 768 ? 1024 : 844;
@@ -510,9 +510,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         heroCardsContained: boolean;
         heroKickerFits: boolean;
         collectionVisible: boolean;
-        collectionLeadsHero: boolean;
+        heroAboveCollection: boolean;
+        heroDomBeforeCollection: boolean;
+        collectionColumnCount: number;
         collectionFits: boolean;
-        portraitCard: boolean;
+        squareCard: boolean;
         eventActionsVisible: boolean;
         removedPanels: boolean;
       }>(`(() => {
@@ -520,6 +522,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const header = document.querySelector('[data-testid="mobile-header"]');
         const hero = document.querySelector('[data-testid="mobile-hero-banner"]');
         const collection = root?.querySelector('[data-testid="game-on-dashboard-collection"]');
+        const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
         const card = collection?.querySelector('.game-on-collection__card');
         const edit = card?.querySelector('[data-testid^="button-edit-calendar-"]');
         const prep = card?.querySelector('[data-testid^="button-open-card-prep-"]');
@@ -529,7 +532,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
         const eventKicker = document.querySelector('.mobile-featured-event-kicker');
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
-          || !(collection instanceof HTMLElement) || !(card instanceof HTMLElement)
+          || !(collection instanceof HTMLElement) || !(grid instanceof HTMLElement) || !(card instanceof HTMLElement)
           || !(edit instanceof HTMLElement) || !(prep instanceof HTMLElement) || !(stats instanceof HTMLElement)
           || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
           || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
@@ -540,9 +543,12 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         scroller.scrollTop = 0;
         const initialHeaderRect = header.getBoundingClientRect();
         const heroRect = hero.getBoundingClientRect();
+        const collectionRect = collection.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
         const athleteRect = athleteCard.getBoundingClientRect();
         const eventRect = eventCard.getBoundingClientRect();
-        const gridColumns = getComputedStyle(columns).gridTemplateColumns.trim().split(/\\s+/);
+        const heroColumns = getComputedStyle(columns).gridTemplateColumns.trim().split(/\\s+/);
+        const collectionColumns = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/);
         scroller.scrollTop = Math.min(240, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
         const scrolledHeaderRect = header.getBoundingClientRect();
         scroller.scrollTop = 0;
@@ -556,7 +562,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
           headerTop: Math.round(initialHeaderRect.top - rootRect.top),
           headerTopAfterScroll: Math.round(scrolledHeaderRect.top),
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
-          heroColumnCount: gridColumns.length,
+          heroColumnCount: heroColumns.length,
           heroCornerRadius: getComputedStyle(hero).borderRadius,
           heroCardsContained: athleteRect.left >= heroRect.left
             && athleteRect.right <= heroRect.right
@@ -564,10 +570,12 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
             && eventRect.right <= heroRect.right,
           heroKickerFits: eventKicker.scrollWidth <= eventKicker.clientWidth,
           collectionVisible: getComputedStyle(collection).display !== 'none',
-          collectionLeadsHero: Boolean(collection.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING),
+          heroAboveCollection: heroRect.bottom <= collectionRect.top + 1,
+          heroDomBeforeCollection: Boolean(hero.compareDocumentPosition(collection) & Node.DOCUMENT_POSITION_FOLLOWING),
+          collectionColumnCount: collectionColumns.length,
           collectionFits: collection.getBoundingClientRect().left >= -1
             && collection.getBoundingClientRect().right <= innerWidth + 1,
-          portraitCard: card.getBoundingClientRect().width / card.getBoundingClientRect().height <= 0.5,
+          squareCard: Math.abs(cardRect.width / cardRect.height - 1) < 0.05,
           eventActionsVisible: [edit, prep, stats].every((action) => getComputedStyle(action).display !== 'none'),
           removedPanels: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="section-desktop-workspace"], [data-testid="card-mobile-recommendation"], [data-testid="workspace-recommendation"]'),
         };
@@ -586,9 +594,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         heroCardsContained: true,
         heroKickerFits: true,
         collectionVisible: true,
-        collectionLeadsHero: true,
+        heroAboveCollection: true,
+        heroDomBeforeCollection: true,
+        collectionColumnCount: width <= 600 ? 1 : width <= 900 ? 2 : 3,
         collectionFits: true,
-        portraitCard: true,
+        squareCard: true,
         eventActionsVisible: true,
         removedPanels: true,
       }, `mobile header behavior at ${width}px`);
@@ -604,23 +614,50 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.deepEqual(await connection.evaluate<{
       oldPanelsRemoved: boolean;
       actionCount: number;
-      collectionLeadsHero: boolean;
+      heroAboveCollection: boolean;
+      heroDomBeforeCollection: boolean;
+      collectionColumnCount: number;
     }>(`(() => {
       const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
       const hero = document.querySelector('.supporter-dashboard-desktop-shell .dashboard-hero-banner');
-      if (!(collection instanceof HTMLElement)) throw new Error('Desktop Game On collection is missing');
+      const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
+      if (!(collection instanceof HTMLElement) || !(hero instanceof HTMLElement) || !(grid instanceof HTMLElement)) throw new Error('Desktop Game On collection is missing');
       return {
         oldPanelsRemoved: !document.querySelector('[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"], [data-testid="desktop-game-on-entry"]'),
         actionCount: collection.querySelectorAll('.game-on-collection__actions > *').length,
-        collectionLeadsHero: Boolean(collection && hero && (collection.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        heroAboveCollection: hero.getBoundingClientRect().bottom <= collection.getBoundingClientRect().top + 1,
+        heroDomBeforeCollection: Boolean(hero.compareDocumentPosition(collection) & Node.DOCUMENT_POSITION_FOLLOWING),
+        collectionColumnCount: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length,
       };
     })()`, page.sessionId), {
       oldPanelsRemoved: true,
       actionCount: 3,
-      collectionLeadsHero: true,
+      heroAboveCollection: true,
+      heroDomBeforeCollection: true,
+      collectionColumnCount: 3,
     });
 
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      draftSquare: boolean;
+      draftNotExpanded: boolean;
+      editorNotOpen: boolean;
+    }>(`(() => {
+      const draft = document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="card-game-on-new-card-"]');
+      if (!(draft instanceof HTMLElement)) throw new Error('New Game On tile is missing');
+      const rect = draft.getBoundingClientRect();
+      return {
+        draftSquare: Math.abs(rect.width / rect.height - 1) < 0.05,
+        draftNotExpanded: !draft.classList.contains('game-on-collection__card--selected'),
+        editorNotOpen: draft.querySelector('[data-testid="panel-game-on-card-draft"]') === null,
+      };
+    })()`, page.sessionId), {
+      draftSquare: true,
+      draftNotExpanded: true,
+      editorNotOpen: true,
+    });
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-type\\"]")?.value === "game"', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid=\\"input-game-on-date\\"]")?.value || ""', page.sessionId),
@@ -679,6 +716,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-create-game-on-card\\"]")?.getClientRects().length > 0', Boolean);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell .game-on-collection__card--selected [data-testid=\\"panel-game-on-card-draft\\"]") !== null', Boolean);
     assert.equal(await connection.evaluate(
       'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"panel-game-on-card-draft\\"]") === null',
@@ -695,6 +734,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"button-create-game-on-card\\"]")?.getClientRects().length > 0', Boolean);
 
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-source-event\\"]") !== null', Boolean);
     await connection.evaluate(`(() => {
       const select = document.querySelector('[data-testid="select-game-on-source-event"]');
@@ -906,6 +947,70 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       return document.activeElement === card?.querySelector('[data-testid^="button-open-card-prep-"]');
     })()`, Boolean);
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('supporter-save-transition')`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"button-create-game-on-card\\"]")?.getClientRects().length > 0', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"panel-game-on-card-draft\\"]") !== null', Boolean);
+    const draftLayoutId = await connection.evaluate<string | null>(
+      'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]")?.getAttribute("data-layout-id") ?? null',
+      page.sessionId,
+    );
+    assert.ok(draftLayoutId, 'the new draft tile should expose its stable layout identity');
+    await connection.evaluate(`(() => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      const values = [
+        ['[data-testid="input-game-on-date"]', '2026-10-10'],
+        ['[data-testid="input-game-on-opponent"]', 'Falcons'],
+      ];
+      for (const [selector, value] of values) {
+        const input = document.querySelector(selector);
+        if (!(input instanceof HTMLInputElement)) throw new Error('Game On Card field missing: ' + selector);
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-save-game-on-card\\"]")?.disabled === false', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-save-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'window.__gameOnCardMockSaveRequests === 1', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-share:mock-game-on-card-token\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, `(() => {
+      const card = document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="card-game-on-share:mock-game-on-card-token"]');
+      if (!(card instanceof HTMLElement)) return false;
+      const rect = card.getBoundingClientRect();
+      return Math.abs(rect.width / rect.height - 1) < 0.05;
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      layoutIdPreserved: boolean;
+      savedCardCollapsed: boolean;
+      savedCardSquare: boolean;
+      editorClosed: boolean;
+    }>(`(() => {
+      const card = document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="card-game-on-share:mock-game-on-card-token"]');
+      if (!(card instanceof HTMLElement)) throw new Error('Saved Game On Card is missing');
+      const rect = card.getBoundingClientRect();
+      return {
+        layoutIdPreserved: card.getAttribute('data-layout-id') === ${JSON.stringify(draftLayoutId)},
+        savedCardCollapsed: !card.classList.contains('game-on-collection__card--selected')
+          && !card.classList.contains('game-on-collection__card--expanded'),
+        savedCardSquare: Math.abs(rect.width / rect.height - 1) < 0.05,
+        editorClosed: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="panel-game-on-card-draft"]') === null,
+      };
+    })()`, page.sessionId), {
+      layoutIdPreserved: true,
+      savedCardCollapsed: true,
+      savedCardSquare: true,
+      editorClosed: true,
+    }, 'saving should animate the expanded draft back into its original grid slot');
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -1636,6 +1741,29 @@ export function mount() {
     return;
   }
   let dashboardUserId = window.location.search.includes('supporter-active-game-sync') ? 'supporter-sync-user' : undefined;
+  if (window.location.search.includes('game-on-card-save-transition')) {
+    dashboardUserId = 'supporter-save-transition';
+    window.__gameOnCardMockSaveRequests = 0;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const requestUrl = input instanceof Request ? input.url : input instanceof URL ? input.href : input;
+      const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
+      if (typeof requestUrl === 'string') {
+        const pathname = new URL(requestUrl, window.location.href).pathname;
+        if (pathname.endsWith('/api/game-on-cards/owned')) {
+          return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (pathname.endsWith('/api/schedule-shares') && method === 'POST') {
+          window.__gameOnCardMockSaveRequests += 1;
+          return new Response(JSON.stringify({ shareToken: 'mock-game-on-card-token' }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      return originalFetch(input, init);
+    };
+  }
   const renderDashboard = () => root.render(
     createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },

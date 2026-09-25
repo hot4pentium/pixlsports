@@ -208,9 +208,13 @@
 
 @media (max-width: 1023px) {
   .pixl-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
     background: var(--pixl-ink);
     border: 0;
   }
+  .pixl-dashboard > .dashboard-hero-banner { order: -1; }
   .pixl-dashboard > header { grid-template-columns: 1fr; }
   .pixl-dashboard > header > :first-child { min-height: 210px; }
   .pixl-dashboard [data-testid="section-next-game-context"] {
@@ -226,6 +230,8 @@
     overflow-wrap: anywhere;
   }
 }
+
+.pixl-dashboard-mobile .mobile-hero-banner { order: -1; }
 
 @media (max-width: 640px) {
   .pixl-dashboard { gap: 28px; padding: 18px 14px 30px; }
@@ -1354,6 +1360,20 @@
 
 /* Desktop hero composition: greeting, athlete identity, and next event share one surface. */
 @media (min-width: 1024px) {
+  .pixl-dashboard > .dashboard-hero-banner { order: -1; }
+  .pixl-dashboard > [data-testid="game-on-dashboard-collection"] {
+    order: 0;
+    grid-column: 1 / -1;
+  }
+  .pixl-dashboard > [data-testid="link-desktop-independent-hype"] {
+    order: 1;
+    grid-column: 1 / -1;
+  }
+  .pixl-dashboard > p[role="alert"] {
+    order: 2;
+    grid-column: 1 / -1;
+  }
+
   .pixl-dashboard .dashboard-hero-banner {
     grid-column: 1 / -1;
     position: relative;

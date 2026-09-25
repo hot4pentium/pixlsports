@@ -1,4 +1,5 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type UIEvent } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Swords, X } from 'lucide-react';
 import { buildWorkspaceToolHref } from './workspace-context';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
@@ -9,6 +10,7 @@ import './game-on-dashboard-collection.css';
 export type DashboardGameOnCard = {
   id: string;
   eventId?: string;
+  layoutId?: string;
   type: 'game' | 'practice';
   athleteName: string;
   opponent: string;
@@ -29,6 +31,7 @@ export type GameOnCardRenderOptions = {
 type GameOnDashboardCollectionProps = {
   cards: DashboardGameOnCard[];
   onCreate: () => void;
+  createDisabled?: boolean;
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
   selectedId?: string;
@@ -82,6 +85,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   statTrackerAthleteName?: string;
   statTrackerTeamName?: string;
 }) {
+  const reduceMotion = useReducedMotion();
   const editorId = useId();
   const frontFaceRef = useRef<HTMLDivElement>(null);
   const backFaceRef = useRef<HTMLDivElement>(null);
@@ -105,6 +109,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
   const hasEditor = selected && !calendarOpen && Boolean(renderSelectedCard);
+  const canOpenCardTools = !card.isUnsavedDraft || selected;
   useLayoutEffect(() => {
     if (frontFaceRef.current) frontFaceRef.current.inert = panelOpen;
     if (backFaceRef.current) backFaceRef.current.inert = !panelOpen;
@@ -120,12 +125,17 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   }, [panel, panelOpen]);
 
   return (
-    <article
+    <motion.article
+      layout={!reduceMotion}
+      layoutId={reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
+      transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
       className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
       data-testid={`card-game-on-${card.id}`}
+      data-layout-id={card.layoutId ?? card.id}
       data-tracker-open={trackerOpen ? 'true' : 'false'}
       data-prep-open={prepOpen ? 'true' : 'false'}
       data-calendar-open={calendarOpen ? 'true' : 'false'}
+      role="listitem"
     >
       <div className="game-on-collection__flip-inner">
         <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={panelOpen}>
@@ -179,35 +189,39 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 <X size={15} aria-hidden="true" /> Cancel draft
               </button>
             )}
-            <button
-              type="button"
-              onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
-              aria-expanded={calendarOpen}
-              aria-controls={calendarOpen ? `panel-inline-calendar-${card.id}` : undefined}
-              data-testid={`button-edit-calendar-${card.id}`}
-            >
-              <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
-            </button>
-            <button
-              type="button"
-              onClick={(event) => onOpenPanel(card.id, 'prep', event.currentTarget)}
-              aria-expanded={prepOpen}
-              aria-controls={prepOpen ? `panel-inline-prep-${card.id}` : undefined}
-              data-prep-href={buildWorkspaceToolHref('prep', eventContext)}
-              data-testid={`button-open-card-prep-${card.id}`}
-            >
-              <ClipboardCheck size={15} aria-hidden="true" /> Open Prep
-            </button>
-            {!practice && (
+            {canOpenCardTools && (
+              <>
               <button
                 type="button"
-                onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
-                aria-expanded={trackerOpen}
-                aria-controls={`panel-inline-tracker-${card.id}`}
-                data-testid={`button-open-stat-tracker-${card.id}`}
+                  onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
+                  aria-expanded={calendarOpen}
+                  aria-controls={calendarOpen ? `panel-inline-calendar-${card.id}` : undefined}
+                  data-testid={`button-edit-calendar-${card.id}`}
               >
-                <Activity size={15} aria-hidden="true" /> Open Stat Tracker
+                  <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
               </button>
+                <button
+                  type="button"
+                  onClick={(event) => onOpenPanel(card.id, 'prep', event.currentTarget)}
+                  aria-expanded={prepOpen}
+                  aria-controls={prepOpen ? `panel-inline-prep-${card.id}` : undefined}
+                  data-prep-href={buildWorkspaceToolHref('prep', eventContext)}
+                  data-testid={`button-open-card-prep-${card.id}`}
+                >
+                  <ClipboardCheck size={15} aria-hidden="true" /> Open Prep
+                </button>
+                {!practice && (
+                  <button
+                    type="button"
+                    onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
+                    aria-expanded={trackerOpen}
+                    aria-controls={`panel-inline-tracker-${card.id}`}
+                    data-testid={`button-open-stat-tracker-${card.id}`}
+                  >
+                    <Activity size={15} aria-hidden="true" /> Open Stat Tracker
+                  </button>
+                )}
+              </>
             )}
           </div>
           {hasEditor && (
@@ -270,13 +284,14 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
           )}
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
 export function GameOnDashboardCollection({
   cards,
   onCreate,
+  createDisabled = false,
   onOpen,
   onCancelDraft,
   selectedId,
@@ -287,13 +302,11 @@ export function GameOnDashboardCollection({
   statTrackerAthleteName,
   statTrackerTeamName,
 }: GameOnDashboardCollectionProps) {
-  const railRef = useRef<HTMLDivElement>(null);
-  const [listOpen, setListOpen] = useState(false);
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restorePanelFocusRef = useRef(false);
-  const [scrollState, setScrollState] = useState({ start: true, end: false });
   const labelId = useId();
+  const layoutGroupId = useId();
 
   useLayoutEffect(() => {
     if (!openPanel && restorePanelFocusRef.current) {
@@ -301,30 +314,6 @@ export function GameOnDashboardCollection({
       panelTriggerRef.current?.focus();
     }
   }, [openPanel]);
-
-  useEffect(() => {
-    const rail = railRef.current;
-    if (!rail) return;
-    const measure = () => {
-      setScrollState({
-        start: rail.scrollLeft <= 2,
-        end: rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 2,
-      });
-    };
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(rail);
-    return () => observer.disconnect();
-  }, [cards.length, listOpen, selectedId, openPanel]);
-
-  useEffect(() => {
-    if (!selectedId || listOpen) return;
-    const selected = railRef.current?.querySelector<HTMLElement>('.game-on-collection__card--selected');
-    if (!selected || selected.getClientRects().length === 0) return;
-    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-    selected.scrollIntoView({ behavior, block: 'nearest', inline: 'nearest' });
-  }, [selectedId, cards.length, listOpen]);
 
   const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => {
     panelTriggerRef.current = trigger;
@@ -335,30 +324,6 @@ export function GameOnDashboardCollection({
     setOpenPanel(null);
   };
 
-  function updateScrollState(event: UIEvent<HTMLDivElement>) {
-    const element = event.currentTarget;
-    setScrollState({
-      start: element.scrollLeft <= 2,
-      end: element.scrollLeft + element.clientWidth >= element.scrollWidth - 2,
-    });
-  }
-
-  function move(direction: -1 | 1) {
-    const rail = railRef.current;
-    if (!rail) return;
-    const card = rail.querySelector<HTMLElement>('.game-on-collection__card');
-    const distance = (card?.offsetWidth ?? rail.clientWidth) + 16;
-    rail.scrollBy({ left: direction * distance, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  }
-
-  function handleRailKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget) return;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-      event.preventDefault();
-      move(event.key === 'ArrowRight' ? 1 : -1);
-    }
-  }
-
   return (
     <section id="game-on-dashboard-collection" className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
       <div className="game-on-collection__inner">
@@ -368,12 +333,19 @@ export function GameOnDashboardCollection({
             <h2 className="game-on-collection__title" id={labelId}>Game On</h2>
             <p className="game-on-collection__intro">Everything for the next game or practice, right where you need it.</p>
           </div>
-          <button type="button" className="game-on-collection__create" onClick={onCreate} data-testid="button-create-game-on-card">
-            <Plus size={19} strokeWidth={2.5} aria-hidden="true" /> Create Game On Card
+          <button
+            type="button"
+            className="game-on-collection__create"
+            onClick={onCreate}
+            disabled={createDisabled}
+            title={createDisabled ? 'Finish or cancel your current draft before adding another.' : undefined}
+            data-testid="button-create-game-on-card"
+          >
+            <Plus size={19} strokeWidth={2.5} aria-hidden="true" /> Add Game On Card
           </button>
         </div>
 
-        {cards.length === 0 ? (
+        {cards.length === 0 && (
           <div className="game-on-collection__empty" data-testid="status-game-on-empty">
             <span className="game-on-collection__empty-mark" aria-hidden="true"><CalendarDays size={29} strokeWidth={1.7} /></span>
             <div>
@@ -381,70 +353,43 @@ export function GameOnDashboardCollection({
               <p className="game-on-collection__empty-copy">Add a game or practice to keep the details close on game day.</p>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="game-on-collection__toolbar">
-              <div className="game-on-collection__toolbar-left">
-                <span className="game-on-collection__rail-label">{listOpen ? 'All cards' : 'Next in line'}</span>
-                <span className="game-on-collection__count">{cards.length} {cards.length === 1 ? 'card' : 'cards'}</span>
-              </div>
-              {!listOpen && cards.length > 1 && (
-                <div className="game-on-collection__controls" aria-label="Carousel controls">
-                  <button type="button" className="game-on-collection__nav" onClick={() => move(-1)} disabled={scrollState.start} aria-label="Previous cards" data-testid="button-game-on-previous"><ArrowLeft size={17} aria-hidden="true" /></button>
-                  <button type="button" className="game-on-collection__nav" onClick={() => move(1)} disabled={scrollState.end} aria-label="Next cards" data-testid="button-game-on-next"><ArrowRight size={17} aria-hidden="true" /></button>
-                </div>
-              )}
+        )}
+        {cards.length > 0 && (
+          <div className="game-on-collection__toolbar">
+            <div className="game-on-collection__toolbar-left">
+              <span className="game-on-collection__rail-label">Your cards</span>
+              <span className="game-on-collection__count">{cards.length} {cards.length === 1 ? 'card' : 'cards'}</span>
             </div>
-            {listOpen ? (
-              <div className="game-on-collection__list" aria-label="All Game On cards" data-testid="list-game-on-cards">
-                 {cards.map((card) => (
-                   <CollectionCard
-                     key={card.id}
-                     card={card}
-                      onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
-                      onCancelDraft={onCancelDraft}
-                     selected={selectedId === card.id}
-                     renderSelectedCard={renderSelectedCard}
-                      panel={openPanel?.cardId === card.id ? openPanel.panel : null}
-                      onOpenPanel={openCardPanel}
-                      onClosePanel={closeCardPanel}
-                     statTrackerUserId={statTrackerUserId}
-                      prepUserId={prepUserId}
-                     statTrackerSport={statTrackerSport}
-                     statTrackerAthleteName={statTrackerAthleteName}
-                     statTrackerTeamName={statTrackerTeamName}
-                   />
-                 ))}
-              </div>
-            ) : (
-              <div className="game-on-collection__rail" ref={railRef} onScroll={updateScrollState} onKeyDown={handleRailKeyDown} tabIndex={0} role="region" aria-label="Game On cards, scroll horizontally to see more" data-testid="carousel-game-on-cards">
-                 {cards.map((card) => (
-                   <CollectionCard
-                     key={card.id}
-                     card={card}
-                      onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
-                      onCancelDraft={onCancelDraft}
-                     selected={selectedId === card.id}
-                     renderSelectedCard={renderSelectedCard}
-                      panel={openPanel?.cardId === card.id ? openPanel.panel : null}
-                      onOpenPanel={openCardPanel}
-                      onClosePanel={closeCardPanel}
-                     statTrackerUserId={statTrackerUserId}
-                      prepUserId={prepUserId}
-                     statTrackerSport={statTrackerSport}
-                     statTrackerAthleteName={statTrackerAthleteName}
-                     statTrackerTeamName={statTrackerTeamName}
-                   />
-                 ))}
-              </div>
-            )}
-            <div className="game-on-collection__bottom">
-              <p className="game-on-collection__hint">{listOpen ? 'Upcoming first, with the rest of the season close by.' : 'Swipe or use the arrows to see more.'}</p>
-              <button type="button" className="game-on-collection__view" onClick={() => setListOpen((open) => !open)} aria-expanded={listOpen} data-testid="button-game-on-view-all">
-                {listOpen ? 'Back to carousel' : 'View all cards'} <ArrowRight size={16} aria-hidden="true" />
-              </button>
+          </div>
+        )}
+        <LayoutGroup id={layoutGroupId}>
+          {cards.length > 0 && (
+            <div className="game-on-collection__grid" role="list" aria-label="Game On cards" data-testid="grid-game-on-cards">
+              {cards.map((card) => (
+                <CollectionCard
+                  key={card.layoutId ?? card.id}
+                  card={card}
+                  onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
+                  onCancelDraft={onCancelDraft}
+                  selected={selectedId === card.id}
+                  renderSelectedCard={renderSelectedCard}
+                  panel={openPanel?.cardId === card.id ? openPanel.panel : null}
+                  onOpenPanel={openCardPanel}
+                  onClosePanel={closeCardPanel}
+                  statTrackerUserId={statTrackerUserId}
+                  prepUserId={prepUserId}
+                  statTrackerSport={statTrackerSport}
+                  statTrackerAthleteName={statTrackerAthleteName}
+                  statTrackerTeamName={statTrackerTeamName}
+                />
+              ))}
             </div>
-          </>
+          )}
+        </LayoutGroup>
+        {cards.length > 0 && (
+          <div className="game-on-collection__bottom">
+            <p className="game-on-collection__hint">Open a card to edit details. Calendar, Prep, and Stat Tracker stay on the card.</p>
+          </div>
         )}
       </div>
     </section>

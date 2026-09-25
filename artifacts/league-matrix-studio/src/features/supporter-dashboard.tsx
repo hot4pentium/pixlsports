@@ -322,8 +322,15 @@ export function SupporterDashboardView({
     },
   });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
-  const [cardSelection, setCardSelection] = useState<{ kind: 'new' | 'event' | 'share'; id?: string; nonce: number } | null>(null);
-  const [newCardDraft, setNewCardDraft] = useState<{ event: SupporterEvent; sourceEventId: string } | null>(null);
+  const [cardSelection, setCardSelection] = useState<{ kind: 'event' | 'share'; id: string; nonce: number } | null>(null);
+  const [newCardDraft, setNewCardDraft] = useState<{
+    id: string;
+    nonce: number;
+    event: SupporterEvent;
+    sourceEventId: string;
+    editing: boolean;
+  } | null>(null);
+  const [cardLayoutIds, setCardLayoutIds] = useState<Record<string, string>>({});
   const nextNewCardNonce = useRef(0);
   const [isDesktopDashboard, setIsDesktopDashboard] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
@@ -331,6 +338,7 @@ export function SupporterDashboardView({
   useEffect(() => {
     setCardSelection(null);
     setNewCardDraft(null);
+    setCardLayoutIds({});
     setLocalGameOnCards(userId ? readSavedGameOnCards(userId) : []);
     if (!userId) return;
     const syncCards = (event: StorageEvent) => {
@@ -393,10 +401,10 @@ export function SupporterDashboardView({
     }));
   const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
   const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime);
-  const selectedDraftId = cardSelection?.kind === 'new' ? cardSelection.id : undefined;
-  const newDraftCollectionCard = selectedDraftId ? {
-    id: selectedDraftId,
-    eventId: newCardDraft?.event.id ?? selectedDraftId,
+  const newDraftCollectionCard = newCardDraft ? {
+    id: newCardDraft.id,
+    layoutId: newCardDraft.id,
+    eventId: newCardDraft.event.id,
     type: newCardDraft?.event.type === 'practice' ? 'practice' as const : 'game' as const,
     athleteName: profile.athleteName || 'Your athlete',
     opponent: newCardDraft?.event.opponent ?? '',
@@ -407,15 +415,18 @@ export function SupporterDashboardView({
     isPublished: false,
     isUnsavedDraft: true,
   } : null;
-  const replacedScheduleEventId = cardSelection?.kind === 'new' && newCardDraft?.sourceEventId !== 'new'
+  const replacedScheduleEventId = newCardDraft && newCardDraft.sourceEventId !== 'new'
     ? newCardDraft?.sourceEventId
     : undefined;
   const collectionCards = [
-    ...dashboardCards.filter((card) => !replacedScheduleEventId || card.eventId !== replacedScheduleEventId),
+    ...dashboardCards
+      .filter((card) => !replacedScheduleEventId || card.eventId !== replacedScheduleEventId)
+      .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id })),
     ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
   ];
   const updateNewCardDraft = useCallback((event: SupporterEvent, sourceEventId: string) => {
     setNewCardDraft((previous) => {
+      if (!previous) return previous;
       if (previous
         && previous.sourceEventId === sourceEventId
         && previous.event.id === event.id
@@ -424,25 +435,45 @@ export function SupporterDashboardView({
         && previous.event.time === event.time
         && previous.event.location === event.location
         && previous.event.opponent === event.opponent) return previous;
-      return { event, sourceEventId };
+      return { ...previous, event, sourceEventId };
     });
   }, []);
   const cancelNewCardDraft = useCallback(() => {
     setNewCardDraft(null);
-    setCardSelection((previous) => previous?.kind === 'new' ? null : previous);
   }, []);
   const openCardWorkspace = () => {
-    if (cardSelection?.kind === 'new') return;
+    if (newCardDraft) return;
     const nonce = ++nextNewCardNonce.current;
     const id = `new-card-${nonce}`;
-    setNewCardDraft(null);
-    setCardSelection({ kind: 'new', id, nonce });
+    const eventId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `game-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const event: SupporterEvent = {
+      id: eventId,
+      type: 'game',
+      date: '',
+      time: '',
+      location: '',
+      opponent: '',
+      status: 'upcoming',
+    };
+    setCardSelection(null);
+    setNewCardDraft({ id, nonce, event, sourceEventId: 'new', editing: false });
     requestAnimationFrame(() => requestAnimationFrame(() => {
       document.querySelector(`[data-testid="card-game-on-${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }));
   };
   const selectCard = (id: string) => {
-    if (cardSelection?.kind === 'new') return;
+    if (newCardDraft?.editing) {
+      if (newCardDraft.id !== id) return;
+      setNewCardDraft((previous) => previous ? { ...previous, editing: false } : previous);
+      return;
+    }
+    if (newCardDraft?.id === id) {
+      setCardSelection(null);
+      setNewCardDraft((previous) => previous ? { ...previous, editing: true } : previous);
+      return;
+    }
     setCardSelection((previous) => previous?.id === id ? null : {
       kind: id.startsWith('share:') ? 'share' : 'event', id, nonce: (previous?.nonce ?? 0) + 1,
     });
@@ -450,32 +481,31 @@ export function SupporterDashboardView({
   const handleGameOnCardChanged = (selectedId?: string) => {
     if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
-    if (selectedId) {
+    if (newCardDraft?.editing) {
+      if (selectedId) {
+        setCardLayoutIds((previous) => ({ ...previous, [selectedId]: newCardDraft.id }));
+      }
       setNewCardDraft(null);
-      setCardSelection((previous) => ({
-        kind: selectedId.startsWith('share:') ? 'share' : 'event',
-        id: selectedId, nonce: previous?.nonce ?? 0,
-      }));
     }
-    else setCardSelection((previous) => previous?.kind === 'new' ? previous : null);
+    setCardSelection(null);
   };
   const renderSelectedGameOnCard = (
     card: (typeof collectionCards)[number],
     surface: 'mobile' | 'desktop',
     options: GameOnCardRenderOptions,
   ) => {
-    if (cardSelection?.kind === 'new' && card.id === cardSelection.id) {
+    if (newCardDraft?.editing && card.id === newCardDraft.id) {
       if ((surface === 'desktop') !== isDesktopDashboard) return null;
       return <GameOnCardPanel
-        key={`new:${cardSelection.nonce}`}
+        key={`new:${newCardDraft.nonce}`}
         profile={profile}
         userId={userId}
         events={events}
         selectedCard={null}
         startFresh
         embedded
-        initialDraft={newCardDraft?.event}
-        initialSourceEventId={newCardDraft?.sourceEventId}
+        initialDraft={newCardDraft.event}
+        initialSourceEventId={newCardDraft.sourceEventId}
         onDraftChange={updateNewCardDraft}
         onSaveCalendarEvent={onSaveCalendarEvent}
         existingCardTokensByEventId={Object.fromEntries(dashboardCards.filter((entry) => entry.shareToken).map((entry) => [entry.eventId, entry.shareToken!]))}
@@ -779,25 +809,6 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
-          <GameOnDashboardCollection
-            cards={collectionCards}
-            onCreate={openCardWorkspace}
-            onOpen={selectCard}
-            onCancelDraft={cancelNewCardDraft}
-            selectedId={cardSelection?.id}
-            renderSelectedCard={renderMobileSelectedGameOnCard}
-            statTrackerUserId={userId}
-            prepUserId={prepUserId ?? userId}
-            statTrackerSport={profile.sport}
-            statTrackerAthleteName={profile.athleteName}
-            statTrackerTeamName={profile.teamName}
-          />
-          <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
-            <Zap size={16} aria-hidden="true" /> Make a Hype Card
-          </Link>
-          {ownedGameOnCardsQuery.isError && userId && (
-            <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
-          )}
           <section className="mobile-hero-banner" data-testid="mobile-hero-banner" aria-label="Athlete and next event">
           {/* Greeting */}
           <div>
@@ -872,6 +883,26 @@ export function SupporterDashboardView({
           </div>
           </div>
           </section>
+          <GameOnDashboardCollection
+            cards={collectionCards}
+            onCreate={openCardWorkspace}
+            createDisabled={Boolean(newCardDraft)}
+            onOpen={selectCard}
+            onCancelDraft={cancelNewCardDraft}
+            selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+            renderSelectedCard={renderMobileSelectedGameOnCard}
+            statTrackerUserId={userId}
+            prepUserId={prepUserId ?? userId}
+            statTrackerSport={profile.sport}
+            statTrackerAthleteName={profile.athleteName}
+            statTrackerTeamName={profile.teamName}
+          />
+          <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
+            <Zap size={16} aria-hidden="true" /> Make a Hype Card
+          </Link>
+          {ownedGameOnCardsQuery.isError && userId && (
+            <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
+          )}
 
         </div>
 
@@ -953,25 +984,6 @@ export function SupporterDashboardView({
             </button>
           </div>
         </div>
-      )}
-      <GameOnDashboardCollection
-        cards={collectionCards}
-        onCreate={openCardWorkspace}
-        onOpen={selectCard}
-        onCancelDraft={cancelNewCardDraft}
-        selectedId={cardSelection?.id}
-        renderSelectedCard={renderDesktopSelectedGameOnCard}
-        statTrackerUserId={userId}
-        prepUserId={prepUserId ?? userId}
-        statTrackerSport={profile.sport}
-        statTrackerAthleteName={profile.athleteName}
-        statTrackerTeamName={profile.teamName}
-      />
-      <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
-        <Zap size={16} aria-hidden="true" /> Make a Hype Card
-      </Link>
-      {ownedGameOnCardsQuery.isError && userId && (
-        <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
       )}
       <div className="dashboard-hero-banner">
         {/* HEADER */}
@@ -1137,6 +1149,26 @@ export function SupporterDashboardView({
         </div>
         </section>
       </div>
+      <GameOnDashboardCollection
+        cards={collectionCards}
+        onCreate={openCardWorkspace}
+        createDisabled={Boolean(newCardDraft)}
+        onOpen={selectCard}
+        onCancelDraft={cancelNewCardDraft}
+        selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+        renderSelectedCard={renderDesktopSelectedGameOnCard}
+        statTrackerUserId={userId}
+        prepUserId={prepUserId ?? userId}
+        statTrackerSport={profile.sport}
+        statTrackerAthleteName={profile.athleteName}
+        statTrackerTeamName={profile.teamName}
+      />
+      <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
+        <Zap size={16} aria-hidden="true" /> Make a Hype Card
+      </Link>
+      {ownedGameOnCardsQuery.isError && userId && (
+        <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
+      )}
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div hidden>

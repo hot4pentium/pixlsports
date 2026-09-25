@@ -119,6 +119,7 @@
 }
 .game-on-collection__create:hover { background: #408cfc; transform: translateY(-2px); box-shadow: 0 8px 0 rgba(3, 20, 48, .3); }
 .game-on-collection__create:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(3, 20, 48, .3); }
+.game-on-collection__create:disabled { cursor: not-allowed; opacity: .6; transform: none; }
 
 .game-on-collection__toolbar {
   display: flex;
@@ -182,7 +183,7 @@
   box-shadow: 0 8px 24px rgba(2, 17, 39, .18);
   color: #102b4d;
   text-align: left;
-  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+  transition: translate .22s ease, border-color .22s ease, box-shadow .22s ease;
   perspective: 1200px;
 }
 .game-on-collection__flip-inner {
@@ -313,7 +314,7 @@
 }
 .game-on-collection__card:hover,
 .game-on-collection__card:focus-within {
-  transform: translateY(-3px);
+  translate: 0 -3px;
   border-color: #70b4ff;
   box-shadow: 0 14px 30px rgba(2, 17, 39, .27);
 }
@@ -547,27 +548,67 @@
 .game-on-collection__view:hover { color: #f3f8ff; }
 .game-on-collection__view svg { transition: transform .2s ease; }
 .game-on-collection__view:hover svg { transform: translateX(3px); }
-.game-on-collection__list {
+.game-on-collection__grid {
   display: grid;
-  container-type: inline-size;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
-.game-on-collection__list .game-on-collection__card { width: 100%; min-height: 520px; }
-.game-on-collection__list .game-on-collection__card--expanded {
-  grid-column: span 2;
+.game-on-collection__grid .game-on-collection__card {
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  flex: none;
 }
-.game-on-collection__list .game-on-collection__card--tracker-open,
-.game-on-collection__list .game-on-collection__card--calendar-open,
-.game-on-collection__list .game-on-collection__card--prep-open {
-  grid-column: span 2;
+.game-on-collection__grid .game-on-collection__flip-front { min-height: 0; }
+.game-on-collection__grid .game-on-collection__summary {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
 }
-.game-on-collection__list .game-on-collection__card--tracker-open {
+.game-on-collection__grid .game-on-collection__card-top { margin-bottom: 15px; }
+.game-on-collection__grid .game-on-collection__card-main { gap: 13px; }
+.game-on-collection__grid .game-on-collection__date { padding-bottom: 10px; }
+.game-on-collection__grid .game-on-collection__date-day { font-size: clamp(48px, 5vw, 68px); }
+.game-on-collection__grid .game-on-collection__opponent { font-size: clamp(25px, 2.4vw, 35px); }
+.game-on-collection__grid .game-on-collection__card-footer { padding-top: 14px; }
+.game-on-collection__grid .game-on-collection__actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0 9px 10px;
+}
+.game-on-collection__grid .game-on-collection__actions :is(button, a) {
+  justify-content: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 5px 4px;
+  font-size: 8px;
+  letter-spacing: 0;
+  text-align: center;
+}
+.game-on-collection__grid .game-on-collection__actions svg { width: 13px; height: 13px; }
+.game-on-collection__grid .game-on-collection__cancel-draft { grid-column: 1 / -1; }
+.game-on-collection__grid .game-on-collection__card--expanded {
+  grid-column: 1 / -1;
+  min-height: 520px;
+  aspect-ratio: auto;
+}
+.game-on-collection__grid .game-on-collection__card--expanded .game-on-collection__summary {
+  flex: 0 0 auto;
+  min-height: 320px;
+}
+.game-on-collection__grid .game-on-collection__card--tracker-open,
+.game-on-collection__grid .game-on-collection__card--calendar-open,
+.game-on-collection__grid .game-on-collection__card--prep-open {
+  grid-column: 1 / -1;
+  flex-basis: auto;
+  aspect-ratio: auto;
+}
+.game-on-collection__grid .game-on-collection__card--tracker-open {
   min-height: 750px;
 }
-.game-on-collection__list .game-on-collection__card--prep-open { min-height: 600px; }
-.game-on-collection__list .game-on-collection__card--calendar-open { min-height: 600px; }
+.game-on-collection__grid .game-on-collection__card--prep-open { min-height: 600px; }
+.game-on-collection__grid .game-on-collection__card--calendar-open { min-height: 600px; }
 
 .game-on-collection__empty {
   display: flex;
@@ -603,28 +644,26 @@
   outline: 3px solid #ffad78;
   outline-offset: 3px;
 }
-.game-on-collection__rail:focus-visible { outline: 2px solid #ffad78; outline-offset: -2px; }
 
 @media (max-width: 600px) {
   .game-on-collection { border-radius: 17px; }
   .game-on-collection__inner { padding: 22px 17px 18px; }
   .game-on-collection__header { align-items: stretch; flex-direction: column; gap: 18px; }
   .game-on-collection__create { align-self: flex-start; }
-  .game-on-collection__card { flex-basis: min(87%, 260px); }
-  .game-on-collection__rail .game-on-collection__card--expanded { flex-basis: min(91%, 410px); }
-  .game-on-collection__rail .game-on-collection__card--tracker-open,
-  .game-on-collection__rail .game-on-collection__card--calendar-open,
-  .game-on-collection__rail .game-on-collection__card--prep-open { flex-basis: min(94%, 430px); }
+  .game-on-collection__grid { grid-template-columns: 1fr; gap: 13px; }
+  .game-on-collection__grid .game-on-collection__card { max-width: 430px; }
+  .game-on-collection__grid .game-on-collection__card--expanded,
+  .game-on-collection__grid .game-on-collection__card--tracker-open,
+  .game-on-collection__grid .game-on-collection__card--calendar-open,
+  .game-on-collection__grid .game-on-collection__card--prep-open { max-width: none; }
+  .game-on-collection__grid .game-on-collection__card--expanded .game-on-collection__summary { min-height: 300px; }
   .game-on-collection__hint { display: none; }
   .game-on-collection__bottom { justify-content: flex-end; }
   .game-on-collection__empty { align-items: flex-start; gap: 16px; }
   .game-on-collection__empty-mark { flex-basis: 54px; height: 54px; }
 }
-@container (max-width: 503px) {
-  .game-on-collection__list .game-on-collection__card--expanded,
-  .game-on-collection__list .game-on-collection__card--tracker-open,
-  .game-on-collection__list .game-on-collection__card--calendar-open,
-  .game-on-collection__list .game-on-collection__card--prep-open { grid-column: auto; }
+@media (max-width: 900px) and (min-width: 601px) {
+  .game-on-collection__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .game-on-collection *, .game-on-collection *::before, .game-on-collection *::after {
