@@ -258,7 +258,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 <ArrowLeft size={15} aria-hidden="true" /> Back to badge
               </button>
               {renderSelectedCard?.(card, {
-                view: 'details',
+                view: 'calendar',
                 onOpenPrep: (trigger) => onOpenPanel(card.id, 'prep', trigger),
                 onOpenTracker: (trigger) => onOpenPanel(card.id, 'tracker', trigger),
               })}

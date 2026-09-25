@@ -179,7 +179,7 @@ export function GameOnInlineEditor({
       <button type="button" className="game-on-inline__primary" disabled={busy} onClick={() => void saveEvent()} data-testid="button-save-inline-event">
         {busy ? 'Saving…' : scheduledEvent ? 'Save Calendar details' : 'Save card details'}
       </button>
-      {!card.shareToken && scheduledEvent && (
+      {view !== 'calendar' && !card.shareToken && scheduledEvent && (
         <button type="button" className="game-on-inline__secondary" disabled={busy} onClick={() => void saveEvent(true)} data-testid="button-publish-inline-card">
           Create shareable Game On link
         </button>
