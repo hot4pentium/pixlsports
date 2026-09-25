@@ -854,6 +854,96 @@
 }
 .game-on-collection__reset-filter:hover { background: #fff; }
 
+.game-on-collection__dialog-overlay {
+  z-index: 90 !important;
+  background: rgba(3, 12, 25, .72) !important;
+  backdrop-filter: blur(4px);
+}
+.game-on-collection__dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 91;
+  display: flex;
+  width: min(94vw, 720px);
+  max-width: none;
+  max-height: min(92dvh, 960px);
+  flex-direction: column;
+  gap: 13px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(12px, 2.5vw, 22px);
+  border: 1px solid rgba(112, 180, 255, .7);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #153d6c, #0b1f3a 72%);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .48);
+  color: #f3f6fa;
+  transform: translate(-50%, -50%);
+}
+.game-on-collection__dialog-content:focus { outline: none; }
+.game-on-collection__dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.game-on-collection__dialog-title {
+  margin: 0;
+  color: #f3f6fa;
+  font-family: 'Barlow Condensed', var(--app-font-serif), sans-serif;
+  font-size: clamp(24px, 5vw, 34px);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.game-on-collection__dialog-close {
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid rgba(166, 207, 250, .5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  cursor: pointer;
+}
+.game-on-collection__dialog-close:hover { background: rgba(85, 164, 255, .24); }
+.game-on-collection__dialog-card-wrap {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+.game-on-collection__dialog-card {
+  width: 100%;
+  min-height: 0;
+  flex: 0 0 auto;
+  aspect-ratio: auto;
+}
+.game-on-collection__dialog-card .game-on-collection__flip-front { min-height: 0; }
+.game-on-collection__dialog-card .game-on-collection__summary {
+  min-height: 300px;
+  flex: 1 1 auto;
+}
+.game-on-collection__dialog-card .game-on-collection__actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.game-on-collection__dialog-card .game-on-collection__actions--practice {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.game-on-collection__dialog-card .game-on-collection__actions :is(button, a) {
+  min-height: 58px;
+}
+.game-on-collection__dialog-card .game-on-collection__editor { padding: clamp(14px, 3vw, 22px); }
+.game-on-collection__dialog-card .game-on-collection__flip-back { min-height: 0; }
+.game-on-collection__dialog-card.game-on-collection__card--up-next::before { background: linear-gradient(90deg, #8b9097, #d7d9dc 52%, #888d94); }
+.game-on-collection__dialog-card.game-on-collection__card--up-next .game-on-collection__flip-front {
+  background: linear-gradient(145deg, #f4f5f6 0%, #e5e6e8 48%, #c9ccd0 100%);
+}
+.game-on-collection__dialog-card.game-on-collection__card--calendar-open { min-height: 600px; }
+.game-on-collection__dialog-card.game-on-collection__card--prep-open { min-height: 600px; }
+.game-on-collection__dialog-card.game-on-collection__card--tracker-open { min-height: 750px; }
+
 .game-on-collection :is(button, [tabindex="0"]):focus-visible {
   outline: 3px solid #ffad78;
   outline-offset: 3px;
@@ -865,6 +955,19 @@
 }
 
 @media (max-width: 600px) {
+  .game-on-collection__dialog-content {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 11px;
+    border-radius: 13px;
+  }
+  .game-on-collection__dialog-card .game-on-collection__summary { min-height: 265px; padding: 14px; }
+  .game-on-collection__dialog-card .game-on-collection__actions { gap: 6px; padding: 0 9px 12px; }
+  .game-on-collection__dialog-card .game-on-collection__actions :is(button, a) {
+    min-height: 54px;
+    padding: 7px 4px;
+    font-size: 9px;
+  }
   .game-on-collection { border-radius: 17px; }
   .game-on-collection__inner { padding: 22px 8px 16px; }
   .game-on-collection__header { align-items: stretch; flex-direction: column; gap: 18px; }

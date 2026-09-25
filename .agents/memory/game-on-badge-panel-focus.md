@@ -1,10 +1,10 @@
 ---
-name: Game On badge panel focus
-description: Focus and draft-preservation rules for switching between the badge's faces.
+name: Game On card focus boundaries
+description: Modal, compact-grid, focus, and draft-preservation rules for Game On card interactions.
 ---
 
-When Details opens Prep or Stat Tracker, closing that tool should return to the badge front and focus the matching visible front action, not the shortcut inside Details. Keep the Details editor mounted but hidden while switching faces so unsaved fields survive.
+When a focused Game On card is shown in a modal, only the modal card should receive its open panel state. Keep the compact grid tile's panel closed; otherwise Prep or Stat Tracker mounts twice, the grid can expand, and the hidden instance can steal focus. When Details opens Prep or Stat Tracker, closing that tool should return to the badge front and focus the matching visible front action, not the shortcut inside Details. Keep the Details editor mounted but hidden while switching faces so unsaved fields survive.
 
-**Why:** The shortcut on the back is hidden when the badge returns to its front, so restoring focus there fails. Unmounting Details during another flip silently discards fields that have not been saved.
+**Why:** A modal and its compact grid tile represent the same card at once. Mirroring panel state into both creates duplicate interactive trackers and can direct focus into the obscured tile. The shortcut on the back is hidden when the badge returns to its front, so restoring focus there also fails. Unmounting Details during another flip silently discards fields that have not been saved.
 
-**How to apply:** For new in-badge shortcuts and panels, map return focus to a visible front control and preserve in-progress editor state across face changes. Clear an open panel when its selected badge is no longer selected.
+**How to apply:** Route panel state only to the active modal card; keep grid tiles compact and noninteractive beyond opening the card. For new shortcuts and panels, map return focus to a visible front control and preserve in-progress editor state across face changes. Clear an open panel when its selected badge is no longer selected.

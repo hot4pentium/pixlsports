@@ -644,15 +644,59 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       deviceScaleFactor: 1,
       mobile: true,
     }, page.sessionId);
-    await connection.evaluate(`(() => {
-      const card = Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+    const gameTileRectBeforeDialog = await connection.evaluate<{ left: number; top: number; width: number; height: number }>(`(() => {
+      const grid = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="grid-game-on-cards"]');
+      const card = Array.from(grid?.querySelectorAll('.game-on-collection__card') || [])
         .find((item) => item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
       if (!(card instanceof HTMLElement)) throw new Error('A game card is required for the mobile card-view check');
-      if (!card.classList.contains('game-on-collection__card--selected')) {
-        card.querySelector('.game-on-collection__summary')?.click();
-      }
+      const rect = card.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
     })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+    await connection.evaluate(`(() => {
+      const grid = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="grid-game-on-cards"]');
+      const card = Array.from(grid?.querySelectorAll('.game-on-collection__card') || [])
+        .find((item) => item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      if (!(card instanceof HTMLElement)) throw new Error('A game card is required for the mobile card-view check');
+      card.querySelector('.game-on-collection__summary')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"] .game-on-collection__dialog-card'))
+      && Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid="grid-game-on-cards"] .game-on-collection__card'))
+        .every((card) => !card.classList.contains('game-on-collection__card--expanded'))`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      dialogCount: number;
+      dialogHasSelectedCard: boolean;
+      gridTileSquare: boolean;
+      gridTileUnexpanded: boolean;
+      tilePositionUnchanged: boolean;
+    }>(`(() => {
+      const shell = document.querySelector('.supporter-dashboard-mobile-shell');
+      const dialog = shell?.querySelector('[role="dialog"][data-testid^="dialog-game-on-card-"]');
+      const selected = dialog?.querySelector('.game-on-collection__dialog-card');
+      const grid = shell?.querySelector('[data-testid="grid-game-on-cards"]');
+      const layoutId = selected?.getAttribute('data-layout-id');
+      const tile = Array.from(grid?.querySelectorAll('.game-on-collection__card') || [])
+        .find((card) => card.getAttribute('data-layout-id') === layoutId);
+      if (!(tile instanceof HTMLElement)) throw new Error('The selected Game On tile is missing from the grid');
+      const rect = tile.getBoundingClientRect();
+      return {
+        dialogCount: shell?.querySelectorAll('[role="dialog"][data-testid^="dialog-game-on-card-"]').length || 0,
+        dialogHasSelectedCard: Boolean(selected),
+        gridTileSquare: Math.abs(rect.width / rect.height - 1) < 0.05,
+        gridTileUnexpanded: !tile.classList.contains('game-on-collection__card--expanded')
+          && !tile.classList.contains('game-on-collection__card--selected'),
+        tilePositionUnchanged: Math.abs(rect.left - ${gameTileRectBeforeDialog.left}) < 1
+          && Math.abs(rect.top - ${gameTileRectBeforeDialog.top}) < 1
+          && Math.abs(rect.width - ${gameTileRectBeforeDialog.width}) < 1
+          && Math.abs(rect.height - ${gameTileRectBeforeDialog.height}) < 1,
+      };
+    })()`, page.sessionId), {
+      dialogCount: 1,
+      dialogHasSelectedCard: true,
+      gridTileSquare: true,
+      gridTileUnexpanded: true,
+      tilePositionUnchanged: true,
+    }, 'opening a card should leave its grid tile in place and show the expanded controls in one dialog');
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [role="dialog"] .game-on-collection__card'))
       .some((card) => card.classList.contains('game-on-collection__card--expanded')
         && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))`, Boolean);
     assert.deepEqual(await connection.evaluate<{
@@ -716,6 +760,12 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       unrelatedControls: false,
       editorOnFront: false,
     }, 'Details should only show event fields and save controls on the badge back');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-draft"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-filter-game-on-draft\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
+    assert.equal(await connection.evaluate(`Boolean(document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__dialog-card[data-calendar-open="true"] [data-testid="input-inline-date"]'))`, page.sessionId),
+      true, 'filtering out the selected tile should keep its open Details editor mounted in the dialog');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-filter-game-on-all\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-calendar-editor-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
@@ -746,9 +796,16 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
       .some((card) => card.getAttribute('data-tracker-open') === 'false')`, Boolean);
-    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card--selected .game-on-collection__summary'))
-      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__card--selected')`, Boolean);
+    assert.equal(await connection.evaluate(`(() => {
+      const active = document.activeElement;
+      return Boolean(active instanceof HTMLElement
+        && active.dataset.testid?.startsWith('button-open-game-on-card-')
+        && active.closest('.game-on-collection__grid'));
+    })()`, page.sessionId), true, 'closing the card dialog with Escape should return focus to its grid tile');
+    await connection.evaluate('document.activeElement instanceof HTMLButtonElement && document.activeElement.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [role=\\"dialog\\"][data-testid^=\\"dialog-game-on-card-\\"]") !== null', Boolean);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
@@ -757,6 +814,17 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       mobile: false,
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [role="dialog"][data-testid^="dialog-game-on-card-"]') !== null
+      && document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]') === null`, Boolean);
+    assert.deepEqual(await connection.evaluate<{ mobileDialogCount: number; desktopDialogCount: number }>(`({
+      mobileDialogCount: document.querySelectorAll('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]').length,
+      desktopDialogCount: document.querySelectorAll('.supporter-dashboard-desktop-shell [role="dialog"][data-testid^="dialog-game-on-card-"]').length,
+    })`, page.sessionId), {
+      mobileDialogCount: 0,
+      desktopDialogCount: 1,
+    }, 'changing to desktop should transfer the open card dialog to the visible dashboard shell');
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+    await waitFor(connection, page.sessionId, '!document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected")', Boolean);
     assert.deepEqual(await connection.evaluate<{
       oldPanelsRemoved: boolean;
       actionCount: number;
@@ -1395,6 +1463,13 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid^="button-open-game-on-card-new-card-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell .game-on-collection__card--selected [data-testid=\\"panel-game-on-card-draft\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{ mobileDialogCount: number; desktopDialogCount: number }>(`({
+      mobileDialogCount: document.querySelectorAll('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]').length,
+      desktopDialogCount: document.querySelectorAll('.supporter-dashboard-desktop-shell [role="dialog"][data-testid^="dialog-game-on-card-"]').length,
+    })`, page.sessionId), {
+      mobileDialogCount: 1,
+      desktopDialogCount: 0,
+    }, 'the mobile shell should own the single active Game On dialog');
     assert.equal(await connection.evaluate(
       'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"panel-game-on-card-draft\\"]") === null',
       page.sessionId,
@@ -1421,7 +1496,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected .game-on-collection__opponent")?.textContent?.includes("Rivals")', Boolean);
     assert.equal(await connection.evaluate(
-      'document.querySelectorAll(".supporter-dashboard-desktop-shell .game-on-collection__card").length',
+      'document.querySelectorAll(".supporter-dashboard-desktop-shell [data-testid=\\"grid-game-on-cards\\"] .game-on-collection__card").length',
       page.sessionId,
     ), 1, 'starting from a scheduled game should replace, not duplicate, that event in the collection');
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid^="button-cancel-game-on-draft-"]')?.click()`, page.sessionId);
@@ -1519,7 +1594,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       fullTrackerHref: string | null;
       firstScore: string | null;
     }>(`(() => ({
-      open: Array.from(document.querySelectorAll('.game-on-collection__card')).find((card) => card.getClientRects().length > 0 && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))?.getAttribute('data-tracker-open') || null,
+      open: document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card')?.getAttribute('data-tracker-open') || null,
       fullTrackerHref: document.querySelector('[data-testid^="link-card-stats-"]')?.getAttribute('href') || null,
       firstScore: document.querySelector('[data-testid="game-on-inline-score-value-athlete"]')?.textContent || null,
     }))()`, page.sessionId), {
@@ -1542,7 +1617,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       attribution: 'team',
     });
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-tracker-open") === "false"', Boolean);
     const restoredFocus = await connection.evaluate<{
       testId: string;
       tagName: string;
@@ -1550,7 +1625,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       frontInert: boolean;
       actions: Array<{ testId: string; rects: number; inert: boolean; visibility: string }>;
     }>(`(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card')).find((item) => item.getClientRects().length > 0 && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      const card = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card');
       const front = card?.querySelector('.game-on-collection__flip-front');
       return {
         testId: document.activeElement?.getAttribute('data-testid') || '',
@@ -1603,7 +1678,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       statsDisabled: true,
     });
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-tracker-open") === "false"', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.includes('Paused')
       && document.querySelector('[data-testid="button-inline-toggle-game-pause"]')?.textContent?.includes('Resume game')`, Boolean);
@@ -1643,8 +1718,13 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     });
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-cancel-end-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `!document.querySelector('[data-testid="confirm-inline-end-game"]')
-      && document.activeElement?.getAttribute('data-testid') === 'button-inline-end-game'
       && JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status === 'live'`, Boolean);
+    const inlineEndFocus = await connection.evaluate<{ testId: string; tagName: string; status: string | null }>(`({
+      testId: document.activeElement?.getAttribute('data-testid') || '',
+      tagName: document.activeElement?.tagName || '',
+      status: JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status || null,
+    })`, page.sessionId);
+    assert.equal(inlineEndFocus.testId, 'button-inline-end-game', JSON.stringify(inlineEndFocus));
     await connection.evaluate(`(() => {
       const selector = '.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]';
       const announcement = document.querySelector(selector);
@@ -2023,17 +2103,16 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
 
     await connection.evaluate(`(() => {
-      const game = Array.from(document.querySelectorAll('.game-on-collection__card'))
+      if (document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card')) return;
+      const game = Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__card'))
         .find((card) => card.getClientRects().length > 0 && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
-      game?.querySelector('[data-testid^="button-edit-calendar-"]')?.click();
+      game?.querySelector('.game-on-collection__summary')?.click();
     })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `(() => {
-      const game = Array.from(document.querySelectorAll('.game-on-collection__card'))
-        .find((card) => card.getClientRects().length > 0 && card.getAttribute('data-calendar-open') === 'true');
-      return Boolean(game?.querySelector('[data-testid="input-inline-date"]'));
-    })()`, Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid^="button-edit-calendar-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card[data-calendar-open=\\"true\\"] [data-testid=\\"input-inline-date\\"]") !== null', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-calendar-editor-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-calendar-open') === 'false')`, Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-calendar-open") === "false"', Boolean);
 
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 
@@ -2054,21 +2133,14 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         && card.querySelector('[data-testid^="button-open-card-prep-"]')?.getClientRects().length)`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('.game-on-collection__card--selected [data-testid^="button-open-card-prep-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
-        .find((item) => item.getClientRects().length > 0
-          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
-      return Boolean(card?.querySelector('[data-testid="game-on-inline-prep-practice-1"]'));
-    })()`, Boolean);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card [data-testid=\\"game-on-inline-prep-practice-1\\"]"))', Boolean);
     assert.deepEqual(await connection.evaluate<{
       heading: string;
       firstItem: string;
       focusedHeading: boolean;
       statActionCount: number;
     }>(`(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
-        .find((item) => item.getClientRects().length > 0
-          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      const card = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card');
       const heading = card?.querySelector('.game-on-prep__title');
       return {
         heading: heading?.textContent || '',
@@ -2083,15 +2155,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       statActionCount: 0,
     });
     await connection.evaluate(`(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
-        .find((item) => item.getClientRects().length > 0
-          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      const card = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card');
       card?.querySelector('[data-testid="button-close-card-prep-practice-1"]')?.click();
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, `(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
-        .find((item) => item.getClientRects().length > 0
-          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      const card = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__dialog-card');
       return document.activeElement === card?.querySelector('[data-testid^="button-open-card-prep-"]');
     })()`, Boolean);
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
@@ -2159,6 +2227,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       savedCardSquare: true,
       editorClosed: true,
     }, 'saving should animate the expanded draft back into its original grid slot');
+    await waitFor(connection, page.sessionId, `document.activeElement?.getAttribute('data-testid')?.startsWith('button-open-game-on-card-')
+      && document.activeElement.closest('.game-on-collection__card')?.getAttribute('data-layout-id') === ${JSON.stringify(draftLayoutId)}`, Boolean);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -2166,7 +2236,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       deviceScaleFactor: 1,
       mobile: true,
     }, page.sessionId);
-    await connection.evaluate(`document.querySelector('[data-testid="button-mobile-dashboard-menu"]')?.click()`, page.sessionId);
+    await connection.evaluate(`(() => {
+      const button = document.querySelector('[data-testid="button-mobile-dashboard-menu"]');
+      button?.focus();
+      button?.click();
+    })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]") !== null', Boolean);
     assert.deepEqual(await connection.evaluate<{
       expanded: string | null;
@@ -4905,16 +4979,21 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
       'document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("data-prep-href") || ""', session,
     );
     assert.match(prepHref, /gameId=game-selected&eventType=game/);
-    await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid="game-on-inline-prep-game-selected"]\'))', Boolean);
+    await connection.evaluate(`(() => {
+      const prep = document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]');
+      prep?.closest('.game-on-collection__card')?.querySelector('.game-on-collection__summary')?.click();
+    })()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
+    await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"]')?.click()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid="game-on-inline-prep-game-selected"]\'))', Boolean);
     assert.match(await connection.evaluate<string>(
       'document.querySelector("[data-testid=\\"game-on-inline-prep-game-selected\\"]")?.textContent || ""', session,
     ), /GAME VS TIGERS/i);
     await connection.evaluate(`document.querySelector('[data-testid="checkbox-card-prep-game-selected-uniform"]')?.click()`, session);
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-gameday-checklist:workspace-journey:event:game-selected") || "null")?.items?.some(item => item.id === "uniform" && item.completed)', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-close-card-prep-game-selected"]')?.click()`, session);
-    await waitFor(connection, session, 'document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("aria-expanded") === "false"', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
+    await waitFor(connection, session, 'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("aria-expanded") === "false"', Boolean);
+    await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"checkbox-card-prep-game-selected-uniform\\"]")?.checked === true', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="link-open-full-prep-game-selected"]')?.click()`, session);
     assert.equal(await path(), '/studio/checklist');
@@ -4955,17 +5034,18 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     await click('journey-return-dashboard');
     await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-stat-tracker-"]\'))', Boolean);
     await connection.evaluate(`(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card')).find((item) =>
-        item.getClientRects().length > 0
-        && item.querySelector('.game-on-collection__opponent')?.textContent?.includes('Tigers'));
-      card?.querySelector('[data-testid^="button-open-stat-tracker-"]')?.click();
+      const card = Array.from(document.querySelectorAll('.game-on-collection__grid .game-on-collection__card'))
+        .find((item) => item.querySelector('[data-prep-href*="game-selected"]'));
+      card?.querySelector('.game-on-collection__summary')?.click();
     })()`, session);
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-stats-"][href*="game-selected"]\'))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
+    await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]\'))', Boolean);
     const statsHref = await connection.evaluate<string>(
-      'document.querySelector(\'[data-testid^="link-card-stats-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
+      'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
     );
     assert.match(statsHref, /eventId=game-selected/);
-        await connection.evaluate(`document.querySelector('[data-testid^="link-card-stats-"][href*="game-selected"]')?.click()`, session);
+    await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]')?.click()`, session);
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"stat-tracker-setup\\"]"))', Boolean);
     assert.equal(await path(), '/studio/stat-tracker');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Tigers"', Boolean);
@@ -5081,10 +5161,14 @@ test('deleting selected games and practices falls back across Calendar and works
     );
     const links = async () => {
       await connection!.evaluate(`(() => {
-        if (document.querySelector('[data-testid^="link-card-stats-"]')) return;
-        Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]'))
-          .find((button) => button.getClientRects().length > 0)?.click();
+        if (document.querySelector('.game-on-collection__dialog-card')) return;
+        const card = Array.from(document.querySelectorAll('.game-on-collection__grid .game-on-collection__card'))
+          .find((item) => item.getClientRects().length > 0
+            && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+        card?.querySelector('.game-on-collection__summary')?.click();
       })()`, session);
+      await waitFor(connection!, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
+      await connection!.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
       await waitFor(connection!, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-stats-"]\'))', Boolean);
       return connection!.evaluate<Record<string, string>>(`Object.fromEntries(
         [

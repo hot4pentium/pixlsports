@@ -940,6 +940,7 @@ export function SupporterDashboardView({
             onOpen={selectCard}
             onCancelDraft={cancelNewCardDraft}
             selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+            isActiveShell={!isDesktopDashboard}
             upNextEventId={gameStage === 'upcoming' ? contextEvent?.id : undefined}
             renderSelectedCard={renderMobileSelectedGameOnCard}
             statTrackerUserId={userId}
@@ -1210,6 +1211,7 @@ export function SupporterDashboardView({
         onOpen={selectCard}
         onCancelDraft={cancelNewCardDraft}
         selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+        isActiveShell={isDesktopDashboard}
         upNextEventId={gameStage === 'upcoming' ? contextEvent?.id : undefined}
         renderSelectedCard={renderDesktopSelectedGameOnCard}
         statTrackerUserId={userId}
