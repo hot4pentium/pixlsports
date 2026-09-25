@@ -1018,6 +1018,56 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         .map((status) => status.getAttribute('data-status'))`,
       page.sessionId,
     ), ['live'], 'location search should find the card matching the selected status');
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      ...window.__getSupporterDashboardEvents(),
+      {
+        id: 'filter-live-added',
+        type: 'game',
+        date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        time: '19:00',
+        location: 'Riverside Arena',
+        opponent: 'Added Live Opponent',
+        status: 'live',
+      },
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 5 cards'
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:filter-live-added"]')?.getClientRects().length > 0`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      search: string;
+      liveFilterSelected: boolean;
+      matchingOpponents: string[];
+    }>(`(() => {
+      const shell = document.querySelector('.supporter-dashboard-desktop-shell');
+      return {
+        search: shell?.querySelector('[data-testid="input-search-game-on-cards"]')?.value || '',
+        liveFilterSelected: shell?.querySelector('[data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true',
+        matchingOpponents: Array.from(shell?.querySelectorAll('[data-testid="grid-game-on-cards"] .game-on-collection__status') || [])
+          .filter((status) => status.getClientRects().length > 0)
+          .map((status) => status.closest('.game-on-collection__card')?.querySelector('.game-on-collection__opponent')?.textContent?.trim() || ''),
+      };
+    })()`, page.sessionId), {
+      search: 'Riverside Arena',
+      liveFilterSelected: true,
+      matchingOpponents: ['vs Live Opponent', 'vs Added Live Opponent'],
+    }, 'adding a matching card should update results and count without changing search or status');
+    await connection.evaluate(`window.__setSupporterDashboardEvents(
+      window.__getSupporterDashboardEvents().filter((event) => event.id !== 'filter-live-added')
+    )`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'
+      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:filter-live-added"]')`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      search: string;
+      liveFilterSelected: boolean;
+    }>(`(() => {
+      const shell = document.querySelector('.supporter-dashboard-desktop-shell');
+      return {
+        search: shell?.querySelector('[data-testid="input-search-game-on-cards"]')?.value || '',
+        liveFilterSelected: shell?.querySelector('[data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true',
+      };
+    })()`, page.sessionId), {
+      search: 'Riverside Arena',
+      liveFilterSelected: true,
+    }, 'removing a matching card should preserve the active query and status filter');
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
