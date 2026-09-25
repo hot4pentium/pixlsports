@@ -183,7 +183,73 @@
   color: #102b4d;
   text-align: left;
   transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+  perspective: 1200px;
 }
+.game-on-collection__flip-inner {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  transform-style: preserve-3d;
+  transition: transform .68s cubic-bezier(.2, .72, .22, 1);
+}
+.game-on-collection__flip-front,
+.game-on-collection__flip-back {
+  width: 100%;
+  min-width: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: visibility 0s;
+}
+.game-on-collection__flip-front {
+  position: relative;
+  display: flex;
+  min-height: 500px;
+  flex-direction: column;
+}
+.game-on-collection__flip-back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f4f8fc;
+  transform: rotateY(180deg);
+  visibility: hidden;
+  transition-delay: .34s;
+}
+.game-on-collection__card--tracker-open .game-on-collection__flip-inner { transform: rotateY(180deg); }
+.game-on-collection__card--tracker-open {
+  flex-basis: min(94vw, 430px);
+  min-height: 750px;
+}
+.game-on-collection__card--tracker-open .game-on-collection__flip-front {
+  visibility: hidden;
+  transition-delay: .34s;
+}
+.game-on-collection__card--tracker-open .game-on-collection__flip-back {
+  visibility: visible;
+  transition-delay: 0s;
+}
+.game-on-collection__back-button {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 36px;
+  padding: 5px 7px;
+  border: 1px solid #c1d5e8;
+  border-radius: 5px;
+  background: #fff;
+  color: #17467b;
+  font: 800 9px/1.2 'DM Sans', var(--app-font-sans), sans-serif;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.game-on-collection__back-button:hover { border-color: #70b4ff; background: #e9f4ff; }
 .game-on-collection__card::before {
   content: "";
   position: absolute;
@@ -430,6 +496,10 @@
 .game-on-collection__list .game-on-collection__card--expanded {
   grid-column: span 2;
 }
+.game-on-collection__list .game-on-collection__card--tracker-open {
+  grid-column: span 2;
+  min-height: 750px;
+}
 
 .game-on-collection__empty {
   display: flex;
@@ -474,18 +544,21 @@
   .game-on-collection__create { align-self: flex-start; }
   .game-on-collection__card { flex-basis: min(79%, 236px); }
   .game-on-collection__rail .game-on-collection__card--expanded { flex-basis: min(91%, 410px); }
+  .game-on-collection__rail .game-on-collection__card--tracker-open { flex-basis: min(94%, 430px); }
   .game-on-collection__hint { display: none; }
   .game-on-collection__bottom { justify-content: flex-end; }
   .game-on-collection__empty { align-items: flex-start; gap: 16px; }
   .game-on-collection__empty-mark { flex-basis: 54px; height: 54px; }
 }
 @container (max-width: 503px) {
-  .game-on-collection__list .game-on-collection__card--expanded { grid-column: auto; }
+  .game-on-collection__list .game-on-collection__card--expanded,
+  .game-on-collection__list .game-on-collection__card--tracker-open { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .game-on-collection *, .game-on-collection *::before, .game-on-collection *::after {
     scroll-behavior: auto !important;
     transition-duration: .01ms !important;
+    transition-delay: 0s !important;
     animation-duration: .01ms !important;
   }
 }

@@ -53,6 +53,7 @@ import {
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerData,
+  saveStoredActiveGame,
   saveStoredTrackerConflict,
   seasonTotals,
   seasonYardTotals,
@@ -1300,9 +1301,7 @@ export function StatTrackerPage() {
 
   useEffect(() => {
     if (!accountId || storageAccountId !== accountId) return;
-    const key = getTrackerStorageKeys(accountId).activeGame;
-    if (currentGame) window.localStorage.setItem(key, JSON.stringify(currentGame));
-    else window.localStorage.removeItem(key);
+    saveStoredActiveGame(window.localStorage, accountId, currentGame);
   }, [accountId, currentGame, storageAccountId]);
 
   const rule = getSportRule(sport);

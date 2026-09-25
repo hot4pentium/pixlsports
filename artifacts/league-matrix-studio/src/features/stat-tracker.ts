@@ -164,6 +164,12 @@ export function readStoredActiveGame(storage: TrackerStorage, accountId: string)
   }
 }
 
+export function saveStoredActiveGame(storage: TrackerStorage, accountId: string, game: GameSession | null) {
+  const key = getTrackerStorageKeys(accountId).activeGame;
+  if (game) storage.setItem(key, JSON.stringify(normalizeGameSession(game)));
+  else storage.removeItem(key);
+}
+
 export function readStoredTrackerConflict(storage: TrackerStorage, accountId: string): StoredTrackerConflict | null {
   migrateLegacyTrackerStorage(storage, accountId);
   try {

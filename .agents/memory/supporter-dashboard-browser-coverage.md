@@ -20,3 +20,9 @@ When multiple browser tests generate the same fixture files, serialize their Chr
 **Why:** Node can start top-level tests concurrently, and one test's cleanup can remove or replace the other test's live Vite page.
 
 **How to apply:** Protect shared generated harness and HTML paths with a test-file lock before starting the Vite server; keep the lock release in `finally`.
+
+The supporter view mounts mobile and desktop dashboard collections together, so duplicate card test IDs may refer to separate component instances and one can be visually hidden.
+
+**Why:** A first-match DOM query can click or assert against the hidden copy, producing false failures for card state and focus restoration.
+
+**How to apply:** Browser tests should select the rendered card or action with nonempty `getClientRects()` before interacting or reading flip state; focus should return to the exact visible trigger that opened the tracker.

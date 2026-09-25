@@ -695,6 +695,10 @@ export function SupporterDashboardView({
             onOpen={selectCard}
             selectedId={cardSelection?.id}
             renderSelectedCard={renderSelectedGameOnCard}
+            statTrackerUserId={userId}
+            statTrackerSport={profile.sport}
+            statTrackerAthleteName={profile.athleteName}
+            statTrackerTeamName={profile.teamName}
           />
           <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
             <Zap size={16} aria-hidden="true" /> Make a Hype Card
@@ -864,6 +868,10 @@ export function SupporterDashboardView({
         onOpen={selectCard}
         selectedId={cardSelection?.id}
         renderSelectedCard={renderSelectedGameOnCard}
+        statTrackerUserId={userId}
+        statTrackerSport={profile.sport}
+        statTrackerAthleteName={profile.athleteName}
+        statTrackerTeamName={profile.teamName}
       />
       <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
         <Zap size={16} aria-hidden="true" /> Make a Hype Card

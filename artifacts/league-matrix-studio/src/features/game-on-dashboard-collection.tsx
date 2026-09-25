@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type UIEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type UIEvent } from 'react';
 import { Link } from 'wouter';
 import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Swords } from 'lucide-react';
 import { buildWorkspaceToolHref } from './workspace-context';
+import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
+import type { Sport } from './stat-tracker';
 import './game-on-dashboard-collection.css';
 
 export type DashboardGameOnCard = {
@@ -23,6 +25,10 @@ type GameOnDashboardCollectionProps = {
   onOpen: (id: string) => void;
   selectedId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
+  statTrackerUserId?: string | null;
+  statTrackerSport?: Sport | null;
+  statTrackerAthleteName?: string;
+  statTrackerTeamName?: string;
 };
 
 function dateParts(value: string) {
@@ -52,13 +58,24 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, selected, renderSelectedCard }: {
+function CollectionCard({ card, onOpen, selected, renderSelectedCard, trackerOpen, onOpenTracker, onCloseTracker, statTrackerUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName }: {
   card: DashboardGameOnCard;
   onOpen: (id: string) => void;
   selected: boolean;
   renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
+  trackerOpen: boolean;
+  onOpenTracker: (id: string, trigger: HTMLButtonElement) => void;
+  onCloseTracker: () => void;
+  statTrackerUserId?: string | null;
+  statTrackerSport?: Sport | null;
+  statTrackerAthleteName?: string;
+  statTrackerTeamName?: string;
 }) {
   const editorId = useId();
+  const frontFaceRef = useRef<HTMLDivElement>(null);
+  const backFaceRef = useRef<HTMLDivElement>(null);
+  const trackerActionRef = useRef<HTMLButtonElement>(null);
+  const previousTrackerOpen = useRef(false);
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
@@ -74,75 +91,135 @@ function CollectionCard({ card, onOpen, selected, renderSelectedCard }: {
   const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
   const hasEditor = selected && Boolean(renderSelectedCard);
+  useLayoutEffect(() => {
+    if (frontFaceRef.current) frontFaceRef.current.inert = trackerOpen;
+    if (backFaceRef.current) backFaceRef.current.inert = !trackerOpen;
+    if (trackerOpen && !previousTrackerOpen.current) {
+      const heading = backFaceRef.current?.querySelector<HTMLElement>('.game-on-quick-tracker__title');
+      if (heading?.getClientRects().length) heading.focus();
+    } else if (!trackerOpen && previousTrackerOpen.current) {
+      if (trackerActionRef.current?.getClientRects().length) trackerActionRef.current.focus();
+    }
+    previousTrackerOpen.current = trackerOpen;
+  }, [trackerOpen]);
 
   return (
     <article
-      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}`}
+      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}`}
       data-testid={`card-game-on-${card.id}`}
+      data-tracker-open={trackerOpen ? 'true' : 'false'}
     >
-      <button
-        type="button"
-        className="game-on-collection__summary"
-        onClick={() => onOpen(card.id)}
-        aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${statusLabel}`}
-        aria-expanded={renderSelectedCard ? selected : undefined}
-        aria-controls={hasEditor ? editorId : undefined}
-        data-testid={`button-open-game-on-card-${card.id}`}
-      >
-        <span className="game-on-collection__card-top">
-          <span className="game-on-collection__kind">
-            {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
-            {practice ? 'Practice' : 'Game'}
-          </span>
-          <span className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
-            <span className="game-on-collection__status-dot" aria-hidden="true" />
-            {statusLabel}
-          </span>
-        </span>
-        <span className="game-on-collection__card-main">
-          <span className="game-on-collection__date" aria-label={card.date || 'Date TBD'}>
-            <span className="game-on-collection__date-month">{date.month}</span>
-            <span className="game-on-collection__date-day">{date.day}</span>
-            <span className="game-on-collection__date-weekday">{date.weekday}</span>
-          </span>
-          <span className="game-on-collection__card-content">
-            <span className="game-on-collection__athlete" data-testid={`text-game-on-athlete-${card.id}`}>{card.athleteName || 'Your athlete'}</span>
-            <span className="game-on-collection__opponent" data-testid={`text-game-on-opponent-${card.id}`}>{title}</span>
-          </span>
-        </span>
-        <span className="game-on-collection__card-footer">
-          <span className="game-on-collection__details">
-            <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span>{displayTime(card.time)}</span></span>
-            <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span>{card.location || 'Location TBD'}</span></span>
-          </span>
-          <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
-        </span>
-      </button>
-      <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`}>
-        <button type="button" onClick={() => onOpen(card.id)} data-testid={`button-edit-calendar-${card.id}`}>
-          <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
-        </button>
-        <Link href={buildWorkspaceToolHref('prep', eventContext)} data-testid={`link-card-prep-${card.id}`}>
-          <ClipboardCheck size={15} aria-hidden="true" /> Open Prep
-        </Link>
-        {!practice && (
-          <Link href={buildWorkspaceToolHref('stats', eventContext)} data-testid={`link-card-stats-${card.id}`}>
-            <Activity size={15} aria-hidden="true" /> Open Stat Tracker
-          </Link>
-        )}
-      </div>
-      {hasEditor && (
-        <div className="game-on-collection__editor" id={editorId} data-testid={`panel-game-on-card-${card.id}`}>
-          {renderSelectedCard?.(card)}
+      <div className="game-on-collection__flip-inner">
+        <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={trackerOpen}>
+          <button
+            type="button"
+            className="game-on-collection__summary"
+            onClick={() => onOpen(card.id)}
+            aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${statusLabel}`}
+            aria-expanded={renderSelectedCard ? selected : undefined}
+            aria-controls={hasEditor ? editorId : undefined}
+            data-testid={`button-open-game-on-card-${card.id}`}
+          >
+            <span className="game-on-collection__card-top">
+              <span className="game-on-collection__kind">
+                {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
+                {practice ? 'Practice' : 'Game'}
+              </span>
+              <span className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
+                <span className="game-on-collection__status-dot" aria-hidden="true" />
+                {statusLabel}
+              </span>
+            </span>
+            <span className="game-on-collection__card-main">
+              <span className="game-on-collection__date" aria-label={card.date || 'Date TBD'}>
+                <span className="game-on-collection__date-month">{date.month}</span>
+                <span className="game-on-collection__date-day">{date.day}</span>
+                <span className="game-on-collection__date-weekday">{date.weekday}</span>
+              </span>
+              <span className="game-on-collection__card-content">
+                <span className="game-on-collection__athlete" data-testid={`text-game-on-athlete-${card.id}`}>{card.athleteName || 'Your athlete'}</span>
+                <span className="game-on-collection__opponent" data-testid={`text-game-on-opponent-${card.id}`}>{title}</span>
+              </span>
+            </span>
+            <span className="game-on-collection__card-footer">
+              <span className="game-on-collection__details">
+                <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span>{displayTime(card.time)}</span></span>
+                <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span>{card.location || 'Location TBD'}</span></span>
+              </span>
+              <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
+            </span>
+          </button>
+          <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`}>
+            <button type="button" onClick={() => onOpen(card.id)} data-testid={`button-edit-calendar-${card.id}`}>
+              <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
+            </button>
+            <Link href={buildWorkspaceToolHref('prep', eventContext)} data-testid={`link-card-prep-${card.id}`}>
+              <ClipboardCheck size={15} aria-hidden="true" /> Open Prep
+            </Link>
+            {!practice && (
+              <button
+                ref={trackerActionRef}
+                type="button"
+                onClick={(event) => onOpenTracker(card.id, event.currentTarget)}
+                aria-expanded={trackerOpen}
+                aria-controls={`panel-inline-tracker-${card.id}`}
+                data-testid={`button-open-stat-tracker-${card.id}`}
+              >
+                <Activity size={15} aria-hidden="true" /> Open Stat Tracker
+              </button>
+            )}
+          </div>
+          {hasEditor && (
+            <div className="game-on-collection__editor" id={editorId} data-testid={`panel-game-on-card-${card.id}`}>
+              {renderSelectedCard?.(card)}
+            </div>
+          )}
         </div>
-      )}
+
+        <div
+          ref={backFaceRef}
+          className="game-on-collection__flip-back"
+          id={`panel-inline-tracker-${card.id}`}
+          aria-hidden={!trackerOpen}
+          data-testid={`panel-inline-tracker-${card.id}`}
+        >
+          <button type="button" className="game-on-collection__back-button" onClick={onCloseTracker} data-testid={`button-close-stat-tracker-${card.id}`}>
+            <ArrowLeft size={15} aria-hidden="true" /> Back to Game On card
+          </button>
+          {trackerOpen && !practice && (
+            <GameOnInlineStatTracker
+              userId={statTrackerUserId}
+              sport={statTrackerSport ?? null}
+              athleteName={statTrackerAthleteName ?? card.athleteName}
+              teamName={statTrackerTeamName ?? ''}
+              eventId={eventId}
+              date={card.date}
+              time={card.time}
+              location={card.location}
+              opponent={card.opponent}
+            />
+          )}
+        </div>
+      </div>
     </article>
   );
 }
 
-export function GameOnDashboardCollection({ cards, onCreate, onOpen, selectedId, renderSelectedCard }: GameOnDashboardCollectionProps) {
+export function GameOnDashboardCollection({
+  cards,
+  onCreate,
+  onOpen,
+  selectedId,
+  renderSelectedCard,
+  statTrackerUserId,
+  statTrackerSport,
+  statTrackerAthleteName,
+  statTrackerTeamName,
+}: GameOnDashboardCollectionProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [statTrackerCardId, setStatTrackerCardId] = useState<string | null>(null);
+  const trackerReturnFocusRef = useRef<HTMLButtonElement | null>(null);
   const [scrollState, setScrollState] = useState({ start: true, end: false });
   const labelId = useId();
 
@@ -160,7 +237,16 @@ export function GameOnDashboardCollection({ cards, onCreate, onOpen, selectedId,
     const observer = new ResizeObserver(measure);
     observer.observe(rail);
     return () => observer.disconnect();
-  }, [cards.length, listOpen, selectedId]);
+  }, [cards.length, listOpen, selectedId, statTrackerCardId]);
+
+  const openTracker = (id: string, trigger: HTMLButtonElement) => {
+    trackerReturnFocusRef.current = trigger;
+    setStatTrackerCardId(id);
+  };
+  const closeTracker = () => {
+    setStatTrackerCardId(null);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => trackerReturnFocusRef.current?.focus()));
+  };
 
   function updateScrollState(event: UIEvent<HTMLDivElement>) {
     const element = event.currentTarget;
@@ -224,11 +310,41 @@ export function GameOnDashboardCollection({ cards, onCreate, onOpen, selectedId,
             </div>
             {listOpen ? (
               <div className="game-on-collection__list" aria-label="All Game On cards" data-testid="list-game-on-cards">
-                {cards.map((card) => <CollectionCard key={card.id} card={card} onOpen={onOpen} selected={selectedId === card.id} renderSelectedCard={renderSelectedCard} />)}
+                 {cards.map((card) => (
+                   <CollectionCard
+                     key={card.id}
+                     card={card}
+                     onOpen={(id) => { setStatTrackerCardId(null); onOpen(id); }}
+                     selected={selectedId === card.id}
+                     renderSelectedCard={renderSelectedCard}
+                     trackerOpen={statTrackerCardId === card.id}
+                     onOpenTracker={openTracker}
+                     onCloseTracker={closeTracker}
+                     statTrackerUserId={statTrackerUserId}
+                     statTrackerSport={statTrackerSport}
+                     statTrackerAthleteName={statTrackerAthleteName}
+                     statTrackerTeamName={statTrackerTeamName}
+                   />
+                 ))}
               </div>
             ) : (
               <div className="game-on-collection__rail" ref={railRef} onScroll={updateScrollState} onKeyDown={handleRailKeyDown} tabIndex={0} role="region" aria-label="Game On cards, scroll horizontally to see more" data-testid="carousel-game-on-cards">
-                {cards.map((card) => <CollectionCard key={card.id} card={card} onOpen={onOpen} selected={selectedId === card.id} renderSelectedCard={renderSelectedCard} />)}
+                 {cards.map((card) => (
+                   <CollectionCard
+                     key={card.id}
+                     card={card}
+                     onOpen={(id) => { setStatTrackerCardId(null); onOpen(id); }}
+                     selected={selectedId === card.id}
+                     renderSelectedCard={renderSelectedCard}
+                     trackerOpen={statTrackerCardId === card.id}
+                     onOpenTracker={openTracker}
+                     onCloseTracker={closeTracker}
+                     statTrackerUserId={statTrackerUserId}
+                     statTrackerSport={statTrackerSport}
+                     statTrackerAthleteName={statTrackerAthleteName}
+                     statTrackerTeamName={statTrackerTeamName}
+                   />
+                 ))}
               </div>
             )}
             <div className="game-on-collection__bottom">

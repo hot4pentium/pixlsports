@@ -28,6 +28,7 @@ import {
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerData,
+  saveStoredActiveGame,
   saveStoredTrackerConflict,
   seasonTotals,
   seasonYardTotals,
@@ -1579,6 +1580,26 @@ test('legacy tracker storage migrates into the first signed-in account namespace
   assert.equal(storage.has('leaguematrix-stat-tracker-active-game'), false);
   assert.equal(storage.has(getTrackerStorageKeys('user_a').history), true);
   assert.equal(storage.has(getTrackerStorageKeys('user_a').activeGame), true);
+});
+
+test('dashboard inline stats use the same account-scoped active game as Stat Tracker', () => {
+  const accountId = 'inline-dashboard-user';
+  const storage = createMemoryStorage();
+  const game = addStatEvent(
+    createGameSession('basketball', { date: '2026-09-21', opponent: 'Rivals' }, new Date('2026-09-21T18:30:00Z')),
+    'two-point',
+    new Date('2026-09-21T18:32:00Z'),
+    0,
+    'team',
+  );
+
+  saveStoredActiveGame(storage, accountId, game);
+
+  assert.equal(readStoredActiveGame(storage, accountId)?.id, game.id);
+  assert.equal(readLocalTrackerSession(storage, accountId).currentGame?.stats['two-point'], 1);
+  assert.equal(readLocalTrackerSession(storage, accountId).currentGame?.score, 2);
+  saveStoredActiveGame(storage, accountId, null);
+  assert.equal(readStoredActiveGame(storage, accountId), null);
 });
 
 test('signed-in tracker reload restores the active game into the live scoreboard', () => {
