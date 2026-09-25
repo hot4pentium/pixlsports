@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Swords, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Swords, X } from 'lucide-react';
 import { buildWorkspaceToolHref } from './workspace-context';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
@@ -351,6 +351,7 @@ export function GameOnDashboardCollection({
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
   const [statusFilter, setStatusFilter] = useState<GameOnStatusFilter>('All statuses');
+  const [searchQuery, setSearchQuery] = useState('');
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restorePanelFocusRef = useRef(false);
   const labelId = useId();
@@ -364,9 +365,12 @@ export function GameOnDashboardCollection({
   cards.forEach((card) => {
     statusCounts[getCardStatus(card)] += 1;
   });
-  const visibleCards = statusFilter === 'All statuses'
-    ? cards
-    : cards.filter((card) => getCardStatus(card) === statusFilter);
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const matchesStatusFilter = (card: DashboardGameOnCard) =>
+    statusFilter === 'All statuses' || getCardStatus(card) === statusFilter;
+  const matchesSearch = (card: DashboardGameOnCard) =>
+    !searchTerm || `${card.opponent} ${card.location}`.toLowerCase().includes(searchTerm);
+  const visibleCards = cards.filter((card) => matchesStatusFilter(card) && matchesSearch(card));
   const cardCountLabel = (count: number) => `${count} ${count === 1 ? 'card' : 'cards'}`;
   const announceGameCompleted = (opponent: string) => {
     const gameLabel = opponent ? `Game vs ${opponent}` : 'Game';
@@ -464,22 +468,60 @@ export function GameOnDashboardCollection({
                 );
               })}
             </div>
+            <div className="game-on-collection__search" role="search" aria-label="Search Game On cards">
+              <Search size={17} aria-hidden="true" />
+              <input
+                type="search"
+                aria-label="Search Game On cards by opponent or location"
+                placeholder="Search opponent or location"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.currentTarget.value)}
+                data-testid="input-search-game-on-cards"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  aria-label="Clear card search"
+                  onClick={() => setSearchQuery('')}
+                  data-testid="button-clear-game-on-search"
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           </div>
         )}
         {cards.length > 0 && visibleCards.length === 0 && (
           <div className="game-on-collection__empty game-on-collection__empty--filtered" data-testid="status-game-on-filter-empty">
             <div>
-              <h3 className="game-on-collection__empty-title">No {statusFilter.toLowerCase()} cards yet.</h3>
-              <p className="game-on-collection__empty-copy">Choose another status or show all of your cards.</p>
+              <h3 className="game-on-collection__empty-title">
+                {searchTerm ? 'No cards match your search.' : `No ${statusFilter.toLowerCase()} cards yet.`}
+              </h3>
+              <p className="game-on-collection__empty-copy">
+                {searchTerm
+                  ? 'Try another opponent or location, or clear your search to see the matching cards again.'
+                  : 'Choose another status or show all of your cards.'}
+              </p>
             </div>
-            <button
-              type="button"
-              className="game-on-collection__reset-filter"
-              onClick={() => setStatusFilter('All statuses')}
-              data-testid="button-reset-game-on-filter"
-            >
-              Show all cards
-            </button>
+            {searchTerm ? (
+              <button
+                type="button"
+                className="game-on-collection__reset-filter"
+                onClick={() => setSearchQuery('')}
+                data-testid="button-clear-game-on-search-empty"
+              >
+                Clear search
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="game-on-collection__reset-filter"
+                onClick={() => setStatusFilter('All statuses')}
+                data-testid="button-reset-game-on-filter"
+              >
+                Show all cards
+              </button>
+            )}
           </div>
         )}
         <LayoutGroup id={layoutGroupId}>
@@ -498,7 +540,7 @@ export function GameOnDashboardCollection({
                   onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
                   onCancelDraft={onCancelDraft}
                   selected={selectedId === card.id}
-                  visible={statusFilter === 'All statuses' || getCardStatus(card) === statusFilter}
+                  visible={matchesStatusFilter(card) && matchesSearch(card)}
                   upNextEventId={upNextEventId}
                   renderSelectedCard={renderSelectedCard}
                   panel={openPanel?.cardId === card.id ? openPanel.panel : null}
