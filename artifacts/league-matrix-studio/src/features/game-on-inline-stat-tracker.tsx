@@ -30,6 +30,7 @@ type GameOnInlineStatTrackerProps = {
   time: string;
   location: string;
   opponent: string;
+  onGameEnded?: (completedAt: string) => Promise<void>;
 };
 
 function eventMatchesGame(game: GameSession, date: string, opponent: string) {
@@ -59,6 +60,7 @@ export function GameOnInlineStatTracker({
   time,
   location,
   opponent,
+  onGameEnded,
 }: GameOnInlineStatTrackerProps) {
   const titleId = useId();
   const endConfirmationId = useId();
@@ -74,6 +76,8 @@ export function GameOnInlineStatTracker({
   const [otherActiveGame, setOtherActiveGame] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [calendarStatusSyncing, setCalendarStatusSyncing] = useState(false);
+  const [calendarStatusSyncError, setCalendarStatusSyncError] = useState('');
   const [endedElsewhere, setEndedElsewhere] = useState(false);
   const [confirmEndGame, setConfirmEndGame] = useState(false);
   const trackerHref = buildWorkspaceToolHref('stats', {
@@ -204,6 +208,21 @@ export function GameOnInlineStatTracker({
     }
   };
 
+  const syncCompletedGameToCalendar = async (completed: GameSession) => {
+    if (!onGameEnded) return;
+    setCalendarStatusSyncing(true);
+    setCalendarStatusSyncError('');
+    try {
+      await onGameEnded(completed.endedAt ?? new Date().toISOString());
+    } catch {
+      setCalendarStatusSyncError(
+        'Stats are saved on this device, but the badge could not be marked Complete. It may still say Live. Retry the Calendar update.',
+      );
+    } finally {
+      setCalendarStatusSyncing(false);
+    }
+  };
+
   const finishGame = () => {
     const current = currentGameRef.current;
     if (!current || !userId) return;
@@ -223,6 +242,7 @@ export function GameOnInlineStatTracker({
       setEndedElsewhere(false);
       setConfirmEndGame(false);
       setError('');
+      void syncCompletedGameToCalendar(completed);
     } catch {
       setError('The game could not be ended. Your live stats are still saved on this device.');
     }
@@ -271,6 +291,25 @@ export function GameOnInlineStatTracker({
       ) : completedGame && !game ? (
         <div ref={completedStatusRef} tabIndex={-1} className="game-on-quick-tracker__message" role="status" data-testid="status-inline-tracker-completed">
           <p>This game is ended and saved on this device. Open the full tracker to review or sync it.</p>
+          {calendarStatusSyncing && (
+            <p className="game-on-quick-tracker__save-warning" role="status" data-testid="status-inline-calendar-sync">
+              Updating this game’s Calendar status…
+            </p>
+          )}
+          {calendarStatusSyncError && (
+            <div className="game-on-quick-tracker__save-warning" role="alert" data-testid="error-inline-calendar-sync">
+              <p>{calendarStatusSyncError}</p>
+              <button
+                type="button"
+                className="game-on-quick-tracker__primary"
+                disabled={calendarStatusSyncing}
+                onClick={() => { if (completedGame) void syncCompletedGameToCalendar(completedGame); }}
+                data-testid="button-inline-retry-calendar-sync"
+              >
+                Retry Calendar update
+              </button>
+            </div>
+          )}
           <button type="button" onClick={createEventGame} className="game-on-quick-tracker__primary" data-testid="button-inline-new-tracker">Start another tracker</button>
         </div>
       ) : error && !game ? (

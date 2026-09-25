@@ -1081,8 +1081,18 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         attribution: 'team',
       },
     });
+    await waitFor(connection, page.sessionId, `(() => {
+      const scheduledGame = window.__getSupporterDashboardEvents?.().find((event) => event.id === 'game-1');
+      return scheduledGame?.status === 'final' && Number.isFinite(Date.parse(scheduledGame.completedAt));
+    })()`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    assert.equal(
+      await connection.evaluate<string>(`Array.from(document.querySelectorAll('[data-testid^="status-game-on-card-"]'))
+        .find((status) => status.getClientRects().length > 0)?.textContent?.trim() || ''`, page.sessionId),
+      'Complete',
+      'ending the inline tracker must finalize its linked Calendar badge',
+    );
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-inline-tracker-completed\\"]") !== null', Boolean);
     assert.equal(
@@ -1994,6 +2004,14 @@ export function mount() {
           projects: [],
           scheduleSource: 'custom',
           connectionLabel: 'Northside · 2026',
+          onCompleteScheduledGame: async (eventId, completedAt) => {
+            const scheduledGame = dashboardEvents.find((event) => event.id === eventId && event.type === 'game');
+            if (!scheduledGame) throw new Error('The scheduled game is no longer available.');
+            dashboardEvents = dashboardEvents.map((event) => event.id === eventId
+              ? { ...event, status: 'final', completedAt }
+              : event);
+            renderDashboard();
+          },
           onOpenStatTracker: () => navigate('/studio/stat-tracker'),
           onOpenChecklist: () => navigate('/studio/checklist'),
         }),
@@ -2004,6 +2022,7 @@ export function mount() {
     dashboardEvents = nextEvents;
     renderDashboard();
   };
+  window.__getSupporterDashboardEvents = () => dashboardEvents;
   window.__setSupporterDashboardTrackerUserId = async (userId) => {
     dashboardUserId = userId || undefined;
     renderDashboard();

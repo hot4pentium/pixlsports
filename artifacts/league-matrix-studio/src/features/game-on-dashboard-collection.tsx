@@ -41,6 +41,7 @@ type GameOnDashboardCollectionProps = {
   statTrackerSport?: Sport | null;
   statTrackerAthleteName?: string;
   statTrackerTeamName?: string;
+  onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
 };
 
 function dateParts(value: string) {
@@ -70,7 +71,7 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName }: {
+function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame }: {
   card: DashboardGameOnCard;
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
@@ -84,6 +85,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   statTrackerSport?: Sport | null;
   statTrackerAthleteName?: string;
   statTrackerTeamName?: string;
+  onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
 }) {
   const reduceMotion = useReducedMotion();
   const editorId = useId();
@@ -97,6 +99,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
+  const calendarEventId = card.eventId;
   const eventId = card.eventId ?? card.id.replace(/^(?:share|draft):/, '');
   const eventContext = {
     id: eventId,
@@ -289,6 +292,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 time={card.time}
                 location={card.location}
                 opponent={card.opponent}
+                onGameEnded={
+                  calendarEventId && onCompleteScheduledGame
+                    ? (completedAt) => onCompleteScheduledGame(calendarEventId, completedAt)
+                    : undefined
+                }
               />
             </>
           )}
@@ -311,6 +319,7 @@ export function GameOnDashboardCollection({
   statTrackerSport,
   statTrackerAthleteName,
   statTrackerTeamName,
+  onCompleteScheduledGame,
 }: GameOnDashboardCollectionProps) {
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -400,6 +409,7 @@ export function GameOnDashboardCollection({
                   statTrackerSport={statTrackerSport}
                   statTrackerAthleteName={statTrackerAthleteName}
                   statTrackerTeamName={statTrackerTeamName}
+                  onCompleteScheduledGame={onCompleteScheduledGame}
                 />
               ))}
             </div>

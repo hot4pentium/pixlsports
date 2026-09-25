@@ -77,6 +77,7 @@ import {
   saveScheduleDraft,
   scheduleStorageKey,
   updateScheduleEvent,
+  updateScheduleEventStatus,
   type ScheduleEvent,
   type ScheduleEventType,
 } from '@/features/schedule-draft';
@@ -1524,6 +1525,42 @@ function SupporterStudio() {
     saveWorkspaceEventContext(window.localStorage, nextDraft.events.find((candidate) => candidate.id === event.id)!);
   };
 
+  const completeCardCalendarGame = async (eventId: string, completedAt: string) => {
+    const source = cloudSchedule?.events.some((candidate) => candidate.id === eventId && candidate.type === 'game')
+      ? cloudSchedule
+      : localSchedule?.events.some((candidate) => candidate.id === eventId && candidate.type === 'game')
+        ? localSchedule
+        : null;
+    if (!source) throw new Error('This Calendar game is no longer available. Refresh and try again.');
+
+    const nextDraft = {
+      ...source,
+      events: updateScheduleEventStatus(source.events, eventId, 'final', completedAt),
+    };
+    let cloudSaveSucceeded = false;
+    if (source === cloudSchedule && selectedCloudScheduleProject) {
+      const updated = await updateScheduleProject.mutateAsync({
+        projectId: selectedCloudScheduleProject.id,
+        data: {
+          project: { ...selectedCloudScheduleProject.project as Record<string, unknown>, ...nextDraft, tool: 'schedule' },
+          expectedRevision: selectedCloudScheduleProject.revision,
+        },
+      });
+      queryClient.setQueryData(getListProjectsQueryKey(), (current: typeof cloudProjects) => current?.map((project) =>
+        project.id === updated.id ? updated : project,
+      ));
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }).catch(() => undefined);
+      cloudSaveSucceeded = true;
+    }
+
+    try {
+      saveScheduleDraft(window.localStorage, nextDraft);
+    } catch (error) {
+      if (!cloudSaveSucceeded) throw error;
+    }
+    setLocalScheduleVersion((value) => value + 1);
+  };
+
   return (
     <StudioLayout role="fan">
       <main className="flex-1 bg-background">
@@ -1532,6 +1569,7 @@ function SupporterStudio() {
           userId={user?.id}
           events={events}
           onSaveCalendarEvent={saveCardCalendarEvent}
+          onCompleteScheduledGame={completeCardCalendarGame}
           nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
           scheduleSource={scheduleSource}
