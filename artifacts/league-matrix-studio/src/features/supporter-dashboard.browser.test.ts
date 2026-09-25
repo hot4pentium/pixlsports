@@ -591,7 +591,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         gameOnEntryVisible: true,
         gameOnEntryFollowsHero: true,
         gameOnEntryPrecedesWorkspace: true,
-        gameOnEntryTarget: '#game-on-card-panel',
+        gameOnEntryTarget: '#game-on-dashboard-collection',
       }, `mobile header behavior at ${width}px`);
     }
 
@@ -628,7 +628,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       entryVisible: true,
       entryFollowsEvent: true,
       entryPrecedesWorkspace: true,
-      entryTarget: '#game-on-card-panel',
+      entryTarget: '#game-on-dashboard-collection',
       collectionLeadsHero: true,
     });
 

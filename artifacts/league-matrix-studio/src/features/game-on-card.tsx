@@ -20,7 +20,6 @@ import {
   Sparkles,
   Trophy,
   RotateCw,
-  Zap,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { format, isValid, parseISO } from 'date-fns';
@@ -51,6 +50,8 @@ type GameOnCardPanelProps = {
   selectedCard?: SavedGameOnCard | null;
   startFresh?: boolean;
   onChanged?: () => void;
+  onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
+  existingCardTokensByEventId?: Record<string, string>;
 };
 
 function createEventId() {
@@ -139,6 +140,8 @@ export function GameOnCardPanel({
   selectedCard,
   startFresh = false,
   onChanged,
+  onSaveCalendarEvent,
+  existingCardTokensByEventId,
 }: GameOnCardPanelProps) {
   const scheduledEvents = events.filter((event) => event.type === 'game' || event.type === 'practice');
   const createShare = useCreateScheduleShare();
@@ -264,9 +267,14 @@ export function GameOnCardPanel({
         location: draft.location.trim(),
         time: draft.time.trim(),
       };
+      if (sourceEventId !== 'new' && scheduledEvents.some((scheduled) => scheduled.id === event.id)) {
+        if (!onSaveCalendarEvent) throw new Error('Calendar editing is unavailable. Refresh and try again.');
+        await onSaveCalendarEvent(event as SupporterEvent);
+      }
       const data = buildShareData(event);
-      const share = saved
-        ? await updateShare.mutateAsync({ shareToken: saved.shareToken, data })
+      const existingToken = saved?.shareToken ?? (sourceEventId !== 'new' ? existingCardTokensByEventId?.[event.id] : undefined);
+      const share = existingToken
+        ? await updateShare.mutateAsync({ shareToken: existingToken, data })
         : await createShare.mutateAsync({ data });
       const next: LocalSavedGameOnCard = {
         shareToken: share.shareToken,
@@ -336,7 +344,6 @@ export function GameOnCardPanel({
   }
   const prepToolHref = `${buildWorkspaceToolHref('prep', workspaceEvent)}&${prepDetails.toString()}&view=share`;
   const statsToolHref = isPractice ? undefined : buildWorkspaceToolHref('stats', workspaceEvent);
-  const hypeToolHref = buildWorkspaceToolHref('hype', workspaceEvent);
 
   return (
     <section
@@ -438,9 +445,6 @@ export function GameOnCardPanel({
                       <Activity className="h-3.5 w-3.5" /> Track this game
                     </Link>
                   )}
-                  <Link href={hypeToolHref} className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-create-hype">
-                    <Zap className="h-3.5 w-3.5" /> Make a Hype Card
-                  </Link>
                   <Link href="/studio/athlete-page" className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-athlete-page">
                     <Sparkles className="h-3.5 w-3.5" /> Athlete Hype Page
                   </Link>

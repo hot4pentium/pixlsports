@@ -120,6 +120,8 @@ import {
   completedChecklistCount,
   applyChecklistEventType,
   createGamedayChecklist,
+  readEventChecklist,
+  saveEventChecklist,
   gamedayChecklistStorageKey,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
@@ -1443,6 +1445,9 @@ function SupporterStudio() {
     },
   });
   const cloudProjects = cloudProjectsQuery.data;
+  const updateScheduleProject = useUpdateProject();
+  const [localScheduleVersion, setLocalScheduleVersion] = useState(0);
+  void localScheduleVersion;
   const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
   const selectedCloudScheduleProject = getActiveCloudScheduleProject(cloudScheduleProjects);
   const cloudSchedule = selectedCloudScheduleProject
@@ -1490,6 +1495,35 @@ function SupporterStudio() {
       ? [customSchedule?.teamName, customSchedule?.season].filter(Boolean).join(' · ')
       : profile.teamName;
 
+  const saveCardCalendarEvent = async (event: Pick<ScheduleEvent, 'id' | 'type' | 'date' | 'time' | 'location' | 'opponent'>) => {
+    const source = cloudSchedule?.events.some((candidate) => candidate.id === event.id)
+      ? cloudSchedule
+      : localSchedule?.events.some((candidate) => candidate.id === event.id) ? localSchedule : null;
+    if (!source) throw new Error('This Calendar event is no longer available. Refresh and try again.');
+    const nextDraft = {
+      ...source,
+      events: source.events.map((candidate) => candidate.id === event.id
+        ? { ...candidate, date: event.date, time: event.time, location: event.location, opponent: event.type === 'game' ? event.opponent : '' }
+        : candidate),
+    };
+    if (source === cloudSchedule && selectedCloudScheduleProject) {
+      const updated = await updateScheduleProject.mutateAsync({
+        projectId: selectedCloudScheduleProject.id,
+        data: {
+          project: { ...selectedCloudScheduleProject.project as Record<string, unknown>, ...nextDraft, tool: 'schedule' },
+          expectedRevision: selectedCloudScheduleProject.revision,
+        },
+      });
+      queryClient.setQueryData(getListProjectsQueryKey(), (current: typeof cloudProjects) => current?.map((project) =>
+        project.id === updated.id ? updated : project,
+      ));
+      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    }
+    saveScheduleDraft(window.localStorage, nextDraft);
+    setLocalScheduleVersion((value) => value + 1);
+    saveWorkspaceEventContext(window.localStorage, nextDraft.events.find((candidate) => candidate.id === event.id)!);
+  };
+
   return (
     <StudioLayout role="fan">
       <main className="flex-1 bg-background">
@@ -1497,6 +1531,7 @@ function SupporterStudio() {
           profile={profile}
           userId={user?.id}
           events={events}
+          onSaveCalendarEvent={saveCardCalendarEvent}
           nextGameIsUpcoming={nextGameIsUpcoming}
           projects={projects}
           scheduleSource={scheduleSource}
@@ -3065,7 +3100,12 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   useEffect(() => {
     if (shared) return;
     try {
-      const stored = readGamedayChecklist(window.localStorage, userStorageKey);
+      const requestedId = requestedGameId.current;
+      const globalChecklist = readGamedayChecklist(window.localStorage, userStorageKey);
+      const stored = requestedId
+        ? readEventChecklist(window.localStorage, user?.id ?? 'anonymous', requestedId)
+          ?? (globalChecklist?.selectedGame?.id === requestedId ? globalChecklist : null)
+        : globalChecklist;
       if (stored) {
         storedChecklistLoaded.current = true;
         setChecklist(stored);
@@ -3080,7 +3120,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     } finally {
       setHydrated(true);
     }
-  }, [shared, userStorageKey]);
+  }, [shared, userStorageKey, user?.id]);
 
   useEffect(() => {
     if (!sharedChecklist) return;
@@ -3181,6 +3221,9 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     if (shared) return;
     try {
       saveGamedayChecklist(window.localStorage, next, userStorageKey);
+      if (next.selectedGame?.id && !next.shareToken) {
+        saveEventChecklist(window.localStorage, user?.id ?? 'anonymous', next.selectedGame.id, next);
+      }
       setStorageUnavailable(false);
     } catch {
       setStorageUnavailable(true);
@@ -3485,10 +3528,11 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
                   value={displayedEvent?.id ?? ''}
                   onChange={(event) => {
                     const nextEvent = calendarEvents.find((candidate) => candidate.id === event.target.value);
-                     const currentEventType = latestChecklist.current.selectedGame?.type ?? 'game';
-                     const nextChecklist = nextEvent && currentEventType !== nextEvent.type
-                       ? applyChecklistEventType(latestChecklist.current, nextEvent.type)
-                       : latestChecklist.current;
+                     const storedForEvent = nextEvent && !shared
+                       ? readEventChecklist(window.localStorage, user?.id ?? 'anonymous', nextEvent.id)
+                       : null;
+                     const nextChecklist = storedForEvent
+                       ?? (nextEvent ? createGamedayChecklist(nextEvent.type) : createGamedayChecklist());
                     updateChecklist({
                        ...nextChecklist,
                       selectedGame: nextEvent

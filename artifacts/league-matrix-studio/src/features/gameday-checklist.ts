@@ -106,6 +106,19 @@ export type LocalGamedayChecklist = {
 
 export const gamedayChecklistStorageKey = 'pixlsports-gameday-checklist';
 
+/** Private, account-scoped preparation for one calendar or independent Game On event. */
+export function eventChecklistStorageKey(userId: string, eventId: string) {
+  return `${gamedayChecklistStorageKey}:${encodeURIComponent(userId)}:event:${encodeURIComponent(eventId)}`;
+}
+
+export function readEventChecklist(storage: Storage, userId: string, eventId: string): LocalGamedayChecklist | null {
+  return readGamedayChecklist(storage, eventChecklistStorageKey(userId, eventId));
+}
+
+export function saveEventChecklist(storage: Storage, userId: string, eventId: string, checklist: LocalGamedayChecklist) {
+  saveGamedayChecklist(storage, checklist, eventChecklistStorageKey(userId, eventId));
+}
+
 export const gamedayChecklistTemplate: GamedayChecklistItem[] = [
   { id: 'uniform', label: 'Pack the uniform and game shoes', completed: false, section: 'Before leaving' },
   { id: 'equipment', label: 'Pack equipment and team bag', completed: false, section: 'Before leaving' },

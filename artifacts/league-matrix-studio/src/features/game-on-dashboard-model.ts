@@ -58,9 +58,13 @@ export function buildGameOnDashboardEntries(
   athleteName: string,
   now = new Date(),
 ): GameOnDashboardEntry[] {
+  const scheduledById = new Map(events.filter(isCardEvent).map((event) => [event.id, event]));
   const published = shares
     .filter((share) => share.events.length === 1 && isCardEvent(share.events[0]))
-    .map((share) => entryForEvent(share.events[0] as GameOnDashboardEvent & { type: 'game' | 'practice' }, athleteName, now, share.shareToken));
+    .map((share) => {
+      const sharedEvent = share.events[0] as GameOnDashboardEvent & { type: 'game' | 'practice' };
+      return entryForEvent(scheduledById.get(sharedEvent.id) ?? sharedEvent, athleteName, now, share.shareToken);
+    });
   const publishedEventIds = new Set(published.map((card) => card.eventId));
   const drafts = events
     .filter(isCardEvent)

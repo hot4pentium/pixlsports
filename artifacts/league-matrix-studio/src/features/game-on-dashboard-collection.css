@@ -153,12 +153,13 @@
 
 .game-on-collection__rail {
   display: flex;
-  gap: 13px;
+  align-items: stretch;
+  gap: 16px;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scroll-snap-type: x mandatory;
-  scroll-padding-inline: 2px;
-  padding: 3px 3px 14px;
+  scroll-padding-inline: 4px;
+  padding: 5px 4px 17px;
   scrollbar-width: thin;
   scrollbar-color: #5595cf transparent;
   -webkit-overflow-scrolling: touch;
@@ -169,42 +170,67 @@
 .game-on-collection__card {
   position: relative;
   display: flex;
-  flex: 0 0 min(86%, 345px);
+  flex: 0 0 min(78vw, 258px);
   flex-direction: column;
   min-width: 0;
-  min-height: 259px;
-  padding: 19px;
+  min-height: 354px;
   overflow: hidden;
   scroll-snap-align: start;
-  border: 1px solid #acc8e5;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #f3f8fd 0%, #e8f2fc 100%);
+  border: 1px solid #b9d0e4;
+  border-radius: 12px;
+  background: #f4f8fc;
   box-shadow: 0 8px 24px rgba(2, 17, 39, .18);
   color: #102b4d;
   text-align: left;
-  cursor: pointer;
   transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
 }
 .game-on-collection__card::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 3px;
+  height: 4px;
   background: linear-gradient(90deg, #2878f5, #55a4ff);
+  z-index: 1;
 }
-.game-on-collection__card:hover {
+.game-on-collection__card:hover,
+.game-on-collection__card:focus-within {
   transform: translateY(-3px);
   border-color: #70b4ff;
   box-shadow: 0 14px 30px rgba(2, 17, 39, .27);
 }
-.game-on-collection__card:active { transform: translateY(0); }
 .game-on-collection__card--live::before { background: linear-gradient(90deg, #ff6433, #ffb592); }
 .game-on-collection__card--live { border-color: #ffb592; }
+.game-on-collection__card--selected {
+  border-color: #67aaf0;
+  box-shadow: 0 0 0 2px rgba(85, 164, 255, .33), 0 16px 34px rgba(2, 17, 39, .25);
+}
+.game-on-collection__rail .game-on-collection__card--expanded {
+  flex-basis: min(90vw, 410px);
+}
+.game-on-collection__summary {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  width: 100%;
+  min-height: 354px;
+  padding: 20px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.game-on-collection__summary:hover .game-on-collection__card-arrow,
+.game-on-collection__summary:focus-visible .game-on-collection__card-arrow {
+  transform: translateX(3px);
+  background: #b9dbff;
+}
 
 .game-on-collection__card-top,
 .game-on-collection__card-main,
 .game-on-collection__card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.game-on-collection__card-top { margin-bottom: 22px; }
+.game-on-collection__card-top { width: 100%; margin-bottom: 25px; }
 .game-on-collection__kind { display: inline-flex; align-items: center; gap: 7px; color: #356493; }
 .game-on-collection__status {
   display: inline-flex;
@@ -222,26 +248,32 @@
 .game-on-collection__status--live { background: #fff0e9; border-color: #ffb792; color: #a43f19; }
 .game-on-collection__status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
-.game-on-collection__card-main { justify-content: flex-start; align-items: stretch; min-width: 0; }
+.game-on-collection__card-main {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+}
 .game-on-collection__date {
   display: flex;
-  flex: 0 0 68px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 85px;
-  border-radius: 7px;
-  background: #17467b;
-  color: #f3f8ff;
+  align-items: baseline;
+  gap: 7px;
+  width: 100%;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #cad9e8;
+  color: #17467b;
 }
 .game-on-collection__date-day {
   font-family: 'Barlow Condensed', var(--app-font-serif), sans-serif;
-  font-size: 41px;
+  font-size: 71px;
   font-weight: 800;
-  line-height: .92;
+  letter-spacing: -.05em;
+  line-height: .8;
 }
-.game-on-collection__date-month { color: #a9d5ff; }
-.game-on-collection__date-weekday { margin-top: 4px; font-size: 9px; color: #c5e1ff; }
+.game-on-collection__date-month { color: #2878f5; order: -1; align-self: flex-start; padding-top: 4px; writing-mode: vertical-rl; transform: rotate(180deg); }
+.game-on-collection__date-weekday { margin-left: auto; font-size: 10px; color: #64809b; }
 .game-on-collection__card-content { min-width: 0; padding: 2px 0; }
 .game-on-collection__athlete {
   display: block;
@@ -257,15 +289,16 @@
   display: block;
   margin: 0;
   font-family: 'Barlow Condensed', var(--app-font-serif), sans-serif;
-  font-size: clamp(25px, 3vw, 31px);
+  font-size: clamp(30px, 3vw, 37px);
   font-weight: 800;
   line-height: 1.02;
   overflow-wrap: anywhere;
 }
 .game-on-collection__card-footer {
   align-items: flex-end;
+  width: 100%;
   margin-top: auto;
-  padding-top: 20px;
+  padding-top: 24px;
 }
 .game-on-collection__details { display: grid; gap: 5px; min-width: 0; }
 .game-on-collection__detail { display: flex; align-items: center; gap: 7px; min-width: 0; color: #345573; font-size: 12px; font-weight: 650; }
@@ -282,7 +315,54 @@
   color: #14559e;
   transition: transform .2s ease, background-color .2s ease;
 }
-.game-on-collection__card:hover .game-on-collection__card-arrow { transform: translateX(3px); background: #b9dbff; }
+.game-on-collection__editor {
+  position: relative;
+  width: 100%;
+  padding: 20px;
+  border-top: 1px solid #c3d8ec;
+  background: #eaf3fc;
+  color: #102b4d;
+}
+.game-on-collection__editor :is(input, textarea, select, button, a):focus-visible {
+  outline: 3px solid #b24d16;
+  outline-offset: 2px;
+}
+
+.game-on-inline { display: grid; gap: 18px; font-family: 'DM Sans', var(--app-font-sans), sans-serif; }
+.game-on-inline__section { display: grid; gap: 10px; min-width: 0; padding-bottom: 17px; border-bottom: 1px solid #c3d8ec; }
+.game-on-inline__section h3 { display: flex; align-items: center; gap: 7px; margin: 0; color: #102b4d; font: 800 20px/1 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.game-on-inline__section > p { margin: 0; color: #486483; font-size: 12px; line-height: 1.45; }
+.game-on-inline__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.game-on-inline label { display: grid; min-width: 0; gap: 5px; color: #355473; font-size: 11px; font-weight: 800; }
+.game-on-inline__wide { grid-column: 1 / -1; }
+.game-on-inline input:not([type="checkbox"]), .game-on-inline textarea {
+  display: block; min-width: 0; width: 100%; min-height: 38px; padding: 8px;
+  border: 1px solid #a9c5e0; border-radius: 6px; background: #fff; color: #102b4d;
+  font: 600 13px/1.3 'DM Sans', sans-serif;
+}
+.game-on-inline textarea { resize: vertical; }
+.game-on-inline button, .game-on-inline__tracker, .game-on-inline__text-link {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 40px; padding: 9px 11px; border-radius: 6px; text-align: center;
+  font: 800 11px/1.3 'DM Sans', sans-serif; cursor: pointer;
+}
+.game-on-inline button:disabled { opacity: .55; cursor: wait; }
+.game-on-inline__primary, .game-on-inline__tracker {
+  border: 1px solid #1359aa; background: #2878f5; color: #fff;
+}
+.game-on-inline__secondary { border: 1px solid #a9c5e0; background: #fff; color: #17467b; }
+.game-on-inline__text-link { padding-inline: 0; color: #17467b; text-decoration: underline; }
+.game-on-inline__items { display: grid; gap: 6px; }
+.game-on-inline__item { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.game-on-inline__item input[type="checkbox"] { width: 17px; height: 17px; flex-shrink: 0; accent-color: #2878f5; }
+.game-on-inline__item button { width: 34px; min-width: 34px; min-height: 36px; padding: 4px; border: 0; background: transparent; color: #8b3b25; }
+.game-on-inline__sharing { display: flex; flex-wrap: wrap; gap: 7px; }
+.game-on-inline__sharing :is(button, a) { flex: 1 1 auto; border: 1px solid #a9c5e0; background: #fff; color: #17467b; text-decoration: none; }
+.game-on-inline__sharing button:last-child { color: #963f29; }
+.game-on-inline__notice, .game-on-inline__error { margin: 0; font-size: 12px; font-weight: 700; line-height: 1.45; }
+.game-on-inline__notice { color: #165d42; }
+.game-on-inline__error { color: #9b3025; }
+@media (max-width: 365px) { .game-on-inline__fields { grid-template-columns: 1fr; } }
 
 .game-on-collection__bottom {
   display: flex;
@@ -313,10 +393,15 @@
 .game-on-collection__view:hover svg { transform: translateX(3px); }
 .game-on-collection__list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 12px;
+  container-type: inline-size;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 244px), 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
-.game-on-collection__list .game-on-collection__card { width: 100%; min-height: 245px; }
+.game-on-collection__list .game-on-collection__card { width: 100%; min-height: 354px; }
+.game-on-collection__list .game-on-collection__card--expanded {
+  grid-column: span 2;
+}
 
 .game-on-collection__empty {
   display: flex;
@@ -359,11 +444,15 @@
   .game-on-collection__inner { padding: 22px 17px 18px; }
   .game-on-collection__header { align-items: stretch; flex-direction: column; gap: 18px; }
   .game-on-collection__create { align-self: flex-start; }
-  .game-on-collection__card { flex-basis: min(89%, 335px); min-height: 250px; }
+  .game-on-collection__card { flex-basis: min(79%, 258px); }
+  .game-on-collection__rail .game-on-collection__card--expanded { flex-basis: min(91%, 410px); }
   .game-on-collection__hint { display: none; }
   .game-on-collection__bottom { justify-content: flex-end; }
   .game-on-collection__empty { align-items: flex-start; gap: 16px; }
   .game-on-collection__empty-mark { flex-basis: 54px; height: 54px; }
+}
+@container (max-width: 503px) {
+  .game-on-collection__list .game-on-collection__card--expanded { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .game-on-collection *, .game-on-collection *::before, .game-on-collection *::after {

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type UIEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type UIEvent } from 'react';
 import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin, Plus, Swords } from 'lucide-react';
 import './game-on-dashboard-collection.css';
 
@@ -18,6 +18,8 @@ type GameOnDashboardCollectionProps = {
   cards: DashboardGameOnCard[];
   onCreate: () => void;
   onOpen: (id: string) => void;
+  selectedId?: string;
+  renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
 };
 
 function dateParts(value: string) {
@@ -47,54 +49,73 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen }: { card: DashboardGameOnCard; onOpen: (id: string) => void }) {
+function CollectionCard({ card, onOpen, selected, renderSelectedCard }: {
+  card: DashboardGameOnCard;
+  onOpen: (id: string) => void;
+  selected: boolean;
+  renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
+}) {
+  const editorId = useId();
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
   const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
+  const hasEditor = selected && Boolean(renderSelectedCard);
 
   return (
-    <button
-      type="button"
-      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}`}
-      onClick={() => onOpen(card.id)}
-      aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${statusLabel}`}
-      data-testid={`button-open-game-on-card-${card.id}`}
+    <article
+      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}`}
+      data-testid={`card-game-on-${card.id}`}
     >
-      <span className="game-on-collection__card-top">
-        <span className="game-on-collection__kind">
-          {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
-          {practice ? 'Practice' : 'Game'}
+      <button
+        type="button"
+        className="game-on-collection__summary"
+        onClick={() => onOpen(card.id)}
+        aria-label={`Open ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} card${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${statusLabel}`}
+        aria-expanded={renderSelectedCard ? selected : undefined}
+        aria-controls={hasEditor ? editorId : undefined}
+        data-testid={`button-open-game-on-card-${card.id}`}
+      >
+        <span className="game-on-collection__card-top">
+          <span className="game-on-collection__kind">
+            {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
+            {practice ? 'Practice' : 'Game'}
+          </span>
+          <span className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
+            <span className="game-on-collection__status-dot" aria-hidden="true" />
+            {statusLabel}
+          </span>
         </span>
-        <span className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
-          <span className="game-on-collection__status-dot" aria-hidden="true" />
-          {statusLabel}
+        <span className="game-on-collection__card-main">
+          <span className="game-on-collection__date" aria-label={card.date || 'Date TBD'}>
+            <span className="game-on-collection__date-month">{date.month}</span>
+            <span className="game-on-collection__date-day">{date.day}</span>
+            <span className="game-on-collection__date-weekday">{date.weekday}</span>
+          </span>
+          <span className="game-on-collection__card-content">
+            <span className="game-on-collection__athlete" data-testid={`text-game-on-athlete-${card.id}`}>{card.athleteName || 'Your athlete'}</span>
+            <span className="game-on-collection__opponent" data-testid={`text-game-on-opponent-${card.id}`}>{title}</span>
+          </span>
         </span>
-      </span>
-      <span className="game-on-collection__card-main">
-        <span className="game-on-collection__date" aria-label={card.date || 'Date TBD'}>
-          <span className="game-on-collection__date-month">{date.month}</span>
-          <span className="game-on-collection__date-day">{date.day}</span>
-          <span className="game-on-collection__date-weekday">{date.weekday}</span>
+        <span className="game-on-collection__card-footer">
+          <span className="game-on-collection__details">
+            <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span>{displayTime(card.time)}</span></span>
+            <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span>{card.location || 'Location TBD'}</span></span>
+          </span>
+          <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
         </span>
-        <span className="game-on-collection__card-content">
-          <span className="game-on-collection__athlete" data-testid={`text-game-on-athlete-${card.id}`}>{card.athleteName || 'Your athlete'}</span>
-          <span className="game-on-collection__opponent" data-testid={`text-game-on-opponent-${card.id}`}>{title}</span>
-        </span>
-      </span>
-      <span className="game-on-collection__card-footer">
-        <span className="game-on-collection__details">
-          <span className="game-on-collection__detail"><Clock3 size={14} aria-hidden="true" /><span>{displayTime(card.time)}</span></span>
-          <span className="game-on-collection__detail"><MapPin size={14} aria-hidden="true" /><span>{card.location || 'Location TBD'}</span></span>
-        </span>
-        <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
-      </span>
-    </button>
+      </button>
+      {hasEditor && (
+        <div className="game-on-collection__editor" id={editorId} data-testid={`panel-game-on-card-${card.id}`}>
+          {renderSelectedCard?.(card)}
+        </div>
+      )}
+    </article>
   );
 }
 
-export function GameOnDashboardCollection({ cards, onCreate, onOpen }: GameOnDashboardCollectionProps) {
+export function GameOnDashboardCollection({ cards, onCreate, onOpen, selectedId, renderSelectedCard }: GameOnDashboardCollectionProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const [listOpen, setListOpen] = useState(false);
   const [scrollState, setScrollState] = useState({ start: true, end: false });
@@ -110,10 +131,11 @@ export function GameOnDashboardCollection({ cards, onCreate, onOpen }: GameOnDas
       });
     };
     measure();
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     observer.observe(rail);
     return () => observer.disconnect();
-  }, [cards.length, listOpen]);
+  }, [cards.length, listOpen, selectedId]);
 
   function updateScrollState(event: UIEvent<HTMLDivElement>) {
     const element = event.currentTarget;
@@ -127,12 +149,20 @@ export function GameOnDashboardCollection({ cards, onCreate, onOpen }: GameOnDas
     const rail = railRef.current;
     if (!rail) return;
     const card = rail.querySelector<HTMLElement>('.game-on-collection__card');
-    const distance = (card?.offsetWidth ?? rail.clientWidth) + 13;
+    const distance = (card?.offsetWidth ?? rail.clientWidth) + 16;
     rail.scrollBy({ left: direction * distance, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
 
+  function handleRailKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      move(event.key === 'ArrowRight' ? 1 : -1);
+    }
+  }
+
   return (
-    <section className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
+    <section id="game-on-dashboard-collection" className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
       <div className="game-on-collection__inner">
         <div className="game-on-collection__header">
           <div>
@@ -169,11 +199,11 @@ export function GameOnDashboardCollection({ cards, onCreate, onOpen }: GameOnDas
             </div>
             {listOpen ? (
               <div className="game-on-collection__list" aria-label="All Game On cards" data-testid="list-game-on-cards">
-                {cards.map((card) => <CollectionCard key={card.id} card={card} onOpen={onOpen} />)}
+                {cards.map((card) => <CollectionCard key={card.id} card={card} onOpen={onOpen} selected={selectedId === card.id} renderSelectedCard={renderSelectedCard} />)}
               </div>
             ) : (
-              <div className="game-on-collection__rail" ref={railRef} onScroll={updateScrollState} tabIndex={0} role="region" aria-label="Game On cards, scroll horizontally to see more" data-testid="carousel-game-on-cards">
-                {cards.map((card) => <CollectionCard key={card.id} card={card} onOpen={onOpen} />)}
+              <div className="game-on-collection__rail" ref={railRef} onScroll={updateScrollState} onKeyDown={handleRailKeyDown} tabIndex={0} role="region" aria-label="Game On cards, scroll horizontally to see more" data-testid="carousel-game-on-cards">
+                {cards.map((card) => <CollectionCard key={card.id} card={card} onOpen={onOpen} selected={selectedId === card.id} renderSelectedCard={renderSelectedCard} />)}
               </div>
             )}
             <div className="game-on-collection__bottom">

@@ -5,6 +5,8 @@ import {
   applyChecklistEventType,
   completedChecklistCount,
   createGamedayChecklist,
+  readEventChecklist,
+  saveEventChecklist,
   getChecklistTemplate,
   getChecklistEventCopy,
   getChecklistCompletionFeedback,
@@ -12,6 +14,21 @@ import {
   normalizeChecklist,
   resetGamedayChecklist,
 } from './gameday-checklist';
+
+test('private Prep is isolated by account and event and survives a reload', () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+  } as Storage;
+  const first = { ...createGamedayChecklist('game'), notes: 'Bring the blue jersey' };
+  const second = { ...createGamedayChecklist('practice'), notes: 'Meet at the track' };
+  saveEventChecklist(storage, 'parent-one', 'event-one', first);
+  saveEventChecklist(storage, 'parent-one', 'event-two', second);
+  assert.equal(readEventChecklist(storage, 'parent-one', 'event-one')?.notes, first.notes);
+  assert.equal(readEventChecklist(storage, 'parent-one', 'event-two')?.notes, second.notes);
+  assert.equal(readEventChecklist(storage, 'parent-two', 'event-one'), null);
+});
 
 test('starts with practical template items and keeps tournament mode available', () => {
   const checklist = createGamedayChecklist();

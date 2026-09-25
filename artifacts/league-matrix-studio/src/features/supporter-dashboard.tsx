@@ -35,6 +35,7 @@ import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import { GameOnCardPanel } from './game-on-card';
+import { GameOnInlineEditor } from './game-on-inline-editor';
 import { GameOnDashboardCollection } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
@@ -184,6 +185,7 @@ export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   userId?: string | null;
   events: SupporterEvent[];
+  onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
   scheduleSource: 'custom' | null;
@@ -284,6 +286,7 @@ export function SupporterDashboardView({
   profile,
   userId,
   events,
+  onSaveCalendarEvent,
   nextGameIsUpcoming,
   projects,
   scheduleSource,
@@ -375,37 +378,36 @@ export function SupporterDashboardView({
     }));
   const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
   const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime);
-  const selectedDashboardCard = dashboardCards.find((card) => card.id === cardSelection?.id);
-  const selectedCardShare = ownedGameOnShares.find((share) => share.shareToken === selectedDashboardCard?.shareToken);
-  const selectedSavedCard: SavedGameOnCard | null = selectedCardShare && selectedCardShare.events[0]
-    ? {
-      shareToken: selectedCardShare.shareToken,
-      title: selectedCardShare.title,
-      savedAt: selectedCardShare.createdAt,
-      event: {
-        id: selectedCardShare.events[0].id,
-        type: selectedCardShare.events[0].type === 'practice' ? 'practice' : 'game',
-        date: selectedCardShare.events[0].date,
-        time: selectedCardShare.events[0].time,
-        location: selectedCardShare.events[0].location,
-        opponent: selectedCardShare.events[0].opponent ?? '',
-        status: selectedCardShare.events[0].status ?? 'upcoming',
-      },
-    }
-    : null;
-  const selectedCardEvent = cardSelection?.kind === 'event'
-    ? events.find((event) => event.id === selectedDashboardCard?.eventId)
-    : undefined;
-  const openCardWorkspace = (kind: 'new' | 'event' | 'share', id?: string) => {
-    setCardSelection((previous) => ({ kind, id, nonce: (previous?.nonce ?? 0) + 1 }));
+  const openCardWorkspace = () => {
+    setCardSelection((previous) => ({ kind: 'new', nonce: (previous?.nonce ?? 0) + 1 }));
     requestAnimationFrame(() => requestAnimationFrame(() => {
       document.getElementById('game-on-card-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
   };
-  const handleGameOnCardChanged = () => {
+  const selectCard = (id: string) => {
+    setCardSelection((previous) => previous?.id === id ? null : {
+      kind: id.startsWith('share:') ? 'share' : 'event', id, nonce: (previous?.nonce ?? 0) + 1,
+    });
+  };
+  const handleGameOnCardChanged = (selectedId?: string) => {
     if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
+    if (selectedId) setCardSelection((previous) => ({
+      kind: selectedId.startsWith('share:') ? 'share' : 'event',
+      id: selectedId, nonce: previous?.nonce ?? 0,
+    }));
+    else setCardSelection((previous) => previous?.kind === 'new' ? previous : null);
   };
+  const renderSelectedGameOnCard = (card: (typeof dashboardCards)[number]) => userId ? (
+    <GameOnInlineEditor
+      card={card}
+      scheduledEvent={events.find((event) => event.id === card.eventId)}
+      teamName={profile.teamName}
+      userId={userId}
+      onSaveCalendarEvent={onSaveCalendarEvent ?? (async () => { throw new Error('Calendar editing is unavailable. Refresh and try again.'); })}
+      onChanged={handleGameOnCardChanged}
+    />
+  ) : null;
   const gameStage: SupporterGameStage = contextEvent
       ? getSupporterGameStage(contextEvent, currentTime)
       : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
@@ -764,9 +766,14 @@ export function SupporterDashboardView({
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
           <GameOnDashboardCollection
             cards={dashboardCards}
-            onCreate={() => openCardWorkspace('new')}
-            onOpen={(id) => openCardWorkspace(id.startsWith('share:') ? 'share' : 'event', id)}
+            onCreate={openCardWorkspace}
+            onOpen={selectCard}
+            selectedId={cardSelection?.id}
+            renderSelectedCard={renderSelectedGameOnCard}
           />
+          <Link href="/studio/hype-card" className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
+            <Zap size={16} aria-hidden="true" /> Make a Hype Card separately
+          </Link>
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
           )}
@@ -865,7 +872,7 @@ export function SupporterDashboardView({
               One shareable link for the game details, with shared stats and the Athlete Page when available.
             </p>
             <a
-              href="#game-on-card-panel"
+              href="#game-on-dashboard-collection"
               className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#2474F5] px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-[#12213A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2474F5]"
               data-testid="link-mobile-game-on-card"
             >
@@ -1017,9 +1024,14 @@ export function SupporterDashboardView({
       )}
       <GameOnDashboardCollection
         cards={dashboardCards}
-        onCreate={() => openCardWorkspace('new')}
-        onOpen={(id) => openCardWorkspace(id.startsWith('share:') ? 'share' : 'event', id)}
+        onCreate={openCardWorkspace}
+        onOpen={selectCard}
+        selectedId={cardSelection?.id}
+        renderSelectedCard={renderSelectedGameOnCard}
       />
+      <Link href="/studio/hype-card" className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
+        <Zap size={16} aria-hidden="true" /> Make a Hype Card separately
+      </Link>
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
       )}
@@ -1207,7 +1219,7 @@ export function SupporterDashboardView({
             </p>
           </div>
           <a
-            href="#game-on-card-panel"
+            href="#game-on-dashboard-collection"
             className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-[#2474F5] px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-[#0B1F3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#55A4FF]"
             data-testid="link-desktop-game-on-card"
           >
@@ -1455,16 +1467,17 @@ export function SupporterDashboardView({
 
     </div>
       </div>
-      <GameOnCardPanel
-        key={cardSelection ? `${cardSelection.kind}:${cardSelection.id ?? ''}:${cardSelection.nonce}` : 'default'}
+      {cardSelection?.kind === 'new' && <GameOnCardPanel
+        key={`new:${cardSelection.nonce}`}
         profile={profile}
         userId={userId}
         events={events}
-        selectedEvent={cardSelection ? selectedCardEvent : contextEvent?.type !== 'meeting' ? contextEvent : nextGame}
-        selectedCard={cardSelection ? selectedSavedCard : undefined}
-        startFresh={cardSelection?.kind === 'new'}
+        selectedCard={null}
+        startFresh
+        onSaveCalendarEvent={onSaveCalendarEvent}
+        existingCardTokensByEventId={Object.fromEntries(dashboardCards.filter((card) => card.shareToken).map((card) => [card.eventId, card.shareToken!]))}
         onChanged={handleGameOnCardChanged}
-      />
+      />}
     </>
   );
 }
