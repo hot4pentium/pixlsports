@@ -566,9 +566,10 @@
 .game-on-collection__view:hover svg { transform: translateX(3px); }
 .game-on-collection__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 236px));
   gap: 16px;
   align-items: start;
+  justify-content: start;
 }
 .game-on-collection__grid .game-on-collection__card {
   width: 100%;
@@ -593,7 +594,7 @@
   padding: clamp(10px, 1.5vw, 18px);
 }
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__card-top {
-  justify-content: center;
+  justify-content: flex-end;
   margin-bottom: 0;
 }
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__card-main {
@@ -623,6 +624,29 @@
 }
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__date-weekday {
   display: none;
+}
+.game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding-top: 7px;
+  border-top: 1px solid #cad9e8;
+  color: #17467b;
+  font-family: 'Barlow Condensed', var(--app-font-serif), sans-serif;
+  font-size: clamp(19px, 1.7vw, 24px);
+  font-weight: 900;
+  line-height: .95;
+  letter-spacing: .035em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
 }
 .game-on-collection__grid .game-on-collection__actions {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -724,6 +748,17 @@
   }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__date-day {
     font-size: clamp(28px, 11vw, 42px);
+  }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind {
+    min-height: 27px;
+    gap: 4px;
+    padding-top: 5px;
+    font-size: clamp(12px, 3.6vw, 15px);
+    letter-spacing: .02em;
+  }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind svg {
+    width: 13px;
+    height: 13px;
   }
   .game-on-collection__grid .game-on-collection__actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px 10px 15px; }
   .game-on-collection__grid .game-on-collection__actions--practice { grid-template-columns: repeat(2, minmax(0, 1fr)); }
