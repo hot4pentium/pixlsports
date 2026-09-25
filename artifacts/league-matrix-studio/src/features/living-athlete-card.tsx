@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
 import { Link } from 'wouter';
 import { getGetAthleteFanCardQueryKey, useGetAthleteFanCard, useSendAthleteInviteHype, type PublicAthleteFanCard, type AthleteInviteHypeInput } from '@workspace/api-client-react';
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import './living-athlete-card.css';
 
 type CardSide = 'front' | 'stats' | 'videos';
@@ -54,6 +62,8 @@ export function LivingAthleteCardPage({
   const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>("Let's go!");
   const [message, setMessage] = useState('');
   const [hypeFeedback, setHypeFeedback] = useState('');
+  const [followDialogOpen, setFollowDialogOpen] = useState(false);
+  const [hypeDialogOpen, setHypeDialogOpen] = useState(false);
   const sendHype = useSendAthleteInviteHype();
   const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
@@ -68,7 +78,13 @@ export function LivingAthleteCardPage({
 
   const photoUrl = invite?.photoUrl ?? null;
 
-  useEffect(() => { setSide('front'); setHypeFeedback(''); setMessage(''); }, [inviteToken]);
+  useEffect(() => {
+    setSide('front');
+    setHypeFeedback('');
+    setMessage('');
+    setFollowDialogOpen(false);
+    setHypeDialogOpen(false);
+  }, [inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
   useEffect(() => {
     if (!invite) return;
@@ -271,6 +287,72 @@ export function LivingAthleteCardPage({
               <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
               <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 ? ` (${recentVideos.length})` : ''}</button>
             </div>
+
+             <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
+               <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>
+                 <DialogTrigger asChild>
+                   <button type="button" className="living-card-support-action living-card-support-action-follow" data-testid="button-open-fan-card-follow">
+                     <Bell aria-hidden="true" />
+                     <span>Follow this card</span>
+                     <small>Alerts are optional</small>
+                   </button>
+                 </DialogTrigger>
+                 <DialogContent className="living-card-dialog" data-testid="dialog-follow-fan-card">
+                   <DialogHeader className="living-card-dialog-header">
+                     <span className="living-card-dialog-kicker">Keep the season close</span>
+                     <DialogTitle>Follow {invite.athleteName}.</DialogTitle>
+                     <DialogDescription>
+                       Follow this card on the device you are using. No account is needed. Choose live-game or scheduled-event alerts only if you want them.
+                     </DialogDescription>
+                   </DialogHeader>
+                   <div className="living-card-dialog-body">
+                     {followControls}
+                   </div>
+                 </DialogContent>
+               </Dialog>
+
+               <Dialog open={hypeDialogOpen} onOpenChange={setHypeDialogOpen}>
+                 <DialogTrigger asChild>
+                   <button type="button" className="living-card-support-action living-card-support-action-hype" data-testid="button-open-fan-card-hypes">
+                     <Send aria-hidden="true" />
+                     <span>Send Hypes</span>
+                     <small>A note for the owner</small>
+                   </button>
+                 </DialogTrigger>
+                 <DialogContent className="living-card-dialog living-card-hype-dialog" data-testid="dialog-hypes-fan-card">
+                   <DialogHeader className="living-card-dialog-header">
+                     <span className="living-card-dialog-kicker">From the stands</span>
+                     <DialogTitle>Send some Hype.</DialogTitle>
+                     <DialogDescription>
+                       Pick a cheer and add a short message for {invite.athleteName}. Only the card owner can read your message.
+                     </DialogDescription>
+                   </DialogHeader>
+                   <div className="living-card-dialog-body">
+                     {invite.hypesEnabled ? (
+                       <form onSubmit={(event) => void submitHype(event)} data-testid="form-fan-card-hype">
+                         <label htmlFor="fan-card-reaction">Your cheer</label>
+                         <select id="fan-card-reaction" value={reaction} onChange={(event) => setReaction(event.target.value as AthleteInviteHypeInput['reaction'])} data-testid="select-fan-card-reaction">
+                           <option>Let's go!</option><option>Great job!</option><option>Proud of you!</option>
+                         </select>
+                         <label htmlFor="fan-card-message">Short message (optional)</label>
+                         <textarea id="fan-card-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} rows={4} placeholder="A few words of encouragement" data-testid="input-fan-card-message" />
+                         <div className="living-card-dialog-form-footer">
+                           <span>{message.length}/240</span>
+                           <button type="submit" disabled={sendHype.isPending} data-testid="button-submit-fan-card-hype">{sendHype.isPending ? 'Sending…' : 'Send Hype'}</button>
+                         </div>
+                       </form>
+                     ) : (
+                       <div className="living-card-dialog-disabled" data-testid="status-fan-card-hypes-disabled">
+                         <Send aria-hidden="true" />
+                         <h3>Hypes are turned off.</h3>
+                         <p>The owner is not accepting messages on this card right now. You can still follow the season and view its public updates.</p>
+                       </div>
+                     )}
+                     <p role="status" aria-live="polite" className="living-card-hype-feedback" data-testid="fan-card-hype-feedback">{hypeFeedback}</p>
+                   </div>
+                 </DialogContent>
+               </Dialog>
+             </div>
             <p className="living-card-instruction">Choose a side to turn the card. Videos play only when you press play.</p>
           </section>
 
@@ -294,24 +376,6 @@ export function LivingAthleteCardPage({
                   <Radio aria-hidden="true" /> View live scoreboard <ArrowRight aria-hidden="true" />
                 </button>
               )}
-            </section>
-            {followControls && <div className="living-card-follow">{followControls}</div>}
-            <section className="living-card-hypes" aria-labelledby="living-card-hypes-title">
-              <span className="living-card-story-kicker">From the stands</span>
-              <h3 id="living-card-hypes-title">Send some Hype.</h3>
-              {invite.hypesEnabled ? (
-                <form onSubmit={(event) => void submitHype(event)} data-testid="form-fan-card-hype">
-                  <p>Send {invite.athleteName} a little encouragement. Only the card owner can read messages. Please keep it kind.</p>
-                  <label htmlFor="fan-card-reaction">Your cheer</label>
-                  <select id="fan-card-reaction" value={reaction} onChange={(event) => setReaction(event.target.value as AthleteInviteHypeInput['reaction'])}>
-                    <option>Let's go!</option><option>Great job!</option><option>Proud of you!</option>
-                  </select>
-                  <label htmlFor="fan-card-message">Short message (optional)</label>
-                  <textarea id="fan-card-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} rows={3} placeholder="A few words of encouragement" />
-                  <button type="submit" disabled={sendHype.isPending}>{sendHype.isPending ? 'Sending…' : 'Send Hype'}</button>
-                </form>
-              ) : <p>Hypes are turned off for this card.</p>}
-              <p role="status" aria-live="polite" className="living-card-hype-feedback" data-testid="fan-card-hype-feedback">{hypeFeedback}</p>
             </section>
             <Link className="living-card-original" href={`/player/${encodeURIComponent(inviteToken)}`} data-testid="link-original-hype-page">
               Visit the original Hype Page <ArrowUpRight aria-hidden="true" />
