@@ -13,8 +13,12 @@ test('the HTML entrypoint loads the app through the artifact base path', async (
   assert.doesNotMatch(html, /src="\/src\/main\.tsx"/);
 });
 
-test('the offline shell rotates when the full-size preview receives a new build', async () => {
+test('the offline shell rotates caches for new builds and removes superseded versions', async () => {
   const serviceWorker = await readFile(resolve(artifactDirectory, 'public/sw.js'), 'utf8');
 
-  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v9`;/);
+  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v10`;/);
+  assert.match(
+    serviceWorker,
+    /\.filter\(\(key\) => key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME\)[\s\S]*\.map\(\(key\) => caches\.delete\(key\)\)/,
+  );
 });

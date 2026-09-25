@@ -7,7 +7,7 @@ const landingStyles = readFileSync(new URL('../landing-unified.css', import.meta
 const landingPage = landingSource.slice(landingSource.indexOf('export function PublicLandingPage'));
 
 test('uploaded sports banner replaces the photo grid below the hero actions', () => {
-  assert.match(landingSource, /homepagesportsbanner_1790122043371\.png/);
+  assert.match(landingSource, /selectedSportsBanner from '\.\.\/\.\.\/\.\.\/\.\.\/attached_assets\/selectedsports_1790210785807\.png'/);
   assert.match(landingSource, /data-testid="landing-sports-banner"/);
   assert.doesNotMatch(landingSource, /landing-sport-tile/);
   assert.match(landingSource, /soccer, football, basketball, volleyball, baseball, and softball/);
@@ -20,7 +20,8 @@ test('uploaded sports banner replaces the photo grid below the hero actions', ()
 test('landing promises a season home while explaining the weekly rhythm', () => {
   assert.match(landingSource, /One place for<\/span><br \/>/);
   assert.match(landingSource, /the whole season\./);
-  assert.match(landingSource, /Plan each week, follow game day, and keep the moments worth sharing\./);
+  assert.match(landingSource, /Plan each week\. Share game day with family wherever they are\. Cheer on your athlete\./);
+  assert.doesNotMatch(landingSource, /Plan each week, follow game day, and keep the moments worth sharing\./);
   assert.match(landingSource, /Every week moves the season forward\./);
   assert.doesNotMatch(landingSource, /Your week, guided from start to finish\./);
 });
