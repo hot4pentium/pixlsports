@@ -556,16 +556,34 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid") === "button-cancel-end-live-game"', Boolean);
     assert.deepEqual(
       await connection.evaluate<{
-        confirmationText: string;
+        confirmationParts: {
+          asksToEnd: boolean;
+          explainsSaving: boolean;
+          cancelLabel: boolean;
+          confirmLabel: boolean;
+        };
         activeGameKept: boolean;
         historyCards: number;
-      }>(`(() => ({
-        confirmationText: document.querySelector('[data-testid="confirm-end-live-game"]')?.textContent || '',
-        activeGameKept: Boolean(JSON.parse(localStorage.getItem('stat-tracker-browser-active-game') || 'null')),
-        historyCards: document.querySelectorAll('[data-testid^="history-card-"]').length,
-      }))()`, page.sessionId),
+      }>(`(() => {
+        const text = document.querySelector('[data-testid="confirm-end-live-game"]')?.textContent || '';
+        return {
+          confirmationParts: {
+            asksToEnd: text.includes('End this game?'),
+            explainsSaving: text.includes('This will save the current stats as a completed game in your history.'),
+            cancelLabel: text.includes('Keep tracking'),
+            confirmLabel: text.includes('End & save game'),
+          },
+          activeGameKept: Boolean(JSON.parse(localStorage.getItem('stat-tracker-browser-active-game') || 'null')),
+          historyCards: document.querySelectorAll('[data-testid^="history-card-"]').length,
+        };
+      })()`, page.sessionId),
       {
-        confirmationText: 'End this game?This will save the current stats as a completed game in your history.Keep trackingEnd & save game',
+        confirmationParts: {
+          asksToEnd: true,
+          explainsSaving: true,
+          cancelLabel: true,
+          confirmLabel: true,
+        },
         activeGameKept: true,
         historyCards: 0,
       },
