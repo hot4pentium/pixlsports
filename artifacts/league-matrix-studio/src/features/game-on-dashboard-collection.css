@@ -124,6 +124,7 @@
 
 .game-on-collection__toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
@@ -137,6 +138,47 @@
   color: #9fbad4;
   white-space: nowrap;
 }
+.game-on-collection__filters {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.game-on-collection__filter {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid rgba(166, 207, 250, .38);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .06);
+  color: #d9eaff;
+  font: 750 11px/1.2 'DM Sans', var(--app-font-sans), sans-serif;
+  cursor: pointer;
+  transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+}
+.game-on-collection__filter:hover { border-color: #8bc4ff; background: rgba(85, 164, 255, .16); }
+.game-on-collection__filter--selected {
+  border-color: #79baff;
+  background: #dceeff;
+  color: #123c68;
+}
+.game-on-collection__filter-count {
+  display: inline-grid;
+  min-width: 20px;
+  min-height: 20px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .13);
+  font-size: 10px;
+  font-weight: 900;
+}
+.game-on-collection__filter--selected .game-on-collection__filter-count { background: #b7dafb; }
 .game-on-collection__controls { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
 .game-on-collection__nav {
   display: inline-grid;
@@ -752,6 +794,18 @@
   text-transform: uppercase;
 }
 .game-on-collection__empty-copy { margin: 0; color: #bdcee0; font-size: 13px; line-height: 1.55; }
+.game-on-collection__empty--filtered { justify-content: space-between; flex-wrap: wrap; }
+.game-on-collection__reset-filter {
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid #8bc4ff;
+  border-radius: 7px;
+  background: #dceeff;
+  color: #123c68;
+  font: 800 11px/1.2 'DM Sans', var(--app-font-sans), sans-serif;
+  cursor: pointer;
+}
+.game-on-collection__reset-filter:hover { background: #fff; }
 
 .game-on-collection :is(button, [tabindex="0"]):focus-visible {
   outline: 3px solid #ffad78;

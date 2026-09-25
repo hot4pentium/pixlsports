@@ -61,4 +61,5 @@
 - [Embedded Game On drafts](embedded-game-on-drafts.md) — keep editor identity stable as parent previews mirror draft edits.
 - [Simple tracker end state](simple-tracker-end-state.md) — pause stays resumable; ending saves locally and avoids auto-starting a duplicate on reopen.
 - [Game On badge panel focus](game-on-badge-panel-focus.md) — back-face shortcuts restore focus to visible front actions; hidden Details retains unsaved edits.
+- [Game On status filtering](game-on-status-filtering.md) — hide nonmatching cards without unmounting editors, so filtering preserves in-progress changes.
 - [Concurrent merge patch context](concurrent-merge-patch-context.md) — after active task merges, re-check latest source before retrying patches so merged behavior remains intact.

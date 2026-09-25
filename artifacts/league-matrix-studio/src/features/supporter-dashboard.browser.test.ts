@@ -858,6 +858,151 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     ])`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:game-1"]') !== null`, Boolean);
 
+    await connection.evaluate(`(() => {
+      const publishedCard = {
+        shareToken: 'filter-test-published',
+        title: 'Published card',
+        savedAt: new Date().toISOString(),
+        event: {
+          id: 'published-event',
+          type: 'game',
+          date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          time: '18:30',
+          location: 'Northside Gym',
+          opponent: 'Published Opponent',
+          status: 'upcoming',
+        },
+      };
+      const storageKey = 'pixlsports-game-on-cards:supporter-save-transition';
+      localStorage.setItem(storageKey, JSON.stringify([publishedCard]));
+      window.dispatchEvent(new StorageEvent('storage', { key: storageKey, storageArea: localStorage }));
+      const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      window.__setSupporterDashboardEvents([
+        { id: 'filter-live', type: 'game', date: futureDate, time: '18:30', location: 'Northside Gym', opponent: 'Live Opponent', status: 'live' },
+        { id: 'filter-complete', type: 'game', date: futureDate, time: '18:30', location: 'Northside Gym', opponent: 'Complete Opponent', status: 'final' },
+        { id: 'filter-draft', type: 'practice', date: futureDate, time: '17:00', location: 'Northside Gym', status: 'upcoming' },
+      ]);
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const grid = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"]');
+      return grid?.querySelectorAll('.game-on-collection__card').length === 4
+        && ['live', 'complete', 'draft', 'published'].every((status) => grid.querySelector('[data-status="' + status + '"]'));
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      count: string;
+      filterNames: string[];
+      selectedFilter: string | null;
+    }>(`(() => {
+      const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
+      const count = collection?.querySelector('[data-testid="status-game-on-card-count"]');
+      const filters = Array.from(collection?.querySelectorAll('.game-on-collection__filter') ?? []);
+      return {
+        count: count?.textContent?.trim() ?? '',
+        filterNames: filters.map((filter) => filter.textContent?.trim() ?? ''),
+        selectedFilter: filters.find((filter) => filter.getAttribute('aria-pressed') === 'true')?.textContent?.trim() ?? null,
+      };
+    })()`, page.sessionId), {
+      count: 'Showing 4 of 4 cards',
+      filterNames: ['All statuses4', 'Live1', 'Complete1', 'Draft1', 'Published1'],
+      selectedFilter: 'All statuses4',
+    });
+
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-live"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    assert.deepEqual(await connection.evaluate<string[]>(
+      `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+        .filter((status) => status.getClientRects().length > 0)
+        .map((status) => status.getAttribute('data-status'))`,
+      page.sessionId,
+    ), ['live']);
+
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-published"]')?.focus()`, page.sessionId);
+    await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 }, page.sessionId);
+    await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 }, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-published"]')?.getAttribute('aria-pressed') === 'true'`, Boolean);
+    assert.equal(await connection.evaluate<string>(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
+      page.sessionId,
+    ), 'Showing 1 of 4 cards', 'the keyboard-selected status should announce its matching card count');
+    assert.deepEqual(await connection.evaluate<string[]>(
+      `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+        .filter((status) => status.getClientRects().length > 0)
+        .map((status) => status.getAttribute('data-status'))`,
+      page.sessionId,
+    ), ['published']);
+
+    for (const status of ['complete', 'draft']) {
+      await connection.evaluate(
+        `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-${status}"]')?.click()`,
+        page.sessionId,
+      );
+      await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+        .some((item) => item.getClientRects().length > 0 && item.getAttribute('data-status') === '${status}')`, Boolean);
+      assert.deepEqual(await connection.evaluate<string[]>(
+        `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+          .filter((item) => item.getClientRects().length > 0)
+          .map((item) => item.getAttribute('data-status'))`,
+        page.sessionId,
+      ), [status]);
+    }
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'filter-complete', type: 'game', date: '2999-01-01', time: '18:30', location: 'Northside Gym', opponent: 'Complete Opponent', status: 'final' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-filter-empty"]') !== null`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-reset-game-on-filter"]'))`,
+      page.sessionId,
+    ), true, 'an empty status result should offer a visible reset action');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-reset-game-on-filter"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+
+    const filterFixtureSetup = `(() => {
+      const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      window.__setSupporterDashboardEvents([
+        { id: 'filter-live', type: 'game', date: futureDate, time: '18:30', location: 'Northside Gym', opponent: 'Live Opponent', status: 'live' },
+        { id: 'filter-complete', type: 'game', date: futureDate, time: '18:30', location: 'Northside Gym', opponent: 'Complete Opponent', status: 'final' },
+        { id: 'filter-draft', type: 'practice', date: futureDate, time: '17:00', location: 'Northside Gym', status: 'upcoming' }
+      ]);
+    })()`;
+    await connection.evaluate(filterFixtureSetup, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 260,
+      height: 563,
+      deviceScaleFactor: 1.5,
+      mobile: true,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      filtersFit: boolean;
+      filterButtonCanBeReached: boolean;
+    }>(`(() => {
+      const filters = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="game-on-dashboard-collection"] .game-on-collection__filters');
+      const published = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-published"]');
+      return {
+        filtersFit: Boolean(filters && filters.scrollWidth <= filters.clientWidth + 1),
+        filterButtonCanBeReached: Boolean(published && published.getClientRects().length),
+      };
+    })()`, page.sessionId), {
+      filtersFit: true,
+      filterButtonCanBeReached: true,
+    });
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-published"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
+    await connection.evaluate(`(() => {
+      const storageKey = 'pixlsports-game-on-cards:supporter-save-transition';
+      localStorage.removeItem(storageKey);
+      window.dispatchEvent(new StorageEvent('storage', { key: storageKey, storageArea: localStorage }));
+      window.__setSupporterDashboardEvents([
+        { id: 'game-1', type: 'game', date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
+        { id: 'practice-1', type: 'practice', date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '17:00', location: 'Northside Gym', status: 'upcoming' },
+      ]);
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+
     // A 260 CSS-pixel mobile viewport at 1.5x device scale approximates a
     // 390px phone viewed at 150% zoom, while retaining the real responsive layout.
     await connection.send('Emulation.setDeviceMetricsOverride', {

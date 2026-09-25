@@ -45,6 +45,20 @@ type GameOnDashboardCollectionProps = {
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
 };
 
+type GameOnStatusFilter = 'All statuses' | DashboardGameOnCard['status'];
+
+const GAME_ON_STATUS_FILTERS: GameOnStatusFilter[] = [
+  'All statuses',
+  'Live',
+  'Complete',
+  'Draft',
+  'Published',
+];
+
+function getCardStatus(card: DashboardGameOnCard): DashboardGameOnCard['status'] {
+  return card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
+}
+
 function dateParts(value: string) {
   const match = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(value.trim());
   if (match) {
@@ -72,11 +86,12 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, onCancelDraft, selected, upNextEventId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
+function CollectionCard({ card, onOpen, onCancelDraft, selected, visible, upNextEventId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
   card: DashboardGameOnCard;
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
   selected: boolean;
+  visible: boolean;
   upNextEventId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
   panel: 'calendar' | 'prep' | 'tracker' | null;
@@ -119,7 +134,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, upNextEventId, 
       onAnnounceGameCompleted(card.opponent);
     }
     : undefined;
-  const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
+  const statusLabel = getCardStatus(card);
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
@@ -142,6 +157,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, upNextEventId, 
       layoutId={reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
       className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      hidden={!visible}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
       data-up-next={isUpNext ? 'true' : 'false'}
@@ -334,10 +350,24 @@ export function GameOnDashboardCollection({
 }: GameOnDashboardCollectionProps) {
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
+  const [statusFilter, setStatusFilter] = useState<GameOnStatusFilter>('All statuses');
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restorePanelFocusRef = useRef(false);
   const labelId = useId();
   const layoutGroupId = useId();
+  const statusCounts: Record<DashboardGameOnCard['status'], number> = {
+    Draft: 0,
+    Published: 0,
+    Live: 0,
+    Complete: 0,
+  };
+  cards.forEach((card) => {
+    statusCounts[getCardStatus(card)] += 1;
+  });
+  const visibleCards = statusFilter === 'All statuses'
+    ? cards
+    : cards.filter((card) => getCardStatus(card) === statusFilter);
+  const cardCountLabel = (count: number) => `${count} ${count === 1 ? 'card' : 'cards'}`;
   const announceGameCompleted = (opponent: string) => {
     const gameLabel = opponent ? `Game vs ${opponent}` : 'Game';
     setCompletionAnnouncement(`${gameLabel} is complete.`);
@@ -405,13 +435,62 @@ export function GameOnDashboardCollection({
           <div className="game-on-collection__toolbar">
             <div className="game-on-collection__toolbar-left">
               <span className="game-on-collection__rail-label">Your cards</span>
-              <span className="game-on-collection__count">{cards.length} {cards.length === 1 ? 'card' : 'cards'}</span>
+              <span
+                className="game-on-collection__count"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                data-testid="status-game-on-card-count"
+              >
+                Showing {visibleCards.length} of {cardCountLabel(cards.length)}
+              </span>
             </div>
+            <div className="game-on-collection__filters" role="group" aria-label="Filter Game On cards by status">
+              {GAME_ON_STATUS_FILTERS.map((filter) => {
+                const count = filter === 'All statuses' ? cards.length : statusCounts[filter];
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={`game-on-collection__filter${statusFilter === filter ? ' game-on-collection__filter--selected' : ''}`}
+                    aria-pressed={statusFilter === filter}
+                    aria-label={`${filter}: ${cardCountLabel(count)}`}
+                    data-testid={`button-filter-game-on-${filter === 'All statuses' ? 'all' : filter.toLowerCase()}`}
+                    onClick={() => setStatusFilter(filter)}
+                  >
+                    <span>{filter}</span>
+                    <span className="game-on-collection__filter-count">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {cards.length > 0 && visibleCards.length === 0 && (
+          <div className="game-on-collection__empty game-on-collection__empty--filtered" data-testid="status-game-on-filter-empty">
+            <div>
+              <h3 className="game-on-collection__empty-title">No {statusFilter.toLowerCase()} cards yet.</h3>
+              <p className="game-on-collection__empty-copy">Choose another status or show all of your cards.</p>
+            </div>
+            <button
+              type="button"
+              className="game-on-collection__reset-filter"
+              onClick={() => setStatusFilter('All statuses')}
+              data-testid="button-reset-game-on-filter"
+            >
+              Show all cards
+            </button>
           </div>
         )}
         <LayoutGroup id={layoutGroupId}>
           {cards.length > 0 && (
-            <div className="game-on-collection__grid" role="list" aria-label="Game On cards" data-testid="grid-game-on-cards">
+            <div
+              className="game-on-collection__grid"
+              role="list"
+              aria-label="Game On cards"
+              data-testid="grid-game-on-cards"
+              hidden={visibleCards.length === 0}
+            >
               {cards.map((card) => (
                 <CollectionCard
                   key={card.layoutId ?? card.id}
@@ -419,6 +498,7 @@ export function GameOnDashboardCollection({
                   onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
                   onCancelDraft={onCancelDraft}
                   selected={selectedId === card.id}
+                  visible={statusFilter === 'All statuses' || getCardStatus(card) === statusFilter}
                   upNextEventId={upNextEventId}
                   renderSelectedCard={renderSelectedCard}
                   panel={openPanel?.cardId === card.id ? openPanel.panel : null}
@@ -436,7 +516,7 @@ export function GameOnDashboardCollection({
             </div>
           )}
         </LayoutGroup>
-        {cards.length > 0 && (
+        {visibleCards.length > 0 && (
           <div className="game-on-collection__bottom">
             <p className="game-on-collection__hint">Tap a card to open its badge and choose a tool.</p>
           </div>
