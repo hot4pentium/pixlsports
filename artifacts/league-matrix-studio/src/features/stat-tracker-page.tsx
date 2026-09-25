@@ -676,6 +676,10 @@ export function LiveTrackerGame({
   const [activeYardEventIds, setActiveYardEventIds] = useState<Record<string, string>>(() => latestYardEventIds(currentGame));
   const [baseballHitAttribution, setBaseballHitAttribution] = useState<StatAttribution | null>(null);
   const [baseballPitchAttribution, setBaseballPitchAttribution] = useState<StatAttribution | null>(null);
+  const [confirmEndGame, setConfirmEndGame] = useState(false);
+  const endGameButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelEndGameButtonRef = useRef<HTMLButtonElement>(null);
+  const wasConfirmingEndGame = useRef(false);
   const updateCurrentGame = (next: GameSession | ((game: GameSession) => GameSession)) => {
     const resolved = typeof next === 'function' ? next(currentGameRef.current) : next;
     currentGameRef.current = resolved;
@@ -687,6 +691,15 @@ export function LiveTrackerGame({
   useEffect(() => {
     currentGameRef.current = currentGame;
   }, [currentGame]);
+
+  useEffect(() => {
+    if (confirmEndGame) {
+      cancelEndGameButtonRef.current?.focus();
+    } else if (wasConfirmingEndGame.current) {
+      endGameButtonRef.current?.focus();
+    }
+    wasConfirmingEndGame.current = confirmEndGame;
+  }, [confirmEndGame]);
 
   useEffect(() => {
     setYardDrafts({});
@@ -1031,10 +1044,55 @@ export function LiveTrackerGame({
         <label className="mt-7 block border-t border-border pt-5 text-xs font-bold uppercase tracking-widest text-muted-foreground"><span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-primary-ink" /> Game notes</span>
           <textarea value={currentGame.notes} onChange={(event) => onGameChange({ ...currentGame, notes: event.target.value })} placeholder="Add a note to look back on later." rows={4} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
         </label>
-        <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
-          <button type="button" onClick={onLeaveGame} className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /> Leave game open</button>
-          <button type="button" disabled={saving} onClick={onEndGame} data-testid="button-end-live-game" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50"><CircleStop className="h-4 w-4" /> {saving ? 'Saving…' : 'End & save game'}</button>
-        </div>
+        {confirmEndGame ? (
+          <div
+            className="mt-7 border-t border-destructive/40 bg-destructive/5 pt-5"
+            role="group"
+            aria-labelledby={`end-live-game-title-${currentGame.id}`}
+            data-testid="confirm-end-live-game"
+          >
+            <div role="alert" className="border border-destructive/30 bg-background p-4">
+              <h3 id={`end-live-game-title-${currentGame.id}`} className="text-sm font-bold uppercase tracking-widest text-destructive">End this game?</h3>
+              <p className="mt-2 text-sm text-muted-foreground">This will save the current stats as a completed game in your history.</p>
+            </div>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                ref={cancelEndGameButtonRef}
+                onClick={() => setConfirmEndGame(false)}
+                className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                data-testid="button-cancel-end-live-game"
+              >
+                Keep tracking
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={onEndGame}
+                className="inline-flex min-h-12 items-center justify-center gap-2 border border-destructive bg-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive-foreground hover:brightness-110 disabled:opacity-50"
+                data-testid="button-confirm-end-live-game"
+              >
+                <CircleStop className="h-4 w-4" /> {saving ? 'Saving…' : 'End & save game'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-7 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
+            <button type="button" onClick={onLeaveGame} className="inline-flex min-h-12 items-center justify-center gap-2 border border-border px-5 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"><Minus className="h-4 w-4" /> Leave game open</button>
+            <button
+              type="button"
+              ref={endGameButtonRef}
+              disabled={saving}
+              onClick={() => setConfirmEndGame(true)}
+              aria-expanded={confirmEndGame}
+              aria-controls={`end-live-game-title-${currentGame.id}`}
+              data-testid="button-end-live-game"
+              className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50"
+            >
+              <CircleStop className="h-4 w-4" /> End game
+            </button>
+          </div>
+        )}
       </div>
       <div data-testid="live-tracker-recent-activity" className="order-3 border border-border bg-card p-4 clip-angled-sm sm:p-5 lg:col-start-1 lg:row-start-2">
         <div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-widest text-primary-ink">Recent activity</p><History className="h-4 w-4 text-muted-foreground" /></div>

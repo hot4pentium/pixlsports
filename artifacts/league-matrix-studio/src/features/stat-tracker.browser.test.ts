@@ -552,6 +552,36 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-yard-pass-reception\\"]")?.value === "9" && document.querySelector("[data-testid=\\"live-stat-card-pass-reception\\"]")?.textContent.includes("9 yds each")', Boolean);
 
     await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-end-live-game\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid") === "button-cancel-end-live-game"', Boolean);
+    assert.deepEqual(
+      await connection.evaluate<{
+        confirmationText: string;
+        activeGameKept: boolean;
+        historyCards: number;
+      }>(`(() => ({
+        confirmationText: document.querySelector('[data-testid="confirm-end-live-game"]')?.textContent || '',
+        activeGameKept: Boolean(JSON.parse(localStorage.getItem('stat-tracker-browser-active-game') || 'null')),
+        historyCards: document.querySelectorAll('[data-testid^="history-card-"]').length,
+      }))()`, page.sessionId),
+      {
+        confirmationText: 'End this game?This will save the current stats as a completed game in your history.Keep trackingEnd & save game',
+        activeGameKept: true,
+        historyCards: 0,
+      },
+      'requesting to end a game should ask first without clearing the live game',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-cancel-end-live-game\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-end-live-game\\"]") === null && document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid") === "button-end-live-game"', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null"))', page.sessionId),
+      true,
+      'canceling confirmation should leave the game open',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-confirm-end-live-game\\"]") !== null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-confirm-end-live-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid^=\\"history-card-\\"]")?.textContent || ""', page.sessionId),
