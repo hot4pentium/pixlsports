@@ -114,11 +114,7 @@
 .living-card-story { padding-top: 10px; }
 .living-card-story-kicker { display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--lc-orange); }
 .living-card-story-kicker::before { content: ''; height: 2px; width: 28px; background: var(--lc-orange); }
-.living-card-story h2 { margin: 22px 0 0; font: 900 clamp(53px, 6.8vw, 90px)/.88 'Barlow Condensed', sans-serif; letter-spacing: -.02em; text-transform: uppercase; }
-.living-card-story h2 em { font-style: normal; color: var(--lc-orange); }
-.living-card-story-copy { margin: 22px 0 0; max-width: 450px; color: #b6cadb; font-size: 15px; line-height: 1.7; }
-.living-card-story-divider { margin: 37px 0 0; height: 1px; background: linear-gradient(90deg, #7dadcf77, transparent); }
-.living-card-next { margin-top: 32px; }
+.living-card-next { margin-top: 0; }
 .living-card-next-head { display: flex; gap: 10px; align-items: center; color: var(--lc-sky); font-size: 10px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
 .living-card-next-head svg { width: 16px; }
 .living-card-next h3 { margin: 14px 0 5px; font: 800 clamp(33px, 4vw, 49px)/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }

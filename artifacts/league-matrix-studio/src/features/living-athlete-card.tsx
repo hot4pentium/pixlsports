@@ -275,12 +275,6 @@ export function LivingAthleteCardPage({
           </section>
 
           <aside className="living-card-story">
-            <div className="living-card-story-kicker">Your front-row seat</div>
-            <h2>Their story.<br /><em>Your seat.</em></h2>
-            <p className="living-card-story-copy">
-              This is {invite.athleteName}'s place in the season. Come back for the next game, a new highlight, and the numbers that made it count.
-            </p>
-            <div className="living-card-story-divider" />
             <section className="living-card-next" aria-labelledby="living-card-next-title">
               <div className="living-card-next-head"><CalendarDays aria-hidden="true" /> Up next</div>
               {upcoming ? (
