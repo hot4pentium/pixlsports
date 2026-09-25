@@ -32,3 +32,9 @@ Card-flip focus must follow the committed visibility and inert state: focus a he
 **Why:** Both faces remain mounted during the flip, so moving focus before the visible face is ready can target hidden or inert content, or lose focus during the state update.
 
 **How to apply:** Scope focus movement to the open card and transfer it after each open or close state has rendered.
+
+At extreme effective zoom widths, page-level horizontal overflow can come from fixed dashboard chrome rather than the Game On collection.
+
+**Why:** A narrow Chromium viewport exposed a fixed mobile navigation row wider than the viewport even when card content remained contained.
+
+**How to apply:** When a page overflow assertion fails, include element-level bounds in the diagnostic and separately measure the tested collection before changing its layout.

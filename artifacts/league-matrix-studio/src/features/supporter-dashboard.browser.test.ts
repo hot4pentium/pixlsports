@@ -791,6 +791,207 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       titleReadable: true,
     });
 
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals' },
+      { id: 'practice-1', type: 'practice', date: '2026-09-22', time: '17:00', location: 'Northside Gym' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__kind'))
+      .some((kind) => kind.textContent?.includes('Practice'))`, Boolean);
+
+    // A 260 CSS-pixel mobile viewport at 1.5x device scale approximates a
+    // 390px phone viewed at 150% zoom, while retaining the real responsive layout.
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 260,
+      height: 563,
+      deviceScaleFactor: 1.5,
+      mobile: true,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+    const phoneZoomState = await connection.evaluate<{
+      viewportWidth: number;
+      pageOverflow: boolean;
+      dashboardOverflow: boolean;
+      columnCount: number;
+      overflowingElements: string[];
+      cards: Array<{ kind: string; dateMonth: string; dateDay: string; kindReadable: boolean; dateReadable: boolean }>;
+    }>(`(() => {
+      const root = document.querySelector('.supporter-dashboard-mobile-shell');
+      const collection = root?.querySelector('[data-testid="game-on-dashboard-collection"]');
+      const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
+      if (!(root instanceof HTMLElement) || !(collection instanceof HTMLElement) || !(grid instanceof HTMLElement)) {
+        throw new Error('The zoomed phone Game On collection is missing');
+      }
+      const cards = Array.from(grid.querySelectorAll('.game-on-collection__card'))
+        .filter((card) => card.getClientRects().length > 0)
+        .map((card) => {
+          const kind = card.querySelector('.game-on-collection__kind');
+          const month = card.querySelector('.game-on-collection__date-month');
+          const day = card.querySelector('.game-on-collection__date-day');
+          return {
+            kind: kind?.textContent?.trim() || '',
+            dateMonth: month?.textContent?.trim() || '',
+            dateDay: day?.textContent?.trim() || '',
+            kindReadable: Boolean(kind && kind.getClientRects().length
+              && kind.scrollWidth <= kind.clientWidth + 1
+              && Number.parseFloat(getComputedStyle(kind).fontSize) * devicePixelRatio >= 14),
+            dateReadable: Boolean(month && day && month.getClientRects().length && day.getClientRects().length
+              && Number.parseFloat(getComputedStyle(month).fontSize) * devicePixelRatio >= 11
+              && Number.parseFloat(getComputedStyle(day).fontSize) * devicePixelRatio >= 28),
+          };
+        });
+      return {
+        viewportWidth: document.documentElement.clientWidth,
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        dashboardOverflow: root.scrollWidth > root.clientWidth,
+        columnCount: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length,
+        overflowingElements: Array.from(document.querySelectorAll('body *'))
+          .map((element) => {
+            const rect = element.getBoundingClientRect();
+            return { element, right: rect.right, width: rect.width, overflowX: getComputedStyle(element).overflowX };
+          })
+          .filter(({ element, right }) => right > document.documentElement.clientWidth + 1
+            && getComputedStyle(element).visibility !== 'hidden'
+            && element.getClientRects().length > 0)
+          .sort((left, right) => right.right - left.right)
+          .slice(0, 8)
+          .map(({ element, right, width, overflowX }) => {
+            const name = element.tagName.toLowerCase();
+            const classes = typeof element.className === 'string' ? element.className.trim().replace(/\\s+/g, '.') : '';
+            return name + (classes ? '.' + classes : '') + ' right=' + Math.round(right) + ' width=' + Math.round(width) + ' overflow-x=' + overflowX;
+          }),
+        cards,
+      };
+    })()`, page.sessionId);
+    assert.equal(phoneZoomState.viewportWidth, 260);
+    assert.equal(phoneZoomState.pageOverflow, false, `zoomed phone dashboard must not create horizontal page scrolling: ${phoneZoomState.overflowingElements.join('; ')}`);
+    assert.equal(phoneZoomState.dashboardOverflow, false, 'zoomed phone dashboard must stay within its viewport');
+    assert.equal(phoneZoomState.columnCount, 1, 'narrow zoomed phone cards should use a readable single column');
+    assert.deepEqual(phoneZoomState.cards.map((card) => card.kind).sort(), ['Game', 'Practice']);
+    assert.ok(phoneZoomState.cards.every((card) => card.dateMonth && card.dateDay && card.kindReadable && card.dateReadable),
+      'Game and Practice labels and dates should remain legible at phone zoom');
+
+    await connection.evaluate(`(() => {
+      const root = document.querySelector('.supporter-dashboard-mobile-shell');
+      const card = Array.from(root?.querySelectorAll('.game-on-collection__card') || [])
+        .find((item) => item.getClientRects().length > 0
+          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      if (!(card instanceof HTMLElement)) throw new Error('The zoomed phone game card is missing');
+      if (card.classList.contains('game-on-collection__card--selected')) {
+        card.querySelector('.game-on-collection__summary')?.click();
+      }
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, '!document.querySelector(".supporter-dashboard-mobile-shell .game-on-collection__card--selected")', Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .find((card) => card.getClientRects().length > 0
+        && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+      ?.querySelector('.game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.classList.contains('game-on-collection__card--expanded')
+        && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(`(() => {
+      const card = document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__card--selected');
+      const actions = Array.from(card?.querySelectorAll('.game-on-collection__actions > button') || [])
+        .filter((action) => action.getClientRects().length > 0);
+      const cardRect = card?.getBoundingClientRect();
+      return actions.length === 3 && Boolean(cardRect)
+        && actions.every((action) => {
+          const rect = action.getBoundingClientRect();
+          return rect.width >= 44 && rect.left >= cardRect.left && rect.right <= cardRect.right;
+        });
+    })()`, page.sessionId), true, 'zoomed phone card actions should remain visible, touch-sized, and inside the card');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-open-card-prep-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__flip-back--prep'))
+      .some((panel) => panel.getClientRects().length > 0)`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      'document.documentElement.scrollWidth <= document.documentElement.clientWidth',
+      page.sessionId,
+    ), true, 'opening a panel at phone zoom must not introduce horizontal page scrolling');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-card-prep-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-prep-open') === 'false')`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__card--selected .game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, '!document.querySelector(".supporter-dashboard-mobile-shell .game-on-collection__card--selected")', Boolean);
+
+    // A 1024 CSS-pixel desktop viewport at 2x scale approximates 200% zoom
+    // on a 2048px-wide display and keeps the desktop dashboard breakpoint active.
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1024,
+      height: 768,
+      deviceScaleFactor: 2,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+    const desktopZoomState = await connection.evaluate<{
+      pageOverflow: boolean;
+      cards: Array<{ kind: string; dateMonth: string; dateDay: string; kindReadable: boolean; dateReadable: boolean }>;
+    }>(`(() => {
+      const root = document.querySelector('.supporter-dashboard-desktop-shell');
+      const grid = root?.querySelector('[data-testid="grid-game-on-cards"]');
+      if (!(root instanceof HTMLElement) || !(grid instanceof HTMLElement)) throw new Error('The zoomed desktop Game On collection is missing');
+      return {
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        cards: Array.from(grid.querySelectorAll('.game-on-collection__card'))
+          .filter((card) => card.getClientRects().length > 0)
+          .map((card) => {
+            const kind = card.querySelector('.game-on-collection__kind');
+            const month = card.querySelector('.game-on-collection__date-month');
+            const day = card.querySelector('.game-on-collection__date-day');
+            return {
+              kind: kind?.textContent?.trim() || '',
+              dateMonth: month?.textContent?.trim() || '',
+              dateDay: day?.textContent?.trim() || '',
+              kindReadable: Boolean(kind && kind.getClientRects().length
+                && kind.scrollWidth <= kind.clientWidth + 1
+                && Number.parseFloat(getComputedStyle(kind).fontSize) * devicePixelRatio >= 14),
+              dateReadable: Boolean(month && day && month.getClientRects().length && day.getClientRects().length
+                && Number.parseFloat(getComputedStyle(month).fontSize) * devicePixelRatio >= 14
+                && Number.parseFloat(getComputedStyle(day).fontSize) * devicePixelRatio >= 28),
+            };
+          }),
+      };
+    })()`, page.sessionId);
+    assert.equal(desktopZoomState.pageOverflow, false, 'zoomed desktop dashboard must not create horizontal page scrolling');
+    assert.deepEqual(desktopZoomState.cards.map((card) => card.kind).sort(), ['Game', 'Practice']);
+    assert.ok(desktopZoomState.cards.every((card) => card.dateMonth && card.dateDay && card.kindReadable && card.dateReadable),
+      'Game and Practice labels and dates should remain legible at desktop zoom');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+      .find((card) => card.getClientRects().length > 0
+        && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+      ?.querySelector('.game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+      .some((card) => card.classList.contains('game-on-collection__card--expanded')
+        && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid^="button-open-card-prep-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__flip-back--prep'))
+      .some((panel) => panel.getClientRects().length > 0)`, Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      'document.documentElement.scrollWidth <= document.documentElement.clientWidth',
+      page.sessionId,
+    ), true, 'opening a panel at desktop zoom must not introduce horizontal page scrolling');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid^="button-close-card-prep-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-prep-open') === 'false')`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__card--selected .game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, '!document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected")', Boolean);
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `!Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__kind'))
+      .some((kind) => kind.textContent?.includes('Practice'))`, Boolean);
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null', Boolean);
     assert.deepEqual(await connection.evaluate<{
