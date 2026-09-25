@@ -184,6 +184,7 @@ function AthleteCardPreview({
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   userId?: string | null;
+  prepUserId?: string | null;
   events: SupporterEvent[];
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   nextGameIsUpcoming: boolean;
@@ -285,6 +286,7 @@ const stageCopy: Record<SupporterGameStage, {
 export function SupporterDashboardView({
   profile,
   userId,
+  prepUserId,
   events,
   onSaveCalendarEvent,
   nextGameIsUpcoming,
@@ -696,6 +698,7 @@ export function SupporterDashboardView({
             selectedId={cardSelection?.id}
             renderSelectedCard={renderSelectedGameOnCard}
             statTrackerUserId={userId}
+            prepUserId={prepUserId ?? userId}
             statTrackerSport={profile.sport}
             statTrackerAthleteName={profile.athleteName}
             statTrackerTeamName={profile.teamName}
@@ -869,6 +872,7 @@ export function SupporterDashboardView({
         selectedId={cardSelection?.id}
         renderSelectedCard={renderSelectedGameOnCard}
         statTrackerUserId={userId}
+        prepUserId={prepUserId ?? userId}
         statTrackerSport={profile.sport}
         statTrackerAthleteName={profile.athleteName}
         statTrackerTeamName={profile.teamName}

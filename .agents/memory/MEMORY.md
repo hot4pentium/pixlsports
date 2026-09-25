@@ -17,7 +17,7 @@
 - [TSX test JSX runtime](tsx-test-jsx-runtime.md) — TSX modules rendered by Node tests need a React binding even when Vite and TypeScript accept named-only React imports.
 - [Reply inbox retention](reply-inbox-retention.md) — owner reply history remains visible after a shared Hype Card expires or is revoked.
 - [Supporter game-day media](supporter-game-day-media.md) — capture stays device-managed; the web journey passes game context between existing tools without creating a moment library.
-- [Supporter dashboard browser coverage](supporter-dashboard-browser-coverage.md) — isolate Chromium dashboard tests from the live shell and mock unrelated inbox data at its generated route.
+- [Supporter dashboard browser coverage](supporter-dashboard-browser-coverage.md) — isolate dashboard browser tests; card-flip focus follows the visible face’s interactive state.
 - [Offline installed editor](offline-installed-editor.md) — keep standalone Hype Card creation unauthenticated, locally durable, and backed by a build-time shell precache.
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
 - [Supporter profile propagation](supporter-profile-propagation.md) — profile athlete details seed new local work, while saved cloud designs and published snapshots remain authored independently.

@@ -25,4 +25,10 @@ The supporter view mounts mobile and desktop dashboard collections together, so 
 
 **Why:** A first-match DOM query can click or assert against the hidden copy, producing false failures for card state and focus restoration.
 
-**How to apply:** Browser tests should select the rendered card or action with nonempty `getClientRects()` before interacting or reading flip state; focus should return to the exact visible trigger that opened the tracker.
+**How to apply:** Browser tests should select the rendered card or action with nonempty `getClientRects()` before interacting or reading flip state; focus should return to the exact visible trigger that opened the panel.
+
+Card-flip focus must follow the committed visibility and inert state: focus a heading on the visible back face, then restore the stored trigger only after the front face is interactive again.
+
+**Why:** Both faces remain mounted during the flip, so moving focus before the visible face is ready can target hidden or inert content, or lose focus during the state update.
+
+**How to apply:** Scope focus movement to the open card and transfer it after each open or close state has rendered.

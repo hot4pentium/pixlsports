@@ -522,7 +522,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const collection = root?.querySelector('[data-testid="game-on-dashboard-collection"]');
         const card = collection?.querySelector('.game-on-collection__card');
         const edit = card?.querySelector('[data-testid^="button-edit-calendar-"]');
-        const prep = card?.querySelector('[data-testid^="link-card-prep-"]');
+        const prep = card?.querySelector('[data-testid^="button-open-card-prep-"]');
         const stats = card?.querySelector('[data-testid^="button-open-stat-tracker-"]');
         const columns = document.querySelector('.mobile-hero-columns');
         const athleteCard = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
@@ -641,13 +641,13 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       oldPanelsRemoved: boolean;
     }>(`(() => {
       const profileLink = document.querySelector('[data-testid="btn-mobile-open-profile"]');
-      const prep = document.querySelector('[data-testid^="link-card-prep-"]');
+      const prep = document.querySelector('[data-testid^="button-open-card-prep-"]');
        const stats = document.querySelector('[data-testid^="button-open-stat-tracker-"]');
       return {
         profileTag: profileLink?.tagName || '',
         profileHref: profileLink?.getAttribute('href') || null,
         scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
-        prepHref: prep?.getAttribute('href') || '',
+        prepHref: prep?.getAttribute('data-prep-href') || '',
          trackerAction: stats?.textContent?.trim() || null,
         hypeHref: document.querySelector('[data-testid="link-mobile-independent-hype"]')?.getAttribute('href') || null,
         oldPanelsRemoved: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="card-mobile-recommendation"]'),
@@ -671,7 +671,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       const practice = cards.find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
       const game = cards.find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
       return {
-        practicePrep: Boolean(practice?.querySelector('[data-testid^="link-card-prep-"]')),
+        practicePrep: Boolean(practice?.querySelector('[data-testid^="button-open-card-prep-"]')),
         practiceStats: Boolean(practice?.querySelector('[data-testid^="button-open-stat-tracker-"]')),
         gameStats: Boolean(game?.querySelector('[data-testid^="button-open-stat-tracker-"]')),
       };
@@ -680,7 +680,6 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       practiceStats: false,
       gameStats: true,
     });
-
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('dashboard-inline-stat-test')`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"button-open-stat-tracker-\\"]") !== null', Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
@@ -713,7 +712,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       attribution: 'team',
     });
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
     const restoredFocus = await connection.evaluate<{
       testId: string;
       tagName: string;
@@ -721,7 +720,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       frontInert: boolean;
       actions: Array<{ testId: string; rects: number; inert: boolean; visibility: string }>;
     }>(`(() => {
-      const card = Array.from(document.querySelectorAll('.game-on-collection__card')).find((item) => item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      const card = Array.from(document.querySelectorAll('.game-on-collection__card')).find((item) => item.getClientRects().length > 0 && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
       const front = card?.querySelector('.game-on-collection__flip-front');
       return {
         testId: document.activeElement?.getAttribute('data-testid') || '',
@@ -744,7 +743,56 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       '1',
     );
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
+
+    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('practice-prep-test')`, page.sessionId);
+    await connection.evaluate(`(() => {
+      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((item) => item.getClientRects().length > 0
+          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      card?.querySelector('[data-testid^="button-open-card-prep-"]')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((item) => item.getClientRects().length > 0
+          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      return Boolean(card?.querySelector('[data-testid="game-on-inline-prep-practice-1"]'));
+    })()`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      heading: string;
+      firstItem: string;
+      focusedHeading: boolean;
+      statActionCount: number;
+    }>(`(() => {
+      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((item) => item.getClientRects().length > 0
+          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      const heading = card?.querySelector('.game-on-prep__title');
+      return {
+        heading: heading?.textContent || '',
+        firstItem: card?.querySelector('.game-on-prep__item-label')?.textContent || '',
+        focusedHeading: document.activeElement === heading,
+        statActionCount: card?.querySelectorAll('[data-testid^="button-open-stat-tracker-"]').length || 0,
+      };
+    })()`, page.sessionId), {
+      heading: 'Practice prep',
+      firstItem: 'Pack practice gear and shoes',
+      focusedHeading: true,
+      statActionCount: 0,
+    });
+    await connection.evaluate(`(() => {
+      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((item) => item.getClientRects().length > 0
+          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      card?.querySelector('[data-testid="button-close-card-prep-practice-1"]')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const card = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((item) => item.getClientRects().length > 0
+          && item.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      return document.activeElement === card?.querySelector('[data-testid^="button-open-card-prep-"]');
+    })()`, Boolean);
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -1235,6 +1283,7 @@ function WorkspaceJourneyHarness() {
       : tool === '/studio/hype-card' ? createElement(HypeCardEditor)
       : createElement(SupporterDashboardView, {
         profile,
+        prepUserId: 'workspace-journey',
         events,
         nextGameIsUpcoming: true,
         projects: [],
@@ -2123,11 +2172,11 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     const primaryRoutes = await connection.evaluate<Record<string, string>>(`(() => {
-      const prep = document.querySelector('[data-testid^="link-card-prep-"]');
+      const prep = document.querySelector('[data-testid^="button-open-card-prep-"]');
       const stats = document.querySelector('[data-testid^="button-open-stat-tracker-"]');
       const hype = document.querySelector('[data-testid="link-desktop-independent-hype"]');
       return {
-        prep: prep?.getAttribute('href') || '',
+        prep: prep?.getAttribute('data-prep-href') || '',
         stats: stats?.textContent?.trim() || '',
         hype: hype?.getAttribute('href') || '',
       };
@@ -2136,7 +2185,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     assert.equal(primaryRoutes.stats, 'Open Stat Tracker');
     assert.match(primaryRoutes.hype, /^\/studio\/hype-card(?:\?|$)/);
     assert.equal(await connection.evaluate<boolean>(`(() => {
-      const prep = document.querySelector('[data-testid^="link-card-prep-"]');
+      const prep = document.querySelector('[data-testid^="button-open-card-prep-"]');
       const stats = document.querySelector('[data-testid^="button-open-stat-tracker-"]');
       return prep instanceof HTMLElement && stats instanceof HTMLElement
         && prep.tabIndex >= 0 && stats.tabIndex >= 0;
@@ -2488,7 +2537,9 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/stat-tracker');
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid^="link-card-prep-"][href*="game-2"]')?.click()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-2"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="link-open-full-prep-"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
 
   } finally {
@@ -3172,8 +3223,10 @@ test('supporters can switch saved checklist event types and keep the latest one 
     };
     await connection.evaluate(`window.localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, page.sessionId);
     await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(schedule.events)})`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(\'[data-testid^="link-card-prep-"][href*="game-1"]\') !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid^="link-card-prep-"][href*="game-1"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-1"]\') !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-1"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="link-open-full-prep-"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
 
     const readChecklistContext = () => connection!.evaluate<{
@@ -3408,17 +3461,28 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-prep-"][href*="game-selected"]\'))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\'))', Boolean);
     const context = JSON.parse(await selected()) as Record<string, string>;
     assert.deepEqual(context, {
       id: 'game-selected', type: 'game', date: '2026-10-13',
       time: '19:00', location: 'Away Gym', opponent: 'Tigers',
     });
     const prepHref = await connection.evaluate<string>(
-      'document.querySelector(\'[data-testid^="link-card-prep-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
+      'document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("data-prep-href") || ""', session,
     );
     assert.match(prepHref, /gameId=game-selected&eventType=game/);
-    await connection.evaluate(`document.querySelector('[data-testid^="link-card-prep-"][href*="game-selected"]')?.click()`, session);
+    await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid="game-on-inline-prep-game-selected"]\'))', Boolean);
+    assert.match(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"game-on-inline-prep-game-selected\\"]")?.textContent || ""', session,
+    ), /GAME VS TIGERS/i);
+    await connection.evaluate(`document.querySelector('[data-testid="checkbox-card-prep-game-selected-uniform"]')?.click()`, session);
+    await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-gameday-checklist:workspace-journey:event:game-selected") || "null")?.items?.some(item => item.id === "uniform" && item.completed)', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-close-card-prep-game-selected"]')?.click()`, session);
+    await waitFor(connection, session, 'document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("aria-expanded") === "false"', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"checkbox-card-prep-game-selected-uniform\\"]")?.checked === true', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="link-open-full-prep-game-selected"]')?.click()`, session);
     assert.equal(await path(), '/studio/checklist');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
     await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-selected&eventType=game'));
@@ -3591,11 +3655,11 @@ test('deleting selected games and practices falls back across Calendar and works
       return connection!.evaluate<Record<string, string>>(`Object.fromEntries(
         [
           ['calendar', '[data-testid="btn-mobile-nav-schedule"]'],
-          ['prep', '[data-testid^="link-card-prep-"]'],
+          ['prep', '[data-testid^="button-open-card-prep-"]'],
           ['stats', '[data-testid^="link-card-stats-"]'],
           ['hype', '[data-testid="link-desktop-independent-hype"]'],
         ].map(([tool, selector]) => [
-          tool, document.querySelector(selector)?.getAttribute('href') || ''
+          tool, document.querySelector(selector)?.getAttribute(tool === 'prep' ? 'data-prep-href' : 'href') || ''
         ])
       )`, session);
     };
@@ -3618,7 +3682,7 @@ test('deleting selected games and practices falls back across Calendar and works
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]") !== null', session), true, 'game remains in Calendar');
     await waitFor(connection, session, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(e => e.id === "game-selected")', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-prep-"]\'))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"]\'))', Boolean);
     const afterGame = await links();
     for (const [tool, href] of Object.entries(afterGame)) {
       assert.ok(href, `${tool} has a destination`);
@@ -3637,7 +3701,7 @@ test('deleting selected games and practices falls back across Calendar and works
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
     await waitFor(connection, session, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(e => e.id === "practice-selected")', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-prep-"]\'))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"]\'))', Boolean);
     const afterPractice = await links();
     for (const [tool, href] of Object.entries(afterPractice)) {
       assert.ok(href, `${tool} has a destination after practice deletion`);
