@@ -816,6 +816,48 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__kind'))
       .some((kind) => kind.textContent?.includes('Practice'))`, Boolean);
 
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'next-game-card', type: 'game', date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'upcoming' },
+      { id: 'later-practice-card', type: 'practice', date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '17:00', location: 'Northside Gym', status: 'upcoming' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:next-game-card"]')?.getAttribute('data-up-next') === 'true'`, Boolean);
+    const cardFrontDetails = await connection.evaluate<{
+      nextMarker: string | null;
+      nextGradient: string;
+      nextTime: string;
+      nextTimeVisible: boolean;
+      nextAccessibleLabel: string;
+      laterMarker: string | null;
+      laterTime: string;
+    }>(`(() => {
+      const next = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:next-game-card"]');
+      const later = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:later-practice-card"]');
+      const nextTime = next?.querySelector('[data-testid="text-game-on-card-time-draft:next-game-card"]');
+      const laterTime = later?.querySelector('[data-testid="text-game-on-card-time-draft:later-practice-card"]');
+      return {
+        nextMarker: next?.getAttribute('data-up-next') ?? null,
+        nextGradient: next ? getComputedStyle(next.querySelector('.game-on-collection__flip-front')).backgroundImage : '',
+        nextTime: nextTime?.textContent?.trim() ?? '',
+        nextTimeVisible: Boolean(nextTime?.getClientRects().length),
+        nextAccessibleLabel: next?.querySelector('.game-on-collection__summary')?.getAttribute('aria-label') ?? '',
+        laterMarker: later?.getAttribute('data-up-next') ?? null,
+        laterTime: laterTime?.textContent?.trim() ?? '',
+      };
+    })()`, page.sessionId);
+    assert.equal(cardFrontDetails.nextMarker, 'true', 'the closest upcoming event card should be marked as next');
+    assert.match(cardFrontDetails.nextGradient, /linear-gradient/, 'the next event front should use the gray gradient');
+    assert.equal(cardFrontDetails.nextTime, '6:30 PM', 'the next event time should be visible on the card front');
+    assert.equal(cardFrontDetails.nextTimeVisible, true);
+    assert.match(cardFrontDetails.nextAccessibleLabel, /^Up next:/, 'screen readers should hear which event is next');
+    assert.equal(cardFrontDetails.laterMarker, 'false', 'later cards should not receive the next-event treatment');
+    assert.equal(cardFrontDetails.laterTime, '5:00 PM', 'practice time should also be visible on its card front');
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
+      { id: 'practice-1', type: 'practice', date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '17:00', location: 'Northside Gym', status: 'upcoming' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:game-1"]') !== null`, Boolean);
+
     // A 260 CSS-pixel mobile viewport at 1.5x device scale approximates a
     // 390px phone viewed at 150% zoom, while retaining the real responsive layout.
     await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -825,6 +867,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       mobile: true,
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+    assert.equal(await connection.evaluate<boolean>(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__time'))
+      .some((time) => time.getClientRects().length > 0 && ['5:00 PM', '6:30 PM'].includes(time.textContent?.trim() ?? ''))`, page.sessionId), true,
+    'event times should remain visible on compact mobile card fronts');
     const phoneZoomState = await connection.evaluate<{
       viewportWidth: number;
       pageOverflow: boolean;

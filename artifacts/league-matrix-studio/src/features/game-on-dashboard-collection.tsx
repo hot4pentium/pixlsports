@@ -35,6 +35,7 @@ type GameOnDashboardCollectionProps = {
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
   selectedId?: string;
+  upNextEventId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
   statTrackerUserId?: string | null;
   prepUserId?: string | null;
@@ -71,11 +72,12 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
+function CollectionCard({ card, onOpen, onCancelDraft, selected, upNextEventId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
   card: DashboardGameOnCard;
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
   selected: boolean;
+  upNextEventId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
   panel: 'calendar' | 'prep' | 'tracker' | null;
   onOpenPanel: (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => void;
@@ -99,6 +101,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   const panelOpen = panel !== null;
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
+  const isUpNext = Boolean(upNextEventId && card.eventId === upNextEventId);
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
   const calendarEventId = card.eventId;
   const eventId = card.eventId ?? card.id.replace(/^(?:share|draft):/, '');
@@ -138,9 +141,10 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
       layout={!reduceMotion}
       layoutId={reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
-      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
+      data-up-next={isUpNext ? 'true' : 'false'}
       data-tracker-open={trackerOpen ? 'true' : 'false'}
       data-prep-open={prepOpen ? 'true' : 'false'}
       data-calendar-open={calendarOpen ? 'true' : 'false'}
@@ -153,7 +157,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
             type="button"
             className="game-on-collection__summary"
             onClick={() => onOpen(card.id)}
-            aria-label={`${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
+            aria-label={`${isUpNext ? 'Up next: ' : ''}${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
             aria-expanded={renderSelectedCard ? selected : undefined}
             aria-controls={hasEditor ? editorId : undefined}
             data-testid={`button-open-game-on-card-${card.id}`}
@@ -173,6 +177,10 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 <span className="game-on-collection__date-month">{date.month}</span>
                 <span className="game-on-collection__date-day">{date.day}</span>
                 <span className="game-on-collection__date-weekday">{date.weekday}</span>
+              </span>
+              <span className="game-on-collection__time" data-testid={`text-game-on-card-time-${card.id}`}>
+                <Clock3 size={12} aria-hidden="true" />
+                <span>{displayTime(card.time)}</span>
               </span>
               <span hidden={!selected} className="game-on-collection__card-content">
                 <span className="game-on-collection__athlete" data-testid={`text-game-on-athlete-${card.id}`}>{card.athleteName || 'Your athlete'}</span>
@@ -315,6 +323,7 @@ export function GameOnDashboardCollection({
   onOpen,
   onCancelDraft,
   selectedId,
+  upNextEventId,
   renderSelectedCard,
   statTrackerUserId,
   prepUserId,
@@ -410,6 +419,7 @@ export function GameOnDashboardCollection({
                   onOpen={(id) => { setOpenPanel(null); onOpen(id); }}
                   onCancelDraft={onCancelDraft}
                   selected={selectedId === card.id}
+                  upNextEventId={upNextEventId}
                   renderSelectedCard={renderSelectedCard}
                   panel={openPanel?.cardId === card.id ? openPanel.panel : null}
                   onOpenPanel={openCardPanel}

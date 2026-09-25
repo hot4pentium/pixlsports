@@ -896,6 +896,7 @@ export function SupporterDashboardView({
             onOpen={selectCard}
             onCancelDraft={cancelNewCardDraft}
             selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+            upNextEventId={gameStage === 'upcoming' ? contextEvent?.id : undefined}
             renderSelectedCard={renderMobileSelectedGameOnCard}
             statTrackerUserId={userId}
             prepUserId={prepUserId ?? userId}
@@ -1163,6 +1164,7 @@ export function SupporterDashboardView({
         onOpen={selectCard}
         onCancelDraft={cancelNewCardDraft}
         selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
+        upNextEventId={gameStage === 'upcoming' ? contextEvent?.id : undefined}
         renderSelectedCard={renderDesktopSelectedGameOnCard}
         statTrackerUserId={userId}
         prepUserId={prepUserId ?? userId}
