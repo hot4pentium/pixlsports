@@ -109,7 +109,6 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
     location: card.location,
     opponent: card.opponent,
   };
-  const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
@@ -157,7 +156,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
                 {practice ? 'Practice' : 'Game'}
               </span>
-              <span hidden={!selected} className={`game-on-collection__status${card.status === 'Live' ? ' game-on-collection__status--live' : publishedStatus ? ' game-on-collection__status--published' : ''}`} data-testid={`status-game-on-card-${card.id}`}>
+              <span className={`game-on-collection__status game-on-collection__status--${statusLabel.toLowerCase()}`} data-status={statusLabel.toLowerCase()} data-testid={`status-game-on-card-${card.id}`}>
                 <span className="game-on-collection__status-dot" aria-hidden="true" />
                 {statusLabel}
               </span>

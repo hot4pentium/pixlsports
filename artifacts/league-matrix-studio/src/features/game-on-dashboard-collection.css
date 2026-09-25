@@ -367,6 +367,8 @@
 }
 .game-on-collection__status--published { background: #dbeeff; border-color: #acd1f6; color: #155496; }
 .game-on-collection__status--live { background: #fff0e9; border-color: #ffb792; color: #a43f19; }
+.game-on-collection__status--complete { background: #e2f3e9; border-color: #add8bc; color: #17633b; }
+.game-on-collection__status--draft { background: #e7f0f8; border-color: #c4d8e8; color: #345573; }
 .game-on-collection__status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
 .game-on-collection__card-main {
@@ -594,6 +596,12 @@
   justify-content: space-between;
   padding: clamp(10px, 1.5vw, 18px);
 }
+.game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__status {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+}
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__card-top {
   justify-content: flex-end;
   margin-bottom: 0;
@@ -743,7 +751,18 @@
   .game-on-collection__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .game-on-collection__grid .game-on-collection__card { max-width: none; }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__summary { padding: 7px; }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__status {
+    gap: 4px;
+    padding: 3px 5px;
+    font-size: 7px;
+    letter-spacing: .035em;
+  }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__status-dot {
+    width: 5px;
+    height: 5px;
+  }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__card-main {
+    padding-top: 24px;
     padding-bottom: clamp(30px, 5vw, 36px);
   }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind {
@@ -809,6 +828,16 @@
 }
 @media (max-width: 260px) {
   .game-on-collection__grid { grid-template-columns: minmax(0, 1fr); }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__status {
+    gap: 6px;
+    padding: 5px 8px;
+    font-size: 10px;
+    letter-spacing: .08em;
+  }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__status-dot {
+    width: 6px;
+    height: 6px;
+  }
   .game-on-collection__grid .game-on-collection__actions,
   .game-on-collection__grid .game-on-collection__actions--practice { grid-template-columns: minmax(0, 1fr); }
 }

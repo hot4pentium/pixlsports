@@ -551,7 +551,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const actions = card.querySelector('.game-on-collection__actions');
         const kindRect = kind?.getBoundingClientRect();
         const dateRect = date?.getBoundingClientRect();
-        const summaryRect = card.querySelector('.game-on-collection__summary')?.getBoundingClientRect();
+        const statusRect = status?.getBoundingClientRect();
+        const summary = card.querySelector('.game-on-collection__summary');
+        const summaryRect = summary?.getBoundingClientRect();
         const cardActions = Array.from(card.querySelectorAll('.game-on-collection__actions > button'));
         const athleteRect = athleteCard.getBoundingClientRect();
         const eventRect = eventCard.getBoundingClientRect();
@@ -587,13 +589,20 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
           collapsedTileMinimal: !card.classList.contains('game-on-collection__card--selected')
             && kind?.getClientRects().length > 0
             && date?.getClientRects().length > 0
+            && status?.getClientRects().length > 0
+            && status?.hidden === false
+            && status?.getAttribute('data-status') === 'complete'
             && kindRect !== undefined
             && dateRect !== undefined
+            && statusRect !== undefined
+            && statusRect.left >= cardRect.left - 1
+            && statusRect.right <= cardRect.right + 1
+            && statusRect.bottom <= dateRect.top + 1
+            && summary?.getAttribute('aria-label')?.endsWith(status?.textContent?.trim() || '')
             && summaryRect !== undefined
             && kindRect.top > dateRect.bottom
             && kindRect.bottom >= summaryRect.bottom - 18
             && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12
-            && status?.hidden === true
             && details?.hidden === true
             && footer?.hidden === true
             && actions?.hidden === true
@@ -756,6 +765,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       compactDesktopCards: boolean;
       titleAtBottom: boolean;
       titleReadable: boolean;
+      statusVisibleAndClear: boolean;
     }>(`(() => {
       const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
       const hero = document.querySelector('.supporter-dashboard-desktop-shell .dashboard-hero-banner');
@@ -766,10 +776,12 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         .find((item) => !item.classList.contains('game-on-collection__card--selected'));
       const kind = card?.querySelector('.game-on-collection__kind');
       const date = card?.querySelector('.game-on-collection__date');
+      const status = card?.querySelector('.game-on-collection__status');
       const summary = card?.querySelector('.game-on-collection__summary');
       const cardRect = card?.getBoundingClientRect();
       const kindRect = kind?.getBoundingClientRect();
       const dateRect = date?.getBoundingClientRect();
+      const statusRect = status?.getBoundingClientRect();
       const summaryRect = summary?.getBoundingClientRect();
       return {
         oldPanelsRemoved: !document.querySelector('[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"], [data-testid="desktop-game-on-entry"]'),
@@ -780,6 +792,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         compactDesktopCards: columnCount >= 4 && Boolean(cardRect && cardRect.width <= 236),
         titleAtBottom: Boolean(kindRect && dateRect && summaryRect && kindRect.top > dateRect.bottom && kindRect.bottom >= summaryRect.bottom - 18),
         titleReadable: Boolean(kind && Number.parseFloat(getComputedStyle(kind).fontSize) >= 19),
+        statusVisibleAndClear: Boolean(cardRect && dateRect && statusRect && status?.getClientRects().length
+          && statusRect.left >= cardRect.left - 1
+          && statusRect.right <= cardRect.right + 1
+          && statusRect.bottom <= dateRect.top + 1
+          && summary?.getAttribute('aria-label')?.endsWith(status?.textContent?.trim() || '')),
       };
     })()`, page.sessionId), {
       oldPanelsRemoved: true,
@@ -789,11 +806,12 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       compactDesktopCards: true,
       titleAtBottom: true,
       titleReadable: true,
+      statusVisibleAndClear: true,
     });
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
-      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals' },
-      { id: 'practice-1', type: 'practice', date: '2026-09-22', time: '17:00', location: 'Northside Gym' }
+      { id: 'game-1', type: 'game', date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
+      { id: 'practice-1', type: 'practice', date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '17:00', location: 'Northside Gym', status: 'upcoming' }
     ])`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__kind'))
       .some((kind) => kind.textContent?.includes('Practice'))`, Boolean);
@@ -813,7 +831,15 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       dashboardOverflow: boolean;
       columnCount: number;
       overflowingElements: string[];
-      cards: Array<{ kind: string; dateMonth: string; dateDay: string; kindReadable: boolean; dateReadable: boolean }>;
+      cards: Array<{
+        kind: string;
+        dateMonth: string;
+        dateDay: string;
+        kindReadable: boolean;
+        dateReadable: boolean;
+        status: string;
+        statusVisibleAndAnnounced: boolean;
+      }>;
     }>(`(() => {
       const root = document.querySelector('.supporter-dashboard-mobile-shell');
       const collection = root?.querySelector('[data-testid="game-on-dashboard-collection"]');
@@ -827,6 +853,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
           const kind = card.querySelector('.game-on-collection__kind');
           const month = card.querySelector('.game-on-collection__date-month');
           const day = card.querySelector('.game-on-collection__date-day');
+          const status = card.querySelector('.game-on-collection__status');
+          const summary = card.querySelector('.game-on-collection__summary');
           return {
             kind: kind?.textContent?.trim() || '',
             dateMonth: month?.textContent?.trim() || '',
@@ -837,6 +865,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
             dateReadable: Boolean(month && day && month.getClientRects().length && day.getClientRects().length
               && Number.parseFloat(getComputedStyle(month).fontSize) * devicePixelRatio >= 11
               && Number.parseFloat(getComputedStyle(day).fontSize) * devicePixelRatio >= 28),
+            status: status?.textContent?.trim() || '',
+            statusVisibleAndAnnounced: Boolean(status?.getClientRects().length
+              && summary?.getAttribute('aria-label')?.endsWith(status.textContent?.trim() || '')),
           };
         });
       return {
@@ -867,6 +898,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.equal(phoneZoomState.dashboardOverflow, false, 'zoomed phone dashboard must stay within its viewport');
     assert.equal(phoneZoomState.columnCount, 1, 'narrow zoomed phone cards should use a readable single column');
     assert.deepEqual(phoneZoomState.cards.map((card) => card.kind).sort(), ['Game', 'Practice']);
+    assert.deepEqual(phoneZoomState.cards.map((card) => card.status).sort(), ['Draft', 'Live']);
+    assert.ok(phoneZoomState.cards.every((card) => card.statusVisibleAndAnnounced),
+      'live and draft statuses should stay visible and included in the accessible card name');
     assert.ok(phoneZoomState.cards.every((card) => card.dateMonth && card.dateDay && card.kindReadable && card.dateReadable),
       'Game and Practice labels and dates should remain legible at phone zoom');
 
