@@ -221,7 +221,12 @@
   transition-delay: .34s;
 }
 .game-on-collection__card--tracker-open .game-on-collection__flip-inner,
+.game-on-collection__card--calendar-open .game-on-collection__flip-inner,
 .game-on-collection__card--prep-open .game-on-collection__flip-inner { transform: rotateY(180deg); }
+.game-on-collection__card--calendar-open {
+  flex-basis: min(94vw, 430px);
+  min-height: 600px;
+}
 .game-on-collection__card--tracker-open {
   flex-basis: min(94vw, 430px);
   min-height: 750px;
@@ -231,11 +236,13 @@
   min-height: 600px;
 }
 .game-on-collection__card--tracker-open .game-on-collection__flip-front,
+.game-on-collection__card--calendar-open .game-on-collection__flip-front,
 .game-on-collection__card--prep-open .game-on-collection__flip-front {
   visibility: hidden;
   transition-delay: .34s;
 }
 .game-on-collection__card--tracker-open .game-on-collection__flip-back,
+.game-on-collection__card--calendar-open .game-on-collection__flip-back,
 .game-on-collection__card--prep-open .game-on-collection__flip-back {
   visibility: visible;
   transition-delay: 0s;
@@ -500,7 +507,7 @@
   border: 1px solid #1359aa; background: #2878f5; color: #fff;
 }
 .game-on-inline__secondary { border: 1px solid #a9c5e0; background: #fff; color: #17467b; }
-.game-on-inline__text-link { padding-inline: 0; color: #17467b; text-decoration: underline; }
+.game-on-inline__text-link { justify-content: flex-start; padding-inline: 0; border: 0; background: transparent; color: #17467b; text-align: left; text-decoration: underline; }
 .game-on-inline__items { display: grid; gap: 6px; }
 .game-on-inline__item { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .game-on-inline__item input[type="checkbox"] { width: 17px; height: 17px; flex-shrink: 0; accent-color: #2878f5; }
@@ -552,6 +559,7 @@
   grid-column: span 2;
 }
 .game-on-collection__list .game-on-collection__card--tracker-open,
+.game-on-collection__list .game-on-collection__card--calendar-open,
 .game-on-collection__list .game-on-collection__card--prep-open {
   grid-column: span 2;
 }
@@ -559,6 +567,7 @@
   min-height: 750px;
 }
 .game-on-collection__list .game-on-collection__card--prep-open { min-height: 600px; }
+.game-on-collection__list .game-on-collection__card--calendar-open { min-height: 600px; }
 
 .game-on-collection__empty {
   display: flex;
@@ -604,6 +613,7 @@
   .game-on-collection__card { flex-basis: min(87%, 260px); }
   .game-on-collection__rail .game-on-collection__card--expanded { flex-basis: min(91%, 410px); }
   .game-on-collection__rail .game-on-collection__card--tracker-open,
+  .game-on-collection__rail .game-on-collection__card--calendar-open,
   .game-on-collection__rail .game-on-collection__card--prep-open { flex-basis: min(94%, 430px); }
   .game-on-collection__hint { display: none; }
   .game-on-collection__bottom { justify-content: flex-end; }
@@ -613,6 +623,7 @@
 @container (max-width: 503px) {
   .game-on-collection__list .game-on-collection__card--expanded,
   .game-on-collection__list .game-on-collection__card--tracker-open,
+  .game-on-collection__list .game-on-collection__card--calendar-open,
   .game-on-collection__list .game-on-collection__card--prep-open { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) {

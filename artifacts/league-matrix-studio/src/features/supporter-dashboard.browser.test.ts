@@ -827,6 +827,35 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     );
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+
+    await connection.evaluate(`(() => {
+      const game = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((card) => card.getClientRects().length > 0 && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      game?.querySelector('[data-testid^="button-edit-calendar-"]')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `(() => {
+      const game = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((card) => card.getClientRects().length > 0 && card.getAttribute('data-calendar-open') === 'true');
+      return Boolean(game?.querySelector('[data-testid="input-inline-date"]'));
+    })()`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-calendar-editor-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-calendar-open') === 'false')`, Boolean);
+
+    await connection.evaluate(`(() => {
+      const game = Array.from(document.querySelectorAll('.game-on-collection__card'))
+        .find((card) => card.getClientRects().length > 0 && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      game?.querySelector('[data-testid^="button-open-game-on-card-"]')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll("[data-testid=\\"button-inline-open-stat-tracker\\"]")).some((button) => button.getClientRects().length > 0)', Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid="button-inline-open-stat-tracker"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-tracker-open') === 'true')`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-tracker-open') === 'false')`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid="button-inline-open-prep"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('[data-testid^="game-on-inline-prep-game-1"]')).some((panel) => panel.getClientRects().length > 0)`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-card-prep-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card')).some((card) => card.getClientRects().length > 0 && card.getAttribute('data-prep-open') === 'false')`, Boolean);
+
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('')`, page.sessionId);
 
     await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('practice-prep-test')`, page.sessionId);

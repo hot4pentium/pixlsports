@@ -20,13 +20,19 @@ export type DashboardGameOnCard = {
   isUnsavedDraft?: boolean;
 };
 
+export type GameOnCardRenderOptions = {
+  view: 'details' | 'calendar';
+  onOpenPrep: (trigger: HTMLButtonElement) => void;
+  onOpenTracker: (trigger: HTMLButtonElement) => void;
+};
+
 type GameOnDashboardCollectionProps = {
   cards: DashboardGameOnCard[];
   onCreate: () => void;
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
   selectedId?: string;
-  renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
+  renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
   statTrackerUserId?: string | null;
   prepUserId?: string | null;
   statTrackerSport?: Sport | null;
@@ -66,9 +72,9 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   onOpen: (id: string) => void;
   onCancelDraft?: () => void;
   selected: boolean;
-  renderSelectedCard?: (card: DashboardGameOnCard) => ReactNode;
-  panel: 'prep' | 'tracker' | null;
-  onOpenPanel: (id: string, panel: 'prep' | 'tracker', trigger: HTMLButtonElement) => void;
+  renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
+  panel: 'calendar' | 'prep' | 'tracker' | null;
+  onOpenPanel: (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => void;
   onClosePanel: () => void;
   statTrackerUserId?: string | null;
   prepUserId?: string | null;
@@ -82,6 +88,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   const previousPanel = useRef<typeof panel>(null);
   const trackerOpen = panel === 'tracker';
   const prepOpen = panel === 'prep';
+  const calendarOpen = panel === 'calendar';
   const panelOpen = panel !== null;
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
@@ -97,14 +104,16 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
   };
   const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
-  const hasEditor = selected && Boolean(renderSelectedCard);
+  const hasEditor = selected && !calendarOpen && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
     if (frontFaceRef.current) frontFaceRef.current.inert = panelOpen;
     if (backFaceRef.current) backFaceRef.current.inert = !panelOpen;
     if (panel && previousPanel.current !== panel) {
       const heading = panel === 'prep'
         ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-prep__title')
-        : backFaceRef.current?.querySelector<HTMLElement>('.game-on-quick-tracker__title');
+        : panel === 'calendar'
+          ? backFaceRef.current?.querySelector<HTMLElement>('.game-on-inline__section h3')
+          : backFaceRef.current?.querySelector<HTMLElement>('.game-on-quick-tracker__title');
       if (heading?.getClientRects().length) heading.focus();
     }
     previousPanel.current = panel;
@@ -112,10 +121,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
 
   return (
     <article
-      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      className={`game-on-collection__card${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${selected ? ' game-on-collection__card--selected' : ''}${hasEditor ? ' game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
       data-testid={`card-game-on-${card.id}`}
       data-tracker-open={trackerOpen ? 'true' : 'false'}
       data-prep-open={prepOpen ? 'true' : 'false'}
+      data-calendar-open={calendarOpen ? 'true' : 'false'}
     >
       <div className="game-on-collection__flip-inner">
         <div ref={frontFaceRef} className="game-on-collection__flip-front" aria-hidden={panelOpen}>
@@ -169,7 +179,13 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
                 <X size={15} aria-hidden="true" /> Cancel draft
               </button>
             )}
-            <button type="button" onClick={() => onOpen(card.id)} data-testid={`button-edit-calendar-${card.id}`}>
+            <button
+              type="button"
+              onClick={(event) => onOpenPanel(card.id, 'calendar', event.currentTarget)}
+              aria-expanded={calendarOpen}
+              aria-controls={calendarOpen ? `panel-inline-calendar-${card.id}` : undefined}
+              data-testid={`button-edit-calendar-${card.id}`}
+            >
               <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
             </button>
             <button
@@ -196,7 +212,11 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
           </div>
           {hasEditor && (
             <div className="game-on-collection__editor" id={editorId} data-testid={`panel-game-on-card-${card.id}`}>
-              {renderSelectedCard?.(card)}
+              {renderSelectedCard?.(card, {
+                view: 'details',
+                onOpenPrep: (trigger) => onOpenPanel(card.id, 'prep', trigger),
+                onOpenTracker: (trigger) => onOpenPanel(card.id, 'tracker', trigger),
+              })}
             </div>
           )}
         </div>
@@ -208,7 +228,18 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, renderSelectedC
           aria-hidden={!panelOpen}
           data-testid={`panel-inline-tracker-${card.id}`}
         >
-          {prepOpen ? (
+          {calendarOpen ? (
+            <div id={`panel-inline-calendar-${card.id}`} data-testid={`panel-inline-calendar-${card.id}`}>
+              <button type="button" className="game-on-collection__back-button" onClick={onClosePanel} data-testid={`button-close-calendar-editor-${card.id}`}>
+                <ArrowLeft size={15} aria-hidden="true" /> Back to Game On card
+              </button>
+              {renderSelectedCard?.(card, {
+                view: 'calendar',
+                onOpenPrep: (trigger) => onOpenPanel(card.id, 'prep', trigger),
+                onOpenTracker: (trigger) => onOpenPanel(card.id, 'tracker', trigger),
+              })}
+            </div>
+          ) : prepOpen ? (
             <div id={`panel-inline-prep-${card.id}`} data-testid={`panel-inline-prep-${card.id}`}>
               <GameOnInlinePrepChecklist
                 key={`${prepUserId ?? statTrackerUserId ?? 'anonymous'}:${eventId}`}
@@ -258,7 +289,7 @@ export function GameOnDashboardCollection({
 }: GameOnDashboardCollectionProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const [listOpen, setListOpen] = useState(false);
-  const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'prep' | 'tracker' } | null>(null);
+  const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restorePanelFocusRef = useRef(false);
   const [scrollState, setScrollState] = useState({ start: true, end: false });
@@ -295,7 +326,7 @@ export function GameOnDashboardCollection({
     selected.scrollIntoView({ behavior, block: 'nearest', inline: 'nearest' });
   }, [selectedId, cards.length, listOpen]);
 
-  const openCardPanel = (id: string, panel: 'prep' | 'tracker', trigger: HTMLButtonElement) => {
+  const openCardPanel = (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => {
     panelTriggerRef.current = trigger;
     setOpenPanel({ cardId: id, panel });
   };

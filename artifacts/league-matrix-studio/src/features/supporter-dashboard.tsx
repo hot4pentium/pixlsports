@@ -36,7 +36,7 @@ import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import { GameOnCardPanel } from './game-on-card';
 import { GameOnInlineEditor } from './game-on-inline-editor';
-import { GameOnDashboardCollection } from './game-on-dashboard-collection';
+import { GameOnDashboardCollection, type GameOnCardRenderOptions } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
 import type { Sport } from './stat-tracker';
@@ -459,7 +459,11 @@ export function SupporterDashboardView({
     }
     else setCardSelection((previous) => previous?.kind === 'new' ? previous : null);
   };
-  const renderSelectedGameOnCard = (card: (typeof collectionCards)[number], surface: 'mobile' | 'desktop') => {
+  const renderSelectedGameOnCard = (
+    card: (typeof collectionCards)[number],
+    surface: 'mobile' | 'desktop',
+    options: GameOnCardRenderOptions,
+  ) => {
     if (cardSelection?.kind === 'new' && card.id === cardSelection.id) {
       if ((surface === 'desktop') !== isDesktopDashboard) return null;
       return <GameOnCardPanel
@@ -484,13 +488,16 @@ export function SupporterDashboardView({
         scheduledEvent={events.find((event) => event.id === card.eventId)}
         teamName={profile.teamName}
         userId={userId}
+        view={options.view}
+        onOpenPrep={options.onOpenPrep}
+        onOpenTracker={options.onOpenTracker}
         onSaveCalendarEvent={onSaveCalendarEvent ?? (async () => { throw new Error('Calendar editing is unavailable. Refresh and try again.'); })}
         onChanged={handleGameOnCardChanged}
       />
     ) : null;
   };
-  const renderMobileSelectedGameOnCard = (card: (typeof collectionCards)[number]) => renderSelectedGameOnCard(card, 'mobile');
-  const renderDesktopSelectedGameOnCard = (card: (typeof collectionCards)[number]) => renderSelectedGameOnCard(card, 'desktop');
+  const renderMobileSelectedGameOnCard = (card: (typeof collectionCards)[number], options: GameOnCardRenderOptions) => renderSelectedGameOnCard(card, 'mobile', options);
+  const renderDesktopSelectedGameOnCard = (card: (typeof collectionCards)[number], options: GameOnCardRenderOptions) => renderSelectedGameOnCard(card, 'desktop', options);
   const gameStage: SupporterGameStage = contextEvent
       ? getSupporterGameStage(contextEvent, currentTime)
       : nextGameIsUpcoming ? 'upcoming' : 'upcoming';

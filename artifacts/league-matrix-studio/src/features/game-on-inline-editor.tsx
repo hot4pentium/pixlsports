@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
 import {
   useCreateScheduleShare,
   useDeleteScheduleShare,
@@ -17,7 +16,6 @@ import {
   type LocalGamedayChecklist,
 } from './gameday-checklist';
 import { removeSavedGameOnCard, upsertSavedGameOnCard } from './game-on-card-storage';
-import { buildWorkspaceToolHref } from './workspace-context';
 
 type EventFields = Pick<SupporterEvent, 'date' | 'time' | 'location' | 'opponent'>;
 
@@ -26,6 +24,9 @@ type Props = {
   scheduledEvent?: SupporterEvent;
   teamName: string;
   userId: string;
+  view?: 'details' | 'calendar';
+  onOpenPrep: (trigger: HTMLButtonElement) => void;
+  onOpenTracker: (trigger: HTMLButtonElement) => void;
   onSaveCalendarEvent: (event: SupporterEvent) => Promise<void>;
   onChanged: (selectedId?: string) => void;
 };
@@ -40,7 +41,17 @@ function initialChecklist(userId: string, card: GameOnDashboardEntry): LocalGame
   return { ...checklist, shareToken: undefined, revision: undefined };
 }
 
-export function GameOnInlineEditor({ card, scheduledEvent, teamName, userId, onSaveCalendarEvent, onChanged }: Props) {
+export function GameOnInlineEditor({
+  card,
+  scheduledEvent,
+  teamName,
+  userId,
+  view = 'details',
+  onOpenPrep,
+  onOpenTracker,
+  onSaveCalendarEvent,
+  onChanged,
+}: Props) {
   const [fields, setFields] = useState<EventFields>({
     date: card.date, time: card.time, location: card.location, opponent: card.opponent,
   });
@@ -61,18 +72,6 @@ export function GameOnInlineEditor({ card, scheduledEvent, teamName, userId, onS
     opponent: isPractice ? '' : (fields.opponent ?? '').trim(),
     status: scheduledEvent?.status ?? 'upcoming',
   } satisfies SupporterEvent;
-  const toolContext = {
-    id: card.eventId,
-    type: card.type,
-    date: card.date,
-    time: card.time,
-    location: card.location,
-    opponent: card.opponent,
-  };
-  const prepHref = buildWorkspaceToolHref('prep', toolContext);
-  const prepDetails = new URLSearchParams({
-    date: card.date, time: card.time, location: card.location, opponent: card.opponent,
-  });
   const shareData = {
     title: teamName.trim() || 'Game On',
     teamSeason: '',
@@ -163,30 +162,44 @@ export function GameOnInlineEditor({ card, scheduledEvent, teamName, userId, onS
     }
   }
 
+  const calendarSection = (
+    <div className="game-on-inline__section">
+      <h3 tabIndex={view === 'calendar' ? -1 : undefined}><CalendarDays size={17} aria-hidden="true" /> Calendar details</h3>
+      <p>{scheduledEvent ? 'Changes here also update this Calendar event.' : 'This card is independent of Calendar.'}</p>
+      <div className="game-on-inline__fields">
+        {!isPractice && <label className="game-on-inline__wide">Opponent
+          <input value={fields.opponent ?? ''} maxLength={200} onChange={(e) => setFields({ ...fields, opponent: e.target.value })} data-testid="input-inline-opponent" />
+        </label>}
+        <label>Date <input type="date" value={fields.date} onChange={(e) => setFields({ ...fields, date: e.target.value })} data-testid="input-inline-date" /></label>
+        <label>Start time <input type="time" value={fields.time} onChange={(e) => setFields({ ...fields, time: e.target.value })} data-testid="input-inline-time" /></label>
+        <label className="game-on-inline__wide">Location
+          <input value={fields.location} maxLength={300} onChange={(e) => setFields({ ...fields, location: e.target.value })} data-testid="input-inline-location" />
+        </label>
+      </div>
+      <button type="button" className="game-on-inline__primary" disabled={busy} onClick={() => void saveEvent()} data-testid="button-save-inline-event">
+        {busy ? 'Saving…' : scheduledEvent ? 'Save Calendar details' : 'Save card details'}
+      </button>
+      {!card.shareToken && scheduledEvent && (
+        <button type="button" className="game-on-inline__secondary" disabled={busy} onClick={() => void saveEvent(true)} data-testid="button-publish-inline-card">
+          Create shareable Game On link
+        </button>
+      )}
+    </div>
+  );
+
+  if (view === 'calendar') {
+    return (
+      <div className="game-on-inline game-on-inline--calendar" data-testid={`game-on-inline-calendar-${card.id}`}>
+        {calendarSection}
+        {notice && <p className="game-on-inline__notice" role="status" aria-live="polite">{notice}</p>}
+        {error && <p className="game-on-inline__error" role="alert">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="game-on-inline" data-testid={`game-on-inline-editor-${card.id}`}>
-      <div className="game-on-inline__section">
-        <h3><CalendarDays size={17} aria-hidden="true" /> Calendar details</h3>
-        <p>{scheduledEvent ? 'Changes here also update this Calendar event.' : 'This card is independent of Calendar.'}</p>
-        <div className="game-on-inline__fields">
-          {!isPractice && <label className="game-on-inline__wide">Opponent
-            <input value={fields.opponent ?? ''} maxLength={200} onChange={(e) => setFields({ ...fields, opponent: e.target.value })} data-testid="input-inline-opponent" />
-          </label>}
-          <label>Date <input type="date" value={fields.date} onChange={(e) => setFields({ ...fields, date: e.target.value })} data-testid="input-inline-date" /></label>
-          <label>Start time <input type="time" value={fields.time} onChange={(e) => setFields({ ...fields, time: e.target.value })} data-testid="input-inline-time" /></label>
-          <label className="game-on-inline__wide">Location
-            <input value={fields.location} maxLength={300} onChange={(e) => setFields({ ...fields, location: e.target.value })} data-testid="input-inline-location" />
-          </label>
-        </div>
-        <button type="button" className="game-on-inline__primary" disabled={busy} onClick={() => void saveEvent()} data-testid="button-save-inline-event">
-          {busy ? 'Saving…' : scheduledEvent ? 'Save Calendar details' : 'Save card details'}
-        </button>
-        {!card.shareToken && scheduledEvent && (
-          <button type="button" className="game-on-inline__secondary" disabled={busy} onClick={() => void saveEvent(true)} data-testid="button-publish-inline-card">
-            Create shareable Game On link
-          </button>
-        )}
-      </div>
+      {calendarSection}
       <div className="game-on-inline__section">
         <h3><ClipboardCheck size={17} aria-hidden="true" /> Private Prep</h3>
         <p>Only you can see these notes and items. Sharing from Prep is a separate choice.</p>
@@ -204,12 +217,24 @@ export function GameOnInlineEditor({ card, scheduledEvent, teamName, userId, onS
         </div>
         <button type="button" className="game-on-inline__secondary" onClick={() => setPrep({ ...prep, items: [...prep.items, { id: `custom-${crypto.randomUUID()}`, label: '', completed: false }] })}><Plus size={14} /> Add item</button>
         <button type="button" className="game-on-inline__primary" onClick={savePrep} data-testid="button-save-inline-prep">Save private Prep</button>
-        <Link className="game-on-inline__text-link" href={`${prepHref}&${prepDetails.toString()}&view=share`}>Open full Prep to share if you choose</Link>
+        <button
+          type="button"
+          className="game-on-inline__text-link"
+          onClick={(event) => onOpenPrep(event.currentTarget)}
+          data-testid="button-inline-open-prep"
+        >
+          Open Prep on this card
+        </button>
       </div>
       {!isPractice && (
-        <Link className="game-on-inline__tracker" href={buildWorkspaceToolHref('stats', toolContext)} data-testid="link-inline-open-stat-tracker">
+        <button
+          type="button"
+          className="game-on-inline__tracker"
+          onClick={(event) => onOpenTracker(event.currentTarget)}
+          data-testid="button-inline-open-stat-tracker"
+        >
           <Activity size={18} aria-hidden="true" /> Open Stat Tracker
-        </Link>
+        </button>
       )}
       {card.shareToken && (
         <div className="game-on-inline__sharing">
