@@ -366,7 +366,7 @@ test('supporter browser assertion failures still clean up Chromium and generated
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
 
     assert.equal(await pathExists(fixtures.harnessPath), true);
     assert.equal(await pathExists(fixtures.htmlPath), true);
@@ -512,24 +512,25 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         collectionVisible: boolean;
         collectionLeadsHero: boolean;
         collectionFits: boolean;
-        gameOnEntryVisible: boolean;
-        gameOnEntryFollowsHero: boolean;
-        gameOnEntryPrecedesWorkspace: boolean;
-        gameOnEntryTarget: string | null;
+        portraitCard: boolean;
+        eventActionsVisible: boolean;
+        removedPanels: boolean;
       }>(`(() => {
         const root = document.querySelector('.supporter-dashboard-mobile-shell');
         const header = document.querySelector('[data-testid="mobile-header"]');
         const hero = document.querySelector('[data-testid="mobile-hero-banner"]');
         const collection = root?.querySelector('[data-testid="game-on-dashboard-collection"]');
-        const gameOnEntry = document.querySelector('[data-testid="mobile-game-on-entry"]');
-        const workspace = document.querySelector('[data-testid="section-mobile-workspace"]');
+        const card = collection?.querySelector('.game-on-collection__card');
+        const edit = card?.querySelector('[data-testid^="button-edit-calendar-"]');
+        const prep = card?.querySelector('[data-testid^="link-card-prep-"]');
+        const stats = card?.querySelector('[data-testid^="link-card-stats-"]');
         const columns = document.querySelector('.mobile-hero-columns');
         const athleteCard = document.querySelector('[data-testid="btn-mobile-athlete-switcher"]');
         const eventCard = document.querySelector('[data-testid="card-mobile-featured-event"]');
         const eventKicker = document.querySelector('.mobile-featured-event-kicker');
         if (!(root instanceof HTMLElement) || !(header instanceof HTMLElement) || !(hero instanceof HTMLElement)
-          || !(collection instanceof HTMLElement)
-          || !(gameOnEntry instanceof HTMLElement) || !(workspace instanceof HTMLElement)
+          || !(collection instanceof HTMLElement) || !(card instanceof HTMLElement)
+          || !(edit instanceof HTMLElement) || !(prep instanceof HTMLElement) || !(stats instanceof HTMLElement)
           || !(columns instanceof HTMLElement) || !(athleteCard instanceof HTMLElement)
           || !(eventCard instanceof HTMLElement) || !(eventKicker instanceof HTMLElement)) {
           throw new Error('Mobile dashboard shell is incomplete');
@@ -566,10 +567,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
           collectionLeadsHero: Boolean(collection.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING),
           collectionFits: collection.getBoundingClientRect().left >= -1
             && collection.getBoundingClientRect().right <= innerWidth + 1,
-          gameOnEntryVisible: getComputedStyle(gameOnEntry).display !== 'none',
-          gameOnEntryFollowsHero: Boolean(hero.compareDocumentPosition(gameOnEntry) & Node.DOCUMENT_POSITION_FOLLOWING),
-          gameOnEntryPrecedesWorkspace: Boolean(gameOnEntry.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING),
-          gameOnEntryTarget: gameOnEntry.querySelector('a')?.getAttribute('href') || null,
+          portraitCard: card.getBoundingClientRect().width / card.getBoundingClientRect().height <= 0.5,
+          eventActionsVisible: [edit, prep, stats].every((action) => getComputedStyle(action).display !== 'none'),
+          removedPanels: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="section-desktop-workspace"], [data-testid="card-mobile-recommendation"], [data-testid="workspace-recommendation"]'),
         };
       })()`, page.sessionId);
       assert.deepEqual(result, {
@@ -588,10 +588,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         collectionVisible: true,
         collectionLeadsHero: true,
         collectionFits: true,
-        gameOnEntryVisible: true,
-        gameOnEntryFollowsHero: true,
-        gameOnEntryPrecedesWorkspace: true,
-        gameOnEntryTarget: '#game-on-dashboard-collection',
+        portraitCard: true,
+        eventActionsVisible: true,
+        removedPanels: true,
       }, `mobile header behavior at ${width}px`);
     }
 
@@ -601,34 +600,23 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"desktop-game-on-entry\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     assert.deepEqual(await connection.evaluate<{
-      entryVisible: boolean;
-      entryFollowsEvent: boolean;
-      entryPrecedesWorkspace: boolean;
-      entryTarget: string | null;
+      oldPanelsRemoved: boolean;
+      actionCount: number;
       collectionLeadsHero: boolean;
     }>(`(() => {
-      const entry = document.querySelector('[data-testid="desktop-game-on-entry"]');
-      const event = document.querySelector('[data-testid="section-next-game-context"]');
-      const workspace = document.querySelector('[data-testid="section-desktop-workspace"]');
       const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
       const hero = document.querySelector('.supporter-dashboard-desktop-shell .dashboard-hero-banner');
-      if (!(entry instanceof HTMLElement) || !(event instanceof HTMLElement) || !(workspace instanceof HTMLElement)) {
-        throw new Error('Desktop Game On Card entry is incomplete');
-      }
+      if (!(collection instanceof HTMLElement)) throw new Error('Desktop Game On collection is missing');
       return {
-        entryVisible: getComputedStyle(entry).display !== 'none',
-        entryFollowsEvent: Boolean(event.compareDocumentPosition(entry) & Node.DOCUMENT_POSITION_FOLLOWING),
-        entryPrecedesWorkspace: Boolean(entry.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING),
-        entryTarget: entry.querySelector('a')?.getAttribute('href') || null,
+        oldPanelsRemoved: !document.querySelector('[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"], [data-testid="desktop-game-on-entry"]'),
+        actionCount: collection.querySelectorAll('.game-on-collection__actions > *').length,
         collectionLeadsHero: Boolean(collection && hero && (collection.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING)),
       };
     })()`, page.sessionId), {
-      entryVisible: true,
-      entryFollowsEvent: true,
-      entryPrecedesWorkspace: true,
-      entryTarget: '#game-on-dashboard-collection',
+      oldPanelsRemoved: true,
+      actionCount: 3,
       collectionLeadsHero: true,
     });
 
@@ -647,26 +635,50 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       profileTag: string;
       profileHref: string | null;
       scheduleHref: string | null;
-      workspaceRoutes: string[];
+      prepHref: string;
+      statsHref: string;
+      hypeHref: string | null;
+      oldPanelsRemoved: boolean;
     }>(`(() => {
       const profileLink = document.querySelector('[data-testid="btn-mobile-open-profile"]');
-      const workspaceLinks = Array.from(document.querySelectorAll('[data-testid^="link-mobile-workspace-"]'));
+      const prep = document.querySelector('[data-testid^="link-card-prep-"]');
+      const stats = document.querySelector('[data-testid^="link-card-stats-"]');
       return {
         profileTag: profileLink?.tagName || '',
         profileHref: profileLink?.getAttribute('href') || null,
         scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
-        workspaceRoutes: workspaceLinks.map((link) => link.getAttribute('href') || ''),
+        prepHref: prep?.getAttribute('href') || '',
+        statsHref: stats?.getAttribute('href') || '',
+        hypeHref: document.querySelector('[data-testid="link-mobile-independent-hype"]')?.getAttribute('href') || null,
+        oldPanelsRemoved: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="card-mobile-recommendation"]'),
       };
     })()`, page.sessionId), {
       profileTag: 'A',
       profileHref: '/studio/profile',
       scheduleHref: '/studio/schedule?eventId=game-1',
-      workspaceRoutes: [
-        '/studio/schedule?eventId=game-1',
-        '/studio/checklist?gameId=game-1&eventType=game',
-        '/studio/stat-tracker?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
-        '/studio/hype-card?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
-      ],
+      prepHref: '/studio/checklist?gameId=game-1&eventType=game',
+      statsHref: '/studio/stat-tracker?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
+      hypeHref: '/studio/hype-card?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
+      oldPanelsRemoved: true,
+    });
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals' },
+      { id: 'practice-1', type: 'practice', date: '2026-09-22', time: '18:30', location: 'Northside Gym' }
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.querySelector(".game-on-collection__kind")?.textContent?.includes("Practice"))', Boolean);
+    assert.deepEqual(await connection.evaluate<{ practicePrep: boolean; practiceStats: boolean; gameStats: boolean }>(`(() => {
+      const cards = Array.from(document.querySelectorAll('.game-on-collection__card'));
+      const practice = cards.find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Practice'));
+      const game = cards.find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      return {
+        practicePrep: Boolean(practice?.querySelector('[data-testid^="link-card-prep-"]')),
+        practiceStats: Boolean(practice?.querySelector('[data-testid^="link-card-stats-"]')),
+        gameStats: Boolean(game?.querySelector('[data-testid^="link-card-stats-"]')),
+      };
+    })()`, page.sessionId), {
+      practicePrep: true,
+      practiceStats: false,
+      gameStats: true,
     });
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -1762,13 +1774,13 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
      assert.equal(
        await connection.evaluate<boolean>(`(() => {
          const upcoming = document.querySelector('[data-testid="section-upcoming"]');
           const recent = document.querySelector('[data-testid="section-recent-hype-cards"]');
-          const workspace = document.querySelector('[data-testid="section-desktop-workspace"]');
-          return Boolean(upcoming && recent && workspace && !document.querySelector('#all-tools'));
+          const oldPanels = document.querySelector('[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"]');
+          return Boolean(upcoming && recent && !oldPanels && !document.querySelector('#all-tools'));
        })()`, page.sessionId),
        true,
      );
@@ -1811,7 +1823,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     );
 
     await reloadPage(connection, page);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
       false,
@@ -1822,14 +1834,14 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
     await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
 
     await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:upcoming")', page.sessionId);
     await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-close\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-close"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([{ id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' }])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
@@ -1993,7 +2005,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([])`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-next-game-context\\"]") !== null', Boolean);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]"))', page.sessionId),
       false,
@@ -2038,40 +2050,30 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       /Get ready for practice.*Sep 22, 2026.*6:30 PM/,
     );
 
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
+    const primaryRoutes = await connection.evaluate<Record<string, string>>(`(() => {
+      const prep = document.querySelector('[data-testid^="link-card-prep-"]');
+      const stats = document.querySelector('[data-testid^="link-card-stats-"]');
+      const hype = document.querySelector('[data-testid="link-desktop-independent-hype"]');
+      return {
+        prep: prep?.getAttribute('href') || '',
+        stats: stats?.getAttribute('href') || '',
+        hype: hype?.getAttribute('href') || '',
+      };
+    })()`, page.sessionId);
+    assert.match(primaryRoutes.prep, /^\/studio\/checklist(?:\?|$)/);
+    assert.match(primaryRoutes.stats, /^\/studio\/stat-tracker(?:\?|$)/);
+    assert.match(primaryRoutes.hype, /^\/studio\/hype-card(?:\?|$)/);
+    assert.equal(await connection.evaluate<boolean>(`(() => {
+      const prep = document.querySelector('[data-testid^="link-card-prep-"]');
+      const stats = document.querySelector('[data-testid^="link-card-stats-"]');
+      return prep instanceof HTMLElement && stats instanceof HTMLElement
+        && prep.tabIndex >= 0 && stats.tabIndex >= 0;
+    })()`, page.sessionId), true);
     assert.equal(await connection.evaluate<boolean>(
-      'Boolean(document.querySelector(\'[data-testid="button-choose-task"]\'))',
+      'Boolean(document.querySelector(\'[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"]\'))',
       page.sessionId,
     ), false);
-    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-calendar"]')?.focus()`, page.sessionId);
-
-    const workspaceRoutes = await connection.evaluate<Record<string, string>>(`Object.fromEntries(
-      [...document.querySelectorAll('[data-testid^="link-desktop-workspace-"]')].map((element) => [
-        element.getAttribute('data-testid')?.replace('link-desktop-workspace-', ''),
-        element.getAttribute('href') || '',
-      ]),
-    )`, page.sessionId);
-    assert.deepEqual(Object.keys(workspaceRoutes).sort(), ['calendar', 'hype', 'prep', 'stats']);
-    assert.match(workspaceRoutes.calendar, /^\/studio\/schedule(?:\?|$)/);
-    assert.match(workspaceRoutes.prep, /^\/studio\/checklist(?:\?|$)/);
-    assert.match(workspaceRoutes.stats, /^\/studio\/stat-tracker(?:\?|$)/);
-    assert.match(workspaceRoutes.hype, /^\/studio\/hype-card(?:\?|$)/);
-
-    const focusedTools: string[] = [];
-    for (let index = 0; index < 3; index += 1) {
-      await pressKey(connection, page.sessionId, 'Tab', 'Tab', 9);
-      focusedTools.push(await connection.evaluate<string>(
-        'document.activeElement?.getAttribute("data-testid")?.replace("link-desktop-workspace-", "") || ""',
-        page.sessionId,
-      ));
-    }
-    assert.deepEqual(focusedTools, ['prep', 'stats', 'hype']);
-
-    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
-    assert.equal(await connection.evaluate<boolean>(
-      'Boolean(document.querySelector(\'[data-testid="section-desktop-workspace"]\'))',
-      page.sessionId,
-    ), true);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -2410,12 +2412,12 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     }, page.sessionId);
 
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-stats"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="link-card-stats-"][href*="game-2"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/stat-tracker');
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-desktop-workspace\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-prep"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="link-card-prep-"][href*="game-2"]')?.click()`, page.sessionId);
     assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
 
   } finally {
@@ -2655,20 +2657,24 @@ test('completed meetings stay stored but disappear from the active dashboard flo
       page.sessionId,
     );
     await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(upcomingEvents)})`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "prep"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
       false,
     );
     assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="workspace-recommendation"]\')?.textContent || ""', page.sessionId),
-      /Get ready for practice/,
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="game-on-dashboard-collection"]\')?.textContent || ""', page.sessionId),
+      /Practice/,
     );
+    assert.equal(await connection.evaluate<boolean>(
+      'Boolean(document.querySelector(\'[data-testid="workspace-recommendation"], [data-testid="section-desktop-workspace"]\'))',
+      page.sessionId,
+    ), false);
 
     await reloadPage(connection, page);
     await waitFor(connection, page.sessionId, 'Boolean(window.__setSupporterDashboardEvents)', Boolean);
     await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(upcomingEvents)})`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "prep"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('localStorage.getItem("pixlsports-meeting-capture:guest:ended-meeting") !== null', page.sessionId),
       true,
@@ -2678,7 +2684,7 @@ test('completed meetings stay stored but disappear from the active dashboard flo
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "calendar"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-game-on-empty\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="meeting-history-item-ended-meeting"]\'))', page.sessionId),
       false,
@@ -2688,7 +2694,7 @@ test('completed meetings stay stored but disappear from the active dashboard flo
       { id: 'ended-meeting', type: 'meeting', date: '2020-09-22', time: '17:00', location: 'Northside Clubhouse' },
       { id: 'active-game', type: 'game', date: '2999-01-01', time: '18:30', location: 'Eastside Gym', opponent: 'Rivals', status: 'live' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]")?.getAttribute("data-recommended-tool") === "stats"', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"link-card-stats-\\"][href*=\\"active-game\\"]") !== null', Boolean);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -3041,7 +3047,7 @@ test('supporters can switch saved checklist event types and keep the latest one 
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"workspace-recommendation\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"checklist-context-harness\\"]"))', page.sessionId),
       true,
@@ -3092,7 +3098,9 @@ test('supporters can switch saved checklist event types and keep the latest one 
       template: 0,
     };
     await connection.evaluate(`window.localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, page.sessionId);
-    await connection.evaluate(`document.querySelector('[data-testid="link-desktop-workspace-prep"]')?.click()`, page.sessionId);
+    await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(schedule.events)})`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(\'[data-testid^="link-card-prep-"][href*="game-1"]\') !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid^="link-card-prep-"][href*="game-1"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
 
     const readChecklistContext = () => connection!.evaluate<{
@@ -3319,25 +3327,25 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
         { id: 'game-selected', type: 'game', status: 'upcoming', date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers', snacks: '', drinks: '', notes: '' },
       ],
     };
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-calendar\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"btn-mobile-nav-schedule\\"]"))', Boolean);
     await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, session);
-    await click('link-desktop-workspace-calendar');
+    await click('btn-mobile-nav-schedule');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"schedule-event-list\\"]"))', Boolean);
     assert.equal(await path(), '/studio/schedule');
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-prep-"][href*="game-selected"]\'))', Boolean);
     const context = JSON.parse(await selected()) as Record<string, string>;
     assert.deepEqual(context, {
       id: 'game-selected', type: 'game', date: '2026-10-13',
       time: '19:00', location: 'Away Gym', opponent: 'Tigers',
     });
     const prepHref = await connection.evaluate<string>(
-      'document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]")?.getAttribute("href") || ""', session,
+      'document.querySelector(\'[data-testid^="link-card-prep-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
     );
     assert.match(prepHref, /gameId=game-selected&eventType=game/);
-    await click('link-desktop-workspace-prep');
+    await connection.evaluate(`document.querySelector('[data-testid^="link-card-prep-"][href*="game-selected"]')?.click()`, session);
     assert.equal(await path(), '/studio/checklist');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
     await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-selected&eventType=game'));
@@ -3374,12 +3382,12 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
       'document.querySelector("[data-testid^=\\"input-checklist-item-custom-\\"]")?.value || ""', session,
     ), privateItem);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-stats\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-stats-"][href*="game-selected"]\'))', Boolean);
     const statsHref = await connection.evaluate<string>(
-      'document.querySelector("[data-testid=\\"link-desktop-workspace-stats\\"]")?.getAttribute("href") || ""', session,
+      'document.querySelector(\'[data-testid^="link-card-stats-"][href*="game-selected"]\')?.getAttribute("href") || ""', session,
     );
     assert.match(statsHref, /eventId=game-selected/);
-    await click('link-desktop-workspace-stats');
+    await connection.evaluate(`document.querySelector('[data-testid^="link-card-stats-"][href*="game-selected"]')?.click()`, session);
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"stat-tracker-setup\\"]"))', Boolean);
     assert.equal(await path(), '/studio/stat-tracker');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Tigers"', Boolean);
@@ -3395,12 +3403,12 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Tigers"', Boolean);
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"stat-tracker-upcoming-notice\\"]")?.textContent?.includes("Tigers") === true', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-hype\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-independent-hype\\"]"))', Boolean);
     const hypeHref = await connection.evaluate<string>(
-      'document.querySelector("[data-testid=\\"link-desktop-workspace-hype\\"]")?.getAttribute("href") || ""', session,
+      'document.querySelector("[data-testid=\\"link-desktop-independent-hype\\"]")?.getAttribute("href") || ""', session,
     );
     assert.match(hypeHref, /eventId=game-selected/);
-    await click('link-desktop-workspace-hype');
+    await click('link-desktop-independent-hype');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready"))', Boolean);
     assert.equal(await path(), '/studio/hype-card');
     await waitFor(connection, session, `JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || 'null')?.project?.achievement?.includes('Tigers') === true`, Boolean);
@@ -3494,8 +3502,13 @@ test('deleting selected games and practices falls back across Calendar and works
       `document.querySelector('[data-testid="${id}"]')?.click()`, session,
     );
     const links = () => connection!.evaluate<Record<string, string>>(`Object.fromEntries(
-      ['calendar', 'prep', 'stats', 'hype'].map((tool) => [
-        tool, document.querySelector('[data-testid="link-desktop-workspace-' + tool + '"]')?.getAttribute('href') || ''
+      [
+        ['calendar', '[data-testid="btn-mobile-nav-schedule"]'],
+        ['prep', '[data-testid^="link-card-prep-"]'],
+        ['stats', '[data-testid^="link-card-stats-"]'],
+        ['hype', '[data-testid="link-desktop-independent-hype"]'],
+      ].map(([tool, selector]) => [
+        tool, document.querySelector(selector)?.getAttribute('href') || ''
       ])
     )`, session);
     const schedule = {
@@ -3506,9 +3519,9 @@ test('deleting selected games and practices falls back across Calendar and works
         { id: 'practice-selected', type: 'practice', date: '2026-10-14', time: '17:00', location: 'Practice Gym', opponent: '', snacks: '', drinks: '', notes: '' },
       ],
     };
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-calendar\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"btn-mobile-nav-schedule\\"]"))', Boolean);
     await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, session);
-    await click('link-desktop-workspace-calendar');
+    await click('btn-mobile-nav-schedule');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-remove-event-1\\"]"))', Boolean);
@@ -3517,7 +3530,7 @@ test('deleting selected games and practices falls back across Calendar and works
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]") !== null', session), true, 'game remains in Calendar');
     await waitFor(connection, session, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(e => e.id === "game-selected")', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-prep-"]\'))', Boolean);
     const afterGame = await links();
     for (const [tool, href] of Object.entries(afterGame)) {
       assert.ok(href, `${tool} has a destination`);
@@ -3528,7 +3541,7 @@ test('deleting selected games and practices falls back across Calendar and works
     assert.match(afterGame.stats, /eventId=game-default/);
     assert.match(afterGame.hype, /eventId=game-default/);
 
-    await click('link-desktop-workspace-calendar');
+    await click('btn-mobile-nav-schedule');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "practice-selected"', Boolean);
@@ -3536,7 +3549,7 @@ test('deleting selected games and practices falls back across Calendar and works
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
     await waitFor(connection, session, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(e => e.id === "practice-selected")', Boolean);
     await click('journey-return-dashboard');
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"link-desktop-workspace-prep\\"]"))', Boolean);
+    await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-prep-"]\'))', Boolean);
     const afterPractice = await links();
     for (const [tool, href] of Object.entries(afterPractice)) {
       assert.ok(href, `${tool} has a destination after practice deletion`);

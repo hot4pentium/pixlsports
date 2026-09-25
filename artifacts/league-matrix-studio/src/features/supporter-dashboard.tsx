@@ -468,88 +468,13 @@ export function SupporterDashboardView({
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => (
     buildWorkspaceToolHref('stats', toToolContext(game))
   );
+  const statTrackerHref = statTrackerHrefForGame(nextGame);
   const checklistHrefForGame = (event: SupporterEvent | undefined, view?: 'share' | 'review') => {
     const href = buildWorkspaceToolHref('prep', toToolContext(event));
     return view && event ? `${href}&view=${view}` : href;
   };
-  const statTrackerHref = statTrackerHrefForGame(nextGame);
   const contextChecklistHref = checklistHrefForGame(contextEvent);
   const hypeCardHref = buildWorkspaceToolHref('hype', toToolContext(contextEvent));
-  const recommendedStatTrackerHref = statTrackerHrefForGame(recommendedGame);
-  const recommendedChecklistHref = checklistHrefForGame(weekRecommendation?.event);
-  const workspaceTools = [
-    {
-      id: 'calendar',
-      label: 'Calendar',
-      description: 'Choose games, practices, and what is coming next.',
-      Icon: CalendarDays,
-      href: buildWorkspaceToolHref('calendar', toToolContext(contextEvent)),
-    },
-    {
-      id: 'prep',
-      label: 'Prep',
-      description: 'Get equipment, timing, and travel details ready.',
-      Icon: ClipboardCheck,
-      href: selectedWorkspaceEvent ? checklistHrefForGame(selectedWorkspaceEvent) : recommendedChecklistHref,
-    },
-    {
-      id: 'stats',
-      label: 'Stats',
-      description: 'Capture the game and remember what your athlete did.',
-      Icon: Activity,
-      href: selectedWorkspaceEvent?.type === 'game'
-        ? statTrackerHrefForGame(selectedWorkspaceEvent)
-        : recommendedStatTrackerHref,
-    },
-    {
-      id: 'hype',
-      label: 'Hype',
-      description: 'Celebrate the athlete and share the moments that matter.',
-      Icon: Zap,
-      href: hypeCardHref,
-    },
-  ] as const;
-  type WorkspaceToolId = typeof workspaceTools[number]['id'];
-  const recommendedToolId: WorkspaceToolId = !weekRecommendation
-    ? 'calendar'
-    : weekRecommendation.stage === 'upcoming'
-      ? 'prep'
-      : weekRecommendation.stage === 'live'
-        ? weekRecommendation.kind === 'practice' ? 'prep' : 'stats'
-        : 'hype';
-  const recommendedTool = workspaceTools.find((tool) => tool.id === recommendedToolId) ?? workspaceTools[0];
-  const recommendationDetails: Record<WorkspaceToolId, {
-    eyebrow: string;
-    title: string;
-    description: string;
-    action: string;
-  }> = {
-    calendar: {
-      eyebrow: 'Calendar',
-      title: 'Choose what is happening next.',
-      description: 'Add or confirm your next event so Pixl can guide what comes next.',
-      action: 'Open schedule',
-    },
-    prep: {
-      eyebrow: 'Prep',
-      title: preparationTitle,
-      description: preparationCopy.description,
-      action: 'Open checklist',
-    },
-    stats: {
-      eyebrow: 'Stats',
-      title: 'Capture today’s game.',
-      description: 'Your capture window is open. Track the action and save the moments that matter.',
-      action: 'Start game day',
-    },
-    hype: {
-      eyebrow: 'Hype',
-      title: 'Celebrate the moment.',
-      description: 'Turn the game’s highlights into something your athlete can share.',
-      action: 'Create hype card',
-    },
-  };
-  const recommendedToolDetails = recommendationDetails[recommendedTool.id];
 
   useEffect(() => {
     if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
@@ -771,8 +696,8 @@ export function SupporterDashboardView({
             selectedId={cardSelection?.id}
             renderSelectedCard={renderSelectedGameOnCard}
           />
-          <Link href="/studio/hype-card" className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
-            <Zap size={16} aria-hidden="true" /> Make a Hype Card separately
+          <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
+            <Zap size={16} aria-hidden="true" /> Make a Hype Card
           </Link>
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
@@ -850,95 +775,6 @@ export function SupporterDashboardView({
             </Link>
           </div>
           </div>
-          </section>
-
-          <section
-            className="rounded-[20px] border-2 border-[#2474F5]/25 bg-white p-5 shadow-sm"
-            aria-labelledby="mobile-game-on-entry-heading"
-            data-testid="mobile-game-on-entry"
-          >
-            <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#2474F5]/10 text-[#2474F5]" aria-hidden="true">
-                <Zap className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#2474F5]">Game On Card</p>
-                <h2 id="mobile-game-on-entry-heading" className="mt-1 font-display text-xl font-black uppercase leading-tight text-[#12213A]">
-                  Share game day when you&apos;re ready.
-                </h2>
-              </div>
-            </div>
-            <p className="mt-3 text-sm font-medium leading-relaxed text-[#52657a]">
-              One shareable link for the game details, with shared stats and the Athlete Page when available.
-            </p>
-            <a
-              href="#game-on-dashboard-collection"
-              className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[#2474F5] px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-[#12213A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2474F5]"
-              data-testid="link-mobile-game-on-card"
-            >
-              <Zap className="h-4 w-4" aria-hidden="true" /> Create or manage your card <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
-          </section>
-
-          <section className="workspace-nav-panel" data-testid="section-mobile-workspace" aria-labelledby="mobile-workspace-heading">
-            <div className="workspace-nav-heading">
-              <p className="workspace-nav-eyebrow">Athlete workspace</p>
-              <h2 id="mobile-workspace-heading">Everything for {profile.athleteName || 'your athlete'}</h2>
-              <p>Open any tool whenever you need it. Your athlete stays at the center.</p>
-            </div>
-            <nav className="workspace-tool-grid" aria-label="Athlete workspace tools">
-              {workspaceTools.map(({ id, label, description, Icon, href }) => (
-                <Link
-                  key={id}
-                  href={href}
-                  className={`workspace-tool-card ${id === recommendedTool.id ? 'is-recommended' : ''}`}
-                  data-testid={`link-mobile-workspace-${id}`}
-                >
-                  <span className="workspace-tool-icon"><Icon aria-hidden="true" /></span>
-                  <span className="workspace-tool-copy">
-                    <strong>{label}</strong>
-                    <span>{description}</span>
-                  </span>
-                  {id === recommendedTool.id && <span className="workspace-tool-badge">Suggested</span>}
-                  <ChevronRight aria-hidden="true" />
-                </Link>
-              ))}
-            </nav>
-          </section>
-
-          {/* Recommendation Card */}
-          <section className="bg-white rounded-[24px] overflow-hidden shadow-sm border border-black/5 mt-3" data-testid="card-mobile-recommendation" aria-labelledby="mobile-recommendation-heading">
-             <div className="p-6">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="mobile-recommendation-icon grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#55A4FF]/40 bg-[#2878F5]/10 text-[#55A4FF]" aria-hidden="true">
-                    <recommendedTool.Icon className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-[#2474F5]">YOUR NEXT BEST STEP</p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/40">{recommendedToolDetails.eyebrow}</p>
-                  </div>
-                </div>
-                 <h2 id="mobile-recommendation-heading" className="text-5xl font-display font-black tracking-tight text-[#12213A] leading-[0.95] mb-4 break-words">{recommendedToolDetails.title}</h2>
-                 <p className="text-[17px] text-black/60 font-medium leading-relaxed mb-6">{recommendedToolDetails.description}</p>
-
-               <button
-                 type="button"
-                 onClick={() => {
-                   trackEvent('completion_next_action_clicked', {
-                      source: 'athlete_workspace_mobile',
-                      tool: recommendedTool.id,
-                   });
-                     setLocation(recommendedTool.href);
-                 }}
-                 className="w-full bg-[#2474F5] hover:bg-[#2474F5]/90 text-white font-bold text-base py-4 rounded-[14px] flex items-center justify-center gap-2 transition-colors shadow-sm"
-                 data-testid="btn-mobile-recommendation-action"
-               >
-                  <recommendedTool.Icon className="w-5 h-5" />
-                  {recommendedToolDetails.action}
-               </button>
-
-               <p className="text-center text-[13px] font-medium text-black/40 mt-4">{mobileFeaturedEvent ? "Suggested from your next event" : "Add an event to get a recommendation"}</p>
-             </div>
           </section>
 
         </div>
@@ -1029,8 +865,8 @@ export function SupporterDashboardView({
         selectedId={cardSelection?.id}
         renderSelectedCard={renderSelectedGameOnCard}
       />
-      <Link href="/studio/hype-card" className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
-        <Zap size={16} aria-hidden="true" /> Make a Hype Card separately
+      <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
+        <Zap size={16} aria-hidden="true" /> Make a Hype Card
       </Link>
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
@@ -1199,103 +1035,6 @@ export function SupporterDashboardView({
         </div>
         </section>
       </div>
-
-      <section
-        className="relative overflow-hidden border border-[#55A4FF]/30 bg-gradient-to-r from-[#0B1F3A] via-[#10284A] to-[#15335B] p-5 text-white shadow-[0_18px_36px_rgba(11,31,58,.2)] clip-angled sm:p-7"
-        aria-labelledby="desktop-game-on-entry-heading"
-        data-testid="desktop-game-on-entry"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-tech-grid-dark opacity-20" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-2xl">
-            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-[#55A4FF]">
-              <Zap className="h-4 w-4" aria-hidden="true" /> Game On Card
-            </p>
-            <h2 id="desktop-game-on-entry-heading" className="mt-2 font-display text-3xl uppercase leading-none sm:text-4xl">
-              Share game day when you&apos;re ready.
-            </h2>
-            <p className="mt-3 text-sm font-medium leading-relaxed text-white/70 sm:text-base">
-              One shareable link for the game details, with shared stats and the Athlete Page when available.
-            </p>
-          </div>
-          <a
-            href="#game-on-dashboard-collection"
-            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 bg-[#2474F5] px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-[#0B1F3A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#55A4FF]"
-            data-testid="link-desktop-game-on-card"
-          >
-            Create or manage your card <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </a>
-        </div>
-      </section>
-
-      <section className="dashboard-week-path-panel workspace-panel animate-slide-up delay-200" data-testid="section-desktop-workspace" aria-labelledby="desktop-workspace-heading">
-        <div className="workspace-panel-heading">
-          <p className="workspace-nav-eyebrow">Athlete workspace</p>
-          <h2 id="desktop-workspace-heading">Everything for {profile.athleteName || 'your athlete'}</h2>
-          <p>Calendar, Prep, Stats, and Hype are always open. Choose what you need without following a fixed path.</p>
-          <nav className="workspace-tool-grid" aria-label="Athlete workspace tools">
-            {workspaceTools.map(({ id, label, description, Icon, href }) => (
-              <Link
-                key={id}
-                href={href}
-                className={`workspace-tool-card ${id === recommendedTool.id ? 'is-recommended' : ''}`}
-                data-testid={`link-desktop-workspace-${id}`}
-              >
-                <span className="workspace-tool-icon"><Icon aria-hidden="true" /></span>
-                <span className="workspace-tool-copy">
-                  <strong>{label}</strong>
-                  <span>{description}</span>
-                </span>
-                {id === recommendedTool.id && <span className="workspace-tool-badge">Suggested</span>}
-                <ChevronRight aria-hidden="true" />
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div
-          id="workspace-recommendation"
-          className="dashboard-week-path-recommendation"
-          data-testid="workspace-recommendation"
-          data-recommended-tool={recommendedTool.id}
-          aria-labelledby="desktop-recommendation-heading"
-        >
-          <div className="dashboard-week-path-recommendation-inner">
-            <div className="dashboard-week-path-recommendation-header">
-              <span className="dashboard-week-path-recommendation-icon" aria-hidden="true">
-                <recommendedTool.Icon />
-              </span>
-              <div className="min-w-0">
-                <p className="dashboard-week-path-recommendation-eyebrow">Your next best step</p>
-                <p className="dashboard-week-path-recommendation-status">
-                  {recommendedToolDetails.eyebrow}
-                </p>
-              </div>
-            </div>
-            <h3 id="desktop-recommendation-heading" className="dashboard-week-path-recommendation-title">
-              {recommendedToolDetails.title}
-            </h3>
-            <p className="dashboard-week-path-recommendation-description">{recommendedToolDetails.description}</p>
-            <button
-              type="button"
-              onClick={() => {
-                trackEvent('completion_next_action_clicked', {
-                  source: 'athlete_workspace_desktop',
-                  tool: recommendedTool.id,
-                });
-                setLocation(recommendedTool.href);
-              }}
-              className="dashboard-week-path-recommendation-action"
-              data-testid="btn-desktop-recommendation-action"
-            >
-              <recommendedTool.Icon aria-hidden="true" />
-              {recommendedToolDetails.action}
-            </button>
-            <p className="dashboard-week-path-recommendation-note">
-              {mobileFeaturedEvent ? 'Suggested from your next event' : 'Add an event to get a recommendation'}
-            </p>
-          </div>
-        </div>
-        </section>
 
       {/* TWO COLUMNS: UPCOMING & RECENT */}
       <div hidden>

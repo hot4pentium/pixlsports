@@ -1,9 +1,12 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type UIEvent } from 'react';
-import { ArrowLeft, ArrowRight, CalendarDays, Clock3, MapPin, Plus, Swords } from 'lucide-react';
+import { Link } from 'wouter';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Swords } from 'lucide-react';
+import { buildWorkspaceToolHref } from './workspace-context';
 import './game-on-dashboard-collection.css';
 
 export type DashboardGameOnCard = {
   id: string;
+  eventId?: string;
   type: 'game' | 'practice';
   athleteName: string;
   opponent: string;
@@ -59,6 +62,15 @@ function CollectionCard({ card, onOpen, selected, renderSelectedCard }: {
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
+  const eventId = card.eventId ?? card.id.replace(/^(?:share|draft):/, '');
+  const eventContext = {
+    id: eventId,
+    type: card.type,
+    date: card.date,
+    time: card.time,
+    location: card.location,
+    opponent: card.opponent,
+  };
   const publishedStatus = card.status === 'Published' && card.isPublished;
   const statusLabel = card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
   const hasEditor = selected && Boolean(renderSelectedCard);
@@ -106,6 +118,19 @@ function CollectionCard({ card, onOpen, selected, renderSelectedCard }: {
           <span className="game-on-collection__card-arrow" aria-hidden="true"><ArrowRight size={17} /></span>
         </span>
       </button>
+      <div className="game-on-collection__actions" aria-label={`${practice ? 'Practice' : 'Game'} actions`}>
+        <button type="button" onClick={() => onOpen(card.id)} data-testid={`button-edit-calendar-${card.id}`}>
+          <CalendarDays size={15} aria-hidden="true" /> Edit Calendar details
+        </button>
+        <Link href={buildWorkspaceToolHref('prep', eventContext)} data-testid={`link-card-prep-${card.id}`}>
+          <ClipboardCheck size={15} aria-hidden="true" /> Open Prep
+        </Link>
+        {!practice && (
+          <Link href={buildWorkspaceToolHref('stats', eventContext)} data-testid={`link-card-stats-${card.id}`}>
+            <Activity size={15} aria-hidden="true" /> Open Stat Tracker
+          </Link>
+        )}
+      </div>
       {hasEditor && (
         <div className="game-on-collection__editor" id={editorId} data-testid={`panel-game-on-card-${card.id}`}>
           {renderSelectedCard?.(card)}
