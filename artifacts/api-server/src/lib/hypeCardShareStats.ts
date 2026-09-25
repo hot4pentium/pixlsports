@@ -13,14 +13,32 @@ export function isHypeCardSport(value: unknown): value is HypeCardSport {
   return typeof value === "string" && HYPE_CARD_SPORTS.includes(value as HypeCardSport);
 }
 
+function safeStatId(value: unknown) {
+  return typeof value === "string" && /^[a-z0-9][a-z0-9-]{0,63}$/.test(value) ? value : null;
+}
+
 function collectSafeStats(value: unknown) {
   const totals = Object.create(null) as Record<string, number>;
   if (!value || typeof value !== "object" || Array.isArray(value)) return totals;
 
   for (const [key, count] of Object.entries(value)) {
-    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(key)) continue;
+    if (!safeStatId(key)) continue;
     if (typeof count !== "number" || !Number.isFinite(count) || count < 0) continue;
     totals[key] = Math.trunc(count);
+  }
+  return totals;
+}
+
+function collectAthleteStats(value: unknown) {
+  const totals = Object.create(null) as Record<string, number>;
+  if (!Array.isArray(value)) return totals;
+
+  for (const event of value) {
+    if (!event || typeof event !== "object" || Array.isArray(event)) continue;
+    const item = event as { attribution?: unknown; statId?: unknown };
+    const statId = safeStatId(item.statId);
+    if (item.attribution !== "athlete" || !statId) continue;
+    totals[statId] = (totals[statId] ?? 0) + 1;
   }
   return totals;
 }
@@ -46,6 +64,7 @@ export function computeHypeCardShareStats(
     score: number;
     opponentScore: number;
     stats: Record<string, number>;
+    athleteStats: Record<string, number>;
   }> = [];
   let gamesPlayed = 0;
   let score = 0;
@@ -59,9 +78,11 @@ export function computeHypeCardShareStats(
       score?: unknown;
       opponentScore?: unknown;
       stats?: unknown;
+      events?: unknown;
     };
     if (item.sport !== sport || item.status !== "final") continue;
     const gameStats = collectSafeStats(item.stats);
+    const athleteStats = collectAthleteStats(item.events);
     gamesPlayed += 1;
     const gameScore = safeScore(item.score);
     score += gameScore;
@@ -71,6 +92,7 @@ export function computeHypeCardShareStats(
       score: gameScore,
       opponentScore: safeScore(item.opponentScore),
       stats: gameStats,
+      athleteStats,
     });
     for (const [key, value] of Object.entries(gameStats)) {
       totals[key] = (totals[key] ?? 0) + value;

@@ -2101,7 +2101,7 @@ components:
           format: date-time
     HypeCardShareGameSummary:
       type: object
-      required: [date, opponent, score, opponentScore, stats]
+      required: [date, opponent, score, opponentScore, stats, athleteStats]
       properties:
         date:
           type: string
@@ -2116,6 +2116,11 @@ components:
           type: integer
           minimum: 0
         stats:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        athleteStats:
           type: object
           additionalProperties:
             type: integer

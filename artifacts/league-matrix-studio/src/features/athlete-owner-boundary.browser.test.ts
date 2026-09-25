@@ -37,8 +37,42 @@ test('player-page owner tools remain private across account changes and pause', 
     inviteToken: token, athleteName: 'Jordan', teamName: 'City Hoops',
     seasonName: 'Fall 2026', seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
     sport: 'basketball', trackerProjectId: null, scheduleProjectId: null,
-    showHypeCard: true, showStats: false, showSchedule: false, paused: false,
+    showHypeCard: true, showStats: true, showSchedule: false, paused: false,
     liveTrackerShareToken: null,
+  };
+  const stats = {
+    athleteName: 'Jordan',
+    sport: 'basketball',
+    gamesPlayed: 3,
+    score: 40,
+    games: [
+      {
+        date: '2026-09-05',
+        opponent: 'Eastside',
+        score: 10,
+        opponentScore: 6,
+        stats: { assist: 1 },
+        athleteStats: {},
+      },
+      {
+        date: '2026-09-12',
+        opponent: 'Northside',
+        score: 12,
+        opponentScore: 8,
+        stats: { assist: 3, rebound: 4 },
+        athleteStats: { assist: 1, rebound: 2 },
+      },
+      {
+        date: '2026-09-19',
+        opponent: 'Riverside',
+        score: 18,
+        opponentScore: 20,
+        stats: { assist: 2, rebound: 5 },
+        athleteStats: { assist: 2 },
+      },
+    ],
+    stats: { assist: 6, rebound: 9 },
+    updatedAt: new Date().toISOString(),
   };
   const apiServer = createServer(async (request, response) => {
     const viewer = request.headers['x-test-viewer'] as string || 'visitor';
@@ -55,7 +89,7 @@ test('player-page owner tools remain private across account changes and pause', 
     } else if (path === `/api/athlete-invites/${token}` && method === 'GET') {
       json(paused && viewer !== 'owner' ? 404 : 200, paused && viewer !== 'owner'
         ? { error: 'Athlete invite not found' }
-        : { ...owned, paused, hypeCard: null, videos: [], stats: null, scheduleEvents: [], replies: [], liveGame: null });
+        : { ...owned, paused, hypeCard: null, videos: [], stats, scheduleEvents: [], replies: [], liveGame: null });
     } else if (path === `/api/athlete-invites/${token}` && method === 'PATCH' && viewer === 'owner') {
       let raw = '';
       for await (const chunk of request) raw += chunk;
@@ -126,6 +160,70 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, other, element('[data-testid="public-athlete-invite"]'), Boolean, 30_000);
     const visitor = await open('visitor', 'public');
     await waitFor(connection, visitor, element('[data-testid="public-athlete-invite"]'), Boolean, 30_000);
+    await waitFor(connection, visitor, element('[data-testid="select-athlete-game"]'), Boolean, 30_000);
+    const latestGame = await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"athlete-game-stat-details\"]')?.innerText || ''",
+      visitor,
+    );
+    assert.match(latestGame, /Riverside/i);
+    assert.match(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-game-stat-assist\"]')?.innerText || ''",
+        visitor,
+      ),
+      /2/,
+    );
+    assert.equal(await connection.evaluate(
+      "Boolean(document.querySelector('[data-testid=\"athlete-game-stat-rebound\"]'))",
+      visitor,
+    ), false);
+    assert.match(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-stat-source-note\"]')?.innerText || ''",
+        visitor,
+      ),
+      /team- and athlete-attributed entries/,
+    );
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-athlete-game"]');
+      const earlier = Array.from(select.options).find((option) => option.textContent.includes('Northside'));
+      select.value = earlier.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, visitor);
+    await waitFor(
+      connection,
+      visitor,
+      "document.querySelector('[data-testid=\"athlete-game-stat-details\"]')?.innerText.toLowerCase().includes('northside')",
+      Boolean,
+      12_000,
+    );
+    assert.match(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-game-stat-rebound\"]')?.innerText || ''",
+        visitor,
+      ),
+      /2/,
+    );
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-athlete-game"]');
+      const earlier = Array.from(select.options).find((option) => option.textContent.includes('Eastside'));
+      select.value = earlier.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, visitor);
+    await waitFor(
+      connection,
+      visitor,
+      "document.querySelector('[data-testid=\"athlete-game-stat-details\"]')?.innerText.toLowerCase().includes('eastside')",
+      Boolean,
+      12_000,
+    );
+    assert.match(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-game-stats-empty\"]')?.innerText || ''",
+        visitor,
+      ),
+      /No individual stats were recorded for Jordan/,
+    );
     for (const session of [other, visitor]) {
       assert.equal(await connection.evaluate(element('[data-testid="link-manage-athlete-hype-page"]'), session), false);
       assert.equal(await connection.evaluate(element('[data-testid="owner-hype-page-management"]'), session), false);

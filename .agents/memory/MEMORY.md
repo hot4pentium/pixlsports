@@ -12,7 +12,7 @@
 - [Checklist sharing test harness](checklist-sharing-test-harness.md) — direct route tests must provide Clerk-branded session auth; browser coverage uses installed Chromium CDP.
 - [Checklist owner sync](checklist-owner-sync.md) — after an edit link exists, owner and collaborator edits must update the same shared checklist; local saves alone are insufficient.
 - [Athlete-first positioning](season-first-positioning.md) — lead with celebrating one athlete; use season context to support continuity.
-- [Public Hype Card boundaries](public-hype-card-boundaries.md) — player pages expose flattened media and finalized aggregates while rotating one owner/design URL server-side.
+- [Public athlete page boundaries](public-hype-card-boundaries.md) — keep combined trends distinct from athlete-only game counts and never expose raw tracker events.
 - [Profile sport precedence](profile-sport-precedence.md) — a selected profile sport controls sport-specific tools; history chooses the sport only when the profile has none.
 - [TSX test JSX runtime](tsx-test-jsx-runtime.md) — TSX modules rendered by Node tests need a React binding even when Vite and TypeScript accept named-only React imports.
 - [Reply inbox retention](reply-inbox-retention.md) — owner reply history remains visible after a shared Hype Card expires or is revoked.

@@ -7,23 +7,54 @@ test("aggregates only finalized games for the selected sport", () => {
   const result = computeHypeCardShareStats({
     tool: "stat-tracker",
     games: [
-      { sport: "basketball", status: "final", date: "2026-09-12", opponent: "Northside", score: 12, opponentScore: 8, stats: { assist: 3, rebound: 4 } },
+      {
+        sport: "basketball",
+        status: "final",
+        date: "2026-09-12",
+        opponent: "Northside",
+        score: 12,
+        opponentScore: 8,
+        stats: { assist: 3, rebound: 4 },
+        events: [
+          { id: "private-athlete-event", statId: "assist", attribution: "athlete", createdAt: "private-time" },
+          { id: "private-team-event", statId: "assist", attribution: "team", createdAt: "private-time" },
+          { id: "private-rebound-event", statId: "rebound", attribution: "athlete", notes: "private note" },
+          { id: "unsafe-event", statId: "Unsafe Key", attribution: "athlete" },
+        ],
+      },
       { sport: "basketball", status: "live", score: 99, stats: { assist: 99 } },
       { sport: "soccer", status: "final", score: 2, stats: { goal: 2 } },
-      { sport: "basketball", status: "final", date: "2026-09-15", opponent: "Riverside", score: 8, opponentScore: 10, stats: { assist: 2, rebound: 1 } },
+      {
+        sport: "basketball",
+        status: "final",
+        date: "2026-09-15",
+        opponent: "Riverside",
+        score: 8,
+        opponentScore: 10,
+        stats: { assist: 2, rebound: 1 },
+        events: [
+          { id: "private-second-game-event", statId: "assist", attribution: "athlete" },
+          { id: "team-only-event", statId: "rebound", attribution: "team" },
+        ],
+      },
     ],
   }, "Jordan", "basketball", updatedAt);
 
   assert.deepEqual({ ...result?.stats }, { assist: 5, rebound: 5 });
   assert.equal(result?.gamesPlayed, 2);
   assert.equal(result?.score, 20);
-  assert.deepEqual(result?.games?.map((game) => ({ ...game, stats: { ...game.stats } })), [
+  assert.deepEqual(result?.games?.map((game) => ({
+    ...game,
+    stats: { ...game.stats },
+    athleteStats: { ...game.athleteStats },
+  })), [
     {
       date: "2026-09-12",
       opponent: "Northside",
       score: 12,
       opponentScore: 8,
       stats: { assist: 3, rebound: 4 },
+      athleteStats: { assist: 1, rebound: 1 },
     },
     {
       date: "2026-09-15",
@@ -31,7 +62,16 @@ test("aggregates only finalized games for the selected sport", () => {
       score: 8,
       opponentScore: 10,
       stats: { assist: 2, rebound: 1 },
+      athleteStats: { assist: 1 },
     },
+  ]);
+  assert.deepEqual(Object.keys(result?.games[0] ?? {}).sort(), [
+    "athleteStats",
+    "date",
+    "opponent",
+    "opponentScore",
+    "score",
+    "stats",
   ]);
   assert.equal(result?.updatedAt, updatedAt);
 });
@@ -52,16 +92,26 @@ test("rejects non-tracker payloads and unsafe stat values", () => {
       date: "2026-09-18",
       opponent: "Northside",
       stats: { assist: 2.9, "Unsafe Key": 20, rebound: -3, block: Number.NaN },
+      events: [
+        { statId: "assist", attribution: "athlete" },
+        { statId: "Unsafe Key", attribution: "athlete" },
+        { statId: "rebound", attribution: "team" },
+      ],
     }],
   }, "Jordan", "basketball", new Date());
 
   assert.equal(result?.score, 0);
-  assert.deepEqual(result?.games?.map((game) => ({ ...game, stats: { ...game.stats } })), [{
+  assert.deepEqual(result?.games?.map((game) => ({
+    ...game,
+    stats: { ...game.stats },
+    athleteStats: { ...game.athleteStats },
+  })), [{
     date: "2026-09-18",
     opponent: "Northside",
     score: 0,
     opponentScore: 11,
     stats: { assist: 2 },
+    athleteStats: { assist: 1 },
   }]);
   assert.deepEqual({ ...result?.stats }, { assist: 2 });
 });

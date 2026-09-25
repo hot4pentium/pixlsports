@@ -1,13 +1,13 @@
 ---
-name: Public Hype Card boundaries
-description: Privacy, media, and link-rotation invariants for hosted Hype Card player pages.
+name: Public athlete page boundaries
+description: Privacy, attribution, media, and link-rotation invariants for public athlete pages.
 ---
 
-Public Hype Card pages may refresh current statistics only from an owner-owned Stat Tracker project. The public payload is limited to the athlete display name, selected sport, finalized-game count, score, flattened finalized game summaries (date, opponent, both scores, and validated stat counts), aggregated stat counts, and update time. Never expose tracker project IDs, share identity keys, raw game IDs, events, notes, active games, account IDs, or unrelated sports.
+Public Athlete Hype Pages may refresh statistics only from an owner-owned Stat Tracker project. Season stat totals and stat trends retain their combined team-and-athlete meaning; points/runs are team scores. Per-game athlete counts are aggregated only from finalized events explicitly attributed to the named athlete. The public payload may include the athlete display name, selected sport, finalized-game count, score, flattened finalized game summaries (date, opponent, both scores, validated combined counts, and athlete-attributed counts), season aggregates, and update time. Never expose tracker project IDs, share identity keys, raw game IDs, events, event IDs, timestamps, notes, active games, account IDs, or unrelated sports.
 
-**Why:** These pages are accessible to anyone with the token. Live statistics are useful, but generic cloud-project data contains private and unrelated fields that must not cross the public boundary.
+**Why:** These pages are accessible to anyone with the token. Families need both an individual game recap and continuity across combined season trends, but generic cloud-project data contains private and unrelated fields that must not cross the public boundary.
 
-**How to apply:** Treat the server response—not the browser—as the privacy boundary. Re-check project ownership and type on each refresh, summarize only finalized games for the selected sport, and keep owner-only metadata on authenticated responses.
+**How to apply:** Treat the server response—not the browser—as the privacy boundary. Re-check project ownership and type on each refresh, summarize only finalized games for the selected sport, keep existing combined totals/trends unchanged, and compute athlete-only counts strictly from explicit athlete attribution. Do not return raw event details.
 
 Still-image shares use a prepared flattened card rendition rather than the original upload. Existing video/poster storage columns remain the compatibility layer for both media types.
 

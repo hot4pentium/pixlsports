@@ -990,6 +990,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const { isSignedIn } = useUser();
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
   const [trendStatId, setTrendStatId] = useState('');
+  const [selectedGameKey, setSelectedGameKey] = useState('');
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const videoCarouselRef = useRef<HTMLOListElement>(null);
   const { data: invite, isLoading, isError } = useGetAthleteInvite(inviteToken, {
@@ -1006,6 +1007,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   useEffect(() => {
     setLocalReplies([]);
     setTrendStatId('');
+    setSelectedGameKey('');
     setActiveVideoIndex(0);
   }, [inviteToken]);
   useEffect(() => {
@@ -1037,6 +1039,15 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const selectedTrend = trendOptions.find((option) => option.id === trendStatId);
   const trendGames = invite.stats?.games
     ? [...invite.stats.games].sort((a, b) => a.date.localeCompare(b.date))
+    : [];
+  const gameOptions = trendGames.map((game, index) => ({
+    game,
+    key: `${game.date}|${game.opponent}|${game.score}|${game.opponentScore}|${index}`,
+    index,
+  }));
+  const selectedGameOption = gameOptions.find(({ key }) => key === selectedGameKey) ?? gameOptions.at(-1) ?? null;
+  const selectedGameAthleteStats = selectedGameOption
+    ? Object.entries(selectedGameOption.game.athleteStats).sort(([left], [right]) => left.localeCompare(right))
     : [];
   const trendValues = selectedTrend
     ? trendGames.map((game) => selectedTrend.id === 'score' ? game.score : game.stats[selectedTrend.id] ?? 0)
@@ -1202,14 +1213,73 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
             {invite.stats && (
               <section className="border border-white/10 bg-white/5 p-5 sm:p-7" aria-labelledby="athlete-season-stats">
                 <div className="flex items-center justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Finalized only</p><h2 id="athlete-season-stats" className="mt-2 font-display text-3xl uppercase">Season stats</h2></div><Trophy className="h-8 w-8 text-primary" /></div>
+                <p className="mt-3 text-xs leading-relaxed text-white/50" data-testid="athlete-stat-source-note">Season stat totals and stat trends include both team- and athlete-attributed entries. Points / runs show team scores. Game breakdowns count only stats credited to {invite.athleteName}.</p>
                 <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Stat label="Games" value={invite.stats.gamesPlayed} primary />
                   <Stat label="Points / runs" value={invite.stats.score} />
                   {Object.entries(invite.stats.stats).map(([id, value]) => <Stat key={id} label={rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' ')} value={value} />)}
                 </div>
+                {gameOptions.length > 0 ? (
+                  <div className="athlete-game-stats-panel mt-6 border-t border-white/10 pt-5" data-testid="athlete-game-stats">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Athlete-attributed stats</p>
+                        <h3 className="mt-2 font-display text-2xl uppercase">Game breakdown</h3>
+                      </div>
+                      <div className="w-full sm:max-w-sm">
+                        <label htmlFor="athlete-game-select" className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Choose a completed game</label>
+                        <select
+                          id="athlete-game-select"
+                          value={selectedGameOption?.key ?? ''}
+                          onChange={(event) => setSelectedGameKey(event.target.value)}
+                          className="mt-2 h-11 w-full border border-orange-300/40 bg-black/30 px-3 text-sm font-bold text-white outline-none focus:border-accent"
+                          data-testid="select-athlete-game"
+                        >
+                          {[...gameOptions].reverse().map(({ game, key, index }) => {
+                            const date = game.date
+                              ? new Date(`${game.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                              : `Game ${index + 1}`;
+                            return <option key={key} value={key}>{date} · {game.opponent ? `vs ${game.opponent}` : 'Opponent not listed'}</option>;
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    {selectedGameOption && (
+                      <div className="mt-4" data-testid="athlete-game-stat-details">
+                        <p className="text-xs font-bold uppercase tracking-widest text-white/65">
+                          {selectedGameOption.game.opponent ? `vs ${selectedGameOption.game.opponent}` : 'Opponent not listed'}
+                          {selectedGameOption.game.date && <> · {new Date(`${selectedGameOption.game.date}T12:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</>}
+                        </p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-white/40">Scores are game results; the stats below count only plays credited to {invite.athleteName}.</p>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                          <Stat label="Team score" value={selectedGameOption.game.score} primary />
+                          <Stat label="Opponent score" value={selectedGameOption.game.opponentScore} />
+                        </div>
+                        {selectedGameAthleteStats.length > 0 ? (
+                          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {selectedGameAthleteStats.map(([id, value]) => (
+                              <Stat
+                                key={id}
+                                label={rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' ')}
+                                value={value}
+                                testId={`athlete-game-stat-${id}`}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-3 border border-white/10 bg-black/20 p-4 text-sm leading-relaxed text-white/55" data-testid="athlete-game-stats-empty">
+                            No individual stats were recorded for {invite.athleteName} in this game.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-6 border-t border-white/10 pt-5 text-sm leading-relaxed text-white/50" data-testid="athlete-game-stats-empty">Completed-game breakdowns will appear here after the first game is finalized.</p>
+                )}
                    {trendOptions.length > 0 && (
                     <div className="athlete-trends-panel mt-6 border-t border-white/10 p-4 pt-5 sm:p-5" data-testid="athlete-stat-trends">
-                     <label htmlFor="athlete-trend-stat" className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Show trends</label>
+                     <label htmlFor="athlete-trend-stat" className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Combined stat trends</label>
                      <select
                        id="athlete-trend-stat"
                        value={trendStatId}
@@ -1337,8 +1407,8 @@ function calendarTimestamp(date: string, time: string) {
 function escapeCalendar(value: string) {
   return value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
 }
-function Stat({ label, value, primary = false }: { label: string; value: number; primary?: boolean }) {
-  return <div className="border border-white/10 bg-black/20 p-3"><p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</p><p className={`mt-1 font-display text-3xl ${primary ? 'text-primary' : 'text-white'}`}>{value}</p></div>;
+function Stat({ label, value, primary = false, testId }: { label: string; value: number; primary?: boolean; testId?: string }) {
+  return <div className="border border-white/10 bg-black/20 p-3" data-testid={testId}><p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</p><p className={`mt-1 font-display text-3xl ${primary ? 'text-primary' : 'text-white'}`}>{value}</p></div>;
 }
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-border pt-4"><div><p className="text-sm font-bold">{label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;

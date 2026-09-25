@@ -775,6 +775,8 @@ export type HypeCardShareStatsStats = {[key: string]: number};
 
 export type HypeCardShareGameSummaryStats = {[key: string]: number};
 
+export type HypeCardShareGameSummaryAthleteStats = {[key: string]: number};
+
 export interface HypeCardShareGameSummary {
   /** @maxLength 30 */
   date: string;
@@ -785,6 +787,7 @@ export interface HypeCardShareGameSummary {
   /** @minimum 0 */
   opponentScore: number;
   stats: HypeCardShareGameSummaryStats;
+  athleteStats: HypeCardShareGameSummaryAthleteStats;
 }
 
 export interface HypeCardShareStats {

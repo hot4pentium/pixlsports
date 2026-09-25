@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HypeCardShareGameSummaryAthleteStats } from './hypeCardShareGameSummaryAthleteStats';
 import type { HypeCardShareGameSummaryStats } from './hypeCardShareGameSummaryStats';
 
 export interface HypeCardShareGameSummary {
@@ -17,4 +18,5 @@ export interface HypeCardShareGameSummary {
   /** @minimum 0 */
   opponentScore: number;
   stats: HypeCardShareGameSummaryStats;
+  athleteStats: HypeCardShareGameSummaryAthleteStats;
 }
