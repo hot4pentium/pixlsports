@@ -517,6 +517,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         squareCard: boolean;
         collapsedTileMinimal: boolean;
         removedPanels: boolean;
+        titleAtBottom: boolean;
+        titleReadable: boolean;
       }>(`(() => {
         const root = document.querySelector('.supporter-dashboard-mobile-shell');
         const header = document.querySelector('[data-testid="mobile-header"]');
@@ -547,6 +549,9 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         const details = card.querySelector('.game-on-collection__card-content');
         const footer = card.querySelector('.game-on-collection__card-footer');
         const actions = card.querySelector('.game-on-collection__actions');
+        const kindRect = kind?.getBoundingClientRect();
+        const dateRect = date?.getBoundingClientRect();
+        const summaryRect = card.querySelector('.game-on-collection__summary')?.getBoundingClientRect();
         const cardActions = Array.from(card.querySelectorAll('.game-on-collection__actions > button'));
         const athleteRect = athleteCard.getBoundingClientRect();
         const eventRect = eventCard.getBoundingClientRect();
@@ -582,11 +587,19 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
           collapsedTileMinimal: !card.classList.contains('game-on-collection__card--selected')
             && kind?.getClientRects().length > 0
             && date?.getClientRects().length > 0
+            && kindRect !== undefined
+            && dateRect !== undefined
+            && summaryRect !== undefined
+            && kindRect.top > dateRect.bottom
+            && kindRect.bottom >= summaryRect.bottom - 18
+            && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12
             && status?.hidden === true
             && details?.hidden === true
             && footer?.hidden === true
             && actions?.hidden === true
             && cardActions.every((action) => action.getClientRects().length === 0),
+          titleAtBottom: Boolean(kindRect && dateRect && summaryRect && kindRect.top > dateRect.bottom && kindRect.bottom >= summaryRect.bottom - 18),
+          titleReadable: Boolean(kind && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12),
           removedPanels: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="section-desktop-workspace"], [data-testid="card-mobile-recommendation"], [data-testid="workspace-recommendation"]'),
         };
       })()`, page.sessionId);
@@ -610,6 +623,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         collectionFits: true,
         squareCard: true,
         collapsedTileMinimal: true,
+        titleAtBottom: true,
+        titleReadable: true,
         removedPanels: true,
       }, `mobile header behavior at ${width}px`);
     }
@@ -709,6 +724,19 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
       .some((card) => card.getAttribute('data-prep-open') === 'false')`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-open-stat-tracker-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-tracker-open') === 'true')`, Boolean);
+    assert.equal(await connection.evaluate(
+      `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-quick-tracker__title'))
+        .some((heading) => heading.getClientRects().length > 0)`,
+      page.sessionId,
+    ), true, 'choosing Stat Tracker should flip the expanded card to its panel');
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-stat-tracker-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.getAttribute('data-tracker-open') === 'false')`, Boolean);
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card--selected .game-on-collection__summary'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__card--selected')`, Boolean);
@@ -725,26 +753,42 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       actionCount: number;
       heroAboveCollection: boolean;
       heroDomBeforeCollection: boolean;
-      collectionColumnCount: number;
+      compactDesktopCards: boolean;
+      titleAtBottom: boolean;
+      titleReadable: boolean;
     }>(`(() => {
       const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
       const hero = document.querySelector('.supporter-dashboard-desktop-shell .dashboard-hero-banner');
       const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
       if (!(collection instanceof HTMLElement) || !(hero instanceof HTMLElement) || !(grid instanceof HTMLElement)) throw new Error('Desktop Game On collection is missing');
+      const columnCount = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length;
+      const card = Array.from(grid.querySelectorAll('.game-on-collection__card'))
+        .find((item) => !item.classList.contains('game-on-collection__card--selected'));
+      const kind = card?.querySelector('.game-on-collection__kind');
+      const date = card?.querySelector('.game-on-collection__date');
+      const summary = card?.querySelector('.game-on-collection__summary');
+      const cardRect = card?.getBoundingClientRect();
+      const kindRect = kind?.getBoundingClientRect();
+      const dateRect = date?.getBoundingClientRect();
+      const summaryRect = summary?.getBoundingClientRect();
       return {
         oldPanelsRemoved: !document.querySelector('[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"], [data-testid="desktop-game-on-entry"]'),
         actionCount: Array.from(collection.querySelectorAll('.game-on-collection__actions > *'))
           .filter((action) => action.getClientRects().length > 0).length,
         heroAboveCollection: hero.getBoundingClientRect().bottom <= collection.getBoundingClientRect().top + 1,
         heroDomBeforeCollection: Boolean(hero.compareDocumentPosition(collection) & Node.DOCUMENT_POSITION_FOLLOWING),
-        collectionColumnCount: getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length,
+        compactDesktopCards: columnCount >= 4 && Boolean(cardRect && cardRect.width <= 236),
+        titleAtBottom: Boolean(kindRect && dateRect && summaryRect && kindRect.top > dateRect.bottom && kindRect.bottom >= summaryRect.bottom - 18),
+        titleReadable: Boolean(kind && Number.parseFloat(getComputedStyle(kind).fontSize) >= 19),
       };
     })()`, page.sessionId), {
       oldPanelsRemoved: true,
       actionCount: 0,
       heroAboveCollection: true,
       heroDomBeforeCollection: true,
-      collectionColumnCount: 3,
+      compactDesktopCards: true,
+      titleAtBottom: true,
+      titleReadable: true,
     });
 
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);

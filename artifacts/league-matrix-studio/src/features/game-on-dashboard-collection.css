@@ -590,6 +590,7 @@
 .game-on-collection__grid .game-on-collection__opponent { font-size: clamp(25px, 2.4vw, 35px); }
 .game-on-collection__grid .game-on-collection__card-footer { padding-top: 14px; }
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__summary {
+  position: relative;
   justify-content: space-between;
   padding: clamp(10px, 1.5vw, 18px);
 }
@@ -602,6 +603,7 @@
   align-items: center;
   justify-content: center;
   gap: 0;
+  padding-bottom: clamp(24px, 5vw, 36px);
 }
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__date {
   display: flex;
@@ -626,12 +628,16 @@
   display: none;
 }
 .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind {
+  position: absolute;
+  right: clamp(10px, 1.5vw, 18px);
+  bottom: clamp(10px, 1.5vw, 18px);
+  left: clamp(10px, 1.5vw, 18px);
   display: flex;
   min-height: 34px;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  width: 100%;
+  width: auto;
   padding-top: 7px;
   border-top: 1px solid #cad9e8;
   color: #17467b;
@@ -724,13 +730,22 @@
   outline-offset: 3px;
 }
 
+@media (max-width: 900px) {
+  .game-on-collection__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .game-on-collection__grid .game-on-collection__card { max-width: 236px; }
+}
+
 @media (max-width: 600px) {
   .game-on-collection { border-radius: 17px; }
   .game-on-collection__inner { padding: 22px 8px 16px; }
   .game-on-collection__header { align-items: stretch; flex-direction: column; gap: 18px; }
   .game-on-collection__create { align-self: flex-start; min-height: 44px; gap: 8px; padding: 10px 12px; font-size: 10px; }
   .game-on-collection__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .game-on-collection__grid .game-on-collection__card { max-width: none; }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__summary { padding: 7px; }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__card-main {
+    padding-bottom: clamp(30px, 5vw, 36px);
+  }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind {
     gap: 4px;
     font-size: 7px;
@@ -753,8 +768,13 @@
     min-height: 27px;
     gap: 4px;
     padding-top: 5px;
-    font-size: clamp(12px, 3.6vw, 15px);
+    font-size: clamp(13px, 3.8vw, 16px);
     letter-spacing: .02em;
+  }
+  .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind {
+    right: 7px;
+    bottom: 7px;
+    left: 7px;
   }
   .game-on-collection__grid .game-on-collection__card:not(.game-on-collection__card--selected) .game-on-collection__kind svg {
     width: 13px;
