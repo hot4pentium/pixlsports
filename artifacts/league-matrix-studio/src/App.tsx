@@ -67,6 +67,7 @@ import {
   getActiveCloudScheduleProject,
   getCloudScheduleProjects,
   getCloudScheduleProjectForIdentity,
+  findScheduleGameOwner,
   getLatestCloudScheduleProject,
   getScheduleIdentity,
   moveScheduleEvent,
@@ -1526,24 +1527,35 @@ function SupporterStudio() {
   };
 
   const completeCardCalendarGame = async (eventId: string, completedAt: string) => {
-    const source = cloudSchedule?.events.some((candidate) => candidate.id === eventId && candidate.type === 'game')
-      ? cloudSchedule
-      : localSchedule?.events.some((candidate) => candidate.id === eventId && candidate.type === 'game')
-        ? localSchedule
-        : null;
-    if (!source) throw new Error('This Calendar game is no longer available. Refresh and try again.');
+    // The tracker may have been open while Calendar was edited in another tab.
+    // Refetch before picking the owner and revision rather than saving a stale snapshot.
+    if (isSignedIn && !cloudProjectsQuery.isSuccess) {
+      throw new Error('Calendar is still loading. Retry after it becomes available.');
+    }
+    const fresh = cloudProjectsQuery.isSuccess ? await cloudProjectsQuery.refetch() : null;
+    if (fresh?.error) throw fresh.error;
+    const freshSchedules = getCloudScheduleProjects(fresh?.data ?? cloudProjects ?? []);
+    const active = freshSchedules.find((project) => project.id === selectedCloudScheduleProject?.id) ?? null;
+    const owner = findScheduleGameOwner(eventId, freshSchedules, active, readScheduleDraft());
+    if (!owner) {
+      // A standalone published card has no Calendar record. Its completed tracker is
+      // device-local, so refresh the dashboard's card status without inventing one.
+      setLocalScheduleVersion((value) => value + 1);
+      return;
+    }
+    const source = owner.draft;
 
     const nextDraft = {
       ...source,
       events: updateScheduleEventStatus(source.events, eventId, 'final', completedAt),
     };
     let cloudSaveSucceeded = false;
-    if (source === cloudSchedule && selectedCloudScheduleProject) {
+    if (owner.project) {
       const updated = await updateScheduleProject.mutateAsync({
-        projectId: selectedCloudScheduleProject.id,
+        projectId: owner.project.id,
         data: {
-          project: { ...selectedCloudScheduleProject.project as Record<string, unknown>, ...nextDraft, tool: 'schedule' },
-          expectedRevision: selectedCloudScheduleProject.revision,
+          project: { ...owner.project.project as Record<string, unknown>, ...nextDraft, tool: 'schedule' },
+          expectedRevision: owner.project.revision,
         },
       });
       queryClient.setQueryData(getListProjectsQueryKey(), (current: typeof cloudProjects) => current?.map((project) =>
@@ -1553,10 +1565,12 @@ function SupporterStudio() {
       cloudSaveSucceeded = true;
     }
 
-    try {
-      saveScheduleDraft(window.localStorage, nextDraft);
-    } catch (error) {
-      if (!cloudSaveSucceeded) throw error;
+    if (!owner.project || owner.project.id === selectedCloudScheduleProject?.id) {
+      try {
+        saveScheduleDraft(window.localStorage, nextDraft);
+      } catch (error) {
+        if (!cloudSaveSucceeded) throw error;
+      }
     }
     setLocalScheduleVersion((value) => value + 1);
   };

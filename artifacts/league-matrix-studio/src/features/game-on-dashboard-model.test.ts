@@ -61,6 +61,18 @@ test('independent game and practice shares appear without a calendar', () => {
   assert.equal(cards[1].opponent, '');
 });
 
+test('a standalone badge reflects its locally ended tracker after reopening', () => {
+  const game = event('standalone-game', 'game', '2026-09-24');
+  const share = { shareToken: 'game-share', title: 'Game', createdAt: now.toISOString(), events: [game] };
+  const cards = buildGameOnDashboardEntries([], [share], 'Alex', now, [
+    { date: game.date, opponent: 'ravens' },
+  ]);
+  assert.equal(cards[0].status, 'Complete');
+  assert.equal(buildGameOnDashboardEntries([game], [share], 'Alex', now, [
+    { date: game.date, opponent: 'Ravens' },
+  ])[0].status, 'Live', 'Calendar-linked cards must use the saved Calendar status');
+});
+
 test('multi-event and meeting shares are not repurposed as Game On cards', () => {
   const game = event('game', 'game', '2026-09-28');
   const cards = buildGameOnDashboardEntries([], [

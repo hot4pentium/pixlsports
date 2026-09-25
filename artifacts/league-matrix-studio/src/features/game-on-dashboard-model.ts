@@ -57,13 +57,22 @@ export function buildGameOnDashboardEntries(
   shares: readonly OwnedGameOnShare[],
   athleteName: string,
   now = new Date(),
+  completedLocalGames: readonly { date: string; opponent: string }[] = [],
 ): GameOnDashboardEntry[] {
   const scheduledById = new Map(events.filter(isCardEvent).map((event) => [event.id, event]));
   const published = shares
     .filter((share) => share.events.length === 1 && isCardEvent(share.events[0]))
     .map((share) => {
       const sharedEvent = share.events[0] as GameOnDashboardEvent & { type: 'game' | 'practice' };
-      return entryForEvent(scheduledById.get(sharedEvent.id) ?? sharedEvent, athleteName, now, share.shareToken);
+      const scheduled = scheduledById.get(sharedEvent.id);
+      const card = entryForEvent(scheduled ?? sharedEvent, athleteName, now, share.shareToken);
+      // An independent card has no Calendar status. Its inline tracker persists
+      // locally, so reflect an ended game when the saved card is reopened.
+      if (!scheduled && sharedEvent.type === 'game' && completedLocalGames.some((game) => (
+        game.date === sharedEvent.date
+        && game.opponent.trim().toLowerCase() === (sharedEvent.opponent ?? '').trim().toLowerCase()
+      ))) card.status = 'Complete';
+      return card;
     });
   const publishedEventIds = new Set(published.map((card) => card.eventId));
   const drafts = events

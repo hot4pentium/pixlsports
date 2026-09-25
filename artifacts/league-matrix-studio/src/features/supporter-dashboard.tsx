@@ -39,7 +39,7 @@ import { GameOnInlineEditor } from './game-on-inline-editor';
 import { GameOnDashboardCollection, type GameOnCardRenderOptions } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
-import type { Sport } from './stat-tracker';
+import { readStoredTrackerData, type Sport } from './stat-tracker';
 import { NotificationSettings } from './notification-settings';
 import { trackEvent } from '../lib/analytics';
 import {
@@ -403,7 +403,10 @@ export function SupporterDashboardView({
       events: [{ ...card.event, type: card.event.type ?? 'game' }],
     }));
   const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
-  const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime);
+  const completedLocalGames = userId
+    ? readStoredTrackerData(window.localStorage, userId).games.filter((game) => game.status === 'final')
+    : [];
+  const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime, completedLocalGames);
   const newDraftCollectionCard = newCardDraft ? {
     id: newCardDraft.id,
     layoutId: newCardDraft.id,

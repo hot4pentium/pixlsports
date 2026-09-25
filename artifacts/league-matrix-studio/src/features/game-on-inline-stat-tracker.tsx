@@ -214,9 +214,12 @@ export function GameOnInlineStatTracker({
     setCalendarStatusSyncError('');
     try {
       await onGameEnded(completed.endedAt ?? new Date().toISOString());
-    } catch {
+    } catch (error) {
+      const status = error && typeof error === 'object' && 'status' in error ? error.status : null;
       setCalendarStatusSyncError(
-        'Stats are saved on this device, but the badge could not be marked Complete. It may still say Live. Retry the Calendar update.',
+        status === 409
+          ? 'Stats are saved on this device, but Calendar changed while this game was open. Retry to update the latest schedule.'
+          : 'Stats are saved on this device, but the Calendar game could not be marked Final. Check your connection and retry the Calendar update.',
       );
     } finally {
       setCalendarStatusSyncing(false);

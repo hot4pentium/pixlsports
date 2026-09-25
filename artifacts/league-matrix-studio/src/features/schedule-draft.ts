@@ -224,6 +224,27 @@ export function getSelectedCloudScheduleProject(
   return schedules.find((project) => project.id === selectedId) ?? schedules[0] ?? null;
 }
 
+export function findScheduleGameOwner(
+  eventId: string,
+  projects: readonly CloudScheduleProject[],
+  selectedProject: CloudScheduleProject | null,
+  localSchedule: ScheduleDraft | null,
+): { draft: ScheduleDraft; project: CloudScheduleProject | null } | null {
+  const ordered = [
+    ...(selectedProject ? [selectedProject] : []),
+    ...projects.filter((project) => project.id !== selectedProject?.id),
+  ];
+  for (const project of ordered) {
+    const draft = normalizeScheduleDraft(project.project);
+    if (draft?.events.some((event) => event.id === eventId && event.type === 'game')) {
+      return { draft, project };
+    }
+  }
+  return localSchedule?.events.some((event) => event.id === eventId && event.type === 'game')
+    ? { draft: localSchedule, project: null }
+    : null;
+}
+
 export function readSupporterScheduleSelection(
   storage: Storage = window.localStorage,
 ): string | null {

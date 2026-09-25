@@ -22,6 +22,7 @@ import {
   getLatestCloudScheduleProject,
   getScheduleIdentity,
   getSelectedCloudScheduleProject,
+  findScheduleGameOwner,
   clearSupporterScheduleSelection,
   readSupporterScheduleSelection,
   saveSupporterScheduleSelection,
@@ -70,6 +71,18 @@ const completeEvents: ScheduleEvent[] = [
     notes: 'Bring the volunteer roster.',
   },
 ];
+
+test('completion finds the saved Calendar that owns a published card even when another schedule is active', () => {
+  const older = { id: 'older', revision: 2, updatedAt: '2026-09-20', project: {
+    tool: 'schedule', teamName: 'Wolves', season: 'Fall', template: 0, events: completeEvents,
+  } };
+  const active = { id: 'active', revision: 4, updatedAt: '2026-09-24', project: {
+    tool: 'schedule', teamName: 'Bears', season: 'Fall', template: 0, events: [],
+  } };
+  const owner = findScheduleGameOwner('game-1', [active, older], active, null);
+  assert.equal(owner?.project?.id, 'older');
+  assert.equal(findScheduleGameOwner('missing', [active, older], active, null), null);
+});
 
 test('local draft round trips team name, season, template, and every event field', () => {
   const storage = new MemoryStorage();
