@@ -1220,19 +1220,35 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                   {Object.entries(invite.stats.stats).map(([id, value]) => <Stat key={id} label={rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' ')} value={value} />)}
                 </div>
                 {gameOptions.length > 0 ? (
-                  <div className="athlete-game-stats-panel mt-6 border-t border-white/10 pt-5" data-testid="athlete-game-stats">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Athlete-attributed stats</p>
-                        <h3 className="mt-2 font-display text-2xl uppercase">Game breakdown</h3>
+                  <div
+                    className="athlete-game-stats-panel mt-6 overflow-hidden rounded-sm border border-orange-200/35 bg-gradient-to-br from-orange-400/10 via-blue-950/55 to-white/5 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] sm:p-5"
+                    data-testid="athlete-game-stats"
+                    role="region"
+                    aria-labelledby="athlete-game-stats-title"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-orange-200/45 bg-orange-300/15 font-display text-2xl text-orange-100 shadow-[0_0_24px_rgba(251,146,60,0.15)]"
+                          aria-hidden="true"
+                          data-testid="athlete-game-stats-monogram"
+                        >
+                          {invite.athleteName.trim().charAt(0).toUpperCase() || 'A'}
+                        </span>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-[.2em] text-orange-100">Player spotlight</p>
+                          <h3 id="athlete-game-stats-title" className="mt-1 font-display text-2xl uppercase text-white sm:text-3xl" data-testid="athlete-game-stats-title">
+                            {invite.athleteName}’s game stats
+                          </h3>
+                        </div>
                       </div>
                       <div className="w-full sm:max-w-sm">
-                        <label htmlFor="athlete-game-select" className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Choose a completed game</label>
+                        <label htmlFor="athlete-game-select" className="text-[10px] font-bold uppercase tracking-[.2em] text-orange-100">Choose a completed game</label>
                         <select
                           id="athlete-game-select"
                           value={selectedGameOption?.key ?? ''}
                           onChange={(event) => setSelectedGameKey(event.target.value)}
-                          className="mt-2 h-11 w-full border border-orange-300/40 bg-black/30 px-3 text-sm font-bold text-white outline-none focus:border-accent"
+                          className="mt-2 h-11 w-full border border-orange-200/35 bg-black/30 px-3 text-sm font-bold text-white outline-none focus:border-orange-200 focus:ring-2 focus:ring-orange-300/25"
                           data-testid="select-athlete-game"
                         >
                           {[...gameOptions].reverse().map(({ game, key, index }) => {
@@ -1245,8 +1261,8 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                       </div>
                     </div>
                     {selectedGameOption && (
-                      <div className="mt-4" data-testid="athlete-game-stat-details">
-                        <p className="text-xs font-bold uppercase tracking-widest text-white/65">
+                      <div className="mt-4 border-t border-orange-200/15 pt-4" data-testid="athlete-game-stat-details">
+                        <p className="text-xs font-bold uppercase tracking-widest text-orange-100/90">
                           {selectedGameOption.game.opponent ? `vs ${selectedGameOption.game.opponent}` : 'Opponent not listed'}
                           {selectedGameOption.game.date && <> · {new Date(`${selectedGameOption.game.date}T12:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</>}
                         </p>
@@ -1263,11 +1279,12 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                                 label={rule.stats.find((item) => item.id === id)?.shortLabel ?? id.replaceAll('-', ' ')}
                                 value={value}
                                 testId={`athlete-game-stat-${id}`}
+                                spotlight
                               />
                             ))}
                           </div>
                         ) : (
-                          <p className="mt-3 border border-white/10 bg-black/20 p-4 text-sm leading-relaxed text-white/55" data-testid="athlete-game-stats-empty">
+                          <p className="mt-3 border border-orange-200/20 bg-black/20 p-4 text-sm leading-relaxed text-white/65" data-testid="athlete-game-stats-empty">
                             No individual stats were recorded for {invite.athleteName} in this game.
                           </p>
                         )}
@@ -1407,8 +1424,10 @@ function calendarTimestamp(date: string, time: string) {
 function escapeCalendar(value: string) {
   return value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
 }
-function Stat({ label, value, primary = false, testId }: { label: string; value: number; primary?: boolean; testId?: string }) {
-  return <div className="border border-white/10 bg-black/20 p-3" data-testid={testId}><p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/50">{label}</p><p className={`mt-1 font-display text-3xl ${primary ? 'text-primary' : 'text-white'}`}>{value}</p></div>;
+function Stat({ label, value, primary = false, testId, spotlight = false }: { label: string; value: number; primary?: boolean; testId?: string; spotlight?: boolean }) {
+  const cardColor = spotlight ? 'border-orange-200/25 bg-orange-300/10' : 'border-white/10 bg-black/20';
+  const valueColor = primary ? 'text-primary' : spotlight ? 'text-orange-100' : 'text-white';
+  return <div className={`border p-3 ${cardColor}`} data-testid={testId}><p className="truncate text-[9px] font-bold uppercase tracking-widest text-white/55">{label}</p><p className={`mt-1 font-display text-3xl ${valueColor}`}>{value}</p></div>;
 }
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-border pt-4"><div><p className="text-sm font-bold">{label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;

@@ -168,6 +168,20 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.match(latestGame, /Riverside/i);
     assert.match(
       await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-game-stats-title\"]')?.textContent || ''",
+        visitor,
+      ),
+      /Jordan’s game stats/,
+    );
+    assert.equal(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-game-stats-monogram\"]')?.textContent?.trim() || ''",
+        visitor,
+      ),
+      'J',
+    );
+    assert.match(
+      await connection.evaluate<string>(
         "document.querySelector('[data-testid=\"athlete-game-stat-assist\"]')?.innerText || ''",
         visitor,
       ),
