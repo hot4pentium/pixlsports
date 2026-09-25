@@ -266,7 +266,98 @@
 
 .game-on-quick-tracker__athlete-tap:hover:not(:disabled) { background: #c5e3ff; }
 
-.game-on-quick-tracker__resume,
+.game-on-quick-tracker__game-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.game-on-quick-tracker__game-action,
+.game-on-quick-tracker__game-confirmation-actions > button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 7px;
+  border: 1px solid #b9d0e4;
+  border-radius: 5px;
+  background: #fff;
+  color: #17467b;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .035em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.game-on-quick-tracker__game-action svg,
+.game-on-quick-tracker__game-confirmation-actions > button svg { flex: 0 0 auto; }
+
+.game-on-quick-tracker__game-action:hover:not(:disabled),
+.game-on-quick-tracker__game-confirmation-actions > button:hover:not(:disabled) {
+  border-color: #70b4ff;
+  background: #e9f4ff;
+}
+
+.game-on-quick-tracker__game-action:disabled,
+.game-on-quick-tracker__game-confirmation-actions > button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.game-on-quick-tracker__game-action--end {
+  border-color: #d9a29b;
+  background: #fff9f8;
+  color: #8e3128;
+}
+
+.game-on-quick-tracker__game-confirmation {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d9a29b;
+  border-radius: 6px;
+  background: #fff6f4;
+}
+
+.game-on-quick-tracker__confirmation-title {
+  margin: 0;
+  color: #8e3128;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.game-on-quick-tracker__confirmation-copy {
+  margin: 4px 0 0;
+  color: #526f8d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.game-on-quick-tracker__game-confirmation-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.game-on-quick-tracker__game-confirmation-actions > .game-on-quick-tracker__confirm-end {
+  border-color: #9e362d;
+  background: #a33b32;
+  color: #fff;
+}
+
+.game-on-quick-tracker__game-confirmation-actions > .game-on-quick-tracker__confirm-end:hover:not(:disabled) {
+  border-color: #7d241c;
+  background: #8e3128;
+}
+
 .game-on-quick-tracker__primary {
   display: inline-flex;
   align-items: center;
@@ -323,4 +414,6 @@
   .game-on-quick-tracker__score-card { padding: 7px; }
   .game-on-quick-tracker__score-value { font-size: 36px; }
   .game-on-quick-tracker__score-actions button { width: 36px; height: 36px; }
+  .game-on-quick-tracker__game-actions,
+  .game-on-quick-tracker__game-confirmation-actions { grid-template-columns: 1fr; }
 }

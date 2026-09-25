@@ -914,7 +914,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       practiceStats: false,
       gameStats: true,
     });
-    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('dashboard-inline-stat-test')`, page.sessionId);
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test');
+      localStorage.removeItem('leaguematrix-stat-tracker:dashboard-inline-stat-test');
+      window.__setSupporterDashboardTrackerUserId('dashboard-inline-stat-test');
+    })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"button-open-stat-tracker-\\"]") !== null', Boolean);
     await connection.evaluate(`(() => {
       const game = Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
@@ -988,6 +992,103 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid^=\\"button-tap-stat-\\"][data-testid$=\\"-two-point-team\\"]")?.closest(".game-on-quick-tracker__stat-card")?.querySelector("strong")?.textContent || ""', page.sessionId),
       '1',
+    );
+    assert.deepEqual(await connection.evaluate<{
+      pauseLabel: string;
+      endLabel: string;
+      bothVisible: boolean;
+    }>(`(() => {
+      const pause = document.querySelector('[data-testid="button-inline-toggle-game-pause"]');
+      const end = document.querySelector('[data-testid="button-inline-end-game"]');
+      return {
+        pauseLabel: pause?.textContent?.trim() || '',
+        endLabel: end?.textContent?.trim() || '',
+        bothVisible: Boolean(pause?.getClientRects().length && end?.getClientRects().length),
+      };
+    })()`, page.sessionId), {
+      pauseLabel: 'Pause game',
+      endLabel: 'End game',
+      bothVisible: true,
+    });
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-toggle-game-pause"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.includes('Paused')
+      && JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status === 'paused'`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      status: string;
+      statsDisabled: boolean;
+    }>(`(() => ({
+      status: document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.trim() || '',
+      statsDisabled: Boolean(document.querySelector('[data-testid="button-tap-stat-game-1-two-point-team"]')?.disabled),
+    }))()`, page.sessionId), {
+      status: 'Paused',
+      statsDisabled: true,
+    });
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.includes('Paused')
+      && document.querySelector('[data-testid="button-inline-toggle-game-pause"]')?.textContent?.includes('Resume game')`, Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-toggle-game-pause"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="game-on-inline-status"]')?.textContent?.includes('Live')
+      && JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status === 'live'`, Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      confirmationVisible: boolean;
+      activeGameStatus: string | null;
+      historyFinalCount: number;
+    }>(`(() => {
+      const history = JSON.parse(localStorage.getItem('leaguematrix-stat-tracker:dashboard-inline-stat-test') || '{"games":[]}');
+      return {
+        confirmationVisible: Boolean(document.querySelector('[data-testid="confirm-inline-end-game"]')?.textContent?.includes('End this game?')),
+        activeGameStatus: JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status || null,
+        historyFinalCount: history.games.filter((item) => item.date === '2026-09-21' && item.opponent === 'Rivals' && item.status === 'final').length,
+      };
+    })()`, page.sessionId), {
+      confirmationVisible: true,
+      activeGameStatus: 'live',
+      historyFinalCount: 0,
+    });
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-cancel-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `!document.querySelector('[data-testid="confirm-inline-end-game"]')
+      && document.activeElement?.getAttribute('data-testid') === 'button-inline-end-game'
+      && JSON.parse(localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test') || 'null')?.status === 'live'`, Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-inline-tracker-completed\\"]") !== null', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      activeGame: string | null;
+      completed: { status: string; score: number; statCount: number; attribution: string } | null;
+    }>(`(() => {
+      const history = JSON.parse(localStorage.getItem('leaguematrix-stat-tracker:dashboard-inline-stat-test') || '{"games":[]}');
+      const completed = history.games.find((item) => item.date === '2026-09-21' && item.opponent === 'Rivals');
+      return {
+        activeGame: localStorage.getItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test'),
+        completed: completed ? {
+          status: completed.status,
+          score: completed.score,
+          statCount: completed.stats?.['two-point'] || 0,
+          attribution: completed.events?.[0]?.attribution || '',
+        } : null,
+      };
+    })()`, page.sessionId), {
+      activeGame: null,
+      completed: {
+        status: 'final',
+        score: 2,
+        statCount: 1,
+        attribution: 'team',
+      },
+    });
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"status-inline-tracker-completed\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(`Boolean(document.querySelector('[data-testid="game-on-inline-scoreboard"]'))`, page.sessionId),
+      false,
+      'reopening a completed game should not silently start a duplicate tracker',
     );
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);

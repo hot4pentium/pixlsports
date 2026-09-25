@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
-import { ExternalLink, Minus, Plus, RotateCcw } from 'lucide-react';
+import { CircleStop, ExternalLink, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react';
 import {
   addStatEvent,
   adjustScore,
   countStatEventsByAttribution,
   createGameSession,
+  endGame,
   getSportRule,
   getTrackerStorageKeys,
   getTrackerSportForProfile,
@@ -36,6 +37,13 @@ function eventMatchesGame(game: GameSession, date: string, opponent: string) {
     && game.opponent.trim().toLowerCase() === opponent.trim().toLowerCase();
 }
 
+function findCompletedGame(userId: string, date: string, opponent: string) {
+  const { games } = readStoredTrackerData(window.localStorage, userId);
+  return [...games].reverse().find((candidate) => (
+    candidate.status === 'final' && eventMatchesGame(candidate, date, opponent)
+  )) ?? null;
+}
+
 function initials(name: string) {
   return name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '').join('') || 'A';
@@ -53,12 +61,21 @@ export function GameOnInlineStatTracker({
   opponent,
 }: GameOnInlineStatTrackerProps) {
   const titleId = useId();
+  const endConfirmationId = useId();
+  const endConfirmationHeadingId = useId();
   const currentGameRef = useRef<GameSession | null>(null);
+  const endGameButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelEndGameButtonRef = useRef<HTMLButtonElement>(null);
+  const completedStatusRef = useRef<HTMLDivElement>(null);
+  const wasConfirmingEndGame = useRef(false);
+  const focusCompletedStatusOnEnd = useRef(false);
   const [game, setGame] = useState<GameSession | null>(null);
+  const [completedGame, setCompletedGame] = useState<GameSession | null>(null);
   const [otherActiveGame, setOtherActiveGame] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [endedElsewhere, setEndedElsewhere] = useState(false);
+  const [confirmEndGame, setConfirmEndGame] = useState(false);
   const trackerHref = buildWorkspaceToolHref('stats', {
     id: eventId,
     type: 'game',
@@ -73,6 +90,26 @@ export function GameOnInlineStatTracker({
     setGame(next);
   };
 
+  useEffect(() => {
+    if (confirmEndGame) {
+      cancelEndGameButtonRef.current?.focus();
+    } else if (wasConfirmingEndGame.current) {
+      endGameButtonRef.current?.focus();
+    }
+    wasConfirmingEndGame.current = confirmEndGame;
+  }, [confirmEndGame]);
+
+  useEffect(() => {
+    if (completedGame && focusCompletedStatusOnEnd.current) {
+      completedStatusRef.current?.focus();
+      focusCompletedStatusOnEnd.current = false;
+    }
+  }, [completedGame]);
+
+  useEffect(() => {
+    setConfirmEndGame(false);
+  }, [game?.id]);
+
   const createEventGame = () => {
     if (!userId) return;
     try {
@@ -80,6 +117,7 @@ export function GameOnInlineStatTracker({
       const next = createGameSession(getTrackerSportForProfile(storedData, sport), { date, opponent });
       saveStoredActiveGame(window.localStorage, userId, next);
       setOtherActiveGame(null);
+      setCompletedGame(null);
       setEndedElsewhere(false);
       setCurrentGame(next);
       setError('');
@@ -92,6 +130,7 @@ export function GameOnInlineStatTracker({
     setLoading(true);
     setError('');
     setOtherActiveGame(null);
+    setCompletedGame(null);
     setEndedElsewhere(false);
     setCurrentGame(null);
 
@@ -106,7 +145,9 @@ export function GameOnInlineStatTracker({
         if (eventMatchesGame(activeGame, date, opponent)) setCurrentGame(activeGame);
         else setOtherActiveGame(activeGame);
       } else {
-        createEventGame();
+        const completed = findCompletedGame(userId, date, opponent);
+        if (completed) setCompletedGame(completed);
+        else createEventGame();
       }
     } catch {
       setError('The saved Stat Tracker game could not be opened on this device.');
@@ -126,15 +167,19 @@ export function GameOnInlineStatTracker({
         if (!activeGame) {
           setOtherActiveGame(null);
           setCurrentGame(null);
-          setEndedElsewhere(true);
+          const completed = findCompletedGame(userId, date, opponent);
+          setCompletedGame(completed);
+          setEndedElsewhere(!completed);
           return;
         }
         setEndedElsewhere(false);
         if (eventMatchesGame(activeGame, date, opponent)) {
           setOtherActiveGame(null);
+          setCompletedGame(null);
           setCurrentGame(activeGame);
         } else {
           setCurrentGame(null);
+          setCompletedGame(null);
           setOtherActiveGame(activeGame);
         }
       } catch {
@@ -156,6 +201,30 @@ export function GameOnInlineStatTracker({
       setError('');
     } catch {
       setError('This update could not be saved on this device. Check storage access before continuing.');
+    }
+  };
+
+  const finishGame = () => {
+    const current = currentGameRef.current;
+    if (!current || !userId) return;
+    try {
+      const completed = endGame(current);
+      const storedData = readStoredTrackerData(window.localStorage, userId);
+      const nextData = {
+        ...storedData,
+        games: [...storedData.games.filter((savedGame) => savedGame.id !== completed.id), completed],
+      };
+      window.localStorage.setItem(getTrackerStorageKeys(userId).history, JSON.stringify(nextData));
+      saveStoredActiveGame(window.localStorage, userId, null);
+      setCurrentGame(null);
+      focusCompletedStatusOnEnd.current = true;
+      setCompletedGame(completed);
+      setOtherActiveGame(null);
+      setEndedElsewhere(false);
+      setConfirmEndGame(false);
+      setError('');
+    } catch {
+      setError('The game could not be ended. Your live stats are still saved on this device.');
     }
   };
 
@@ -199,13 +268,18 @@ export function GameOnInlineStatTracker({
           <p>This game was ended in another tab.</p>
           <button type="button" onClick={createEventGame} className="game-on-quick-tracker__primary">Start a new tracker</button>
         </div>
+      ) : completedGame && !game ? (
+        <div ref={completedStatusRef} tabIndex={-1} className="game-on-quick-tracker__message" role="status" data-testid="status-inline-tracker-completed">
+          <p>This game is ended and saved on this device. Open the full tracker to review or sync it.</p>
+          <button type="button" onClick={createEventGame} className="game-on-quick-tracker__primary" data-testid="button-inline-new-tracker">Start another tracker</button>
+        </div>
       ) : error && !game ? (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">{error}</p>
       ) : game && rule ? (
         <>
           <div className="game-on-quick-tracker__scoreboard" data-testid="game-on-inline-scoreboard" aria-live="polite">
             <div className="game-on-quick-tracker__scoreboard-top">
-              <span className={`game-on-quick-tracker__live${game.status === 'paused' ? ' game-on-quick-tracker__live--paused' : ''}`}>
+              <span className={`game-on-quick-tracker__live${game.status === 'paused' ? ' game-on-quick-tracker__live--paused' : ''}`} data-testid="game-on-inline-status">
                 <span aria-hidden="true" /> {game.status === 'paused' ? 'Paused' : 'Live'}
               </span>
               <span className="game-on-quick-tracker__period">{rule.phaseLabel} {game.period}</span>
@@ -226,12 +300,6 @@ export function GameOnInlineStatTracker({
               ))}
             </div>
           </div>
-
-          {game.status === 'paused' && (
-            <button type="button" className="game-on-quick-tracker__resume" onClick={() => updateGame((current) => ({ ...current, status: 'live' }))}>
-              Resume live tracking
-            </button>
-          )}
 
           <div className="game-on-quick-tracker__stats-heading">
             <div>
@@ -276,6 +344,56 @@ export function GameOnInlineStatTracker({
             })}
           </div>
           {error && <p className="game-on-quick-tracker__save-warning" role="alert">{error}</p>}
+          {confirmEndGame ? (
+            <div
+              className="game-on-quick-tracker__game-confirmation"
+              id={endConfirmationId}
+              role="group"
+              aria-labelledby={endConfirmationHeadingId}
+              data-testid="confirm-inline-end-game"
+            >
+              <div role="alert">
+                <p id={endConfirmationHeadingId} className="game-on-quick-tracker__confirmation-title">End this game?</p>
+                <p className="game-on-quick-tracker__confirmation-copy">This saves the current stats as a completed game on this device.</p>
+              </div>
+              <div className="game-on-quick-tracker__game-confirmation-actions">
+                <button
+                  type="button"
+                  ref={cancelEndGameButtonRef}
+                  onClick={() => setConfirmEndGame(false)}
+                  data-testid="button-inline-cancel-end-game"
+                >
+                  {game.status === 'paused' ? 'Keep game paused' : 'Keep tracking'}
+                </button>
+                <button type="button" className="game-on-quick-tracker__confirm-end" onClick={finishGame} data-testid="button-inline-confirm-end-game">
+                  <CircleStop size={15} aria-hidden="true" /> End &amp; save game
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="game-on-quick-tracker__game-actions" data-testid="inline-tracker-game-actions">
+              <button
+                type="button"
+                className="game-on-quick-tracker__game-action"
+                onClick={() => updateGame((current) => ({ ...current, status: current.status === 'paused' ? 'live' : 'paused' }))}
+                aria-label={game.status === 'paused' ? 'Resume live tracking' : 'Pause this game'}
+                data-testid="button-inline-toggle-game-pause"
+              >
+                {game.status === 'paused' ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
+                {game.status === 'paused' ? 'Resume game' : 'Pause game'}
+              </button>
+              <button
+                type="button"
+                ref={endGameButtonRef}
+                className="game-on-quick-tracker__game-action game-on-quick-tracker__game-action--end"
+                onClick={() => setConfirmEndGame(true)}
+                aria-controls={endConfirmationId}
+                data-testid="button-inline-end-game"
+              >
+                <CircleStop size={15} aria-hidden="true" /> End game
+              </button>
+            </div>
+          )}
           <p className="game-on-quick-tracker__save-note" role="status">Stats save on this device and are ready when you open the full tracker.</p>
         </>
       ) : (
