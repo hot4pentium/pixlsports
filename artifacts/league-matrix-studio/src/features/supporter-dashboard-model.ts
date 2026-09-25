@@ -56,6 +56,31 @@ export function getUserProfile(user: UserLike): UserProfile {
   };
 }
 
+type FanCardDestinationCandidate = {
+  inviteToken: string;
+  athleteName: string;
+  teamName: string;
+  paused: boolean;
+};
+
+export function getSupporterFanCardHref(
+  invites: readonly FanCardDestinationCandidate[],
+  profile: Pick<SupporterProfile, 'athleteName' | 'teamName'>,
+) {
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const athleteName = normalize(profile.athleteName);
+  const teamName = normalize(profile.teamName);
+  const matchingInvite = athleteName
+    ? invites.find((invite) => normalize(invite.athleteName) === athleteName
+      && (!teamName || normalize(invite.teamName) === teamName))
+    : undefined;
+  const invite = matchingInvite ?? (invites.length === 1 ? invites[0] : undefined);
+
+  return invite && !invite.paused
+    ? `/fan/${encodeURIComponent(invite.inviteToken)}`
+    : '/studio/athlete-page';
+}
+
 export function supporterProfileFromUser(user: UserLike): SupporterProfile {
   const profile = getUserProfile(user);
   return {

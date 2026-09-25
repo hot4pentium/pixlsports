@@ -1692,13 +1692,15 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       const profileLink = document.querySelector('[data-testid="btn-mobile-open-profile"]');
       const prep = document.querySelector('[data-testid^="button-open-card-prep-"]');
        const stats = document.querySelector('[data-testid^="button-open-stat-tracker-"]');
+      const hypeLink = document.querySelector('[data-testid="link-mobile-independent-hype"]');
       return {
         profileTag: profileLink?.tagName || '',
         profileHref: profileLink?.getAttribute('href') || null,
         scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
         prepHref: prep?.getAttribute('data-prep-href') || '',
          trackerAction: stats?.getAttribute('aria-label') || null,
-        hypeHref: document.querySelector('[data-testid="link-mobile-independent-hype"]')?.getAttribute('href') || null,
+        hypeHref: hypeLink?.getAttribute('href') || null,
+        hypeLabel: hypeLink?.textContent?.trim() || '',
         oldPanelsRemoved: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="card-mobile-recommendation"]'),
       };
     })()`, page.sessionId), {
@@ -1707,7 +1709,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       scheduleHref: '/studio/schedule?eventId=game-1',
       prepHref: '/studio/checklist?gameId=game-1&eventType=game',
       trackerAction: 'Open Stat Tracker',
-      hypeHref: '/studio/hype-card?source=workspace&eventId=game-1&eventType=game&date=2026-09-21&opponent=Rivals',
+      hypeHref: '/fan/browser-test-fan-card',
+      hypeLabel: 'View Hype Card',
       oldPanelsRemoved: true,
     });
     await connection.evaluate(`(() => {
@@ -2526,7 +2529,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       ['btn-mobile-nav-home', '/studio'],
       ['btn-mobile-nav-prep', '/studio/checklist'],
       ['btn-mobile-nav-stat-tracker', '/studio/stat-tracker'],
-      ['btn-mobile-nav-hype', '/studio/hype-card'],
+      ['btn-mobile-nav-hype', '/fan/browser-test-fan-card'],
     ]) {
       const target = await connection.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
         const element = document.querySelector('[data-testid="${testId}"]');
@@ -3233,6 +3236,19 @@ export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const requestUrl = typeof input === 'string' ? input : input.url;
+    if (
+      window.location.search.includes('game-on-card-save-transition')
+      && new URL(requestUrl, window.location.href).pathname === '/api/athlete-invites'
+    ) {
+      return Promise.resolve(new Response(JSON.stringify([{
+        inviteToken: 'browser-test-fan-card',
+        athleteName: 'Test Athlete',
+        teamName: 'Northside',
+        paused: false,
+      }]), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
     if (new URL(requestUrl, window.location.href).pathname === '/api/game-on-cards/owned') {
       return Promise.resolve(new Response('[]', {
         status: 200, headers: { 'Content-Type': 'application/json' },

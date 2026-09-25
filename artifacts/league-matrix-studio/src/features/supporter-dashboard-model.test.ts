@@ -8,6 +8,7 @@ import {
   getSupporterScheduleSelection,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
+  getSupporterFanCardHref,
   getStudioDestination,
   getUserRole,
   mapRecentSupporterProjects,
@@ -16,6 +17,39 @@ import {
 test('legacy metadata always reaches the supporter studio', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'fan' } })), 'supporter');
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'legacy' } })), 'supporter');
+});
+
+test('the Hype Card action opens the matching living athlete card', () => {
+  const invites = [
+    { inviteToken: 'north-token', athleteName: 'Casey Rivera', teamName: 'North Stars', paused: false },
+    { inviteToken: 'south-token', athleteName: 'Casey Rivera', teamName: 'South Stars', paused: false },
+  ];
+
+  assert.equal(
+    getSupporterFanCardHref(invites, { athleteName: ' casey rivera ', teamName: 'NORTH STARS' }),
+    '/fan/north-token',
+  );
+});
+
+test('the Hype Card action falls back to setup when the card is missing or paused', () => {
+  assert.equal(getSupporterFanCardHref([], { athleteName: 'Casey', teamName: 'North Stars' }), '/studio/athlete-page');
+  assert.equal(
+    getSupporterFanCardHref(
+      [
+        { inviteToken: 'north-token', athleteName: 'Casey', teamName: 'North Stars', paused: false },
+        { inviteToken: 'south-token', athleteName: 'Jordan', teamName: 'South Stars', paused: false },
+      ],
+      { athleteName: 'Unknown athlete', teamName: 'Unknown team' },
+    ),
+    '/studio/athlete-page',
+  );
+  assert.equal(
+    getSupporterFanCardHref(
+      [{ inviteToken: 'paused-token', athleteName: 'Casey', teamName: 'North Stars', paused: true }],
+      { athleteName: 'Casey', teamName: 'North Stars' },
+    ),
+    '/studio/athlete-page',
+  );
 });
 
 test('custom saved schedules are selected when available', () => {

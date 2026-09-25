@@ -3,8 +3,10 @@ import { Link, useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
+  getListAthleteInvitesQueryKey,
   getListOwnedGameOnCardsQueryKey,
   useGetSupporterActiveGame,
+  useListAthleteInvites,
   useListOwnedGameOnCards,
   useUpdateSupporterActiveGame,
 } from '@workspace/api-client-react';
@@ -18,6 +20,7 @@ import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
   getSupporterGameStage,
+  getSupporterFanCardHref,
   getSupporterPreparationContext,
   getSupporterPreparationCopy,
   getSupporterWeekRecommendation,
@@ -344,6 +347,17 @@ export function SupporterDashboardView({
       refetchOnWindowFocus: true,
     },
   });
+  const athleteInvitesQuery = useListAthleteInvites({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getListAthleteInvitesQueryKey(), userId ?? null],
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+      retry: false,
+    },
+  });
+  const fanCardHref = getSupporterFanCardHref(athleteInvitesQuery.data ?? [], profile);
   const updateActiveGameSelection = useUpdateSupporterActiveGame();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -639,8 +653,6 @@ export function SupporterDashboardView({
     return view && event ? `${href}&view=${view}` : href;
   };
   const contextChecklistHref = checklistHrefForGame(contextEvent);
-  const hypeCardHref = buildWorkspaceToolHref('hype', toToolContext(contextEvent));
-
   useEffect(() => {
     if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -924,10 +936,10 @@ export function SupporterDashboardView({
         )}
         {gameStage === 'completed' && (
           <Link
-            href={hypeCardHref}
+            href={fanCardHref}
             data-testid={variant === 'desktop' ? 'link-context-hype-card' : undefined}
           >
-            <Zap size={15} aria-hidden="true" /> Make a Hype Card
+            <Zap size={15} aria-hidden="true" /> View Hype Card
           </Link>
         )}
         {!contextEvent && (
@@ -1024,8 +1036,8 @@ export function SupporterDashboardView({
             statTrackerTeamName={profile.teamName}
             onCompleteScheduledGame={onCompleteScheduledGame}
           />
-          <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
-            <Zap size={16} aria-hidden="true" /> Make a Hype Card
+          <Link href={fanCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
+            <Zap size={16} aria-hidden="true" /> View Hype Card
           </Link>
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
@@ -1067,7 +1079,7 @@ export function SupporterDashboardView({
              </div>
              <span className="text-[10px] font-bold">Stats</span>
            </button>
-            <button type="button" onClick={() => setLocation(hypeCardHref)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Hype" data-testid="btn-mobile-nav-hype">
+            <button type="button" onClick={() => setLocation(fanCardHref)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="View Hype Card" data-testid="btn-mobile-nav-hype">
              <div className="w-8 h-8 rounded-full flex items-center justify-center">
                <Zap className="w-[20px] h-[20px]" />
              </div>
@@ -1141,8 +1153,8 @@ export function SupporterDashboardView({
         statTrackerTeamName={profile.teamName}
         onCompleteScheduledGame={onCompleteScheduledGame}
       />
-      <Link href={hypeCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
-        <Zap size={16} aria-hidden="true" /> Make a Hype Card
+      <Link href={fanCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
+        <Zap size={16} aria-hidden="true" /> View Hype Card
       </Link>
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
