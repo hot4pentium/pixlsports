@@ -37,10 +37,8 @@ import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import { GameOnCardPanel } from './game-on-card';
 import { GameOnInlineEditor } from './game-on-inline-editor';
 import {
-  GAME_ON_STATUS_FILTERS,
   GameOnDashboardCollection,
   type GameOnCardRenderOptions,
-  type GameOnStatusFilter,
 } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
@@ -204,22 +202,6 @@ export interface SupporterDashboardViewProps {
   onSignOut?: () => void;
 }
 
-function gameOnStatusFilterStorageKey(userId: string) {
-  return `pixlsports-game-on-status-filter:${encodeURIComponent(userId)}`;
-}
-
-function readGameOnStatusFilter(userId?: string | null): GameOnStatusFilter {
-  if (!userId || typeof window === 'undefined') return 'All statuses';
-  try {
-    const storedFilter = window.sessionStorage.getItem(gameOnStatusFilterStorageKey(userId));
-    return GAME_ON_STATUS_FILTERS.includes(storedFilter as GameOnStatusFilter)
-      ? storedFilter as GameOnStatusFilter
-      : 'All statuses';
-  } catch {
-    return 'All statuses';
-  }
-}
-
 function formatDateDisplay(dateStr: string) {
   try {
     const d = parseISO(dateStr);
@@ -337,27 +319,6 @@ export function SupporterDashboardView({
   const updateActiveGameSelection = useUpdateSupporterActiveGame();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const activeFilterUserId = userId ?? null;
-  const [gameOnFilterSelection, setGameOnFilterSelection] = useState<{
-    userId: string | null;
-    filter: GameOnStatusFilter;
-  }>(() => ({
-    userId: activeFilterUserId,
-    filter: readGameOnStatusFilter(activeFilterUserId),
-  }));
-  const gameOnStatusFilter = gameOnFilterSelection.userId === activeFilterUserId
-    ? gameOnFilterSelection.filter
-    : readGameOnStatusFilter(activeFilterUserId);
-  const updateGameOnStatusFilter = (filter: GameOnStatusFilter) => {
-    if (userId) {
-      try {
-        window.sessionStorage.setItem(gameOnStatusFilterStorageKey(userId), filter);
-      } catch {
-        // Keep the filter usable for this mounted dashboard when session storage is unavailable.
-      }
-    }
-    setGameOnFilterSelection({ userId: activeFilterUserId, filter });
-  };
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const ownedGameOnCardsQuery = useListOwnedGameOnCards({
     query: {
@@ -933,8 +894,6 @@ export function SupporterDashboardView({
           </section>
           <GameOnDashboardCollection
             cards={collectionCards}
-            statusFilter={gameOnStatusFilter}
-            onStatusFilterChange={updateGameOnStatusFilter}
             onCreate={openCardWorkspace}
             createDisabled={Boolean(newCardDraft)}
             onOpen={selectCard}
@@ -1204,8 +1163,6 @@ export function SupporterDashboardView({
       </div>
       <GameOnDashboardCollection
         cards={collectionCards}
-        statusFilter={gameOnStatusFilter}
-        onStatusFilterChange={updateGameOnStatusFilter}
         onCreate={openCardWorkspace}
         createDisabled={Boolean(newCardDraft)}
         onOpen={selectCard}

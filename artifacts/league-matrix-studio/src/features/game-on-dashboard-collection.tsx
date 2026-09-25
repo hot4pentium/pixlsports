@@ -32,8 +32,6 @@ export type GameOnCardRenderOptions = {
 
 type GameOnDashboardCollectionProps = {
   cards: DashboardGameOnCard[];
-  statusFilter: GameOnStatusFilter;
-  onStatusFilterChange: (filter: GameOnStatusFilter) => void;
   onCreate: () => void;
   createDisabled?: boolean;
   onOpen: (id: string, trigger?: HTMLButtonElement) => void;
@@ -49,16 +47,6 @@ type GameOnDashboardCollectionProps = {
   statTrackerTeamName?: string;
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
 };
-
-export type GameOnStatusFilter = 'All statuses' | DashboardGameOnCard['status'];
-
-export const GAME_ON_STATUS_FILTERS: GameOnStatusFilter[] = [
-  'All statuses',
-  'Live',
-  'Complete',
-  'Draft',
-  'Published',
-];
 
 function getCardStatus(card: DashboardGameOnCard): DashboardGameOnCard['status'] {
   return card.status === 'Published' && !card.isPublished ? 'Draft' : card.status;
@@ -368,8 +356,6 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
 
 export function GameOnDashboardCollection({
   cards,
-  statusFilter,
-  onStatusFilterChange,
   onCreate,
   createDisabled = false,
   onOpen,
@@ -404,23 +390,12 @@ export function GameOnDashboardCollection({
       setPortalContainer((element.closest('.supporter-dashboard-mobile-shell, .supporter-dashboard-desktop-shell') as HTMLElement | null) ?? document.body);
     }
   }, []);
-  const statusCounts: Record<DashboardGameOnCard['status'], number> = {
-    Draft: 0,
-    Published: 0,
-    Live: 0,
-    Complete: 0,
-  };
-  cards.forEach((card) => {
-    statusCounts[getCardStatus(card)] += 1;
-  });
   const searchTerms = normalizeSearchText(searchQuery).split(' ').filter(Boolean);
-  const matchesStatusFilter = (card: DashboardGameOnCard) =>
-    statusFilter === 'All statuses' || getCardStatus(card) === statusFilter;
   const matchesSearch = (card: DashboardGameOnCard) => {
     const cardSearchText = getCardSearchText(card);
     return searchTerms.every((term) => cardSearchText.includes(term));
   };
-  const visibleCards = cards.filter((card) => matchesStatusFilter(card) && matchesSearch(card));
+  const visibleCards = cards.filter(matchesSearch);
   const hasSearchQuery = searchTerms.length > 0;
   const selectedCard = cards.find((card) => card.id === selectedId);
   const dialogOpen = Boolean(isActiveShell && selectedCard);
@@ -479,7 +454,7 @@ export function GameOnDashboardCollection({
         ?? gridTriggers.find((button) => button.closest<HTMLElement>('.game-on-collection__card')?.dataset.layoutId === selectedCardLayoutIdRef.current && button.getClientRects().length > 0);
     const firstVisibleTrigger = gridTriggers.find((button) => button.getClientRects().length > 0);
     const collectionFallback = collectionRef.current?.querySelector<HTMLElement>(
-      '[data-testid="button-clear-game-on-search-empty"], [data-testid="button-reset-game-on-filter"], [data-testid="input-search-game-on-cards"], [data-testid="button-create-game-on-card"]',
+      '[data-testid="button-clear-game-on-search-empty"], [data-testid="input-search-game-on-cards"], [data-testid="button-create-game-on-card"]',
     );
     const trigger = selectedTrigger ?? firstVisibleTrigger ?? collectionFallback;
     trigger?.focus();
@@ -538,25 +513,6 @@ export function GameOnDashboardCollection({
                 Showing {visibleCards.length} of {cardCountLabel(cards.length)}
               </span>
             </div>
-            <div className="game-on-collection__filters" role="group" aria-label="Filter Game On cards by status">
-              {GAME_ON_STATUS_FILTERS.map((filter) => {
-                const count = filter === 'All statuses' ? cards.length : statusCounts[filter];
-                return (
-                  <button
-                    key={filter}
-                    type="button"
-                    className={`game-on-collection__filter${statusFilter === filter ? ' game-on-collection__filter--selected' : ''}`}
-                    aria-pressed={statusFilter === filter}
-                    aria-label={`${filter}: ${cardCountLabel(count)}`}
-                    data-testid={`button-filter-game-on-${filter === 'All statuses' ? 'all' : filter.toLowerCase()}`}
-                    onClick={() => onStatusFilterChange(filter)}
-                  >
-                    <span>{filter}</span>
-                    <span className="game-on-collection__filter-count">{count}</span>
-                  </button>
-                );
-              })}
-            </div>
             <div className="game-on-collection__search" role="search" aria-label="Search Game On cards">
               <Search size={17} aria-hidden="true" />
               <input
@@ -580,37 +536,22 @@ export function GameOnDashboardCollection({
             </div>
           </div>
         )}
-        {cards.length > 0 && visibleCards.length === 0 && (
+        {hasSearchQuery && visibleCards.length === 0 && (
           <div className="game-on-collection__empty game-on-collection__empty--filtered" data-testid="status-game-on-filter-empty">
             <div>
-              <h3 className="game-on-collection__empty-title">
-                {hasSearchQuery ? 'No cards match your search.' : `No ${statusFilter.toLowerCase()} cards yet.`}
-              </h3>
+              <h3 className="game-on-collection__empty-title">No cards match your search.</h3>
               <p className="game-on-collection__empty-copy">
-                {hasSearchQuery
-                  ? 'Try another opponent, location, or date, or clear your search to see the matching cards again.'
-                  : 'Choose another status or show all of your cards.'}
+                Try another opponent, location, or date, or clear your search to see the matching cards again.
               </p>
             </div>
-            {hasSearchQuery ? (
-              <button
-                type="button"
-                className="game-on-collection__reset-filter"
-                onClick={() => setSearchQuery('')}
-                data-testid="button-clear-game-on-search-empty"
-              >
-                Clear search
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="game-on-collection__reset-filter"
-                onClick={() => onStatusFilterChange('All statuses')}
-                data-testid="button-reset-game-on-filter"
-              >
-                Show all cards
-              </button>
-            )}
+            <button
+              type="button"
+              className="game-on-collection__reset-filter"
+              onClick={() => setSearchQuery('')}
+              data-testid="button-clear-game-on-search-empty"
+            >
+              Clear search
+            </button>
           </div>
         )}
         <LayoutGroup id={layoutGroupId}>
@@ -632,7 +573,7 @@ export function GameOnDashboardCollection({
                   selected={false}
                   triggerSelected={dialogOpen && selectedId === card.id}
                   dialogId={`game-on-card-dialog-${dialogId}`}
-                  visible={matchesStatusFilter(card) && matchesSearch(card)}
+                  visible={matchesSearch(card)}
                   upNextEventId={upNextEventId}
                   renderSelectedCard={renderSelectedCard}
                   panel={null}
