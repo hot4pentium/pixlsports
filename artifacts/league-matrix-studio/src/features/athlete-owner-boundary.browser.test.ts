@@ -78,9 +78,10 @@ test('player-page owner tools remain private across account changes and pause', 
     const viewer = request.headers['x-test-viewer'] as string || 'visitor';
     const path = new URL(request.url || '/', 'http://localhost').pathname;
     const method = request.method || 'GET';
+    const hasImageHighlight = request.headers['x-test-image'] === 'true';
     requests.push({ viewer, method, path });
     response.setHeader('Access-Control-Allow-Origin', '*');
-    response.setHeader('Access-Control-Allow-Headers', 'content-type, x-test-viewer');
+    response.setHeader('Access-Control-Allow-Headers', 'content-type, x-test-viewer, x-test-image');
     response.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, POST, DELETE, OPTIONS');
     if (method === 'OPTIONS') { response.writeHead(204).end(); return; }
     const json = (status: number, body: unknown) => response.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body));
@@ -89,7 +90,25 @@ test('player-page owner tools remain private across account changes and pause', 
     } else if (path === `/api/athlete-invites/${token}` && method === 'GET') {
       json(paused && viewer !== 'owner' ? 404 : 200, paused && viewer !== 'owner'
         ? { error: 'Athlete invite not found' }
-        : { ...owned, paused, hypeCard: null, videos: [], stats, scheduleEvents: [], replies: [], liveGame: null });
+        : {
+            ...owned,
+            paused,
+            hypeCard: hasImageHighlight
+              ? {
+                  shareToken: 'image-highlight-test-token',
+                  title: 'Sideline moment',
+                  mediaName: 'Sideline moment',
+                  mediaType: 'image',
+                  posterUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+                  createdAt: new Date().toISOString(),
+                }
+              : null,
+            videos: [],
+            stats,
+            scheduleEvents: [],
+            replies: [],
+            liveGame: null,
+          });
     } else if (path === `/api/athlete-invites/${token}` && method === 'PATCH' && viewer === 'owner') {
       let raw = '';
       for await (const chunk of request) raw += chunk;
@@ -128,7 +147,7 @@ test('player-page owner tools remain private across account changes and pause', 
       .then((result) => result.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
 
-    const open = async (viewer: 'owner' | 'other' | 'visitor', view: 'public' | 'manage') => {
+    const open = async (viewer: 'owner' | 'other' | 'visitor', view: 'public' | 'manage', imageHighlight = false) => {
       const target = await connection!.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
       const { sessionId } = await connection!.send<{ sessionId: string }>('Target.attachToTarget', {
         targetId: target.targetId, flatten: true,
@@ -144,6 +163,7 @@ test('player-page owner tools remain private across account changes and pause', 
             if (!url.startsWith('/api/')) return originalFetch(input, init);
             const headers = new Headers(init?.headers);
             headers.set('x-test-viewer', ${JSON.stringify(viewer)});
+            if (${JSON.stringify(imageHighlight)}) headers.set('x-test-image', 'true');
             return originalFetch(${JSON.stringify(`http://127.0.0.1:${apiPort}`)} + url, { ...init, headers });
           };
         })();
@@ -161,6 +181,26 @@ test('player-page owner tools remain private across account changes and pause', 
     const visitor = await open('visitor', 'public');
     await waitFor(connection, visitor, element('[data-testid="public-athlete-invite"]'), Boolean, 30_000);
     await waitFor(connection, visitor, element('[data-testid="select-athlete-game"]'), Boolean, 30_000);
+    await waitFor(connection, visitor, element('[data-testid="athlete-video-empty-state"]'), Boolean, 30_000);
+    assert.equal(await connection.evaluate(element('[data-testid="athlete-highlights-heading"]'), visitor), false);
+    assert.match(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-video-empty-state\"]')?.innerText || ''",
+        visitor,
+      ),
+      /Highlights are coming/i,
+    );
+    assert.equal(
+      await connection.evaluate(
+        "Boolean(document.querySelector('[data-testid=\"athlete-video-empty-state\"]')?.innerText.includes('Video highlights'))",
+        visitor,
+      ),
+      false,
+    );
+    assert.equal(await connection.evaluate(
+      "Boolean(document.querySelector('[data-testid=\"athlete-game-stats\"]')?.compareDocumentPosition(document.getElementById('athlete-season-stats')) & Node.DOCUMENT_POSITION_FOLLOWING)",
+      visitor,
+    ), true);
     const latestGame = await connection.evaluate<string>(
       "document.querySelector('[data-testid=\"athlete-game-stat-details\"]')?.innerText || ''",
       visitor,
@@ -197,6 +237,16 @@ test('player-page owner tools remain private across account changes and pause', 
         visitor,
       ),
       /team- and athlete-attributed entries/,
+    );
+    const visitorWithImage = await open('visitor', 'public', true);
+    await waitFor(connection, visitorWithImage, element('[data-testid="athlete-highlight-image"]'), Boolean, 30_000);
+    assert.equal(await connection.evaluate(element('[data-testid="athlete-video-empty-state"]'), visitorWithImage), false);
+    assert.match(
+      await connection.evaluate<string>(
+        "document.querySelector('[data-testid=\"athlete-highlights-heading\"]')?.innerText || ''",
+        visitorWithImage,
+      ),
+      /Highlights/i,
     );
     await connection.evaluate(`(() => {
       const select = document.querySelector('[data-testid="select-athlete-game"]');
