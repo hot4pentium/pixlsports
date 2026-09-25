@@ -1084,6 +1084,21 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       ]);
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-live"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 2 cards'`, Boolean);
+    await connection.evaluate(`window.__navigateSupporterDashboardAwayForFilterTest('Prep')`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="supporter-dashboard-away-tool"]')?.textContent === 'Prep'`, Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-return-to-supporter-dashboard"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true'
+      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 2 cards'`, Boolean);
+    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('another-supporter')`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.getAttribute('aria-pressed') === 'true'
+      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('supporter-save-transition')`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true'
+      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 2 cards'`, Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
 
     // A 260 CSS-pixel mobile viewport at 1.5x device scale approximates a
     // 390px phone viewed at 150% zoom, while retaining the real responsive layout.
@@ -2927,6 +2942,16 @@ export function mount() {
     renderDashboard();
   };
   window.__getSupporterDashboardEvents = () => dashboardEvents;
+  window.__navigateSupporterDashboardAwayForFilterTest = (tool) => root.render(
+    createElement('main', null,
+      createElement('h1', { 'data-testid': 'supporter-dashboard-away-tool' }, tool),
+      createElement('button', {
+        type: 'button',
+        'data-testid': 'button-return-to-supporter-dashboard',
+        onClick: renderDashboard,
+      }, 'Return to Dashboard'),
+    ),
+  );
   window.__setSupporterDashboardTrackerUserId = async (userId) => {
     dashboardUserId = userId || undefined;
     renderDashboard();

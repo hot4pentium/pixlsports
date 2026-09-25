@@ -30,6 +30,8 @@ export type GameOnCardRenderOptions = {
 
 type GameOnDashboardCollectionProps = {
   cards: DashboardGameOnCard[];
+  statusFilter: GameOnStatusFilter;
+  onStatusFilterChange: (filter: GameOnStatusFilter) => void;
   onCreate: () => void;
   createDisabled?: boolean;
   onOpen: (id: string) => void;
@@ -45,9 +47,9 @@ type GameOnDashboardCollectionProps = {
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
 };
 
-type GameOnStatusFilter = 'All statuses' | DashboardGameOnCard['status'];
+export type GameOnStatusFilter = 'All statuses' | DashboardGameOnCard['status'];
 
-const GAME_ON_STATUS_FILTERS: GameOnStatusFilter[] = [
+export const GAME_ON_STATUS_FILTERS: GameOnStatusFilter[] = [
   'All statuses',
   'Live',
   'Complete',
@@ -334,6 +336,8 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, visible, upNext
 
 export function GameOnDashboardCollection({
   cards,
+  statusFilter,
+  onStatusFilterChange,
   onCreate,
   createDisabled = false,
   onOpen,
@@ -350,7 +354,6 @@ export function GameOnDashboardCollection({
 }: GameOnDashboardCollectionProps) {
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
-  const [statusFilter, setStatusFilter] = useState<GameOnStatusFilter>('All statuses');
   const [searchQuery, setSearchQuery] = useState('');
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const restorePanelFocusRef = useRef(false);
@@ -460,7 +463,7 @@ export function GameOnDashboardCollection({
                     aria-pressed={statusFilter === filter}
                     aria-label={`${filter}: ${cardCountLabel(count)}`}
                     data-testid={`button-filter-game-on-${filter === 'All statuses' ? 'all' : filter.toLowerCase()}`}
-                    onClick={() => setStatusFilter(filter)}
+                    onClick={() => onStatusFilterChange(filter)}
                   >
                     <span>{filter}</span>
                     <span className="game-on-collection__filter-count">{count}</span>
@@ -516,7 +519,7 @@ export function GameOnDashboardCollection({
               <button
                 type="button"
                 className="game-on-collection__reset-filter"
-                onClick={() => setStatusFilter('All statuses')}
+                onClick={() => onStatusFilterChange('All statuses')}
                 data-testid="button-reset-game-on-filter"
               >
                 Show all cards
