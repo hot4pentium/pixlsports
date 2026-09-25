@@ -58,3 +58,4 @@
 - [Workspace selection precedence](workspace-selection-precedence.md) — explicit Calendar choices override automatic tool recommendations; Hype prefill must wait independently for project loading.
 - [Game On Card badge reference](game-on-card-badge-reference.md) — the shared card should use the supplied white lanyard badge graphic, not an abstract dark panel.
 - [Game On share identity](game-on-share-identity.md) — identify cards explicitly; one-event Calendar shares are not cards, while unmarked legacy card links remain usable.
+- [Embedded Game On drafts](embedded-game-on-drafts.md) — keep editor identity stable as parent previews mirror draft edits.

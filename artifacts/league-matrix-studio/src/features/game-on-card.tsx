@@ -49,7 +49,12 @@ type GameOnCardPanelProps = {
   selectedEvent?: SupporterEvent;
   selectedCard?: SavedGameOnCard | null;
   startFresh?: boolean;
-  onChanged?: () => void;
+  embedded?: boolean;
+  initialDraft?: SupporterEvent;
+  initialSourceEventId?: string;
+  onDraftChange?: (event: SupporterEvent, sourceEventId: string) => void;
+  onCancelDraft?: () => void;
+  onChanged?: (selectedId?: string) => void;
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   existingCardTokensByEventId?: Record<string, string>;
 };
@@ -139,6 +144,11 @@ export function GameOnCardPanel({
   selectedEvent,
   selectedCard,
   startFresh = false,
+  embedded = false,
+  initialDraft,
+  initialSourceEventId,
+  onDraftChange,
+  onCancelDraft,
   onChanged,
   onSaveCalendarEvent,
   existingCardTokensByEventId,
@@ -148,7 +158,7 @@ export function GameOnCardPanel({
   const updateShare = useUpdateScheduleShare();
   const deleteShare = useDeleteScheduleShare();
   const selectionIdentity = startFresh
-    ? `fresh:${selectedEvent?.type ?? 'game'}:${selectedEvent?.id ?? ''}`
+    ? 'fresh'
     : selectedCard === null
       ? `new:${selectedEvent?.type ?? 'game'}:${selectedEvent?.id ?? ''}`
       : selectedCard
@@ -160,14 +170,18 @@ export function GameOnCardPanel({
     return initial as LocalSavedGameOnCard | null;
   });
   const [draft, setDraft] = useState<CardEvent>(() => (
-    !startFresh && selectedCard
+    startFresh && initialDraft
+      ? draftFromEvent(initialDraft)
+      : !startFresh && selectedCard
       ? eventFromSaved(selectedCard)
       : selectedEvent && selectedEvent.type !== 'meeting'
         ? draftFromEvent(selectedEvent)
         : blankDraft()
   ));
   const [sourceEventId, setSourceEventId] = useState(() => (
-    !startFresh && selectedCard
+    startFresh && initialDraft
+      ? initialSourceEventId ?? 'new'
+      : !startFresh && selectedCard
       ? selectedCard.event.id
       : selectedEvent && selectedEvent.type !== 'meeting'
         ? selectedEvent.id
@@ -181,18 +195,22 @@ export function GameOnCardPanel({
     if (!userId) {
       setSaved(null);
       setDraft(startFresh
-        ? blankDraft(selectedEvent?.type === 'practice' ? 'practice' : 'game')
+        ? initialDraft ? draftFromEvent(initialDraft) : blankDraft(selectedEvent?.type === 'practice' ? 'practice' : 'game')
         : selectedEvent && selectedEvent.type !== 'meeting'
           ? draftFromEvent(selectedEvent)
           : blankDraft());
-      setSourceEventId(!startFresh && selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new');
+      setSourceEventId(startFresh
+        ? initialDraft ? initialSourceEventId ?? 'new' : 'new'
+        : selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new');
       return;
     }
     const selectedSaved = startFresh || selectedCard === null
       ? null
       : selectedCard ?? readSavedGameOnCard(userId) ?? readSavedGameOnCards(userId)[0] ?? null;
     const selectedDraft = startFresh
-      ? blankDraft(selectedEvent?.type === 'practice' ? 'practice' : 'game')
+      ? initialDraft
+        ? draftFromEvent(initialDraft)
+        : blankDraft(selectedEvent?.type === 'practice' ? 'practice' : 'game')
       : selectedSaved
         ? eventFromSaved(selectedSaved)
         : selectedEvent && selectedEvent.type !== 'meeting'
@@ -201,12 +219,22 @@ export function GameOnCardPanel({
     setSaved(selectedSaved as LocalSavedGameOnCard | null);
     setDraft(selectedDraft);
     setSourceEventId(selectedSaved?.event.id ?? (
-      !startFresh && selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new'
+      startFresh
+        ? initialDraft ? initialSourceEventId ?? 'new' : 'new'
+        : selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new'
     ));
     setIsEditing(false);
     setError('');
     setNotice('');
   }, [userId, selectionIdentity]);
+
+  useEffect(() => {
+    onDraftChange?.({
+      ...draft,
+      type: draft.type ?? 'game',
+      opponent: draft.type === 'practice' ? '' : draft.opponent,
+    }, sourceEventId);
+  }, [draft, sourceEventId, onDraftChange]);
 
   const publicCard = useGetGameOnCard(saved?.shareToken ?? '', {
     query: {
@@ -223,7 +251,6 @@ export function GameOnCardPanel({
     upsertSavedGameOnCard(userId, next);
     setSaved(next);
     setIsEditing(false);
-    onChanged?.();
   }
 
   function buildShareData(event: CardEvent) {
@@ -284,7 +311,12 @@ export function GameOnCardPanel({
       };
       saveCard(next);
       setDraft(event);
-      await copyShareLink(share.shareToken);
+      try {
+        await copyShareLink(share.shareToken);
+      } catch {
+        setError('Game On Card saved, but the link could not be copied.');
+      }
+      onChanged?.(`share:${share.shareToken}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to save the Game On Card. Try again.');
     } finally {
@@ -347,14 +379,16 @@ export function GameOnCardPanel({
 
   return (
     <section
-      id="game-on-card-panel"
-      className="mx-auto w-full max-w-[1400px] scroll-mt-6 px-4 pb-5 sm:px-8"
-      aria-labelledby="game-on-card-heading"
-      data-testid="game-on-card-panel"
+      id={embedded ? undefined : 'game-on-card-panel'}
+      className={embedded ? 'w-full' : 'mx-auto w-full max-w-[1400px] scroll-mt-6 px-4 pb-5 sm:px-8'}
+      aria-label={embedded ? 'Create a Game On card' : undefined}
+      aria-labelledby={embedded ? undefined : 'game-on-card-heading'}
+      data-testid={embedded ? 'panel-game-on-card-draft' : 'game-on-card-panel'}
     >
-      <div className="overflow-hidden rounded-[24px] border border-[#55A4FF]/25 bg-[#0B1F3A] text-white shadow-[0_18px_36px_rgba(11,31,58,.18)]">
-        <div className="h-[7px] bg-[linear-gradient(90deg,#2474F5_0%,#55A4FF_58%,#FF6433_100%)]" />
-        <div className="p-5 sm:p-7 lg:p-8">
+      <div className="overflow-hidden rounded-[18px] border border-[#55A4FF]/25 bg-[#0B1F3A] text-white shadow-[0_18px_36px_rgba(11,31,58,.18)]">
+        {!embedded && <div className="h-[7px] bg-[linear-gradient(90deg,#2474F5_0%,#55A4FF_58%,#FF6433_100%)]" />}
+        <div className={embedded ? 'p-3 sm:p-4' : 'p-5 sm:p-7 lg:p-8'}>
+          {!embedded && <>
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#55A4FF]/40 bg-[#2878F5]/10 text-[#55A4FF]">
               <Trophy className="h-5 w-5" aria-hidden="true" />
@@ -382,9 +416,10 @@ export function GameOnCardPanel({
               </span>
             )}
           </div>
+          </>}
 
-          <div className="mt-7">
-            {saved && !isEditing && (
+          {!embedded && <div className="mt-7">
+            {!embedded && saved && !isEditing && (
               <div className="rounded-[18px] border border-[#55A4FF]/30 bg-white/[.05] p-4 sm:p-5" data-testid="game-on-card-saved">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
@@ -455,10 +490,10 @@ export function GameOnCardPanel({
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           {(!saved || isEditing) && (
-            <div className="mt-7 rounded-[18px] border border-white/12 bg-[#07172b]/70 p-4 sm:p-6" data-testid="game-on-card-form">
+            <div className={`${embedded ? '' : 'mt-7 rounded-[18px] border border-white/12 bg-[#07172b]/70 p-4 sm:p-6'}`} data-testid="game-on-card-form">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">
@@ -469,8 +504,18 @@ export function GameOnCardPanel({
                     Only event details are public on this card.
                   </p>
                 </div>
-                {saved && (
-                  <button type="button" onClick={() => { setIsEditing(false); setDraft(saved.event); }} className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-white/55 hover:text-white">Cancel</button>
+                {(saved || embedded) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (embedded && !saved) onCancelDraft?.();
+                      else if (saved) { setIsEditing(false); setDraft(saved.event); }
+                    }}
+                    className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-white/55 hover:text-white"
+                    data-testid="button-cancel-game-on-card"
+                  >
+                    Cancel
+                  </button>
                 )}
               </div>
                 <label className="mb-3 block">
@@ -479,8 +524,14 @@ export function GameOnCardPanel({
                     value={draft.type ?? 'game'}
                     onChange={(event) => {
                       const type = event.target.value as GameOnEventType;
+                      const wasScheduled = sourceEventId !== 'new';
                       setSourceEventId('new');
-                      setDraft((current) => ({ ...current, type, opponent: type === 'practice' ? '' : current.opponent }));
+                      setDraft((current) => ({
+                        ...current,
+                        id: wasScheduled ? createEventId() : current.id,
+                        type,
+                        opponent: type === 'practice' ? '' : current.opponent,
+                      }));
                     }}
                     className="min-h-11 w-full rounded-[10px] border border-white/20 bg-[#0B1F3A] px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
                     data-testid="select-game-on-type"

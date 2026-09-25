@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -323,8 +323,14 @@ export function SupporterDashboardView({
   });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
   const [cardSelection, setCardSelection] = useState<{ kind: 'new' | 'event' | 'share'; id?: string; nonce: number } | null>(null);
+  const [newCardDraft, setNewCardDraft] = useState<{ event: SupporterEvent; sourceEventId: string } | null>(null);
+  const nextNewCardNonce = useRef(0);
+  const [isDesktopDashboard, setIsDesktopDashboard] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  ));
   useEffect(() => {
     setCardSelection(null);
+    setNewCardDraft(null);
     setLocalGameOnCards(userId ? readSavedGameOnCards(userId) : []);
     if (!userId) return;
     const syncCards = (event: StorageEvent) => {
@@ -348,6 +354,13 @@ export function SupporterDashboardView({
   useEffect(() => {
     const interval = window.setInterval(() => setCurrentTime(new Date()), 30_000);
     return () => window.clearInterval(interval);
+  }, []);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const updateViewport = () => setIsDesktopDashboard(desktop.matches);
+    updateViewport();
+    desktop.addEventListener('change', updateViewport);
+    return () => desktop.removeEventListener('change', updateViewport);
   }, []);
 
   const hasAthlete = Boolean(profile.athleteName);
@@ -380,13 +393,55 @@ export function SupporterDashboardView({
     }));
   const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
   const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime);
+  const selectedDraftId = cardSelection?.kind === 'new' ? cardSelection.id : undefined;
+  const newDraftCollectionCard = selectedDraftId ? {
+    id: selectedDraftId,
+    eventId: newCardDraft?.event.id ?? selectedDraftId,
+    type: newCardDraft?.event.type === 'practice' ? 'practice' as const : 'game' as const,
+    athleteName: profile.athleteName || 'Your athlete',
+    opponent: newCardDraft?.event.opponent ?? '',
+    date: newCardDraft?.event.date ?? '',
+    time: newCardDraft?.event.time ?? '',
+    location: newCardDraft?.event.location ?? '',
+    status: 'Draft' as const,
+    isPublished: false,
+  } : null;
+  const replacedScheduleEventId = cardSelection?.kind === 'new' && newCardDraft?.sourceEventId !== 'new'
+    ? newCardDraft?.sourceEventId
+    : undefined;
+  const collectionCards = [
+    ...dashboardCards.filter((card) => !replacedScheduleEventId || card.eventId !== replacedScheduleEventId),
+    ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
+  ];
+  const updateNewCardDraft = useCallback((event: SupporterEvent, sourceEventId: string) => {
+    setNewCardDraft((previous) => {
+      if (previous
+        && previous.sourceEventId === sourceEventId
+        && previous.event.id === event.id
+        && previous.event.type === event.type
+        && previous.event.date === event.date
+        && previous.event.time === event.time
+        && previous.event.location === event.location
+        && previous.event.opponent === event.opponent) return previous;
+      return { event, sourceEventId };
+    });
+  }, []);
+  const cancelNewCardDraft = useCallback(() => {
+    setNewCardDraft(null);
+    setCardSelection((previous) => previous?.kind === 'new' ? null : previous);
+  }, []);
   const openCardWorkspace = () => {
-    setCardSelection((previous) => ({ kind: 'new', nonce: (previous?.nonce ?? 0) + 1 }));
+    if (cardSelection?.kind === 'new') return;
+    const nonce = ++nextNewCardNonce.current;
+    const id = `new-card-${nonce}`;
+    setNewCardDraft(null);
+    setCardSelection({ kind: 'new', id, nonce });
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      document.getElementById('game-on-card-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.querySelector(`[data-testid="card-game-on-${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }));
   };
   const selectCard = (id: string) => {
+    if (cardSelection?.kind === 'new') return;
     setCardSelection((previous) => previous?.id === id ? null : {
       kind: id.startsWith('share:') ? 'share' : 'event', id, nonce: (previous?.nonce ?? 0) + 1,
     });
@@ -394,22 +449,48 @@ export function SupporterDashboardView({
   const handleGameOnCardChanged = (selectedId?: string) => {
     if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
-    if (selectedId) setCardSelection((previous) => ({
-      kind: selectedId.startsWith('share:') ? 'share' : 'event',
-      id: selectedId, nonce: previous?.nonce ?? 0,
-    }));
+    if (selectedId) {
+      setNewCardDraft(null);
+      setCardSelection((previous) => ({
+        kind: selectedId.startsWith('share:') ? 'share' : 'event',
+        id: selectedId, nonce: previous?.nonce ?? 0,
+      }));
+    }
     else setCardSelection((previous) => previous?.kind === 'new' ? previous : null);
   };
-  const renderSelectedGameOnCard = (card: (typeof dashboardCards)[number]) => userId ? (
-    <GameOnInlineEditor
-      card={card}
-      scheduledEvent={events.find((event) => event.id === card.eventId)}
-      teamName={profile.teamName}
-      userId={userId}
-      onSaveCalendarEvent={onSaveCalendarEvent ?? (async () => { throw new Error('Calendar editing is unavailable. Refresh and try again.'); })}
-      onChanged={handleGameOnCardChanged}
-    />
-  ) : null;
+  const renderSelectedGameOnCard = (card: (typeof collectionCards)[number], surface: 'mobile' | 'desktop') => {
+    if (cardSelection?.kind === 'new' && card.id === cardSelection.id) {
+      if ((surface === 'desktop') !== isDesktopDashboard) return null;
+      return <GameOnCardPanel
+        key={`new:${cardSelection.nonce}`}
+        profile={profile}
+        userId={userId}
+        events={events}
+        selectedCard={null}
+        startFresh
+        embedded
+        initialDraft={newCardDraft?.event}
+        initialSourceEventId={newCardDraft?.sourceEventId}
+        onDraftChange={updateNewCardDraft}
+        onCancelDraft={cancelNewCardDraft}
+        onSaveCalendarEvent={onSaveCalendarEvent}
+        existingCardTokensByEventId={Object.fromEntries(dashboardCards.filter((entry) => entry.shareToken).map((entry) => [entry.eventId, entry.shareToken!]))}
+        onChanged={handleGameOnCardChanged}
+      />;
+    }
+    return userId ? (
+      <GameOnInlineEditor
+        card={card}
+        scheduledEvent={events.find((event) => event.id === card.eventId)}
+        teamName={profile.teamName}
+        userId={userId}
+        onSaveCalendarEvent={onSaveCalendarEvent ?? (async () => { throw new Error('Calendar editing is unavailable. Refresh and try again.'); })}
+        onChanged={handleGameOnCardChanged}
+      />
+    ) : null;
+  };
+  const renderMobileSelectedGameOnCard = (card: (typeof collectionCards)[number]) => renderSelectedGameOnCard(card, 'mobile');
+  const renderDesktopSelectedGameOnCard = (card: (typeof collectionCards)[number]) => renderSelectedGameOnCard(card, 'desktop');
   const gameStage: SupporterGameStage = contextEvent
       ? getSupporterGameStage(contextEvent, currentTime)
       : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
@@ -692,11 +773,11 @@ export function SupporterDashboardView({
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
           <GameOnDashboardCollection
-            cards={dashboardCards}
+            cards={collectionCards}
             onCreate={openCardWorkspace}
             onOpen={selectCard}
             selectedId={cardSelection?.id}
-            renderSelectedCard={renderSelectedGameOnCard}
+            renderSelectedCard={renderMobileSelectedGameOnCard}
             statTrackerUserId={userId}
             prepUserId={prepUserId ?? userId}
             statTrackerSport={profile.sport}
@@ -866,11 +947,11 @@ export function SupporterDashboardView({
         </div>
       )}
       <GameOnDashboardCollection
-        cards={dashboardCards}
+        cards={collectionCards}
         onCreate={openCardWorkspace}
         onOpen={selectCard}
         selectedId={cardSelection?.id}
-        renderSelectedCard={renderSelectedGameOnCard}
+        renderSelectedCard={renderDesktopSelectedGameOnCard}
         statTrackerUserId={userId}
         prepUserId={prepUserId ?? userId}
         statTrackerSport={profile.sport}
@@ -1218,17 +1299,6 @@ export function SupporterDashboardView({
 
     </div>
       </div>
-      {cardSelection?.kind === 'new' && <GameOnCardPanel
-        key={`new:${cardSelection.nonce}`}
-        profile={profile}
-        userId={userId}
-        events={events}
-        selectedCard={null}
-        startFresh
-        onSaveCalendarEvent={onSaveCalendarEvent}
-        existingCardTokensByEventId={Object.fromEntries(dashboardCards.filter((card) => card.shareToken).map((card) => [card.eventId, card.shareToken!]))}
-        onChanged={handleGameOnCardChanged}
-      />}
     </>
   );
 }

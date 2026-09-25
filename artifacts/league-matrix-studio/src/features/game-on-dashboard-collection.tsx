@@ -272,6 +272,14 @@ export function GameOnDashboardCollection({
     return () => observer.disconnect();
   }, [cards.length, listOpen, selectedId, openPanel]);
 
+  useEffect(() => {
+    if (!selectedId || listOpen) return;
+    const selected = railRef.current?.querySelector<HTMLElement>('.game-on-collection__card--selected');
+    if (!selected || selected.getClientRects().length === 0) return;
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    selected.scrollIntoView({ behavior, block: 'nearest', inline: 'nearest' });
+  }, [selectedId, cards.length, listOpen]);
+
   const openCardPanel = (id: string, panel: 'prep' | 'tracker', trigger: HTMLButtonElement) => {
     panelTriggerRef.current = trigger;
     setOpenPanel({ cardId: id, panel });

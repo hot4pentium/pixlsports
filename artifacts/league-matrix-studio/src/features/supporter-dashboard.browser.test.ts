@@ -622,6 +622,31 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
 
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-type\\"]")?.value === "game"', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      editorInsideSelectedCard: boolean;
+      bottomPanelRemoved: boolean;
+      draftSelected: boolean;
+    }>(`(() => {
+      const selected = document.querySelector('.supporter-dashboard-desktop-shell .game-on-collection__card--selected');
+      return {
+        editorInsideSelectedCard: Boolean(selected?.querySelector('[data-testid="panel-game-on-card-draft"]')),
+        bottomPanelRemoved: document.querySelector('[data-testid="game-on-card-panel"]') === null,
+        draftSelected: Boolean(selected?.getAttribute('data-testid')?.startsWith('card-game-on-new-card-')),
+      };
+    })()`, page.sessionId), {
+      editorInsideSelectedCard: true,
+      bottomPanelRemoved: true,
+      draftSelected: true,
+    });
+    await connection.evaluate(`(() => {
+      const input = document.querySelector('[data-testid="input-game-on-opponent"]');
+      if (!(input instanceof HTMLInputElement)) throw new Error('Opponent field missing');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+      setter?.call(input, 'Falcons');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected .game-on-collection__opponent")?.textContent?.includes("Falcons")', Boolean);
     await connection.evaluate(`(() => {
       const select = document.querySelector('[data-testid="select-game-on-type"]');
       if (!(select instanceof HTMLSelectElement)) throw new Error('Event type picker missing');
@@ -630,6 +655,59 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-type\\"]")?.value === "practice"', Boolean);
     assert.equal(await connection.evaluate('document.querySelector("[data-testid=\\"input-game-on-opponent\\"]") === null', page.sessionId), true);
+    assert.equal(await connection.evaluate(
+      'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected .game-on-collection__opponent")?.textContent?.trim()',
+      page.sessionId,
+    ), 'Practice', 'the selected card face should reflect the edited practice type');
+    await connection.evaluate(`document.querySelector('[data-testid="button-cancel-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"panel-game-on-card-draft\\"]") === null', Boolean);
+    assert.equal(await connection.evaluate(
+      'document.querySelectorAll(".supporter-dashboard-desktop-shell [data-testid^=\\"card-game-on-new-card-\\"]").length',
+      page.sessionId,
+    ), 0, 'cancelling should discard the unsaved draft');
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-create-game-on-card\\"]")?.getClientRects().length > 0', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell .game-on-collection__card--selected [data-testid=\\"panel-game-on-card-draft\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate(
+      'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"panel-game-on-card-draft\\"]") === null',
+      page.sessionId,
+    ), true, 'the draft editor should render only in the active mobile dashboard shell');
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-cancel-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"panel-game-on-card-draft\\"]") === null', Boolean);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"button-create-game-on-card\\"]")?.getClientRects().length > 0', Boolean);
+
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"select-game-on-source-event\\"]") !== null', Boolean);
+    await connection.evaluate(`(() => {
+      const select = document.querySelector('[data-testid="select-game-on-source-event"]');
+      if (!(select instanceof HTMLSelectElement)) throw new Error('Scheduled event picker missing');
+      select.value = 'game-1';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__card--selected .game-on-collection__opponent")?.textContent?.includes("Rivals")', Boolean);
+    assert.equal(await connection.evaluate(
+      'document.querySelectorAll(".supporter-dashboard-desktop-shell .game-on-collection__card").length',
+      page.sessionId,
+    ), 1, 'starting from a scheduled game should replace, not duplicate, that event in the collection');
+    await connection.evaluate(`document.querySelector('[data-testid="button-cancel-game-on-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"panel-game-on-card-draft\\"]") === null', Boolean);
+    assert.equal(await connection.evaluate(
+      'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"card-game-on-draft:game-1\\"]") !== null',
+      page.sessionId,
+    ), true, 'cancelling should restore the original scheduled card');
 
     assert.deepEqual(await connection.evaluate<{
       profileTag: string;
