@@ -1073,6 +1073,62 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.value === ''`, Boolean);
+    const liveCardDate = await connection.evaluate<{ stored: string; visible: string }>(`(() => {
+      const liveStatus = Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+        .find((status) => status.getAttribute('data-status') === 'live' && status.getClientRects().length > 0);
+      const date = liveStatus?.closest('.game-on-collection__card')?.querySelector('.game-on-collection__date');
+      return {
+        stored: date?.getAttribute('aria-label') || '',
+        visible: Array.from(date?.querySelectorAll('.game-on-collection__date-month, .game-on-collection__date-day') ?? [])
+          .map((part) => part.textContent?.trim() || '')
+          .filter(Boolean)
+          .join(' '),
+      };
+    })()`, page.sessionId);
+    assert.ok(liveCardDate.stored && liveCardDate.visible, 'the live card should expose its event date for a search check');
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
+      page.sessionId,
+    );
+    await connection.send('Input.insertText', { text: liveCardDate.visible }, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    assert.deepEqual(await connection.evaluate<string[]>(
+      `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+        .filter((status) => status.getClientRects().length > 0)
+        .map((status) => status.getAttribute('data-status'))`,
+      page.sessionId,
+    ), ['live'], 'date search should find the card matching the selected Live status');
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.value === ''`, Boolean);
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
+      page.sessionId,
+    );
+    await connection.send('Input.insertText', { text: `Live Opponent Riverside Arena ${liveCardDate.stored}` }, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    assert.deepEqual(await connection.evaluate<string[]>(
+      `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+        .filter((status) => status.getClientRects().length > 0)
+        .map((status) => status.getAttribute('data-status'))`,
+      page.sessionId,
+    ), ['live'], 'opponent, location, and date terms should combine with the selected Live status');
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.value === ''`, Boolean);
+    assert.equal(await connection.evaluate<string>(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
+      page.sessionId,
+    ), 'Showing 1 of 4 cards', 'clearing a date search should restore cards for the selected status');
+    assert.equal(await connection.evaluate<string>(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') || ''`,
+      page.sessionId,
+    ), 'true', 'clearing a date search should retain the selected status');
+
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
       page.sessionId,

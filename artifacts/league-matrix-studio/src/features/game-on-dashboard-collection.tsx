@@ -82,6 +82,28 @@ function dateParts(value: string) {
   return { month: 'Date', day: '—', weekday: value || 'TBD' };
 }
 
+function normalizeSearchText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function getCardSearchText(card: DashboardGameOnCard) {
+  const date = dateParts(card.date);
+  const dateMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(card.date.trim());
+  const numericDate = dateMatch && date.month !== 'Date'
+    ? `${Number(dateMatch[2])}/${Number(dateMatch[3])}/${dateMatch[1]} ${dateMatch[2].padStart(2, '0')}/${dateMatch[3].padStart(2, '0')}/${dateMatch[1]}`
+    : '';
+
+  return normalizeSearchText([
+    card.opponent,
+    card.location,
+    card.date,
+    date.month === 'Date' ? '' : date.month,
+    date.day === '—' ? '' : date.day,
+    date.weekday,
+    numericDate,
+  ].join(' '));
+}
+
 function displayTime(value: string) {
   const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
   if (!match) return value || 'Time TBD';
@@ -391,12 +413,15 @@ export function GameOnDashboardCollection({
   cards.forEach((card) => {
     statusCounts[getCardStatus(card)] += 1;
   });
-  const searchTerm = searchQuery.trim().toLowerCase();
+  const searchTerms = normalizeSearchText(searchQuery).split(' ').filter(Boolean);
   const matchesStatusFilter = (card: DashboardGameOnCard) =>
     statusFilter === 'All statuses' || getCardStatus(card) === statusFilter;
-  const matchesSearch = (card: DashboardGameOnCard) =>
-    !searchTerm || `${card.opponent} ${card.location}`.toLowerCase().includes(searchTerm);
+  const matchesSearch = (card: DashboardGameOnCard) => {
+    const cardSearchText = getCardSearchText(card);
+    return searchTerms.every((term) => cardSearchText.includes(term));
+  };
   const visibleCards = cards.filter((card) => matchesStatusFilter(card) && matchesSearch(card));
+  const hasSearchQuery = searchTerms.length > 0;
   const selectedCard = cards.find((card) => card.id === selectedId);
   const dialogOpen = Boolean(isActiveShell && selectedCard);
   const cardCountLabel = (count: number) => `${count} ${count === 1 ? 'card' : 'cards'}`;
@@ -536,8 +561,8 @@ export function GameOnDashboardCollection({
               <Search size={17} aria-hidden="true" />
               <input
                 type="search"
-                aria-label="Search Game On cards by opponent or location"
-                placeholder="Search opponent or location"
+                aria-label="Search Game On cards by opponent, location, or date"
+                placeholder="Opponent, location, or date"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.currentTarget.value)}
                 data-testid="input-search-game-on-cards"
@@ -559,15 +584,15 @@ export function GameOnDashboardCollection({
           <div className="game-on-collection__empty game-on-collection__empty--filtered" data-testid="status-game-on-filter-empty">
             <div>
               <h3 className="game-on-collection__empty-title">
-                {searchTerm ? 'No cards match your search.' : `No ${statusFilter.toLowerCase()} cards yet.`}
+                {hasSearchQuery ? 'No cards match your search.' : `No ${statusFilter.toLowerCase()} cards yet.`}
               </h3>
               <p className="game-on-collection__empty-copy">
-                {searchTerm
-                  ? 'Try another opponent or location, or clear your search to see the matching cards again.'
+                {hasSearchQuery
+                  ? 'Try another opponent, location, or date, or clear your search to see the matching cards again.'
                   : 'Choose another status or show all of your cards.'}
               </p>
             </div>
-            {searchTerm ? (
+            {hasSearchQuery ? (
               <button
                 type="button"
                 className="game-on-collection__reset-filter"
