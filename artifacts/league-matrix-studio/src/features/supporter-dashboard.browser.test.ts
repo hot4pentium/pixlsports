@@ -760,12 +760,12 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       unrelatedControls: false,
       editorOnFront: false,
     }, 'Details should only show event fields and save controls on the badge back');
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-draft"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-filter-game-on-draft\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
+    assert.equal(await connection.evaluate(
+      `Boolean(document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__filters'))`,
+      page.sessionId,
+    ), false, 'the dashboard no longer shows status-filter tabs');
     assert.equal(await connection.evaluate(`Boolean(document.querySelector('.supporter-dashboard-mobile-shell .game-on-collection__dialog-card[data-calendar-open="true"] [data-testid="input-inline-date"]'))`, page.sessionId),
-      true, 'filtering out the selected tile should keep its open Details editor mounted in the dialog');
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"button-filter-game-on-all\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
+      true, 'removing status filters should leave the open Details editor mounted in the dialog');
     await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-close-calendar-editor-"]'))
       .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
@@ -958,31 +958,27 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     })()`, Boolean);
     assert.deepEqual(await connection.evaluate<{
       count: string;
-      filterNames: string[];
-      selectedFilter: string | null;
+      filterRow: boolean;
+      statusButtons: number;
+      visibleStatuses: string[];
     }>(`(() => {
       const collection = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]');
-      const count = collection?.querySelector('[data-testid="status-game-on-card-count"]');
-      const filters = Array.from(collection?.querySelectorAll('.game-on-collection__filter') ?? []);
+      const grid = collection?.querySelector('[data-testid="grid-game-on-cards"]');
       return {
-        count: count?.textContent?.trim() ?? '',
-        filterNames: filters.map((filter) => filter.textContent?.trim() ?? ''),
-        selectedFilter: filters.find((filter) => filter.getAttribute('aria-pressed') === 'true')?.textContent?.trim() ?? null,
+        count: collection?.querySelector('[data-testid="status-game-on-card-count"]')?.textContent?.trim() ?? '',
+        filterRow: Boolean(collection?.querySelector('.game-on-collection__filters')),
+        statusButtons: collection?.querySelectorAll('[data-testid^="button-filter-game-on-"]').length ?? 0,
+        visibleStatuses: Array.from(grid?.querySelectorAll('.game-on-collection__status') ?? [])
+          .filter((status) => status.getClientRects().length > 0)
+          .map((status) => status.getAttribute('data-status') || '')
+          .sort(),
       };
     })()`, page.sessionId), {
       count: 'Showing 4 of 4 cards',
-      filterNames: ['All statuses4', 'Live1', 'Complete1', 'Draft1', 'Published1'],
-      selectedFilter: 'All statuses4',
+      filterRow: false,
+      statusButtons: 0,
+      visibleStatuses: ['complete', 'draft', 'live', 'published'],
     });
-
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-live"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
-    assert.deepEqual(await connection.evaluate<string[]>(
-      `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
-        .filter((status) => status.getClientRects().length > 0)
-        .map((status) => status.getAttribute('data-status'))`,
-      page.sessionId,
-    ), ['live']);
 
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
@@ -995,16 +991,16 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         .filter((status) => status.getClientRects().length > 0)
         .map((status) => status.getAttribute('data-status'))`,
       page.sessionId,
-    ), ['live'], 'opponent search should combine with the selected Live status');
+    ), ['live'], 'opponent search should still find cards after status tabs are removed');
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.value === ''`, Boolean);
     assert.equal(await connection.evaluate<string>(
-      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') || ''`,
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
       page.sessionId,
-    ), 'true', 'clearing a search should retain the selected status');
+    ), 'Showing 4 of 4 cards', 'clearing a search should show all card statuses');
 
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
@@ -1017,7 +1013,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         .filter((status) => status.getClientRects().length > 0)
         .map((status) => status.getAttribute('data-status'))`,
       page.sessionId,
-    ), ['live'], 'location search should find the card matching the selected status');
+    ), ['live'], 'location search should still find the matching card');
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       ...window.__getSupporterDashboardEvents(),
       {
@@ -1034,22 +1030,19 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:filter-live-added"]')?.getClientRects().length > 0`, Boolean);
     assert.deepEqual(await connection.evaluate<{
       search: string;
-      liveFilterSelected: boolean;
       matchingOpponents: string[];
     }>(`(() => {
       const shell = document.querySelector('.supporter-dashboard-desktop-shell');
       return {
         search: shell?.querySelector('[data-testid="input-search-game-on-cards"]')?.value || '',
-        liveFilterSelected: shell?.querySelector('[data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true',
         matchingOpponents: Array.from(shell?.querySelectorAll('[data-testid="grid-game-on-cards"] .game-on-collection__status') || [])
           .filter((status) => status.getClientRects().length > 0)
           .map((status) => status.closest('.game-on-collection__card')?.querySelector('.game-on-collection__opponent')?.textContent?.trim() || ''),
       };
     })()`, page.sessionId), {
       search: 'Riverside Arena',
-      liveFilterSelected: true,
       matchingOpponents: ['vs Live Opponent', 'vs Added Live Opponent'],
-    }, 'adding a matching card should update results and count without changing search or status');
+    }, 'adding a matching card should update search results and count');
     await connection.evaluate(`window.__setSupporterDashboardEvents(
       window.__getSupporterDashboardEvents().filter((event) => event.id !== 'filter-live-added')
     )`, page.sessionId);
@@ -1057,17 +1050,14 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:filter-live-added"]')`, Boolean);
     assert.deepEqual(await connection.evaluate<{
       search: string;
-      liveFilterSelected: boolean;
     }>(`(() => {
       const shell = document.querySelector('.supporter-dashboard-desktop-shell');
       return {
         search: shell?.querySelector('[data-testid="input-search-game-on-cards"]')?.value || '',
-        liveFilterSelected: shell?.querySelector('[data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true',
       };
     })()`, page.sessionId), {
       search: 'Riverside Arena',
-      liveFilterSelected: true,
-    }, 'removing a matching card should preserve the active query and status filter');
+    }, 'removing a matching card should preserve the active query');
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
@@ -1091,13 +1081,15 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       page.sessionId,
     );
     await connection.send('Input.insertText', { text: liveCardDate.visible }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
-    assert.deepEqual(await connection.evaluate<string[]>(
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
+      .some((status) => status.getClientRects().length > 0 && status.getAttribute('data-status') === 'live')`, Boolean);
+    assert.ok(await connection.evaluate<boolean>(
       `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
         .filter((status) => status.getClientRects().length > 0)
-        .map((status) => status.getAttribute('data-status'))`,
+        .map((status) => status.getAttribute('data-status'))
+      .includes('live')`,
       page.sessionId,
-    ), ['live'], 'date search should find the card matching the selected Live status');
+    ), 'date search should still find the live card after status filters are removed');
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
@@ -1114,7 +1106,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
         .filter((status) => status.getClientRects().length > 0)
         .map((status) => status.getAttribute('data-status'))`,
       page.sessionId,
-    ), ['live'], 'opponent, location, and date terms should combine with the selected Live status');
+    ), ['live'], 'opponent, location, and date terms should combine in search');
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
@@ -1123,11 +1115,7 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.equal(await connection.evaluate<string>(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
       page.sessionId,
-    ), 'Showing 1 of 4 cards', 'clearing a date search should restore cards for the selected status');
-    assert.equal(await connection.evaluate<string>(
-      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') || ''`,
-      page.sessionId,
-    ), 'true', 'clearing a date search should retain the selected status');
+    ), 'Showing 4 of 4 cards', 'clearing a date search should restore all statuses');
 
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
@@ -1143,51 +1131,11 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search-empty"]')?.click()`,
       page.sessionId,
     );
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
-    assert.equal(await connection.evaluate<string>(
-      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') || ''`,
-      page.sessionId,
-    ), 'true', 'clearing an empty search should restore cards for the selected status');
-
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-published"]')?.focus()`, page.sessionId);
-    await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 }, page.sessionId);
-    await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-published"]')?.getAttribute('aria-pressed') === 'true'`, Boolean);
-    assert.equal(await connection.evaluate<string>(
-      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
-      page.sessionId,
-    ), 'Showing 1 of 4 cards', 'the keyboard-selected status should announce its matching card count');
-    assert.deepEqual(await connection.evaluate<string[]>(
-      `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
-        .filter((status) => status.getClientRects().length > 0)
-        .map((status) => status.getAttribute('data-status'))`,
-      page.sessionId,
-    ), ['published']);
-
-    for (const status of ['complete', 'draft']) {
-      await connection.evaluate(
-        `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-filter-game-on-${status}"]')?.click()`,
-        page.sessionId,
-      );
-      await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
-        .some((item) => item.getClientRects().length > 0 && item.getAttribute('data-status') === '${status}')`, Boolean);
-      assert.deepEqual(await connection.evaluate<string[]>(
-        `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
-          .filter((item) => item.getClientRects().length > 0)
-          .map((item) => item.getAttribute('data-status'))`,
-        page.sessionId,
-      ), [status]);
-    }
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'filter-complete', type: 'game', date: '2999-01-01', time: '18:30', location: 'Northside Gym', opponent: 'Complete Opponent', status: 'final' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-filter-empty"]') !== null`, Boolean);
-    assert.equal(await connection.evaluate<boolean>(
-      `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-reset-game-on-filter"]'))`,
-      page.sessionId,
-    ), true, 'an empty status result should offer a visible reset action');
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-reset-game-on-filter"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
 
     const filterFixtureSetup = `(() => {
@@ -1208,45 +1156,42 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
     assert.deepEqual(await connection.evaluate<{
-      filtersFit: boolean;
-      filterButtonCanBeReached: boolean;
+      filterRow: boolean;
+      statusButtons: number;
       searchFits: boolean;
       searchCanBeReached: boolean;
+      visibleStatuses: string[];
     }>(`(() => {
       const collection = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="game-on-dashboard-collection"]');
-      const filters = collection?.querySelector('.game-on-collection__filters');
-      const published = collection?.querySelector('[data-testid="button-filter-game-on-published"]');
       const search = collection?.querySelector('[data-testid="input-search-game-on-cards"]');
       return {
-        filtersFit: Boolean(filters && filters.scrollWidth <= filters.clientWidth + 1),
-        filterButtonCanBeReached: Boolean(published && published.getClientRects().length),
+        filterRow: Boolean(collection?.querySelector('.game-on-collection__filters')),
+        statusButtons: collection?.querySelectorAll('[data-testid^="button-filter-game-on-"]').length ?? 0,
         searchFits: Boolean(search && search.getBoundingClientRect().width <= collection.getBoundingClientRect().width),
         searchCanBeReached: Boolean(search && search.getClientRects().length),
+        visibleStatuses: Array.from(collection?.querySelectorAll('[data-testid="grid-game-on-cards"] .game-on-collection__status') ?? [])
+          .filter((status) => status.getClientRects().length > 0)
+          .map((status) => status.getAttribute('data-status') || '')
+          .sort(),
       };
     })()`, page.sessionId), {
-      filtersFit: true,
-      filterButtonCanBeReached: true,
+      filterRow: false,
+      statusButtons: 0,
       searchFits: true,
       searchCanBeReached: true,
+      visibleStatuses: ['complete', 'draft', 'live', 'published'],
     });
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-published"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
       page.sessionId,
     );
     await connection.send('Input.insertText', { text: 'Northside Gym' }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="input-search-game-on-cards"]')?.value === ''`, Boolean);
-    assert.equal(await connection.evaluate<string>(
-      `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-published"]')?.getAttribute('aria-pressed') || ''`,
-      page.sessionId,
-    ), 'true', 'clearing a phone search should preserve the selected status');
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
     await connection.evaluate(`(() => {
       const storageKey = 'pixlsports-game-on-cards:supporter-save-transition';
@@ -1258,21 +1203,33 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
       ]);
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-live"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 2 cards'`, Boolean);
-    await connection.evaluate(`window.__navigateSupporterDashboardAwayForFilterTest('Prep')`, page.sessionId);
+    await connection.evaluate(`(() => {
+      sessionStorage.setItem('pixlsports-game-on-status-filter:supporter-save-transition', 'Live');
+      window.__navigateSupporterDashboardAwayForFilterTest('Prep');
+    })()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="supporter-dashboard-away-tool"]')?.textContent === 'Prep'`, Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-return-to-supporter-dashboard"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true'
-      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 2 cards'`, Boolean);
-    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('another-supporter')`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.getAttribute('aria-pressed') === 'true'
-      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
-    await connection.evaluate(`window.__setSupporterDashboardTrackerUserId('supporter-save-transition')`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-live"]')?.getAttribute('aria-pressed') === 'true'
-      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 2 cards'`, Boolean);
-    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-filter-game-on-all"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      filterRow: boolean;
+      visibleStatuses: string[];
+    }>(`(() => {
+      const collection = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="game-on-dashboard-collection"]');
+      return {
+        filterRow: Boolean(collection?.querySelector('.game-on-collection__filters')),
+        visibleStatuses: Array.from(collection?.querySelectorAll('[data-testid="grid-game-on-cards"] .game-on-collection__status') ?? [])
+          .filter((status) => status.getClientRects().length > 0)
+          .map((status) => status.getAttribute('data-status') || '')
+          .sort(),
+      };
+    })()`, page.sessionId), {
+      filterRow: false,
+      visibleStatuses: ['draft', 'live'],
+    }, 'an old saved status choice should not hide cards when the dashboard is reopened');
+    await connection.evaluate(
+      `sessionStorage.removeItem('pixlsports-game-on-status-filter:supporter-save-transition')`,
+      page.sessionId,
+    );
 
     // A 260 CSS-pixel mobile viewport at 1.5x device scale approximates a
     // 390px phone viewed at 150% zoom, while retaining the real responsive layout.
