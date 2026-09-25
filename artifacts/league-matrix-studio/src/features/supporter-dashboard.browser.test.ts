@@ -1677,6 +1677,160 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
 
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="game-on-dashboard-collection"]')?.getClientRects().length > 0
+      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]')?.getClientRects().length`, Boolean);
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test');
+      localStorage.removeItem('leaguematrix-stat-tracker:dashboard-inline-stat-test');
+      window.__setSupporterDashboardEvents([
+        { id: 'game-1', type: 'game', date: window.__dashboardInlineGameDate, time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
+        { id: 'practice-1', type: 'practice', date: window.__dashboardInlineGameDate, time: '18:30', location: 'Northside Gym' },
+      ]);
+    })()`, page.sessionId);
+    await connection.evaluate(`(() => {
+      const game = Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+        .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      if (game && !game.classList.contains('game-on-collection__card--selected')) {
+        game.querySelector('.game-on-collection__summary')?.click();
+      }
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+      .some((card) => card.classList.contains('game-on-collection__card--selected')
+        && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell [data-testid^="button-open-stat-tracker-"]'))
+      .find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="game-on-inline-scoreboard"]') !== null
+      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-inline-end-game"]')?.getClientRects().length`, Boolean);
+    await connection.evaluate(`(() => {
+      const selector = '.supporter-dashboard-mobile-shell [data-testid="status-game-completion-announcement"]';
+      const announcement = document.querySelector(selector);
+      if (!(announcement instanceof HTMLElement)) throw new Error('Phone dashboard completion announcement is missing');
+      if (announcement.textContent?.trim()) throw new Error('The phone completion announcement should be empty before the game ends');
+      window.__phoneGameCompletionAnnouncementLastText = '';
+      window.__phoneGameCompletionAnnouncementMutations = 0;
+      window.__phoneGameCompletionAnnouncementObserver = new MutationObserver((records) => {
+        const currentText = announcement.textContent?.trim() || '';
+        const regionInserted = records.some((record) => Array.from(record.addedNodes).some((node) => (
+          node instanceof Element && (node.matches(selector) || node.querySelector(selector))
+        )));
+        if (currentText && (currentText !== window.__phoneGameCompletionAnnouncementLastText || regionInserted)) {
+          window.__phoneGameCompletionAnnouncementMutations += 1;
+          window.__phoneGameCompletionAnnouncementLastText = currentText;
+        }
+      });
+      window.__phoneGameCompletionAnnouncementObserver.observe(announcement, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    })()`, page.sessionId);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-inline-tracker-completed"]') !== null
+      && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() === 'Game vs Rivals is complete.'
+      && Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+        .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'`, Boolean);
+    await waitFor(connection, page.sessionId, 'window.__phoneGameCompletionAnnouncementMutations === 1', Boolean);
+    await connection.send('Accessibility.enable', {}, page.sessionId);
+    const phoneAccessibilityTree = await connection.send<{
+      nodes: Array<{
+        nodeId?: string;
+        parentId?: string;
+        ignored?: boolean;
+        role?: { value?: string };
+        name?: { value?: string };
+        value?: { value?: unknown };
+        properties?: Array<{ name?: string; value?: { value?: unknown } }>;
+      }>;
+    }>('Accessibility.getFullAXTree', {}, page.sessionId);
+    const phoneAccessibilityNodesById = new Map(
+      phoneAccessibilityTree.nodes.filter((node) => node.nodeId).map((node) => [node.nodeId!, node]),
+    );
+    const phoneCompletionStatusNodeIds = new Set<string>();
+    for (const exposedNode of phoneAccessibilityTree.nodes.filter((node) => !node.ignored
+      && (node.name?.value === 'Game vs Rivals is complete.' || node.value?.value === 'Game vs Rivals is complete.'))) {
+      let current: typeof exposedNode | undefined = exposedNode;
+      while (current) {
+        if (current.nodeId
+          && !current.ignored
+          && current.role?.value === 'status'
+          && current.properties?.some((property) => property.name === 'live' && property.value?.value === 'polite')) {
+          phoneCompletionStatusNodeIds.add(current.nodeId);
+        }
+        current = current.parentId ? phoneAccessibilityNodesById.get(current.parentId) : undefined;
+      }
+    }
+    assert.deepEqual(await connection.evaluate<{
+      dashboardStillOpen: boolean;
+      mobileAnnouncementVisible: boolean;
+      desktopAnnouncementHidden: boolean;
+      activeElementTestId: string;
+      activeElementInsidePhoneTracker: boolean;
+      phoneAnnouncement: string;
+      desktopAnnouncement: string;
+      announcementMutations: number;
+    }>(`(() => ({
+      dashboardStillOpen: Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="game-on-dashboard-collection"]')?.getClientRects().length),
+      mobileAnnouncementVisible: Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-completion-announcement"]')?.getClientRects().length),
+      desktopAnnouncementHidden: !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.getClientRects().length,
+      activeElementTestId: document.activeElement?.getAttribute('data-testid') || '',
+      activeElementInsidePhoneTracker: Boolean(document.activeElement?.closest('.supporter-dashboard-mobile-shell .game-on-quick-tracker')),
+      phoneAnnouncement: document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+      desktopAnnouncement: document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() || '',
+      announcementMutations: window.__phoneGameCompletionAnnouncementMutations || 0,
+    }))()`, page.sessionId), {
+      dashboardStillOpen: true,
+      mobileAnnouncementVisible: true,
+      desktopAnnouncementHidden: true,
+      activeElementTestId: 'status-inline-tracker-completed',
+      activeElementInsidePhoneTracker: true,
+      phoneAnnouncement: 'Game vs Rivals is complete.',
+      desktopAnnouncement: 'Game vs Rivals is complete.',
+      announcementMutations: 1,
+    });
+    assert.equal(
+      phoneCompletionStatusNodeIds.size,
+      1,
+      `Chromium should expose one polite phone completion announcement, not a duplicate from the hidden desktop layout: ${JSON.stringify({
+        matchingStatusIds: [...phoneCompletionStatusNodeIds],
+        statusNodes: phoneAccessibilityTree.nodes.filter((node) => node.role?.value === 'status').map((node) => ({
+          nodeId: node.nodeId,
+          parentId: node.parentId,
+          ignored: node.ignored,
+          name: node.name?.value,
+          value: node.value?.value,
+          properties: node.properties,
+        })),
+        textNodes: phoneAccessibilityTree.nodes.filter((node) => node.name?.value === 'Game vs Rivals is complete.').map((node) => ({
+          nodeId: node.nodeId,
+          parentId: node.parentId,
+          ignored: node.ignored,
+          role: node.role?.value,
+          name: node.name?.value,
+          value: node.value?.value,
+        })),
+      })}`,
+    );
+    assert.ok(
+      phoneAccessibilityTree.nodes.some((node) => !node.ignored && node.name?.value === 'Game vs Rivals is complete.'),
+      'the phone completion message should be available in the active dashboard accessibility tree',
+    );
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"game-on-dashboard-collection\\"]")?.getClientRects().length > 0', Boolean);
+
     await connection.evaluate(`(() => {
       const game = Array.from(document.querySelectorAll('.game-on-collection__card'))
         .find((card) => card.getClientRects().length > 0 && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
