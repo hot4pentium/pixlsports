@@ -14,7 +14,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
-  Home, Menu, RotateCcw
+  Menu, RotateCcw
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -651,6 +651,7 @@ export function SupporterDashboardView({
     buildWorkspaceToolHref('stats', toToolContext(game))
   );
   const statTrackerHref = statTrackerHrefForGame(nextGame);
+  const dashboardStatsHref = statTrackerHrefForGame(contextEvent?.type === 'game' ? contextEvent : undefined);
   const checklistHrefForGame = (event: SupporterEvent | undefined, view?: 'share' | 'review') => {
     const href = buildWorkspaceToolHref('prep', toToolContext(event));
     return view && event ? `${href}&view=${view}` : href;
@@ -961,7 +962,7 @@ export function SupporterDashboardView({
   return (
     <>
       {/* MOBILE VIEW */}
-      <div className="supporter-dashboard-mobile-shell relative z-0 min-h-dvh w-full pixl-dashboard-mobile pb-[calc(7rem+env(safe-area-inset-bottom))] flex-col">
+      <div className="supporter-dashboard-mobile-shell relative z-0 min-h-dvh w-full pixl-dashboard-mobile flex-col">
         {/* Mobile Header */}
         <header className="bg-white flex items-center justify-between px-4 h-16 shrink-0 border-b border-black/5 relative z-10" data-testid="mobile-header">
           <div className="flex items-center gap-2">
@@ -1039,9 +1040,14 @@ export function SupporterDashboardView({
             statTrackerTeamName={profile.teamName}
             onCompleteScheduledGame={onCompleteScheduledGame}
           />
-          <Link href={fanCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
-            <Zap size={16} aria-hidden="true" /> View Hype Card
-          </Link>
+          <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-mobile">
+            <Link href={dashboardStatsHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-stats">
+              <Activity size={16} aria-hidden="true" /> View stats
+            </Link>
+            <Link href={fanCardHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
+              <Zap size={16} aria-hidden="true" /> View Hype Card
+            </Link>
+          </div>
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
           )}
@@ -1053,42 +1059,6 @@ export function SupporterDashboardView({
           <Link href="/privacy" className="hover:text-[#2474F5]" data-testid="link-mobile-dashboard-footer-privacy">Privacy</Link>
         </footer>
 
-        {/* Bottom Navigation */}
-        <nav
-          className="fixed inset-x-0 bottom-0 z-[60] box-border flex h-[calc(88px+env(safe-area-inset-bottom))] items-start justify-around border-t border-black/5 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]"
-          data-testid="mobile-bottom-nav"
-        >
-           <button type="button" onClick={() => setLocation('/studio')} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-[#2474F5]" aria-label="Home" data-testid="btn-mobile-nav-home">
-             <div className="w-8 h-8 rounded-full bg-[#2474F5]/10 flex items-center justify-center">
-               <Home className="w-[20px] h-[20px] fill-current" />
-             </div>
-             <span className="text-[10px] font-bold">Home</span>
-           </button>
-            <Link href={buildWorkspaceToolHref('calendar', toToolContext(contextEvent))} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Schedule" data-testid="btn-mobile-nav-schedule">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center">
-               <CalendarDays className="w-[20px] h-[20px]" />
-             </div>
-             <span className="text-[10px] font-bold">Calendar</span>
-           </Link>
-            <button type="button" onClick={() => setLocation(contextChecklistHref)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Prep" data-testid="btn-mobile-nav-prep">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center">
-               <ClipboardCheck className="w-[20px] h-[20px]" />
-             </div>
-             <span className="text-[10px] font-bold">Prep</span>
-           </button>
-            <button type="button" onClick={() => setLocation(statTrackerHrefForGame(contextEvent?.type === 'game' ? contextEvent : undefined))} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="Stats" data-testid="btn-mobile-nav-stat-tracker">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center">
-               <Activity className="w-[20px] h-[20px]" />
-             </div>
-             <span className="text-[10px] font-bold">Stats</span>
-           </button>
-            <button type="button" onClick={() => setLocation(fanCardHref)} className="flex min-w-0 max-w-20 flex-1 flex-col items-center justify-center h-[52px] gap-1 text-white/75 hover:text-white transition-colors" aria-label="View Hype Card" data-testid="btn-mobile-nav-hype">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center">
-               <Zap className="w-[20px] h-[20px]" />
-             </div>
-             <span className="text-[10px] font-bold">Hype</span>
-           </button>
-        </nav>
       </div>
 
       {/* DESKTOP VIEW (hidden on mobile) */}
@@ -1156,9 +1126,14 @@ export function SupporterDashboardView({
         statTrackerTeamName={profile.teamName}
         onCompleteScheduledGame={onCompleteScheduledGame}
       />
-      <Link href={fanCardHref} className="inline-flex min-h-11 self-start items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
-        <Zap size={16} aria-hidden="true" /> View Hype Card
-      </Link>
+      <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-desktop">
+        <Link href={dashboardStatsHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-stats">
+          <Activity size={16} aria-hidden="true" /> View stats
+        </Link>
+        <Link href={fanCardHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
+          <Zap size={16} aria-hidden="true" /> View Hype Card
+        </Link>
+      </div>
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
       )}

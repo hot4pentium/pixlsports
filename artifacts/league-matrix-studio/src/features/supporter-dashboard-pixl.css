@@ -588,9 +588,7 @@
 }
 
 .pixl-dashboard-mobile > header a,
-.pixl-dashboard-mobile > header button,
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] a,
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button {
+.pixl-dashboard-mobile > header button {
   touch-action: manipulation;
 }
 
@@ -1325,29 +1323,6 @@
   color: var(--m-bright-blue);
 }
 
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] {
-  position: fixed;
-  inset-inline: 0;
-  inset-block-end: 0;
-  z-index: 60;
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
-  will-change: transform;
-  backface-visibility: hidden;
-  border-color: rgba(85, 164, 255, .18);
-  background: #111316;
-  box-shadow: 0 -8px 30px rgba(3, 17, 36, .32);
-}
-
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button,
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] a {
-  color: rgba(243, 246, 250, .78);
-}
-
-.pixl-dashboard-mobile [data-testid="mobile-bottom-nav"] button[data-testid="btn-mobile-nav-home"] {
-  color: var(--m-bright-blue);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .pixl-dashboard-mobile *,
   .pixl-dashboard * {
@@ -1365,7 +1340,7 @@
     order: 0;
     grid-column: 1 / -1;
   }
-  .pixl-dashboard > [data-testid="link-desktop-independent-hype"] {
+  .pixl-dashboard > [data-testid="dashboard-primary-actions-desktop"] {
     order: 1;
     grid-column: 1 / -1;
   }

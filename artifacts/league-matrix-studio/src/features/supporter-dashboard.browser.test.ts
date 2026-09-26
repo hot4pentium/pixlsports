@@ -548,7 +548,7 @@ test('dashboard Add an event action scrolls to the visible Game On section', { c
   }
 });
 
-test('supporter dashboard keeps Game On Card prominent and mobile navigation accessible', { concurrency: false }, async () => {
+test('supporter dashboard keeps Game On Card prominent and the mobile menu accessible', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-mobile-header-test');
   let devServer: ChildProcess | undefined;
@@ -1683,7 +1683,10 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     assert.deepEqual(await connection.evaluate<{
       profileTag: string;
       profileHref: string | null;
-      scheduleHref: string | null;
+      statsPath: string;
+      statsEventId: string;
+      statsEventType: string;
+      statsLabel: string;
       prepHref: string;
       trackerAction: string | null;
       hypeHref: string | null;
@@ -1691,14 +1694,19 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     }>(`(() => {
       const profileLink = document.querySelector('[data-testid="btn-mobile-open-profile"]');
       const prep = document.querySelector('[data-testid^="button-open-card-prep-"]');
-       const stats = document.querySelector('[data-testid^="button-open-stat-tracker-"]');
+      const stats = document.querySelector('[data-testid="link-mobile-independent-stats"]');
+      const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
+      const tracker = document.querySelector('[data-testid^="button-open-stat-tracker-"]');
       const hypeLink = document.querySelector('[data-testid="link-mobile-independent-hype"]');
       return {
         profileTag: profileLink?.tagName || '',
         profileHref: profileLink?.getAttribute('href') || null,
-        scheduleHref: document.querySelector('[data-testid="btn-mobile-nav-schedule"]')?.getAttribute('href') || null,
+        statsPath: statsUrl?.pathname || '',
+        statsEventId: statsUrl?.searchParams.get('eventId') || '',
+        statsEventType: statsUrl?.searchParams.get('eventType') || '',
+        statsLabel: stats?.textContent?.trim() || '',
         prepHref: prep?.getAttribute('data-prep-href') || '',
-         trackerAction: stats?.getAttribute('aria-label') || null,
+        trackerAction: tracker?.getAttribute('aria-label') || null,
         hypeHref: hypeLink?.getAttribute('href') || null,
         hypeLabel: hypeLink?.textContent?.trim() || '',
         oldPanelsRemoved: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="card-mobile-recommendation"]'),
@@ -1706,7 +1714,10 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     })()`, page.sessionId), {
       profileTag: 'A',
       profileHref: '/studio/profile',
-      scheduleHref: '/studio/schedule?eventId=game-1',
+      statsPath: '/studio/stat-tracker',
+      statsEventId: 'game-1',
+      statsEventType: 'game',
+      statsLabel: 'View stats',
       prepHref: '/studio/checklist?gameId=game-1&eventType=game',
       trackerAction: 'Open Stat Tracker',
       hypeHref: '/fan/browser-test-fan-card',
@@ -2525,11 +2536,8 @@ test('supporter dashboard keeps Game On Card prominent and mobile navigation acc
     await connection.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 }, page.sessionId);
     for (const [testId, destination] of [
       ['btn-mobile-open-profile', '/studio/profile'],
-      ['btn-mobile-nav-schedule', '/studio/schedule'],
-      ['btn-mobile-nav-home', '/studio'],
-      ['btn-mobile-nav-prep', '/studio/checklist'],
-      ['btn-mobile-nav-stat-tracker', '/studio/stat-tracker'],
-      ['btn-mobile-nav-hype', '/fan/browser-test-fan-card'],
+      ['link-mobile-independent-stats', '/studio/stat-tracker'],
+      ['link-mobile-independent-hype', '/fan/browser-test-fan-card'],
     ]) {
       const target = await connection.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
         const element = document.querySelector('[data-testid="${testId}"]');
@@ -2812,6 +2820,278 @@ test('saved tracker scores appear in the supporter record after reload on mobile
       footnote: '3 scored games tracked',
     });
     assert.equal((await readRecord('mobile')).visible, false, 'the mobile summary should be hidden at desktop width');
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
+test('dashboard actions replace mobile navigation while event cards retain Calendar and Prep access', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-dashboard-navigation-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-dashboard-navigation-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(
+      connection,
+      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?route=dashboard&game-on-card-save-transition`,
+    );
+    const session = page.sessionId;
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"mobile-header\\"]"))', Boolean);
+
+    for (const width of [320, 390, 768]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width,
+        height: width === 768 ? 1024 : 844,
+        deviceScaleFactor: 1,
+        mobile: true,
+      }, session);
+      const mobileActions = await connection.evaluate<{
+        bottomNavAbsent: boolean;
+        shellPaddingBottom: string;
+        statsVisible: boolean;
+        statsLabel: string;
+        statsPath: string;
+        statsEventId: string;
+        hypeVisible: boolean;
+        hypeLabel: string;
+        actionsShareGroup: boolean;
+      }>(`(() => {
+        const shell = document.querySelector('.supporter-dashboard-mobile-shell');
+        const stats = shell?.querySelector('[data-testid="link-mobile-independent-stats"]');
+        const hype = shell?.querySelector('[data-testid="link-mobile-independent-hype"]');
+        const group = shell?.querySelector('[data-testid="dashboard-primary-actions-mobile"]');
+        const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
+        const visible = (element) => element instanceof HTMLElement
+          && getComputedStyle(element).display !== 'none'
+          && element.getBoundingClientRect().width > 0
+          && element.getBoundingClientRect().height > 0;
+        return {
+          bottomNavAbsent: !document.querySelector('[data-testid="mobile-bottom-nav"]'),
+          shellPaddingBottom: shell instanceof HTMLElement ? getComputedStyle(shell).paddingBottom : '',
+          statsVisible: visible(stats),
+          statsLabel: stats?.textContent?.trim() || '',
+          statsPath: statsUrl?.pathname || '',
+          statsEventId: statsUrl?.searchParams.get('eventId') || '',
+          hypeVisible: visible(hype),
+          hypeLabel: hype?.textContent?.trim() || '',
+          actionsShareGroup: Boolean(group && stats?.parentElement === group && hype?.parentElement === group),
+        };
+      })()`, session);
+      assert.deepEqual(mobileActions, {
+        bottomNavAbsent: true,
+        shellPaddingBottom: '0px',
+        statsVisible: true,
+        statsLabel: 'View stats',
+        statsPath: '/studio/stat-tracker',
+        statsEventId: 'game-1',
+        hypeVisible: true,
+        hypeLabel: 'View Hype Card',
+        actionsShareGroup: true,
+      }, `mobile dashboard actions at ${width}px`);
+    }
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, session);
+    const mobileAccess = await connection.evaluate<{
+      profilePath: string;
+      profileVisible: boolean;
+      menuLabel: string;
+      helpPath: string;
+      helpVisible: boolean;
+      privacyPath: string;
+      privacyVisible: boolean;
+    }>(`(() => {
+      const profile = document.querySelector('[data-testid="btn-mobile-open-profile"]');
+      const menu = document.querySelector('[data-testid="button-mobile-dashboard-menu"]');
+      const help = document.querySelector('[data-testid="link-mobile-dashboard-footer-help"]');
+      const privacy = document.querySelector('[data-testid="link-mobile-dashboard-footer-privacy"]');
+      const visible = (element) => element instanceof HTMLElement
+        && getComputedStyle(element).display !== 'none'
+        && element.getBoundingClientRect().width > 0
+        && element.getBoundingClientRect().height > 0;
+      return {
+        profilePath: profile instanceof HTMLAnchorElement ? new URL(profile.href).pathname : '',
+        profileVisible: visible(profile),
+        menuLabel: menu?.getAttribute('aria-label') || '',
+        helpPath: help instanceof HTMLAnchorElement ? new URL(help.href).pathname : '',
+        helpVisible: visible(help),
+        privacyPath: privacy instanceof HTMLAnchorElement ? new URL(privacy.href).pathname : '',
+        privacyVisible: visible(privacy),
+      };
+    })()`, session);
+    assert.deepEqual(mobileAccess, {
+      profilePath: '/studio/profile',
+      profileVisible: true,
+      menuLabel: 'Open navigation',
+      helpPath: '/help',
+      helpVisible: true,
+      privacyPath: '/privacy',
+      privacyVisible: true,
+    });
+    await connection.evaluate(`document.querySelector('[data-testid="button-mobile-dashboard-menu"]')?.click()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]"))', Boolean);
+    assert.deepEqual(await connection.evaluate<{
+      expanded: string;
+      label: string;
+      homePath: string;
+    }>(`(() => {
+      const menu = document.querySelector('[data-testid="mobile-dashboard-menu"]');
+      const button = document.querySelector('[data-testid="button-mobile-dashboard-menu"]');
+      const home = menu?.querySelector('[data-testid="link-mobile-dashboard-home"]');
+      return {
+        expanded: button?.getAttribute('aria-expanded') || '',
+        label: menu?.getAttribute('aria-label') || '',
+        homePath: home instanceof HTMLAnchorElement ? new URL(home.href).pathname : '',
+      };
+    })()`, session), {
+      expanded: 'true',
+      label: 'Mobile dashboard navigation',
+      homePath: '/studio',
+    });
+    await connection.evaluate(`document.querySelector('[data-testid="button-mobile-dashboard-menu"]')?.click()`, session);
+    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"mobile-dashboard-menu\\"]") === null', Boolean);
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, session);
+    const desktopActions = await connection.evaluate<{
+      mobileHidden: boolean;
+      statsVisible: boolean;
+      statsLabel: string;
+      statsPath: string;
+      statsEventId: string;
+      hypeVisible: boolean;
+      hypeLabel: string;
+      actionsShareGroup: boolean;
+    }>(`(() => {
+      const mobile = document.querySelector('.supporter-dashboard-mobile-shell');
+      const shell = document.querySelector('.supporter-dashboard-desktop-shell');
+      const stats = shell?.querySelector('[data-testid="link-desktop-independent-stats"]');
+      const hype = shell?.querySelector('[data-testid="link-desktop-independent-hype"]');
+      const group = shell?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
+      const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
+      const visible = (element) => element instanceof HTMLElement
+        && getComputedStyle(element).display !== 'none'
+        && element.getBoundingClientRect().width > 0
+        && element.getBoundingClientRect().height > 0;
+      return {
+        mobileHidden: mobile instanceof HTMLElement && getComputedStyle(mobile).display === 'none',
+        statsVisible: visible(stats),
+        statsLabel: stats?.textContent?.trim() || '',
+        statsPath: statsUrl?.pathname || '',
+        statsEventId: statsUrl?.searchParams.get('eventId') || '',
+        hypeVisible: visible(hype),
+        hypeLabel: hype?.textContent?.trim() || '',
+        actionsShareGroup: Boolean(group && stats?.parentElement === group && hype?.parentElement === group),
+      };
+    })()`, session);
+    assert.deepEqual(desktopActions, {
+      mobileHidden: true,
+      statsVisible: true,
+      statsLabel: 'View stats',
+      statsPath: '/studio/stat-tracker',
+      statsEventId: 'game-1',
+      hypeVisible: true,
+      hypeLabel: 'View Hype Card',
+      actionsShareGroup: true,
+    });
+    assert.deepEqual(await connection.evaluate<{
+      profilePath: string;
+      profileVisible: boolean;
+    }>(`(() => {
+      const profile = document.querySelector('.supporter-dashboard-desktop-shell .supporter-game-on-summary__athlete-link');
+      return {
+        profilePath: profile instanceof HTMLAnchorElement ? new URL(profile.href).pathname : '',
+        profileVisible: profile instanceof HTMLElement && profile.getClientRects().length > 0,
+      };
+    })()`, session), {
+      profilePath: '/studio/profile',
+      profileVisible: true,
+    });
+
+    await connection.evaluate(`(() => {
+      const card = Array.from(document.querySelectorAll('.game-on-collection__grid .game-on-collection__card'))
+        .find((item) => item instanceof HTMLElement && item.getClientRects().length > 0);
+      card?.querySelector('.game-on-collection__summary')?.click();
+    })()`, session);
+    await waitFor(connection, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
+    const eventCardActions = await connection.evaluate<{
+      calendarLabel: string;
+      prepDestination: string;
+    }>(`(() => {
+      const card = document.querySelector('.game-on-collection__dialog-card');
+      return {
+        calendarLabel: card?.querySelector('[data-testid^="button-edit-calendar-"]')?.getAttribute('aria-label') || '',
+        prepDestination: card?.querySelector('[data-testid^="button-open-card-prep-"]')?.getAttribute('data-prep-href') || '',
+      };
+    })()`, session);
+    assert.deepEqual(eventCardActions, {
+      calendarLabel: 'Details: edit event',
+      prepDestination: '/studio/checklist?gameId=game-1&eventType=game',
+    });
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -4186,20 +4466,29 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.game-on-collection__card'))
       .some((card) => card.classList.contains('game-on-collection__card--selected')
         && card.querySelector('[data-testid^="button-open-card-prep-"]')?.getClientRects().length
-        && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
+        && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length
+        && card.querySelector('[data-testid^="button-edit-calendar-"]')?.getClientRects().length)`, Boolean);
     const primaryRoutes = await connection.evaluate<Record<string, string>>(`(() => {
       const card = document.querySelector('.game-on-collection__card--selected');
       const prep = card?.querySelector('[data-testid^="button-open-card-prep-"]');
       const stats = card?.querySelector('[data-testid^="button-open-stat-tracker-"]');
+      const calendar = card?.querySelector('[data-testid^="button-edit-calendar-"]');
+      const dashboardStats = document.querySelector('[data-testid="link-desktop-independent-stats"]');
+      const dashboardStatsUrl = dashboardStats instanceof HTMLAnchorElement ? new URL(dashboardStats.href) : null;
       const hype = document.querySelector('[data-testid="link-desktop-independent-hype"]');
       return {
+        calendar: calendar?.getAttribute('aria-label') || '',
         prep: prep?.getAttribute('data-prep-href') || '',
         stats: stats?.textContent?.trim() || '',
+        dashboardStatsPath: dashboardStatsUrl?.pathname || '',
+        dashboardStatsEventId: dashboardStatsUrl?.searchParams.get('eventId') || '',
         hype: hype?.getAttribute('href') || '',
       };
     })()`, page.sessionId);
+    assert.equal(primaryRoutes.calendar, 'Details: edit event');
     assert.match(primaryRoutes.prep, /^\/studio\/checklist(?:\?|$)/);
     assert.equal(primaryRoutes.stats, 'Open Stat Tracker');
+    assert.equal(primaryRoutes.dashboardStatsPath, '/studio/stat-tracker');
     assert.match(primaryRoutes.hype, /^\/studio\/hype-card(?:\?|$)/);
     assert.equal(await connection.evaluate<boolean>(`(() => {
       const card = document.querySelector('.game-on-collection__card--selected');
@@ -4254,14 +4543,11 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         dashboardOverflow: boolean;
         stepCount: number;
         recommendationVisible: boolean;
-        bottomNavVisible: boolean;
-         bottomNavPosition: string;
-         bottomNavZIndex: string;
-         bottomNavLeft: number;
-         bottomNavRight: number;
-         bottomNavBottom: number;
-         bottomNavHeight: number;
-         mobileContentPaddingBottom: string;
+        bottomNavAbsent: boolean;
+        mobileContentPaddingBottom: string;
+        statsActionVisible: boolean;
+        hypeActionVisible: boolean;
+        actionsShareGroup: boolean;
         mobileHeaderPosition: string;
         mobileHeaderZIndex: string;
         mobileHeaderTop: number;
@@ -4273,7 +4559,9 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         const mobileRoot = document.querySelector('.pixl-dashboard-mobile');
         const desktopRoot = document.querySelector('.pixl-dashboard');
         const recommendation = document.querySelector('[data-testid="btn-mobile-recommendation-action"]');
-         const bottomNav = document.querySelector('[data-testid="mobile-bottom-nav"]');
+        const statsAction = mobileRoot?.querySelector('[data-testid="link-mobile-independent-stats"]');
+        const hypeAction = mobileRoot?.querySelector('[data-testid="link-mobile-independent-hype"]');
+        const actionGroup = mobileRoot?.querySelector('[data-testid="dashboard-primary-actions-mobile"]');
         const mobileHeader = document.querySelector('[data-testid="mobile-header"]');
         const mobileHero = document.querySelector('[data-testid="mobile-hero-banner"]');
         const isVisible = (element) => {
@@ -4300,20 +4588,17 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
           dashboardOverflow: mobileRoot instanceof HTMLElement && mobileRoot.scrollWidth > mobileRoot.clientWidth,
           stepCount: document.querySelectorAll('[data-testid="section-mobile-weekly-path"] li').length,
           recommendationVisible: isVisible(recommendation),
-          bottomNavVisible: isVisible(bottomNav),
-           bottomNavPosition: bottomNav instanceof HTMLElement ? getComputedStyle(bottomNav).position : '',
-           bottomNavZIndex: bottomNav instanceof HTMLElement ? getComputedStyle(bottomNav).zIndex : '',
-           bottomNavLeft: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().left) : -1,
-           bottomNavRight: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().right) : -1,
-           bottomNavBottom: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().bottom) : -1,
-           bottomNavHeight: bottomNav instanceof HTMLElement ? Math.round(bottomNav.getBoundingClientRect().height) : -1,
-           mobileContentPaddingBottom: mobileRoot instanceof HTMLElement ? getComputedStyle(mobileRoot).paddingBottom : '',
-           mobileHeaderPosition: mobileHeader instanceof HTMLElement ? getComputedStyle(mobileHeader).position : '',
-           mobileHeaderZIndex: mobileHeader instanceof HTMLElement ? getComputedStyle(mobileHeader).zIndex : '',
-           mobileHeaderTop: headerBeforeScroll ? Math.round(headerBeforeScroll.top) : -1,
-           mobileHeaderTopAfterScroll: headerAfterScroll ? Math.round(headerAfterScroll.top) : -1,
-           mobileHeaderHeight: headerBeforeScroll ? Math.round(headerBeforeScroll.height) : -1,
-           mobileHeroTop: heroRect ? Math.round(heroRect.top) : -1,
+          bottomNavAbsent: !document.querySelector('[data-testid="mobile-bottom-nav"]'),
+          mobileContentPaddingBottom: mobileRoot instanceof HTMLElement ? getComputedStyle(mobileRoot).paddingBottom : '',
+          statsActionVisible: isVisible(statsAction),
+          hypeActionVisible: isVisible(hypeAction),
+          actionsShareGroup: Boolean(actionGroup && statsAction?.parentElement === actionGroup && hypeAction?.parentElement === actionGroup),
+          mobileHeaderPosition: mobileHeader instanceof HTMLElement ? getComputedStyle(mobileHeader).position : '',
+          mobileHeaderZIndex: mobileHeader instanceof HTMLElement ? getComputedStyle(mobileHeader).zIndex : '',
+          mobileHeaderTop: headerBeforeScroll ? Math.round(headerBeforeScroll.top) : -1,
+          mobileHeaderTopAfterScroll: headerAfterScroll ? Math.round(headerAfterScroll.top) : -1,
+          mobileHeaderHeight: headerBeforeScroll ? Math.round(headerBeforeScroll.height) : -1,
+          mobileHeroTop: heroRect ? Math.round(heroRect.top) : -1,
           diagnostics: Array.from(document.querySelectorAll('.pixl-dashboard-mobile *'))
             .filter((element) => element instanceof HTMLElement
               && element.clientWidth > 1
@@ -4332,14 +4617,11 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
         dashboardOverflow: false,
         stepCount: 4,
         recommendationVisible: true,
-        bottomNavVisible: true,
-          bottomNavPosition: 'fixed',
-         bottomNavZIndex: '60',
-          bottomNavLeft: 0,
-          bottomNavRight: width,
-         bottomNavBottom: width === 768 ? 1024 : 844,
-         bottomNavHeight: 88,
-         mobileContentPaddingBottom: '112px',
+        bottomNavAbsent: true,
+        mobileContentPaddingBottom: '0px',
+        statsActionVisible: true,
+        hypeActionVisible: true,
+        actionsShareGroup: true,
          mobileHeaderPosition: 'sticky',
          mobileHeaderZIndex: '70',
          mobileHeaderTop: 0,
@@ -5428,7 +5710,7 @@ test('supporters can switch saved checklist event types and keep the latest one 
   }
 });
 
-test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, and Hype without publishing private prep', { concurrency: false }, async () => {
+test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats without publishing private prep', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-workspace-journey-test');
   let devServer: ChildProcess | undefined;
@@ -5472,7 +5754,13 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     const click = (id: string) => connection!.evaluate(
       `document.querySelector('[data-testid="${id}"]')?.click()`, session,
     );
-    const path = () => connection!.evaluate<string>('location.pathname', session);
+    const path = () => connection!.evaluate<string>(`(() => {
+      const route = new URLSearchParams(location.search).get('route');
+      if (route === 'schedule' || route === 'checklist' || route === 'stat-tracker' || route === 'hype-card') {
+        return '/studio/' + route;
+      }
+      return location.pathname;
+    })()`, session);
     const selected = () => connection!.evaluate<string>(
       'localStorage.getItem("pixlsports-workspace-event-context") || ""', session,
     );
@@ -5483,9 +5771,8 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
         { id: 'game-selected', type: 'game', status: 'upcoming', date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers', snacks: '', drinks: '', notes: '' },
       ],
     };
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"btn-mobile-nav-schedule\\"]"))', Boolean);
     await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, session);
-    await click('btn-mobile-nav-schedule');
+    await navigatePage(connection, page, fixtureRoute('schedule'));
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"schedule-event-list\\"]"))', Boolean);
     assert.equal(await path(), '/studio/schedule');
     await connection.send('Emulation.setEmulatedMedia', {
@@ -5500,7 +5787,7 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
           && Boolean(collection?.getClientRects().length)
           && (Math.abs(collection.getBoundingClientRect().top) < 2 || window.scrollY > 0);
       })()`, Boolean);
-    await click('btn-mobile-nav-schedule');
+    await navigatePage(connection, page, fixtureRoute('schedule'));
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"schedule-event-list\\"]"))', Boolean);
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
@@ -5601,8 +5888,12 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep, Stats, an
     const hypeHref = await connection.evaluate<string>(
       'document.querySelector("[data-testid=\\"link-desktop-independent-hype\\"]")?.getAttribute("href") || ""', session,
     );
-    assert.match(hypeHref, /eventId=game-selected/);
-    await click('link-desktop-independent-hype');
+    assert.ok(hypeHref, 'the Hype Card action remains available from the dashboard');
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"link-desktop-independent-hype\\"]")?.textContent?.trim() || ""', session),
+      'View Hype Card',
+    );
+    await navigatePage(connection, page, fixtureRoute('hype-card', '&source=workspace&eventId=game-selected&eventType=game&date=2026-10-13&opponent=Tigers'));
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready"))', Boolean);
     assert.equal(await path(), '/studio/hype-card');
     await waitFor(connection, session, `JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || 'null')?.project?.achievement?.includes('Tigers') === true`, Boolean);
@@ -5706,16 +5997,18 @@ test('deleting selected games and practices falls back across Calendar and works
       await waitFor(connection!, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
       await connection!.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-stat-tracker-"]')?.click()`, session);
       await waitFor(connection!, session, 'Boolean(document.querySelector(\'[data-testid^="link-card-stats-"]\'))', Boolean);
-      return connection!.evaluate<Record<string, string>>(`Object.fromEntries(
-        [
-          ['calendar', '[data-testid="btn-mobile-nav-schedule"]'],
-          ['prep', '[data-testid^="button-open-card-prep-"]'],
-          ['stats', '[data-testid^="link-card-stats-"]'],
-          ['hype', '[data-testid="link-desktop-independent-hype"]'],
-        ].map(([tool, selector]) => [
-          tool, document.querySelector(selector)?.getAttribute(tool === 'prep' ? 'data-prep-href' : 'href') || ''
-        ])
-      )`, session);
+      return connection!.evaluate<Record<string, string>>(`(() => {
+        const calendar = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-edit-calendar-"]');
+        const prep = document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"]');
+        const stats = document.querySelector('[data-testid^="link-card-stats-"]');
+        const hype = document.querySelector('[data-testid="link-desktop-independent-hype"]');
+        return {
+          calendarAction: calendar?.getAttribute('aria-label') || '',
+          prep: prep?.getAttribute('data-prep-href') || '',
+          stats: stats?.getAttribute('href') || '',
+          hype: hype?.getAttribute('href') || '',
+        };
+      })()`, session);
     };
     const schedule = {
       version: 1, teamName: 'Northside Comets', season: '2026', template: 0,
@@ -5725,9 +6018,8 @@ test('deleting selected games and practices falls back across Calendar and works
         { id: 'practice-selected', type: 'practice', date: '2026-10-14', time: '17:00', location: 'Practice Gym', opponent: '', snacks: '', drinks: '', notes: '' },
       ],
     };
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"btn-mobile-nav-schedule\\"]"))', Boolean);
     await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, session);
-    await click('btn-mobile-nav-schedule');
+    await navigatePage(connection, page, fixtureRoute('schedule'));
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-remove-event-1\\"]"))', Boolean);
@@ -5738,16 +6030,15 @@ test('deleting selected games and practices falls back across Calendar and works
     await click('journey-return-dashboard');
     await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"]\'))', Boolean);
     const afterGame = await links();
-    for (const [tool, href] of Object.entries(afterGame)) {
+    assert.equal(afterGame.calendarAction, 'Details: edit event');
+    for (const [tool, href] of Object.entries(afterGame).filter(([tool]) => tool !== 'calendarAction')) {
       assert.ok(href, `${tool} has a destination`);
       assert.doesNotMatch(href, /game-selected|Tigers|2026-10-13/, `${tool} must drop the deleted game`);
     }
-    assert.match(afterGame.calendar, /eventId=game-default/);
     assert.match(afterGame.prep, /gameId=game-default/);
     assert.match(afterGame.stats, /eventId=game-default/);
-    assert.match(afterGame.hype, /eventId=game-default/);
 
-    await click('btn-mobile-nav-schedule');
+    await navigatePage(connection, page, fixtureRoute('schedule'));
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
     await click('button-select-schedule-event-1');
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "practice-selected"', Boolean);
@@ -5757,21 +6048,18 @@ test('deleting selected games and practices falls back across Calendar and works
     await click('journey-return-dashboard');
     await waitFor(connection, session, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"]\'))', Boolean);
     const afterPractice = await links();
-    for (const [tool, href] of Object.entries(afterPractice)) {
+    assert.equal(afterPractice.calendarAction, 'Details: edit event');
+    for (const [tool, href] of Object.entries(afterPractice).filter(([tool]) => tool !== 'calendarAction')) {
       assert.ok(href, `${tool} has a destination after practice deletion`);
       assert.doesNotMatch(href, /game-selected|practice-selected|Tigers|2026-10-14/, `${tool} must drop deleted event context`);
     }
-    assert.match(afterPractice.calendar, /eventId=game-default/);
     assert.match(afterPractice.prep, /gameId=game-default/);
     assert.match(afterPractice.stats, /eventId=game-default/);
-    assert.match(afterPractice.hype, /eventId=game-default/);
 
     await navigatePage(connection, page, fixtureRoute('checklist', `&${afterPractice.prep.split('?')[1]}`));
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-default"', Boolean);
     await navigatePage(connection, page, fixtureRoute('stat-tracker', `&${afterPractice.stats.split('?')[1]}`));
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Falcons"', Boolean);
-    await navigatePage(connection, page, fixtureRoute('hype-card', `&${afterPractice.hype.split('?')[1]}`));
-    await waitFor(connection, session, 'document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready") === true', Boolean);
     await navigatePage(connection, page, fixtureRoute('schedule', '&eventId=practice-selected'));
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"button-select-schedule-event-0\\"]")?.getAttribute("aria-pressed") === "true"', Boolean);
     await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=practice-selected&eventType=practice'));
