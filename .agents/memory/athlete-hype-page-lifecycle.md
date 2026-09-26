@@ -10,3 +10,9 @@ Owner management belongs on its own owner-only route reached from the stable Hyp
 **Why:** The user chose the photo-first card as the main fan interface without replacing the original Hype Page or the separate temporary live experience.
 
 **How to apply:** Share the card URL first, preserve the original page and legacy one-off share URLs, and keep the athlete token stable across pause/resume. Let only the owner load a paused page. A public card may show a view-only live scoreboard but must not expose the reusable live-session token or raw tracker events; treat the live session as an independently revocable attachment rather than replacing either durable experience.
+
+The new fan card's Videos side is for videos, not older Hype Card photo shares. The original Athlete Hype Page may still show those image shares.
+
+**Why:** An old Hype Card photo appeared unexpectedly when a supporter opened Videos on the new fan card. Removing it from that view should not delete the photo or break old shares.
+
+**How to apply:** Do not reuse the legacy Hype Card image slot on the new card's Videos side. Keep any changes to media provenance separate from deleting existing shared media.

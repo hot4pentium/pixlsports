@@ -12,6 +12,17 @@ const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', impor
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
+test('the new fan card Videos side excludes photos inherited from old Hype Card shares', () => {
+  const videosSide = livingCardSource.slice(
+    livingCardSource.indexOf("{side === 'videos' && ("),
+    livingCardSource.indexOf('<div className="living-card-controls"'),
+  );
+  assert.doesNotMatch(videosSide, /invite\.hypeCard|living-card-image-highlight/);
+  assert.match(videosSide, /recentVideos\.length > 0/);
+  assert.match(videosSide, /Moments on the way/);
+  assert.match(publicPageSource, /invite\.hypeCard\?\.posterUrl/, 'the separate Athlete Hype Page still supports its image shares');
+});
+
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
   assert.match(source, /HypeCardReplyComposer/);
   assert.match(source, /Choose a reaction and add an optional message without leaving this athlete page/);

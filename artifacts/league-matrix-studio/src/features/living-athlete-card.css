@@ -142,11 +142,6 @@
 .living-card-video-heading span { color: var(--lc-sky); font-size: 10px; font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
 .living-card-video-list video { display: block; width: 100%; max-height: 210px; aspect-ratio: 16 / 9; object-fit: contain; background: #061426; border: 1px solid #cde8fc55; }
 .living-card-video-error { margin: 0; padding: 18px; color: var(--lc-muted); border: 1px solid #cde8fc55; }
-.living-card-image-highlight { margin: 0 0 18px; border: 1px solid #b4d6ee45; background: #061426; }
-.living-card-image-highlight img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
-.living-card-image-highlight figcaption { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; }
-.living-card-image-highlight figcaption strong { font: 800 18px 'Barlow Condensed', sans-serif; text-transform: uppercase; }
-.living-card-image-highlight figcaption span { color: var(--lc-muted); font-size: 9px; text-transform: uppercase; }
 .living-card-media-reply, .living-card-recent-replies { margin-top: 22px; padding: 16px; border: 1px solid #b4d6ee35; background: #0b2948; scroll-margin-top: 20px; }
 .living-card-media-reply h3, .living-card-recent-replies h3 { margin: 0; font: 800 25px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
 .living-card-media-reply > p { margin: 8px 0 14px; color: var(--lc-muted); font-size: 11px; line-height: 1.5; }

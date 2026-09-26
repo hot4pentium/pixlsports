@@ -441,12 +441,6 @@ export function LivingAthleteCardPage({
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / The moments</span><span>{invite.seasonName}</span></div>
                     <h2 className="living-card-alt-title">Season moments.</h2>
                     <p className="living-card-alt-subtitle">Highlights and reactions stay together with {invite.athleteName}’s season.</p>
-                    {invite.hypeCard?.posterUrl && (
-                      <figure className="living-card-image-highlight" data-testid="living-card-image-highlight">
-                        <img src={invite.hypeCard.posterUrl} alt={`${invite.athleteName} — ${invite.hypeCard.title}`} />
-                        <figcaption><strong>{invite.hypeCard.title}</strong><span>Photo highlight</span></figcaption>
-                      </figure>
-                    )}
                     {recentVideos.length > 0 ? (
                       <ol className="living-card-video-list">
                         {recentVideos.map((video, index) => (
@@ -477,13 +471,13 @@ export function LivingAthleteCardPage({
                           </li>
                         ))}
                       </ol>
-                    ) : !invite.hypeCard?.posterUrl ? (
+                    ) : (
                       <div className="living-card-empty">
                         <Play size={30} strokeWidth={1.5} aria-hidden="true" />
                         <h3>Moments on the way.</h3>
                         <p>When highlights are shared, they will appear here.</p>
                       </div>
-                    ) : null}
+                    )}
                     {invite.videos[0] && (
                       <section id="living-card-reply-composer" className="living-card-media-reply" aria-labelledby="living-card-media-reply-title">
                         <h3 id="living-card-media-reply-title">Send some hype</h3>
