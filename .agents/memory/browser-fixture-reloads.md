@@ -8,3 +8,9 @@ Generated browser-test HTML can fall back to the app's normal SPA shell when a t
 **Why:** A checklist browser flow initially appeared to reload successfully but was actually running the production route shell, which hid the harness and caused unrelated dashboard output. A spectator fixture also rendered as a Vite syntax-error overlay until its inline entry was made consistent with the working harness, while a hard-coded past expiry masked the intended live state.
 
 **How to apply:** Keep route assertions in the harness, then navigate directly to the generated fixture URL with the test query and persisted state before calling the browser reload helper. When using a route query, assert the harness's selected route marker rather than the fixture's `location.pathname`.
+
+Direct fixture navigation is not guaranteed to fix every blank reload. A dashboard selection fixture mounted on its first visit but returned an empty body after reload even when navigated to its direct fixture URL and given an explicit desktop viewport.
+
+**Why:** Repeating a browser check against an empty fixture can consume time without telling us whether the app's selection logic is wrong.
+
+**How to apply:** After a few different reload approaches leave the fixture blank, stop retrying that browser path. Keep the failed coverage out of the passing suite and verify the pure selection logic separately; only claim browser coverage after the fixture visibly mounts again.

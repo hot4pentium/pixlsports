@@ -19,6 +19,7 @@ import {
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
   getActiveSupporterGame,
+  getVisibleSupporterSelection,
   getSupporterGameStage,
   getSupporterFanCardHref,
   getSupporterPreparationContext,
@@ -432,7 +433,13 @@ export function SupporterDashboardView({
   );
   const gameEvents = events.filter((event) => event.type === 'game');
   const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
-  const selectedWorkspaceEvent = activeJourneyEvents.find((event) => event.id === selectedGameId);
+  const selectedThisSession = selectedGameId !== null && selectedThisSessionGameId === selectedGameId;
+  const selectedWorkspaceEvent = getVisibleSupporterSelection(
+    activeJourneyEvents,
+    selectedGameId,
+    currentTime,
+    selectedThisSession,
+  );
   const weekRecommendation = getSupporterWeekRecommendation(
     activeJourneyEvents,
     currentTime,
@@ -441,10 +448,10 @@ export function SupporterDashboardView({
     weekRecommendation,
     gameEvents,
     selectedGameId,
-    selectedThisSessionGameId === selectedGameId,
+    selectedThisSession,
     currentTime,
   );
-  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime, selectedThisSession);
   const contextEvent = recommendedPreparationEvent ?? nextGame;
   const serverCardShares = ownedGameOnCardsQuery.data ?? [];
   const serverCardTokens = new Set(serverCardShares.map((share) => share.shareToken));

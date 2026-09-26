@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getActiveSupporterGame,
+  getVisibleSupporterSelection,
   getSupporterGameStage,
   getNextUpcomingSupporterEvent,
   getSupporterPreparationContext,
@@ -251,6 +253,19 @@ test('a saved September 21 game selection cannot hide the next September 24 prac
   assert.equal(recommendation?.event.id, 'practice-24');
   assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', false, now)?.id, 'practice-24');
   assert.equal(getSupporterPreparationContext(recommendation, [oldGame], 'game-21', true, now), undefined);
+});
+
+test('a remembered September 18 game yields to the latest September 23 game but remains reviewable when chosen now', () => {
+  const now = new Date('2026-09-26T12:00:00');
+  const oldGame = { id: 'game-18', type: 'game' as const, date: '2026-09-18', time: '10:00', status: 'upcoming' as const };
+  const latestGame = { id: 'game-23', type: 'game' as const, date: '2026-09-23', time: '18:00', status: 'final' as const };
+  const games = [latestGame, oldGame];
+
+  assert.equal(getVisibleSupporterSelection(games, 'game-18', now), undefined);
+  assert.equal(getActiveSupporterGame(games, 'game-18', now)?.id, 'game-23');
+  assert.equal(getSupporterWeekRecommendation(games, now)?.event.id, 'game-23');
+  assert.equal(getVisibleSupporterSelection(games, 'game-18', now, true)?.id, 'game-18');
+  assert.equal(getActiveSupporterGame(games, 'game-18', now, true)?.id, 'game-18');
 });
 
 test('Coming up shows the closest future event even when it is also the prep recommendation', () => {

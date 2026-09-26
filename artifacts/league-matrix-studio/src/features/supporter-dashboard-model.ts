@@ -325,17 +325,32 @@ export function getSupporterGameStage(
   return now.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
 }
 
+export function getVisibleSupporterSelection<T extends SupporterGameLike>(
+  events: readonly T[],
+  selectedGameId: string | null,
+  now = new Date(),
+  selectedThisSession = false,
+): T | undefined {
+  const selected = selectedGameId
+    ? events.find((event) => event.id === selectedGameId)
+    : undefined;
+  return selected && (selectedThisSession || getSupporterGameStage(selected, now) !== 'completed')
+    ? selected
+    : undefined;
+}
+
 export function getActiveSupporterGame<T extends SupporterGameLike>(
   games: readonly T[],
   selectedGameId: string | null,
   now = new Date(),
+  selectedThisSession = false,
 ): T | undefined {
-  const selected = selectedGameId
-    ? games.find((game) => game.id === selectedGameId)
-    : undefined;
+  const selected = getVisibleSupporterSelection(games, selectedGameId, now, selectedThisSession);
   if (selected) return selected;
   return games.find((game) => getSupporterGameStage(game, now) !== 'completed')
-    ?? games.at(-1);
+    ?? [...games].sort((left, right) => (
+      right.date.localeCompare(left.date) || right.time.localeCompare(left.time)
+    ))[0];
 }
 
 export function getNextUpcomingSupporterEvent<T extends SupporterWeekEventLike>(
@@ -395,7 +410,9 @@ export function getSupporterWeekRecommendation<T extends SupporterWeekEventLike>
     };
   }
 
-  const completedGame = games.at(-1);
+  const completedGame = [...games].sort((left, right) => (
+    right.date.localeCompare(left.date) || right.time.localeCompare(left.time)
+  ))[0];
   return completedGame
     ? {
       event: completedGame,
