@@ -11,10 +11,13 @@ import {
   Check,
   Clipboard,
   ExternalLink,
+  ImagePlus,
   Link2,
+  MessageCircle,
   Radio,
   MapPin,
   Share2,
+  SlidersHorizontal,
   Smartphone,
   Trophy,
   Trash2,
@@ -54,6 +57,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { HypeCardReplyComposer } from './public-hype-card';
 import { FanCardPhotoManager } from './fan-card-photo-manager';
+import { HypeManagerTaskCard } from './hype-manager-wallet';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
@@ -911,6 +915,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [showStats, setShowStats] = useState(invite.showStats);
   const [showSchedule, setShowSchedule] = useState(invite.showSchedule);
   const [hypesEnabled, setHypesEnabled] = useState(invite.hypesEnabled);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'hypes' | 'media' | null>(
+    () => window.location.hash === '#owner-fan-hypes' ? 'hypes' : null,
+  );
+  const previousInviteToken = useRef(invite.inviteToken);
   const { data: hypes, isLoading: hypesLoading, isError: hypesError } = useListAthleteInviteHypes(invite.inviteToken, {
     query: { queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken), refetchOnMount: 'always', refetchInterval: 30_000 },
   });
@@ -937,33 +946,50 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const mediaError = videosError || imagesError;
 
   useEffect(() => {
+    const changedInvite = previousInviteToken.current !== invite.inviteToken;
+    previousInviteToken.current = invite.inviteToken;
+    if (changedInvite) {
+      setSettingsDirty(false);
+      setActiveTask(window.location.hash === '#owner-fan-hypes' ? 'hypes' : null);
+    }
+    if (settingsDirty && !changedInvite) return;
     setShowHypeCard(invite.showHypeCard);
     setShowStats(invite.showStats);
     setShowSchedule(invite.showSchedule);
     setHypesEnabled(invite.hypesEnabled);
     setTimezone(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.hypesEnabled, invite.timezone]);
+  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.hypesEnabled, invite.timezone, settingsDirty]);
   useEffect(() => {
-    if (window.location.hash !== '#owner-fan-hypes') return;
-    const target = document.getElementById('owner-fan-hypes');
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    target.focus({ preventScroll: true });
+    const openHypes = () => {
+      if (window.location.hash === '#owner-fan-hypes') setActiveTask('hypes');
+    };
+    openHypes();
+    window.addEventListener('hashchange', openHypes);
+    return () => window.removeEventListener('hashchange', openHypes);
   }, [invite.inviteToken]);
+  useEffect(() => {
+    if (activeTask !== 'hypes' || window.location.hash !== '#owner-fan-hypes') return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById('owner-fan-hypes');
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTask, invite.inviteToken]);
 
-  const payload = (paused = invite.paused): AthleteInviteInput => ({
+  const payload = (paused = invite.paused, useDraft = true): AthleteInviteInput => ({
     athleteName: invite.athleteName,
     teamName: invite.teamName,
     seasonName: invite.seasonName,
     seasonEndsAt: invite.seasonEndsAt,
-    timezone,
+    timezone: useDraft ? timezone : (invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
     sport: invite.sport,
     trackerProjectId: invite.trackerProjectId,
     scheduleProjectId: invite.scheduleProjectId,
-    showHypeCard,
-    showStats,
-    showSchedule,
-    hypesEnabled,
+    showHypeCard: useDraft ? showHypeCard : invite.showHypeCard,
+    showStats: useDraft ? showStats : invite.showStats,
+    showSchedule: useDraft ? showSchedule : invite.showSchedule,
+    hypesEnabled: useDraft ? hypesEnabled : invite.hypesEnabled,
     paused,
   });
   const refreshPage = async () => {
@@ -978,6 +1004,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     try {
       await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload() });
       await refreshPage();
+      setSettingsDirty(false);
       setNotice('Hype Page settings updated.');
     } catch {
       setNotice('The Hype Page settings could not be updated.');
@@ -995,7 +1022,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const toggleAvailability = async () => {
     setNotice('');
     try {
-      await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload(!invite.paused) });
+      await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload(!invite.paused, false) });
       await refreshPage();
       setNotice(invite.paused ? 'Hype Page resumed.' : 'Hype Page paused. Only you can access its management section.');
     } catch {
@@ -1056,17 +1083,20 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   };
 
   return (
-    <section className="mt-8 border border-primary/60 bg-[#102A4C] p-5 text-white sm:p-7" aria-labelledby="owner-hype-page-management" data-testid="owner-hype-page-management">
-      <div className="flex flex-col gap-3 border-b border-white/15 pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <section className="mx-auto mt-7 max-w-[760px] text-white" aria-labelledby="owner-hype-page-management" data-testid="owner-hype-page-management">
+      <div className="flex flex-col gap-3 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner only</p>
-          <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase">Manage Hype Page</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">These controls are visible only to the account that owns this page.</p>
+          <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase sm:text-5xl">Hype Card Manager</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Build and share your athlete&apos;s story. Choose what you want to do next.</p>
         </div>
         <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Back to studio</Link>
       </div>
+      {notice && <p role="status" className="my-3 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed" data-testid="status-hype-manager">{notice}</p>}
 
-      <div className="mt-5">
+      <div className="mt-5 space-y-3">
+      <HypeManagerTaskCard id="share" title="Share Hype Card" description="Choose a card to share" Icon={Share2} active={activeTask === 'share'} onSelect={() => setActiveTask('share')} badge={invite.paused ? 'Paused' : 'Live'} preview={invite.photoUrl ? <img src={invite.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 place-items-center bg-[#dceaf4] text-lg font-black text-[#102a4c]">{invite.athleteName.trim().charAt(0).toUpperCase() || 'P'}</span>}>
+      <div>
         <h3 className="font-display text-2xl uppercase">Share the fan Hype Card</h3>
         <p className="mt-1 text-xs text-white/55">This is the main link for family and fans. It stays with this athlete as their season updates.</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -1078,7 +1108,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         </div>
       </div>
       <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — fans cannot open this card until you resume it.' : 'Live — this stable season URL stays with the athlete.'}</p>
-      <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
         <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
           <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
@@ -1087,22 +1116,30 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <Radio className="mr-2 h-4 w-4" />{invite.liveTrackerShareToken ? 'Stop Game Day Live' : 'Start Game Day Live'}
         </Button>
       </div>
+      </HypeManagerTaskCard>
 
-      <form onSubmit={saveSettings} className="mt-6 border-t border-white/15 pt-6" data-testid="section-visible-athlete-page">
+      <HypeManagerTaskCard id="photo" title="Upload Photo" description="Add a new athlete photo" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => setActiveTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
+        <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
+      </HypeManagerTaskCard>
+
+      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => setActiveTask('sections')} badge={settingsDirty ? 'Unsaved changes' : undefined}>
+      <form onSubmit={saveSettings} data-testid="section-visible-athlete-page">
         <h3 className="font-display text-2xl uppercase">Visible sections</h3>
-        <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
-        <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
-        <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
-        <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} onChange={setHypesEnabled} />
+        <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} onChange={(value) => { setShowHypeCard(value); setSettingsDirty(true); }} />
+        <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={(value) => { setShowStats(value); setSettingsDirty(true); }} />
+        <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={(value) => { setShowSchedule(value); setSettingsDirty(true); }} />
+        <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} onChange={(value) => { setHypesEnabled(value); setSettingsDirty(true); }} />
         <label className="mt-4 block max-w-sm text-xs font-bold uppercase tracking-widest text-white/70">
           Schedule time zone for fan event alerts
-          <input value={timezone} onChange={(event) => setTimezone(event.target.value)} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
+          <input value={timezone} onChange={(event) => { setTimezone(event.target.value); setSettingsDirty(true); }} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
           <span className="mt-2 block text-xs font-normal normal-case tracking-normal text-white/50">Enter the time zone where events begin, such as America/New_York.</span>
         </label>
         <Button type="submit" disabled={updateInvite.isPending} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Update Hype Page</Button>
       </form>
+      </HypeManagerTaskCard>
 
-      <section className="mt-7 border-t border-white/15 pt-6" aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
+      <HypeManagerTaskCard id="hypes" title="Fan Hypes" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => setActiveTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
+      <section aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
         <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Hypes</h3>
         <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Hypes are on for the living card.' : 'Hypes are off. Earlier messages remain available to you.'}</p>
         <p className="mt-2 text-xs text-white/50">When browser alerts are enabled, new Hypes open directly here. Alert previews do not show fan messages.</p>
@@ -1116,8 +1153,10 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
             </li>
           ))}</ul> : <p className="mt-4 text-sm text-white/60">No Hypes yet.</p>}
       </section>
+      </HypeManagerTaskCard>
 
-      <div className="mt-7 border-t border-white/15 pt-6" aria-live="polite" data-testid="section-manage-athlete-videos">
+      <HypeManagerTaskCard id="media" title="Add Media" description="Add a video or highlight" Icon={Video} active={activeTask === 'media'} onSelect={() => setActiveTask('media')} badge={hostedVideos.length ? `${hostedVideos.length} posted` : undefined}>
+      <div aria-live="polite" data-testid="section-manage-athlete-videos">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Posted media</p>
@@ -1171,7 +1210,8 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           </div>
         )}
       </div>
-      {notice && <p role="status" className="mt-5 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
+      </HypeManagerTaskCard>
+      </div>
     </section>
   );
 }

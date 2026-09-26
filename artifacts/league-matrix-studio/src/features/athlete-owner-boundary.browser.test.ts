@@ -312,12 +312,29 @@ test('player-page owner tools remain private across account changes and pause', 
     const ownerManage = await open('owner', 'manage', false, '#owner-fan-hypes');
     await waitFor(connection, ownerManage, element('[data-testid="owner-hype-page-management"]'), Boolean, 30_000);
     await waitFor(connection, ownerManage, "document.activeElement?.id === 'owner-fan-hypes'", Boolean, 30_000);
-    for (const label of ['Pause Hype Page', 'Start Game Day Live', 'Visible sections', 'Manage posted videos', 'Add a video here']) {
+    for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Hypes', 'Add Media']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
+    }
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
+    assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), false);
+    const originalSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage);
+    await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]').click()", ownerManage);
+    const changedSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage);
+    assert.notEqual(changedSetting, originalSetting);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-media\"]').click()", ownerManage);
+    assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-media')?.hidden", ownerManage), false);
+    assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), true);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
+    assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-share\"]').click()", ownerManage);
+    for (const label of ['Pause Hype Page', 'Start Game Day Live']) {
+      assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).includes(label), label);
     }
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Pause Hype Page')).click()", ownerManage);
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
     assert.equal(paused, true);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
+    assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
     const pausedOwner = await open('owner', 'public');
     await waitFor(connection, pausedOwner, element('[data-testid="link-manage-athlete-hype-page"]'), Boolean, 30_000);
     const pausedOther = await open('other', 'public');
