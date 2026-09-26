@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
 
 const now = new Date('2026-09-24T12:00:00');
 const event = (id: string, type: GameOnDashboardEvent['type'], date: string): GameOnDashboardEvent => ({
@@ -49,6 +49,28 @@ test('the next dated card is featured unless an event is active', () => {
   ], [], 'Alex', now);
   assert.equal(getFeaturedGameOnCardId(liveCards, now), 'draft:active');
   assert.equal(getFeaturedGameOnCardId(cards.filter((card) => card.status === 'Complete'), now), undefined);
+});
+
+test('a standalone Game On card appears in the next-game summary before its 10 AM start', () => {
+  const morning = new Date('2026-09-26T07:30:00');
+  const standaloneGame = { ...event('today-10', 'game', '2026-09-26'), time: '10:00' };
+  const laterScheduledGame = event('tomorrow', 'game', '2026-09-27');
+  const cards = buildGameOnDashboardEntries([laterScheduledGame], [{
+    shareToken: 'today-card', title: 'Game On', createdAt: morning.toISOString(), events: [standaloneGame],
+  }], 'Alex', morning);
+
+  assert.equal(getNextGameOnDashboardEntry(cards, morning)?.id, 'share:today-card');
+  assert.equal(getNextGameOnDashboardEntry(cards, morning)?.date, '2026-09-26');
+  assert.equal(getNextGameOnDashboardEntry(cards, morning)?.time, '10:00');
+  assert.equal(getNextGameOnDashboardEntry(cards, new Date('2026-09-26T09:30:00'))?.id, 'share:today-card', 'an active game stays ahead of tomorrow');
+  assert.equal(getNextGameOnDashboardEntry(cards, new Date('2026-09-26T14:00:00'))?.eventId, 'tomorrow');
+});
+
+test('a finalized card is not announced as an upcoming game', () => {
+  const morning = new Date('2026-09-26T07:30:00');
+  const todayGame = { ...event('done', 'game', '2026-09-26'), time: '10:00', status: 'final' as const };
+  const cards = buildGameOnDashboardEntries([todayGame], [], 'Alex', morning);
+  assert.equal(getNextGameOnDashboardEntry(cards, morning), undefined);
 });
 
 test('published events reuse their schedule identity and do not appear again as drafts', () => {

@@ -58,6 +58,21 @@ export function getFeaturedGameOnCardId(
     ?? dated.find((card) => stage(card) === 'upcoming')?.id;
 }
 
+export function getNextGameOnDashboardEntry(
+  cards: readonly GameOnDashboardEntry[],
+  now = new Date(),
+): GameOnDashboardEntry | undefined {
+  const games = sortGameOnCardsByDate(cards.filter((card) => card.type === 'game' && card.date.trim()));
+  const stage = (card: GameOnDashboardEntry) => getSupporterGameStage({
+    date: card.date,
+    time: card.time,
+    type: card.type,
+    status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
+  }, now);
+  return games.find((card) => stage(card) === 'live')
+    ?? games.find((card) => stage(card) === 'upcoming');
+}
+
 function isCardEvent(event: GameOnDashboardEvent | undefined): event is GameOnDashboardEvent & { type: 'game' | 'practice' } {
   return Boolean(event && event.id && (event.type === 'game' || event.type === 'practice'));
 }

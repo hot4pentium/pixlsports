@@ -44,7 +44,7 @@ import {
   type GameOnCardRenderOptions,
 } from './game-on-dashboard-collection';
 import { navigateToGameOnSection } from './game-on-navigation';
-import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
 import { getTrackerStorageKeys, readStoredTrackerData, type Sport } from './stat-tracker';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
@@ -431,7 +431,6 @@ export function SupporterDashboardView({
     <Users className="h-5 w-5" aria-hidden="true" />
   );
   const gameEvents = events.filter((event) => event.type === 'game');
-  const recommendedGame = getActiveSupporterGame(gameEvents, null, currentTime);
   const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
   const selectedWorkspaceEvent = activeJourneyEvents.find((event) => event.id === selectedGameId);
   const weekRecommendation = getSupporterWeekRecommendation(
@@ -464,6 +463,17 @@ export function SupporterDashboardView({
   const recordSport = profile.sport ?? trackerData?.games.find((game) => game.status === 'final')?.sport ?? null;
   const gameRecord = buildSupporterGameRecord(trackerData?.games ?? [], scoredGameIds, recordSport);
   const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime, completedLocalGames);
+  const recommendedGameCard = getNextGameOnDashboardEntry(dashboardCards, currentTime);
+  const scheduledRecommendedGame = gameEvents.find((event) => event.id === recommendedGameCard?.eventId);
+  const recommendedGame: SupporterEvent | undefined = scheduledRecommendedGame ?? (recommendedGameCard ? {
+    id: recommendedGameCard.eventId,
+    type: 'game',
+    date: recommendedGameCard.date,
+    time: recommendedGameCard.time,
+    location: recommendedGameCard.location,
+    opponent: recommendedGameCard.opponent,
+    status: recommendedGameCard.status === 'Live' ? 'live' : 'upcoming',
+  } : undefined);
   const newDraftCollectionCard = newCardDraft ? {
     id: newCardDraft.id,
     layoutId: newCardDraft.id,
@@ -820,7 +830,7 @@ export function SupporterDashboardView({
         <div className="supporter-game-on-summary__event-kicker">
           <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
           <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">{recommendedGame ? 'Next game' : 'No upcoming game'}</span>
-          {recommendedGame && scheduleSource && <span className="supporter-game-on-summary__schedule-source">· Your schedule</span>}
+          {scheduledRecommendedGame && scheduleSource && <span className="supporter-game-on-summary__schedule-source">· Your schedule</span>}
         </div>
         {recommendedGame && (
           <span className="supporter-game-on-summary__event-badge">
@@ -857,7 +867,7 @@ export function SupporterDashboardView({
             {recommendedGameTitle}
           </h2>
           <p className="supporter-game-on-summary__event-empty">
-            {gameEvents.length === 0 ? 'Add a game to see your next matchup here.' : 'No upcoming game is scheduled right now.'}
+             {dashboardCards.every((card) => card.type !== 'game') ? 'Add a game to see your next matchup here.' : 'No upcoming game is scheduled right now.'}
           </p>
         </>
       )}
@@ -880,7 +890,7 @@ export function SupporterDashboardView({
               {recommendedGame && (
                 <button
                   type="button"
-                  onClick={() => selectGame(recommendedGame.id)}
+                  onClick={() => scheduledRecommendedGame ? selectGame(recommendedGame.id) : recommendedGameCard && selectCard(recommendedGameCard.id)}
                   data-testid={variant === 'desktop' ? 'button-return-to-recommended-game' : undefined}
                 >
                   Return to recommended game <ArrowRight size={14} aria-hidden="true" />
