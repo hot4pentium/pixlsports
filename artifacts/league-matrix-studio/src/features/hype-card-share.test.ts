@@ -40,3 +40,15 @@ test('video preparation loads the first frame and bounds stalled local preparati
   assert.match(shareSource, /Video preparation stalled while opening the selected segment/);
   assert.match(shareSource, /Video preparation stalled while creating the preview image/);
 });
+
+test('hosted preparation activates one audio context before awaiting and passes it through verification', () => {
+  const preparationStart = shareSource.indexOf('export async function prepareHypeCardShareMedia');
+  const bootstrapPosition = shareSource.indexOf('createAudioCaptureSession()', preparationStart);
+  const firstAwaitPosition = shareSource.indexOf('await ', preparationStart);
+
+  assert.ok(bootstrapPosition > preparationStart);
+  assert.ok(firstAwaitPosition > bootstrapPosition, 'AudioContext.resume() must start before the first await');
+  assert.match(shareSource, /finally \{[\s\S]*?audioSession\.context\.close\(\)/);
+  assert.match(shareSource, /audioSession,\s*\n\s*\},\s*\n\s*\);/);
+  assert.match(exportSource, /hasAudibleAudioSamples\(blob, signal, audioSession\)/);
+});

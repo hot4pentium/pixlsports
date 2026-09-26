@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const source = readFileSync(new URL('./athlete-invite.tsx', import.meta.url), 'utf8');
+const athleteDraftSource = readFileSync(new URL('./athlete-video-draft.ts', import.meta.url), 'utf8');
 const hypeCardSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
@@ -93,6 +94,23 @@ test('posting a Hype Card opens the living fan card and keeps owner management a
   assert.match(source, /requestHypeCardShareUploadUrl/);
   assert.match(source, /expiresInDays: 365/);
   assert.match(source, /The original video remains on this device/);
+  assert.match(source, /saveAthleteVideoDraft\(draftKey, \{ \.\.\.draft, blob: sourceBlob \}\)/);
+  assert.match(source, /saveAthleteVideoDraftDetails\(draftKey, draft\)/);
+  assert.match(source, /loadAthleteVideoDraft\(draftKey\)/);
+  assert.match(source, /new File\(\[draft\.blob\], draft\.fileName/);
+  assert.match(source, /setTrimStart\(draft\.trimStart\)/);
+  assert.match(source, /setTrimEnd\(draft\.trimEnd\)/);
+  assert.match(source, /setMediaName\(draft\.mediaName\)/);
+  assert.match(source, /This video draft could not be saved on this device/);
+  assert.match(source, /Only the prepared clip and poster are uploaded when you post/);
+  assert.match(source, /await deleteAthleteVideoDraft\(draftKey\)/);
+  assert.match(athleteDraftSource, /indexedDB\.open\(ATHLETE_VIDEO_DRAFT_DB, 1\)/);
+  assert.match(athleteDraftSource, /blob: Blob/);
+  assert.match(athleteDraftSource, /ATHLETE_VIDEO_DRAFT_SOURCE_STORE = 'sources'/);
+  assert.match(athleteDraftSource, /ATHLETE_VIDEO_DRAFT_DETAILS_STORE = 'details'/);
+  assert.match(athleteDraftSource, /export function saveAthleteVideoDraft/);
+  assert.match(athleteDraftSource, /export async function loadAthleteVideoDraft/);
+  assert.match(athleteDraftSource, /export async function deleteAthleteVideoDraft/);
   const prepareIndex = source.indexOf('const prepared = await prepareHypeCardShareMedia(');
   const uploadIndex = source.indexOf('requestHypeCardShareUploadUrl(', prepareIndex);
   const shareIndex = source.indexOf('await createShare.mutateAsync(', uploadIndex);

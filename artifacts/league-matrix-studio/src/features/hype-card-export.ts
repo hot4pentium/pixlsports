@@ -8,6 +8,12 @@ export type VideoRecorderOptions = {
   audioBitsPerSecond?: number;
   requireAudio?: boolean;
   onAudioCheck?: () => void;
+  audioSession?: AudioCaptureSession;
+};
+
+export type AudioCaptureSession = {
+  context: AudioContext;
+  resumePromise: Promise<void>;
 };
 
 export const AUDIO_CAPTURE_UNAVAILABLE_MESSAGE =
@@ -24,6 +30,31 @@ const PLAYBACK_START_TIMEOUT_MS = 8_000;
 const NO_PROGRESS_TIMEOUT_MS = 8_000;
 const AUDIO_SAMPLE_CHECK_TIMEOUT_MS = 2_500;
 const AUDIO_SAMPLE_THRESHOLD = 0.00001;
+
+function getAudioContextConstructor() {
+  return window.AudioContext
+    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+}
+
+/**
+ * Starts Web Audio synchronously so callers can invoke this while handling a
+ * user gesture, then share the running context with recording and verification.
+ */
+export function createAudioCaptureSession(): AudioCaptureSession {
+  const AudioContextConstructor = getAudioContextConstructor();
+  if (!AudioContextConstructor) throw audioCaptureUnavailableError();
+  const context = new AudioContextConstructor();
+  let resumePromise: Promise<void>;
+  try {
+    resumePromise = context.resume();
+  } catch {
+    void context.close().catch(() => undefined);
+    throw audioCaptureUnavailableError();
+  }
+  // Keep an early rejection handled until the async preparation path awaits it.
+  void resumePromise.catch(() => undefined);
+  return { context, resumePromise };
+}
 
 function abortError() {
   const error = new Error('Export cancelled');
@@ -123,10 +154,13 @@ export function audioSamplesContainSignal(samples: ArrayLike<number>): boolean {
  * Safari can expose an audio track while its MediaRecorder output contains only
  * zero-valued samples.
  */
-export async function hasAudibleAudioSamples(blob: Blob, signal?: AbortSignal): Promise<boolean> {
-  const AudioContextConstructor = window.AudioContext
-    ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextConstructor) throw new Error('Web Audio is unavailable.');
+export async function hasAudibleAudioSamples(
+  blob: Blob,
+  signal?: AbortSignal,
+  audioSession?: AudioCaptureSession,
+): Promise<boolean> {
+  const AudioContextConstructor = audioSession ? undefined : getAudioContextConstructor();
+  if (!audioSession && !AudioContextConstructor) throw new Error('Web Audio is unavailable.');
   const checkSignal = signal ?? new AbortController().signal;
 
   const url = URL.createObjectURL(blob);
@@ -140,15 +174,27 @@ export async function hasAudibleAudioSamples(blob: Blob, signal?: AbortSignal): 
   let source: MediaElementAudioSourceNode | null = null;
   let analyser: AnalyserNode | null = null;
   let gain: GainNode | null = null;
+  let ownsAudioContext = false;
 
   try {
     await waitForMediaEvent(audio, 'loadedmetadata', 'Audio could not be checked.', checkSignal);
-    audioContext = new AudioContextConstructor();
-    await withTimeout(
-      audioContext.resume(),
-      'Video preparation stalled while checking audio.',
-      checkSignal,
-    );
+    if (audioSession) {
+      audioContext = audioSession.context;
+      await withTimeout(
+        audioSession.resumePromise,
+        'Video preparation stalled while checking audio.',
+        checkSignal,
+      );
+      if (audioContext.state !== 'running') throw new Error('The audio context is not running.');
+    } else {
+      audioContext = new AudioContextConstructor!();
+      ownsAudioContext = true;
+      await withTimeout(
+        audioContext.resume(),
+        'Video preparation stalled while checking audio.',
+        checkSignal,
+      );
+    }
     source = audioContext.createMediaElementSource(audio);
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
@@ -181,7 +227,7 @@ export async function hasAudibleAudioSamples(blob: Blob, signal?: AbortSignal): 
     audio.removeAttribute('src');
     audio.load();
     audio.remove();
-    void audioContext?.close().catch(() => undefined);
+    if (ownsAudioContext) void audioContext?.close().catch(() => undefined);
     URL.revokeObjectURL(url);
   }
 }
@@ -243,7 +289,12 @@ export async function exportVideoCanvas(
   onDrawFrame: (ctx: CanvasRenderingContext2D, videoFrame: HTMLVideoElement) => void,
   recorderOptions: VideoRecorderOptions = {},
 ): Promise<{ blob: Blob; mimeType: string; ext: string; audioIncluded: boolean }> {
-  const { requireAudio = false, onAudioCheck, ...mediaRecorderOptions } = recorderOptions;
+  const {
+    requireAudio = false,
+    onAudioCheck,
+    audioSession,
+    ...mediaRecorderOptions
+  } = recorderOptions;
   const support = checkExportSupport();
   
   let mimeType = '';
@@ -268,6 +319,7 @@ export async function exportVideoCanvas(
   const endTime = Math.max(startTime + 0.1, Math.min(trimEnd, sourceDuration));
   let audioElement: HTMLVideoElement | null = null;
   let audioContext: AudioContext | null = null;
+  let ownsAudioContext = false;
   let audioDecoding = false;
   
   // Add audio track if requested and available
@@ -275,10 +327,11 @@ export async function exportVideoCanvas(
     try {
       // Safari often omits audio from HTMLMediaElement.captureStream(). Use a
       // separate local media element and Web Audio to create a capturable track.
-      const AudioContextConstructor = window.AudioContext
-        ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const AudioContextConstructor = audioSession ? undefined : getAudioContextConstructor();
       const sourceUrl = videoElement.currentSrc || videoElement.src;
-      if (!AudioContextConstructor || !sourceUrl) throw new Error('Web Audio is unavailable.');
+      if ((!audioSession && !AudioContextConstructor) || !sourceUrl) {
+        throw new Error('Web Audio is unavailable.');
+      }
 
       audioElement = document.createElement('video');
       audioElement.preload = 'auto';
@@ -292,8 +345,19 @@ export async function exportVideoCanvas(
         await waitForMediaEvent(audioElement, 'seeked', 'Audio could not be decoded.', signal);
       }
       audioDecoding = false;
-      audioContext = new AudioContextConstructor();
-      await withTimeout(audioContext.resume(), 'Video preparation stalled while starting audio.', signal);
+      if (audioSession) {
+        audioContext = audioSession.context;
+        await withTimeout(
+          audioSession.resumePromise,
+          'Video preparation stalled while starting audio.',
+          signal,
+        );
+        if (audioContext.state !== 'running') throw new Error('The audio context is not running.');
+      } else {
+        audioContext = new AudioContextConstructor!();
+        ownsAudioContext = true;
+        await withTimeout(audioContext.resume(), 'Video preparation stalled while starting audio.', signal);
+      }
       const audioSource = audioContext.createMediaElementSource(audioElement);
       const audioDestination = audioContext.createMediaStreamDestination();
       audioSource.connect(audioDestination);
@@ -305,7 +369,7 @@ export async function exportVideoCanvas(
       console.warn('Could not capture clip audio with Web Audio', err);
       audioElement?.remove();
       audioElement = null;
-      await audioContext?.close().catch(() => undefined);
+      if (ownsAudioContext) await audioContext?.close().catch(() => undefined);
       audioContext = null;
       if (signal.aborted) {
         stream.getTracks().forEach((track) => track.stop());
@@ -324,7 +388,7 @@ export async function exportVideoCanvas(
   } catch {
     stream.getTracks().forEach((track) => track.stop());
     audioElement?.remove();
-    void audioContext?.close().catch(() => undefined);
+    if (ownsAudioContext) void audioContext?.close().catch(() => undefined);
     throw new Error('This browser could not start video preparation.');
   }
   const chunks: Blob[] = [];
@@ -355,7 +419,7 @@ export async function exportVideoCanvas(
       if (wasPaused) videoElement.pause();
       audioElement?.pause();
       audioElement?.remove();
-      void audioContext?.close().catch(() => undefined);
+      if (ownsAudioContext) void audioContext?.close().catch(() => undefined);
       stream.getTracks().forEach((track) => track.stop());
     };
     
@@ -368,7 +432,7 @@ export async function exportVideoCanvas(
         if (includeAudio) {
           onAudioCheck?.();
           try {
-            verifiedAudio = await hasAudibleAudioSamples(blob, signal);
+            verifiedAudio = await hasAudibleAudioSamples(blob, signal, audioSession);
           } catch (error) {
             if (signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
               reject(error);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -58,6 +58,13 @@ import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
 import { MAX_HOSTED_VIDEO_BYTES, monotonicProgress, prepareHypeCardShareMedia, uploadHypeCardShareMedia } from './hype-card-share';
+import {
+  deleteAthleteVideoDraft,
+  loadAthleteVideoDraft,
+  saveAthleteVideoDraft,
+  saveAthleteVideoDraftDetails,
+  type AthleteVideoDraftDetails,
+} from './athlete-video-draft';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const hostedVideoQuery = { shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 };
@@ -482,14 +489,114 @@ function OwnerVideoUpload({
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [mediaName, setMediaName] = useState('Game Day highlight');
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const draftVersionRef = useRef(0);
+  const restoredTrimRef = useRef(false);
+  const sourceSavedRef = useRef(false);
+  const draftKey = `owner-athlete-video:${invite.inviteToken}`;
+
+  const queueDraftSave = useCallback((draft: AthleteVideoDraftDetails, sourceBlob?: Blob) => {
+    const version = ++draftVersionRef.current;
+    if (sourceBlob) sourceSavedRef.current = false;
+    setDraftStatus('saving');
+    writeQueueRef.current = writeQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        if (sourceBlob) {
+          await saveAthleteVideoDraft(draftKey, { ...draft, blob: sourceBlob });
+          sourceSavedRef.current = true;
+          return;
+        }
+        if (!sourceSavedRef.current) {
+          throw new Error('The original video has not been saved on this device.');
+        }
+        await saveAthleteVideoDraftDetails(draftKey, draft);
+      });
+    void writeQueueRef.current.then(() => {
+      if (draftVersionRef.current === version) setDraftStatus('saved');
+    }).catch(() => {
+      if (draftVersionRef.current === version) setDraftStatus('error');
+    });
+    return writeQueueRef.current;
+  }, [draftKey]);
 
   useEffect(() => () => {
     abortRef.current?.abort();
     if (videoUrl) URL.revokeObjectURL(videoUrl);
   }, [videoUrl]);
 
-  const reset = () => {
+  useEffect(() => {
+    let active = true;
+    setDraftReady(false);
+    setDraftStatus('idle');
+    void loadAthleteVideoDraft(draftKey).then((draft) => {
+      if (!active || !draft) {
+        if (active) {
+          sourceSavedRef.current = false;
+          setDraftReady(true);
+        }
+        return;
+      }
+      if (draft.blob.size > 120 * 1024 * 1024 || !draft.fileType.startsWith('video/')) {
+        setMessage('The saved video draft is unavailable or exceeds the 120MB local limit. Choose the original video again.');
+        setDraftReady(true);
+        return;
+      }
+      const restoredFile = new File([draft.blob], draft.fileName, {
+        type: draft.fileType,
+        lastModified: draft.lastModified,
+      });
+      sourceSavedRef.current = true;
+      restoredTrimRef.current = true;
+      setFile(restoredFile);
+      setMediaName(draft.mediaName);
+      setTrimStart(draft.trimStart);
+      setTrimEnd(draft.trimEnd);
+      setVideoUrl((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return URL.createObjectURL(restoredFile);
+      });
+      setDraftStatus('saved');
+      setDraftReady(true);
+    }).catch(() => {
+      if (!active) return;
+      setDraftStatus('error');
+      setMessage('A saved video draft could not be opened on this device. The original video has not been uploaded.');
+      setDraftReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!file || !draftReady) return;
+    const draft: AthleteVideoDraftDetails = {
+      fileName: file.name,
+      fileType: file.type,
+      lastModified: file.lastModified,
+      trimStart,
+      trimEnd,
+      mediaName,
+    };
+    queueDraftSave(draft);
+  }, [draftReady, file, mediaName, queueDraftSave, trimEnd, trimStart]);
+
+  const reset = async () => {
     abortRef.current?.abort();
+    try {
+      await writeQueueRef.current.catch(() => undefined);
+      await deleteAthleteVideoDraft(draftKey);
+    } catch {
+      setDraftStatus('error');
+      setMessage('This video draft could not be removed from this device. It may return when you reopen this page.');
+      return;
+    }
+    draftVersionRef.current += 1;
+    restoredTrimRef.current = false;
+    sourceSavedRef.current = false;
     setFile(null);
     setDuration(0);
     setTrimStart(0);
@@ -498,6 +605,8 @@ function OwnerVideoUpload({
     setProgress(0);
     setMessage('');
     setMediaName('Game Day highlight');
+    setDraftReady(true);
+    setDraftStatus('idle');
     setVideoUrl((current) => {
       if (current) URL.revokeObjectURL(current);
       return null;
@@ -521,7 +630,18 @@ function OwnerVideoUpload({
     setStage('');
     setProgress(0);
     setFile(nextFile);
-    setMediaName(directMediaName(nextFile.name));
+    const nextMediaName = directMediaName(nextFile.name);
+    setMediaName(nextMediaName);
+    setDraftReady(true);
+    restoredTrimRef.current = false;
+    void queueDraftSave({
+      fileName: nextFile.name,
+      fileType: nextFile.type,
+      lastModified: nextFile.lastModified,
+      trimStart: 0,
+      trimEnd: 0,
+      mediaName: nextMediaName,
+    }, nextFile);
     setVideoUrl((current) => {
       if (current) URL.revokeObjectURL(current);
       return URL.createObjectURL(nextFile);
@@ -537,10 +657,25 @@ function OwnerVideoUpload({
       setMessage('This video has an invalid duration.');
       return;
     }
+    if (duration > 0 && !restoredTrimRef.current) {
+      setDuration(video.duration);
+      return;
+    }
     setDuration(video.duration);
-    setTrimStart(0);
-    setTrimEnd(Math.min(15, video.duration));
-    setMessage(video.duration > 15 ? 'The first 15 seconds are selected. Adjust the segment below if needed.' : '');
+    if (restoredTrimRef.current) {
+      const maxStart = Math.max(0, video.duration - 0.1);
+      const safeStart = Math.max(0, Math.min(trimStart, maxStart));
+      const requestedEnd = trimEnd > trimStart ? trimEnd : Math.min(15, video.duration);
+      const safeEnd = Math.max(safeStart + 0.1, Math.min(video.duration, safeStart + 15, requestedEnd));
+      setTrimStart(safeStart);
+      setTrimEnd(safeEnd);
+      restoredTrimRef.current = false;
+      setMessage('');
+    } else {
+      setTrimStart(0);
+      setTrimEnd(Math.min(15, video.duration));
+      setMessage(video.duration > 15 ? 'The first 15 seconds are selected. Adjust the segment below if needed.' : '');
+    }
   };
 
   const handleStartChange = (value: number) => {
@@ -658,10 +793,19 @@ function OwnerVideoUpload({
           },
         },
       });
-      await onPosted();
+      let draftClearWarning = '';
+      try {
+        await writeQueueRef.current.catch(() => undefined);
+        await deleteAthleteVideoDraft(draftKey);
+        sourceSavedRef.current = false;
+      } catch {
+        draftClearWarning = ' The video was added, but this device could not clear its saved draft.';
+      }
       setProgress((current) => monotonicProgress(current, 1));
       setStage('');
-      setMessage('Video added to the Athlete Hype Page.');
+      setMessage(`Video added to the Athlete Hype Page.${draftClearWarning}`);
+      draftVersionRef.current += 1;
+      restoredTrimRef.current = false;
       setFile(null);
       setDuration(0);
       setTrimStart(0);
@@ -670,6 +814,12 @@ function OwnerVideoUpload({
         if (current) URL.revokeObjectURL(current);
         return null;
       });
+      setDraftStatus(draftClearWarning ? 'error' : 'idle');
+      try {
+        await onPosted();
+      } catch {
+        setMessage(`Video added to the Athlete Hype Page.${draftClearWarning} The page could not refresh its posted-video list.`);
+      }
     } catch (error) {
       const cancelled = error instanceof Error && error.name === 'AbortError';
       setMessage(cancelled ? 'Video upload cancelled. The original video remains on this device.' : error instanceof Error ? error.message : 'The video could not be added.');
@@ -689,9 +839,9 @@ function OwnerVideoUpload({
           <h4 id="add-athlete-video" className="mt-1 font-display text-2xl uppercase">Add a video here</h4>
           <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose, trim, and post a clip from this page. You do not need to open Hype Card Creator unless you want a designed card.</p>
         </div>
-        <label className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground ${atLimit || uploading ? 'pointer-events-none opacity-50' : 'hover:bg-primary/90'}`}>
+        <label className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground ${atLimit || uploading || !draftReady ? 'pointer-events-none opacity-50' : 'hover:bg-primary/90'}`}>
           <Upload className="h-4 w-4" /> Add video
-          <input type="file" accept="video/*" className="sr-only" onChange={handleFileChange} disabled={atLimit || uploading} />
+          <input type="file" accept="video/*" className="sr-only" onChange={handleFileChange} disabled={atLimit || uploading || !draftReady} />
         </label>
       </div>
       {atLimit && <p className="mt-3 text-xs font-medium text-amber-200">This page has reached its 3-video highlight limit. Delete one before adding another.</p>}
@@ -739,7 +889,14 @@ function OwnerVideoUpload({
           </div>
         </div>
       )}
-      {!file && message && <p className="mt-3 text-xs font-medium text-amber-200" role="alert">{message}</p>}
+      {!file && message && <p className="mt-3 text-xs font-medium text-amber-200" role={message.includes('added') ? 'status' : 'alert'} aria-live="polite">{message}</p>}
+      {file && draftStatus !== 'idle' && (
+        <p className={`mt-3 text-xs font-medium ${draftStatus === 'error' ? 'text-amber-200' : 'text-white/55'}`} role={draftStatus === 'error' ? 'alert' : 'status'} aria-live="polite" data-testid="status-owner-video-draft">
+          {draftStatus === 'saving' && 'Saving the original video, trim, and moment name privately on this device…'}
+          {draftStatus === 'saved' && 'Draft saved privately on this device. Only the prepared clip and poster are uploaded when you post.'}
+          {draftStatus === 'error' && 'This video draft could not be saved on this device. It may be lost if you leave this page; the original is not uploaded to the server.'}
+        </p>
+      )}
     </section>
   );
 }
@@ -969,6 +1126,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{hostedVideos.length} / {MAX_ATHLETE_HIGHLIGHT_VIDEOS}</span>
         </div>
         <OwnerVideoUpload
+          key={invite.inviteToken}
           invite={invite}
           atLimit={hostedVideos.length >= MAX_ATHLETE_HIGHLIGHT_VIDEOS}
           onPosted={async () => {

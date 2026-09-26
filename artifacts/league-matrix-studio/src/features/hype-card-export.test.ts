@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
-import { audioSamplesContainSignal, exportVideoCanvas, rasterizeSvgForDownload } from './hype-card-export';
+import {
+  audioSamplesContainSignal,
+  createAudioCaptureSession,
+  exportVideoCanvas,
+  rasterizeSvgForDownload,
+} from './hype-card-export';
 
 type CanvasCall = {
   width: number;
@@ -189,6 +194,10 @@ test('required clip audio rejects a Safari-style silent prepared blob after reco
   let clock = 0;
   let nextTimerId = 0;
   let audioCheckStarted = false;
+  let audioContextCount = 0;
+  let resumeCallCount = 0;
+  let mediaElementSourceCount = 0;
+  let contextCloseCount = 0;
   const timers = new Map<number, true>();
   const schedule = (callback: () => void, delay = 0) => {
     const timerId = ++nextTimerId;
@@ -218,14 +227,21 @@ test('required clip audio rejects a Safari-style silent prepared blob after reco
     for (const callback of [...(listeners.get(name) ?? [])]) callback(event);
   };
   class FakeAudioContext {
+    state: AudioContextState = 'running';
     destination = {};
+    constructor() {
+      audioContextCount += 1;
+    }
     resume() {
+      resumeCallCount += 1;
       return Promise.resolve();
     }
     close() {
+      contextCloseCount += 1;
       return Promise.resolve();
     }
     createMediaElementSource() {
+      mediaElementSourceCount += 1;
       return { connect() {}, disconnect() {} };
     }
     createMediaStreamDestination() {
@@ -346,7 +362,10 @@ test('required clip audio rejects a Safari-style silent prepared blob after reco
   Object.defineProperty(globalThis, 'cancelAnimationFrame', { configurable: true, value: () => {} });
   Object.defineProperty(Date, 'now', { configurable: true, value: () => clock });
 
+  const audioSession = createAudioCaptureSession();
   try {
+    assert.equal(audioContextCount, 1);
+    assert.equal(resumeCallCount, 1);
     await assert.rejects(
       exportVideoCanvas(
         canvas as unknown as HTMLCanvasElement,
@@ -363,14 +382,20 @@ test('required clip audio rejects a Safari-style silent prepared blob after reco
           onAudioCheck: () => {
             audioCheckStarted = true;
           },
+          audioSession,
         },
       ),
       (error: unknown) => error instanceof Error && error.name === 'AudioCaptureUnavailable',
     );
     assert.equal(audioCheckStarted, true);
+    assert.equal(audioContextCount, 1, 'recording and blob verification reuse the click-activated context');
+    assert.equal(resumeCallCount, 1, 'verification does not resume a new context after recording');
+    assert.equal(mediaElementSourceCount, 2, 'capture and recorded-blob verification both use the session');
+    assert.equal(contextCloseCount, 0, 'the exporter leaves a caller-owned session open');
     assert.equal(sourceVideo.src, 'blob:original-video');
     assert.equal(sourceVideo.currentTime, sourceVideo.duration);
   } finally {
+    await audioSession.context.close();
     if (previousWindow) Object.defineProperty(globalThis, 'window', { configurable: true, value: previousWindow });
     else delete (globalThis as { window?: unknown }).window;
     if (previousDocument) Object.defineProperty(globalThis, 'document', { configurable: true, value: previousDocument });

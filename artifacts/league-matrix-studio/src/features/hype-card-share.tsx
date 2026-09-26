@@ -1,5 +1,9 @@
 import type { HypeCardProject } from './hype-card-types';
-import { audioCaptureUnavailableError, exportVideoCanvas } from './hype-card-export';
+import {
+  audioCaptureUnavailableError,
+  createAudioCaptureSession,
+  exportVideoCanvas,
+} from './hype-card-export';
 
 export const MAX_HOSTED_VIDEO_BYTES = 35 * 1024 * 1024;
 const VIDEO_PREPARATION_STEP_TIMEOUT_MS = 10_000;
@@ -249,6 +253,9 @@ export async function prepareHypeCardShareMedia(
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser could not prepare the share video.');
+  // Run AudioContext.resume() in this synchronous entry path, while the
+  // Publish button's user activation is still available.
+  const audioSession = createAudioCaptureSession();
 
   try {
     reportProgress(0.01);
@@ -287,6 +294,7 @@ export async function prepareHypeCardShareMedia(
             audioBitsPerSecond: quality === 'compact' ? 64_000 : 128_000,
             requireAudio: true,
             onAudioCheck: options.onAudioCheck,
+            audioSession,
           },
         );
         if (!clip.audioIncluded) {
@@ -308,8 +316,12 @@ export async function prepareHypeCardShareMedia(
     }
     throw new Error('This browser could not make a small, correctly timed video. Your original stays on this device; try a shorter segment or another device.');
   } finally {
-    video.currentTime = originalTime;
-    if (wasPaused) video.pause();
-    else void video.play().catch(() => undefined);
+    try {
+      video.currentTime = originalTime;
+      if (wasPaused) video.pause();
+      else void video.play().catch(() => undefined);
+    } finally {
+      await audioSession.context.close().catch(() => undefined);
+    }
   }
 }
