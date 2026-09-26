@@ -40,6 +40,7 @@
 - [Active route verification](active-route-verification.md) — trace the rendered route before styling similarly named legacy components.
 - [Wouter query routing](wouter-query-routing.md) — query-driven variants need browser search params because this app’s Wouter location value is pathname-only.
 - [Installed startup checks](installed-startup-browser-check.md) — delay worker installation and measure first content/tap separately so shell regressions are visible before offline assertions run.
+- [Versioned offline HTML](versioned-offline-html.md) — serve the installed app's shell from its current worker cache without refreshing that HTML independently of its assets.
 - [Browser fixture reloads](browser-fixture-reloads.md) — reload generated browser-test HTML through its direct fixture URL after route changes to avoid SPA fallback to the production shell.
 - [CDP keyboard button activation](cdp-keyboard-button-activation.md) — native button activation in headless Chromium is reliably exercised with Space key-down and key-up events.
 - [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject them automatically.

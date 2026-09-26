@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v10`;
+const CACHE_NAME = `${CACHE_PREFIX}-v11`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 
@@ -9,6 +9,16 @@ function getScopePath() {
 
 function isInScope(url) {
   return url.origin === self.location.origin && url.pathname.startsWith(getScopePath());
+}
+
+function isAppRoute(url) {
+  const path = url.pathname.slice(getScopePath().length);
+  if (!path) return true;
+  const firstSegment = path.split('/')[0];
+  return [
+    'studio', 'sign-in', 'sign-up', 'schedule', 'game-on', 'checklist',
+    'meeting', 'h', 'watch', 'live', 'fan', 'player', 'help', 'privacy',
+  ].includes(firstSegment);
 }
 
 function resolveAppUrl(value) {
@@ -122,14 +132,14 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('/api/')) return;
 
   if (request.mode === 'navigate') {
+    // Only serve this app's SPA routes; other artifacts may share our origin
+    // when the studio is mounted at /.
+    if (!isAppRoute(url)) return;
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(getScopePath(), copy));
-          return response;
-        })
-        .catch(() => caches.match(getScopePath())),
+      caches.open(CACHE_NAME)
+        .then((cache) => cache.match(getScopePath()))
+        .catch(() => undefined)
+        .then((cached) => cached || fetch(request)),
     );
     return;
   }

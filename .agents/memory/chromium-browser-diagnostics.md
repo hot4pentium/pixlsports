@@ -9,6 +9,12 @@ Keep Chromium-based browser checks on a shared diagnostic path that captures bou
 
 **How to apply:** Pass the Chromium process monitor into the DevTools connection and include its diagnostics in startup, navigation, evaluation, and wait failures while preserving each suite's existing target cleanup.
 
+When a browser check owns a temporary HTTP server and Chromium profile, bound cleanup of both the browser process tree and server connections even after an assertion fails.
+
+**Why:** Killing only the Chromium parent can leave child processes writing to the profile, while open HTTP connections prevent a test runner from exiting and hide the original failure behind a timeout.
+
+**How to apply:** Use a process-group termination with escalation if needed, close active server connections, and keep profile cleanup failures from skipping the server close.
+
 For install-prompt journeys, headless Chromium does not provide a reliable native `beforeinstallprompt` event. Emulate the target UA, platform, and touch points through CDP, then dispatch a cancelable event with test-owned `prompt` and `userChoice` properties.
 
 **Why:** This keeps Android prompt handling and iPhone/iPad fallback rendering testable without depending on a desktop browser's install eligibility or a physical-device Share menu.

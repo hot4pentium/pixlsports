@@ -4260,10 +4260,10 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   });
 
   if (!bypassLifecycle && (!isLoaded || (isSignedIn && isLoading))) {
-    return <AccountLoadingScreen />;
+    return <AccountLoadingScreen onRetry={isLoaded && isSignedIn ? () => void refetch() : undefined} />;
   }
   if (isSignedIn && !bypassLifecycle && (isError || !lifecycle)) {
-    return <div className="grid min-h-dvh place-content-center gap-4 bg-background p-6 text-center"><p role="alert">Could not check your account access.</p><button type="button" className="bg-primary px-5 py-3 font-bold text-primary-foreground" onClick={() => void refetch()}>Retry</button></div>;
+    return <AccountLoadingScreen error onRetry={() => void refetch()} />;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
     return <LockedAccountPage status={lifecycle.status} pauseEndsAt={lifecycle.pauseEndsAt} deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} userId={user!.id} />;
