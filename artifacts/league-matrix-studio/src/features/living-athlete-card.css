@@ -261,10 +261,11 @@
   .living-card-alt-title { margin-top: 22px; }
   .living-card-stat-cell { padding: 12px 8px; }
   .living-card-stat-cell strong { font-size: 23px; }
-  .living-card-support-actions { gap: 7px; }
-  .living-card-support-action { min-height: 64px; padding: 11px 10px; column-gap: 7px; }
-  .living-card-support-action span { font-size: 10px; letter-spacing: .08em; }
-  .living-card-support-action small { font-size: 9px; }
+  .living-card-support-actions { width: calc(100% - 36px - clamp(26px, 6vw, 48px)); margin-top: 30px; gap: 7px; }
+  .living-card-support-action { min-height: 56px; padding: 8px 9px; column-gap: 6px; }
+  .living-card-support-action svg { width: 18px; height: 18px; }
+  .living-card-support-action span { font-size: 9px; letter-spacing: .06em; }
+  .living-card-support-action small { font-size: 8px; }
   .living-card-dialog { max-height: calc(100dvh - 18px) !important; border-radius: 14px !important; }
   .living-card-dialog-header { padding: 27px 21px 18px; }
   .living-card-dialog-body { max-height: calc(100dvh - 218px); padding: 0 21px 22px; }

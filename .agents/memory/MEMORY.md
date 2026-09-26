@@ -46,6 +46,7 @@
 - [Browser fixture reloads](browser-fixture-reloads.md) — reload generated browser-test HTML through its direct fixture URL after route changes to avoid SPA fallback to the production shell.
 - [CDP keyboard button activation](cdp-keyboard-button-activation.md) — native button activation in headless Chromium is reliably exercised with Space key-down and key-up events.
 - [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject them automatically.
+- [Stale Vite preview processes](stale-vite-preview-processes.md) — a failed managed workflow may still have its previous Vite server listening, blocking a clean restart.
 - [Schedule stage precedence](schedule-stage-precedence.md) — stale saved statuses and older remembered games must not outrank the current event recommendation.
 - [Tracker mobile start actions](tracker-mobile-start-actions.md) — keep the compact scheduled-game actions accessible when the larger setup card is hidden on mobile.
 - [Hype Page video streaming](hype-page-video-streaming.md) — public video responses need bounded byte ranges; large open-ended ranges fail through the published proxy.
