@@ -574,7 +574,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?game-on-card-save-transition`);
 
-    for (const width of [320, 390, 430, 639, 640, 768]) {
+    for (const width of [320, 375, 390, 430, 639, 640, 768]) {
       const height = width === 768 ? 1024 : 844;
       await connection.send('Emulation.setDeviceMetricsOverride', {
         width,
@@ -593,6 +593,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerTopAfterScroll: number;
         heroClearsHeader: boolean;
         heroColumnCount: number;
+        heroCardsShareRow: boolean;
         heroCornerRadius: string;
         heroCardsContained: boolean;
         heroKickerFits: boolean;
@@ -644,6 +645,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const cardActions = Array.from(card.querySelectorAll('.game-on-collection__actions > button'));
         const athleteRect = athleteCard.getBoundingClientRect();
         const eventRect = eventCard.getBoundingClientRect();
+        const repliesRect = hero.querySelector('.supporter-game-on-summary__replies')?.getBoundingClientRect();
         const heroColumns = getComputedStyle(columns).gridTemplateColumns.trim().split(/\\s+/);
         const collectionColumns = getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/);
         scroller.scrollTop = Math.min(240, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
@@ -660,6 +662,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           headerTopAfterScroll: Math.round(scrolledHeaderRect.top),
           heroClearsHeader: Math.round(heroRect.top) >= Math.round(initialHeaderRect.bottom),
           heroColumnCount: heroColumns.length,
+          heroCardsShareRow: Boolean(repliesRect && Math.abs(eventRect.top - repliesRect.top) <= 1),
           heroCornerRadius: getComputedStyle(hero).borderRadius,
           heroCardsContained: athleteRect.left >= heroRect.left
             && athleteRect.right <= heroRect.right
@@ -708,7 +711,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         headerTop: 0,
         headerTopAfterScroll: 0,
         heroClearsHeader: true,
-        heroColumnCount: width < 640 ? 1 : 2,
+        heroColumnCount: width < 360 ? 1 : 2,
+        heroCardsShareRow: width >= 360 && width < 640,
         heroCornerRadius: '24px',
         heroCardsContained: true,
         heroKickerFits: true,
