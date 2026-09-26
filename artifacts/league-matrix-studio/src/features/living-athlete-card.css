@@ -163,7 +163,7 @@
 .living-card-control[aria-pressed="true"] { background: var(--lc-paper); border-color: var(--lc-paper); color: var(--lc-navy); }
 .living-card-control svg { width: 14px; height: 14px; flex: none; }
 .living-card-instruction { text-align: center; margin: 13px 0 0; color: #91acc3; font-size: 11px; }
-.living-card-support-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.living-card-support-actions { width: calc(100% - 20px - clamp(26px, 6vw, 48px)); margin: 16px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .living-card-support-action { appearance: none; min-height: 68px; padding: 12px 14px; border: 1px solid #b4d6ee66; background: #143450; color: var(--lc-paper); display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 10px; text-align: left; transition: transform .2s, border-color .2s, background .2s; }
 .living-card-support-action:hover { transform: translateY(-2px); border-color: var(--lc-orange); background: #1b4469; }
 .living-card-support-action svg { grid-row: 1 / span 2; width: 21px; height: 21px; color: var(--lc-orange); }
@@ -275,7 +275,7 @@
   .living-card-front-bottom { padding: 60px 23px 23px; }
   .living-card-front-bottom::before { left: 23px; top: 65px; }
   .living-card-athlete-name { font-size: clamp(57px, 14vw, 88px); }
-  .living-card-controls { right: 12px; bottom: 12px; left: 12px; gap: 4px; padding: 4px; }
+  .living-card-controls { bottom: 12px; gap: 4px; padding: 4px; }
   .living-card-control { min-height: 44px; gap: 4px; padding: 4px 5px; font-size: 8px; letter-spacing: .04em; }
   .living-card-face-alt { padding: 23px 23px 92px; }
   .living-card-alt-title { margin-top: 22px; }
