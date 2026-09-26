@@ -44,7 +44,7 @@ import {
   type GameOnCardRenderOptions,
 } from './game-on-dashboard-collection';
 import { navigateToGameOnSection } from './game-on-navigation';
-import { buildGameOnDashboardEntries, type OwnedGameOnShare } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
 import { getTrackerStorageKeys, readStoredTrackerData, type Sport } from './stat-tracker';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
@@ -481,12 +481,13 @@ export function SupporterDashboardView({
   const replacedScheduleEventId = newCardDraft && newCardDraft.sourceEventId !== 'new'
     ? newCardDraft?.sourceEventId
     : undefined;
-  const collectionCards = [
+  const collectionCards = sortGameOnCardsByDate([
     ...dashboardCards
       .filter((card) => !replacedScheduleEventId || card.eventId !== replacedScheduleEventId)
       .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id })),
     ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
-  ];
+  ]);
+  const featuredCardId = getFeaturedGameOnCardId(collectionCards, currentTime);
   const updateNewCardDraft = useCallback((event: SupporterEvent, sourceEventId: string) => {
     setNewCardDraft((previous) => {
       if (!previous) return previous;
@@ -1031,7 +1032,7 @@ export function SupporterDashboardView({
             onCancelDraft={cancelNewCardDraft}
             selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
             isActiveShell={!isDesktopDashboard}
-            upNextEventId={gameStage === 'upcoming' ? contextEvent?.id : undefined}
+            featuredCardId={featuredCardId}
             renderSelectedCard={renderMobileSelectedGameOnCard}
             statTrackerUserId={userId}
             prepUserId={prepUserId ?? userId}
@@ -1117,7 +1118,7 @@ export function SupporterDashboardView({
         onCancelDraft={cancelNewCardDraft}
         selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
         isActiveShell={isDesktopDashboard}
-        upNextEventId={gameStage === 'upcoming' ? contextEvent?.id : undefined}
+        featuredCardId={featuredCardId}
         renderSelectedCard={renderDesktopSelectedGameOnCard}
         statTrackerUserId={userId}
         prepUserId={prepUserId ?? userId}

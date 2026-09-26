@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildGameOnDashboardEntries, type GameOnDashboardEvent } from './game-on-dashboard-model';
+import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, sortGameOnCardsByDate, type GameOnDashboardEvent } from './game-on-dashboard-model';
 
 const now = new Date('2026-09-24T12:00:00');
 const event = (id: string, type: GameOnDashboardEvent['type'], date: string): GameOnDashboardEvent => ({
   id, type, date, time: '10:00', location: 'North Field', opponent: 'Ravens', status: 'upcoming',
 });
 
-test('upcoming cards lead, completed cards remain in View all, and meetings are excluded', () => {
+test('cards follow calendar order, including completed dates, and meetings are excluded', () => {
   const cards = buildGameOnDashboardEntries([
     event('past', 'game', '2026-09-02'),
     event('next-week', 'game', '2026-10-01'),
@@ -16,10 +16,39 @@ test('upcoming cards lead, completed cards remain in View all, and meetings are 
     event('meeting', 'meeting', '2026-09-26'),
   ], [], 'Alex', now);
 
-  assert.deepEqual(cards.map((card) => card.eventId), ['next-day', 'next-week', 'past']);
-  assert.equal(cards[0].status, 'Draft');
-  assert.equal(cards[0].opponent, '');
-  assert.equal(cards[2].status, 'Complete');
+  assert.deepEqual(cards.map((card) => card.eventId), ['past', 'next-day', 'next-week']);
+  assert.equal(cards[0].status, 'Complete');
+  assert.equal(cards[1].status, 'Draft');
+  assert.equal(cards[1].opponent, '');
+});
+
+test('date and time order survives new drafts, mixed publication, and undated cards', () => {
+  const cards = sortGameOnCardsByDate([
+    { id: 'later', date: '2026-10-01', time: '09:00' },
+    { id: 'undated', date: '', time: '' },
+    { id: 'published', date: '2026-09-25', time: '18:00' },
+    { id: 'draft', date: '2026-09-25', time: '08:00' },
+    { id: 'unknown-time', date: '2026-09-25', time: '' },
+  ]);
+  assert.deepEqual(cards.map((card) => card.id), ['draft', 'published', 'unknown-time', 'later', 'undated']);
+});
+
+test('the next dated card is featured unless an event is active', () => {
+  const cards = buildGameOnDashboardEntries([
+    event('yesterday', 'game', '2026-09-23'),
+    event('later', 'practice', '2026-09-29'),
+    event('next', 'game', '2026-09-25'),
+    event('undated', 'game', ''),
+  ], [], 'Alex', now);
+  assert.equal(getFeaturedGameOnCardId(cards, now), 'draft:next');
+  const liveCards = buildGameOnDashboardEntries([
+    event('yesterday', 'game', '2026-09-23'),
+    event('later', 'practice', '2026-09-29'),
+    event('next', 'game', '2026-09-25'),
+    { ...event('active', 'game', '2026-09-24'), time: '11:00', status: 'live' },
+  ], [], 'Alex', now);
+  assert.equal(getFeaturedGameOnCardId(liveCards, now), 'draft:active');
+  assert.equal(getFeaturedGameOnCardId(cards.filter((card) => card.status === 'Complete'), now), undefined);
 });
 
 test('published events reuse their schedule identity and do not appear again as drafts', () => {

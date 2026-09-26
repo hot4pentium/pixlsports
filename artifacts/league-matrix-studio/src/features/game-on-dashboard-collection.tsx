@@ -39,7 +39,7 @@ type GameOnDashboardCollectionProps = {
   onCancelDraft?: () => void;
   selectedId?: string;
   isActiveShell?: boolean;
-  upNextEventId?: string;
+  featuredCardId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
   statTrackerUserId?: string | null;
   prepUserId?: string | null;
@@ -102,7 +102,7 @@ function displayTime(value: string) {
   return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected = false, isDialogCard = false, dialogId, visible, upNextEventId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
+function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected = false, isDialogCard = false, dialogId, visible, featuredCardId, renderSelectedCard, panel, onOpenPanel, onClosePanel, statTrackerUserId, prepUserId, statTrackerSport, statTrackerAthleteName, statTrackerTeamName, onCompleteScheduledGame, onAnnounceGameCompleted }: {
   card: DashboardGameOnCard;
   onOpen: (id: string, trigger: HTMLButtonElement) => void;
   onCancelDraft?: () => void;
@@ -111,7 +111,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   isDialogCard?: boolean;
   dialogId?: string;
   visible: boolean;
-  upNextEventId?: string;
+  featuredCardId?: string;
   renderSelectedCard?: (card: DashboardGameOnCard, options: GameOnCardRenderOptions) => ReactNode;
   panel: 'calendar' | 'prep' | 'tracker' | null;
   onOpenPanel: (id: string, panel: 'calendar' | 'prep' | 'tracker', trigger: HTMLButtonElement) => void;
@@ -138,7 +138,9 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   const prepPanelId = `panel-inline-prep-${card.id}-${editorId}`;
   const date = dateParts(card.date);
   const practice = card.type === 'practice';
-  const isUpNext = Boolean(upNextEventId && card.eventId === upNextEventId);
+  const isFeatured = card.id === featuredCardId;
+  const isUpNext = isFeatured && card.status !== 'Live';
+  const isActive = isFeatured && card.status === 'Live';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
   const calendarEventId = card.eventId;
   const eventId = card.eventId ?? card.id.replace(/^(?:share|draft):/, '');
@@ -178,11 +180,12 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
       layout={!isDialogCard && !reduceMotion}
       layoutId={isDialogCard || reduceMotion ? undefined : `game-on-card-${card.layoutId ?? card.id}`}
       transition={{ layout: { type: 'spring', stiffness: 260, damping: 30 } }}
-      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
+      className={`game-on-collection__card${isDialogCard ? ' game-on-collection__dialog-card' : ''}${card.status === 'Live' ? ' game-on-collection__card--live' : ''}${isUpNext ? ' game-on-collection__card--up-next' : ''}${isActive ? ' game-on-collection__card--active' : ''}${selected ? ' game-on-collection__card--selected game-on-collection__card--expanded' : ''}${calendarOpen ? ' game-on-collection__card--calendar-open' : ''}${trackerOpen ? ' game-on-collection__card--tracker-open' : ''}${prepOpen ? ' game-on-collection__card--prep-open' : ''}`}
       hidden={!visible}
       data-testid={`card-game-on-${card.id}`}
       data-layout-id={card.layoutId ?? card.id}
       data-up-next={isUpNext ? 'true' : 'false'}
+      data-featured={isFeatured ? 'true' : 'false'}
       data-tracker-open={trackerOpen ? 'true' : 'false'}
       data-prep-open={prepOpen ? 'true' : 'false'}
       data-calendar-open={calendarOpen ? 'true' : 'false'}
@@ -195,13 +198,18 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
             type="button"
             className="game-on-collection__summary"
             onClick={(event) => onOpen(card.id, event.currentTarget)}
-            aria-label={`${isUpNext ? 'Up next: ' : ''}${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
+            aria-label={`${isUpNext ? 'Up next: ' : isActive ? 'Active now: ' : ''}${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
             aria-haspopup={isDialogCard ? undefined : 'dialog'}
             aria-expanded={renderSelectedCard ? (isDialogCard ? selected : triggerSelected) : undefined}
             aria-controls={isDialogCard ? (hasEditor ? editorId : undefined) : triggerSelected ? dialogId : undefined}
             data-testid={`button-open-game-on-card-${card.id}`}
           >
             <span className="game-on-collection__card-top">
+              {isFeatured && !isDialogCard && (
+                <span className={`game-on-collection__featured-label${isActive ? ' game-on-collection__featured-label--active' : ''}`}>
+                  {isActive ? 'Happening now' : 'Up next'}
+                </span>
+              )}
               <span className="game-on-collection__kind">
                 {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
                 {practice ? 'Practice' : 'Game'}
@@ -363,7 +371,7 @@ export function GameOnDashboardCollection({
   onCancelDraft,
   selectedId,
   isActiveShell = true,
-  upNextEventId,
+  featuredCardId,
   renderSelectedCard,
   statTrackerUserId,
   prepUserId,
@@ -575,7 +583,7 @@ export function GameOnDashboardCollection({
                   triggerSelected={dialogOpen && selectedId === card.id}
                   dialogId={`game-on-card-dialog-${dialogId}`}
                   visible={matchesSearch(card)}
-                  upNextEventId={upNextEventId}
+                  featuredCardId={featuredCardId}
                   renderSelectedCard={renderSelectedCard}
                   panel={null}
                   onOpenPanel={() => {}}
@@ -633,7 +641,7 @@ export function GameOnDashboardCollection({
                     selected
                     isDialogCard
                     visible
-                    upNextEventId={upNextEventId}
+                    featuredCardId={featuredCardId}
                     panel={openPanel?.cardId === selectedCard.id ? openPanel.panel : null}
                     onOpenPanel={openCardPanel}
                     onClosePanel={closeCardPanel}

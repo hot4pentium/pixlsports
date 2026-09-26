@@ -1024,7 +1024,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       };
     })()`, page.sessionId);
     assert.equal(cardFrontDetails.nextMarker, 'true', 'the closest upcoming event card should be marked as next');
-    assert.match(cardFrontDetails.nextGradient, /linear-gradient/, 'the next event front should use the gray gradient');
+    assert.match(cardFrontDetails.nextGradient, /linear-gradient.*(?:220|238|255)/, 'the next event front should use the blue gradient');
     assert.equal(cardFrontDetails.nextTime, '6:30 PM', 'the next event time should be visible on the card front');
     assert.equal(cardFrontDetails.nextTimeVisible, true);
     assert.match(cardFrontDetails.nextAccessibleLabel, /^Up next:/, 'screen readers should hear which event is next');

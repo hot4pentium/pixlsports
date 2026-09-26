@@ -31,6 +31,33 @@ export type GameOnDashboardEntry = {
   isPublished: boolean;
 };
 
+function calendarKey(date: string, time: string) {
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(date.trim());
+  if (!match) return '9999-12-31T23:59';
+  const day = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+  const clock = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  return `${day}T${clock ? `${clock[1].padStart(2, '0')}:${clock[2]}` : '23:59'}`;
+}
+
+export function sortGameOnCardsByDate<T extends { date: string; time: string }>(cards: readonly T[]): T[] {
+  return [...cards].sort((a, b) => calendarKey(a.date, a.time).localeCompare(calendarKey(b.date, b.time)));
+}
+
+export function getFeaturedGameOnCardId(
+  cards: readonly Pick<GameOnDashboardEntry, 'id' | 'date' | 'time' | 'type' | 'status'>[],
+  now = new Date(),
+): string | undefined {
+  const dated = sortGameOnCardsByDate(cards).filter((card) => card.date.trim());
+  const stage = (card: typeof dated[number]) => getSupporterGameStage({
+    date: card.date,
+    time: card.time,
+    type: card.type,
+    status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
+  }, now);
+  return dated.find((card) => stage(card) === 'live')?.id
+    ?? dated.find((card) => stage(card) === 'upcoming')?.id;
+}
+
 function isCardEvent(event: GameOnDashboardEvent | undefined): event is GameOnDashboardEvent & { type: 'game' | 'practice' } {
   return Boolean(event && event.id && (event.type === 'game' || event.type === 'practice'));
 }
@@ -80,17 +107,5 @@ export function buildGameOnDashboardEntries(
     .filter((event) => !publishedEventIds.has(event.id))
     .map((event) => entryForEvent(event, athleteName, now));
 
-  const priority = (card: GameOnDashboardEntry) => {
-    const event = { ...card, status: card.status === 'Complete' ? 'final' as const : card.status === 'Live' ? 'live' as const : 'upcoming' as const };
-    const stage = card.date ? getSupporterGameStage(event, now) : 'upcoming';
-    return stage === 'upcoming' ? 0 : stage === 'live' ? 1 : 2;
-  };
-  return [...published, ...drafts].sort((a, b) => {
-    const aPriority = priority(a);
-    const bPriority = priority(b);
-    if (aPriority !== bPriority) return aPriority - bPriority;
-    const aDate = `${a.date || '9999-12-31'}T${a.time || '23:59'}`;
-    const bDate = `${b.date || '9999-12-31'}T${b.time || '23:59'}`;
-    return aPriority === 2 ? bDate.localeCompare(aDate) : aDate.localeCompare(bDate);
-  });
+  return sortGameOnCardsByDate([...published, ...drafts]);
 }
