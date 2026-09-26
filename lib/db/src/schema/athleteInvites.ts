@@ -40,6 +40,7 @@ export const athleteInviteHypesTable = pgTable("athlete_invite_hypes", {
   id: uuid("id").defaultRandom().primaryKey(),
   inviteId: uuid("invite_id").notNull().references(() => athleteInvitesTable.id, { onDelete: "cascade" }),
   reaction: text("reaction").notNull(),
+  senderName: text("sender_name"),
   message: text("message"),
   rateLimitKey: text("rate_limit_key").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

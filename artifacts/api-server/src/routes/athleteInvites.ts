@@ -443,8 +443,11 @@ router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> 
 router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<void> => {
   const params = SendAthleteInviteHypeParams.safeParse(req.params);
   const body = SendAthleteInviteHypeBody.safeParse(req.body);
-  if (!params.success || !body.success || (body.data.message && /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(body.data.message))) {
-    res.status(400).json({ error: "Choose an encouragement and keep the message under 240 characters." });
+  const senderName = body.success ? body.data.senderName?.trim() || null : null;
+  if (!params.success || !body.success
+    || (senderName && /[\u0000-\u001f\u007f]/u.test(senderName))
+    || (body.data.message && /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(body.data.message))) {
+    res.status(400).json({ error: "Choose an encouragement, with a name under 60 characters and message under 240 characters." });
     return;
   }
   const [invite] = await db.select().from(athleteInvitesTable).where(eq(athleteInvitesTable.publicToken, params.data.inviteToken));
@@ -468,6 +471,7 @@ router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<voi
     const [hype] = await tx.insert(athleteInviteHypesTable).values({
       inviteId: invite.id,
       reaction: body.data.reaction,
+      senderName,
       message: body.data.message?.trim() || null,
       rateLimitKey,
     }).returning({ id: athleteInviteHypesTable.id });
@@ -498,6 +502,7 @@ router.get("/athlete-invites/:inviteToken/hypes", requireAuth, async (req, res):
   const hypes = await db.select({
     id: athleteInviteHypesTable.id,
     reaction: athleteInviteHypesTable.reaction,
+    senderName: athleteInviteHypesTable.senderName,
     message: athleteInviteHypesTable.message,
     createdAt: athleteInviteHypesTable.createdAt,
   }).from(athleteInviteHypesTable).where(eq(athleteInviteHypesTable.inviteId, invite.id))

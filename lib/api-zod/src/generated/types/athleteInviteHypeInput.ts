@@ -9,6 +9,8 @@ import type { AthleteInviteHypeInputReaction } from './athleteInviteHypeInputRea
 
 export interface AthleteInviteHypeInput {
   reaction: AthleteInviteHypeInputReaction;
+  /** @maxLength 60 */
+  senderName?: string;
   /** @maxLength 240 */
   message?: string;
 }

@@ -1015,6 +1015,8 @@ export const AthleteInviteHypeInputReaction = {
 
 export interface AthleteInviteHypeInput {
   reaction: AthleteInviteHypeInputReaction;
+  /** @maxLength 60 */
+  senderName?: string;
   /** @maxLength 240 */
   message?: string;
 }
@@ -1026,6 +1028,8 @@ export interface AthleteInviteHypeAccepted {
 export interface AthleteInviteHype {
   id: string;
   reaction: string;
+  /** @nullable */
+  senderName: string | null;
   /** @nullable */
   message: string | null;
   createdAt: string;

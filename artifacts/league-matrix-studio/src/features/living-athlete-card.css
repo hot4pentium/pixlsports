@@ -186,9 +186,11 @@
 .living-card-dialog-body form { margin: 0; }
 .living-card-dialog-body form > label { display: block; margin: 0 0 7px; color: #8ecbff; font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
 .living-card-dialog-body form > label:not(:first-child) { margin-top: 20px; }
-.living-card-dialog-body select, .living-card-dialog-body textarea { display: block; width: 100%; border: 1px solid #8ecbff70; border-radius: 0; background: #071d34; color: #edf3f6; padding: 13px 14px; font: inherit; font-size: 15px; }
+.living-card-dialog-body select, .living-card-dialog-body input, .living-card-dialog-body textarea { display: block; width: 100%; border: 1px solid #8ecbff70; border-radius: 0; background: #071d34; color: #edf3f6; padding: 13px 14px; font: inherit; font-size: 15px; }
+.living-card-dialog-body input::placeholder { color: #8eaac0; }
+.living-card-name-note { margin: 7px 0 0; color: #b9cede; font-size: 11px; line-height: 1.45; }
 .living-card-dialog-body textarea { min-height: 116px; resize: vertical; }
-.living-card-dialog-body select:focus, .living-card-dialog-body textarea:focus { border-color: var(--lc-orange); outline: 2px solid #ff784966; outline-offset: 2px; }
+.living-card-dialog-body select:focus, .living-card-dialog-body input:focus, .living-card-dialog-body textarea:focus { border-color: var(--lc-orange); outline: 2px solid #ff784966; outline-offset: 2px; }
 .living-card-dialog-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 19px; color: #8eaac0; font-size: 11px; }
 .living-card-dialog-form-footer button { min-height: 48px; padding: 12px 20px; border: 0; background: var(--lc-orange); color: var(--lc-ink); font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
 .living-card-dialog-form-footer button:disabled { cursor: wait; opacity: .6; }

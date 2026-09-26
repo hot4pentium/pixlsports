@@ -1882,12 +1882,15 @@ export const SendAthleteInviteHypeParams = zod.object({
   "inviteToken": zod.coerce.string().regex(sendAthleteInviteHypePathInviteTokenRegExp)
 })
 
+export const sendAthleteInviteHypeBodySenderNameMax = 60;
+
 export const sendAthleteInviteHypeBodyMessageMax = 240;
 
 
 
 export const SendAthleteInviteHypeBody = zod.object({
   "reaction": zod.enum(['Let\'s go!', 'Great job!', 'Proud of you!']),
+  "senderName": zod.string().max(sendAthleteInviteHypeBodySenderNameMax).optional(),
   "message": zod.string().max(sendAthleteInviteHypeBodyMessageMax).optional()
 })
 
@@ -1909,6 +1912,7 @@ export const ListAthleteInviteHypesParams = zod.object({
 export const ListAthleteInviteHypesResponseItem = zod.object({
   "id": zod.string().uuid(),
   "reaction": zod.string(),
+  "senderName": zod.string().nullable(),
   "message": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 })

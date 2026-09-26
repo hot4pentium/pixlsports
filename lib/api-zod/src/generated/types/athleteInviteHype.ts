@@ -10,6 +10,8 @@ export interface AthleteInviteHype {
   id: string;
   reaction: string;
   /** @nullable */
+  senderName: string | null;
+  /** @nullable */
   message: string | null;
   createdAt: Date;
 }

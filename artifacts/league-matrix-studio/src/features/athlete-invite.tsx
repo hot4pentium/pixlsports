@@ -1150,7 +1150,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           : hypesError ? <p role="alert" className="mt-4 text-sm">Could not load Hypes. Refresh to try again.</p>
           : hypes?.length ? <ul className="mt-4 space-y-3">{hypes.map((hype) => (
             <li key={hype.id} className="flex items-start justify-between gap-4 border border-white/20 p-4">
-              <div><strong>{hype.reaction}</strong>{hype.message && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{hype.message}</p>}
+              <div className="min-w-0"><strong>{hype.reaction}</strong><p className="mt-1 break-words text-xs text-white/60">{hype.senderName ? `From ${hype.senderName}` : 'Anonymous fan'}</p>{hype.message && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{hype.message}</p>}
                 <time className="mt-2 block text-xs text-white/50" dateTime={hype.createdAt}>{new Date(hype.createdAt).toLocaleString()}</time></div>
               <button type="button" disabled={deleteHype.isPending} onClick={() => void removeHype(hype.id)} className="shrink-0 text-xs font-bold uppercase text-primary hover:underline">Remove</button>
             </li>

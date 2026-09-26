@@ -107,6 +107,7 @@ export function LivingAthleteCardPage({
   const [trendStatId, setTrendStatId] = useState('score');
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
   const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>("Let's go!");
+  const [senderName, setSenderName] = useState('');
   const [message, setMessage] = useState('');
   const [hypeFeedback, setHypeFeedback] = useState('');
   const [followDialogOpen, setFollowDialogOpen] = useState(false);
@@ -136,6 +137,7 @@ export function LivingAthleteCardPage({
   useEffect(() => {
     setSide('front');
     setHypeFeedback('');
+    setSenderName('');
     setMessage('');
     setSelectedGameKey('');
     setTrendStatId('score');
@@ -229,7 +231,12 @@ export function LivingAthleteCardPage({
     event.preventDefault();
     setHypeFeedback('');
     try {
-      await sendHype.mutateAsync({ inviteToken, data: { reaction, ...(message.trim() ? { message: message.trim() } : {}) } });
+      await sendHype.mutateAsync({ inviteToken, data: {
+        reaction,
+        ...(senderName.trim() ? { senderName: senderName.trim() } : {}),
+        ...(message.trim() ? { message: message.trim() } : {}),
+      } });
+      setSenderName('');
       setMessage('');
       setHypeFeedback(`Your ${reaction} Hype was sent. Thanks for cheering ${invite.athleteName} on!`);
     } catch (error) {
@@ -566,6 +573,9 @@ export function LivingAthleteCardPage({
                          <select id="fan-card-reaction" value={reaction} onChange={(event) => setReaction(event.target.value as AthleteInviteHypeInput['reaction'])} data-testid="select-fan-card-reaction">
                            <option>Let's go!</option><option>Great job!</option><option>Proud of you!</option>
                          </select>
+                          <label htmlFor="fan-card-sender-name">Your name (optional)</label>
+                          <input id="fan-card-sender-name" type="text" value={senderName} onChange={(event) => setSenderName(event.target.value)} maxLength={60} autoComplete="name" placeholder="How should we credit you?" data-testid="input-fan-card-sender-name" />
+                          <p className="living-card-name-note">Leave blank to send anonymously. Only the card owner sees your name.</p>
                          <label htmlFor="fan-card-message">Short message (optional)</label>
                          <textarea id="fan-card-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} rows={4} placeholder="A few words of encouragement" data-testid="input-fan-card-message" />
                          <div className="living-card-dialog-form-footer">

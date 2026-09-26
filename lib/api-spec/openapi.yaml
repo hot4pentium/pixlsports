@@ -2609,6 +2609,7 @@ components:
       required: [reaction]
       properties:
         reaction: { type: string, enum: ["Let's go!", "Great job!", "Proud of you!"] }
+        senderName: { type: string, maxLength: 60 }
         message: { type: string, maxLength: 240 }
     AthleteInviteHypeAccepted:
       type: object
@@ -2617,10 +2618,11 @@ components:
         accepted: { type: boolean }
     AthleteInviteHype:
       type: object
-      required: [id, reaction, message, createdAt]
+      required: [id, reaction, senderName, message, createdAt]
       properties:
         id: { type: string, format: uuid }
         reaction: { type: string }
+        senderName: { type: ["string", "null"] }
         message: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
     OwnedAthleteInviteList:
