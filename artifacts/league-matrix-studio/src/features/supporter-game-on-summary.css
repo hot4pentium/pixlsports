@@ -381,29 +381,6 @@
   overflow-wrap: anywhere;
 }
 
-.supporter-game-on-summary__tool-context {
-  display: grid;
-  gap: 3px;
-  margin-top: 9px;
-  border-left: 2px solid rgba(115, 182, 255, .6);
-  padding-left: 8px;
-  color: rgba(219, 232, 250, .62);
-  font-size: 9px;
-  line-height: 1.35;
-}
-
-.supporter-game-on-summary__tool-context > span:first-child {
-  color: #8fc5ff;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: .14em;
-}
-
-.supporter-game-on-summary__tool-context strong {
-  color: rgba(245, 248, 255, .92);
-  font-weight: 750;
-}
-
 .supporter-game-on-summary__event-details {
   display: flex;
   flex-wrap: wrap;
@@ -436,123 +413,6 @@
   line-height: 1.5;
 }
 
-.supporter-game-on-summary__past-notice {
-  display: grid;
-  gap: 5px;
-  margin-top: 9px;
-  border-left: 2px solid #e4a2ff;
-  padding: 4px 0 4px 9px;
-  color: rgba(247, 232, 255, .8);
-  font-size: 10px;
-  line-height: 1.35;
-}
-
-.supporter-game-on-summary__past-notice p {
-  margin: 0;
-  color: #f0c5ff;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: .15em;
-}
-
-.supporter-game-on-summary__past-notice button {
-  display: inline-flex;
-  width: fit-content;
-  min-height: 32px;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid rgba(240, 197, 255, .42);
-  padding: 5px 9px;
-  color: #fff;
-  background: rgba(240, 197, 255, .08);
-  font-size: 8px;
-  font-weight: 850;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.supporter-game-on-summary__active-game {
-  display: grid;
-  max-width: 360px;
-  gap: 5px;
-  margin-top: 10px;
-  color: rgba(230, 240, 255, .6);
-  font-size: 8px;
-  font-weight: 850;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-.supporter-game-on-summary__active-game select {
-  width: 100%;
-  min-height: 34px;
-  border: 1px solid rgba(255, 255, 255, .22);
-  border-radius: 5px;
-  padding: 5px 8px;
-  color: white;
-  background: #0a1a31;
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: .03em;
-}
-
-.supporter-game-on-summary__active-game select:focus-visible {
-  outline: 2px solid #55a4ff;
-  outline-offset: 2px;
-}
-
-.supporter-game-on-summary__sync-error {
-  margin: 7px 0 0;
-  color: #ffe0a8;
-  font-size: 10px;
-}
-
-.supporter-game-on-summary__event-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: auto;
-  padding-top: 12px;
-}
-
-.supporter-game-on-summary__event-actions button,
-.supporter-game-on-summary__event-actions a {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid rgba(103, 173, 255, .72);
-  border-radius: 5px;
-  padding: 6px 10px;
-  color: #fff;
-  background: #1766c4;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: .11em;
-  text-decoration: none;
-  text-transform: uppercase;
-  transition: background .16s ease, border-color .16s ease;
-  cursor: pointer;
-}
-
-.supporter-game-on-summary__event-actions button:hover,
-.supporter-game-on-summary__event-actions a:hover {
-  border-color: #9bcbff;
-  background: #2579dc;
-}
-
-.supporter-game-on-summary__event-actions--secondary button,
-.supporter-game-on-summary__event-actions--secondary a {
-  border-color: rgba(115, 182, 255, .45);
-  color: #cfe7ff;
-  background: rgba(24, 75, 126, .18);
-}
-
-.supporter-game-on-summary__event-actions--secondary button:hover,
-.supporter-game-on-summary__event-actions--secondary a:hover { background: rgba(37, 121, 220, .4); }
-
 @container (max-width: 440px) {
   .supporter-game-on-summary__event-main { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .supporter-game-on-summary__event-utility {
@@ -573,13 +433,6 @@
   .supporter-game-on-summary__event-utility { align-items: stretch; flex-direction: column; gap: 9px; }
   .supporter-game-on-summary__event-utility-copy { max-width: none; }
   .supporter-game-on-summary__event-utility button { width: 100%; }
-}
-
-.supporter-game-on-summary__event-actions button:focus-visible,
-.supporter-game-on-summary__event-actions a:focus-visible,
-.supporter-game-on-summary__past-notice button:focus-visible {
-  outline: 2px solid #9bcbff;
-  outline-offset: 2px;
 }
 
 .supporter-game-on-summary__replies {

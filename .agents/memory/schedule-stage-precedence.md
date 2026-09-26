@@ -9,11 +9,11 @@ Treat a dated event from a previous local calendar day as completed even if its 
 
 **How to apply:** When changing dashboard event ranking or selection, cover stale saved statuses and persisted active-game selections together, while keeping intentional past-game review available.
 
-When all scheduled games are complete, an older game remembered from another visit must not remain the default prep focus or active-game choice ahead of the most recent completed game. An older game chosen deliberately during the current visit remains reviewable.
+When all scheduled games are complete, an older game remembered from another visit must not remain the default game context ahead of the most recent completed game. Past games remain reviewable through Calendar or Game On cards, not through the dashboard's top notification.
 
 **Why:** The dashboard could say there was no upcoming game while still featuring an old game's date even though a newer game had already taken place.
 
-**How to apply:** Compare completed game dates independent of input ordering, and keep persisted selections distinct from current-session review in both the focus panel and game picker.
+**How to apply:** Compare completed game dates independent of input ordering for supporting tool context, but keep past dates out of the top next-game notification.
 
 The mobile “Coming up” card should show the closest upcoming calendar event, even if the prep card already recommends that same event. It is a confirmation of what is next, not a preview of the event after next.
 

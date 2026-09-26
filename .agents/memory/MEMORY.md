@@ -68,4 +68,4 @@
 - [Game On status filtering](game-on-status-filtering.md) — hide nonmatching cards without unmounting editors, so filtering preserves in-progress changes.
 - [Concurrent merge patch context](concurrent-merge-patch-context.md) — after active task merges, re-check latest source before retrying patches so merged behavior remains intact.
 - [Living card Hypes boundary](living-card-hypes-boundary.md) — invite-bound encouragement must stay separate from expiring media replies and retain an owner-off setting across older update paths.
-- [Standalone game summary](standalone-game-summary.md) — dashboard next-game guidance must include standalone Game On cards, not just Calendar events.
+- [Standalone game summary](standalone-game-summary.md) — the top Game On card is notification-only and includes standalone Game On cards as well as Calendar games.

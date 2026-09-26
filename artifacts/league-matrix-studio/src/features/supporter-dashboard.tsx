@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'wouter';
+import { Link } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
@@ -11,7 +11,7 @@ import {
   useUpdateSupporterActiveGame,
 } from '@workspace/api-client-react';
 import {
-  CalendarDays, Zap, MapPin, Trophy, ChevronRight, User, ClipboardCheck,
+  CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, Trash2, X,
   Menu, RotateCcw
@@ -44,7 +44,6 @@ import {
   GameOnDashboardCollection,
   type GameOnCardRenderOptions,
 } from './game-on-dashboard-collection';
-import { navigateToGameOnSection } from './game-on-navigation';
 import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
 import { getTrackerStorageKeys, readStoredTrackerData, type Sport } from './stat-tracker';
@@ -339,7 +338,6 @@ export function SupporterDashboardView({
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
   onSignOut,
 }: SupporterDashboardViewProps) {
-  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const activeGameSelectionQueryKey = [...getGetSupporterActiveGameQueryKey(), userId ?? null];
   const activeGameSelectionQuery = useGetSupporterActiveGame({
@@ -410,7 +408,6 @@ export function SupporterDashboardView({
     return readWorkspaceEventContext(window.localStorage)?.id
       ?? readSupporterActiveGame(window.localStorage);
   });
-  const [selectedThisSessionGameId, setSelectedThisSessionGameId] = useState<string | null>(null);
   useEffect(() => {
     const interval = window.setInterval(() => setCurrentTime(new Date()), 30_000);
     return () => window.clearInterval(interval);
@@ -433,12 +430,10 @@ export function SupporterDashboardView({
   );
   const gameEvents = events.filter((event) => event.type === 'game');
   const activeJourneyEvents = events.filter((event) => event.type !== 'meeting');
-  const selectedThisSession = selectedGameId !== null && selectedThisSessionGameId === selectedGameId;
   const selectedWorkspaceEvent = getVisibleSupporterSelection(
     activeJourneyEvents,
     selectedGameId,
     currentTime,
-    selectedThisSession,
   );
   const weekRecommendation = getSupporterWeekRecommendation(
     activeJourneyEvents,
@@ -448,10 +443,10 @@ export function SupporterDashboardView({
     weekRecommendation,
     gameEvents,
     selectedGameId,
-    selectedThisSession,
+    false,
     currentTime,
   );
-  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime, selectedThisSession);
+  const nextGame = getActiveSupporterGame(gameEvents, selectedGameId, currentTime);
   const contextEvent = recommendedPreparationEvent ?? nextGame;
   const serverCardShares = ownedGameOnCardsQuery.data ?? [];
   const serverCardTokens = new Set(serverCardShares.map((share) => share.shareToken));
@@ -615,13 +610,6 @@ export function SupporterDashboardView({
   const recommendedGameStage = recommendedGame
     ? getSupporterGameStage(recommendedGame, currentTime)
     : null;
-  const isViewingPastGame = Boolean(
-    nextGame
-    && contextEvent === nextGame
-    && recommendedGame
-    && nextGame.id !== recommendedGame.id
-    && gameStage === 'completed',
-  );
   const currentStage = contextEvent && gameStage === 'upcoming'
     ? {
       ...stageCopy[gameStage],
@@ -645,9 +633,6 @@ export function SupporterDashboardView({
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
-  const contextTitle = contextEvent?.type === 'practice'
-    ? `${profile.teamName || 'Your team'} practice`
-    : gameTitle;
   const preparationCopy = getSupporterPreparationCopy(contextEvent?.type ?? null);
   const preparationSchedule = contextEvent
     ? [formatDateDisplay(contextEvent.date), formatTimeDisplay(contextEvent.time)].filter(Boolean).join(' · ')
@@ -668,13 +653,7 @@ export function SupporterDashboardView({
   const statTrackerHrefForGame = (game: SupporterEvent | undefined) => (
     buildWorkspaceToolHref('stats', toToolContext(game))
   );
-  const statTrackerHref = statTrackerHrefForGame(nextGame);
   const dashboardStatsHref = statTrackerHrefForGame(contextEvent?.type === 'game' ? contextEvent : undefined);
-  const checklistHrefForGame = (event: SupporterEvent | undefined, view?: 'share' | 'review') => {
-    const href = buildWorkspaceToolHref('prep', toToolContext(event));
-    return view && event ? `${href}&view=${view}` : href;
-  };
-  const contextChecklistHref = checklistHrefForGame(contextEvent);
   useEffect(() => {
     if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -770,7 +749,6 @@ export function SupporterDashboardView({
 
       selectionTouchedForUserRef.current = userId;
       setSelectedGameId(null);
-      setSelectedThisSessionGameId(null);
       try {
         window.localStorage.removeItem(supporterActiveGameStorageKey);
         if (readWorkspaceEventContext(window.localStorage)?.id === remoteSelectedGameId) {
@@ -800,30 +778,6 @@ export function SupporterDashboardView({
     selectionSyncReady,
     userId,
   ]);
-
-  const selectGame = (gameId: string) => {
-    setSelectedGameId(gameId);
-    setSelectedThisSessionGameId(gameId);
-    const selectedEvent = activeJourneyEvents.find((event) => event.id === gameId);
-    if (userId) selectionTouchedForUserRef.current = userId;
-    try {
-      if (selectedEvent) {
-        saveWorkspaceEventContext(window.localStorage, {
-          ...selectedEvent,
-          opponent: selectedEvent.opponent ?? '',
-          snacks: '',
-          drinks: '',
-          notes: '',
-        });
-      }
-      if (selectedEvent?.type === 'game') {
-        saveSupporterActiveGame(window.localStorage, gameId);
-        persistActiveGameSelection(gameId);
-      }
-    } catch {
-      // The selection still works for this session when storage is unavailable.
-    }
-  };
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
   const summaryGameStage = recommendedGameStage ?? 'upcoming';
@@ -892,101 +846,6 @@ export function SupporterDashboardView({
         </>
       )}
 
-      {contextEvent && contextEvent.id !== recommendedGame?.id && (
-        <div className="supporter-game-on-summary__tool-context" data-testid="supporter-tool-context">
-          <span>PREP &amp; TOOLS FOCUS</span>
-          <strong>{contextTitle}</strong>
-          <span>{formatDateDisplay(contextEvent.date)} · {formatTimeDisplay(contextEvent.time)}</span>
-        </div>
-      )}
-
-      {isViewingPastGame && (
-            <div
-              className="supporter-game-on-summary__past-notice"
-              data-testid={variant === 'desktop' ? 'past-game-notice' : 'mobile-past-game-notice'}
-            >
-              <p>COMPLETED GAME</p>
-              <span>You&apos;re viewing a past game. The newer game marked Next in your week path is still your recommended next step.</span>
-              {recommendedGame && (
-                <button
-                  type="button"
-                  onClick={() => scheduledRecommendedGame ? selectGame(recommendedGame.id) : recommendedGameCard && selectCard(recommendedGameCard.id)}
-                  data-testid={variant === 'desktop' ? 'button-return-to-recommended-game' : undefined}
-                >
-                  Return to recommended game <ArrowRight size={14} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-      )}
-      {gameEvents.length > 1 && (
-            <label className="supporter-game-on-summary__active-game">
-              <span>Active game</span>
-              <select
-                value={nextGame?.id ?? ''}
-                onChange={(event) => selectGame(event.target.value)}
-                aria-label="Choose the active game"
-                data-testid={variant === 'desktop' ? 'select-active-supporter-game' : undefined}
-              >
-                {gameEvents.map((game) => (
-                  <option key={game.id} value={game.id}>
-                    {formatDateDisplay(game.date)} · {game.opponent || 'Opponent TBD'}
-                  </option>
-                ))}
-              </select>
-            </label>
-      )}
-      {selectionSyncError && (
-            <p className="supporter-game-on-summary__sync-error" role="status" data-testid="active-game-sync-error">
-              Your game is saved on this device, but could not sync to your account.
-            </p>
-      )}
-
-      <div className={`supporter-game-on-summary__event-actions${recommendedGameCard ? ' supporter-game-on-summary__event-actions--secondary' : ''}`}>
-        {gameStage === 'upcoming' && contextEvent && (
-          <button
-            type="button"
-            onClick={() => setLocation(contextChecklistHref)}
-            data-testid={variant === 'desktop' ? 'button-context-checklist' : undefined}
-          >
-            <ClipboardCheck size={15} aria-hidden="true" /> Open checklist
-          </button>
-        )}
-        {gameStage === 'live' && contextEvent?.type === 'game' && (
-          <button
-            type="button"
-            onClick={() => setLocation(statTrackerHref)}
-            data-testid={variant === 'desktop' ? 'button-context-stat-tracker' : undefined}
-          >
-            <Activity size={15} aria-hidden="true" /> Track the game
-          </button>
-        )}
-        {gameStage === 'live' && contextEvent?.type === 'practice' && (
-          <button
-            type="button"
-            onClick={() => setLocation(contextChecklistHref)}
-            data-testid={variant === 'desktop' ? 'button-context-checklist' : undefined}
-          >
-            <ClipboardCheck size={15} aria-hidden="true" /> Open checklist
-          </button>
-        )}
-        {gameStage === 'completed' && (
-          <Link
-            href={fanCardHref}
-            data-testid={variant === 'desktop' ? 'link-context-hype-card' : undefined}
-          >
-            <Zap size={15} aria-hidden="true" /> View Hype Card
-          </Link>
-        )}
-        {!contextEvent && (
-          <button
-            type="button"
-            onClick={() => navigateToGameOnSection(setLocation)}
-            data-testid={variant === 'desktop' ? 'button-context-game-on' : undefined}
-          >
-            <CalendarDays size={15} aria-hidden="true" /> {recommendedGameCard ? 'Add another event' : 'Add an event'}
-          </button>
-        )}
-      </div>
     </>
   );
 
@@ -1079,6 +938,7 @@ export function SupporterDashboardView({
               <Zap size={16} aria-hidden="true" /> View Hype Card
             </Link>
           </div>
+          {selectionSyncError && <p role="status" className="text-sm text-red-700" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
           )}
@@ -1165,6 +1025,7 @@ export function SupporterDashboardView({
           <Zap size={16} aria-hidden="true" /> View Hype Card
         </Link>
       </div>
+      {selectionSyncError && <p role="status" className="text-sm text-red-300" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>
       )}

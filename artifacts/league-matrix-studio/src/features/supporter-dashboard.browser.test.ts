@@ -437,7 +437,7 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
-test('dashboard Add an event action scrolls to the visible Game On section', { concurrency: false }, async () => {
+test('dashboard empty game notice leaves creation in the Game On section', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
   let devServer: ChildProcess | undefined;
@@ -494,42 +494,18 @@ test('dashboard Add an event action scrolls to the visible Game On section', { c
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]"))', Boolean);
     await connection.evaluate('window.__setSupporterDashboardEvents([])', page.sessionId);
-    await waitFor(connection, page.sessionId, `Boolean(document.querySelector('[data-testid="button-context-game-on"]')
-      && document.getElementById('game-on-dashboard-collection')?.getClientRects().length)`, Boolean);
-    await connection.send('Emulation.setEmulatedMedia', {
-      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
-    }, page.sessionId);
-
-    const collectionTopBeforeAdd = await connection.evaluate<number>(
-      `document.getElementById('game-on-dashboard-collection')?.getBoundingClientRect().top ?? -1`,
-      page.sessionId,
+    assert.match(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"]\')?.textContent || ""', page.sessionId),
+      /No upcoming game/,
     );
-    assert.ok(collectionTopBeforeAdd > 0, 'the Game On section should start below the viewport top');
-    await connection.evaluate(
-      `document.querySelector('[data-testid="button-context-game-on"]')?.click()`,
-      page.sessionId,
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="supporter-tool-context"], [data-testid="select-active-supporter-game"]\'))', page.sessionId),
+      false,
     );
-    await waitFor(connection, page.sessionId, `location.pathname === '/studio'`, Boolean);
-    const afterAdd = await connection.evaluate<{
-      idCount: number;
-      top: number;
-      scrollY: number;
-      desktopShellVisible: boolean;
-      mobileShellVisible: boolean;
-    }>(`(() => {
-      const collection = document.getElementById('game-on-dashboard-collection');
-      return {
-        idCount: document.querySelectorAll('#game-on-dashboard-collection').length,
-        top: collection?.getBoundingClientRect().top ?? -1,
-        scrollY: window.scrollY,
-        desktopShellVisible: Boolean(document.querySelector('.supporter-dashboard-desktop-shell')?.getClientRects().length),
-        mobileShellVisible: Boolean(document.querySelector('.supporter-dashboard-mobile-shell')?.getClientRects().length),
-      };
-    })()`, page.sessionId);
-    assert.equal(afterAdd.idCount, 1, JSON.stringify(afterAdd));
-    assert.ok(afterAdd.scrollY > 0, JSON.stringify(afterAdd));
-    assert.ok(afterAdd.top < collectionTopBeforeAdd, JSON.stringify(afterAdd));
-    assert.ok(afterAdd.top < 1000, JSON.stringify(afterAdd));
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]\'))', page.sessionId),
+      true,
+    );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -4310,27 +4286,15 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'live' },
       { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'Visitors', status: 'upcoming' }
     ])`, page.sessionId);
-    await connection.evaluate(`(() => { const select = document.querySelector('[data-testid="select-active-supporter-game"]'); if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector missing'); select.value = 'game-2'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
-      /Get ready/,
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="select-active-supporter-game"], [data-testid="supporter-tool-context"]\'))', page.sessionId),
+      false,
     );
-    await connection.evaluate(`(() => { const select = document.querySelector('[data-testid="select-active-supporter-game"]'); if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector missing'); select.value = 'game-1'; select.dispatchEvent(new Event('change', { bubbles: true })); })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
-
-    await connection.evaluate('localStorage.removeItem("pixlsports-supporter-stage-ack:game-1:completed")', page.sessionId);
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'final' },
       { id: 'game-2', type: 'game', date: '2026-09-22', time: '18:30', location: 'Eastside Gym', opponent: 'Visitors', status: 'upcoming' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") !== null', Boolean);
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="stage-reminder-dialog"]\')?.textContent || ""', page.sessionId),
-      /Send the hype/,
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="stage-reminder-got-it"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stage-reminder-dialog\\"]") === null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"next-game-heading\\"]")?.textContent?.includes("Visitors") === true', Boolean);
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-upcoming-next"]\'))', page.sessionId),
       true,
@@ -4340,70 +4304,16 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       false,
     );
     assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="past-game-notice"]\'))', page.sessionId),
-      true,
-    );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="past-game-notice"]\')?.textContent || ""', page.sessionId),
-      /past game/i,
-    );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-context-hype-card"]\')?.getAttribute("href") || ""', page.sessionId),
-      /eventId=game-1/,
-    );
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-return-to-recommended-game"]\'))', page.sessionId),
-      true,
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="stage-completed"]')?.click()`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"week-path-content\\"]")?.getAttribute("data-selected-path") === "completed"',
-      Boolean,
-    );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"] a\')?.getAttribute("href") || ""', page.sessionId),
-      /gameId=game-1/,
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="button-return-to-recommended-game"]')?.click()`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-2"',
-      Boolean,
-    );
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="past-game-notice"]\'))', page.sessionId),
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="past-game-notice"], [data-testid="button-return-to-recommended-game"]\'))', page.sessionId),
       false,
-    );
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="button-return-to-recommended-game"]\'))', page.sessionId),
-      false,
-    );
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-upcoming-next"]\'))', page.sessionId),
-      true,
-    );
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-completed-next"]\'))', page.sessionId),
-      false,
-    );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="week-path-content"] a\')?.getAttribute("href") || ""', page.sessionId),
-      /gameId=game-2/,
     );
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'game-1', type: 'game', date: '2026-09-21', time: '18:30', location: 'Northside Gym', opponent: 'Rivals', status: 'final' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-next-game-context\\"]") !== null', Boolean);
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="past-game-notice"]\'))', page.sessionId),
-      false,
-    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"next-game-heading\\"]")?.textContent === "No upcoming game"', Boolean);
     assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-context-hype-card"]\')?.getAttribute("href") || ""', page.sessionId),
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-desktop-independent-hype"]\')?.getAttribute("href") || ""', page.sessionId),
       /eventId=game-1/,
     );
 
@@ -4672,32 +4582,16 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-2"',
+      'document.querySelector("[data-testid=\\"next-game-heading\\"]")?.textContent?.includes("RegionalTournamentVisitorsWithAnUnreasonablyLongName") === true',
       Boolean,
     );
-    await connection.evaluate(`(() => {
-      const select = document.querySelector('[data-testid="select-active-supporter-game"]');
-      if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector is missing');
-      select.value = 'game-1';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"past-game-notice\\"]") !== null',
-      Boolean,
-    );
-    const narrowPastGameLayout = await connection.evaluate<{
+    const narrowGameNoticeLayout = await connection.evaluate<{
       contextOverflow: boolean;
-      noticeOverflow: boolean;
       titleVisible: boolean;
-      hypeCardVisible: boolean;
       nextMarkerVisible: boolean;
     }>(`(() => {
       const context = document.querySelector('[data-testid="section-next-game-context"]');
-      const notice = document.querySelector('[data-testid="past-game-notice"]');
       const title = document.querySelector('[data-testid="next-game-heading"]');
-      const hypeCard = document.querySelector('[data-testid="link-context-hype-card"]');
       const nextMarker = document.querySelector('[data-testid="stage-upcoming-next"]');
       const viewportWidth = document.documentElement.clientWidth;
       const isVisible = (element) => {
@@ -4707,17 +4601,13 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       };
       return {
         contextOverflow: Boolean(context && context.scrollWidth > context.clientWidth),
-        noticeOverflow: Boolean(notice && notice.scrollWidth > notice.clientWidth),
         titleVisible: isVisible(title),
-        hypeCardVisible: isVisible(hypeCard),
         nextMarkerVisible: isVisible(nextMarker),
       };
     })()`, page.sessionId);
-    assert.deepEqual(narrowPastGameLayout, {
+    assert.deepEqual(narrowGameNoticeLayout, {
       contextOverflow: false,
-      noticeOverflow: false,
       titleVisible: false,
-      hypeCardVisible: false,
       nextMarkerVisible: false,
     });
     assert.equal(
@@ -4735,17 +4625,13 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    const desktopPastGameLayout = await connection.evaluate<{
+    const desktopGameNoticeLayout = await connection.evaluate<{
       contextOverflow: boolean;
-      noticeOverflow: boolean;
       titleVisible: boolean;
-      hypeCardVisible: boolean;
       nextMarkerVisible: boolean;
     }>(`(() => {
       const context = document.querySelector('[data-testid="section-next-game-context"]');
-      const notice = document.querySelector('[data-testid="past-game-notice"]');
       const title = document.querySelector('[data-testid="next-game-heading"]');
-      const hypeCard = document.querySelector('[data-testid="link-context-hype-card"]');
       const nextMarker = document.querySelector('[data-testid="stage-upcoming-next"]');
       const viewportWidth = document.documentElement.clientWidth;
       const isVisible = (element) => {
@@ -4755,19 +4641,19 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
       };
       return {
         contextOverflow: Boolean(context && context.scrollWidth > context.clientWidth),
-        noticeOverflow: Boolean(notice && notice.scrollWidth > notice.clientWidth),
         titleVisible: isVisible(title),
-        hypeCardVisible: isVisible(hypeCard),
         nextMarkerVisible: isVisible(nextMarker),
       };
     })()`, page.sessionId);
-    assert.deepEqual(desktopPastGameLayout, {
+    assert.deepEqual(desktopGameNoticeLayout, {
       contextOverflow: false,
-      noticeOverflow: false,
       titleVisible: true,
-      hypeCardVisible: true,
       nextMarkerVisible: true,
     });
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="supporter-tool-context"], [data-testid="select-active-supporter-game"]\'))', page.sessionId),
+      false,
+    );
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="stage-completed-next"]\'))', page.sessionId),
       false,
@@ -4863,7 +4749,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
   }
 });
 
-test('supporter active game sync survives a device change and clears inaccessible games', { concurrency: false }, async () => {
+test('dashboard reads the saved game without showing an active-game picker', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-active-game-sync-test');
   let devServer: ChildProcess | undefined;
@@ -4916,74 +4802,23 @@ test('supporter active game sync survives a device change and clears inaccessibl
       `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-active-game-sync`,
     );
 
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-default"',
-      Boolean,
-    );
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-next-game-context\\"]") !== null', Boolean);
     await waitFor(
       connection,
       page.sessionId,
       'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]").some((request) => request.method === "GET")',
       Boolean,
     );
-    await connection.evaluate(`(() => {
-      const select = document.querySelector('[data-testid="select-active-supporter-game"]');
-      if (!(select instanceof HTMLSelectElement)) throw new Error('Active game selector missing');
-      select.value = 'game-selected';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, page.sessionId);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-server-selection") || "null") === "game-selected"',
-      Boolean,
-    );
-    const savedSelectionRequests = await connection.evaluate<Array<{ method: string; body: unknown }>>(
+    const selectionRequests = await connection.evaluate<Array<{ method: string; body: unknown }>>(
       'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")',
       page.sessionId,
     );
-    assert.deepEqual(
-      savedSelectionRequests.find((request) => request.method === 'PUT')?.body,
-      { gameId: 'game-selected' },
+    assert.equal(selectionRequests.some((request) => request.method === 'GET'), true);
+    assert.doesNotMatch(JSON.stringify(selectionRequests), /PRIVATE CHECKLIST NOTES|PRIVATE CHECKLIST ITEM/);
+    assert.equal(
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="select-active-supporter-game"], [data-testid="supporter-tool-context"]\'))', page.sessionId),
+      false,
     );
-    assert.doesNotMatch(JSON.stringify(savedSelectionRequests), /PRIVATE CHECKLIST NOTES|PRIVATE CHECKLIST ITEM/);
-
-    await connection.evaluate(`(() => {
-      localStorage.removeItem('pixlsports-supporter-active-game');
-      localStorage.removeItem('pixlsports-workspace-event-context');
-    })()`, page.sessionId);
-    await reloadPage(connection, page);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-selected"',
-      Boolean,
-    );
-
-    await connection.evaluate(`(() => {
-      sessionStorage.setItem('supporter-active-game-sync-server-selection', JSON.stringify('deleted-game'));
-      localStorage.removeItem('pixlsports-supporter-active-game');
-      localStorage.removeItem('pixlsports-workspace-event-context');
-    })()`, page.sessionId);
-    await reloadPage(connection, page);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"select-active-supporter-game\\"]")?.value === "game-default" && JSON.parse(sessionStorage.getItem("supporter-active-game-sync-server-selection") || "null") === null',
-      Boolean,
-    );
-    const finalSelectionRequests = await connection.evaluate<Array<{ method: string; body: unknown }>>(
-      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")',
-      page.sessionId,
-    );
-    const selectionWrites = finalSelectionRequests.filter((request) => request.method === 'PUT');
-    assert.ok(selectionWrites.some((request) => JSON.stringify(request.body) === JSON.stringify({ gameId: null })));
-    assert.ok(selectionWrites.every((request) => {
-      const body = request.body as Record<string, unknown>;
-      return Object.keys(body).length === 1 && Object.hasOwn(body, 'gameId');
-    }));
   } finally {
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
