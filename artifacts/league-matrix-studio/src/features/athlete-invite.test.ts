@@ -7,6 +7,7 @@ const hypeCardSource = readFileSync(new URL('./hype-card.tsx', import.meta.url),
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
+const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
@@ -128,6 +129,18 @@ test('posting a Hype Card opens the living fan card and keeps owner management a
   assert.match(source, /data-testid="athlete-stat-trend-details"/);
   assert.match(source, /trendGames = invite\.stats\?\.games/);
   assert.match(source, /Finalized only/);
+});
+
+test('Athlete Hype Pages cap active highlight videos at three', () => {
+  assert.match(source, /const MAX_ATHLETE_HIGHLIGHT_VIDEOS = 3/);
+  assert.match(source, /hostedVideos\.length >= MAX_ATHLETE_HIGHLIGHT_VIDEOS/);
+  assert.match(source, /hostedVideos\.length\} \/ \{MAX_ATHLETE_HIGHLIGHT_VIDEOS\}/);
+  assert.match(source, /Shows up to 3 active videos, newest first/);
+  assert.match(apiSource, /const MAX_ACTIVE_HYPE_PAGE_VIDEOS = 3/);
+  assert.match(apiSource, /pg_advisory_xact_lock\(hashtext\(/);
+  assert.match(apiSource, /activeVideos\?\.total \?\? 0\) >= MAX_ACTIVE_HYPE_PAGE_VIDEOS/);
+  assert.match(apiSource, /HYPE_PAGE_VIDEO_LIMIT/);
+  assert.match(athleteApiSource, /\.limit\(maxHighlightVideos\)/);
 });
 
 test('public Athlete Hype Pages present direct videos in an accessible horizontal carousel', () => {

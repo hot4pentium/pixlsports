@@ -62,6 +62,7 @@ import { MAX_HOSTED_VIDEO_BYTES, monotonicProgress, prepareHypeCardShareMedia, u
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const hostedVideoQuery = { shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 };
 const hostedImageQuery = { shareMode: 'card' as const, mediaType: 'image' as const, limit: 1 };
+const MAX_ATHLETE_HIGHLIGHT_VIDEOS = 3;
 
 function defaultSeasonEnd() {
   const now = new Date();
@@ -567,7 +568,7 @@ function OwnerVideoUpload({
     setUploading(true);
     setMessage('');
     setProgress(0.01);
-    setStage('Preparing a web-friendly video…');
+    setStage('Preparing the clip on this device…');
     try {
       const prepared = await prepareHypeCardShareMedia(
         video,
@@ -693,7 +694,7 @@ function OwnerVideoUpload({
           <input type="file" accept="video/*" className="sr-only" onChange={handleFileChange} disabled={atLimit || uploading} />
         </label>
       </div>
-      {atLimit && <p className="mt-3 text-xs font-medium text-amber-200">This page has 10 active videos. Delete one before adding another.</p>}
+      {atLimit && <p className="mt-3 text-xs font-medium text-amber-200">This page has reached its 3-video highlight limit. Delete one before adding another.</p>}
       {file && videoUrl && (
         <div className="mt-5 grid gap-4 border-t border-white/15 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.8fr)]">
           <video ref={videoRef} src={videoUrl} controls playsInline preload="metadata" onLoadedMetadata={handleMetadata} className="max-h-72 w-full bg-black object-contain" />
@@ -932,7 +933,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
 
       <form onSubmit={saveSettings} className="mt-6 border-t border-white/15 pt-6" data-testid="section-visible-athlete-page">
         <h3 className="font-display text-2xl uppercase">Visible sections</h3>
-        <OwnerToggle label="Video highlights" detail="Shows up to 10 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
+        <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} onChange={setShowHypeCard} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={setShowStats} />
         <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={setShowSchedule} />
         <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} onChange={setHypesEnabled} />
@@ -965,11 +966,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Posted media</p>
             <h3 className="mt-2 font-display text-2xl uppercase">Manage posted videos</h3>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{hostedVideos.length} / 10</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/45">{hostedVideos.length} / {MAX_ATHLETE_HIGHLIGHT_VIDEOS}</span>
         </div>
         <OwnerVideoUpload
           invite={invite}
-          atLimit={hostedVideos.length >= 10}
+          atLimit={hostedVideos.length >= MAX_ATHLETE_HIGHLIGHT_VIDEOS}
           onPosted={async () => {
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: getListHypeCardSharesQueryKey(hostedVideoQuery) }),

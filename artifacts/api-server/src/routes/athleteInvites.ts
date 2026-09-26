@@ -242,6 +242,7 @@ function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
 }
 
 async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
+  const maxHighlightVideos = 3;
   const [trackerProject, scheduleProject, latestImages, videos, liveShare] = await Promise.all([
     invite.showStats && invite.trackerProjectId
       ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
@@ -267,7 +268,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
         eq(hypeCardSharesTable.mediaType, "video"),
         isNull(hypeCardSharesTable.revokedAt),
         gt(hypeCardSharesTable.expiresAt, new Date()),
-      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(10)
+      )).orderBy(desc(hypeCardSharesTable.createdAt)).limit(maxHighlightVideos)
       : Promise.resolve([]),
     invite.liveTrackerShareToken
       ? db.select().from(statTrackerSharesTable).where(and(

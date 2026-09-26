@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { hostedVideoBudgetBytes, isUsableHostedVideo, monotonicProgress } from './hype-card-share';
+
+const shareSource = readFileSync(new URL('./hype-card-share.tsx', import.meta.url), 'utf8');
+const exportSource = readFileSync(new URL('./hype-card-export.ts', import.meta.url), 'utf8');
 
 test('preparation progress starts visibly and never moves backward between phases', () => {
   assert.equal(monotonicProgress(0, 0.01), 0.01);
@@ -24,4 +28,15 @@ test('rejects oversized clips and clips that recorded longer than the selected s
   assert.equal(isUsableHostedVideo(8.5, 8.36, 4_000_000), true);
   assert.equal(isUsableHostedVideo(8.5, 8.36, 0), false);
   assert.equal(isUsableHostedVideo(Number.NaN, 8.36, 4_000_000), false);
+});
+
+test('video preparation loads the first frame and bounds stalled local preparation steps', () => {
+  assert.match(
+    exportSource,
+    /videoElement\.readyState < HTMLMediaElement\.HAVE_CURRENT_DATA[\s\S]*?videoElement\.muted = true;[\s\S]*?videoElement\.play\(\)[\s\S]*?Video preparation stalled while loading the first frame/,
+  );
+  assert.match(exportSource, /waitForMediaEvent\([\s\S]*?'loadeddata'/);
+  assert.match(shareSource, /VIDEO_PREPARATION_STEP_TIMEOUT_MS = 10_000/);
+  assert.match(shareSource, /Video preparation stalled while opening the selected segment/);
+  assert.match(shareSource, /Video preparation stalled while creating the preview image/);
 });

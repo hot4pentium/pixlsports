@@ -2,6 +2,7 @@ import type { HypeCardProject } from './hype-card-types';
 import { audioCaptureUnavailableError, exportVideoCanvas } from './hype-card-export';
 
 export const MAX_HOSTED_VIDEO_BYTES = 35 * 1024 * 1024;
+const VIDEO_PREPARATION_STEP_TIMEOUT_MS = 10_000;
 export type HypeCardShareQuality = 'standard' | 'compact';
 
 export function monotonicProgress(previous: number, next: number): number {
@@ -135,7 +136,9 @@ export function uploadHypeCardShareMedia(
 function seekVideo(video: HTMLVideoElement, time: number, signal?: AbortSignal) {
   if (Math.abs(video.currentTime - time) < 0.02) return Promise.resolve();
   return new Promise<void>((resolve, reject) => {
+    let timeoutId = 0;
     const cleanup = () => {
+      window.clearTimeout(timeoutId);
       video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('error', onError);
       signal?.removeEventListener('abort', onAbort);
@@ -159,7 +162,52 @@ function seekVideo(video: HTMLVideoElement, time: number, signal?: AbortSignal) 
     video.addEventListener('seeked', onSeeked, { once: true });
     video.addEventListener('error', onError, { once: true });
     signal?.addEventListener('abort', onAbort, { once: true });
-    video.currentTime = time;
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Video preparation stalled while opening the selected segment.'));
+    }, VIDEO_PREPARATION_STEP_TIMEOUT_MS);
+    try {
+      video.currentTime = time;
+    } catch (error) {
+      cleanup();
+      reject(error instanceof Error ? error : new Error('The selected video segment could not be opened.'));
+    }
+  });
+}
+
+function createPosterBlob(canvas: HTMLCanvasElement, signal?: AbortSignal) {
+  return new Promise<Blob>((resolve, reject) => {
+    let settled = false;
+    let timeoutId = 0;
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback();
+    };
+    const onAbort = () => settle(() => reject(abortError()));
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+    timeoutId = window.setTimeout(() => {
+      settle(() => reject(new Error('Video preparation stalled while creating the preview image.')));
+    }, VIDEO_PREPARATION_STEP_TIMEOUT_MS);
+
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) settle(() => resolve(blob));
+        else settle(() => reject(new Error('Could not create the poster image.')));
+      }, 'image/jpeg', 0.88);
+    } catch (error) {
+      settle(() => reject(error instanceof Error ? error : new Error('Could not create the poster image.')));
+    }
   });
 }
 
@@ -213,9 +261,7 @@ export async function prepareHypeCardShareMedia(
     canvas.width = Math.max(2, Math.round(video.videoWidth * firstScale / 2) * 2);
     canvas.height = Math.max(2, Math.round(video.videoHeight * firstScale / 2) * 2);
     drawContained(context, video, canvas.width, canvas.height);
-    const poster = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not create the poster image.')), 'image/jpeg', 0.88);
-    });
+    const poster = await createPosterBlob(canvas, options.signal);
     if (options.signal?.aborted) throw abortError();
     for (const [index, level] of levels.entries()) {
       if (options.signal?.aborted) throw abortError();

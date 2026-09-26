@@ -39,7 +39,7 @@ function stalledError(message: string) {
 
 function waitForMediaEvent(
   video: HTMLVideoElement,
-  eventName: 'loadedmetadata' | 'seeked',
+  eventName: 'loadedmetadata' | 'loadeddata' | 'seeked',
   errorMessage: string,
   signal: AbortSignal,
 ): Promise<void> {
@@ -431,10 +431,26 @@ export async function exportVideoCanvas(
       try {
         videoElement.loop = false;
         if (videoElement.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-          await new Promise<void>((res, rej) => {
-            videoElement.addEventListener('loadeddata', () => res(), { once: true });
-            videoElement.addEventListener('error', () => rej(new Error('The video could not be decoded.')), { once: true });
-          });
+          const wasMuted = videoElement.muted;
+          videoElement.muted = true;
+          try {
+            await withTimeout(
+              videoElement.play(),
+              'Video preparation stalled while loading the first frame.',
+              signal,
+            );
+            if (videoElement.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+              await waitForMediaEvent(
+                videoElement,
+                'loadeddata',
+                'Video preparation stalled while loading the first frame.',
+                signal,
+              );
+            }
+          } finally {
+            videoElement.pause();
+            videoElement.muted = wasMuted;
+          }
         }
         if (Math.abs(videoElement.currentTime - startTime) > 0.01) {
           videoElement.currentTime = startTime;

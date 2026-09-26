@@ -2495,7 +2495,7 @@ export function HypeCardEditor() {
         setShareProgress(0.75);
         setShareStage('Creating the finalized stats link…');
       } else if (project.mediaType === 'video' && videoUrl && videoRef.current) {
-        setShareStage('Preparing a web-friendly video for the Athlete Hype Page…');
+        setShareStage('Preparing the clip on this device for the Athlete Hype Page…');
         const prepared = await prepareHypeCardShareMedia(
           videoRef.current,
           project,

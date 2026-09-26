@@ -35,6 +35,7 @@ import { sendPushNotificationToUser } from "../lib/webPush";
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
 const MAX_VIDEO_BYTES = 35 * 1024 * 1024;
+const MAX_ACTIVE_HYPE_PAGE_VIDEOS = 3;
 const MAX_VIDEO_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_POSTER_BYTES = 5 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 400 * 1024;
@@ -444,6 +445,9 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
     }
     const { created, replaced } = await db.transaction(async (tx) => {
       const shareMode = parsed.data.shareMode ?? "card";
+      if (shareMode === "card" && parsed.data.mediaType === "video") {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${ownerClerkUserId}), 82173)`);
+      }
       const manifestShareKey = parsed.data.manifest && typeof parsed.data.manifest.shareKey === "string"
         ? parsed.data.manifest.shareKey
         : null;
@@ -536,6 +540,21 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
           .returning();
         replaced.push(...sameIdentity);
       }
+      if (shareMode === "card" && parsed.data.mediaType === "video") {
+        const [activeVideos] = await tx
+          .select({ total: count() })
+          .from(hypeCardSharesTable)
+          .where(and(
+            eq(hypeCardSharesTable.ownerClerkUserId, ownerClerkUserId),
+            eq(hypeCardSharesTable.shareMode, "card"),
+            eq(hypeCardSharesTable.mediaType, "video"),
+            isNull(hypeCardSharesTable.revokedAt),
+            gt(hypeCardSharesTable.expiresAt, new Date()),
+          ));
+        if ((activeVideos?.total ?? 0) >= MAX_ACTIVE_HYPE_PAGE_VIDEOS) {
+          throw new Error("HYPE_PAGE_VIDEO_LIMIT");
+        }
+      }
       const [share] = await tx.insert(hypeCardSharesTable).values({
         ownerClerkUserId,
         publicToken: randomBytes(24).toString("base64url"),
@@ -569,6 +588,10 @@ router.post("/hype-card-shares", requireAuth, async (req, res): Promise<void> =>
     }
     res.status(201).json(await shareResponse(created));
   } catch (error) {
+    if (error instanceof Error && error.message === "HYPE_PAGE_VIDEO_LIMIT") {
+      res.status(409).json({ error: "An Athlete Hype Page can have up to 3 active highlight videos. Delete one before adding another." });
+      return;
+    }
     if (error instanceof Error && error.message === "UPLOAD_CLAIM_NOT_FOUND") {
       res.status(409).json({ error: "Prepared share media has expired or is not owned by this account." });
       return;
