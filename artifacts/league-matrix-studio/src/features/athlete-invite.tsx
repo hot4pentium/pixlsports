@@ -916,6 +916,10 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [showSchedule, setShowSchedule] = useState(invite.showSchedule);
   const [hypesEnabled, setHypesEnabled] = useState(invite.hypesEnabled);
   const [settingsDirty, setSettingsDirty] = useState(false);
+  const [timezoneDirty, setTimezoneDirty] = useState(false);
+  const [visibilitySaving, setVisibilitySaving] = useState(false);
+  const visibilitySavingRef = useRef(false);
+  const [visibilityStatus, setVisibilityStatus] = useState<'idle' | 'saving' | 'saved' | 'refresh-error' | 'error'>('idle');
   const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'hypes' | 'media' | null>(
     () => window.location.hash === '#owner-fan-hypes' ? 'hypes' : null,
   );
@@ -953,6 +957,8 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     previousInviteToken.current = invite.inviteToken;
     if (changedInvite) {
       setSettingsDirty(false);
+      setTimezoneDirty(false);
+      setVisibilityStatus('idle');
       setActiveTask(window.location.hash === '#owner-fan-hypes' ? 'hypes' : null);
     }
     if (settingsDirty && !changedInvite) return;
@@ -1003,14 +1009,57 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   };
   const saveSettings = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!timezoneDirty || visibilitySavingRef.current || updateInvite.isPending) return;
     setNotice('');
     try {
       await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload() });
       await refreshPage();
       setSettingsDirty(false);
-      setNotice('Hype Page settings updated.');
+      setTimezoneDirty(false);
+      setNotice('Time zone updated.');
     } catch {
-      setNotice('The Hype Page settings could not be updated.');
+      setNotice('The time zone could not be updated. Please try again.');
+    }
+  };
+  const saveVisibilityChange = async (
+    field: 'showHypeCard' | 'showStats' | 'showSchedule' | 'hypesEnabled',
+    checked: boolean,
+  ) => {
+    if (visibilitySavingRef.current || updateInvite.isPending) return;
+    const current = { showHypeCard, showStats, showSchedule, hypesEnabled };
+    const next = { ...current, [field]: checked };
+    const setField = {
+      showHypeCard: setShowHypeCard,
+      showStats: setShowStats,
+      showSchedule: setShowSchedule,
+      hypesEnabled: setHypesEnabled,
+    }[field];
+    visibilitySavingRef.current = true;
+    setVisibilitySaving(true);
+    setVisibilityStatus('saving');
+    setSettingsDirty(true);
+    setField(checked);
+    try {
+      // Save only the toggled visibility, not an unfinished time-zone edit.
+      await updateInvite.mutateAsync({
+        inviteToken: invite.inviteToken,
+        data: { ...payload(invite.paused, false), ...next },
+      });
+      try {
+        await refreshPage();
+        setSettingsDirty(timezoneDirty);
+        setVisibilityStatus('saved');
+      } catch {
+        // The mutation succeeded: keep the new switch value even if refresh failed.
+        setVisibilityStatus('refresh-error');
+      }
+    } catch {
+      setField(current[field]);
+      setSettingsDirty(timezoneDirty);
+      setVisibilityStatus('error');
+    } finally {
+      visibilitySavingRef.current = false;
+      setVisibilitySaving(false);
     }
   };
   const copyFanCard = async () => {
@@ -1112,7 +1161,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </div>
       <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — fans cannot open this card until you resume it.' : 'Live — this stable season URL stays with the athlete.'}</p>
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
-        <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
+        <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending || visibilitySaving} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
           <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
         </Button>
         <Button type="button" variant="outline" onClick={toggleLive} disabled={startLive.isPending || stopLive.isPending || invite.paused} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
@@ -1125,19 +1174,30 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={settingsDirty ? 'Unsaved changes' : undefined}>
+      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={visibilitySaving ? 'Saving…' : visibilityStatus === 'error' ? 'Save failed' : visibilityStatus === 'refresh-error' ? 'Refresh needed' : timezoneDirty ? 'Unsaved time zone' : undefined}>
       <form onSubmit={saveSettings} data-testid="section-visible-athlete-page">
         <h3 className="font-display text-2xl uppercase">Visible sections</h3>
-        <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} onChange={(value) => { setShowHypeCard(value); setSettingsDirty(true); }} />
-        <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} onChange={(value) => { setShowStats(value); setSettingsDirty(true); }} />
-        <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} onChange={(value) => { setShowSchedule(value); setSettingsDirty(true); }} />
-        <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} onChange={(value) => { setHypesEnabled(value); setSettingsDirty(true); }} />
+        <p className="mt-1 text-xs text-white/60">Section switches save as soon as you change them.</p>
+        <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showHypeCard', value)} />
+        <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showStats', value)} />
+        <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showSchedule', value)} />
+        <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
+        {visibilityStatus !== 'idle' && (
+          <p
+            className={`mt-4 text-xs font-semibold ${visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'text-amber-200' : 'text-white/70'}`}
+            role={visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'alert' : 'status'}
+            aria-live="polite"
+            data-testid="status-owner-visible-sections"
+          >
+            {visibilityStatus === 'saving' ? 'Saving section change…' : visibilityStatus === 'saved' ? 'Section change saved.' : visibilityStatus === 'refresh-error' ? 'Section change saved, but the page could not refresh. Reload to confirm.' : 'Section change could not be saved. The switch was restored; try again.'}
+          </p>
+        )}
         <label className="mt-4 block max-w-sm text-xs font-bold uppercase tracking-widest text-white/70">
           Schedule time zone for fan event alerts
-          <input value={timezone} onChange={(event) => { setTimezone(event.target.value); setSettingsDirty(true); }} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
+          <input value={timezone} onChange={(event) => { setTimezone(event.target.value); setTimezoneDirty(true); setSettingsDirty(true); }} disabled={visibilitySaving || updateInvite.isPending} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
           <span className="mt-2 block text-xs font-normal normal-case tracking-normal text-white/50">Enter the time zone where events begin, such as America/New_York.</span>
         </label>
-        <Button type="submit" disabled={updateInvite.isPending} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Update Hype Page</Button>
+        <Button type="submit" disabled={!timezoneDirty || updateInvite.isPending || visibilitySaving} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Save time zone</Button>
       </form>
       </HypeManagerTaskCard>
 
@@ -1737,8 +1797,8 @@ function Stat({ label, value, primary = false, testId, spotlight = false }: { la
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-border pt-4"><div><p className="text-sm font-bold">{label}</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;
 }
-function OwnerToggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  return <div className="mt-5 flex items-start justify-between gap-4 border-t border-white/15 pt-4"><div><p className="text-sm font-bold text-white">{label}</p><p className="mt-1 text-xs leading-relaxed text-white/50">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} aria-label={label} /></div>;
+function OwnerToggle({ label, detail, checked, disabled, onChange }: { label: string; detail: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
+  return <div className="mt-5 flex items-start justify-between gap-4 border-t border-white/15 pt-4"><div><p className="text-sm font-bold text-white">{label}</p><p className="mt-1 text-xs leading-relaxed text-white/50">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={label} /></div>;
 }
 function InviteShell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/studio"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">Back to studio</Link></div></header>{children}</div>;
