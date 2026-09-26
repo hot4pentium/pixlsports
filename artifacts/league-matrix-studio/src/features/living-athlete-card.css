@@ -214,7 +214,8 @@
 .living-card-schedule li p { margin: 7px 0 0; color: var(--lc-muted); font-size: 10px; line-height: 1.5; }
 .living-card-schedule li .living-card-schedule-notes { color: #d2e2ee; }
 .living-card-schedule li button { margin-top: 10px; border: 1px solid #8ecbff65; background: transparent; padding: 8px 10px; color: var(--lc-paper); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.living-card-manage { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 9px; max-width: 100%; margin-top: 0; border-bottom: 1px solid #b4d6ee7a; padding: 13px 0; font-size: 10px; font-weight: 800; letter-spacing: .13em; line-height: 1.4; text-transform: uppercase; overflow-wrap: anywhere; }
+.living-card-manage { display: inline-flex; align-items: flex-end; flex-wrap: nowrap; gap: 9px; min-width: 0; max-width: 100%; margin-top: 0; border-bottom: 1px solid #b4d6ee7a; padding: 13px 0; font-size: 10px; font-weight: 800; letter-spacing: .13em; line-height: 1.4; text-transform: uppercase; overflow-wrap: anywhere; }
+.living-card-manage span { min-width: 0; }
 .living-card-manage svg { flex: 0 0 auto; width: 15px; height: 15px; color: var(--lc-orange); }
 .living-card-follow { margin-top: 31px; }
 .living-card-hypes { margin-top: 32px; padding: 24px; border: 1px solid #b4d6ee55; background: #143450; }

@@ -9,6 +9,7 @@ const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
 const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
+const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
@@ -151,7 +152,8 @@ test('owner manage link replaces the intro note without creating an empty story 
   const layoutIndex = livingCardSource.indexOf('className={`living-card-layout');
   assert.ok(introIndex >= 0 && manageIndex > introIndex && manageIndex < layoutIndex);
   assert.match(livingCardSource, /\{ownerInvite && \(\s*<Link className="living-card-manage"/);
-  assert.match(livingCardSource, /Manage this athletic card/);
+  assert.match(livingCardSource, /<span>Manage this athletic card<\/span><ArrowRight aria-hidden="true" \/>/);
+  assert.match(livingCardStyles, /\.living-card-manage \{[^}]*flex-wrap: nowrap/);
   assert.doesNotMatch(livingCardSource, /The same athlete, a new story after every game\. Keep this link close\./);
   assert.doesNotMatch(
     livingCardSource,

@@ -250,7 +250,7 @@ export function LivingAthleteCardPage({
           </div>
           {ownerInvite && (
             <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
-              Manage this athletic card <ArrowRight aria-hidden="true" />
+              <span>Manage this athletic card</span><ArrowRight aria-hidden="true" />
             </Link>
           )}
         </div>
