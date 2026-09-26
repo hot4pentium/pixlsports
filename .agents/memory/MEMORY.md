@@ -32,6 +32,7 @@
 - [Hype Card watermark legibility](hype-card-watermark-legibility.md) — judge photo overlays at phone-preview scale; a faint full-resolution SVG mark can vanish when reduced.
 - [Athlete fan card and Hype Page lifecycle](athlete-hype-page-lifecycle.md) — share the fan card first, preserve the original page, and keep live sessions temporary.
 - [Hype manager task drafts](hype-manager-task-drafts.md) — task-card navigation must not unmount uploads or reset unsaved visibility settings when other actions refresh the page.
+- [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
 - [Approved dashboard visual direction](approved-dashboard-visual-direction.md) — the supporter dashboard’s navy sports-editorial gradient, chevrons, and responsive path treatment are approved.
 - [Planner push notifications](planner-push-notifications.md) — server-side planner reminders use the device time zone and durable delivery keys.

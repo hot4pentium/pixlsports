@@ -919,6 +919,9 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'hypes' | 'media' | null>(
     () => window.location.hash === '#owner-fan-hypes' ? 'hypes' : null,
   );
+  const toggleTask = (task: Exclude<typeof activeTask, null>) => {
+    setActiveTask((current) => current === task ? null : task);
+  };
   const previousInviteToken = useRef(invite.inviteToken);
   const { data: hypes, isLoading: hypesLoading, isError: hypesError } = useListAthleteInviteHypes(invite.inviteToken, {
     query: { queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken), refetchOnMount: 'always', refetchInterval: 30_000 },
@@ -1095,7 +1098,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       {notice && <p role="status" className="my-3 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed" data-testid="status-hype-manager">{notice}</p>}
 
       <div className="mt-5 space-y-3">
-      <HypeManagerTaskCard id="share" title="Share Hype Card" description="Choose a card to share" Icon={Share2} active={activeTask === 'share'} onSelect={() => setActiveTask('share')} badge={invite.paused ? 'Paused' : 'Live'} preview={invite.photoUrl ? <img src={invite.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 place-items-center bg-[#dceaf4] text-lg font-black text-[#102a4c]">{invite.athleteName.trim().charAt(0).toUpperCase() || 'P'}</span>}>
+      <HypeManagerTaskCard id="share" title="Share Hype Card" description="Choose a card to share" Icon={Share2} active={activeTask === 'share'} onSelect={() => toggleTask('share')} badge={invite.paused ? 'Paused' : 'Live'} preview={invite.photoUrl ? <img src={invite.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 place-items-center bg-[#dceaf4] text-lg font-black text-[#102a4c]">{invite.athleteName.trim().charAt(0).toUpperCase() || 'P'}</span>}>
       <div>
         <h3 className="font-display text-2xl uppercase">Share the fan Hype Card</h3>
         <p className="mt-1 text-xs text-white/55">This is the main link for family and fans. It stays with this athlete as their season updates.</p>
@@ -1118,11 +1121,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </div>
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="photo" title="Upload Photo" description="Add a new athlete photo" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => setActiveTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
+      <HypeManagerTaskCard id="photo" title="Upload Photo" description="Add a new athlete photo" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => toggleTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
         <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => setActiveTask('sections')} badge={settingsDirty ? 'Unsaved changes' : undefined}>
+      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={settingsDirty ? 'Unsaved changes' : undefined}>
       <form onSubmit={saveSettings} data-testid="section-visible-athlete-page">
         <h3 className="font-display text-2xl uppercase">Visible sections</h3>
         <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} onChange={(value) => { setShowHypeCard(value); setSettingsDirty(true); }} />
@@ -1138,7 +1141,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </form>
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="hypes" title="Fan Hypes" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => setActiveTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
+      <HypeManagerTaskCard id="hypes" title="Fan Hypes" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => toggleTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
       <section aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
         <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Hypes</h3>
         <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Hypes are on for the living card.' : 'Hypes are off. Earlier messages remain available to you.'}</p>
@@ -1155,7 +1158,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </section>
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="media" title="Add Media" description="Add a video or highlight" Icon={Video} active={activeTask === 'media'} onSelect={() => setActiveTask('media')} badge={hostedVideos.length ? `${hostedVideos.length} posted` : undefined}>
+      <HypeManagerTaskCard id="media" title="Add Media" description="Add a video or highlight" Icon={Video} active={activeTask === 'media'} onSelect={() => toggleTask('media')} badge={hostedVideos.length ? `${hostedVideos.length} posted` : undefined}>
       <div aria-live="polite" data-testid="section-manage-athlete-videos">
         <div className="flex items-end justify-between gap-4">
           <div>

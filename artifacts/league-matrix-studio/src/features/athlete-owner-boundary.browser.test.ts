@@ -312,6 +312,10 @@ test('player-page owner tools remain private across account changes and pause', 
     const ownerManage = await open('owner', 'manage', false, '#owner-fan-hypes');
     await waitFor(connection, ownerManage, element('[data-testid="owner-hype-page-management"]'), Boolean, 30_000);
     await waitFor(connection, ownerManage, "document.activeElement?.id === 'owner-fan-hypes'", Boolean, 30_000);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === true && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'false'", Boolean, 12_000);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'true'", Boolean, 12_000);
     for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Hypes', 'Add Media']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
     }

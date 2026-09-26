@@ -35,9 +35,7 @@ export function HypeManagerTaskCard({
         data-testid={`button-hype-manager-${id}`}
         aria-expanded={active}
         aria-controls={panelId}
-        onClick={() => {
-          if (!active) onSelect();
-        }}
+        onClick={onSelect}
       >
         <span className="hype-manager-task-icon" aria-hidden="true"><Icon /></span>
         <span className="hype-manager-task-copy">
