@@ -25,6 +25,13 @@ import './living-athlete-card.css';
 
 type CardSide = 'front' | 'stats' | 'videos';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
+const hypeReactions = [
+  { emoji: '👏', label: 'Applause' },
+  { emoji: '💪', label: 'Strong' },
+  { emoji: '⭐', label: 'Star' },
+  { emoji: '❤️', label: 'Heart' },
+  { emoji: '🔥', label: 'Fire' },
+] as const;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function formatDate(value: string) {
@@ -106,7 +113,7 @@ export function LivingAthleteCardPage({
   const [selectedGameKey, setSelectedGameKey] = useState('');
   const [trendStatId, setTrendStatId] = useState('score');
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
-  const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>("Let's go!");
+  const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>('👏');
   const [senderName, setSenderName] = useState('');
   const [message, setMessage] = useState('');
   const [hypeFeedback, setHypeFeedback] = useState('');
@@ -569,10 +576,14 @@ export function LivingAthleteCardPage({
                    <div className="living-card-dialog-body">
                      {invite.hypesEnabled ? (
                        <form onSubmit={(event) => void submitHype(event)} data-testid="form-fan-card-hype">
-                         <label htmlFor="fan-card-reaction">Your cheer</label>
-                         <select id="fan-card-reaction" value={reaction} onChange={(event) => setReaction(event.target.value as AthleteInviteHypeInput['reaction'])} data-testid="select-fan-card-reaction">
-                           <option>Let's go!</option><option>Great job!</option><option>Proud of you!</option>
-                         </select>
+                          <fieldset className="living-card-hype-reactions">
+                            <legend>Your cheer</legend>
+                            {hypeReactions.map(({ emoji, label }) => (
+                              <button key={emoji} type="button" onClick={() => setReaction(emoji)} aria-label={`React with ${label}`} aria-pressed={reaction === emoji}>
+                                {emoji}
+                              </button>
+                            ))}
+                          </fieldset>
                           <label htmlFor="fan-card-sender-name">Your name (optional)</label>
                           <input id="fan-card-sender-name" type="text" value={senderName} onChange={(event) => setSenderName(event.target.value)} maxLength={60} autoComplete="name" placeholder="How should we credit you?" data-testid="input-fan-card-sender-name" />
                           <p className="living-card-name-note">Leave blank to send anonymously. Only the card owner sees your name.</p>

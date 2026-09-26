@@ -1889,7 +1889,7 @@ export const sendAthleteInviteHypeBodyMessageMax = 240;
 
 
 export const SendAthleteInviteHypeBody = zod.object({
-  "reaction": zod.enum(['Let\'s go!', 'Great job!', 'Proud of you!']),
+  "reaction": zod.enum(['Let\'s go!', 'Great job!', 'Proud of you!', '🔥', '👏', '💪', '⭐', '❤️']),
   "senderName": zod.string().max(sendAthleteInviteHypeBodySenderNameMax).optional(),
   "message": zod.string().max(sendAthleteInviteHypeBodyMessageMax).optional()
 })

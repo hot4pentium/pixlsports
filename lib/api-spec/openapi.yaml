@@ -2608,7 +2608,7 @@ components:
       type: object
       required: [reaction]
       properties:
-        reaction: { type: string, enum: ["Let's go!", "Great job!", "Proud of you!"] }
+        reaction: { type: string, enum: ["Let's go!", "Great job!", "Proud of you!", "🔥", "👏", "💪", "⭐", "❤️"] }
         senderName: { type: string, maxLength: 60 }
         message: { type: string, maxLength: 240 }
     AthleteInviteHypeAccepted:

@@ -13,4 +13,9 @@ export const AthleteInviteHypeInputReaction = {
   'Let\'s_go!': 'Let\'s go!',
   'Great_job!': 'Great job!',
   'Proud_of_you!': 'Proud of you!',
+  '🔥': '🔥',
+  '👏': '👏',
+  '💪': '💪',
+  '⭐': '⭐',
+  '❤️': '❤️',
 } as const;
