@@ -840,26 +840,39 @@ export function SupporterDashboardView({
       </div>
 
       {recommendedGame ? (
-        <>
-          <p
-            className="supporter-game-on-summary__event-date"
-            data-testid={variant === 'desktop' ? 'next-event-date' : 'mobile-next-event-date'}
-          >
-            {formatDateDisplay(recommendedGame.date)}
-          </p>
-          <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
-            {recommendedGameTitle}
-          </h2>
-          <div className="supporter-game-on-summary__event-details">
-            <span>{formatTimeDisplay(recommendedGame.time)}</span>
-            {recommendedGame.location && (
-              <span className="supporter-game-on-summary__event-location">
-                <MapPin size={14} aria-hidden="true" />
-                {recommendedGame.location}
-              </span>
-            )}
+        <div className="supporter-game-on-summary__event-main">
+          <div className="supporter-game-on-summary__event-matchup">
+            <p
+              className="supporter-game-on-summary__event-date"
+              data-testid={variant === 'desktop' ? 'next-event-date' : 'mobile-next-event-date'}
+            >
+              {formatDateDisplay(recommendedGame.date)}
+            </p>
+            <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
+              {recommendedGameTitle}
+            </h2>
+            <div className="supporter-game-on-summary__event-details">
+              <span>{formatTimeDisplay(recommendedGame.time)}</span>
+              {recommendedGame.location && (
+                <span className="supporter-game-on-summary__event-location">
+                  <MapPin size={14} aria-hidden="true" />
+                  {recommendedGame.location}
+                </span>
+              )}
+            </div>
           </div>
-        </>
+          {recommendedGameCard && (
+            <div className="supporter-game-on-summary__event-utility">
+              <div className="supporter-game-on-summary__event-utility-copy">
+                <span>YOUR GAME-DAY CARD</span>
+                <p>Prep, details and tracking in one place.</p>
+              </div>
+              <button type="button" onClick={() => selectCard(recommendedGameCard.id)} data-testid={`button-open-featured-game-card-${variant}`}>
+                Open game card <ArrowRight size={15} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         <>
           <p className="supporter-game-on-summary__event-date">YOUR SCHEDULE</p>
@@ -921,7 +934,7 @@ export function SupporterDashboardView({
             </p>
       )}
 
-      <div className="supporter-game-on-summary__event-actions">
+      <div className={`supporter-game-on-summary__event-actions${recommendedGameCard ? ' supporter-game-on-summary__event-actions--secondary' : ''}`}>
         {gameStage === 'upcoming' && contextEvent && (
           <button
             type="button"
@@ -963,7 +976,7 @@ export function SupporterDashboardView({
             onClick={() => navigateToGameOnSection(setLocation)}
             data-testid={variant === 'desktop' ? 'button-context-game-on' : undefined}
           >
-            <CalendarDays size={15} aria-hidden="true" /> Add an event
+            <CalendarDays size={15} aria-hidden="true" /> {recommendedGameCard ? 'Add another event' : 'Add an event'}
           </button>
         )}
       </div>

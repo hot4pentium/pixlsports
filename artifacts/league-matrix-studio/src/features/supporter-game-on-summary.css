@@ -184,6 +184,7 @@
 .supporter-game-on-summary__event {
   position: relative;
   overflow: hidden;
+  container-type: inline-size;
   background:
     linear-gradient(90deg, rgba(4, 16, 33, .94) 0%, rgba(5, 18, 37, .83) 54%, rgba(8, 28, 56, .7) 100%),
     repeating-linear-gradient(0deg, transparent 0 24px, rgba(130, 184, 255, .1) 25px 26px),
@@ -233,9 +234,75 @@
 .supporter-game-on-summary__event-content {
   position: relative;
   z-index: 1;
+  display: flex;
   height: 100%;
+  min-height: 196px;
+  flex-direction: column;
   padding: 16px 18px;
 }
+
+.supporter-game-on-summary__event-main {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, .53fr);
+  align-items: center;
+  gap: clamp(12px, 2vw, 24px);
+  min-width: 0;
+  margin-top: 10px;
+}
+
+.supporter-game-on-summary__event-matchup { min-width: 0; }
+.supporter-game-on-summary__event-matchup .supporter-game-on-summary__event-date { margin-top: 0; }
+
+.supporter-game-on-summary__event-utility {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  border-left: 1px solid rgba(115, 182, 255, .27);
+  padding: 7px 0 7px clamp(12px, 2vw, 22px);
+}
+
+.supporter-game-on-summary__event-utility-copy span {
+  color: #86c4ff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.supporter-game-on-summary__event-utility-copy p {
+  margin: 7px 0 0;
+  color: rgba(230, 240, 255, .83);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.supporter-game-on-summary__event-utility button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #83bfff;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #071c34;
+  background: #82beff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.supporter-game-on-summary__event-utility button:hover { background: #b4d9ff; }
+.supporter-game-on-summary__event-utility button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.supporter-game-on-summary__event-utility button svg { flex: 0 0 auto; }
 
 .supporter-game-on-summary__event-top {
   display: flex;
@@ -445,7 +512,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  margin-top: 11px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .supporter-game-on-summary__event-actions button,
@@ -473,6 +541,38 @@
 .supporter-game-on-summary__event-actions a:hover {
   border-color: #9bcbff;
   background: #2579dc;
+}
+
+.supporter-game-on-summary__event-actions--secondary button,
+.supporter-game-on-summary__event-actions--secondary a {
+  border-color: rgba(115, 182, 255, .45);
+  color: #cfe7ff;
+  background: rgba(24, 75, 126, .18);
+}
+
+.supporter-game-on-summary__event-actions--secondary button:hover,
+.supporter-game-on-summary__event-actions--secondary a:hover { background: rgba(37, 121, 220, .4); }
+
+@container (max-width: 440px) {
+  .supporter-game-on-summary__event-main { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .supporter-game-on-summary__event-utility {
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid rgba(115, 182, 255, .27);
+    border-left: 0;
+    padding: 12px 0 0;
+  }
+  .supporter-game-on-summary__event-utility-copy { max-width: 45%; }
+  .supporter-game-on-summary__event-utility-copy p { display: none; }
+  .supporter-game-on-summary__event-utility button { width: auto; }
+}
+
+@container (max-width: 310px) {
+  .supporter-game-on-summary__event-utility { align-items: stretch; flex-direction: column; gap: 9px; }
+  .supporter-game-on-summary__event-utility-copy { max-width: none; }
+  .supporter-game-on-summary__event-utility button { width: 100%; }
 }
 
 .supporter-game-on-summary__event-actions button:focus-visible,
