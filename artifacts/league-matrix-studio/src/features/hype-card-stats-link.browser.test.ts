@@ -80,6 +80,25 @@ function brightPixelCount(context, box) {
   return count;
 }
 
+function changedPixelCount(context, box, background) {
+  const left = Math.max(0, Math.floor(box.x));
+  const top = Math.max(0, Math.floor(box.y));
+  const right = Math.min(context.canvas.width, Math.ceil(box.right));
+  const bottom = Math.min(context.canvas.height, Math.ceil(box.bottom));
+  if (right <= left || bottom <= top) return 0;
+  const red = Number.parseInt(background.slice(1, 3), 16);
+  const green = Number.parseInt(background.slice(3, 5), 16);
+  const blue = Number.parseInt(background.slice(5, 7), 16);
+  const pixels = context.getImageData(left, top, right - left, bottom - top).data;
+  let count = 0;
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (Math.abs(pixels[index] - red) + Math.abs(pixels[index + 1] - green) + Math.abs(pixels[index + 2] - blue) > 65) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 async function inspectFormat(format) {
   const project = {
     ...defaultProject(),
@@ -93,6 +112,8 @@ async function inspectFormat(format) {
   const dimensions = getDimensions(format);
   const svgMarkup = buildHypeCardSvg(project, 'all', 'raster', statsUrl);
   const foregroundMarkup = buildHypeCardSvg(project, 'fg', 'video', statsUrl);
+  const backgroundMarkup = format === 'card' ? buildHypeCardSvg(project, 'bg', 'background', statsUrl) : '';
+  const emptyMediaMarkup = format === 'card' ? buildHypeCardSvg({ ...project, mediaType: null, photo: null }, 'fg', 'empty-media') : '';
   const ordinaryMarkup = buildHypeCardSvg(project, 'all', 'ordinary');
   if (ordinaryMarkup.includes('Finalized stats link') || ordinaryMarkup.includes(statsUrl)) {
     throw new Error('Ordinary export unexpectedly contains linked stats markup');
@@ -110,6 +131,36 @@ async function inspectFormat(format) {
   const qrBox = qrGroup?.querySelector('rect');
   const statsText = statsGroup?.querySelectorAll('text')[1];
   if (!svg || !statsGroup || !statsBox || !qrGroup || !qrBox || !statsText) throw new Error('Linked stats markup was not rendered');
+  let watermark = null;
+  if (format === 'card') {
+    const group = svg.querySelector('[aria-label="Hype Card watermark"]');
+    const mark = group?.querySelector('text');
+    const matrix = mark?.transform.baseVal.consolidate()?.matrix;
+    if (!group || !mark || !matrix) throw new Error('The card photo watermark was not rendered');
+    const bounds = mark.getBBox();
+    const points = [
+      [bounds.x, bounds.y],
+      [bounds.x + bounds.width, bounds.y],
+      [bounds.x, bounds.y + bounds.height],
+      [bounds.x + bounds.width, bounds.y + bounds.height],
+    ].map(([x, y]) => new DOMPoint(x, y).matrixTransform(matrix));
+    watermark = {
+      allCount: svg.querySelectorAll('[aria-label="Hype Card watermark"]').length,
+      foregroundCount: new DOMParser().parseFromString(foregroundMarkup, 'image/svg+xml').querySelectorAll('[aria-label="Hype Card watermark"]').length,
+      backgroundCount: new DOMParser().parseFromString(backgroundMarkup, 'image/svg+xml').querySelectorAll('[aria-label="Hype Card watermark"]').length,
+      emptyMediaCount: new DOMParser().parseFromString(emptyMediaMarkup, 'image/svg+xml').querySelectorAll('[aria-label="Hype Card watermark"]').length,
+      railCount: group.querySelectorAll('rect').length,
+      clipPath: group.getAttribute('clip-path'),
+      rotation: mark.getAttribute('transform'),
+      opacity: Number(mark.getAttribute('fill-opacity')),
+      bounds: {
+        x: Math.min(...points.map((point) => point.x)),
+        y: Math.min(...points.map((point) => point.y)),
+        right: Math.max(...points.map((point) => point.x)),
+        bottom: Math.max(...points.map((point) => point.y)),
+      },
+    };
+  }
 
   const box = statsBox.getBBox();
   const qr = qrBox.getBBox();
@@ -138,14 +189,22 @@ async function inspectFormat(format) {
     right: (text.x + text.width) * scale,
     bottom: (text.y + text.height) * scale,
   };
+  const phoneWatermarkBox = watermark && {
+    x: watermark.bounds.x * scale,
+    y: watermark.bounds.y * scale,
+    right: watermark.bounds.right * scale,
+    bottom: Math.min(watermark.bounds.bottom, 890) * scale,
+  };
 
   const foregroundImage = await loadSvg(foregroundMarkup);
   const framePixelCounts = [];
+  const watermarkPixelCounts = [];
   for (const background of ['#13243b', '#492a26', '#1e4c43']) {
     context.fillStyle = background;
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(foregroundImage, 0, 0, canvas.width, canvas.height);
     framePixelCounts.push(brightPixelCount(context, phoneTextBox));
+    if (phoneWatermarkBox) watermarkPixelCounts.push(changedPixelCount(context, phoneWatermarkBox, background));
   }
 
   svgHost.remove();
@@ -162,6 +221,8 @@ async function inspectFormat(format) {
     jpegDataUrl: canvas.toDataURL('image/jpeg', 0.95).slice(0, 23),
     rasterBrightPixels: brightPixelCount(context, phoneTextBox),
     framePixelCounts,
+    watermark,
+    watermarkPixelCounts,
     copyOverlap: outsideTextBoxes.some((candidate) => intersects(box, candidate)),
     ordinaryExportUnchanged: !ordinaryMarkup.includes('Finalized stats link') && !ordinaryMarkup.includes(statsUrl),
   };
@@ -182,7 +243,7 @@ createRoot(document.getElementById('root')).render(createElement(Harness));
 `;
 }
 
-test('linked stats URLs survive phone-sized image rasterization and video frame composition', async () => {
+test('linked stats URLs and the card watermark survive phone-sized image and video rendering', async () => {
   await writeFile(harnessPath, harnessSource(), 'utf8');
   await writeFile(htmlPath, '<!doctype html><html><body><div id="root"></div><script type="module" src="/hype-card-stats-link-test.tsx"></script></body></html>', 'utf8');
 
@@ -234,12 +295,25 @@ test('linked stats URLs survive phone-sized image rasterization and video frame 
       height: number;
       url: string;
       box: { x: number; y: number; right: number; bottom: number };
+      qr: { x: number; y: number; size: number };
       text: { x: number; y: number; right: number; bottom: number; fontSize: number };
       phoneTextHeight: number;
       rasterDataUrl: string;
       jpegDataUrl: string;
       rasterBrightPixels: number;
       framePixelCounts: number[];
+      watermark: null | {
+        allCount: number;
+        foregroundCount: number;
+        backgroundCount: number;
+        emptyMediaCount: number;
+        railCount: number;
+        clipPath: string | null;
+        rotation: string | null;
+        opacity: number;
+        bounds: { x: number; y: number; right: number; bottom: number };
+      };
+      watermarkPixelCounts: number[];
       copyOverlap: boolean;
       ordinaryExportUnchanged: boolean;
     }>>('JSON.parse(document.body.dataset.results)', page.sessionId);
@@ -261,6 +335,24 @@ test('linked stats URLs survive phone-sized image rasterization and video frame 
       assert.equal(result.jpegDataUrl, 'data:image/jpeg;base64,');
       assert.ok(result.rasterBrightPixels > 0, `${result.format} raster does not contain visible URL pixels`);
       assert.ok(result.framePixelCounts.every((count) => count > 0), `${result.format} video foreground loses the URL on a frame`);
+      if (result.format === 'card') {
+        const watermark = result.watermark;
+        assert.ok(watermark, 'stadium card should include a photo watermark');
+        assert.equal(watermark.allCount, 1, 'still artwork should contain one watermark');
+        assert.equal(watermark.foregroundCount, 1, 'video foreground should contain one watermark');
+        assert.equal(watermark.backgroundCount, 0, 'background should not duplicate the watermark');
+        assert.equal(watermark.emptyMediaCount, 1, 'the watermark should remain visible in the empty photo preview');
+        assert.equal(watermark.railCount, 0, 'the old separate label rail should be gone');
+        assert.equal(watermark.clipPath, 'url(#stadiumPhotoClip-raster)');
+        assert.equal(watermark.rotation, 'rotate(45 680 850)');
+        assert.ok(watermark.opacity > 0 && watermark.opacity < .6, 'the mark should be translucent');
+        assert.ok(watermark.bounds.x >= 180 && watermark.bounds.right <= 820, 'watermark leaves the photo horizontally');
+        assert.ok(watermark.bounds.y >= 330 && watermark.bounds.bottom <= 1085, 'watermark leaves the photo vertically');
+        assert.equal(result.watermarkPixelCounts.length, 3);
+        assert.ok(result.watermarkPixelCounts.every((count) => count > 10), 'watermark disappears on a phone-sized video frame');
+      } else {
+        assert.equal(result.watermark, null, `${result.format} has an unrelated stadium watermark`);
+      }
     }
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

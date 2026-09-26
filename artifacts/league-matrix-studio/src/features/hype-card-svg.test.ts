@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildPositionBadgeMarkup, getPositionBadgeLayout } from './position-badge';
-import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
+import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup, buildStadiumPhotoWatermarkMarkup } from './hype-card-geometry';
 import { getDimensions } from './hype-card-types';
 
 test('portrait stadium cards fill the full output height', () => {
@@ -10,6 +10,15 @@ test('portrait stadium cards fill the full output height', () => {
     buildStadiumCardClipMarkup('full-height'),
     /<clipPath id="stadiumCardClip-full-height"><rect x="8" y="8" width="984" height="1384" rx="46"\/><\/clipPath>/,
   );
+});
+
+test('stadium Hype Card watermark is angled over the photo without a second label rail', () => {
+  const markup = buildStadiumPhotoWatermarkMarkup('photo');
+  assert.match(markup, /aria-label="Hype Card watermark" clip-path="url\(#stadiumPhotoClip-photo\)"/);
+  assert.match(markup, /transform="rotate\(45 680 850\)"/);
+  assert.match(markup, /fill-opacity="\.55"/);
+  assert.match(markup, />HYPE CARD<\/text>/);
+  assert.doesNotMatch(markup, /<rect/);
 });
 
 test('landscape output preserves a wide video frame and its canvas ratio', () => {

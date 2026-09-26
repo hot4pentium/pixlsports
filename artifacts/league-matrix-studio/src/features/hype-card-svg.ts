@@ -7,7 +7,7 @@ import {
   templates
 } from './hype-card-types';
 import QRCode from 'qrcode';
-import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup } from './hype-card-geometry';
+import { buildStadiumCardClipMarkup, buildStadiumLowerThirdTextMarkup, buildStadiumPhotoWatermarkMarkup } from './hype-card-geometry';
 import { buildPositionBadgeMarkup } from './position-badge';
 import stadiumEntrance from '../assets/hype-cards/stadium-entrance.webp?url';
 import sunsetStadium from '../assets/hype-cards/sunset-stadium.webp?url';
@@ -395,9 +395,6 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const palette = palettes[project.palette];
   const backgroundImage = stadiumCardBackgrounds[project.layout];
   const frame = STADIUM_MEDIA_FRAME;
-  const hypeRailWidth = 58;
-  const hypeRailCenterX = (frame.x + frame.width + 1000) / 2;
-  const hypeRailX = hypeRailCenterX - hypeRailWidth / 2;
   const stadiumHeadline = content.headline ? `${content.headline.replace(/!+$/, '')}!` : '';
   const photoX = frame.x + (frame.width - frame.width * project.photoTransform.zoom) / 2 + project.photoTransform.x;
   const photoY = frame.y + (frame.height - frame.height * project.photoTransform.zoom) / 2 + project.photoTransform.y;
@@ -454,16 +451,13 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       <rect y="900" width="1000" height="500" fill="url(#stadiumBottom-${ns})"/>
       ${mediaGlow}
       ${placeholder}
+      ${buildStadiumPhotoWatermarkMarkup(ns)}
        <g aria-label="Player number and position">
           <path d="M62 46 H208 L226 64 V114 H62 Z" fill="#020811" stroke="${palette.primary}" stroke-width="3"/>
           <text x="86" y="95" font-family="Space Grotesk,sans-serif" font-size="27" font-weight="800" letter-spacing="2" fill="#fff">#${content.number}</text>
           ${positionBadgeMarkup}
        </g>
       <text x="500" y="250" text-anchor="middle" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="${headlineSize}" font-weight="700" letter-spacing="1" fill="#fff" filter="url(#stadiumShadow-${ns})">${stadiumHeadline}</text>
-      <g aria-label="Hype Card">
-        <rect x="${hypeRailX}" y="500" width="${hypeRailWidth}" height="380" rx="26" fill="#02070e" fill-opacity=".78" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".9"/>
-         <text x="${hypeRailCenterX}" y="690" text-anchor="middle" dominant-baseline="middle" transform="rotate(90 ${hypeRailCenterX} 690)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="28" font-weight="700" letter-spacing="12" fill="${palette.accent}" stroke="#02070e" stroke-width="3" paint-order="stroke fill" filter="url(#stadiumShadow-${ns})">HYPE CARD</text>
-      </g>
       ${message}
       ${logo}
       ${branding}

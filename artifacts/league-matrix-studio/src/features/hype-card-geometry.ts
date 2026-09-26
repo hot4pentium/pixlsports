@@ -11,6 +11,12 @@ export function buildStadiumCardClipMarkup(ns: string) {
   return `<clipPath id="stadiumCardClip-${ns}"><rect x="${clip.x}" y="${clip.y}" width="${clip.width}" height="${clip.height}" rx="${clip.radius}"/></clipPath>`;
 }
 
+export function buildStadiumPhotoWatermarkMarkup(ns: string) {
+  return `<g aria-label="Hype Card watermark" clip-path="url(#stadiumPhotoClip-${ns})" pointer-events="none">
+        <text x="680" y="850" text-anchor="middle" dominant-baseline="middle" transform="rotate(45 680 850)" font-family="Oswald,Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif" font-size="52" font-weight="700" letter-spacing="4" fill="#fff" fill-opacity=".55" stroke="#02070e" stroke-opacity=".42" stroke-width="2" paint-order="stroke fill">HYPE CARD</text>
+      </g>`;
+}
+
 export function buildStadiumLowerThirdTextMarkup({
   player,
   details,
