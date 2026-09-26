@@ -243,19 +243,16 @@ export function LivingAthleteCardPage({
   return (
     <Shell>
       <main className="living-card-main">
-        {ownerInvite && (
-          <div className="living-card-manage-row">
-            <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
-              Manage this athlete card <ArrowRight aria-hidden="true" />
-            </Link>
-          </div>
-        )}
         <div className="living-card-intro">
           <div>
             <span className="living-card-eyebrow">The living athlete card / {invite.seasonName}</span>
             <h1>One card. <span>Every chapter.</span></h1>
           </div>
-          <p className="living-card-intro-note">The same athlete, a new story after every game. Keep this link close.</p>
+          {ownerInvite && (
+            <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
+              Manage this athletic card <ArrowRight aria-hidden="true" />
+            </Link>
+          )}
         </div>
 
         <div className={`living-card-layout${hasStoryContent ? '' : ' living-card-layout-solo'}`}>

@@ -46,7 +46,6 @@
 .living-card-eyebrow, .living-card-overline { display: block; font-size: 10px; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; color: var(--lc-sky); }
 .living-card-intro h1 { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; text-transform: uppercase; font-size: clamp(42px, 6.7vw, 96px); line-height: .84; letter-spacing: -.025em; margin: 13px 0 0; }
 .living-card-intro h1 span { color: var(--lc-orange); }
-.living-card-intro-note { max-width: 218px; margin: 0; color: var(--lc-muted); font-size: 12px; line-height: 1.5; }
 .living-card-layout { display: grid; grid-template-columns: minmax(0, 660px) minmax(280px, 1fr); gap: clamp(32px, 5vw, 84px); align-items: start; }
 .living-card-layout-solo { grid-template-columns: minmax(0, 660px); justify-content: center; }
 .living-card-stage { min-width: 0; }
@@ -215,7 +214,6 @@
 .living-card-schedule li p { margin: 7px 0 0; color: var(--lc-muted); font-size: 10px; line-height: 1.5; }
 .living-card-schedule li .living-card-schedule-notes { color: #d2e2ee; }
 .living-card-schedule li button { margin-top: 10px; border: 1px solid #8ecbff65; background: transparent; padding: 8px 10px; color: var(--lc-paper); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.living-card-manage-row { display: flex; justify-content: flex-end; min-width: 0; max-width: 100%; margin: 0 0 18px; }
 .living-card-manage { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 9px; max-width: 100%; margin-top: 0; border-bottom: 1px solid #b4d6ee7a; padding: 13px 0; font-size: 10px; font-weight: 800; letter-spacing: .13em; line-height: 1.4; text-transform: uppercase; overflow-wrap: anywhere; }
 .living-card-manage svg { flex: 0 0 auto; width: 15px; height: 15px; color: var(--lc-orange); }
 .living-card-follow { margin-top: 31px; }
@@ -255,7 +253,7 @@
   .living-card-header-label { font-size: 8px; max-width: 130px; }
   .living-card-main { padding: 31px 17px 55px; }
   .living-card-intro { display: block; }
-  .living-card-intro-note { margin-top: 14px; }
+  .living-card-manage { margin-top: 14px; }
   .living-card-frame { min-height: 540px; height: 144vw; max-height: 700px; }
   .living-card-corner { left: 18px; right: 18px; top: 18px; }
   .living-card-front-bottom { padding: 60px 23px 23px; }
