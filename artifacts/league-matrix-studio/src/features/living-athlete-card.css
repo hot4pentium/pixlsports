@@ -48,6 +48,7 @@
 .living-card-intro h1 span { color: var(--lc-orange); }
 .living-card-intro-note { max-width: 218px; margin: 0; color: var(--lc-muted); font-size: 12px; line-height: 1.5; }
 .living-card-layout { display: grid; grid-template-columns: minmax(0, 660px) minmax(280px, 1fr); gap: clamp(32px, 5vw, 84px); align-items: start; }
+.living-card-layout-solo { grid-template-columns: minmax(0, 660px); justify-content: center; }
 .living-card-stage { min-width: 0; }
 .living-card-frame-outer { position: relative; padding: 9px; border: 1px solid #9fcaef62; border-radius: 25px; background: linear-gradient(130deg, #a4cdeb6b, #152c49 23%, #0b2039 77%, #ff784977); box-shadow: 0 31px 75px #010811aa, 0 0 0 7px #91c8f40a; }
 .living-card-frame-outer::after { content: ''; position: absolute; top: 16px; bottom: 16px; right: -18px; width: 1px; background: linear-gradient(transparent, #80bcf594, transparent); }
@@ -205,31 +206,15 @@
 .living-card-dialog .living-card-hype-feedback:empty { display: none; }
 .living-card-dialog + * { z-index: 60; }
 .living-card-story { padding-top: 10px; }
-.living-card-story-kicker { display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--lc-orange); }
-.living-card-story-kicker::before { content: ''; height: 2px; width: 28px; background: var(--lc-orange); }
-.living-card-next { margin-top: 0; }
-.living-card-next-head { display: flex; gap: 10px; align-items: center; color: var(--lc-sky); font-size: 10px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
-.living-card-next-head svg { width: 16px; }
-.living-card-next h3 { margin: 14px 0 5px; font: 800 clamp(33px, 4vw, 49px)/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
-.living-card-next p { color: #bdd1e0; line-height: 1.5; font-size: 13px; margin: 7px 0; }
-.living-card-next-date { color: var(--lc-orange) !important; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-.living-card-live { display: inline-flex; align-items: center; gap: 9px; padding: 12px 15px; margin-top: 16px; background: #ff7849; color: #112039 !important; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; transition: transform .2s, background .2s; }
-.living-card-live:hover { transform: translateY(-2px); background: #ff9a72; }
-.living-card-live svg { width: 16px; height: 16px; }
-.living-card-schedule, .living-card-save-guide { margin-top: 30px; padding-top: 22px; border-top: 1px solid #b4d6ee40; }
-.living-card-schedule h2, .living-card-save-guide h2 { margin: 8px 0 0; font: 800 33px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
-.living-card-schedule ol, .living-card-save-guide ol { display: grid; gap: 10px; padding: 0; margin: 16px 0 0; list-style: none; }
+.living-card-schedule { margin-top: 30px; padding-top: 22px; border-top: 1px solid #b4d6ee40; }
+.living-card-schedule h2 { margin: 8px 0 0; font: 800 33px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-schedule ol { display: grid; gap: 10px; padding: 0; margin: 16px 0 0; list-style: none; }
 .living-card-schedule li { padding: 13px; border: 1px solid #b4d6ee30; background: #0b2948; }
 .living-card-schedule-heading span { display: block; color: var(--lc-sky); font-size: 9px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 .living-card-schedule-heading strong { display: block; margin-top: 5px; font: 800 21px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
 .living-card-schedule li p { margin: 7px 0 0; color: var(--lc-muted); font-size: 10px; line-height: 1.5; }
 .living-card-schedule li .living-card-schedule-notes { color: #d2e2ee; }
 .living-card-schedule li button { margin-top: 10px; border: 1px solid #8ecbff65; background: transparent; padding: 8px 10px; color: var(--lc-paper); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.living-card-save-guide > svg { width: 24px; height: 24px; color: var(--lc-orange); }
-.living-card-save-guide > p { margin: 8px 0 0; color: var(--lc-muted); font-size: 11px; line-height: 1.55; }
-.living-card-save-guide li { display: flex; gap: 10px; color: #d2e2ee; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.living-card-save-guide li span { color: var(--lc-orange); }
-.living-card-save-guide > small { display: block; margin-top: 16px; color: #829bb0; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
 .living-card-manage { display: inline-flex; align-items: center; gap: 9px; margin-top: 25px; border-bottom: 1px solid #b4d6ee7a; padding: 13px 0; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .living-card-manage svg { width: 15px; height: 15px; color: var(--lc-orange); }
 .living-card-follow { margin-top: 31px; }

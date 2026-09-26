@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send, Smartphone } from 'lucide-react';
+import { ArrowRight, Bell, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { Link } from 'wouter';
 import {
@@ -33,14 +33,6 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime())
     ? value
     : date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-}
-
-function nextEvent(events: PublicAthleteFanCard['scheduleEvents']) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return [...events]
-    .filter((event) => event.status === 'upcoming' && event.date && new Date(`${event.date.slice(0, 10)}T23:59:59`).getTime() >= today.getTime())
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0] ?? null;
 }
 
 function gameOutcome(game: FanGame) {
@@ -191,9 +183,9 @@ export function LivingAthleteCardPage({
   }
 
   const recentVideos = [...invite.videos].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const upcoming = nextEvent(invite.scheduleEvents);
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+  const hasStoryContent = invite.scheduleEvents.length > 0 || Boolean(ownerInvite);
   const orderedGames = (invite.stats?.games ?? [])
     .map((game, index) => ({ game, index }))
     .sort((a, b) => a.game.date.localeCompare(b.game.date) || a.index - b.index);
@@ -259,7 +251,7 @@ export function LivingAthleteCardPage({
           <p className="living-card-intro-note">The same athlete, a new story after every game. Keep this link close.</p>
         </div>
 
-        <div className="living-card-layout">
+        <div className={`living-card-layout${hasStoryContent ? '' : ' living-card-layout-solo'}`}>
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s living athlete card`}>
             <div className="living-card-frame-outer">
               <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'stats' ? 'finalized stats' : 'videos'}`}>
@@ -598,69 +590,40 @@ export function LivingAthleteCardPage({
             <p className="living-card-instruction">Choose a side to turn the card. Videos play only when you press play.</p>
           </section>
 
-          <aside className="living-card-story">
-            <section className="living-card-next" aria-labelledby="living-card-next-title">
-              <div className="living-card-next-head"><CalendarDays aria-hidden="true" /> Up next</div>
-              {upcoming ? (
-                <>
-                  <h3 id="living-card-next-title" data-testid="text-living-card-next-event">{upcoming.type === 'game' ? (upcoming.opponent ? `vs ${upcoming.opponent}` : 'Game day') : upcoming.type === 'practice' ? 'Practice' : 'Team meeting'}</h3>
-                  <p className="living-card-next-date">{formatDate(upcoming.date)}{upcoming.time ? ` / ${upcoming.time}` : ''}</p>
-                  {upcoming.location && <p>{upcoming.location}</p>}
-                </>
-              ) : (
-                <>
-                  <h3 id="living-card-next-title">Stay tuned.</h3>
-                  <p>The next event will appear here when it is shared.</p>
-                </>
+          {hasStoryContent && (
+            <aside className="living-card-story">
+              {invite.scheduleEvents.length > 0 && (
+                <section className="living-card-schedule" aria-labelledby="living-card-schedule-title" data-testid="living-card-schedule">
+                  <span className="living-card-overline">Season calendar</span>
+                  <h2 id="living-card-schedule-title">Schedule details</h2>
+                  <ol>
+                    {invite.scheduleEvents.map((event) => {
+                      const title = event.type === 'game' ? `vs ${event.opponent || 'Opponent TBD'}` : event.type;
+                      return (
+                        <li key={event.id}>
+                          <div className="living-card-schedule-heading">
+                            <span>{event.status} · {event.type}</span>
+                            <strong>{title}</strong>
+                          </div>
+                          <p>{formatDate(event.date)}{event.time ? ` · ${event.time}` : ' · Time TBD'}</p>
+                          {event.location && <p>{event.location}</p>}
+                          {event.notes && <p className="living-card-schedule-notes">{event.notes}</p>}
+                          <button type="button" onClick={() => downloadScheduleEvent(event, invite.teamName)}>
+                            Add to calendar
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
               )}
-              {invite.liveScoreboard && (
-                <button type="button" className="living-card-live" onClick={() => selectSide('stats')} data-testid="button-living-card-live">
-                  <Radio aria-hidden="true" /> View live scoreboard <ArrowRight aria-hidden="true" />
-                </button>
+              {ownerInvite && (
+                <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
+                  Manage this athlete card <ArrowRight aria-hidden="true" />
+                </Link>
               )}
-            </section>
-            {invite.scheduleEvents.length > 0 && (
-              <section className="living-card-schedule" aria-labelledby="living-card-schedule-title" data-testid="living-card-schedule">
-                <span className="living-card-overline">Season calendar</span>
-                <h2 id="living-card-schedule-title">Schedule details</h2>
-                <ol>
-                  {invite.scheduleEvents.map((event) => {
-                    const title = event.type === 'game' ? `vs ${event.opponent || 'Opponent TBD'}` : event.type;
-                    return (
-                      <li key={event.id}>
-                        <div className="living-card-schedule-heading">
-                          <span>{event.status} · {event.type}</span>
-                          <strong>{title}</strong>
-                        </div>
-                        <p>{formatDate(event.date)}{event.time ? ` · ${event.time}` : ' · Time TBD'}</p>
-                        {event.location && <p>{event.location}</p>}
-                        {event.notes && <p className="living-card-schedule-notes">{event.notes}</p>}
-                        <button type="button" onClick={() => downloadScheduleEvent(event, invite.teamName)}>
-                          Add to calendar
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
+            </aside>
             )}
-            <section className="living-card-save-guide" aria-labelledby="living-card-save-guide-title" data-testid="living-card-save-guide">
-              <Smartphone aria-hidden="true" />
-              <h2 id="living-card-save-guide-title">Keep this card close</h2>
-              <p>Save the athlete’s season card to your phone and come back as it grows.</p>
-              <ol>
-                <li><span>1</span>Open your browser’s share menu</li>
-                <li><span>2</span>Choose Add to Home Screen</li>
-                <li><span>3</span>Open the saved icon anytime</li>
-              </ol>
-              <small>Stable season link · {new Date(invite.seasonEndsAt).toLocaleDateString()}</small>
-            </section>
-            {ownerInvite && (
-              <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
-                Manage this athlete card <ArrowRight aria-hidden="true" />
-              </Link>
-            )}
-          </aside>
         </div>
         <footer className="living-card-footer"><span>Pixl Sports / Every game adds a chapter</span><span>{invite.seasonName} · {sport}</span></footer>
       </main>
