@@ -3479,6 +3479,7 @@ function WorkspaceJourneyHarness() {
       : tool === '/studio/hype-card' ? createElement(HypeCardEditor)
       : createElement(SupporterDashboardView, {
         profile,
+        userId: window.location.search.includes('supporter-active-game-sync') ? 'supporter-sync-user' : undefined,
         prepUserId: 'workspace-journey',
         events,
         nextGameIsUpcoming: true,
@@ -3519,6 +3520,7 @@ export function mount() {
       && requestUrl.endsWith('/api/supporter/active-game')
     ) {
       const method = String(init?.method || 'GET').toUpperCase();
+      // Shared across tabs like the account endpoint; request history remains per tab.
       const selectionKey = 'supporter-active-game-sync-server-selection';
       const requestsKey = 'supporter-active-game-sync-requests';
       const requests = JSON.parse(window.sessionStorage.getItem(requestsKey) || '[]');
@@ -3535,12 +3537,12 @@ export function mount() {
             status: 400, headers: { 'Content-Type': 'application/json' },
           }));
         }
-        window.sessionStorage.setItem(selectionKey, JSON.stringify(body.gameId));
+        window.localStorage.setItem(selectionKey, JSON.stringify(body.gameId));
         return Promise.resolve(new Response(JSON.stringify({ gameId: body.gameId }), {
           status: 200, headers: { 'Content-Type': 'application/json' },
         }));
       }
-      const gameId = JSON.parse(window.sessionStorage.getItem(selectionKey) || 'null');
+      const gameId = JSON.parse(window.localStorage.getItem(selectionKey) || 'null');
       return Promise.resolve(new Response(JSON.stringify({ gameId }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       }));
@@ -3660,8 +3662,8 @@ export function mount() {
       notes: 'PRIVATE CHECKLIST NOTES',
       checklistItems: ['PRIVATE CHECKLIST ITEM'],
     }];
-    if (!window.sessionStorage.getItem('supporter-active-game-sync-server-selection')) {
-      window.sessionStorage.setItem('supporter-active-game-sync-server-selection', 'null');
+    if (!window.localStorage.getItem('supporter-active-game-sync-server-selection')) {
+      window.localStorage.setItem('supporter-active-game-sync-server-selection', 'null');
     }
   }
   if (window.location.search.includes('workspace-journey')) {
@@ -4753,7 +4755,7 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
   }
 });
 
-test('dashboard reads the saved game without showing an active-game picker', { concurrency: false }, async () => {
+test('Calendar game choice syncs to a clean session and clears when the game disappears', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-active-game-sync-test');
   let devServer: ChildProcess | undefined;
@@ -4763,6 +4765,7 @@ test('dashboard reads the saved game without showing an active-game picker', { c
   let browserMonitor: ProcessMonitor | undefined;
   let connection: DevToolsConnection | undefined;
   let page: { sessionId: string; targetId: string } | undefined;
+  let otherPage: { sessionId: string; targetId: string } | undefined;
 
   try {
     const viteProbe = createServer();
@@ -4771,12 +4774,13 @@ test('dashboard reads the saved game without showing an active-game picker', { c
     await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
     await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
 
-    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
       cwd: appDirectory,
       env: {
         ...process.env,
         PORT: String(vitePort),
         BASE_PATH: '/',
+        REPL_ID: '',
         VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -4801,29 +4805,76 @@ test('dashboard reads the saved game without showing an active-game picker', { c
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    page = await openPage(
-      connection,
-      `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?supporter-active-game-sync`,
+    const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?workspace-journey&supporter-active-game-sync`;
+    const calendarUrl = `${fixtureUrl}&route=schedule`;
+    page = await openPage(connection, calendarUrl);
+    const first = page.sessionId;
+    const schedule = {
+      version: 1, teamName: 'Northside Comets', season: '2026', template: 0,
+      events: [
+        { id: 'game-default', type: 'game', status: 'upcoming', date: '2026-10-12', time: '18:30', location: 'Main Gym', opponent: 'Falcons', snacks: '', drinks: '', notes: '' },
+        { id: 'game-selected', type: 'game', status: 'upcoming', date: '2026-10-13', time: '19:00', location: 'Away Gym', opponent: 'Tigers', snacks: '', drinks: '', notes: 'PRIVATE CHECKLIST NOTES', checklistItems: ['PRIVATE CHECKLIST ITEM'] },
+      ],
+    };
+    await connection.evaluate(`localStorage.setItem('leaguematrix-schedule-draft', ${JSON.stringify(JSON.stringify(schedule))})`, first);
+    await navigatePage(connection, page, calendarUrl);
+    await waitFor(connection, first, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]")?.click()', first);
+    await waitFor(connection, first, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
+    await navigatePage(connection, page, fixtureUrl);
+    await waitFor(connection, first, 'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]").some(request => request.method === "GET")', Boolean);
+    assert.equal(await connection.evaluate('JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id', first), 'game-selected');
+    await waitFor(connection, first, 'localStorage.getItem("supporter-active-game-sync-server-selection") === "\\"game-selected\\""', Boolean);
+    const requests = () => connection!.evaluate<Array<{ method: string; body: { gameId: string | null } | null }>>(
+      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")', first,
     );
+    assert.ok((await requests()).some((request) => request.method === 'PUT' && request.body?.gameId === 'game-selected'));
 
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-next-game-context\\"]") !== null', Boolean);
-    await waitFor(
-      connection,
-      page.sessionId,
-      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]").some((request) => request.method === "GET")',
-      Boolean,
+    // Keep only the fake account endpoint's backing value: the next tab starts without a device cache.
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('pixlsports-supporter-active-game');
+      localStorage.removeItem('pixlsports-workspace-event-context');
+    })()`, first);
+    otherPage = await openPage(connection, fixtureUrl);
+    const second = otherPage.sessionId;
+    await waitFor(connection, second, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
+    await waitFor(connection, second, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\'))', Boolean);
+    const secondRequests = () => connection!.evaluate<Array<{ method: string; body: { gameId: string | null } | null }>>(
+      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")', second,
     );
-    const selectionRequests = await connection.evaluate<Array<{ method: string; body: unknown }>>(
-      'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]")',
-      page.sessionId,
-    );
-    assert.equal(selectionRequests.some((request) => request.method === 'GET'), true);
-    assert.doesNotMatch(JSON.stringify(selectionRequests), /PRIVATE CHECKLIST NOTES|PRIVATE CHECKLIST ITEM/);
+    assert.ok((await secondRequests()).some((request) => request.method === 'GET'));
+    assert.ok(!(await secondRequests()).some((request) => request.method === 'PUT'), 'reading the selection must not overwrite it');
+    await reloadPage(connection, otherPage);
+    await waitFor(connection, second, 'JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id === "game-selected"', Boolean);
+    await waitFor(connection, second, 'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]").filter(request => request.method === "GET").length >= 2', Boolean);
+    assert.equal(await connection.evaluate('Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\'))', second), true);
+    assert.ok((await secondRequests()).filter((request) => request.method === 'GET').length >= 2, 'reload reads the account choice again');
+
+    // Remove the selected game through Calendar, then return to the dashboard with its saved account ID stale.
+    await navigatePage(connection, otherPage, calendarUrl);
+    await waitFor(connection, second, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]")?.click()', second);
+    await waitFor(connection, second, 'Boolean(document.querySelector("[data-testid=\\"button-remove-event-1\\"]"))', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-remove-event-1\\"]")?.click()', second);
+    await waitFor(connection, second, '!JSON.parse(localStorage.getItem("leaguematrix-schedule-draft") || "null")?.events?.some(event => event.id === "game-selected")', Boolean);
+    await navigatePage(connection, otherPage, fixtureUrl);
+    await waitFor(connection, second, 'localStorage.getItem("supporter-active-game-sync-server-selection") === "null"', Boolean);
+    await waitFor(connection, second, 'Boolean(document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-default"]\'))', Boolean);
+    assert.ok((await secondRequests()).some((request) => request.method === 'PUT' && request.body?.gameId === null), 'missing game clears the saved account choice');
+    assert.equal(await connection.evaluate('localStorage.getItem("pixlsports-supporter-active-game")', second), null);
+    assert.notEqual(await connection.evaluate('JSON.parse(localStorage.getItem("pixlsports-workspace-event-context") || "null")?.id || null', second), 'game-selected');
+    await reloadPage(connection, otherPage);
+    await waitFor(connection, second, 'JSON.parse(sessionStorage.getItem("supporter-active-game-sync-requests") || "[]").filter(request => request.method === "GET").length >= 4', Boolean);
+    assert.equal(await connection.evaluate('localStorage.getItem("supporter-active-game-sync-server-selection")', second), 'null');
+    assert.doesNotMatch(JSON.stringify([...(await requests()), ...(await secondRequests())]), /PRIVATE CHECKLIST NOTES|PRIVATE CHECKLIST ITEM/);
     assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="select-active-supporter-game"], [data-testid="supporter-tool-context"]\'))', page.sessionId),
+      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="select-active-supporter-game"], [data-testid="supporter-tool-context"]\'))', second),
       false,
     );
   } finally {
+    if (otherPage && connection) {
+      await connection.send('Target.closeTarget', { targetId: otherPage.targetId }).catch(() => undefined);
+    }
     if (page && connection) {
       await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     }

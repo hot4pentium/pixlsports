@@ -9,6 +9,12 @@ Generated browser-test HTML can fall back to the app's normal SPA shell when a t
 
 **How to apply:** Keep route assertions in the harness, then navigate directly to the generated fixture URL with the test query and persisted state before calling the browser reload helper. When using a route query, assert the harness's selected route marker rather than the fixture's `location.pathname`.
 
+For query-flagged fixtures, an in-app navigation to `/` can also remove the flags before the harness remounts, silently disabling mocks or signed-in test state. Navigate to the original fixture URL (including query flags) when switching from a Calendar view to a dashboard view for cross-session assertions.
+
+**Why:** A Calendar-to-dashboard test rendered the dashboard but never sent its account request because navigation discarded the fixture flag that supplied the test user.
+
+**How to apply:** When a generated fixture relies on search parameters for route and identity, preserve them on every full-page view switch; wait for the expected request before asserting account synchronization.
+
 Direct fixture navigation is not guaranteed to fix every blank reload. A dashboard selection fixture mounted on its first visit but returned an empty body after reload even when navigated to its direct fixture URL and given an explicit desktop viewport.
 
 **Why:** Repeating a browser check against an empty fixture can consume time without telling us whether the app's selection logic is wrong.
