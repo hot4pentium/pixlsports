@@ -8,6 +8,7 @@ const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
+const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
@@ -141,6 +142,17 @@ test('Athlete Hype Pages cap active highlight videos at three', () => {
   assert.match(apiSource, /activeVideos\?\.total \?\? 0\) >= MAX_ACTIVE_HYPE_PAGE_VIDEOS/);
   assert.match(apiSource, /HYPE_PAGE_VIDEO_LIMIT/);
   assert.match(athleteApiSource, /\.limit\(maxHighlightVideos\)/);
+});
+
+test('owner manage link stays above the card and does not create an empty story column', () => {
+  assert.match(livingCardSource, /const hasStoryContent = invite\.scheduleEvents\.length > 0/);
+  const manageIndex = livingCardSource.indexOf('className="living-card-manage-row"');
+  const introIndex = livingCardSource.indexOf('className="living-card-intro"');
+  assert.ok(manageIndex >= 0 && manageIndex < introIndex);
+  assert.doesNotMatch(
+    livingCardSource,
+    /className="living-card-story"[\s\S]*?data-testid="link-manage-living-card"/,
+  );
 });
 
 test('public Athlete Hype Pages present direct videos in an accessible horizontal carousel', () => {

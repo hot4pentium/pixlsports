@@ -185,7 +185,7 @@ export function LivingAthleteCardPage({
   const recentVideos = [...invite.videos].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
-  const hasStoryContent = invite.scheduleEvents.length > 0 || Boolean(ownerInvite);
+  const hasStoryContent = invite.scheduleEvents.length > 0;
   const orderedGames = (invite.stats?.games ?? [])
     .map((game, index) => ({ game, index }))
     .sort((a, b) => a.game.date.localeCompare(b.game.date) || a.index - b.index);
@@ -243,6 +243,13 @@ export function LivingAthleteCardPage({
   return (
     <Shell>
       <main className="living-card-main">
+        {ownerInvite && (
+          <div className="living-card-manage-row">
+            <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
+              Manage this athlete card <ArrowRight aria-hidden="true" />
+            </Link>
+          </div>
+        )}
         <div className="living-card-intro">
           <div>
             <span className="living-card-eyebrow">The living athlete card / {invite.seasonName}</span>
@@ -616,11 +623,6 @@ export function LivingAthleteCardPage({
                     })}
                   </ol>
                 </section>
-              )}
-              {ownerInvite && (
-                <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
-                  Manage this athlete card <ArrowRight aria-hidden="true" />
-                </Link>
               )}
             </aside>
             )}
