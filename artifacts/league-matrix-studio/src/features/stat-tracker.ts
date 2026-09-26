@@ -47,6 +47,7 @@ export type GameSession = {
   period: number;
   score: number;
   opponentScore: number;
+  scoreRecorded?: boolean;
   notes: string;
   stats: Record<string, number>;
   trackYards?: boolean;
@@ -414,6 +415,7 @@ export function createGameSession(
     period: 1,
     score: 0,
     opponentScore: 0,
+    scoreRecorded: false,
     notes: input.notes?.trim() ?? '',
     stats: {},
     trackYards: sport === 'football',
@@ -431,8 +433,8 @@ export function adjustScore(
   if (game.status !== 'live' || !Number.isFinite(delta) || delta === 0) return game;
   const nextScore = Math.max(0, (side === 'athlete' ? game.score : game.opponentScore) + delta);
   return side === 'athlete'
-    ? { ...game, score: nextScore }
-    : { ...game, opponentScore: nextScore };
+    ? { ...game, score: nextScore, scoreRecorded: true }
+    : { ...game, opponentScore: nextScore, scoreRecorded: true };
 }
 
 export function addStatEvent(
@@ -469,6 +471,7 @@ export function addStatEvent(
     stats: { ...game.stats, [statId]: (game.stats[statId] ?? 0) + 1 },
     yardStats,
     score: game.score + definition.points,
+    scoreRecorded: attribution === 'team' && definition.points > 0 ? true : game.scoreRecorded,
     events: [...game.events, event],
   };
 }
@@ -479,7 +482,7 @@ export function addAthleteStatEvent(
   now = new Date(),
 ): GameSession {
   const withEvent = addStatEvent(game, statId, now, 0, 'athlete');
-  return withEvent === game ? game : { ...withEvent, score: game.score };
+  return withEvent === game ? game : { ...withEvent, score: game.score, scoreRecorded: game.scoreRecorded };
 }
 
 export type AthleteResultCapture = {
@@ -523,6 +526,7 @@ export function createAthleteResultGame(
     ...game,
     score: capture.score,
     opponentScore: capture.opponentScore,
+    scoreRecorded: true,
   }, now);
 }
 
@@ -647,9 +651,13 @@ export function undoLastStatEvent(game: GameSession): GameSession {
   };
 }
 
-export function endGame(game: GameSession, now = new Date()): GameSession {
+export function endGame(
+  game: GameSession,
+  now = new Date(),
+  scoreRecorded = game.scoreRecorded ?? false,
+): GameSession {
   if (game.status === 'final') return game;
-  return { ...game, status: 'final', endedAt: now.toISOString() };
+  return { ...game, status: 'final', scoreRecorded, endedAt: now.toISOString() };
 }
 
 export function normalizeTrackerData(value: unknown): StatTrackerData {

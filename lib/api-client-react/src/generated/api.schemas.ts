@@ -771,6 +771,17 @@ export const HypeCardShareStatsSport = {
   volleyball: 'volleyball',
 } as const;
 
+export type HypeCardShareStatsRecord = {
+  /** @minimum 0 */
+  wins: number;
+  /** @minimum 0 */
+  losses: number;
+  /** @minimum 0 */
+  ties: number;
+  /** @minimum 0 */
+  gamesPlayed: number;
+};
+
 export type HypeCardShareStatsStats = {[key: string]: number};
 
 export type HypeCardShareGameSummaryStats = {[key: string]: number};
@@ -786,6 +797,7 @@ export interface HypeCardShareGameSummary {
   score: number;
   /** @minimum 0 */
   opponentScore: number;
+  scoreRecorded: boolean;
   stats: HypeCardShareGameSummaryStats;
   athleteStats: HypeCardShareGameSummaryAthleteStats;
 }
@@ -797,6 +809,7 @@ export interface HypeCardShareStats {
   gamesPlayed: number;
   /** @minimum 0 */
   score: number;
+  record: HypeCardShareStatsRecord;
   games: HypeCardShareGameSummary[];
   stats: HypeCardShareStatsStats;
   updatedAt: string;

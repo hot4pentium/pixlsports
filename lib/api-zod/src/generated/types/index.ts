@@ -104,6 +104,7 @@ export * from './hypeCardShareReplyReaction';
 export * from './hypeCardShareReplyReceipt';
 export * from './hypeCardShareShareMode';
 export * from './hypeCardShareStats';
+export * from './hypeCardShareStatsRecord';
 export * from './hypeCardShareStatsSport';
 export * from './hypeCardShareStatsStats';
 export * from './hypeCardShareUpload';

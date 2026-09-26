@@ -183,6 +183,9 @@ const FanCardActions = lazy(() =>
 function LivingAthleteCardRoute({ params }: { params: { inviteToken?: string } }) {
   return <LivingAthleteCardPage params={params} followControls={<FanCardActions inviteToken={params.inviteToken ?? ''} />} />;
 }
+function LegacyAthleteInviteRedirect({ params }: { params: { inviteToken?: string } }) {
+  return <Redirect to={`/fan/${encodeURIComponent(params.inviteToken ?? '')}`} />;
+}
 const OwnerAthleteInviteManagePage = lazy(() =>
   import('@/features/athlete-invite').then(({ OwnerAthleteInviteManagePage }) => ({ default: OwnerAthleteInviteManagePage })),
 );
@@ -4351,7 +4354,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/live/:shareToken" component={PublicStatTrackerPage} />
               <Route path="/fan/:inviteToken" component={LivingAthleteCardRoute} />
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
-               <Route path="/player/:inviteToken" component={PublicAthleteInvitePage} />
+               <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />
               <Route path="/studio" component={StudioPortal} />

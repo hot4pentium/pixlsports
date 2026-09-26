@@ -17,6 +17,7 @@ export interface HypeCardShareGameSummary {
   score: number;
   /** @minimum 0 */
   opponentScore: number;
+  scoreRecorded: boolean;
   stats: HypeCardShareGameSummaryStats;
   athleteStats: HypeCardShareGameSummaryAthleteStats;
 }

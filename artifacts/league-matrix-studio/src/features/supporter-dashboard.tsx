@@ -103,6 +103,9 @@ function readRecordedScoreGameIds(storage: Storage, accountId: string) {
       stored.games.flatMap((entry): string[] => {
         if (typeof entry !== 'object' || entry === null) return [];
         const game = entry as Record<string, unknown>;
+        if (typeof game.scoreRecorded === 'boolean') {
+          return typeof game.id === 'string' && game.scoreRecorded ? [game.id] : [];
+        }
         return typeof game.id === 'string'
           && typeof game.score === 'number'
           && Number.isFinite(game.score)

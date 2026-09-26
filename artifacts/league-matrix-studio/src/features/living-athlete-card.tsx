@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, ArrowUpRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
+import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send, Smartphone } from 'lucide-react';
+import { useUser } from '@clerk/react';
 import { Link } from 'wouter';
-import { getGetAthleteFanCardQueryKey, useGetAthleteFanCard, useSendAthleteInviteHype, type PublicAthleteFanCard, type AthleteInviteHypeInput } from '@workspace/api-client-react';
+import {
+  getGetAthleteFanCardQueryKey,
+  getListAthleteInvitesQueryKey,
+  useGetAthleteFanCard,
+  useListAthleteInvites,
+  useSendAthleteInviteHype,
+  type PublicAthleteFanCard,
+  type AthleteInviteHypeInput,
+} from '@workspace/api-client-react';
 
 import {
   Dialog,
@@ -11,9 +20,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { HypeCardReplyComposer } from './public-hype-card';
 import './living-athlete-card.css';
 
 type CardSide = 'front' | 'stats' | 'videos';
+type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function formatDate(value: string) {
@@ -30,6 +41,47 @@ function nextEvent(events: PublicAthleteFanCard['scheduleEvents']) {
   return [...events]
     .filter((event) => event.status === 'upcoming' && event.date && new Date(`${event.date.slice(0, 10)}T23:59:59`).getTime() >= today.getTime())
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0] ?? null;
+}
+
+function gameOutcome(game: FanGame) {
+  if (!game.scoreRecorded) return null;
+  return game.score > game.opponentScore ? 'W' : game.score < game.opponentScore ? 'L' : 'T';
+}
+
+function escapeCalendar(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+function calendarTimestamp(date: string, time: string) {
+  return new Date(`${date}T${time || '12:00'}:00`).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function downloadScheduleEvent(event: PublicAthleteFanCard['scheduleEvents'][number], teamName: string) {
+  const start = calendarTimestamp(event.date, event.time);
+  const endDate = new Date(`${event.date}T${event.time || '12:00'}:00`);
+  endDate.setHours(endDate.getHours() + 2);
+  const end = endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const title = event.type === 'game' ? `vs ${event.opponent || 'Opponent TBD'}` : event.type;
+  const content = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Pixl Sports//Athlete Card//EN',
+    'BEGIN:VEVENT',
+    `UID:${event.id}@pixlsports`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${escapeCalendar(`${teamName ? `${teamName} ` : ''}${title}`)}`,
+    `LOCATION:${escapeCalendar(event.location)}`,
+    `DESCRIPTION:${escapeCalendar(event.notes)}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${event.date}-${event.type}.ics`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -59,11 +111,22 @@ export function LivingAthleteCardPage({
   const [side, setSide] = useState<CardSide>('front');
   const [brokenPhoto, setBrokenPhoto] = useState(false);
   const [failedVideos, setFailedVideos] = useState<string[]>([]);
+  const [selectedGameKey, setSelectedGameKey] = useState('');
+  const [trendStatId, setTrendStatId] = useState('score');
+  const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
   const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>("Let's go!");
   const [message, setMessage] = useState('');
   const [hypeFeedback, setHypeFeedback] = useState('');
   const [followDialogOpen, setFollowDialogOpen] = useState(false);
   const [hypeDialogOpen, setHypeDialogOpen] = useState(false);
+  const { isSignedIn } = useUser();
+  const { data: ownedInvites } = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListAthleteInvitesQueryKey(),
+      retry: false,
+    },
+  });
   const sendHype = useSendAthleteInviteHype();
   const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
@@ -82,6 +145,9 @@ export function LivingAthleteCardPage({
     setSide('front');
     setHypeFeedback('');
     setMessage('');
+    setSelectedGameKey('');
+    setTrendStatId('score');
+    setLocalReplies([]);
     setFollowDialogOpen(false);
     setHypeDialogOpen(false);
   }, [inviteToken]);
@@ -92,6 +158,14 @@ export function LivingAthleteCardPage({
     document.title = `${invite.athleteName} · The living card | Pixl Sports`;
     return () => { document.title = previous; };
   }, [invite?.athleteName]);
+  useEffect(() => {
+    if (!invite?.stats) return;
+    setTrendStatId((current) => (
+      current === 'score' || Object.prototype.hasOwnProperty.call(invite.stats?.stats ?? {}, current)
+        ? current
+        : 'score'
+    ));
+  }, [invite?.stats]);
 
   if (isLoading) {
     return (
@@ -116,11 +190,44 @@ export function LivingAthleteCardPage({
     );
   }
 
-  const recentVideos = [...invite.videos]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 3);
+  const recentVideos = [...invite.videos].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const upcoming = nextEvent(invite.scheduleEvents);
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
+  const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+  const orderedGames = (invite.stats?.games ?? [])
+    .map((game, index) => ({ game, index }))
+    .sort((a, b) => a.game.date.localeCompare(b.game.date) || a.index - b.index);
+  const trendOptions = invite.stats
+    ? [
+        { id: 'score', label: 'Team score' },
+        ...Object.keys(invite.stats.stats)
+          .filter((id) => id !== 'score')
+          .map((id) => ({ id, label: id.replace(/[-_]/g, ' ') })),
+      ]
+    : [];
+  const selectedTrend = trendOptions.find((item) => item.id === trendStatId) ?? trendOptions[0] ?? null;
+  const recentTrendGames = orderedGames.slice(-3);
+  const trendValues = selectedTrend
+    ? recentTrendGames.map(({ game }) => selectedTrend.id === 'score'
+      ? game.scoreRecorded ? game.score : null
+      : game.stats[selectedTrend.id] ?? 0)
+    : [];
+  const trendMax = Math.max(1, ...trendValues.filter((value): value is number => value !== null));
+  const gameOptions = [...orderedGames].reverse().map(({ game, index }) => ({
+    game,
+    key: `${game.date}|${game.opponent}|${game.score}|${game.opponentScore}|${index}`,
+    index,
+  }));
+  const selectedGameOption = gameOptions.find(({ key }) => key === selectedGameKey) ?? gameOptions[0] ?? null;
+  const selectedGameTeamStats = selectedGameOption
+    ? Object.entries(selectedGameOption.game.stats).sort(([left], [right]) => left.localeCompare(right))
+    : [];
+  const selectedGameAthleteStats = selectedGameOption
+    ? Object.entries(selectedGameOption.game.athleteStats).sort(([left], [right]) => left.localeCompare(right))
+    : [];
+  const recentReplies = [...localReplies, ...invite.replies]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 6);
   const selectSide = (next: CardSide) => {
     if (side === next) return;
     videosRef.current?.querySelectorAll('video').forEach((video) => video.pause());
@@ -201,8 +308,9 @@ export function LivingAthleteCardPage({
                     {invite.stats ? (
                       <>
                         <div className="living-card-stats-lead">
-                          <div className="living-card-stat-feature"><strong data-testid="text-living-card-games">{invite.stats.gamesPlayed}</strong><span>Games played</span></div>
-                          <div className="living-card-stat-feature"><strong data-testid="text-living-card-score">{invite.stats.score}</strong><span>Team score total</span></div>
+                          <div className="living-card-stat-feature"><strong data-testid="text-living-card-record">{invite.stats.record.wins}–{invite.stats.record.losses}–{invite.stats.record.ties}</strong><span>W – L – T · scored games</span></div>
+                          <div className="living-card-stat-feature"><strong data-testid="text-living-card-games">{invite.stats.gamesPlayed}</strong><span>Finalized games</span></div>
+                          <div className="living-card-stat-feature"><strong data-testid="text-living-card-score">{invite.stats.score}</strong><span>Team points / runs</span></div>
                         </div>
                         {Object.entries(invite.stats.stats).length > 0 && (
                           <div className="living-card-stat-grid">
@@ -213,19 +321,112 @@ export function LivingAthleteCardPage({
                             ))}
                           </div>
                         )}
+                        {selectedTrend && (
+                          <section className="living-card-trend" aria-labelledby="living-card-trend-title" data-testid="living-card-last-three-trend">
+                            <div className="living-card-section-heading">
+                              <div>
+                                <h3 id="living-card-trend-title">Last three games</h3>
+                                <p>Combined team trend · most recent at right</p>
+                              </div>
+                              <label>
+                                <span className="sr-only">Choose a combined stat for the last-three-games trend</span>
+                                <select
+                                  value={selectedTrend.id}
+                                  onChange={(event) => setTrendStatId(event.currentTarget.value)}
+                                  data-testid="select-living-card-trend"
+                                >
+                                  {trendOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                                </select>
+                              </label>
+                            </div>
+                            {recentTrendGames.length > 0 ? (
+                              <ol className="living-card-trend-list">
+                                {recentTrendGames.map(({ game, index }, trendIndex) => {
+                                  const value = trendValues[trendIndex];
+                                  const result = gameOutcome(game);
+                                  return (
+                                    <li key={`${game.date}-${game.opponent}-${index}`}>
+                                      <span className="living-card-trend-opponent">
+                                        <small>{game.opponent ? `vs ${game.opponent}` : `Game ${index + 1}`}</small>
+                                        <small>{formatDate(game.date)}</small>
+                                      </span>
+                                      <span className="living-card-trend-track" aria-hidden="true">
+                                        {value !== null && value !== undefined && (
+                                          <span style={{ width: `${Math.max(5, (value / trendMax) * 100)}%` }} />
+                                        )}
+                                      </span>
+                                      <strong>{value === null || value === undefined ? '—' : value}</strong>
+                                      <span className={`living-card-result living-card-result-${result ?? 'pending'}`}>
+                                        {result ?? 'No score'}
+                                      </span>
+                                    </li>
+                                  );
+                                })}
+                              </ol>
+                            ) : (
+                              <p className="living-card-note">Finalized games will build this trend.</p>
+                            )}
+                          </section>
+                        )}
                         {invite.stats.games.length > 0 && (
                           <div className="living-card-final-games">
-                            <h3>Finalized games</h3>
-                            <ol>
-                              {[...invite.stats.games].sort((a, b) => b.date.localeCompare(a.date)).map((game, index) => (
-                                <li key={`${game.date}-${game.opponent}-${index}`}>
-                                  <span>{game.opponent ? `vs ${game.opponent}` : 'Game'}<small>{formatDate(game.date)}</small>
-                                    {Object.keys(game.stats).length > 0 && <small>{Object.entries(game.stats).map(([stat, value]) => `${stat.replace(/[-_]/g, ' ')} ${value}`).join(' · ')}</small>}
-                                  </span>
-                                  <strong aria-label={`${game.score} to ${game.opponentScore}`}>{game.score}–{game.opponentScore}</strong>
-                                </li>
-                              ))}
-                            </ol>
+                            <h3>Choose a finalized game</h3>
+                            <div className="living-card-game-picker" role="group" aria-label="Choose a finalized game to inspect">
+                              {gameOptions.map(({ game, key, index }) => {
+                                const outcome = gameOutcome(game);
+                                const selected = selectedGameOption?.key === key;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={key}
+                                    aria-pressed={selected}
+                                    onClick={() => setSelectedGameKey(key)}
+                                    data-testid={`button-living-card-game-${index}`}
+                                  >
+                                    <span>
+                                      <strong>{game.opponent ? `vs ${game.opponent}` : `Game ${index + 1}`}</strong>
+                                      <small>{formatDate(game.date)}</small>
+                                    </span>
+                                    <span className={`living-card-result living-card-result-${outcome ?? 'pending'}`}>
+                                      {outcome ?? '—'}
+                                    </span>
+                                    <strong className="living-card-game-score">
+                                      {game.scoreRecorded ? `${game.score}–${game.opponentScore}` : 'Score not saved'}
+                                    </strong>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {selectedGameOption && (
+                              <section className="living-card-game-detail" aria-label="Selected game stats" data-testid="living-card-selected-game">
+                                <div>
+                                  <h4>{selectedGameOption.game.opponent ? `vs ${selectedGameOption.game.opponent}` : 'Game recap'}</h4>
+                                  <p>{formatDate(selectedGameOption.game.date)} · {selectedGameOption.game.scoreRecorded
+                                    ? `${selectedGameOption.game.score}–${selectedGameOption.game.opponentScore}`
+                                    : 'Final score not recorded'}</p>
+                                </div>
+                                <div className="living-card-game-stat-group">
+                                  <h5>Combined team stats</h5>
+                                  {selectedGameTeamStats.length > 0 ? (
+                                    <dl>
+                                      {selectedGameTeamStats.map(([id, value]) => (
+                                        <div key={id}><dt>{id.replace(/[-_]/g, ' ')}</dt><dd>{value}</dd></div>
+                                      ))}
+                                    </dl>
+                                  ) : <p>No combined stats were recorded.</p>}
+                                </div>
+                                <div className="living-card-game-stat-group living-card-athlete-game-stats">
+                                  <h5>{invite.athleteName} · individual stats</h5>
+                                  {selectedGameAthleteStats.length > 0 ? (
+                                    <dl>
+                                      {selectedGameAthleteStats.map(([id, value]) => (
+                                        <div key={id}><dt>{id.replace(/[-_]/g, ' ')}</dt><dd>{value}</dd></div>
+                                      ))}
+                                    </dl>
+                                  ) : <p>No stats were specifically credited to {invite.athleteName}.</p>}
+                                </div>
+                              </section>
+                            )}
                           </div>
                         )}
                       </>
@@ -242,13 +443,22 @@ export function LivingAthleteCardPage({
                 {side === 'videos' && (
                   <div className="living-card-face living-card-face-alt" key="videos" ref={videosRef}>
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / The moments</span><span>{invite.seasonName}</span></div>
-                    <h2 className="living-card-alt-title">On repeat.</h2>
-                    <p className="living-card-alt-subtitle">The latest three moments shared for {invite.athleteName}.</p>
+                    <h2 className="living-card-alt-title">Season moments.</h2>
+                    <p className="living-card-alt-subtitle">Highlights and reactions stay together with {invite.athleteName}’s season.</p>
+                    {invite.hypeCard?.posterUrl && (
+                      <figure className="living-card-image-highlight" data-testid="living-card-image-highlight">
+                        <img src={invite.hypeCard.posterUrl} alt={`${invite.athleteName} — ${invite.hypeCard.title}`} />
+                        <figcaption><strong>{invite.hypeCard.title}</strong><span>Photo highlight</span></figcaption>
+                      </figure>
+                    )}
                     {recentVideos.length > 0 ? (
                       <ol className="living-card-video-list">
                         {recentVideos.map((video, index) => (
                           <li key={video.shareToken}>
-                            <div className="living-card-video-heading"><strong>{video.title || video.mediaName}</strong><span>{String(index + 1).padStart(2, '0')} / {String(recentVideos.length).padStart(2, '0')}</span></div>
+                            <div className="living-card-video-heading">
+                              <strong>{video.title || video.mediaName}</strong>
+                              <span>{String(index + 1).padStart(2, '0')} / {String(recentVideos.length).padStart(2, '0')}</span>
+                            </div>
                             {failedVideos.includes(video.shareToken) ? (
                               <p className="living-card-video-error" role="status">This highlight is unavailable right now.</p>
                             ) : (
@@ -271,12 +481,44 @@ export function LivingAthleteCardPage({
                           </li>
                         ))}
                       </ol>
-                    ) : (
+                    ) : !invite.hypeCard?.posterUrl ? (
                       <div className="living-card-empty">
                         <Play size={30} strokeWidth={1.5} aria-hidden="true" />
                         <h3>Moments on the way.</h3>
-                        <p>When new videos are shared, the latest three will live here.</p>
+                        <p>When highlights are shared, they will appear here.</p>
                       </div>
+                    ) : null}
+                    {invite.videos[0] && (
+                      <section id="living-card-reply-composer" className="living-card-media-reply" aria-labelledby="living-card-media-reply-title">
+                        <h3 id="living-card-media-reply-title">Send some hype</h3>
+                        <p>Choose a reaction and add an optional message without leaving this card. Replies stay separate from Hypes sent from the card front.</p>
+                        <HypeCardReplyComposer
+                          shareToken={invite.videos[0].shareToken}
+                          className="living-card-reply-composer"
+                          onSent={(reply) => {
+                            setLocalReplies((current) => [{
+                              reaction: reply.reaction,
+                              message: reply.message ?? null,
+                              createdAt: new Date().toISOString(),
+                            }, ...current]);
+                          }}
+                        />
+                      </section>
+                    )}
+                    {recentReplies.length > 0 && (
+                      <section className="living-card-recent-replies" aria-labelledby="living-card-recent-replies-title" data-testid="living-card-recent-replies">
+                        <p className="living-card-overline">From the people cheering</p>
+                        <h3 id="living-card-recent-replies-title">Recent reactions</h3>
+                        <ul>
+                          {recentReplies.map((reply, index) => (
+                            <li key={`${reply.createdAt}-${index}`}>
+                              <strong>{reply.reaction}</strong>
+                              {reply.message && <p>{reply.message}</p>}
+                              <small>{new Date(reply.createdAt).toLocaleDateString()}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
                     )}
                   </div>
                 )}
@@ -377,9 +619,47 @@ export function LivingAthleteCardPage({
                 </button>
               )}
             </section>
-            <Link className="living-card-original" href={`/player/${encodeURIComponent(inviteToken)}`} data-testid="link-original-hype-page">
-              Visit the original Hype Page <ArrowUpRight aria-hidden="true" />
-            </Link>
+            {invite.scheduleEvents.length > 0 && (
+              <section className="living-card-schedule" aria-labelledby="living-card-schedule-title" data-testid="living-card-schedule">
+                <span className="living-card-overline">Season calendar</span>
+                <h2 id="living-card-schedule-title">Schedule details</h2>
+                <ol>
+                  {invite.scheduleEvents.map((event) => {
+                    const title = event.type === 'game' ? `vs ${event.opponent || 'Opponent TBD'}` : event.type;
+                    return (
+                      <li key={event.id}>
+                        <div className="living-card-schedule-heading">
+                          <span>{event.status} · {event.type}</span>
+                          <strong>{title}</strong>
+                        </div>
+                        <p>{formatDate(event.date)}{event.time ? ` · ${event.time}` : ' · Time TBD'}</p>
+                        {event.location && <p>{event.location}</p>}
+                        {event.notes && <p className="living-card-schedule-notes">{event.notes}</p>}
+                        <button type="button" onClick={() => downloadScheduleEvent(event, invite.teamName)}>
+                          Add to calendar
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
+            )}
+            <section className="living-card-save-guide" aria-labelledby="living-card-save-guide-title" data-testid="living-card-save-guide">
+              <Smartphone aria-hidden="true" />
+              <h2 id="living-card-save-guide-title">Keep this card close</h2>
+              <p>Save the athlete’s season card to your phone and come back as it grows.</p>
+              <ol>
+                <li><span>1</span>Open your browser’s share menu</li>
+                <li><span>2</span>Choose Add to Home Screen</li>
+                <li><span>3</span>Open the saved icon anytime</li>
+              </ol>
+              <small>Stable season link · {new Date(invite.seasonEndsAt).toLocaleDateString()}</small>
+            </section>
+            {ownerInvite && (
+              <Link className="living-card-manage" href={`/player/${encodeURIComponent(inviteToken)}/manage`} data-testid="link-manage-living-card">
+                Manage this athlete card <ArrowRight aria-hidden="true" />
+              </Link>
+            )}
           </aside>
         </div>
         <footer className="living-card-footer"><span>Pixl Sports / Every game adds a chapter</span><span>{invite.seasonName} · {sport}</span></footer>

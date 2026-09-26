@@ -17,7 +17,7 @@ test('public Athlete Hype Pages keep replies on-page and update recent reactions
   assert.doesNotMatch(source, /Send your own reply →/);
 });
 
-test('posting a Hype Card opens the living fan card without replacing the original Hype Page', () => {
+test('posting a Hype Card opens the living fan card and keeps owner management available', () => {
   assert.match(
     hypeCardSource,
     /const athleteHypePage = athleteInvites\?\.\[0\] \?\? null;/,
@@ -37,10 +37,11 @@ test('posting a Hype Card opens the living fan card without replacing the origin
   assert.match(source, /aria-expanded=\{hypeCardGuideOpen\}/);
   assert.match(source, /setSelectedPath\('card'\)/);
   assert.match(source, /setSelectedPath\('page'\)/);
-  assert.match(source, /href=\{`\/player\/\$\{existing\.inviteToken\}`\}/);
+  assert.match(source, /href=\{`\/player\/\$\{existing\.inviteToken\}\/manage`\}/);
   assert.match(source, /href=\{`\/fan\/\$\{existing\.inviteToken\}`\}/);
   assert.match(source, /value=\{fanCardUrl\(invite\.inviteToken\)\}/);
   assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
+  assert.match(appSource, /path="\/player\/:inviteToken" component=\{LegacyAthleteInviteRedirect\}/);
   assert.match(source, /\{selectedPath === 'page' && !existing && \(/);
   assert.match(source, /How it works/);
   assert.match(source, /Open the Hype Card editor and create the card/);
@@ -94,7 +95,7 @@ test('posting a Hype Card opens the living fan card without replacing the origin
   assert.match(source, /data-testid="button-remove-hosted-video"/);
   assert.match(source, /data-testid="hosted-image-hype-card"/);
   assert.match(source, /getListHypeCardSharesQueryKey\(hostedImageQuery\)/);
-  assert.match(source, /data-testid="input-athlete-invite-url"/);
+  assert.match(source, /data-testid="input-fan-hype-card-url"/);
   assert.match(source, /data-testid="section-visible-athlete-page"/);
   assert.match(source, /export function OwnerAthleteInviteManagePage/);
   assert.match(source, /data-testid="link-manage-athlete-hype-page"/);
@@ -117,7 +118,7 @@ test('posting a Hype Card opens the living fan card without replacing the origin
     apiSource,
     /eq\(hypeCardSharesTable\.ownerClerkUserId, getRequiredClerkUserId\(res\)\),[\s\S]*?isNull\(hypeCardSharesTable\.revokedAt\),[\s\S]*?gt\(hypeCardSharesTable\.expiresAt, new Date\(\)\)/,
   );
-  assert.match(source, /value=\{inviteUrl\(invite\.inviteToken\)\}/);
+  assert.match(source, /value=\{fanCardUrl\(invite\.inviteToken\)\}/);
   assert.match(source, /Visible sections/);
   assert.match(source, /The Athlete Hype Page and its other content were not changed/);
   assert.match(source, /data-testid="select-athlete-trend-stat"/);

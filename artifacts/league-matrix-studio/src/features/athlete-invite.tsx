@@ -78,11 +78,11 @@ function inviteUrl(token: string) {
   const origin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
     ? 'https://pixlsports.com'
     : window.location.origin;
-  return `${origin}${basePath}/player/${token}`;
+  return `${origin}${basePath}/fan/${encodeURIComponent(token)}`;
 }
 
 function fanCardUrl(token: string) {
-  return inviteUrl(token).replace(`/player/${token}`, `/fan/${token}`);
+  return inviteUrl(token);
 }
 
 function seasonEndIso(value: string) {
@@ -346,7 +346,7 @@ export function AthleteInviteManager() {
           <div>
            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Card</p>
             <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
-             <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, new highlights, finalized stats, and the next event. The original Hype Page stays available too.</p>
+              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, highlights, finalized stats, season results, and the full schedule.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
@@ -390,10 +390,10 @@ export function AthleteInviteManager() {
             <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Share with fans</p>
               <h2 className="mt-2 font-display text-3xl uppercase">Living Hype Card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable card for the athlete’s season. The original Hype Page remains available separately.</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable card for the athlete’s season. Existing invite links now open this same card.</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link href={`/fan/${existing.inviteToken}`} className="inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-open-fan-hype-card">Open fan card</Link>
-                <Link href={`/player/${existing.inviteToken}`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-open-original-hype-page">Original Hype Page</Link>
+                <Link href={`/player/${existing.inviteToken}/manage`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-manage-athlete-card">Manage athlete card</Link>
               </div>
             </div>
           ) : (
@@ -406,7 +406,7 @@ export function AthleteInviteManager() {
             >
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
                <h2 className="mt-2 font-display text-3xl uppercase">Create the athlete card</h2>
-               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable fan card and keep the original Hype Page alongside it.</p>
+               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable fan card for the season. Existing invite links will open it too.</p>
             </button>
           )}
         </section>
@@ -825,10 +825,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       setNotice('The Hype Page settings could not be updated.');
     }
   };
-  const copy = async () => {
-    await navigator.clipboard.writeText(inviteUrl(invite.inviteToken));
-    setNotice('Hype Page URL copied.');
-  };
   const copyFanCard = async () => {
     await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
     setNotice('Fan Hype Card URL copied.');
@@ -837,11 +833,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     const url = fanCardUrl(invite.inviteToken);
     if (navigator.share) await navigator.share({ title: `${invite.athleteName} Hype Card`, text: `Follow ${invite.athleteName}'s season.`, url });
     else await copyFanCard();
-  };
-  const share = async () => {
-    const url = inviteUrl(invite.inviteToken);
-    if (navigator.share) await navigator.share({ title: `${invite.athleteName} Hype Page`, text: `Follow ${invite.athleteName}'s season.`, url });
-    else await copy();
   };
   const toggleAvailability = async () => {
     setNotice('');
@@ -928,14 +919,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <Link href={`/fan/${invite.inviteToken}`} className="inline-flex min-h-10 items-center border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-preview-fan-hype-card">Preview</Link>
         </div>
       </div>
-      <div className="mt-6 flex flex-col gap-3 border-t border-white/15 pt-5 sm:flex-row sm:items-center">
-        <span className="text-xs font-bold uppercase tracking-widest text-white/55">Original Hype Page</span>
-        <Link2 className="h-5 w-5 shrink-0 text-primary" />
-        <input readOnly value={inviteUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="Hype Page URL" data-testid="input-athlete-invite-url" />
-        <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copy}><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
-        <Button type="button" className="rounded-none" onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button>
-      </div>
-      <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — visitors cannot open this page until you resume it.' : 'Live — this stable URL stays with the athlete.'}</p>
+      <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — fans cannot open this card until you resume it.' : 'Live — this stable season URL stays with the athlete.'}</p>
       <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
         <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">

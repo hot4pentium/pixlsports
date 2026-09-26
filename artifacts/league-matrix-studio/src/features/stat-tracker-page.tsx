@@ -632,7 +632,7 @@ type LiveTrackerGameProps = {
   onGameChange: (game: GameSession) => void;
   onToggleShowAllStats: () => void;
   onLeaveGame: () => void;
-  onEndGame: () => void;
+  onEndGame: (scoreRecorded: boolean) => void;
 };
 
 function latestYardEventIds(game: GameSession) {
@@ -678,6 +678,9 @@ export function LiveTrackerGame({
   const [baseballHitAttribution, setBaseballHitAttribution] = useState<StatAttribution | null>(null);
   const [baseballPitchAttribution, setBaseballPitchAttribution] = useState<StatAttribution | null>(null);
   const [confirmEndGame, setConfirmEndGame] = useState(false);
+  const [includeFinalScore, setIncludeFinalScore] = useState(
+    currentGame.scoreRecorded === true || currentGame.score > 0 || currentGame.opponentScore > 0,
+  );
   const endGameButtonRef = useRef<HTMLButtonElement>(null);
   const cancelEndGameButtonRef = useRef<HTMLButtonElement>(null);
   const wasConfirmingEndGame = useRef(false);
@@ -692,6 +695,12 @@ export function LiveTrackerGame({
   useEffect(() => {
     currentGameRef.current = currentGame;
   }, [currentGame]);
+
+  useEffect(() => {
+    setIncludeFinalScore(
+      currentGame.scoreRecorded === true || currentGame.score > 0 || currentGame.opponentScore > 0,
+    );
+  }, [currentGame.id, currentGame.scoreRecorded, currentGame.score, currentGame.opponentScore]);
 
   useEffect(() => {
     if (confirmEndGame) {
@@ -1056,6 +1065,19 @@ export function LiveTrackerGame({
               <h3 id={`end-live-game-title-${currentGame.id}`} className="text-sm font-bold uppercase tracking-widest text-destructive">End this game?</h3>
               <p className="mt-2 text-sm text-muted-foreground">This will save the current stats as a completed game in your history.</p>
             </div>
+            <label className="mt-3 flex cursor-pointer items-start gap-3 border border-border bg-background p-4 text-sm">
+              <input
+                type="checkbox"
+                checked={includeFinalScore}
+                onChange={(event) => setIncludeFinalScore(event.currentTarget.checked)}
+                className="mt-1 h-4 w-4 accent-primary"
+                data-testid="checkbox-record-final-score"
+              />
+              <span>
+                <span className="block font-bold">Include this score in the season record</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Turn this on for a real 0–0 result. Leave it off if the score was not entered.</span>
+              </span>
+            </label>
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -1069,7 +1091,7 @@ export function LiveTrackerGame({
               <button
                 type="button"
                 disabled={saving}
-                onClick={onEndGame}
+                onClick={() => onEndGame(includeFinalScore)}
                 className="inline-flex min-h-12 items-center justify-center gap-2 border border-destructive bg-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive-foreground hover:brightness-110 disabled:opacity-50"
                 data-testid="button-confirm-end-live-game"
               >
@@ -1555,9 +1577,9 @@ export function StatTrackerPage() {
     }
   };
 
-  const saveCompletedGame = async () => {
+  const saveCompletedGame = async (scoreRecorded: boolean) => {
     if (!currentGame) return;
-    await persistCompletedGame(endGame(currentGame), activeTrackerShare);
+    await persistCompletedGame(endGame(currentGame, new Date(), scoreRecorded), activeTrackerShare);
   };
 
   const saveAthleteResult = async (capture: AthleteResultCapture) => {
@@ -1925,7 +1947,7 @@ export function StatTrackerPage() {
            onGameChange={(next) => { setCurrentGame(next); announce('STAT UPDATED'); }}
           onToggleShowAllStats={() => setShowAllStats((value) => !value)}
           onLeaveGame={() => { setCurrentGame(null); setShowUpcomingNotice(false); }}
-          onEndGame={() => void saveCompletedGame()}
+          onEndGame={(scoreRecorded) => void saveCompletedGame(scoreRecorded)}
         />
         </>
       )}

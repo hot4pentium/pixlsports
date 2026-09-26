@@ -43,6 +43,7 @@ test("aggregates only finalized games for the selected sport", () => {
   assert.deepEqual({ ...result?.stats }, { assist: 5, rebound: 5 });
   assert.equal(result?.gamesPlayed, 2);
   assert.equal(result?.score, 20);
+  assert.deepEqual(result?.record, { wins: 1, losses: 1, ties: 0, gamesPlayed: 2 });
   assert.deepEqual(result?.games?.map((game) => ({
     ...game,
     stats: { ...game.stats },
@@ -53,6 +54,7 @@ test("aggregates only finalized games for the selected sport", () => {
       opponent: "Northside",
       score: 12,
       opponentScore: 8,
+      scoreRecorded: true,
       stats: { assist: 3, rebound: 4 },
       athleteStats: { assist: 1, rebound: 1 },
     },
@@ -61,6 +63,7 @@ test("aggregates only finalized games for the selected sport", () => {
       opponent: "Riverside",
       score: 8,
       opponentScore: 10,
+      scoreRecorded: true,
       stats: { assist: 2, rebound: 1 },
       athleteStats: { assist: 1 },
     },
@@ -71,6 +74,7 @@ test("aggregates only finalized games for the selected sport", () => {
     "opponent",
     "opponentScore",
     "score",
+    "scoreRecorded",
     "stats",
   ]);
   assert.equal(result?.updatedAt, updatedAt);
@@ -101,6 +105,7 @@ test("rejects non-tracker payloads and unsafe stat values", () => {
   }, "Jordan", "basketball", new Date());
 
   assert.equal(result?.score, 0);
+  assert.deepEqual(result?.record, { wins: 0, losses: 0, ties: 0, gamesPlayed: 0 });
   assert.deepEqual(result?.games?.map((game) => ({
     ...game,
     stats: { ...game.stats },
@@ -110,8 +115,38 @@ test("rejects non-tracker payloads and unsafe stat values", () => {
     opponent: "Northside",
     score: 0,
     opponentScore: 11,
+      scoreRecorded: false,
     stats: { assist: 2 },
     athleteStats: { assist: 1 },
   }]);
   assert.deepEqual({ ...result?.stats }, { assist: 2 });
+});
+
+test("counts an explicitly recorded 0–0 tie but excludes an unentered 0–0 score", () => {
+  const result = computeHypeCardShareStats({
+    tool: "stat-tracker",
+    games: [
+      {
+        sport: "basketball",
+        status: "final",
+        score: 0,
+        opponentScore: 0,
+        scoreRecorded: true,
+        stats: {},
+        events: [],
+      },
+      {
+        sport: "basketball",
+        status: "final",
+        score: 0,
+        opponentScore: 0,
+        scoreRecorded: false,
+        stats: {},
+        events: [],
+      },
+    ],
+  }, "Jordan", "basketball", new Date());
+
+  assert.deepEqual(result?.record, { wins: 0, losses: 0, ties: 1, gamesPlayed: 1 });
+  assert.deepEqual(result?.games.map((game) => game.scoreRecorded), [true, false]);
 });

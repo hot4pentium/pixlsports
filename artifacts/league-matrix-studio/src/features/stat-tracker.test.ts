@@ -89,8 +89,25 @@ test('athlete result capture preserves final score, notes, and athlete attributi
   assert.deepEqual(completed.stats, { 'three-point': 3, rebound: 5 });
   assert.equal(completed.events.length, 8);
   assert.ok(completed.events.every((event) => event.attribution === 'athlete'));
+  assert.equal(completed.scoreRecorded, true);
   assert.equal(completed.startedAt, '2026-09-24T20:00:00.000Z');
   assert.equal(completed.endedAt, '2026-09-24T20:00:00.000Z');
+});
+
+test('explicit final-score choices preserve a real 0–0 tie through tracker normalization', () => {
+  const now = new Date('2026-09-24T20:00:00.000Z');
+  const unenteredScore = endGame(createGameSession('basketball', { opponent: 'Northside' }, now), now, false);
+  const recordedTie = endGame(createGameSession('basketball', { opponent: 'Westview' }, now), now, true);
+  const adjustedScore = adjustScore(createGameSession('basketball', {}, now), 'athlete', 1);
+
+  assert.equal(unenteredScore.scoreRecorded, false);
+  assert.equal(recordedTie.scoreRecorded, true);
+  assert.deepEqual([recordedTie.score, recordedTie.opponentScore], [0, 0]);
+  assert.equal(adjustedScore.scoreRecorded, true);
+
+  const stored = normalizeTrackerData({ version: 1, games: [unenteredScore, recordedTie, adjustedScore] });
+  assert.deepEqual(stored.games.map((game) => game.scoreRecorded), [false, true, true]);
+  assert.equal(trackerPayload(stored).games[1].scoreRecorded, true);
 });
 
 test('athlete result panel defaults to result entry, supports skipping stats, and keeps advanced team stats separate', () => {

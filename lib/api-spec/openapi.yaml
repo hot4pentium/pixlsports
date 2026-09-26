@@ -2379,7 +2379,7 @@ components:
           pattern: "^[A-Za-z0-9_-]{24,80}$"
     HypeCardShareStats:
       type: object
-      required: [athleteName, sport, gamesPlayed, score, games, stats, updatedAt]
+      required: [athleteName, sport, gamesPlayed, score, record, games, stats, updatedAt]
       properties:
         athleteName:
           type: string
@@ -2392,6 +2392,14 @@ components:
         score:
           type: integer
           minimum: 0
+        record:
+          type: object
+          required: [wins, losses, ties, gamesPlayed]
+          properties:
+            wins: { type: integer, minimum: 0 }
+            losses: { type: integer, minimum: 0 }
+            ties: { type: integer, minimum: 0 }
+            gamesPlayed: { type: integer, minimum: 0 }
         games:
           type: array
           items:
@@ -2406,7 +2414,7 @@ components:
           format: date-time
     HypeCardShareGameSummary:
       type: object
-      required: [date, opponent, score, opponentScore, stats, athleteStats]
+      required: [date, opponent, score, opponentScore, scoreRecorded, stats, athleteStats]
       properties:
         date:
           type: string
@@ -2420,6 +2428,8 @@ components:
         opponentScore:
           type: integer
           minimum: 0
+        scoreRecorded:
+          type: boolean
         stats:
           type: object
           additionalProperties:

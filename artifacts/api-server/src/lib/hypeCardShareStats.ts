@@ -47,6 +47,19 @@ function safeScore(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
 }
 
+function hasRecordedScoreline(item: Record<string, unknown>) {
+  if (typeof item.scoreRecorded === "boolean") return item.scoreRecorded;
+  const score = item.score;
+  const opponentScore = item.opponentScore;
+  return typeof score === "number"
+    && Number.isInteger(score)
+    && score >= 0
+    && typeof opponentScore === "number"
+    && Number.isInteger(opponentScore)
+    && opponentScore >= 0
+    && (score > 0 || opponentScore > 0);
+}
+
 export function computeHypeCardShareStats(
   payload: unknown,
   athleteName: string,
@@ -63,9 +76,11 @@ export function computeHypeCardShareStats(
     opponent: string;
     score: number;
     opponentScore: number;
+    scoreRecorded: boolean;
     stats: Record<string, number>;
     athleteStats: Record<string, number>;
   }> = [];
+  const record = { wins: 0, losses: 0, ties: 0, gamesPlayed: 0 };
   let gamesPlayed = 0;
   let score = 0;
   for (const game of tracker.games) {
@@ -77,6 +92,7 @@ export function computeHypeCardShareStats(
       opponent?: unknown;
       score?: unknown;
       opponentScore?: unknown;
+      scoreRecorded?: unknown;
       stats?: unknown;
       events?: unknown;
     };
@@ -85,12 +101,21 @@ export function computeHypeCardShareStats(
     const athleteStats = collectAthleteStats(item.events);
     gamesPlayed += 1;
     const gameScore = safeScore(item.score);
-    score += gameScore;
+    const scoreRecorded = hasRecordedScoreline(item);
+    const opponentScore = safeScore(item.opponentScore);
+    if (scoreRecorded) {
+      score += gameScore;
+      record.gamesPlayed += 1;
+      if (gameScore > opponentScore) record.wins += 1;
+      else if (gameScore < opponentScore) record.losses += 1;
+      else record.ties += 1;
+    }
     games.push({
       date: typeof item.date === "string" ? item.date.slice(0, 30) : "",
       opponent: typeof item.opponent === "string" ? item.opponent.slice(0, 240) : "",
       score: gameScore,
-      opponentScore: safeScore(item.opponentScore),
+      opponentScore,
+      scoreRecorded,
       stats: gameStats,
       athleteStats,
     });
@@ -104,6 +129,7 @@ export function computeHypeCardShareStats(
     sport,
     gamesPlayed,
     score,
+    record,
     games,
     stats: totals,
     updatedAt,

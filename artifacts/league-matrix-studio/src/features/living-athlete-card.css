@@ -80,9 +80,10 @@
 .living-card-scoreboard-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .living-card-scoreboard-row strong { color: #fff; font: 900 42px/1 'Barlow Condensed', sans-serif; white-space: nowrap; }
 .living-card-scoreboard p { color: var(--lc-muted); font-size: 11px; line-height: 1.5; margin: 0; }
-.living-card-stats-lead { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #b4d6ee3b; border: 1px solid #b4d6ee3b; }
+.living-card-stats-lead { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #b4d6ee3b; border: 1px solid #b4d6ee3b; }
 .living-card-stat-feature { padding: 18px; background: #12375c; }
 .living-card-stat-feature strong { display: block; font: 800 clamp(44px, 7vw, 73px)/1 'Barlow Condensed', sans-serif; }
+.living-card-stat-feature:first-child strong { font-size: clamp(27px, 4.5vw, 48px); }
 .living-card-stat-feature span, .living-card-stat-cell span { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--lc-muted); }
 .living-card-stat-feature:last-child strong { color: var(--lc-orange); }
 .living-card-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #b4d6ee30; border: 1px solid #b4d6ee30; margin-top: 14px; }
@@ -95,6 +96,42 @@
 .living-card-final-games li { border-top: 1px solid #b4d6ee30; padding: 10px 0; display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: 12px; }
 .living-card-final-games li small { display: block; color: var(--lc-muted); margin-top: 2px; }
 .living-card-final-games li strong { color: var(--lc-orange); white-space: nowrap; font: 800 21px 'Barlow Condensed', sans-serif; }
+.living-card-trend { margin-top: 22px; padding: 16px; border: 1px solid #b4d6ee35; background: #091d34; }
+.living-card-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.living-card-section-heading h3, .living-card-final-games > h3 { margin: 0; color: var(--lc-sky); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; }
+.living-card-section-heading p { margin: 5px 0 0; color: var(--lc-muted); font-size: 10px; }
+.living-card-section-heading select { max-width: 155px; min-height: 38px; border: 1px solid #8ecbff70; background: #07172b; padding: 0 9px; color: var(--lc-paper); font: 700 11px 'DM Sans', sans-serif; text-transform: capitalize; }
+.living-card-trend-list { list-style: none; display: grid; gap: 12px; padding: 0; margin: 17px 0 0; }
+.living-card-trend-list li { display: grid; grid-template-columns: minmax(75px, 1fr) minmax(50px, 1.2fr) 28px 42px; align-items: center; gap: 9px; }
+.living-card-trend-opponent { min-width: 0; }
+.living-card-trend-opponent small { display: block; overflow: hidden; color: var(--lc-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.living-card-trend-track { height: 7px; background: #ffffff16; }
+.living-card-trend-track span { display: block; height: 100%; background: linear-gradient(90deg, var(--lc-blue), var(--lc-orange)); }
+.living-card-trend-list li > strong { color: var(--lc-paper); font: 800 20px 'Barlow Condensed', sans-serif; text-align: right; }
+.living-card-result { display: inline-flex; min-width: 32px; min-height: 27px; align-items: center; justify-content: center; border: 1px solid #8ecbff50; color: var(--lc-muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+.living-card-result-W { border-color: #8ecbff; color: #b7ddff; }
+.living-card-result-L { border-color: #ff784980; color: #ffad91; }
+.living-card-result-T { border-color: #c6d9ea80; color: #e0edf7; }
+.living-card-result-pending { min-width: 42px; font-size: 8px; }
+.living-card-final-games { margin-top: 24px; }
+.living-card-final-games > h3 { margin-bottom: 10px; }
+.living-card-game-picker { display: grid; gap: 7px; max-height: 270px; overflow-y: auto; }
+.living-card-game-picker button { display: grid; grid-template-columns: minmax(0, 1fr) 34px auto; align-items: center; gap: 9px; border: 1px solid #b4d6ee30; background: #0b2948; padding: 10px; color: var(--lc-paper); text-align: left; }
+.living-card-game-picker button[aria-pressed="true"] { border-color: var(--lc-orange); background: #193e60; }
+.living-card-game-picker button > span:first-child { min-width: 0; }
+.living-card-game-picker button > span:first-child strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.living-card-game-picker button small { display: block; margin-top: 3px; color: var(--lc-muted); font-size: 9px; }
+.living-card-game-score { color: var(--lc-orange); font: 800 18px 'Barlow Condensed', sans-serif; white-space: nowrap; }
+.living-card-game-detail { display: grid; gap: 16px; margin-top: 14px; padding: 16px; border: 1px solid #b4d6ee30; background: #071b31; }
+.living-card-game-detail h4 { margin: 0; font: 800 25px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-game-detail > div:first-child p { margin: 5px 0 0; color: var(--lc-muted); font-size: 10px; }
+.living-card-game-stat-group h5 { margin: 0 0 8px; color: var(--lc-sky); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+.living-card-game-stat-group dl { display: grid; gap: 1px; margin: 0; background: #b4d6ee24; }
+.living-card-game-stat-group dl > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: #0d2947; }
+.living-card-game-stat-group dt { color: var(--lc-muted); font-size: 10px; text-transform: capitalize; }
+.living-card-game-stat-group dd { margin: 0; color: var(--lc-paper); font: 800 19px 'Barlow Condensed', sans-serif; }
+.living-card-game-stat-group > p, .living-card-note { margin: 0; color: var(--lc-muted); font-size: 11px; line-height: 1.5; }
+.living-card-athlete-game-stats h5 { color: var(--lc-orange); }
 .living-card-empty { margin: auto 0; padding: 30px 0; border-top: 1px solid #b4d6ee45; }
 .living-card-empty h3 { margin: 10px 0; font: 800 33px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
 .living-card-empty p { font-size: 13px; color: var(--lc-muted); line-height: 1.6; max-width: 260px; }
@@ -105,6 +142,21 @@
 .living-card-video-heading span { color: var(--lc-sky); font-size: 10px; font-weight: 800; letter-spacing: .1em; white-space: nowrap; }
 .living-card-video-list video { display: block; width: 100%; max-height: 210px; aspect-ratio: 16 / 9; object-fit: contain; background: #061426; border: 1px solid #cde8fc55; }
 .living-card-video-error { margin: 0; padding: 18px; color: var(--lc-muted); border: 1px solid #cde8fc55; }
+.living-card-image-highlight { margin: 0 0 18px; border: 1px solid #b4d6ee45; background: #061426; }
+.living-card-image-highlight img { display: block; width: 100%; max-height: 420px; object-fit: contain; }
+.living-card-image-highlight figcaption { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; }
+.living-card-image-highlight figcaption strong { font: 800 18px 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-image-highlight figcaption span { color: var(--lc-muted); font-size: 9px; text-transform: uppercase; }
+.living-card-media-reply, .living-card-recent-replies { margin-top: 22px; padding: 16px; border: 1px solid #b4d6ee35; background: #0b2948; scroll-margin-top: 20px; }
+.living-card-media-reply h3, .living-card-recent-replies h3 { margin: 0; font: 800 25px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-media-reply > p { margin: 8px 0 14px; color: var(--lc-muted); font-size: 11px; line-height: 1.5; }
+.living-card-reply-composer { color: var(--lc-paper); }
+.living-card-reply-composer button { min-height: 42px; }
+.living-card-recent-replies ul { display: grid; gap: 8px; padding: 0; margin: 13px 0 0; list-style: none; }
+.living-card-recent-replies li { padding: 10px; border-left: 2px solid var(--lc-orange); background: #061c32; }
+.living-card-recent-replies li > strong { font-size: 12px; }
+.living-card-recent-replies li p { margin: 5px 0; color: #d2e2ee; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.living-card-recent-replies li small { color: var(--lc-muted); font-size: 9px; }
 .living-card-controls { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 10px; padding: 8px; border: 1px solid #9fcaef62; border-top: 0; border-radius: 0 0 15px 15px; background: #102b4d; box-shadow: 0 18px 30px #01081165; }
 .living-card-control { appearance: none; min-height: 64px; padding: 10px; border: 1px solid #b2d3ee4d; background: #1534538c; color: #c0d2e3; display: flex; align-items: center; justify-content: center; gap: 10px; font: 800 11px 'DM Sans', sans-serif; letter-spacing: .14em; text-transform: uppercase; transition: background .2s, color .2s, transform .2s; }
 .living-card-control:hover { background: #225480; color: var(--lc-paper); transform: translateY(-2px); }
@@ -164,6 +216,22 @@
 .living-card-live { display: inline-flex; align-items: center; gap: 9px; padding: 12px 15px; margin-top: 16px; background: #ff7849; color: #112039 !important; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; transition: transform .2s, background .2s; }
 .living-card-live:hover { transform: translateY(-2px); background: #ff9a72; }
 .living-card-live svg { width: 16px; height: 16px; }
+.living-card-schedule, .living-card-save-guide { margin-top: 30px; padding-top: 22px; border-top: 1px solid #b4d6ee40; }
+.living-card-schedule h2, .living-card-save-guide h2 { margin: 8px 0 0; font: 800 33px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-schedule ol, .living-card-save-guide ol { display: grid; gap: 10px; padding: 0; margin: 16px 0 0; list-style: none; }
+.living-card-schedule li { padding: 13px; border: 1px solid #b4d6ee30; background: #0b2948; }
+.living-card-schedule-heading span { display: block; color: var(--lc-sky); font-size: 9px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.living-card-schedule-heading strong { display: block; margin-top: 5px; font: 800 21px/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.living-card-schedule li p { margin: 7px 0 0; color: var(--lc-muted); font-size: 10px; line-height: 1.5; }
+.living-card-schedule li .living-card-schedule-notes { color: #d2e2ee; }
+.living-card-schedule li button { margin-top: 10px; border: 1px solid #8ecbff65; background: transparent; padding: 8px 10px; color: var(--lc-paper); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.living-card-save-guide > svg { width: 24px; height: 24px; color: var(--lc-orange); }
+.living-card-save-guide > p { margin: 8px 0 0; color: var(--lc-muted); font-size: 11px; line-height: 1.55; }
+.living-card-save-guide li { display: flex; gap: 10px; color: #d2e2ee; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.living-card-save-guide li span { color: var(--lc-orange); }
+.living-card-save-guide > small { display: block; margin-top: 16px; color: #829bb0; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.living-card-manage { display: inline-flex; align-items: center; gap: 9px; margin-top: 25px; border-bottom: 1px solid #b4d6ee7a; padding: 13px 0; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.living-card-manage svg { width: 15px; height: 15px; color: var(--lc-orange); }
 .living-card-follow { margin-top: 31px; }
 .living-card-hypes { margin-top: 32px; padding: 24px; border: 1px solid #b4d6ee55; background: #143450; }
 .living-card-hypes h3 { margin: 14px 0; font: 800 32px/1 'Barlow Condensed', sans-serif; text-transform: uppercase; }

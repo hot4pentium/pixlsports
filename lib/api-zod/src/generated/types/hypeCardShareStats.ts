@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HypeCardShareGameSummary } from './hypeCardShareGameSummary';
+import type { HypeCardShareStatsRecord } from './hypeCardShareStatsRecord';
 import type { HypeCardShareStatsSport } from './hypeCardShareStatsSport';
 import type { HypeCardShareStatsStats } from './hypeCardShareStatsStats';
 
@@ -16,6 +17,7 @@ export interface HypeCardShareStats {
   gamesPlayed: number;
   /** @minimum 0 */
   score: number;
+  record: HypeCardShareStatsRecord;
   games: HypeCardShareGameSummary[];
   stats: HypeCardShareStatsStats;
   updatedAt: Date;
