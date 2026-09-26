@@ -522,12 +522,12 @@ export function LivingAthleteCardPage({
                     )}
                   </div>
                 )}
+                <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
+                  <button type="button" className="living-card-control" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Card front</button>
+                  <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
+                  <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 ? ` (${recentVideos.length})` : ''}</button>
+                </div>
               </div>
-            </div>
-            <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
-              <button type="button" className="living-card-control" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Card front</button>
-              <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
-              <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 ? ` (${recentVideos.length})` : ''}</button>
             </div>
 
              <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
