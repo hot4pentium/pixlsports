@@ -3,6 +3,10 @@ import {
   useMarkHypeCardReplyInboxRead,
   useDeleteHypeCardShareReply,
   getGetHypeCardReplyInboxQueryKey,
+  getListAthleteInvitesQueryKey,
+  getListAthleteInviteHypesQueryKey,
+  useListAthleteInvites,
+  useListAthleteInviteHypes,
 } from '@workspace/api-client-react';
 import type {
   HypeCardReplyInbox,
@@ -13,12 +17,15 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { ArrowRight, MessageCircleHeart, Trash2, Loader2, AlertTriangle, Inbox } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@clerk/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { getLatestFanActivity } from './fan-activity-model';
 
 export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter' }: { className?: string, variant?: 'supporter' | 'dashboard' }) {
   const [open, setOpen] = useState(false);
   const [targetToken, setTargetToken] = useState<string | null>(null);
+  const { isSignedIn } = useUser();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -34,12 +41,30 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     }
   }, []); // Run on mount
 
-  const { data, isLoading, isError } = useGetHypeCardReplyInbox({
+  const { data, isLoading: repliesLoading, isError: repliesError } = useGetHypeCardReplyInbox({
     query: {
       staleTime: 15000,
       refetchInterval: 15000,
       refetchOnWindowFocus: true,
       queryKey: getGetHypeCardReplyInboxQueryKey(),
+    },
+  });
+  const { data: ownedInvites, isLoading: invitesLoading, isError: invitesError } = useListAthleteInvites({
+    query: {
+      enabled: Boolean(isSignedIn),
+      queryKey: getListAthleteInvitesQueryKey(),
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+    },
+  });
+  const inviteToken = ownedInvites?.[0]?.inviteToken ?? '';
+  const { data: fanHypes, isLoading: hypesLoading, isError: hypesError } = useListAthleteInviteHypes(inviteToken, {
+    query: {
+      enabled: Boolean(isSignedIn && inviteToken),
+      queryKey: getListAthleteInviteHypesQueryKey(inviteToken),
+      refetchInterval: 15_000,
+      refetchOnWindowFocus: true,
+      refetchOnMount: 'always',
     },
   });
 
@@ -85,52 +110,49 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     }
   }, [open, data?.unreadCount, markRead]);
 
-  const unreadCount = data?.unreadCount || 0;
-  const totalCount = data?.totalCount || 0;
-  const latestReplies = useMemo(() => (
-    (data?.groups ?? [])
-      .flatMap((group) => group.replies.map((reply) => ({ reply, title: group.title })))
-      .sort((left, right) => Date.parse(right.reply.createdAt) - Date.parse(left.reply.createdAt))
-      .slice(0, 2)
-  ), [data]);
+  const isLoading = repliesLoading || (Boolean(isSignedIn) && (invitesLoading || (Boolean(inviteToken) && hypesLoading)));
+  const isError = repliesError || (Boolean(isSignedIn) && (invitesError || (Boolean(inviteToken) && hypesError)));
+  const unreadCount = data?.unreadCount ?? 0;
+  const totalCount = (data?.totalCount ?? 0) + (fanHypes?.length ?? 0);
+  const latestActivity = useMemo(() => getLatestFanActivity(fanHypes, data), [data, fanHypes]);
 
   const triggerContent = variant === 'dashboard' ? (
     <button
       type="button"
       className={`reply-inbox-summary-trigger ${className}`}
-      aria-label={`Open replies inbox, ${totalCount} ${totalCount === 1 ? 'reply' : 'replies'}`}
+      aria-label={`Open Hypes and replies, ${totalCount} ${totalCount === 1 ? 'message' : 'messages'}`}
       data-testid="btn-reply-inbox"
     >
       <span className="reply-inbox-summary-trigger__header">
         <span className="reply-inbox-summary-trigger__label">
           <MessageCircleHeart size={15} aria-hidden="true" />
-          <span>Replies · <span data-testid="reply-inbox-total-count">{isLoading ? '…' : isError ? '—' : totalCount}</span></span>
+          <span>Hypes & replies · <span data-testid="reply-inbox-total-count">{isLoading ? '…' : isError ? '—' : totalCount}</span></span>
         </span>
         {unreadCount > 0 && (
           <span className="reply-inbox-summary-trigger__unread">{unreadCount} new</span>
         )}
       </span>
-      {isLoading ? (
-        <span className="reply-inbox-summary-trigger__empty">Loading recent replies…</span>
-      ) : isError ? (
-        <span className="reply-inbox-summary-trigger__empty">Replies are unavailable right now.</span>
-      ) : latestReplies.length > 0 ? (
+      {isLoading && latestActivity.length === 0 ? (
+        <span className="reply-inbox-summary-trigger__empty">Loading recent Hypes…</span>
+      ) : isError && latestActivity.length === 0 ? (
+        <span className="reply-inbox-summary-trigger__empty">Hypes or replies are unavailable right now.</span>
+      ) : latestActivity.length > 0 ? (
         <span className="reply-inbox-summary-trigger__items">
-          {latestReplies.map(({ reply, title }) => (
-            <span className="reply-inbox-summary-trigger__item" key={reply.id}>
-              <span className="reply-inbox-summary-trigger__reaction" aria-hidden="true">{reply.reaction}</span>
+          {latestActivity.map(({ id, reaction, title, message }) => (
+            <span className="reply-inbox-summary-trigger__item" key={id}>
+              <span className="reply-inbox-summary-trigger__reaction" aria-hidden="true">{reaction}</span>
               <span className="reply-inbox-summary-trigger__copy">
                 <span className="reply-inbox-summary-trigger__share-title">{title}</span>
-                <span className="reply-inbox-summary-trigger__message">{reply.message || 'Reacted to your Hype Card'}</span>
+                <span className="reply-inbox-summary-trigger__message">{message}</span>
               </span>
             </span>
           ))}
         </span>
       ) : (
-        <span className="reply-inbox-summary-trigger__empty">Your Hype Card replies will show up here.</span>
+        <span className="reply-inbox-summary-trigger__empty">Hypes and replies will show up here.</span>
       )}
       <span className="reply-inbox-summary-trigger__footer">
-        View all replies <ArrowRight size={14} aria-hidden="true" />
+        View all <ArrowRight size={14} aria-hidden="true" />
       </span>
     </button>
   ) : (
@@ -143,7 +165,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     >
       <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
         <MessageCircleHeart className={`h-4 w-4 ${unreadCount > 0 ? 'text-primary animate-pulse' : ''}`} />
-        <span>{isLoading ? '...' : isError ? 'Error' : `${totalCount} Replies`}</span>
+        <span>{isLoading ? '...' : isError ? 'Error' : `${totalCount} Hypes & Replies`}</span>
       </div>
       {unreadCount > 0 && (
         <span className="flex h-5 items-center justify-center bg-primary px-2 text-[10px] font-bold text-primary-foreground clip-angled-sm">
@@ -164,10 +186,10 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
         <DialogHeader className="p-4 sm:p-6 border-b border-white/10 shrink-0 bg-foreground">
           <DialogTitle className="font-display text-3xl tracking-wide uppercase text-white flex items-center gap-3">
             <Inbox className="h-6 w-6 text-primary" />
-            Hype Card Replies
+            Hypes &amp; Replies
           </DialogTitle>
           <DialogDescription className="text-white/60">
-            See who celebrated your moments.
+            Fan Hypes and replies to shared moments.
           </DialogDescription>
         </DialogHeader>
 
@@ -175,7 +197,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-12 text-white/50 gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-bold uppercase tracking-widest">Loading Replies...</p>
+              <p className="text-sm font-bold uppercase tracking-widest">Loading Hypes and replies...</p>
             </div>
           )}
 
@@ -183,23 +205,50 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
             <div className="flex flex-col items-center justify-center py-12 text-destructive gap-4 text-center">
               <AlertTriangle className="h-10 w-10 mb-2" />
               <p className="font-bold uppercase tracking-widest">Failed to load</p>
-              <p className="text-sm text-white/50 max-w-sm">There was a problem reaching the server. Please try again.</p>
+              <p className="text-sm text-white/50 max-w-sm">Some Hypes or replies could not be loaded. Please try again.</p>
             </div>
           )}
 
-          {data && activeGroups.length === 0 && (
+          {inviteToken && fanHypes && fanHypes.length > 0 && (
+            <section aria-labelledby="inbox-fan-hypes" className="border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 id="inbox-fan-hypes" className="font-display text-xl uppercase tracking-wide">Fan Hypes</h3>
+                <a
+                  href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/player/${encodeURIComponent(inviteToken)}/manage#owner-fan-hypes`}
+                  className="text-xs font-bold text-primary hover:underline"
+                >Manage Hypes</a>
+              </div>
+              <ul className="mt-3 space-y-3">
+                {fanHypes.map((hype) => (
+                  <li key={hype.id} className="flex gap-3 border-t border-white/10 pt-3">
+                    <span className="text-2xl" aria-hidden="true">{hype.reaction}</span>
+                    <div className="min-w-0">
+                      <p className="break-words text-xs font-bold text-white/65">{hype.senderName || 'Anonymous fan'} · {formatDistanceToNow(parseISO(hype.createdAt), { addSuffix: true })}</p>
+                      {hype.message && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">{hype.message}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {data && activeGroups.length === 0 && !fanHypes?.length && !isLoading && !isError && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="h-16 w-16 bg-white/5 flex items-center justify-center rounded-full mb-4">
                 <MessageCircleHeart className="h-8 w-8 text-white/20" />
               </div>
               <p className="font-display text-2xl uppercase tracking-wide text-white/50">It's quiet here</p>
-              <p className="mt-2 text-sm text-white/40 max-w-xs font-medium">When you share a Hype Card, reactions and messages will appear here.</p>
+              <p className="mt-2 text-sm text-white/40 max-w-xs font-medium">When fans send Hypes or reply to shared media, their messages will appear here.</p>
             </div>
           )}
 
-          {data && activeGroups.map((group) => (
-            <ReplyGroup key={group.shareToken} group={group} isTarget={group.shareToken === targetToken} />
-          ))}
+          {data && activeGroups.length > 0 && (
+            <section aria-label="Media replies" className="space-y-6">
+              <h3 className="font-display text-xl uppercase tracking-wide">Media replies</h3>
+              {activeGroups.map((group) => (
+                <ReplyGroup key={group.shareToken} group={group} isTarget={group.shareToken === targetToken} />
+              ))}
+            </section>
+          )}
         </div>
       </DialogContent>
     </Dialog>
