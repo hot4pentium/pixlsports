@@ -61,6 +61,7 @@ import {
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE,
   persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
 } from './hype-card-types';
+import { applyLatestLinkedStat } from './hype-card-stat-sync';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { getHypeCardNoticeTone } from './hype-card-notice';
 import { saveMediaBlob, loadMediaBlob, deleteMediaBlob, checkExportSupport, uploadMediaBlob, type MediaUploadProgress } from './hype-card-media';
@@ -1188,7 +1189,7 @@ export function HypeCardEditor() {
   const createProject = useCreateProject();
   const createHypeShare = useCreateHypeCardShare();
   const deleteHypeShare = useDeleteHypeCardShare();
-  const { data: projects } = useListProjects({
+  const { data: projects, refetch: refetchProjects } = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && isOnline),
       queryKey: getListProjectsQueryKey(),
@@ -1207,11 +1208,14 @@ export function HypeCardEditor() {
     if (gameDayPrefill.eventType === 'game' && isSignedIn && !projects) return;
 
     const completedGames = trackerProjects.flatMap((trackerProject) => (
-      normalizeTrackerData(trackerProject.project).games
+      normalizeTrackerData(trackerProject.project).games.map((game) => ({
+        game,
+        trackerProjectId: trackerProject.id,
+      }))
     ));
-    const matchingGame = completedGames
-      .filter((game) => game.status === 'final')
-      .find((game) => (
+    const matching = completedGames
+      .filter(({ game }) => game.status === 'final')
+      .find(({ game }) => (
         game.date === gameDayPrefill.date
         && (!gameDayPrefill.opponent || game.opponent === gameDayPrefill.opponent)
       ));
@@ -1222,13 +1226,16 @@ export function HypeCardEditor() {
       formatGameDayDate(gameDayPrefill.date),
     ].filter(Boolean).join(' · ');
     const statSummary = gameDayPrefill.eventType === 'game'
-      ? getGameDayStatSummary(matchingGame)
+      ? getGameDayStatSummary(matching?.game)
       : '';
 
     setProject((current) => ({
       ...current,
       achievement: context || current.achievement,
       stat: statSummary || current.stat,
+      statSource: statSummary && matching
+        ? { trackerProjectId: matching.trackerProjectId, gameId: matching.game.id, lastGeneratedStat: statSummary }
+        : null,
     }));
     gameDayPrefillAppliedRef.current = true;
     if (gameDayPrefill) {
@@ -2229,6 +2236,33 @@ export function HypeCardEditor() {
       setValidation('The attached image is still loading. Please try again in a moment.');
       return;
     }
+
+    let exportProject = project;
+    const source = project.statSource;
+    if (source && project.stat === source.lastGeneratedStat) {
+      if (!isOnline || !isSignedIn) {
+        setValidation('Reconnect to refresh the finished game stats before exporting this card.');
+        return;
+      }
+      try {
+        const latestProjects = await refetchProjects();
+        if (latestProjects.isError || !latestProjects.data) throw new Error('Tracker projects unavailable');
+        const tracker = latestProjects.data.find((item) => item.id === source.trackerProjectId && item.project.tool === 'stat-tracker');
+        const game = tracker && normalizeTrackerData(tracker.project).games.find((item) => item.id === source.gameId && item.status === 'final');
+        if (!game) {
+          setValidation('The linked finished game is unavailable. Check your saved games before exporting.');
+          return;
+        }
+        const latestStat = getGameDayStatSummary(game);
+        exportProject = applyLatestLinkedStat(project, latestStat);
+        if (exportProject !== project) {
+          setProject((current) => applyLatestLinkedStat(current, latestStat));
+        }
+      } catch {
+        setValidation('Could not refresh the finished game stats. Try exporting again after reconnecting.');
+        return;
+      }
+    }
     
     if (project.mediaType === 'video') {
       setExporting(true);
@@ -2259,7 +2293,7 @@ export function HypeCardEditor() {
 
         const ns = 'export';
         const bgSvg = buildHypeCardSvg(project, 'bg', ns);
-        const fgSvg = buildHypeCardSvg(project, 'fg', ns, statsUrl);
+        const fgSvg = buildHypeCardSvg(exportProject, 'fg', ns, statsUrl);
         const clipInfo = getPhotoClipInfo(project, ns);
 
         // Load background and foreground as images
@@ -2342,7 +2376,7 @@ export function HypeCardEditor() {
       // Fallback to existing image export...
       try {
         const dimensions = getDimensions(project.format);
-        const svg = buildHypeCardSvg(project, 'all', 'export', statsUrl);
+        const svg = buildHypeCardSvg(exportProject, 'all', 'export', statsUrl);
         const { dataUrl, extension } = await rasterizeSvgForDownload(
           svg,
           dimensions.width,
@@ -2612,7 +2646,7 @@ export function HypeCardEditor() {
       setShareStage(isStatsOnly ? 'Saving the finalized stats link…' : 'Saving the Athlete Hype Page video…');
       const shareManifestProject = isStatsOnly
         ? null
-        : { ...shareProject, mediaName: shareMediaName.trim() };
+        : { ...shareProject, statSource: null, mediaName: shareMediaName.trim() };
       const created = await createHypeShare.mutateAsync({
         data: {
           mediaName: shareMediaName.trim(),
@@ -3284,6 +3318,13 @@ export function HypeCardEditor() {
                  className="border border-border bg-muted/30 p-3 text-left transition-colors hover:border-primary/50"
                >
                  <span className="block text-xs font-bold uppercase tracking-widest text-primary">Download Hype Card</span>
+                 {project.statSource && (
+                   <span className="mt-1 block text-xs text-muted-foreground">
+                     {project.stat === project.statSource.lastGeneratedStat
+                       ? 'Finished game stats refresh before each download.'
+                       : 'Your custom stat text stays as written. Linked finalized stats update separately.'}
+                   </span>
+                 )}
                  <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">Save the finished vertical card to this device, then share the file anywhere.</span>
                </button>
               <button

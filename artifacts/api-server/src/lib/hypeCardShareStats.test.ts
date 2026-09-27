@@ -2,6 +2,45 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { computeHypeCardShareStats } from "./hypeCardShareStats";
 
+test("a fresh Hype Card stats read reflects corrected finalized score and athlete totals", () => {
+  const original = {
+    tool: "stat-tracker",
+    games: [{
+      sport: "soccer",
+      status: "final",
+      date: "2026-09-12",
+      opponent: "Northside",
+      score: 1,
+      opponentScore: 2,
+      stats: { goal: 1 },
+      events: [{ statId: "goal", attribution: "athlete" }],
+    }],
+  };
+  const before = computeHypeCardShareStats(original, "Jordan", "soccer", new Date("2026-09-12T12:00:00Z"));
+  const corrected = {
+    ...original,
+    games: [{
+      ...original.games[0],
+      score: 3,
+      stats: { goal: 2 },
+      events: [
+        { statId: "goal", attribution: "athlete" },
+        { statId: "goal", attribution: "athlete" },
+      ],
+    }],
+  };
+  const after = computeHypeCardShareStats(corrected, "Jordan", "soccer", new Date("2026-09-15T12:00:00Z"));
+
+  assert.equal(before?.score, 1);
+  assert.equal(after?.score, 3);
+  assert.equal(after?.games[0]?.score, 3);
+  assert.equal(after?.stats.goal, 2);
+  assert.equal(after?.games[0]?.athleteStats.goal, 2);
+  assert.equal(after?.record.wins, 1);
+  assert.equal(before?.record.losses, 1);
+  assert.notEqual(before?.updatedAt, after?.updatedAt);
+});
+
 test("aggregates only finalized games for the selected sport", () => {
   const updatedAt = new Date("2026-09-17T12:00:00.000Z");
   const result = computeHypeCardShareStats({

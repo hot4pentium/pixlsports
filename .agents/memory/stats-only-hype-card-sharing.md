@@ -3,8 +3,8 @@ name: Stats-only Hype Card sharing
 description: Local video sharing uses a hosted finalized-stats link without uploading the exported media.
 ---
 
-Stats-only Hype Card shares keep the image/video on the creator’s device and publish only privacy-safe finalized athlete stats. The editor’s normal sharing path downloads the card or posts it into the Athlete Hype Page; direct card URLs remain backend-compatible but are not promoted there.
+Stats-only Hype Card shares keep the image/video on the creator’s device and publish only privacy-safe finalized athlete stats. The editor’s normal sharing path downloads the card or posts it into the Athlete Hype Page; direct card URLs remain backend-compatible but are not promoted there. For a new export with a game-linked, generated stat line, check the latest finalized game before rendering it; do not overwrite manually authored text or previously downloaded media.
 
-**Why:** The product promise is that Pixl Sports is not involved in transporting the video when families share through their normal messaging or social apps.
+**Why:** The product promise is that Pixl Sports is not involved in transporting the video when families share through their normal messaging or social apps. A game result may be corrected days later, so a newly exported card should not print an old generated tally; prior media cannot be changed on recipients' devices, and custom copy reflects a deliberate author choice.
 
-**How to apply:** Keep media claims and object-storage paths optional only for the stats mode; require a linked tracker and finalized-stat projection for that mode. Use Athlete Hype Page publishing as the hosted-card owner flow, keep direct-card routes for legacy compatibility, and do not add direct-card URL copy/share/preview controls back to the editor.
+**How to apply:** Keep media claims and object-storage paths optional only for the stats mode; require a linked tracker and finalized-stat projection for that mode. Use Athlete Hype Page publishing as the hosted-card owner flow, keep direct-card routes for legacy compatibility, and do not add direct-card URL copy/share/preview controls back to the editor. Treat the linked stats page as dynamic and newly exported pixels as a fresh, immutable rendering of the linked finalized game; never expose private game references through public manifests or portable templates.

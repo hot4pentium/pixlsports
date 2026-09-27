@@ -35,6 +35,11 @@ export type HypeCardProject = {
   teamName: string;
   position: string;
   stat: string;
+  statSource: {
+    trackerProjectId: string;
+    gameId: string;
+    lastGeneratedStat: string;
+  } | null;
   achievement: string;
   message: string;
   visibility: {
@@ -119,6 +124,7 @@ export const defaultProject = (): HypeCardProject => ({
   teamName: 'Eastside Falcons',
   position: 'Point guard',
   stat: '12 points',
+  statSource: null,
   achievement: 'Player of the week',
   message: 'Keep showing up.',
   visibility: { stat: true, achievement: true, message: true },
@@ -147,6 +153,7 @@ export function isSafeRasterDataUrl(url: unknown): url is string {
 export function designOnlyProject(project: HypeCardProject): HypeCardProject {
   return {
     ...project,
+    statSource: null,
     mediaType: null,
     mediaId: null,
     downloadMediaId: null,
@@ -245,6 +252,17 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
           ? legacyVisibilityMessage
           : defaults.visibility.message,
     },
+    statSource: project.statSource
+      && typeof project.statSource === 'object'
+      && typeof project.statSource.trackerProjectId === 'string'
+      && typeof project.statSource.gameId === 'string'
+      && typeof project.statSource.lastGeneratedStat === 'string'
+      ? {
+          trackerProjectId: project.statSource.trackerProjectId,
+          gameId: project.statSource.gameId,
+          lastGeneratedStat: project.statSource.lastGeneratedStat,
+        }
+      : null,
     message: typeof project.message === 'string' ? project.message : legacyMessage ?? defaults.message,
     // Position labels are user-authored text. Preserve them verbatim so a
     // saved custom label remains the same in the editor and exported SVG.
