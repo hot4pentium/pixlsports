@@ -3,7 +3,6 @@ import {
   useDeleteScheduleShare,
   listOwnedGameOnCards,
   getListOwnedGameOnCardsQueryKey,
-  useDeleteProject,
   useCreateProject,
   useGetProject,
   getGetProjectQueryKey,
@@ -27,7 +26,6 @@ import {
   useCreateChecklistShare,
   useDeleteChecklistShare,
 } from '@workspace/api-client-react';
-import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -40,8 +38,8 @@ import {
 } from '@/components/ui/dialog';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Clipboard, ClipboardCheck,
-  ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, FolderOpen, Grid2X2,
-  Heart, Layers3, Lightbulb, Menu, MessageCircleQuestion, Minus,
+  ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, Grid2X2,
+  Heart, Lightbulb, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
   Download, Star, Link2
@@ -57,7 +55,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import type {
   SupporterEvent,
   SupporterProfile,
-  SupporterProject,
 } from '@/features/supporter-dashboard';
 import { navigateToGameOnSection } from '@/features/game-on-navigation';
 import {
@@ -96,14 +93,10 @@ import {
   createSupporterProfileSavePlan,
   getUserProfile,
   getUserRole,
-  mapLocalSupporterHypeCard,
-  mapRecentSupporterProjects,
-  parseSupporterStorageSyncEvent,
   supporterProfileFromUser,
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
-import { readHypeCardProject, type HypeCardProject } from '@/features/hype-card-types';
 import {
   buildWorkspaceToolHref,
   readWorkspaceEventContext,
@@ -151,9 +144,6 @@ import gameDayChecklist768 from '@/assets/game-day-checklist-768.webp';
 import gameDayChecklist1404 from '@/assets/game-day-checklist-1404.webp';
 import './landing-unified.css';
 
-const HypeCardEditor = lazy(() =>
-  import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
-);
 const PublicLandingPage = lazy(() =>
   import('@/features/landing-home').then(({ PublicLandingPage }) => ({ default: PublicLandingPage })),
 );
@@ -252,10 +242,10 @@ const toolData: Record<ToolKind, {
   templateNames: string[];
 }> = {
   hype: {
-    slug: 'hype-card',
-    label: 'Hype Card Creator',
-    kicker: 'Make the moment bigger.',
-    description: 'Turn a photo or short video into a share-ready celebration of the play.',
+    slug: 'athlete-page',
+    label: 'Athlete Fan Card',
+    kicker: 'One story. One stable link.',
+    description: 'Create and manage the athlete’s evolving fan card, then share its stable link with family and friends.',
     icon: Zap,
     accent: 'bg-primary text-primary-foreground',
     soft: 'bg-[#181a1f] text-white',
@@ -484,7 +474,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4 sm:px-8 bg-background/80 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-4">
           <BrandMark />
-          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Premium local-first sports graphics <span className="mx-1 text-accent">·</span> Built for your team account.</p>
+          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Athlete fan cards, game-day tools, and stats <span className="mx-1 text-accent">·</span> Built for your team account.</p>
         </div>
         <div className="flex shrink-0 items-center gap-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
@@ -1197,28 +1187,12 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
 
 
 function Studio({ role }: { role: UserRole }) {
-  const [hasProject, setHasProject] = useState(false);
   const { user, isSignedIn } = useUser();
   const profile = getUserProfile(user);
-  const queryClient = useQueryClient();
   const { data: accountAccess } = useGetAccountAccess({
     query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() },
   });
   const isGuest = accountAccess?.accessMode === 'guest';
-
-  useEffect(() => setHasProject(Boolean(window.localStorage.getItem('leaguematrix-hype-card-project-v2'))), []);
-
-  const { data: cloudProjects, isLoading } = useListProjects({
-    query: { enabled: !!isSignedIn && !!accountAccess, queryKey: getListProjectsQueryKey() }
-  });
-
-  const deleteProject = useDeleteProject({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-      }
-    }
-  });
 
   const visibleTools = roleToolKinds[role];
 
@@ -1233,41 +1207,8 @@ function Studio({ role }: { role: UserRole }) {
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
                FAN COMMAND<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
             </h1>
-                  <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
-                <span>Save Hype Cards, checklists, and stats locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
-                    <CircleHelp className="h-5 w-5" />
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="border-primary bg-card text-card-foreground sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="font-display text-3xl tracking-wide text-white">HOW SAVES WORK</DialogTitle>
-                    <DialogDescription className="text-left text-white/70">
-                      Choose the save option that fits how you work.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm leading-relaxed text-white/80">
-                    <div className="border-l-2 border-primary pl-4">
-                      <p className="font-bold uppercase tracking-widest text-primary">Save locally</p>
-                      <p className="mt-1">Keeps your work in this browser and works without an account. It will not appear on another device.</p>
-                    </div>
-                    <div className="border-l-2 border-primary pl-4">
-                      <p className="font-bold uppercase tracking-widest text-primary">Save to cloud</p>
-                      <p className="mt-1">Stores reusable design settings with your signed-in account so you can reopen them across devices.</p>
-                    </div>
-                    <p className="text-xs text-white/55">{LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</p>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <button type="button" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">
-                        Got it
-                      </button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+            <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
+              Manage your athlete’s fan card, game-day checklists, and stats in your Pixl Sports workspace.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
@@ -1307,115 +1248,6 @@ function Studio({ role }: { role: UserRole }) {
           {visibleTools.map((kind, index) => <ToolDirectoryCard key={kind} kind={kind} index={index} />)}
         </div>
 
-        <div className="mt-16 relative border border-border bg-card p-6 sm:p-8 clip-angled-sm overflow-hidden group">
-          <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-          <div className="relative z-10 flex items-start justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">Active Sessions</p>
-              <h2 className="mt-2 font-display text-4xl uppercase tracking-wide">RESUME DRAFT.</h2>
-            </div>
-            <FolderOpen className="h-6 w-6 text-muted-foreground" />
-          </div>
-
-          <div className="relative z-10 mt-8 grid gap-4 lg:grid-cols-2">
-            {/* Local Draft */}
-            {hasProject ? (
-              <div className="flex items-center justify-between border-l-4 border-primary bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80">
-                <div className="flex items-center gap-4">
-                  <span className="grid h-12 w-12 place-items-center bg-card text-card-foreground clip-angled-sm">
-                    <FileImage className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <p className="font-display text-xl uppercase tracking-wide">Hype Card Local Draft</p>
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1">Saved in local storage</p>
-                  </div>
-                </div>
-                <Link href="/studio/hype-card" className="bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform shrink-0" data-testid="link-resume-local-project">
-                  Open
-                </Link>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-border bg-background p-10 text-center clip-angled-sm h-full flex flex-col items-center justify-center">
-                <div className="grid h-12 w-12 place-items-center bg-muted text-muted-foreground clip-angled-sm">
-                  <Plus className="h-6 w-6" />
-                </div>
-                <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO LOCAL DRAFT</p>
-                <p className="mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Start a Hype Card above.</p>
-              </div>
-            )}
-
-            {/* Cloud Projects */}
-            {isSignedIn ? (
-              <div className="flex flex-col gap-4">
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-full p-10 border border-border bg-muted/50 clip-angled-sm">
-                    <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Loading Cloud Projects...</p>
-                  </div>
-                ) : cloudProjects?.some((project) => !isCloudToolProject(project.project, 'schedule')) ? (
-                  <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    {cloudProjects.filter((project) => !isCloudToolProject(project.project, 'schedule')).map(project => (
-                      (() => {
-                         const tool = 'hype-card';
-                         const toolLabel = 'Hype Card';
-                         const projectHref = `/studio/${tool}/${project.id}`;
-                        return (
-                      <div key={project.id} className="flex items-center justify-between border-l-4 border-foreground bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80 group/project">
-                        <div className="flex items-center gap-4 min-w-0">
-                          <span className="grid h-12 w-12 shrink-0 place-items-center bg-background text-foreground clip-angled-sm border border-border">
-                            <Layers3 className="h-5 w-5" />
-                          </span>
-                          <div className="min-w-0 overflow-hidden">
-                            <p className="font-display text-xl uppercase tracking-wide truncate">{project.name}</p>
-                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mt-1 truncate">
-                              {toolLabel} • Rev {project.revision} • {formatDistanceToNow(new Date(project.updatedAt), { addSuffix: true })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0 ml-4">
-                          <button
-                            type="button"
-                            disabled={deleteProject.isPending}
-                            onClick={() => { if(confirm('Delete this project?')) deleteProject.mutate({ projectId: project.id }) }}
-                            className="grid h-10 w-10 place-items-center bg-background text-muted-foreground hover:bg-destructive hover:text-destructive-foreground clip-angled-sm transition-colors"
-                            data-testid={`btn-delete-project-${project.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                          <Link href={projectHref} className="bg-card px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-card-foreground clip-angled-sm hover:scale-105 transition-transform" data-testid={`link-resume-cloud-project-${project.id}`}>
-                            Open
-                          </Link>
-                        </div>
-                      </div>
-                        );
-                      })()
-                    ))}
-                  </div>
-                ) : (
-                  <div className="border border-border bg-background p-10 text-center clip-angled-sm h-full flex flex-col items-center justify-center">
-                    <div className="grid h-12 w-12 place-items-center bg-muted text-muted-foreground clip-angled-sm">
-                      <FolderOpen className="h-6 w-6" />
-                    </div>
-                    <p className="mt-5 font-display text-2xl uppercase tracking-wide text-muted-foreground">NO CLOUD PROJECTS</p>
-                    <p className="mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Save a reusable design to your account and open it from anywhere. Add media again when you are ready to export.</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="border border-border bg-background p-10 text-center clip-angled-sm h-full flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-primary/5" />
-                <div className="relative z-10 grid h-12 w-12 place-items-center bg-primary text-primary-foreground clip-angled-sm">
-                  <Activity className="h-6 w-6" />
-                </div>
-                <p className="relative z-10 mt-5 font-display text-2xl uppercase tracking-wide text-foreground">CLOUD SYNC</p>
-                <p className="relative z-10 mt-2 max-w-xs text-sm font-medium leading-relaxed text-muted-foreground">Sign in to sync reusable designs. {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</p>
-                <Link href="/sign-in" className="relative z-10 mt-6 bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm hover:scale-105 transition-transform">
-                  Sign In
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
       </main>
     </StudioLayout>
   );
@@ -1441,27 +1273,9 @@ function SupporterStudio() {
       queryKey: getListProjectsQueryKey(),
     },
   });
-  const cloudProjects = cloudProjectsQuery.data;
   const [dashboardRefresh, setDashboardRefresh] = useState(0);
   void dashboardRefresh;
   const events: SupporterEvent[] = [];
-  const [localHypeCard, setLocalHypeCard] = useState<HypeCardProject | null>(() => readHypeCardProject());
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.storageArea && event.storageArea !== window.localStorage) return;
-      const syncEvent = parseSupporterStorageSyncEvent(event);
-      if (syncEvent?.type !== 'local-hype-card') return;
-      setLocalHypeCard(readHypeCardProject());
-    };
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
-   const projects: SupporterProject[] = [
-     ...(localHypeCard ? [mapLocalSupporterHypeCard(localHypeCard)] : []),
-     ...mapRecentSupporterProjects(cloudProjects ?? []),
-   ];
 
   return (
     <StudioLayout role="fan">
@@ -1481,7 +1295,6 @@ function SupporterStudio() {
           }}
           events={events}
           onCompleteScheduledGame={async () => setDashboardRefresh((value) => value + 1)}
-          projects={projects}
           selectionSyncReady={Boolean(
             !isSignedIn
             || (
@@ -3333,20 +3146,16 @@ function Help() {
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Help & FAQ</h1>
         <div className="mt-12 space-y-10">
           <section>
-            <h2 className="font-display text-3xl uppercase tracking-wide">Where are my graphics saved?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Local editing is the default. Hype Card settings and source media are saved in this browser. If you sign in and choose Save design, only reusable design settings sync to your account; source photos, videos, and uploaded logos stay on this device. Reopen a saved design, add media, then export the finished file to share it. {PUBLIC_SHARE_MEDIA} Clearing browser data can remove locally stored work.</p>
+            <h2 className="font-display text-3xl uppercase tracking-wide">How do I create and share an athlete fan card?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Open the Athlete Fan Card tool in your studio to create or manage the stable card for your athlete. Share the public fan-card link from the manager; owners can return to the manager to update card details and highlights.</p>
           </section>
           <section>
-            <h2 className="font-display text-3xl uppercase tracking-wide">Will my media follow me across devices?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">For paid Hype Card accounts, attached photos, logos, posters, and locally prepared preview/download videos are kept in private cloud storage under the account quota, so saved projects reopen across signed-in devices. Preview video loads only after Play and download quality loads only when you export. Guest and unpaid cloud saves remain design-only, while local media stays on the device. {PUBLIC_SHARE_MEDIA}</p>
+            <h2 className="font-display text-3xl uppercase tracking-wide">Where can owners manage a shared card?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Use the Hype Card Manager at the owner-only management link associated with your invite. Public fan cards stay viewable at their /fan/ link; managing the card requires signing in as its owner.</p>
           </section>
           <section>
-            <h2 className="font-display text-3xl uppercase tracking-wide">Can I use my own fonts?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">The studio relies on heavily optimized, pre-selected display fonts designed specifically for sports impact. Custom font uploads are not supported to ensure immediate rendering without layout shifts.</p>
-          </section>
-          <section>
-            <h2 className="font-display text-3xl uppercase tracking-wide">Video export is failing.</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Video processing pushes your device's hardware. Source files can be up to 120MB, are prepared locally as a smaller MP4 when supported, and can be trimmed to a 15-second export. If processing fails, turn off power-saving mode and make sure the device has sufficient free memory.</p>
+            <h2 className="font-display text-3xl uppercase tracking-wide">Where do I find game-day tools?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Your studio keeps game-day cards, checklists, and stats together. Open a game card to access its available preparation and tracking actions.</p>
           </section>
         </div>
         <div className="mt-16 rounded-none bg-primary p-8 clip-angled text-primary-foreground sm:p-10 flex flex-col sm:flex-row justify-between items-center gap-6">
@@ -3488,7 +3297,7 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
             <div>
                <p className="text-sm font-bold uppercase tracking-wider text-white" data-testid="status-cloud-sync">Cloud sync is included.</p>
               <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
-                 Sign in to create graphics, save reusable projects, and keep your team settings across devices.
+                   Sign in to manage your athlete fan card, stats, and game-day workspace.
               </p>
             </div>
           </div>
@@ -3511,7 +3320,7 @@ function SignInPage() {
   return (
     <AuthLayout
       title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
-      subtitle="Access your saved templates and broadcast graphics across all your devices."
+      subtitle="Access your athlete fan card and game-day workspace."
     >
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
     </AuthLayout>
@@ -3525,7 +3334,7 @@ function SignUpPage() {
   return (
     <AuthLayout
       title={<>CREATE<br/><span className="text-primary">CALLSIGN.</span></>}
-       subtitle="Join Pixl Sports to save your custom templates and broadcast settings securely in the cloud."
+       subtitle="Join Pixl Sports to manage your athlete fan card and game-day workspace."
     >
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={roleRedirect} />
     </AuthLayout>
@@ -3645,18 +3454,18 @@ function RoleSelectionPage() {
                 </span>
                 <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
                 <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">
-                  Make Hype Cards and keep game-day details close.<br />
+                  Manage your athlete’s fan card and keep game-day details close.<br />
                   Celebrate your athlete.<br />
                   Keep friends and family in the loop.
                 </span>
-                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Hype Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Fan Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </button>
              </div>
              {selectedRole && (
                <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">
                  <p className="text-xs font-bold uppercase tracking-widest text-primary">Full team account</p>
                  <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
-                   Your account includes cloud saves, publishing, checklists, stats, and Hype Cards.
+                    Your account includes athlete card management, publishing, checklists, and stats.
                  </p>
                </div>
              )}
@@ -3766,8 +3575,7 @@ function LockedAccountPage({ status, pauseEndsAt, deletionEligibleAt, expired, u
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
-  const bypassLifecycle = (location === '/studio/hype-card' && !isSignedIn)
-    || location.startsWith('/schedule/')
+  const bypassLifecycle = location.startsWith('/schedule/')
     || location.startsWith('/checklist/')
     || location.startsWith('/watch/')
     || location.startsWith('/live/')
@@ -3852,13 +3660,13 @@ function ClerkProviderWithRoutes() {
         signIn: {
           start: {
             title: "ENTER THE ARENA",
-            subtitle: "Sign in to access your cloud drafts",
+            subtitle: "Sign in to access your Pixl Sports workspace",
           },
         },
         signUp: {
           start: {
             title: "JOIN THE TEAM",
-            subtitle: "Create an account to save drafts in the cloud",
+            subtitle: "Create an account to manage your athlete fan card",
           },
         },
       }}
@@ -3889,8 +3697,6 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/profile" component={SupporterProfilePage} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />
               <Route path="/studio" component={StudioPortal} />
-              <Route path="/studio/hype-card" component={HypeCardEditor} />
-              <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
                <Route path="/studio/schedule/:id?" component={RetiredSchedulePage} />
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
                <Route path="/studio/season-stats"><ProtectedEditor kind="stat-tracker"><SeasonStatsPage /></ProtectedEditor></Route>

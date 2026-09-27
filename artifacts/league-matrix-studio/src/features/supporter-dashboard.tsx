@@ -14,7 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
-  Users, Activity, Image as ImageIcon,
+  Users, Activity,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, X,
   Menu, RotateCcw, Bell, ShieldCheck
 } from 'lucide-react';
@@ -38,7 +38,6 @@ import {
   type SupporterGameStage,
 } from './supporter-dashboard-model';
 import type { ScheduleEventStatus } from './schedule-draft';
-import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import { SupporterDashboardTour } from './supporter-dashboard-tour';
 import { GameOnCardPanel } from './game-on-card';
@@ -87,15 +86,6 @@ export interface SupporterEvent {
   location: string;
   opponent?: string;
   notes?: string;
-}
-
-export interface SupporterProject {
-  id: string;
-  name: string;
-  kind: 'hype-card' | 'schedule';
-  updatedAt: string | Date;
-  href: string;
-  thumbnailProject?: unknown;
 }
 
 function readRecordedScoreGameIds(storage: Storage, accountId: string) {
@@ -233,7 +223,6 @@ export interface SupporterDashboardViewProps {
   events: SupporterEvent[];
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
-  projects: SupporterProject[];
   selectionSyncReady?: boolean;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
@@ -270,18 +259,6 @@ function formatDaysUntil(dateStr: string) {
   if (days <= 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   return `${days} days`;
-}
-
-function formatRelativeTime(date: string | Date) {
-  try {
-    const d = typeof date === 'string' ? parseISO(date) : date;
-    if (isValid(d)) {
-      return format(d, 'MMM d, yyyy');
-    }
-  } catch (e) {
-    // ignore
-  }
-  return String(date);
 }
 
 function getEventDateParts(dateStr: string) {
@@ -335,7 +312,6 @@ export function SupporterDashboardView({
   events,
   onSaveCalendarEvent,
   onCompleteScheduledGame,
-  projects,
   selectionSyncReady = true,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
@@ -983,7 +959,7 @@ export function SupporterDashboardView({
               <Activity size={16} aria-hidden="true" /> View stats
             </Link>
             <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-hype">
-              <Zap size={16} aria-hidden="true" /> View Hype Card
+              <Zap size={16} aria-hidden="true" /> View athlete fan card
             </Link>
           </div>
           {selectionSyncError && <p role="status" className="text-sm text-red-700" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
@@ -1074,7 +1050,7 @@ export function SupporterDashboardView({
           <Activity size={16} aria-hidden="true" /> View stats
         </Link>
         <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-hype">
-          <Zap size={16} aria-hidden="true" /> View Hype Card
+          <Zap size={16} aria-hidden="true" /> View athlete fan card
         </Link>
       </div>
       {selectionSyncError && <p role="status" className="text-sm text-red-300" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
@@ -1189,44 +1165,13 @@ export function SupporterDashboardView({
           </div>
         </section>
 
-        {/* RECENT DESIGNS */}
-        <section id="recent-hype-cards" data-testid="section-recent-hype-cards">
-          <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
-            <div>
-              <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Recent Hype Cards</h3>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">Open a saved template to keep editing.</p>
-            </div>
-            <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-view-all-designs">
-              View All <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,136px))] gap-4">
-            {projects.length === 0 ? (
-              <div className="col-span-full w-full py-10 border border-border bg-card flex flex-col items-center justify-center text-muted-foreground gap-3 clip-angled-sm min-h-[180px]">
-                <ImageIcon className="w-10 h-10 opacity-50" />
-                <p className="font-bold uppercase tracking-widest text-sm">No Hype Cards Yet</p>
-                <p className="text-xs max-w-xs text-center text-balance">Your saved Hype Card templates will appear here for quick access.</p>
-              </div>
-            ) : (
-              projects.slice(0, 4).map(project => (
-                <Link key={project.id} href={project.href} className="group flex min-w-0 flex-col" data-testid={`link-project-${project.id}`}>
-                  <div className="aspect-square w-full bg-muted border border-border mb-2.5 relative overflow-hidden group-hover:border-primary transition-colors flex items-center justify-center clip-angled-sm">
-                    {project.thumbnailProject ? (
-                      <HypeCardThumbnail project={project.thumbnailProject} name={project.name} />
-                    ) : (
-                      <>
-                        <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
-                        <Zap className="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors group-hover:scale-110 duration-300" />
-                      </>
-                    )}
-                  </div>
-                  <h4 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{project.name}</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(project.updatedAt)}</p>
-                </Link>
-              ))
-            )}
-          </div>
+        <section className="border border-border bg-card p-6 clip-angled-sm" data-testid="section-athlete-fan-card">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Athlete fan card</p>
+          <h3 className="mt-2 font-display text-3xl uppercase tracking-wide">One story. One stable link.</h3>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">Create or manage the evolving card fans use to follow your athlete’s highlights and season.</p>
+          <Link href="/studio/athlete-page" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-manage-athlete-fan-card">
+            Manage athlete fan card
+          </Link>
         </section>
 
       </div>

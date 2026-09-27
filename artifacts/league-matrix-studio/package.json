@@ -11,7 +11,6 @@
     "test:stat-tracker-browser": "tsx --test src/features/stat-tracker.browser.test.ts",
     "test:stat-tracker-spectator-browser": "tsx --test --test-concurrency=1 src/features/stat-tracker-spectator.browser.test.ts",
     "test:landing-home-browser": "tsx --test src/features/landing-home.browser.test.ts",
-    "test:hype-card-offline-browser": "tsx --test src/features/hype-card-offline.browser.test.ts",
     "test:hype-card-stats-link-browser": "tsx --test --test-concurrency=1 src/features/hype-card-stats-link.browser.test.ts",
     "test:athlete-owner-boundary-browser": "tsx --test --test-concurrency=1 src/features/athlete-owner-boundary.browser.test.ts",
     "test:account-lifecycle-browser": "tsx --test --test-concurrency=1 src/features/account-lifecycle.browser.test.ts",

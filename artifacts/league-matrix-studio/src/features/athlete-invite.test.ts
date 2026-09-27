@@ -40,7 +40,7 @@ test('public Athlete Hype Pages keep replies on-page and update recent reactions
   assert.doesNotMatch(source, /Send your own reply →/);
 });
 
-test('posting a Hype Card opens the living fan card and keeps owner management available', () => {
+test('the athlete manager supports the living fan card and retires the legacy editor route', () => {
   assert.match(
     hypeCardSource,
     /const athleteHypePage = athleteInvites\?\.\[0\] \?\? null;/,
@@ -57,18 +57,16 @@ test('posting a Hype Card opens the living fan card and keeps owner management a
     hypeCardSource,
     /if \(linkedExport\) await handleExport\(url\);\s*if \(!isStatsOnly && !linkedExport\)/,
   );
-  assert.match(source, /aria-expanded=\{hypeCardGuideOpen\}/);
-  assert.match(source, /setSelectedPath\('card'\)/);
-  assert.match(source, /setSelectedPath\('page'\)/);
+  assert.doesNotMatch(source, /Hype Card editor|studio\/hype-card/);
+  assert.doesNotMatch(appSource, /path="\/studio\/hype-card(?:\/:id)?"|import\(['"]@\/features\/hype-card['"]\)/);
+  assert.match(appSource, /slug: 'athlete-page'/);
   assert.match(source, /href=\{`\/player\/\$\{existing\.inviteToken\}\/manage`\}/);
   assert.match(source, /href=\{`\/fan\/\$\{existing\.inviteToken\}`\}/);
   assert.match(source, /value=\{fanCardUrl\(invite\.inviteToken\)\}/);
   assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
   assert.match(appSource, /path="\/player\/:inviteToken" component=\{LegacyAthleteInviteRedirect\}/);
-  assert.match(source, /\{selectedPath === 'page' && !existing && \(/);
-  assert.match(source, /How it works/);
-  assert.match(source, /Open the Hype Card editor and create the card/);
-  assert.match(source, /Choose Post to Athlete Hype Page/);
+  assert.match(source, /\{!existing && \(/);
+  assert.match(source, /Create the athlete fan card/);
   assert.match(hypeCardSource, /shareMode === 'stats' && \([\s\S]*?Link Stats Project/);
   assert.match(hypeCardSource, /trackerProjectId: isStatsOnly && shareTrackerProjectId !== 'none'/);
   assert.match(source, /const hostedVideoQuery = \{ shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 \}/);

@@ -1,7 +1,7 @@
 {
   "name": "Pixl Sports Studio",
   "short_name": "Pixl Sports",
-  "description": "Create team graphics, schedules, rosters, and game-day lineups.",
+  "description": "Manage your athlete fan card, stats, and game-day plans.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -24,9 +24,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Hype Card Creator",
-      "short_name": "Hype Card",
-      "url": "./studio/hype-card",
+      "name": "Athlete Fan Card Manager",
+      "short_name": "Fan Card",
+      "url": "./studio/athlete-page",
       "icons": [
         {
           "src": "./pwa-icon-192.png",

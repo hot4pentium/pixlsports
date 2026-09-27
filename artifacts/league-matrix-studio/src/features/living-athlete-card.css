@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap");
+
 .living-card-page {
   --lc-ink: #07172b;
   --lc-navy: #102b4d;
@@ -57,7 +59,27 @@
 .living-card-photo-fallback span { font: 900 clamp(170px, 27vw, 360px)/1 'Barlow Condensed', sans-serif; color: #b5d8f71a; text-shadow: 1px 1px #c7eaff5c; }
 .living-card-photo-fallback small { position: absolute; top: 56%; color: #e2eff8af; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; }
 .living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #061427d9 0, #06142773 18%, transparent 43%); }
-.living-card-front-identity { position: absolute; top: clamp(22px, 4vw, 38px); left: clamp(22px, 4vw, 38px); right: clamp(22px, 4vw, 38px); max-width: 480px; text-shadow: 0 2px 12px #061427e8; }
+.living-card-photo-watermark {
+  position: absolute;
+  left: 68%;
+  top: 61%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  transform-origin: center;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  color: rgb(255 255 255 / 72%);
+  -webkit-text-stroke: .8px rgb(2 7 14 / 66%);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgb(2 7 14 / 48%);
+  font-family: 'Oswald', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(20px, 5.2vw, 35px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .077em;
+  z-index: 1;
+}
+.living-card-front-identity { position: absolute; z-index: 2; top: clamp(22px, 4vw, 38px); left: clamp(22px, 4vw, 38px); right: clamp(22px, 4vw, 38px); max-width: 480px; text-shadow: 0 2px 12px #061427e8; }
 .living-card-athlete-name { margin: 0; font: 900 clamp(45px, 7vw, 82px)/.9 'Barlow Condensed', sans-serif; letter-spacing: -.015em; text-transform: uppercase; overflow-wrap: anywhere; }
 .living-card-team-name { margin: 10px 0 0; color: #edf5ff; font-size: clamp(11px, 1.6vw, 16px); font-weight: 800; line-height: 1.25; letter-spacing: .16em; text-transform: uppercase; overflow-wrap: anywhere; }
 .living-card-face-alt { inset: 0 0 76px; padding: clamp(23px, 5vw, 42px); background: transparent; display: flex; flex-direction: column; overflow-y: auto; scrollbar-color: #6fa9d6 #0b2544; }

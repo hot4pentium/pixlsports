@@ -3,7 +3,6 @@ import type { ChangeEvent } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -134,8 +133,6 @@ export function AthleteInviteManager() {
   const [showHypeCard, setShowHypeCard] = useState(true);
   const [showStats, setShowStats] = useState(true);
   const [notice, setNotice] = useState('');
-  const [hypeCardGuideOpen, setHypeCardGuideOpen] = useState(false);
-  const [selectedPath, setSelectedPath] = useState<'card' | 'page'>('page');
   const createInvite = useCreateAthleteInvite();
   const updateInvite = useUpdateAthleteInvite();
   const startLive = useStartAthleteInviteLive();
@@ -339,74 +336,34 @@ export function AthleteInviteManager() {
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8">
         <div className="flex flex-col justify-between gap-5 border-l-4 border-primary pl-5 sm:flex-row sm:items-end">
           <div>
-           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Card</p>
+           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete fan card</p>
             <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
               <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, highlights, finalized stats, and season results.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
 
-        <section className="mt-8 grid items-start gap-4 md:grid-cols-2" aria-label="Sharing paths">
-          <div className="border border-border bg-card transition-colors hover:border-primary">
-            <button
-              type="button"
-              className="flex w-full items-start justify-between gap-4 p-5 text-left"
-              aria-expanded={hypeCardGuideOpen}
-              aria-controls="hype-card-creation-guide"
-              onClick={() => {
-                setSelectedPath('card');
-                setHypeCardGuideOpen(true);
-              }}
-              aria-pressed={selectedPath === 'card'}
-              data-testid="button-toggle-hype-card-guide"
-            >
-              <span>
-                <span className="block text-[10px] font-bold uppercase tracking-[.2em] text-primary">Quick share</span>
-                <span className="mt-2 block font-display text-3xl uppercase">Create a Hype Card</span>
-                <span className="mt-2 block text-sm leading-relaxed text-muted-foreground">Post video moments to this athlete’s highlight carousel.</span>
-              </span>
-              <ChevronDown className={`mt-2 h-5 w-5 shrink-0 text-primary transition-transform ${hypeCardGuideOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-            </button>
-            {hypeCardGuideOpen && (
-              <div id="hype-card-creation-guide" className="border-t border-border px-5 pb-5 pt-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest">How it works</h3>
-                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
-                  <li>Open the Hype Card editor and create the card.</li>
-                  <li>Choose Post to Athlete Hype Page when the card is ready.</li>
-                   <li>Use the management area below to download or remove anything posted to this page.</li>
-                </ol>
-                <Link href="/studio/hype-card" className="mt-4 inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-create-hype-card">
-                  Open Hype Card editor →
-                </Link>
-              </div>
-            )}
-          </div>
+        <section className="mt-8" aria-label="Athlete fan card">
           {existing ? (
             <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Share with fans</p>
-              <h2 className="mt-2 font-display text-3xl uppercase">Living Hype Card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable card for the athlete’s season. Existing invite links now open this same card.</p>
+              <h2 className="mt-2 font-display text-3xl uppercase">Athlete fan card</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable card for the athlete’s season. Existing invite links open this same card.</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link href={`/fan/${existing.inviteToken}`} className="inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-open-fan-hype-card">Open fan card</Link>
                 <Link href={`/player/${existing.inviteToken}/manage`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-manage-athlete-card">Manage athlete card</Link>
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              className={`border p-5 text-left transition-colors ${selectedPath === 'page' ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary'}`}
-              onClick={() => setSelectedPath('page')}
-              aria-pressed={selectedPath === 'page'}
-              data-testid="card-create-hype-page"
-            >
+            <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-               <h2 className="mt-2 font-display text-3xl uppercase">Create the athlete card</h2>
-               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable fan card for the season. Existing invite links will open it too.</p>
-            </button>
+              <h2 className="mt-2 font-display text-3xl uppercase">Create the athlete fan card</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable fan card for the season. Existing invite links will open it too.</p>
+            </div>
           )}
         </section>
 
-        {selectedPath === 'page' && !existing && (
+        {!existing && (
           <form onSubmit={save} className="mt-8 max-w-xl">
             <aside className="space-y-5">
               <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update athlete card' : 'Create athlete card'}</Button>
@@ -817,7 +774,7 @@ function OwnerVideoUpload({
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">New highlight</p>
           <h4 id="add-athlete-video" className="mt-1 font-display text-2xl uppercase">Add a video here</h4>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose, trim, and post a clip from this page. You do not need to open Hype Card Creator unless you want a designed card.</p>
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose, trim, and post a clip directly to this athlete’s fan card.</p>
         </div>
         <label className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground ${atLimit || uploading || !draftReady ? 'pointer-events-none opacity-50' : 'hover:bg-primary/90'}`}>
           <Upload className="h-4 w-4" /> Add video

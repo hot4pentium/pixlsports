@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { access, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -3145,7 +3145,6 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router, useLocation } from 'wouter';
 import { ClerkProvider } from '@clerk/react';
-import { HypeCardEditor } from './src/features/hype-card';
 import { ChecklistPage, ScheduleEditor } from './src/App';
 import { MeetingCapture } from './src/features/meeting-capture';
 import { NotificationSettings } from './src/features/notification-settings';
@@ -3153,8 +3152,6 @@ import { SupporterDashboardView, SupporterProfileView } from './src/features/sup
 import { useCachedSupporterPhoto } from './src/features/supporter-photo-cache';
 import { LiveTrackerGame, StatTrackerPage } from './src/features/stat-tracker-page';
 import { getSportRule } from './src/features/stat-tracker';
-import { defaultProject, readHypeCardProject } from './src/features/hype-card-types';
-import { mapLocalSupporterHypeCard, mapRecentSupporterProjects, parseSupporterStorageSyncEvent, seedHypeCardFromSupporterProfile } from './src/features/supporter-dashboard-model';
 import './src/index.css';
 
 const profile = {
@@ -3210,13 +3207,6 @@ function ProfilePropagationHarness() {
   const [draft, setDraft] = useState(profile);
   const [pendingPhoto, setPendingPhoto] = useState(null);
   const [pendingPhotoCrop, setPendingPhotoCrop] = useState({ x: 50, y: 50, zoom: 100 });
-  const [savedCloudProject] = useState({
-    playerName: 'Past Season Athlete',
-    jerseyNumber: '4',
-    position: 'Forward',
-    teamName: 'Legacy Team',
-  });
-  const seededLocalProject = seedHypeCardFromSupporterProfile(defaultProject(), profile);
   const rule = getSportRule('basketball');
   const currentGame = {
     id: 'live-game',
@@ -3245,7 +3235,7 @@ function ProfilePropagationHarness() {
   const fanToolNav = createElement('nav', { 'data-testid': 'fan-tool-nav', className: 'flex gap-3 p-4' },
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-dashboard', onClick: () => setRoute('dashboard') }, 'Dashboard'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-stat-tracker', onClick: () => setRoute('tracker') }, 'Stat Tracker'),
-    createElement('button', { type: 'button', 'data-testid': 'button-test-open-hype-card', onClick: () => setRoute('hype') }, 'Hype Card'),
+    createElement('button', { type: 'button', 'data-testid': 'button-test-open-athlete-fan-card', onClick: () => setRoute('fan-card') }, 'Athlete Fan Card'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-edit-profile', onClick: openProfile }, 'Profile'),
   );
 
@@ -3318,15 +3308,10 @@ function ProfilePropagationHarness() {
     );
   }
 
-  if (route === 'hype') {
+  if (route === 'fan-card') {
     return createElement('main', null,
       fanToolNav,
-      createElement('section', { 'data-testid': 'hype-card-profile-seed' },
-        createElement('label', null, 'Player name',
-          createElement('input', { 'data-testid': 'input-hype-player-name', value: seededLocalProject.playerName, readOnly: true }),
-        ),
-        createElement('p', { 'data-testid': 'text-hype-cloud-player-name' }, savedCloudProject.playerName),
-      ),
+      createElement('a', { 'data-testid': 'link-athlete-fan-card-manager', href: '/studio/athlete-page' }, 'Manage athlete fan card'),
     );
   }
 
@@ -3336,7 +3321,6 @@ function ProfilePropagationHarness() {
       profile,
       events: [],
       nextGameIsUpcoming: false,
-      projects: [],
       scheduleSource: null,
       connectionLabel: '',
       athletePhotoUrl: profile.athleteImageUrl,
@@ -3345,59 +3329,6 @@ function ProfilePropagationHarness() {
       onOpenChecklist: () => {},
     }),
   );
-}
-
-function LocalHypeCardFlowHarness() {
-  const [location] = useLocation();
-  const [localProject, setLocalProject] = useState(() => readHypeCardProject());
-  useEffect(() => {
-    const handleStorage = (event) => {
-      if (event.storageArea && event.storageArea !== window.localStorage) return;
-      if (parseSupporterStorageSyncEvent(event)?.type !== 'local-hype-card') return;
-      setLocalProject(readHypeCardProject());
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-  const cloudProjects = [{
-    id: 'cloud-hype-card-1',
-    name: 'Cloud Championship',
-    updatedAt: '2026-09-19T12:00:00.000Z',
-    project: {
-      ...defaultProject(),
-      tool: 'hype-card',
-      headline: 'Cloud Championship',
-      playerName: 'Cloud Athlete',
-    },
-  }];
-
-  if (location === '/studio/hype-card') {
-    return createElement(HypeCardEditor);
-  }
-
-  if (location === '/studio/hype-card/cloud-hype-card-1') {
-    return createElement('main', { 'data-testid': 'cloud-hype-card-editor-route' },
-      createElement('h1', null, 'Cloud Hype Card editor'),
-    );
-  }
-
-  const projects = localProject
-    ? [
-      mapLocalSupporterHypeCard(localProject, '2026-09-20T12:00:00.000Z'),
-      ...mapRecentSupporterProjects(cloudProjects),
-    ]
-    : [];
-
-  return createElement(SupporterDashboardView, {
-    profile,
-    events: [],
-    nextGameIsUpcoming: false,
-    projects,
-    scheduleSource: null,
-    connectionLabel: '',
-    onOpenStatTracker: () => {},
-    onOpenChecklist: () => {},
-  });
 }
 
 function CachedPhotoStartupHarness() {
@@ -3409,7 +3340,6 @@ function CachedPhotoStartupHarness() {
       userId: 'user-startup',
       events: [],
       nextGameIsUpcoming: false,
-      projects: [],
       scheduleSource: null,
       connectionLabel: '',
       athletePhotoUrl: photo.imageUrl,
@@ -3492,7 +3422,6 @@ function ChecklistContextHarness() {
       profile,
       events,
       nextGameIsUpcoming: true,
-      projects: [],
       scheduleSource: 'custom',
       connectionLabel: 'Northside · 2026',
       onOpenProfile: () => {},
@@ -3520,14 +3449,12 @@ function WorkspaceJourneyHarness() {
     tool === '/studio/schedule' ? createElement(ScheduleEditor)
       : tool === '/studio/checklist' ? createElement(ChecklistPage)
       : tool === '/studio/stat-tracker' ? createElement(StatTrackerPage)
-      : tool === '/studio/hype-card' ? createElement(HypeCardEditor)
       : createElement(SupporterDashboardView, {
         profile,
         userId: window.location.search.includes('supporter-active-game-sync') ? 'supporter-sync-user' : undefined,
         prepUserId: 'workspace-journey',
         events,
         nextGameIsUpcoming: true,
-        projects: [],
         scheduleSource: 'custom',
         connectionLabel: 'Northside · 2026',
         onOpenProfile: () => {},
@@ -3745,17 +3672,6 @@ export function mount() {
     ));
     return;
   }
-  if (window.location.search.includes('local-hype-card-flow')) {
-    root.render(createElement(ClerkProvider, {
-      publishableKey: 'pk_test_ZXhhbXBsZS5jb20k',
-    },
-    createElement(Router, null,
-      createElement(QueryClientProvider, { client: queryClient },
-        createElement(LocalHypeCardFlowHarness),
-      ),
-    )));
-    return;
-  }
   if (window.location.search.includes('meeting-capture')) {
     root.render(createElement(ClerkProvider, {
       publishableKey: 'pk_test_ZXhhbXBsZS5jb20k',
@@ -3822,7 +3738,6 @@ export function mount() {
           userId: dashboardUserId,
           events: dashboardEvents,
           nextGameIsUpcoming: true,
-          projects: [],
           scheduleSource: 'custom',
           connectionLabel: 'Northside · 2026',
           onCompleteScheduledGame: async (eventId, completedAt) => {
@@ -4208,9 +4123,9 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
      assert.equal(
        await connection.evaluate<boolean>(`(() => {
          const upcoming = document.querySelector('[data-testid="section-upcoming"]');
-          const recent = document.querySelector('[data-testid="section-recent-hype-cards"]');
+          const fanCardManager = document.querySelector('[data-testid="link-desktop-independent-hype"]');
           const oldPanels = document.querySelector('[data-testid="section-desktop-workspace"], [data-testid="workspace-recommendation"]');
-          return Boolean(upcoming && recent && !oldPanels && !document.querySelector('#all-tools'));
+          return Boolean(upcoming && fanCardManager && fanCardManager.getAttribute('href') === '/studio/athlete-page' && !oldPanels && !document.querySelector('#all-tools'));
        })()`, page.sessionId),
        true,
      );
@@ -5691,7 +5606,7 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     );
     const path = () => connection!.evaluate<string>(`(() => {
       const route = new URLSearchParams(location.search).get('route');
-      if (route === 'schedule' || route === 'checklist' || route === 'stat-tracker' || route === 'hype-card') {
+      if (route === 'schedule' || route === 'checklist' || route === 'stat-tracker') {
         return '/studio/' + route;
       }
       return location.pathname;
@@ -5861,39 +5776,13 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     assert.ok(hypeHref, 'the Hype Card action remains available from the dashboard');
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid=\\"link-desktop-independent-hype\\"]")?.textContent?.trim() || ""', session),
-      'View Hype Card',
+      'View athlete fan card',
     );
-    await navigatePage(connection, page, fixtureRoute('hype-card', '&source=workspace&eventId=game-selected&eventType=game&date=2026-10-13&opponent=Tigers'));
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready"))', Boolean);
-    assert.equal(await path(), '/studio/hype-card');
-    await waitFor(connection, session, `JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || 'null')?.project?.achievement?.includes('Tigers') === true`, Boolean);
-    const readHype = () => connection!.evaluate<{ text: string; inputs: string[]; stored: string; requests: string }>(`({
-      text: document.body.innerText,
-      inputs: Array.from(document.querySelectorAll('input')).map((node) => node.value),
-      stored: localStorage.getItem('leaguematrix-hype-card-project-v2') || '',
-      requests: sessionStorage.getItem('workspace-journey-requests') || '[]',
-    })`, session);
-    const hype = await readHype();
-    assert.match(hype.stored, /vs Tigers/);
-    assert.equal(JSON.parse(hype.stored).project.playerName, 'Alexandria Montgomery-Williams', 'athlete comes from the signed-in profile');
+    assert.equal(hypeHref, '/studio/athlete-page');
+    assert.doesNotMatch(hypeHref, /[?&](?:source|eventId|eventType|date|opponent)=/);
     for (const secret of [privateNote, privateItem]) {
-      assert.ok(!JSON.stringify(hype).includes(secret), 'private checklist content must not reach Hype or public requests');
-      assert.ok(!(await selected()).includes(secret), 'workspace context must not include private checklist content');
+      assert.ok(!(await selected()).includes(secret), 'private checklist content must not reach the athlete fan card manager');
     }
-    await connection.evaluate(`Array.from(document.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent?.includes('4.'))?.click()`, session);
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"walkthrough-publish-page\\"]"))', Boolean);
-    await navigatePage(connection, page, fixtureRoute('hype-card', '&source=workspace&eventId=game-selected&eventType=game&date=2026-10-13&opponent=Tigers'));
-    await reloadPage(connection, page);
-    await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"hype-card-notice\\"]")?.textContent?.includes("Game details are ready"))', Boolean);
-    const reloadedHype = await readHype();
-    assert.match(reloadedHype.stored, /vs Tigers/);
-    assert.equal(JSON.parse(reloadedHype.stored).project.playerName, 'Alexandria Montgomery-Williams');
-    for (const secret of [privateNote, privateItem]) {
-      assert.ok(!JSON.stringify(reloadedHype).includes(secret), 'reload must not copy private prep to Hype or public requests');
-    }
-    const requests = JSON.parse((await readHype()).requests) as { path: string; method: string; body: string }[];
-    assert.ok(requests.some((request) => request.path === '/api/projects' && request.method === 'GET'));
-    assert.ok(requests.every((request) => request.method === 'GET'), 'prefill must never publish without an explicit action');
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -6007,6 +5896,7 @@ test('deleting selected games and practices falls back across Calendar and works
     }
     assert.match(afterGame.prep, /gameId=game-default/);
     assert.match(afterGame.stats, /eventId=game-default/);
+    assert.equal(afterGame.hype, '/studio/athlete-page');
 
     await navigatePage(connection, page, fixtureRoute('schedule'));
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"button-select-schedule-event-1\\"]"))', Boolean);
@@ -6025,6 +5915,7 @@ test('deleting selected games and practices falls back across Calendar and works
     }
     assert.match(afterPractice.prep, /gameId=game-default/);
     assert.match(afterPractice.stats, /eventId=game-default/);
+    assert.equal(afterPractice.hype, '/studio/athlete-page');
 
     await navigatePage(connection, page, fixtureRoute('checklist', `&${afterPractice.prep.split('?')[1]}`));
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-default"', Boolean);
@@ -6037,8 +5928,6 @@ test('deleting selected games and practices falls back across Calendar and works
     assert.notEqual(await connection.evaluate<string>('document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value || ""', session), 'practice-selected');
     await navigatePage(connection, page, fixtureRoute('stat-tracker', '&date=2026-10-12&opponent=Falcons'));
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Falcons"', Boolean);
-    await navigatePage(connection, page, fixtureRoute('hype-card', '&date=2026-10-12&opponent=Falcons'));
-    await waitFor(connection, session, 'document.body?.innerText?.includes("Hype Cards") === true', Boolean);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
@@ -6057,241 +5946,7 @@ test('deleting selected games and practices falls back across Calendar and works
   }
 });
 
-test('local Hype Cards stay fresh across supporter tabs and reopen correctly', { concurrency: false }, async () => {
-  const releaseBrowserTestLock = await acquireBrowserTestLock();
-  const fixtures = fixturePaths('supporter-dashboard-hype-card-flow-test');
-  let devServer: ChildProcess | undefined;
-  let devServerMonitor: ProcessMonitor | undefined;
-  let tempDirectory: string | undefined;
-  let browser: ChildProcess | undefined;
-  let browserMonitor: ProcessMonitor | undefined;
-  let connection: DevToolsConnection | undefined;
-  let page: { sessionId: string; targetId: string } | undefined;
-  let editorPage: { sessionId: string; targetId: string } | undefined;
-
-  try {
-    const viteProbe = createServer();
-    const { port: vitePort } = await listen(viteProbe);
-    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
-    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
-    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
-
-    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
-      cwd: appDirectory,
-      env: {
-        ...process.env,
-        PORT: String(vitePort),
-        BASE_PATH: '/',
-        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
-    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-supporter-hype-card-flow-'));
-    const downloadDirectory = resolve(tempDirectory, 'downloads');
-
-    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
-    const debugProbe = createServer();
-    const { port: debugPort } = await listen(debugProbe);
-    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
-    browser = spawn(chromiumPath, [
-      '--headless=new',
-      '--no-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      `--remote-debugging-port=${debugPort}`,
-      `--user-data-dir=${tempDirectory}`,
-      'about:blank',
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
-    browserMonitor = monitorProcess(browser, 'Chromium');
-    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
-    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
-    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    await connection.send('Browser.setDownloadBehavior', {
-      behavior: 'allow',
-      downloadPath: downloadDirectory,
-    });
-    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?local-hype-card-flow`);
-    await connection.send('Emulation.setDeviceMetricsOverride', {
-      width: 1440,
-      height: 1000,
-      deviceScaleFactor: 1,
-      mobile: false,
-    }, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-recent-hype-cards\\"]") !== null', Boolean);
-
-    await connection.evaluate(`window.history.pushState({}, '', '/studio'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"section-recent-hype-cards\\"]") !== null', Boolean);
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector(\'[data-testid="link-project-local-hype-card"]\'))', page.sessionId),
-      false,
-    );
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-recent-hype-cards"]\')?.textContent || ""', page.sessionId),
-      /No Hype Cards Yet/,
-    );
-
-    editorPage = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?local-hype-card-flow`);
-    await connection.send('Emulation.setDeviceMetricsOverride', {
-      width: 1440,
-      height: 1000,
-      deviceScaleFactor: 1,
-      mobile: false,
-    }, editorPage.sessionId);
-    await waitFor(connection, editorPage.sessionId, 'document.querySelector("[data-testid=\\"section-recent-hype-cards\\"]") !== null', Boolean);
-    await connection.evaluate(`window.history.pushState({}, '', '/studio/hype-card'); window.dispatchEvent(new PopStateEvent('popstate'));`, editorPage.sessionId);
-    await waitFor(connection, editorPage.sessionId, 'document.querySelector("input[placeholder=\\"Big Play!\\"]") !== null', Boolean);
-    const setInputByLabel = async (labelText: string, value: string) => {
-      await connection!.evaluate(`(() => {
-        const label = Array.from(document.querySelectorAll('label')).find((candidate) => candidate.textContent?.includes(${JSON.stringify(labelText)}));
-        const input = label?.querySelector('input');
-        if (!(input instanceof HTMLInputElement)) throw new Error(${JSON.stringify(`${labelText} input not found`)});
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-        setter?.call(input, ${JSON.stringify(value)});
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      })()`, editorPage!.sessionId);
-    };
-    await setInputByLabel('Custom moment', 'HUB CHAMPIONSHIP');
-    await connection.evaluate(
-      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Next: Media')?.click()`,
-      editorPage.sessionId,
-    );
-    await waitFor(connection, editorPage.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('add media'));
-
-    const pngData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
-    await connection.evaluate(`(() => {
-      const input = document.querySelector('input[type="file"][accept="image/*,video/*"]');
-      if (!(input instanceof HTMLInputElement)) throw new Error('Media file input not found');
-      const bytes = Uint8Array.from(atob(${JSON.stringify(pngData)}), (value) => value.charCodeAt(0));
-      const file = new File([bytes], 'hub-photo.png', { type: 'image/png' });
-      const transfer = new DataTransfer();
-      transfer.items.add(file);
-      input.files = transfer.files;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-    })()`, editorPage.sessionId);
-    await waitFor(connection, editorPage.sessionId, 'document.body?.innerText ?? ""', (body) => body.toLowerCase().includes('media added'), 20_000);
-    await connection.evaluate(
-      `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === 'Next: Details')?.click()`,
-      editorPage.sessionId,
-    );
-    await waitFor(connection, editorPage.sessionId, 'document.querySelector("input[placeholder=\\"e.g. Jordan Smith\\"]") !== null', Boolean);
-    await setInputByLabel('Player name', 'Jordan Hub');
-    await setInputByLabel('Jersey number', '11');
-    await setInputByLabel('Position', 'Forward');
-    await setInputByLabel('Team name', 'Northside Comets');
-    for (const nextStep of ['Next: Format', 'Next: Layout', 'Next: Palette', 'Next: Review']) {
-      await connection.evaluate(
-        `Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === ${JSON.stringify(nextStep)})?.click()`,
-        editorPage.sessionId,
-      );
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    await connection.evaluate(
-      `document.querySelector('[data-testid="walkthrough-publish-page"]')?.click()`,
-      editorPage.sessionId,
-    );
-    await waitFor(connection, editorPage.sessionId, 'document.querySelector("[data-testid=\\"button-download-hype-card\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="button-download-hype-card"]')?.click()`, editorPage.sessionId);
-    const downloadDeadline = Date.now() + 20_000;
-    let downloads: string[] = [];
-    while (Date.now() < downloadDeadline) {
-      downloads = await readdir(downloadDirectory).catch(() => []);
-      if (downloads.some((file) => file.endsWith('.png'))) break;
-      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    }
-    assert.ok(downloads.some((file) => file.endsWith('.png')), 'Expected a local Hype Card export');
-    await waitFor(
-      connection,
-      editorPage.sessionId,
-      `JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || '{}')?.project?.headline`,
-      (headline) => headline === 'HUB CHAMPIONSHIP',
-      10_000,
-    );
-
-    const savedProjectJson = await connection.evaluate<string>(
-      `localStorage.getItem('leaguematrix-hype-card-project-v2') || ''`,
-      editorPage.sessionId,
-    );
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-project-local-hype-card\\"]") !== null', Boolean);
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-project-local-hype-card"]\')?.textContent || ""', page.sessionId),
-      /Northside Comets - HUB CHAMPIONSHIP/,
-    );
-    await connection.evaluate(`localStorage.removeItem('leaguematrix-hype-card-project-v2')`, editorPage.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-project-local-hype-card\\"]") === null', Boolean);
-    assert.match(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="section-recent-hype-cards"]\')?.textContent || ""', page.sessionId),
-      /No Hype Cards Yet/,
-    );
-    await connection.evaluate(
-      `localStorage.setItem('leaguematrix-hype-card-project-v2', ${JSON.stringify(savedProjectJson)})`,
-      editorPage.sessionId,
-    );
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-project-local-hype-card\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="link-project-local-hype-card"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'location.pathname === "/studio/hype-card"', Boolean);
-    await connection.evaluate(
-      `Array.from(document.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent?.includes('3. Details'))?.click()`,
-      page.sessionId,
-    );
-    await waitFor(connection, page.sessionId, 'document.querySelector("input[placeholder=\\"e.g. Jordan Smith\\"]") !== null', Boolean);
-    assert.deepEqual(
-      await connection.evaluate<{ headline: string; playerName: string; jerseyNumber: string; teamName: string }>(`(() => {
-        const field = (labelText) => Array.from(document.querySelectorAll('label'))
-          .find((label) => label.textContent?.includes(labelText))
-          ?.querySelector('input')?.value || '';
-        return {
-          headline: JSON.parse(localStorage.getItem('leaguematrix-hype-card-project-v2') || '{}')?.project?.headline || '',
-          playerName: field('Player name'),
-          jerseyNumber: field('Jersey number'),
-          teamName: field('Team name'),
-        };
-      })()`, page.sessionId),
-      {
-        headline: 'HUB CHAMPIONSHIP',
-        playerName: 'Jordan Hub',
-        jerseyNumber: '11',
-        teamName: 'Northside Comets',
-      },
-    );
-
-    await connection.evaluate(`window.history.pushState({}, '', '/studio'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-project-cloud-hype-card-1\\"]") !== null', Boolean);
-    assert.equal(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-project-cloud-hype-card-1"]\')?.getAttribute("href") || ""', page.sessionId),
-      '/studio/hype-card/cloud-hype-card-1',
-    );
-    await connection.evaluate(`document.querySelector('[data-testid="link-project-cloud-hype-card-1"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'location.pathname === "/studio/hype-card/cloud-hype-card-1"', Boolean);
-    assert.equal(
-      await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid=\\"cloud-hype-card-editor-route\\"]"))', page.sessionId),
-      true,
-    );
-  } finally {
-    if (editorPage && connection) {
-      await connection.send('Target.closeTarget', { targetId: editorPage.targetId }).catch(() => undefined);
-    }
-    if (page && connection) {
-      await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
-    }
-    connection?.close();
-    if (browser && browserMonitor) {
-      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
-      await browserMonitor.waitForExit();
-    }
-    if (devServer && devServerMonitor) {
-      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
-      await devServerMonitor.waitForExit();
-    }
-    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-    await rm(fixtures.harnessPath, { force: true });
-    await rm(fixtures.htmlPath, { force: true });
-    releaseBrowserTestLock();
-  }
-});
-
-test('saved athlete profile names reach every fan tool without rewriting cloud cards', { concurrency: false }, async () => {
+test('saved athlete profile names reach game tools and athlete fan card setup stays the entrypoint', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-profile-test');
   let devServer: ChildProcess | undefined;
@@ -6710,11 +6365,11 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       },
     );
 
-    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-hype-card"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-hype-player-name\\"]")?.value === "Taylor Morgan"', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-athlete-fan-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-athlete-fan-card-manager\\"]") !== null', Boolean);
     assert.equal(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="text-hype-cloud-player-name"]\')?.textContent || ""', page.sessionId),
-      'Past Season Athlete',
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-athlete-fan-card-manager"]\')?.getAttribute("href") || ""', page.sessionId),
+      '/studio/athlete-page',
     );
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
@@ -6729,11 +6384,11 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       document.querySelector('[data-testid="btn-profile-save"]')?.click();
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.body?.innerText.includes("Jordan Lee")', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-hype-card"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-hype-player-name\\"]")?.value === "Jordan Lee"', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-athlete-fan-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-athlete-fan-card-manager\\"]") !== null', Boolean);
     assert.equal(
-      await connection.evaluate<string>('document.querySelector(\'[data-testid="text-hype-cloud-player-name"]\')?.textContent || ""', page.sessionId),
-      'Past Season Athlete',
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-athlete-fan-card-manager"]\')?.getAttribute("href") || ""', page.sessionId),
+      '/studio/athlete-page',
     );
 
     await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
@@ -6754,8 +6409,12 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       await connection.evaluate<string>('document.querySelector(\'[data-testid="live-tracker-score-card-athlete"]\')?.textContent || ""', page.sessionId),
       /Your score/,
     );
-    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-hype-card"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-hype-player-name\\"]")?.value === ""', Boolean);
+    await connection.evaluate(`document.querySelector('[data-testid="button-test-open-athlete-fan-card"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"link-athlete-fan-card-manager\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector(\'[data-testid="link-athlete-fan-card-manager"]\')?.getAttribute("href") || ""', page.sessionId),
+      '/studio/athlete-page',
+    );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

@@ -48,11 +48,11 @@ const steps: ReadonlyArray<{
     panel: "tracker",
   },
   {
-    title: "Hype Cards",
+    title: "Athlete fan card",
     phase: "celebrate",
-    description: "Turn a standout moment into something your athlete can see, share, and feel proud of.",
-    linkLabel: "Make a Hype Card",
-    href: supporterToolRoutes.hypeCard,
+    description: "Create and manage one evolving card where fans can follow your athlete’s highlights and season.",
+    linkLabel: "Manage athlete fan card",
+    href: supporterToolRoutes.athletePage,
   },
 ];
 

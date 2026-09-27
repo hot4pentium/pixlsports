@@ -13,7 +13,7 @@ import {
   getSupporterFanCardHref,
   getStudioDestination,
   getUserRole,
-  mapRecentSupporterProjects,
+  supporterToolRoutes,
 } from './supporter-dashboard-model';
 
 test('legacy metadata always reaches the supporter studio', () => {
@@ -66,12 +66,8 @@ test('custom saved schedules are selected when available', () => {
   });
 });
 
-test('recent projects ignore unrelated cloud tools', () => {
-  const projects = [
-    { id: 'other', name: 'Other', updatedAt: '2026-06-01', project: { tool: 'other' } },
-    { id: 'card', name: 'Card', updatedAt: '2026-06-02', project: { tool: 'hype-card' } },
-  ];
-  assert.deepEqual(mapRecentSupporterProjects(projects).map(({ id }) => id), ['card']);
+test('the athlete fan card manager is the studio card entrypoint', () => {
+  assert.equal(supporterToolRoutes.athletePage, '/studio/athlete-page');
 });
 
 test('upcoming practices remain preparation recommendations while meetings leave the active journey', () => {

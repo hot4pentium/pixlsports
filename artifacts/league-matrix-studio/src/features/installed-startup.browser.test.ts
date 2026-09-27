@@ -117,27 +117,6 @@ async function serveProductionBuild(options: { serviceWorkerDelayMs: number }) {
   };
 }
 
-async function tap(connection: DevToolsConnection, sessionId: string, selector: string) {
-  const point = await connection.evaluate<{ x: number; y: number; width: number; height: number } | null>(
-    `(() => {
-      const element = document.querySelector(${JSON.stringify(selector)});
-      if (!(element instanceof HTMLElement)) return null;
-      const rect = element.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height };
-    })()`,
-    sessionId,
-  );
-  assert.ok(point && point.width > 0 && point.height > 0, `Expected a visible phone tap target: ${selector}`);
-  await connection.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ id: 1, x: point.x, y: point.y, radiusX: 1, radiusY: 1, force: 1 }],
-  }, sessionId);
-  await connection.send('Input.dispatchTouchEvent', {
-    type: 'touchEnd',
-    touchPoints: [],
-  }, sessionId);
-}
-
 test('installed production shell starts, navigates warm, and reopens offline on a phone', async () => {
   await execFileAsync('pnpm', ['run', 'build'], {
     cwd: appDirectory,
@@ -163,7 +142,7 @@ test('installed production shell starts, navigates warm, and reopens offline on 
   let connection: DevToolsConnection | undefined;
   const pages: Array<{ sessionId: string; targetId: string }> = [];
   const timingDiagnostics: Record<string, unknown> = {};
-  const coldStartUrl = `${productionServer.address}/studio/hype-card`;
+  const coldStartUrl = `${productionServer.address}/studio`;
   const studioUrl = `${productionServer.address}/studio`;
 
   try {
@@ -186,50 +165,29 @@ test('installed production shell starts, navigates warm, and reopens offline on 
     pages.push(coldPage);
     const firstShell = await waitFor<{
       visible: boolean;
+      text: string;
       elapsedMs: number;
       viewport: { width: number; height: number };
     }>(
       connection,
       coldPage.sessionId,
       `(() => {
-        const editor = document.querySelector('.moment-studio');
-        const rect = editor?.getBoundingClientRect();
+        const root = document.querySelector('#root');
+        const rect = root?.getBoundingClientRect();
         return {
-          visible: Boolean(editor && rect && rect.width > 0 && rect.height > 0),
+          visible: Boolean(root && rect && rect.width > 0 && rect.height > 0),
+          text: root?.textContent?.trim() || '',
           elapsedMs: performance.now(),
           viewport: { width: innerWidth, height: innerHeight },
         };
       })()`,
-      (result) => result.visible,
+      (result) => result.visible && result.text.length > 0,
       20_000,
     );
     assert.deepEqual(firstShell.viewport, { width: 390, height: 844 });
-    assert.ok(firstShell.elapsedMs < 8_000, `First shell content took ${Math.round(firstShell.elapsedMs)}ms`);
+    assert.ok(firstShell.text.length > 0, 'Expected the active studio route to render app-shell content');
+    assert.ok(firstShell.elapsedMs < 8_000, `First app-shell content took ${Math.round(firstShell.elapsedMs)}ms`);
     timingDiagnostics.firstShellContentMs = Math.round(firstShell.elapsedMs);
-
-    await connection.evaluate(`(() => {
-      window.__pixlStartupFirstInteractionMs = null;
-      document.addEventListener('click', () => {
-        if (window.__pixlStartupFirstInteractionMs === null) {
-          window.__pixlStartupFirstInteractionMs = performance.now();
-        }
-      }, { capture: true, once: true });
-    })()`, coldPage.sessionId);
-    await tap(connection, coldPage.sessionId, 'button[aria-label="Preview"]');
-    await waitFor(
-      connection,
-      coldPage.sessionId,
-      'Boolean(document.querySelector(\'[data-testid="mobile-hype-preview-canvas"]\'))',
-      Boolean,
-      10_000,
-    );
-    const firstInteractionMs = await connection.evaluate<number | null>(
-      'window.__pixlStartupFirstInteractionMs',
-      coldPage.sessionId,
-    );
-    assert.ok(firstInteractionMs !== null, 'Expected the first phone-sized interaction to be handled');
-    assert.ok(firstInteractionMs < 10_000, `First handled interaction took ${Math.round(firstInteractionMs)}ms`);
-    timingDiagnostics.firstHandledInteractionMs = Math.round(firstInteractionMs);
 
     await waitFor(
       connection,
@@ -244,7 +202,7 @@ test('installed production shell starts, navigates warm, and reopens offline on 
       'Boolean(navigator.serviceWorker?.controller)',
       coldPage.sessionId,
     );
-    assert.ok(firstInteractionMs < serviceWorkerReadyMs, 'The first handled interaction should precede service-worker readiness');
+    assert.ok(firstShell.elapsedMs < serviceWorkerReadyMs, 'The active route should render before service-worker readiness');
 
     const startupResources = await connection.evaluate<Array<{
       name: string;
@@ -253,7 +211,7 @@ test('installed production shell starts, navigates warm, and reopens offline on 
       bytes: number;
     }>>(
       `performance.getEntriesByType('resource')
-        .filter((entry) => entry.startTime <= ${firstInteractionMs})
+        .filter((entry) => entry.startTime <= ${firstShell.elapsedMs})
         .map((resource) => ({
           name: new URL(resource.name).pathname,
           initiatorType: resource.initiatorType,
@@ -369,7 +327,6 @@ test('installed production shell starts, navigates warm, and reopens offline on 
     console.log('Installed app startup timing', JSON.stringify({
       viewport: firstShell.viewport,
       firstShellContentMs: Math.round(firstShell.elapsedMs),
-      firstHandledInteractionMs: Math.round(firstInteractionMs),
       serviceWorkerReadyMs: Math.round(serviceWorkerReadyMs),
       coldPageControlledBeforeReload: workerControlledColdPage,
       coldStartupResources: startupResources,

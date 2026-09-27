@@ -243,6 +243,9 @@ export function LivingAthleteCardPage({
                       </div>
                     )}
                     <div className="living-card-photo-shade" />
+                    {photoUrl && !brokenPhoto && (
+                      <span className="living-card-photo-watermark" aria-hidden="true">HYPE CARD</span>
+                    )}
                     <div className="living-card-front-identity">
                       <h2 className="living-card-athlete-name" data-testid="text-living-card-athlete-name">{invite.athleteName}</h2>
                       {invite.teamName && <p className="living-card-team-name" data-testid="text-living-card-team-name">{invite.teamName}</p>}

@@ -1,4 +1,4 @@
-import type { SupporterProfile, SupporterProject } from './supporter-dashboard';
+import type { SupporterProfile } from './supporter-dashboard';
 import { isSport, type Sport } from './stat-tracker';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { hypeCardProjectStorageKey, type HypeCardProject } from './hype-card-types';
@@ -145,7 +145,6 @@ export type SupporterScheduleSource = 'custom' | null;
 export type SupporterGameStage = 'upcoming' | 'live' | 'completed';
 
 export const supporterToolRoutes = {
-  hypeCard: '/studio/hype-card',
   schedule: '/studio/schedule',
   statTracker: '/studio/stat-tracker',
   checklist: '/studio/checklist',
@@ -470,46 +469,6 @@ export function getSupporterScheduleSelection<T>(input: {
   return {
     events: [],
     source: null,
-  };
-}
-
-interface CloudProjectLike {
-  id: string;
-  name: string;
-  updatedAt: string | Date;
-  project: unknown;
-}
-
-export function mapRecentSupporterProjects(projects: CloudProjectLike[]): SupporterProject[] {
-  return [...projects]
-    .filter((project) => (
-      typeof project.project === 'object'
-      && project.project !== null
-      && (project.project as { tool?: unknown }).tool === 'hype-card'
-    ))
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
-    .slice(0, 4)
-    .map((project) => ({
-      id: project.id,
-      name: project.name,
-      kind: 'hype-card',
-      updatedAt: project.updatedAt,
-      href: `/studio/hype-card/${project.id}`,
-      thumbnailProject: project.project,
-    }));
-}
-
-export function mapLocalSupporterHypeCard(
-  project: HypeCardProject,
-  updatedAt: string | Date = new Date(),
-): SupporterProject {
-  return {
-    id: 'local-hype-card',
-    name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
-    kind: 'hype-card',
-    updatedAt,
-    href: '/studio/hype-card',
-    thumbnailProject: { tool: 'hype-card', project },
   };
 }
 

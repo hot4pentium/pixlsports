@@ -51,8 +51,7 @@ test('workspace links carry event identity without private draft data', () => {
   })!;
   assert.equal(buildWorkspaceToolHref('prep', context), '/studio/checklist?gameId=game-1&eventType=game');
   assert.match(buildWorkspaceToolHref('stats', context), /eventId=game-1/);
-  assert.match(buildWorkspaceToolHref('hype', context), /source=workspace/);
-  assert.doesNotMatch(buildWorkspaceToolHref('hype', context), /notes|snacks|location/);
+  assert.equal(buildWorkspaceToolHref('hype', context), '/studio/athlete-page');
 });
 
 test('removed selections do not resolve and meetings are not persisted', () => {

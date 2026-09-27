@@ -70,8 +70,8 @@ export function buildWorkspaceToolHref(
       : '/studio/checklist';
   }
 
-  const route = tool === 'stats' ? '/studio/stat-tracker' : '/studio/hype-card';
-  if (!event) return route;
+  const route = tool === 'stats' ? '/studio/stat-tracker' : '/studio/athlete-page';
+  if (tool === 'hype' || !event) return route;
   const search = new URLSearchParams({
     source: 'workspace',
     eventId: event.id,
