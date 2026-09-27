@@ -3,6 +3,7 @@ import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Check, Menu, X, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import candidAthlete from '@/assets/landing-candid-athlete.jpg';
+import planEventDetails from '@/assets/landing-plan-event-details.png';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
 import { PreviewArtwork } from './hype-card-preview';
@@ -60,6 +61,33 @@ const steps = [
   { number: '03', title: 'Follow', description: 'Stay close to the action and capture what matters.', icon: Activity },
   { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
 ];
+
+function PlanStepCard({ step: { number, title, description, icon: Icon } }: { step: (typeof steps)[number] }) {
+  const [flipped, setFlipped] = useState(false);
+  return (
+    <div className="step-card step-card--plan" data-flipped={flipped} data-testid={`card-landing-step-${number}`}>
+      <div className="plan-flip-inner">
+        <div className="plan-face plan-face--front" aria-hidden={flipped}>
+          <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
+          <h3 className="display">{title}</h3><p>{description}</p>
+          <span className="plan-face-cue">Flip for a preview <ArrowRight size={12} aria-hidden="true" /></span>
+        </div>
+        <div className="plan-face plan-face--back" aria-hidden={!flipped}>
+          <img src={planEventDetails} alt="Game vs Tigers event details preview: opponent Thunder, September 25, 2025 at 4 PM, Upper Park." width="1024" height="574" />
+          <span className="plan-face-cue">Tap to return to Plan <ArrowRight size={12} aria-hidden="true" /></span>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="plan-card-toggle"
+        aria-pressed={flipped}
+        aria-label={flipped ? 'Event details preview shown. Return to Plan card.' : 'Plan: Keep games, practices, and the next event together. Flip to see an event details preview.'}
+        onClick={() => setFlipped(value => !value)}
+        data-testid="button-landing-plan-flip"
+      />
+    </div>
+  );
+}
 
 function AthletePreview() {
   return (
@@ -172,10 +200,12 @@ export function PublicLandingPage() {
               <p>PIXL gives you a clear next step, from putting a game on the calendar to sharing the moments afterward.</p>
             </div>
             <div className="week-grid">
-              {steps.map(({ number, title, description, icon: Icon }) => <div className="step-card" key={number} data-testid={`card-landing-step-${number}`}>
-                <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
-                <h3 className="display">{title}</h3><p>{description}</p>
-              </div>)}
+              {steps.map(step => step.number === '01'
+                ? <PlanStepCard key={step.number} step={step} />
+                : <div className="step-card" key={step.number} data-testid={`card-landing-step-${step.number}`}>
+                  <div className="step-top"><span className="step-icon"><step.icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{step.number}</span></div>
+                  <h3 className="display">{step.title}</h3><p>{step.description}</p>
+                </div>)}
             </div>
             <a href={WEEK_VIDEO} target="_blank" rel="noopener noreferrer" className="week-video-link" data-testid="link-landing-week-path-video"><Play size={14} fill="currentColor" aria-hidden="true" /> Watch the week path explainer <ArrowUpRight size={14} aria-hidden="true" /></a>
           </div>

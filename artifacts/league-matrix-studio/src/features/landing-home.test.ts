@@ -49,3 +49,15 @@ test('mobile navigation and accessibility basics are built in', () => {
   assert.match(styles, /prefers-reduced-motion: reduce/);
   assert.match(styles, /@media \(max-width: 700px\)/);
 });
+
+test('only the Plan step offers a reversible, accessible image preview', () => {
+  assert.match(source, /step\.number === '01'\s*\?\s*<PlanStepCard/);
+  assert.match(source, /type="button"[\s\S]*aria-pressed=\{flipped\}/);
+  assert.match(source, /aria-hidden=\{flipped\}/);
+  assert.match(source, /aria-hidden=\{!flipped\}/);
+  assert.match(source, /planEventDetails/);
+  assert.ok(existsSync(new URL('../assets/landing-plan-event-details.png', import.meta.url)));
+  assert.match(styles, /rotateY\(180deg\)/);
+  assert.match(styles, /object-fit:\s*contain/);
+  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*plan-face--back/);
+});

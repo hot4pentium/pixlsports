@@ -87,6 +87,34 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       assert.equal(layout.privacy, '/privacy');
       assert.match(layout.explainer, /week-path-explainer\.mp4$/);
       assert.equal(layout.menuVisible, width < 700);
+       await waitFor(connection, page.sessionId, 'document.querySelector(".plan-face--back img")?.naturalWidth > 0', value => value === true);
+       const planBounds = await connection.evaluate<{ left: number; right: number; imageFit: string }>(`(() => {
+         const card = document.querySelector('[data-testid="card-landing-step-01"]');
+         return { left: card.getBoundingClientRect().left, right: card.getBoundingClientRect().right,
+           imageFit: getComputedStyle(card.querySelector('img')).objectFit };
+       })()`, page.sessionId);
+       assert.ok(planBounds.left >= 0 && planBounds.right <= width, `Plan card escaped ${width}px viewport: ${JSON.stringify(planBounds)}`);
+       assert.equal(planBounds.imageFit, 'contain');
+       assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").getAttribute("aria-pressed")', page.sessionId), 'false');
+       if (width === 393) {
+         await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").focus()', page.sessionId);
+         await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
+         await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
+       } else {
+         await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").click()', page.sessionId);
+       }
+       assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").getAttribute("aria-pressed")', page.sessionId), 'true');
+       assert.equal(await connection.evaluate('document.querySelector(".plan-face--back").getAttribute("aria-hidden")', page.sessionId), 'false');
+       assert.equal(await connection.evaluate('document.querySelector(".plan-face--front").getAttribute("aria-hidden")', page.sessionId), 'true');
+       if (width === 393) {
+         await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").focus()', page.sessionId);
+         await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
+         await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
+       } else {
+         await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").click()', page.sessionId);
+       }
+       assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").getAttribute("aria-pressed")', page.sessionId), 'false');
+       assert.equal(await connection.evaluate('document.querySelector(".plan-face--front").getAttribute("aria-hidden")', page.sessionId), 'false');
       if (width < 700) {
         await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").click()', page.sessionId);
         assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").getAttribute("aria-expanded")', page.sessionId), 'true');
@@ -98,6 +126,11 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
     const page = pages[0];
     await connection.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, page.sessionId);
     assert.equal(await connection.evaluate('getComputedStyle(document.querySelector(".step-card")).transitionDuration', page.sessionId), '1e-05s');
+    await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").click()', page.sessionId);
+    assert.equal(await connection.evaluate('getComputedStyle(document.querySelector(".plan-flip-inner")).transform', page.sessionId), 'none');
+    assert.equal(await connection.evaluate('getComputedStyle(document.querySelector(".plan-face--back")).display', page.sessionId), 'flex');
+    await connection.evaluate('document.querySelector("[data-testid=button-landing-plan-flip]").click()', page.sessionId);
+    assert.equal(await connection.evaluate('getComputedStyle(document.querySelector(".plan-face--back")).display', page.sessionId), 'none');
   } finally {
     if (connection) {
       await Promise.all(pages.map(page => connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined)));
