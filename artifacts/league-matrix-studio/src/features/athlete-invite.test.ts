@@ -182,14 +182,15 @@ test('Athlete Hype Pages cap active highlight videos at three', () => {
   assert.match(athleteApiSource, /\.limit\(maxHighlightVideos\)/);
 });
 
-test('owner manage link replaces the intro note without creating an empty story column', () => {
+test('shared card omits the intro headline while keeping the owner manage link', () => {
   assert.match(livingCardSource, /const hasStoryContent = invite\.scheduleEvents\.length > 0/);
   const introIndex = livingCardSource.indexOf('className="living-card-intro"');
   const manageIndex = livingCardSource.indexOf('data-testid="link-manage-living-card"');
   const layoutIndex = livingCardSource.indexOf('className={`living-card-layout');
   assert.ok(introIndex >= 0 && manageIndex > introIndex && manageIndex < layoutIndex);
-  assert.match(livingCardSource, /\{ownerInvite && \(\s*<Link className="living-card-manage"/);
+  assert.match(livingCardSource, /\{ownerInvite && \(\s*<div className="living-card-intro">\s*<Link className="living-card-manage"/);
   assert.match(livingCardSource, /<span>Manage this athletic card<\/span><ArrowRight aria-hidden="true" \/>/);
+  assert.doesNotMatch(livingCardSource, /One card\.|Every chapter\.|The living athlete card \//);
   assert.match(livingCardStyles, /\.living-card-manage \{[^}]*flex-wrap: nowrap/);
   assert.doesNotMatch(livingCardSource, /The same athlete, a new story after every game\. Keep this link close\./);
   assert.doesNotMatch(
