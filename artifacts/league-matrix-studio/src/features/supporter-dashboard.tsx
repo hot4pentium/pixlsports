@@ -977,10 +977,10 @@ export function SupporterDashboardView({
               tourPanelRequest={tourPanelRequest}
           />
           <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-mobile">
-            <Link href={dashboardStatsHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-stats">
+            <Link href={dashboardStatsHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-stats">
               <Activity size={16} aria-hidden="true" /> View stats
             </Link>
-            <Link href={fanCardHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-hype">
+            <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-hype">
               <Zap size={16} aria-hidden="true" /> View Hype Card
             </Link>
           </div>
@@ -1068,10 +1068,10 @@ export function SupporterDashboardView({
         tourPanelRequest={tourPanelRequest}
       />
       <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-desktop">
-        <Link href={dashboardStatsHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-stats">
+        <Link href={dashboardStatsHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-stats">
           <Activity size={16} aria-hidden="true" /> View stats
         </Link>
-        <Link href={fanCardHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-hype">
+        <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-hype">
           <Zap size={16} aria-hidden="true" /> View Hype Card
         </Link>
       </div>

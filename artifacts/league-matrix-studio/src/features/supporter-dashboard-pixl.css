@@ -4,6 +4,25 @@
  */
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@500;600;700&display=swap");
 
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .dashboard-quick-action {
+  border: 1px solid #ef9b68;
+  background: linear-gradient(115deg, #b94a16 0%, #933317 55%, #67291e 100%);
+  color: #f3f6fa;
+  box-shadow: 0 6px 16px rgba(80, 30, 16, .18);
+  text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .dashboard-quick-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 20px rgba(80, 30, 16, .28);
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .dashboard-quick-action:focus-visible {
+  outline: 3px solid #ffb581;
+  outline-offset: 3px;
+}
+
 .pixl-dashboard {
   --pixl-ink: #0B1F3A;
   --pixl-panel: #102B4D;
