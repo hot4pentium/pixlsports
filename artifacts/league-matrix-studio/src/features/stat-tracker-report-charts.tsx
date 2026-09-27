@@ -12,7 +12,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 
-import type { GameReport, SportRule, StatDefinition } from './stat-tracker';
+import { hasRecordedGameScore, type GameReport, type SportRule, type StatDefinition } from './stat-tracker';
 
 function formatDate(value: string) {
   if (!value) return 'Date not set';
@@ -42,18 +42,23 @@ export default function ReportCharts({
     gameId: game.id,
     ...Object.fromEntries(rule.stats.map((stat) => [stat.id, game.stats[stat.id] ?? 0])),
   })), [report.games, report.selectedGame.id, rule.stats]);
+  const scoredChartData = useMemo(() => chartData.filter((entry) => (
+    hasRecordedGameScore(report.games.find((game) => game.id === entry.gameId)!)
+  )), [chartData, report.games]);
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const data = payload[0].payload;
-    return <div className="border border-border bg-card p-3 shadow-lg clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{data.date}</p><p className="mt-1 font-display text-xl uppercase">vs {data.opponent}</p><p className="font-display text-2xl text-primary-ink">{data.score} PTS</p></div>;
+    return <div className="border border-border bg-card p-3 shadow-lg clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{data.date}</p><p className="mt-1 font-display text-xl uppercase">vs {data.opponent}</p><p className="font-display text-2xl text-primary-ink">Team score: {data.score}</p></div>;
   };
 
   return (
     <>
       <div className="border border-border bg-card p-5 clip-angled-sm sm:p-7">
         <h3 className="font-display text-2xl uppercase tracking-wide text-foreground">Scoring Trend</h3>
-        <div className="mt-6 h-[250px] w-full" data-testid="report-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} onClick={(data) => { if (data?.activePayload) onSelectGame(data.activePayload[0].payload.gameId); }}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 'bold' }} axisLine={false} tickLine={false} /><RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} /><ReferenceLine y={report.averages.score} stroke="hsl(var(--primary))" strokeDasharray="3 3" label={{ position: 'right', value: 'AVG', fill: 'hsl(var(--primary))', fontSize: 10, fontWeight: 'bold' }} /><Bar dataKey="score" radius={[2, 2, 0, 0]} className="cursor-pointer" aria-label="Score">{chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.isCurrent ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.3)'} />)}</Bar></BarChart></ResponsiveContainer></div>
+        {scoredChartData.length
+          ? <div className="mt-6 h-[250px] w-full" data-testid="report-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={scoredChartData} onClick={(data) => { if (data?.activePayload) onSelectGame(data.activePayload[0].payload.gameId); }}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 'bold' }} axisLine={false} tickLine={false} /><RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} /><ReferenceLine y={report.averages.score} stroke="hsl(var(--primary))" strokeDasharray="3 3" label={{ position: 'right', value: 'AVG', fill: 'hsl(var(--primary))', fontSize: 10, fontWeight: 'bold' }} /><Bar dataKey="score" radius={[2, 2, 0, 0]} className="cursor-pointer" aria-label="Team score">{scoredChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.isCurrent ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.3)'} />)}</Bar></BarChart></ResponsiveContainer></div>
+          : <p className="mt-6 text-sm text-muted-foreground">No final scores were recorded for these games.</p>}
       </div>
 
       <div className="border border-border bg-card p-5 clip-angled-sm sm:p-7">

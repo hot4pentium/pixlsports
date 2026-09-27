@@ -4,9 +4,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
   getListAthleteInvitesQueryKey,
+  getListProjectsQueryKey,
   getListOwnedGameOnCardsQueryKey,
   useGetSupporterActiveGame,
   useListAthleteInvites,
+  useListProjects,
   useListOwnedGameOnCards,
   useUpdateSupporterActiveGame,
 } from '@workspace/api-client-react';
@@ -46,17 +48,23 @@ import {
 } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
-import { getTrackerStorageKeys, readStoredTrackerData, type Sport } from './stat-tracker';
+import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
+import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
+import {
+  clearPendingTrackerCalendarSync,
+  readPendingTrackerCalendarSync,
+  trackerCalendarSyncEvent,
+  type PendingTrackerCalendarSync,
+} from './tracker-calendar-sync';
+import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { NotificationSettings } from './notification-settings';
 import { trackEvent } from '../lib/analytics';
 import {
-  buildWorkspaceToolHref,
   readWorkspaceEventContext,
   saveWorkspaceEventContext,
   workspaceEventContextStorageKey,
-  type WorkspaceEventContext,
 } from './workspace-context';
 import './supporter-dashboard-pixl.css';
 import './supporter-game-on-summary.css';
@@ -371,6 +379,14 @@ export function SupporterDashboardView({
       refetchOnWindowFocus: true,
     },
   });
+  const trackerProjectsQuery = useListProjects({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getListProjectsQueryKey(), userId ?? null],
+      staleTime: 0,
+      refetchOnMount: 'always',
+    },
+  });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
   const [cardSelection, setCardSelection] = useState<{ kind: 'event' | 'share'; id: string; nonce: number } | null>(null);
   const [newCardDraft, setNewCardDraft] = useState<{
@@ -381,6 +397,54 @@ export function SupporterDashboardView({
     editing: boolean;
   } | null>(null);
   const [cardLayoutIds, setCardLayoutIds] = useState<Record<string, string>>({});
+  const [justCompleted, setJustCompleted] = useState<{ game: GameSession; saveStatus: 'cloud-saved' | 'local-saved' } | null>(null);
+  const [pendingCalendarSync, setPendingCalendarSync] = useState<PendingTrackerCalendarSync[]>([]);
+  const [retryingCalendarGameId, setRetryingCalendarGameId] = useState<string | null>(null);
+  const [calendarRetryError, setCalendarRetryError] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const refresh = () => setPendingCalendarSync(userId
+      ? readPendingTrackerCalendarSync(window.localStorage, userId)
+      : []);
+    refresh();
+    window.addEventListener(trackerCalendarSyncEvent, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(trackerCalendarSyncEvent, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [userId]);
+  const retryPendingCalendarSync = async (pending: PendingTrackerCalendarSync) => {
+    if (!userId || !onCompleteScheduledGame) return;
+    setRetryingCalendarGameId(pending.gameId);
+    setCalendarRetryError((current) => ({ ...current, [pending.gameId]: '' }));
+    try {
+      await onCompleteScheduledGame(pending.eventId, pending.completedAt);
+      clearPendingTrackerCalendarSync(window.localStorage, userId, pending.gameId);
+      window.dispatchEvent(new Event(trackerCalendarSyncEvent));
+    } catch {
+      setCalendarRetryError((current) => ({
+        ...current,
+        [pending.gameId]: 'Calendar still could not be marked Final. Check your connection and try again.',
+      }));
+    } finally {
+      setRetryingCalendarGameId(null);
+    }
+  };
+  useEffect(() => {
+    setJustCompleted(null);
+    if (!userId) return;
+    const showCompletion = () => {
+      const handoff = consumeCompletionHandoff(window.localStorage, userId);
+      if (!handoff) return;
+      const game = readStoredTrackerData(window.localStorage, userId).games.find(
+        (item) => item.id === handoff.gameId && item.status === 'final',
+      );
+      if (game) setJustCompleted({ game, saveStatus: handoff.saveStatus });
+    };
+    showCompletion();
+    window.addEventListener(trackerCompletionHandoffEvent, showCompletion);
+    return () => window.removeEventListener(trackerCompletionHandoffEvent, showCompletion);
+  }, [userId]);
   const nextNewCardNonce = useRef(0);
   const [isDesktopDashboard, setIsDesktopDashboard] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
@@ -460,7 +524,23 @@ export function SupporterDashboardView({
     }));
   const ownedGameOnShares: OwnedGameOnShare[] = [...serverCardShares, ...localCardShares];
   const trackerData = userId ? readStoredTrackerData(window.localStorage, userId) : null;
-  const completedLocalGames = trackerData?.games.filter((game) => game.status === 'final') ?? [];
+  const cloudTrackerProject = [...(trackerProjectsQuery.data ?? [])]
+    .filter((project) => project.project.tool === 'stat-tracker')
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+  const completedLocalGames = userId
+    ? combineTrackerReviewHistory(trackerData, cloudTrackerProject?.project).games.filter((game) => game.status === 'final')
+    : [];
+  const recordedGameForCard = (card: { type: string; date: string; opponent: string; eventId?: string }) => {
+    if (card.type !== 'game') return undefined;
+    const exact = card.eventId && completedLocalGames.find((game) => game.sourceEventId === card.eventId);
+    if (exact) return exact;
+    const matchesLegacy = (date: string, opponent: string) => (
+      date === card.date && opponent.trim().toLowerCase() === card.opponent.trim().toLowerCase()
+    );
+    const matchingCards = dashboardCards.filter((entry) => entry.type === 'game' && matchesLegacy(entry.date, entry.opponent));
+    const matchingGames = completedLocalGames.filter((game) => !game.sourceEventId && matchesLegacy(game.date, game.opponent));
+    return matchingCards.length === 1 && matchingGames.length === 1 ? matchingGames[0] : undefined;
+  };
   const scoredGameIds = userId ? readRecordedScoreGameIds(window.localStorage, userId) : new Set<string>();
   const recordSport = profile.sport ?? trackerData?.games.find((game) => game.status === 'final')?.sport ?? null;
   const gameRecord = buildSupporterGameRecord(trackerData?.games ?? [], scoredGameIds, recordSport);
@@ -496,7 +576,7 @@ export function SupporterDashboardView({
   const collectionCards = sortGameOnCardsByDate([
     ...dashboardCards
       .filter((card) => !replacedScheduleEventId || card.eventId !== replacedScheduleEventId)
-      .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id })),
+       .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id, recordedGameId: recordedGameForCard(card)?.id })),
     ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
   ]);
   const featuredCardId = getFeaturedGameOnCardId(collectionCards, currentTime);
@@ -640,20 +720,7 @@ export function SupporterDashboardView({
   const preparationTitle = preparationSchedule
     ? `${preparationCopy.title.replace(/\.$/, '')} — ${preparationSchedule}`
     : preparationCopy.title;
-  const toToolContext = (event: SupporterEvent | undefined): WorkspaceEventContext | undefined => event
-    ? {
-      id: event.id,
-      type: event.type,
-      date: event.date,
-      time: event.time,
-      location: event.location,
-      opponent: event.opponent ?? '',
-    }
-    : undefined;
-  const statTrackerHrefForGame = (game: SupporterEvent | undefined) => (
-    buildWorkspaceToolHref('stats', toToolContext(game))
-  );
-  const dashboardStatsHref = statTrackerHrefForGame(contextEvent?.type === 'game' ? contextEvent : undefined);
+  const dashboardStatsHref = '/studio/season-stats';
   useEffect(() => {
     if (!showStageReminder || !stageReminderGame || !stageReminderKey) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1200,6 +1267,33 @@ export function SupporterDashboardView({
 
     </div>
       </div>
+      {pendingCalendarSync.length > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-md space-y-2" data-testid="dashboard-pending-calendar-sync">
+          {pendingCalendarSync.map((pending) => (
+            <div key={pending.gameId} className="rounded-md border border-amber-400 bg-[#102b4b] p-4 text-white shadow-xl" role="alert">
+              <p className="text-sm font-semibold">Stats were saved, but Calendar has not marked this game Final yet.</p>
+              {calendarRetryError[pending.gameId] && <p className="mt-2 text-sm">{calendarRetryError[pending.gameId]}</p>}
+              <button
+                type="button"
+                className="mt-3 min-h-11 rounded-md bg-white px-4 text-xs font-bold text-[#102b4b] disabled:opacity-50"
+                disabled={!onCompleteScheduledGame || retryingCalendarGameId === pending.gameId}
+                onClick={() => void retryPendingCalendarSync(pending)}
+                data-testid={`button-dashboard-retry-calendar-${pending.gameId}`}
+              >
+                {retryingCalendarGameId === pending.gameId ? 'Updating Calendar…' : 'Retry Calendar update'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <TrackerCompletionDialog
+        game={justCompleted?.game ?? null}
+        open={Boolean(justCompleted)}
+        onOpenChange={(open) => { if (!open) setJustCompleted(null); }}
+        teamName={profile.teamName}
+        saveStatus={justCompleted?.saveStatus}
+        viewHref={justCompleted ? `/studio/season-stats?gameId=${encodeURIComponent(justCompleted.game.id)}` : undefined}
+      />
     </>
   );
 }

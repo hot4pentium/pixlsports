@@ -90,6 +90,7 @@ import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import { trackEvent } from '../lib/analytics';
 import { toStatTrackerShareInput } from './stat-tracker-share';
+import { saveCompletionHandoff } from './tracker-completion-handoff';
 
 const trackerBasePath = (
   (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
@@ -1526,7 +1527,11 @@ export function StatTrackerPage() {
       && nextGame.opponent === opponent
       ? nextGame
       : undefined;
-    setCurrentGame(createGameSession(sport, { date, opponent, notes, ...(sport === 'soccer' ? { soccerPeriodFormat } : {}) }));
+    setCurrentGame(createGameSession(sport, {
+      date, opponent, notes,
+      sourceEventId: activeScheduledGame.current?.id,
+      ...(sport === 'soccer' ? { soccerPeriodFormat } : {}),
+    }));
     setSoccerPeriodFormat(null);
     setShowUpcomingNotice(false);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'live');
@@ -1559,9 +1564,22 @@ export function StatTrackerPage() {
   };
 
   const syncTrackerData = async (nextData: StatTrackerData) => {
+    if (!accountId || !projects) {
+      throw new Error('Account history is still loading. Your game is safe on this device; retry cloud sync after it loads.');
+    }
+    const existing = projects
+      .filter((project) => project.project.tool === 'stat-tracker')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+    const safeData = existing ? mergeTrackerData(nextData, existing.project) : nextData;
+    if (safeData !== nextData && JSON.stringify(safeData) !== JSON.stringify(nextData)) {
+      setData(safeData);
+      saveLocalTracker(safeData, accountId);
+    }
     const saved = await syncTrackerDataToCloud({
-      data: nextData,
-      cloudProject,
+      data: safeData,
+      cloudProject: existing
+        ? { id: existing.id, revision: cloudProject?.id === existing.id ? cloudProject.revision : existing.revision }
+        : cloudProject,
       athleteName: profile.athleteName,
       guestUsageKey,
       client: {
@@ -1574,7 +1592,11 @@ export function StatTrackerPage() {
     await queryClient.invalidateQueries({ queryKey: getGetAccountAccessQueryKey() });
   };
 
-  const persistCompletedGame = async (completed: GameSession, share: StatTrackerShare | null = null) => {
+  const persistCompletedGame = async (
+    completed: GameSession,
+    share: StatTrackerShare | null = null,
+    handoffToDashboard = false,
+  ) => {
     if (shareUpdateTimer.current) {
       window.clearTimeout(shareUpdateTimer.current);
       shareUpdateTimer.current = null;
@@ -1591,8 +1613,13 @@ export function StatTrackerPage() {
     }
     setData(nextData);
     setCurrentGame(null);
-    setJustCompletedGame(completed);
-    setCompletionOpen(true);
+    if (handoffToDashboard) {
+      setJustCompletedGame(null);
+      setCompletionOpen(false);
+    } else {
+      setJustCompletedGame(completed);
+      setCompletionOpen(true);
+    }
     void publishTrackerShare(completed, share ?? undefined);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final', completed.endedAt);
     setSaving(true);
@@ -1602,11 +1629,13 @@ export function StatTrackerPage() {
     setRevisionConflict(false);
     setTrackerConflict(null);
     setSelectedConflictResolution(null);
+    let completionSaveStatus: 'cloud-saved' | 'local-saved' = 'local-saved';
     try {
       await syncTrackerData(nextData);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
       trackTrackerSyncOutcome('cloud_success', 'initial_save', completed.sport);
       setSaveStatus('cloud-saved');
+      completionSaveStatus = 'cloud-saved';
       announce('GAME SAVED — SEASON TOTALS UPDATED');
     } catch (saveError: any) {
       const recovery = getTrackerSyncRecovery(saveError);
@@ -1625,11 +1654,26 @@ export function StatTrackerPage() {
     } finally {
       setSaving(false);
     }
+    if (handoffToDashboard) {
+      try {
+        if (!accountId) throw new Error('No tracker account');
+        saveCompletionHandoff(window.localStorage, accountId, completed.id, completionSaveStatus);
+      } catch {
+        setError('Your game is saved on this device, but the dashboard handoff could not be saved. Open Game history here to review it, and check device storage before leaving.');
+        announce('GAME SAVED — DASHBOARD HANDOFF NEEDS ATTENTION');
+        return;
+      }
+      setLocation('/studio');
+    }
   };
 
   const saveCompletedGame = async (scoreRecorded: boolean, outcome: GameOutcome | null) => {
     if (!currentGame) return;
-    await persistCompletedGame(endGame({ ...currentGame, ...(outcome ? { outcome } : {}) }, new Date(), scoreRecorded), activeTrackerShare);
+    await persistCompletedGame(
+      endGame({ ...currentGame, ...(outcome ? { outcome } : {}) }, new Date(), scoreRecorded),
+      activeTrackerShare,
+      true,
+    );
   };
 
   const saveAthleteResult = async (capture: AthleteResultCapture) => {

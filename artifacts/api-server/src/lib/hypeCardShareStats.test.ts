@@ -41,6 +41,58 @@ test("a fresh Hype Card stats read reflects corrected finalized score and athlet
   assert.notEqual(before?.updatedAt, after?.updatedAt);
 });
 
+test("public projection uses validated final-correction score, tally, and athlete totals without exposing metadata", () => {
+  const result = computeHypeCardShareStats({
+    tool: "stat-tracker",
+    games: [{
+      sport: "soccer",
+      status: "final",
+      date: "2026-09-12",
+      opponent: "Northside",
+      score: 4,
+      opponentScore: 2,
+      scoreRecorded: true,
+      outcome: "win",
+      stats: { goal: 3, assist: 2 },
+      events: [
+        { statId: "goal", attribution: "team" },
+        { statId: "assist", attribution: "athlete" },
+      ],
+      finalCorrection: {
+        athleteStats: { goal: 2, assist: 1 },
+        correctedAt: "2026-09-15T12:00:00.000Z",
+      },
+    }],
+  }, "Jordan", "soccer", new Date("2026-09-15T12:00:00Z"));
+
+  assert.equal(result?.score, 4);
+  assert.deepEqual(result?.record, { wins: 1, losses: 0, ties: 0, gamesPlayed: 1 });
+  assert.deepEqual({ ...result?.stats }, { goal: 3, assist: 2 });
+  assert.deepEqual({ ...result?.games[0]?.athleteStats }, { goal: 2, assist: 1 });
+  assert.deepEqual(Object.keys(result?.games[0] ?? {}).sort(), [
+    "athleteStats", "date", "opponent", "opponentScore", "score", "scoreRecorded", "stats",
+  ]);
+});
+
+test("invalid correction metadata does not replace event-derived public athlete totals", () => {
+  const result = computeHypeCardShareStats({
+    tool: "stat-tracker",
+    games: [{
+      sport: "soccer",
+      status: "final",
+      score: 1,
+      opponentScore: 0,
+      stats: { goal: 1 },
+      events: [{ statId: "goal", attribution: "athlete" }],
+      finalCorrection: {
+        athleteStats: { goal: 2 },
+        correctedAt: "2026-09-15T12:00:00.000Z",
+      },
+    }],
+  }, "Jordan", "soccer", new Date());
+  assert.equal(result?.games[0]?.athleteStats.goal, 1);
+});
+
 test("aggregates only finalized games for the selected sport", () => {
   const updatedAt = new Date("2026-09-17T12:00:00.000Z");
   const result = computeHypeCardShareStats({

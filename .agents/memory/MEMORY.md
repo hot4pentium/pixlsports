@@ -72,3 +72,5 @@
 - [Standalone game summary](standalone-game-summary.md) — the top Game On card is notification-only and includes standalone Game On cards as well as Calendar games.
 - [Tracker result versus score](tracker-result-versus-score.md) — a marked win/loss/tie can exist without a score; never turn an unentered scoreboard into a 0–0 tie.
 - [Soccer period formats](soccer-period-formats.md) — ask for halves or quarters on new live soccer games; interpret older format-free games as halves.
+- [Season correction reconciliation](season-correction-reconciliation.md) — cloud history owns shared review IDs; normal tracker merges must preserve newer finalized corrections.
+- [Tracker Calendar completion](tracker-calendar-completion.md) — compact completion waits for Calendar Final; failures stay visible and retryable after the card closes.

@@ -1,0 +1,116 @@
+.season-stats {
+  --season-ink: #142b49;
+  --season-blue: #2474f5;
+  --season-muted: #596d85;
+  --season-line: #d8e3ef;
+  --season-paper: #f2f6fb;
+  --season-card: #fbfdff;
+  --season-accent: #d7e8ff;
+  color: var(--season-ink);
+  background: var(--season-paper);
+  min-height: 100dvh;
+  padding: clamp(24px, 4vw, 56px) clamp(18px, 4vw, 64px) 80px;
+  font-family: "DM Sans", "Avenir Next", sans-serif;
+}
+.season-stats * { box-sizing: border-box; }
+.season-stats button, .season-stats input, .season-stats select { font: inherit; }
+.season-stats button { cursor: pointer; }
+.season-stats button:disabled { opacity: .55; cursor: not-allowed; }
+.season-stats :is(button, input, select):focus-visible { outline: 2px solid var(--season-blue); outline-offset: 3px; }
+.season-stats__wrap { max-width: 1376px; margin: 0 auto; }
+.season-stats__eyebrow { margin: 0; color: var(--season-blue); font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.season-stats__masthead { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 31px; border-bottom: 1px solid var(--season-line); }
+.season-stats__title, .season-stats__heading, .season-stats__number, .season-stats__score, .season-stats__opponent { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 700; text-transform: uppercase; }
+.season-stats__title { font-size: clamp(52px, 8vw, 108px); line-height: .88; letter-spacing: -.025em; margin: 14px 0 12px; }
+.season-stats__intro { margin: 0; color: var(--season-muted); font-size: 14px; }
+.season-stats__team { text-align: right; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--season-muted); }
+.season-stats__team strong { display: block; color: var(--season-ink); font-size: 16px; letter-spacing: .02em; margin-top: 5px; }
+.season-stats__toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 13px; padding: 23px 0 26px; }
+.season-stats__filter { display: grid; gap: 7px; min-width: 160px; }
+.season-stats__filter span, .season-stats__field span { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .13em; color: var(--season-muted); }
+.season-stats__filter select, .season-stats__field input { width: 100%; min-height: 42px; border: 1px solid var(--season-line); border-radius: 4px; background: var(--season-card); color: var(--season-ink); padding: 8px 12px; }
+.season-stats__scope { margin-left: auto; font-size: 12px; color: var(--season-muted); }
+.season-stats__hero { display: grid; grid-template-columns: minmax(210px, 1.2fr) repeat(3, minmax(110px, .7fr)); background: var(--season-ink); color: #eaf3ff; border-radius: 5px; overflow: hidden; }
+.season-stats__hero-lead { padding: 29px 32px; background: #173a68; }
+.season-stats__hero-lead .season-stats__eyebrow { color: #90c0ff; }
+.season-stats__hero-lead strong { display: block; margin-top: 14px; font-family: "Barlow Condensed", sans-serif; font-size: clamp(33px, 3vw, 48px); text-transform: uppercase; line-height: 1; }
+.season-stats__hero-lead small { display: block; margin-top: 9px; font-size: 12px; color: #b5cae2; }
+.season-stats__metric { border-left: 1px solid #45617d; padding: 29px clamp(14px, 2.2vw, 30px); }
+.season-stats__metric span { display: block; color: #aec3db; font-size: 10px; text-transform: uppercase; letter-spacing: .14em; font-weight: 800; }
+.season-stats__number { display: block; margin-top: 11px; font-size: clamp(40px, 4vw, 62px); line-height: 1; }
+.season-stats__metric small { display: block; margin-top: 8px; color: #b5cae2; font-size: 11px; }
+.season-stats__section { margin-top: 43px; }
+.season-stats__section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 17px; }
+.season-stats__heading { font-size: clamp(28px, 3vw, 38px); line-height: 1; margin: 0; letter-spacing: .005em; }
+.season-stats__section-note { color: var(--season-muted); font-size: 12px; margin: 0; }
+.season-stats__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.season-stats__stat { background: var(--season-card); border: 1px solid var(--season-line); border-top: 3px solid var(--season-blue); border-radius: 3px; padding: 18px 20px 17px; }
+.season-stats__stat-name { color: var(--season-muted); font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.season-stats__stat-main { display: flex; align-items: baseline; gap: 9px; margin-top: 13px; }
+.season-stats__stat-main strong { font-family: "Barlow Condensed", sans-serif; font-size: 44px; line-height: 1; }
+.season-stats__stat-main span { color: var(--season-muted); font-size: 11px; }
+.season-stats__stat-credit { margin-top: 13px; padding-top: 10px; border-top: 1px solid var(--season-line); color: #17539a; font-size: 12px; font-weight: 750; }
+.season-stats__caveat { border-left: 3px solid var(--season-blue); background: #e9f1fb; padding: 13px 17px; margin: 17px 0 0; color: #405875; font-size: 12px; line-height: 1.55; }
+.season-stats__layout { display: grid; grid-template-columns: minmax(240px, 330px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.season-stats__log { border-top: 1px solid var(--season-line); }
+.season-stats__game { display: flex; width: 100%; align-items: center; gap: 14px; text-align: left; padding: 16px 10px; border: 0; border-bottom: 1px solid var(--season-line); background: transparent; color: var(--season-ink); transition: background .2s ease, transform .2s ease; }
+.season-stats__game:hover { background: #e6effa; transform: translateX(3px); }
+.season-stats__game.is-selected { background: var(--season-accent); box-shadow: inset 3px 0 var(--season-blue); }
+.season-stats__game-date { width: 45px; flex-shrink: 0; color: var(--season-blue); font-family: "Barlow Condensed", sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; line-height: 1; }
+.season-stats__game-date small { display: block; color: var(--season-muted); font-family: "DM Sans", sans-serif; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.season-stats__game-info { min-width: 0; flex: 1; }
+.season-stats__game-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.season-stats__game-info small { display: block; margin-top: 4px; color: var(--season-muted); font-size: 11px; }
+.season-stats__game-score { font-family: "Barlow Condensed", sans-serif; font-size: 22px; font-weight: 700; white-space: nowrap; }
+.season-stats__article { background: var(--season-card); border: 1px solid var(--season-line); border-radius: 4px; overflow: hidden; }
+.season-stats__article-top { padding: clamp(20px, 3vw, 34px); background: #e6eff9; border-bottom: 1px solid var(--season-line); }
+.season-stats__article-heading { display: flex; justify-content: space-between; align-items: start; gap: 15px; }
+.season-stats__opponent { margin: 9px 0 0; font-size: clamp(34px, 4vw, 54px); line-height: 1; }
+.season-stats__result { display: inline-flex; margin-top: 10px; padding: 5px 9px; border: 1px solid #b8cce3; color: #295580; font-size: 10px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; white-space: nowrap; }
+.season-stats__score { display: block; margin-top: 18px; font-size: clamp(42px, 6vw, 72px); line-height: 1; letter-spacing: -.02em; }
+.season-stats__score small { font-family: "DM Sans", sans-serif; color: var(--season-muted); font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.season-stats__article-body { padding: clamp(20px, 3vw, 34px); }
+.season-stats__box { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 9px; margin-top: 17px; }
+.season-stats__box-item { border: 1px solid var(--season-line); padding: 13px; background: #f5f9fe; }
+.season-stats__box-item span { display: block; min-height: 28px; color: var(--season-muted); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.season-stats__box-item strong { display: block; font-family: "Barlow Condensed", sans-serif; font-size: 30px; line-height: 1.1; }
+.season-stats__box-item small { display: block; color: #2564ab; font-size: 10px; font-weight: 700; }
+.season-stats__comparison { border-top: 1px solid var(--season-line); margin-top: 27px; padding-top: 23px; }
+.season-stats__comparison-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--season-line); font-size: 12px; }
+.season-stats__comparison-row strong { color: var(--season-blue); }
+.season-stats__comparison-row span:last-child { color: var(--season-muted); }
+.season-stats__action { border: 1px solid var(--season-blue); border-radius: 3px; background: var(--season-blue); color: #f6faff; padding: 11px 16px; min-height: 42px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; transition: opacity .2s ease, transform .2s ease; }
+.season-stats__action:hover:not(:disabled) { transform: translateY(-2px); }
+.season-stats__action--quiet { color: var(--season-ink); background: transparent; border-color: var(--season-line); }
+.season-stats__actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 25px; }
+.season-stats__edit { border-top: 1px solid var(--season-line); margin-top: 25px; padding-top: 23px; }
+.season-stats__edit-intro { color: var(--season-muted); font-size: 12px; line-height: 1.5; }
+.season-stats__score-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.season-stats__field { display: grid; gap: 7px; }
+.season-stats__check { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; }
+.season-stats__check input { width: 17px; height: 17px; accent-color: var(--season-blue); }
+.season-stats__edit-row { display: grid; grid-template-columns: minmax(100px, 1fr) repeat(2, minmax(80px, 125px)); align-items: end; gap: 12px; border-top: 1px solid var(--season-line); padding: 13px 0; }
+.season-stats__edit-row > strong { padding-bottom: 11px; font-size: 12px; }
+.season-stats__message { margin: 14px 0 0; color: #17539a; font-size: 12px; font-weight: 700; }
+.season-stats__message--error { color: #a53637; }
+.season-stats__empty { padding: 42px 24px; background: var(--season-card); border: 1px dashed var(--season-line); text-align: center; color: var(--season-muted); font-size: 13px; }
+.season-stats__charts { margin-top: 25px; }
+.season-stats__charts > div { margin-top: 12px; }
+.season-stats__charts .bg-card { background: var(--season-card); }
+.season-stats__charts .bg-background { background: var(--season-paper); }
+@media (max-width: 850px) {
+  .season-stats__layout { grid-template-columns: 1fr; }
+  .season-stats__log { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+}
+@media (max-width: 640px) {
+  .season-stats__masthead { align-items: start; flex-direction: column; }
+  .season-stats__team { text-align: left; }
+  .season-stats__hero { grid-template-columns: repeat(3, 1fr); }
+  .season-stats__hero-lead { grid-column: 1 / -1; padding: 23px; }
+  .season-stats__metric { padding: 20px 12px; }
+  .season-stats__number { font-size: 37px; }
+  .season-stats__scope { width: 100%; margin-left: 0; }
+  .season-stats__log { grid-template-columns: 1fr; }
+  .season-stats__edit-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .season-stats__edit-row > strong { grid-column: 1 / -1; padding-bottom: 0; }
+}

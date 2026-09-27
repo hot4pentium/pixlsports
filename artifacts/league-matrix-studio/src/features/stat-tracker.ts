@@ -39,6 +39,19 @@ export type StatEvent = {
 export type YardStats = Record<string, number>;
 export type GameOutcome = 'win' | 'loss' | 'tie';
 export type SoccerPeriodFormat = 'halves' | 'quarters';
+export type FinalGameCorrectionInput = {
+  score: number;
+  opponentScore: number;
+  scoreRecorded: boolean;
+  outcome: GameOutcome | null;
+  stats: Record<string, number>;
+  athleteStats: Record<string, number>;
+};
+
+export type FinalCorrection = {
+  athleteStats: Record<string, number>;
+  correctedAt: string;
+};
 
 export function outcomeFromScore(score: number, opponentScore: number): GameOutcome {
   return score > opponentScore ? 'win' : score < opponentScore ? 'loss' : 'tie';
@@ -56,6 +69,7 @@ export function getGameOutcome(game: GameSession): GameOutcome | null {
 
 export type GameSession = {
   id: string;
+  sourceEventId?: string;
   sport: Sport;
   status: GameStatus;
   date: string;
@@ -73,6 +87,7 @@ export type GameSession = {
   events: StatEvent[];
   startedAt: string;
   endedAt?: string;
+  finalCorrection?: FinalCorrection;
 };
 
 export type StatTrackerData = {
@@ -288,9 +303,13 @@ function normalizeYardStats(value: unknown): YardStats {
 }
 
 function normalizeGameSession(game: GameSession): GameSession {
-  const { soccerPeriodFormat: _untrustedFormat, ...rest } = game;
+  const { soccerPeriodFormat: _untrustedFormat, sourceEventId: _untrustedSourceEventId, finalCorrection: _untrustedCorrection, ...rest } = game;
+  const finalCorrection = normalizeFinalCorrection(game.finalCorrection, game.sport, game.stats);
   return {
     ...rest,
+    ...(typeof game.sourceEventId === 'string' && game.sourceEventId.trim()
+      ? { sourceEventId: game.sourceEventId }
+      : {}),
     ...(game.sport === 'soccer' && (
       game.soccerPeriodFormat === 'halves'
       || game.soccerPeriodFormat === 'quarters'
@@ -298,6 +317,7 @@ function normalizeGameSession(game: GameSession): GameSession {
     ) ? { soccerPeriodFormat: game.soccerPeriodFormat } : {}),
     trackYards: game.sport === 'football' && game.trackYards === true,
     yardStats: normalizeYardStats(game.yardStats),
+    ...(finalCorrection ? { finalCorrection } : {}),
     events: Array.isArray(game.events)
       ? game.events.map((event) => ({
         ...event,
@@ -309,6 +329,33 @@ function normalizeGameSession(game: GameSession): GameSession {
       }))
       : [],
   };
+}
+
+function isStatCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+}
+
+function normalizeFinalCorrection(
+  value: unknown,
+  sport: Sport,
+  stats: Record<string, number>,
+): FinalCorrection | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  if (!stats || typeof stats !== 'object' || !sportRules[sport]) return undefined;
+  const correction = value as { athleteStats?: unknown; correctedAt?: unknown };
+  if (typeof correction.correctedAt !== 'string' || !Number.isFinite(Date.parse(correction.correctedAt))) {
+    return undefined;
+  }
+  if (!correction.athleteStats || typeof correction.athleteStats !== 'object' || Array.isArray(correction.athleteStats)) {
+    return undefined;
+  }
+  const allowedIds = new Set(sportRules[sport].stats.map(({ id }) => id));
+  const athleteStats: Record<string, number> = {};
+  for (const [statId, count] of Object.entries(correction.athleteStats)) {
+    if (!allowedIds.has(statId) || !isStatCount(count) || count > (stats[statId] ?? 0)) return undefined;
+    athleteStats[statId] = count;
+  }
+  return { athleteStats, correctedAt: new Date(correction.correctedAt).toISOString() };
 }
 
 export const sportRules: Record<Sport, SportRule> = {
@@ -438,11 +485,12 @@ export function isSport(value: unknown): value is Sport {
 
 export function createGameSession(
   sport: Sport,
-  input: { date?: string; opponent?: string; notes?: string; soccerPeriodFormat?: SoccerPeriodFormat | null },
+  input: { date?: string; opponent?: string; notes?: string; sourceEventId?: string; soccerPeriodFormat?: SoccerPeriodFormat | null },
   now = new Date(),
 ): GameSession {
   return {
     id: `tracker-game-${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+    ...(input.sourceEventId ? { sourceEventId: input.sourceEventId } : {}),
     sport,
     status: 'live',
     date: input.date ?? now.toISOString().slice(0, 10),
@@ -581,10 +629,21 @@ export function addFootballPassReception(
 }
 
 export function countStatEventsByAttribution(
-  game: Pick<GameSession, 'events'>,
+  game: Pick<GameSession, 'events'> & Partial<Pick<GameSession, 'status' | 'stats' | 'finalCorrection'>>,
   statIds: string | readonly string[],
 ): Record<StatAttribution, number> {
   const ids = new Set(Array.isArray(statIds) ? statIds : [statIds]);
+  if (game.status === 'final' && game.finalCorrection && game.stats) {
+    let athlete = 0;
+    let total = 0;
+    for (const statId of ids) {
+      const statTotal = game.stats[statId] ?? 0;
+      const athleteTotal = game.finalCorrection.athleteStats[statId] ?? 0;
+      total += statTotal;
+      athlete += athleteTotal;
+    }
+    return { team: total - athlete, athlete };
+  }
   return game.events.reduce<Record<StatAttribution, number>>((counts, event) => {
     if (ids.has(event.statId)) counts[event.attribution === 'athlete' ? 'athlete' : 'team'] += 1;
     return counts;
@@ -698,6 +757,59 @@ export function endGame(
   return { ...game, status: 'final', scoreRecorded, endedAt: now.toISOString() };
 }
 
+export function applyFinalGameCorrection(
+  game: GameSession,
+  input: FinalGameCorrectionInput,
+  now = new Date(),
+): GameSession {
+  if (game.status !== 'final') throw new Error('Only final games can be corrected.');
+  const isOutcome = input.outcome === null
+    || input.outcome === 'win'
+    || input.outcome === 'loss'
+    || input.outcome === 'tie';
+  if (!isOutcome) throw new Error('Outcome must be win, loss, tie, or null.');
+  if (typeof input.scoreRecorded !== 'boolean') throw new Error('Score-recorded flag must be true or false.');
+  if (!isStatCount(input.score) || !isStatCount(input.opponentScore)) {
+    throw new Error('Scores must be finite nonnegative integers.');
+  }
+  const allowedIds = new Set(sportRules[game.sport].stats.map(({ id }) => id));
+  const validateStats = (stats: unknown, label: string): Record<string, number> => {
+    if (!stats || typeof stats !== 'object' || Array.isArray(stats)) {
+      throw new Error(`${label} must be a stat-count object.`);
+    }
+    const result: Record<string, number> = {};
+    for (const [statId, count] of Object.entries(stats)) {
+      if (!allowedIds.has(statId)) throw new Error(`Stat "${statId}" is not valid for ${game.sport}.`);
+      if (!isStatCount(count)) throw new Error(`Stat "${statId}" must be a finite nonnegative integer.`);
+      result[statId] = count;
+    }
+    return result;
+  };
+  const stats = validateStats(input.stats, 'Stats');
+  const athleteStats = validateStats(input.athleteStats, 'Athlete stats');
+  for (const [statId, count] of Object.entries(athleteStats)) {
+    if (count > (stats[statId] ?? 0)) {
+      throw new Error(`Athlete ${statId} total cannot exceed the combined total.`);
+    }
+  }
+  if (input.scoreRecorded && input.outcome && outcomeFromScore(input.score, input.opponentScore) !== input.outcome) {
+    throw new Error('Explicit outcome must match the recorded score.');
+  }
+  const outcome = input.outcome ?? (input.scoreRecorded
+    ? outcomeFromScore(input.score, input.opponentScore)
+    : undefined);
+  const { outcome: _previousOutcome, ...gameWithoutOutcome } = game;
+  return {
+    ...gameWithoutOutcome,
+    score: input.score,
+    opponentScore: input.opponentScore,
+    scoreRecorded: input.scoreRecorded,
+    ...(outcome ? { outcome } : {}),
+    stats,
+    finalCorrection: { athleteStats, correctedAt: now.toISOString() },
+  };
+}
+
 export function normalizeTrackerData(value: unknown): StatTrackerData {
   const input = typeof value === 'object' && value !== null ? value as Partial<StatTrackerData> : {};
   const games = Array.isArray(input.games)
@@ -730,14 +842,36 @@ export function mergeTrackerData(localValue: unknown, cloudValue: unknown): Stat
   const local = normalizeTrackerData(localValue);
   const cloud = normalizeTrackerData(cloudValue);
   const localGameIds = new Set(local.games.map((game) => game.id));
+  const cloudById = new Map(cloud.games.map((game) => [game.id, game]));
 
   return {
     version: 1,
     games: [
-      ...local.games,
+      ...local.games.map((game) => {
+        const cloudGame = cloudById.get(game.id);
+        const cloudCorrection = Date.parse(cloudGame?.finalCorrection?.correctedAt ?? '') || 0;
+        const localCorrection = Date.parse(game.finalCorrection?.correctedAt ?? '') || 0;
+        // A finalized correction is authoritative even when this device has an older
+        // same-ID copy. Keep local-first behavior for other, potentially unsynced plays.
+        return game.status === 'final' && cloudGame?.status === 'final'
+          && cloudCorrection > 0 && cloudCorrection >= localCorrection
+          ? cloudGame
+          : game;
+      }),
       ...cloud.games.filter((game) => !localGameIds.has(game.id)),
     ],
   };
+}
+
+/** Cloud history is authoritative for shared IDs; device-only games remain visible. */
+export function combineTrackerReviewHistory(localValue: unknown, cloudValue: unknown): StatTrackerData {
+  const local = normalizeTrackerData(localValue);
+  const cloud = normalizeTrackerData(cloudValue);
+  const merged = new Map<string, GameSession>(cloud.games.map((game) => [game.id, game]));
+  for (const game of local.games) {
+    if (!merged.has(game.id)) merged.set(game.id, game);
+  }
+  return { version: 1, games: [...merged.values()] };
 }
 
 export function getPreferredTrackerSport(value: unknown, fallback: Sport): Sport {
@@ -838,7 +972,7 @@ export function seasonTotals(games: GameSession[], sport: Sport) {
   for (const game of games) {
     if (game.sport !== sport || game.status !== 'final') continue;
     gamesPlayed += 1;
-    score += game.score;
+    if (hasRecordedGameScore(game)) score += game.score;
     for (const [statId, count] of Object.entries(game.stats)) {
       totals[statId] = (totals[statId] ?? 0) + count;
     }
@@ -880,6 +1014,7 @@ export function buildGameReport(
   const seasonToDate = seasonTotals(completedGames.slice(0, selectedIndex + 1), sport);
   const seasonToDateYards = seasonYardTotals(completedGames.slice(0, selectedIndex + 1), sport);
   const divisor = Math.max(1, seasonToDate.gamesPlayed);
+  const scoredGameCount = Math.max(1, completedGames.slice(0, selectedIndex + 1).filter(hasRecordedGameScore).length);
   const averageStats = Object.fromEntries(
     Object.entries(seasonToDate.stats).map(([statId, total]) => [statId, total / divisor]),
   );
@@ -895,7 +1030,7 @@ export function buildGameReport(
     seasonToDate,
     seasonToDateYards,
     averages: {
-      score: seasonToDate.score / divisor,
+      score: seasonToDate.score / scoredGameCount,
       stats: averageStats,
       yards: averageYards,
     },

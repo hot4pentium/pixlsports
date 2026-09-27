@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { CircleStop, ExternalLink, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react';
 import {
   addStatEvent,
@@ -24,6 +24,8 @@ import { buildWorkspaceToolHref } from './workspace-context';
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
+import { saveCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
+import { clearPendingTrackerCalendarSync, savePendingTrackerCalendarSync, trackerCalendarSyncEvent } from './tracker-calendar-sync';
 import './game-on-inline-stat-tracker.css';
 
 type GameOnInlineStatTrackerProps = {
@@ -39,16 +41,22 @@ type GameOnInlineStatTrackerProps = {
   onGameEnded?: (completedAt: string) => Promise<void>;
 };
 
-function eventMatchesGame(game: GameSession, date: string, opponent: string) {
+function eventMatchesGame(game: GameSession, date: string, opponent: string, eventId?: string) {
+  if (game.sourceEventId) return game.sourceEventId === eventId;
   return game.date === date
     && game.opponent.trim().toLowerCase() === opponent.trim().toLowerCase();
 }
 
-function findCompletedGame(userId: string, date: string, opponent: string) {
+function findCompletedGame(userId: string, date: string, opponent: string, eventId?: string) {
   const { games } = readStoredTrackerData(window.localStorage, userId);
-  return [...games].reverse().find((candidate) => (
-    candidate.status === 'final' && eventMatchesGame(candidate, date, opponent)
-  )) ?? null;
+  const exact = eventId && [...games].reverse().find((candidate) => (
+    candidate.status === 'final' && candidate.sourceEventId === eventId
+  ));
+  if (exact) return exact;
+  const legacy = games.filter((candidate) => (
+    candidate.status === 'final' && !candidate.sourceEventId && eventMatchesGame(candidate, date, opponent, eventId)
+  ));
+  return legacy.length === 1 ? legacy[0] : null;
 }
 
 function initials(name: string) {
@@ -68,6 +76,7 @@ export function GameOnInlineStatTracker({
   opponent,
   onGameEnded,
 }: GameOnInlineStatTrackerProps) {
+  const [, setLocation] = useLocation();
   const titleId = useId();
   const endConfirmationId = useId();
   const endConfirmationHeadingId = useId();
@@ -131,6 +140,7 @@ export function GameOnInlineStatTracker({
       const next = createGameSession(nextSport, {
         date,
         opponent,
+        sourceEventId: eventId,
         ...(nextSport === 'soccer' ? { soccerPeriodFormat: null } : {}),
       });
       saveStoredActiveGame(window.localStorage, userId, next);
@@ -160,10 +170,10 @@ export function GameOnInlineStatTracker({
     try {
       const activeGame = readStoredActiveGame(window.localStorage, userId);
       if (activeGame) {
-        if (eventMatchesGame(activeGame, date, opponent)) setCurrentGame(activeGame);
+        if (eventMatchesGame(activeGame, date, opponent, eventId)) setCurrentGame(activeGame);
         else setOtherActiveGame(activeGame);
       } else {
-        const completed = findCompletedGame(userId, date, opponent);
+        const completed = findCompletedGame(userId, date, opponent, eventId);
         if (completed) setCompletedGame(completed);
         else createEventGame();
       }
@@ -185,13 +195,13 @@ export function GameOnInlineStatTracker({
         if (!activeGame) {
           setOtherActiveGame(null);
           setCurrentGame(null);
-          const completed = findCompletedGame(userId, date, opponent);
+          const completed = findCompletedGame(userId, date, opponent, eventId);
           setCompletedGame(completed);
           setEndedElsewhere(!completed);
           return;
         }
         setEndedElsewhere(false);
-        if (eventMatchesGame(activeGame, date, opponent)) {
+        if (eventMatchesGame(activeGame, date, opponent, eventId)) {
           setOtherActiveGame(null);
           setCompletedGame(null);
           setCurrentGame(activeGame);
@@ -206,7 +216,7 @@ export function GameOnInlineStatTracker({
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, [userId, date, opponent]);
+  }, [userId, date, opponent, eventId]);
 
   const updateGame = (change: (current: GameSession) => GameSession) => {
     const current = currentGameRef.current;
@@ -223,11 +233,20 @@ export function GameOnInlineStatTracker({
   };
 
   const syncCompletedGameToCalendar = async (completed: GameSession) => {
-    if (!onGameEnded) return;
+    if (!onGameEnded) return true;
     setCalendarStatusSyncing(true);
     setCalendarStatusSyncError('');
     try {
       await onGameEnded(completed.endedAt ?? new Date().toISOString());
+      if (userId) {
+        try {
+          clearPendingTrackerCalendarSync(window.localStorage, userId, completed.id);
+          window.dispatchEvent(new Event(trackerCalendarSyncEvent));
+        } catch {
+          // A successful Calendar update remains successful even if cleanup storage is unavailable.
+        }
+      }
+      return true;
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error ? error.status : null;
       setCalendarStatusSyncError(
@@ -235,12 +254,34 @@ export function GameOnInlineStatTracker({
           ? 'Stats are saved on this device, but Calendar changed while this game was open. Retry to update the latest schedule.'
           : 'Stats are saved on this device, but the Calendar game could not be marked Final. Check your connection and retry the Calendar update.',
       );
+      if (userId) {
+        try {
+          savePendingTrackerCalendarSync(window.localStorage, userId, {
+            eventId, gameId: completed.id, completedAt: completed.endedAt ?? new Date().toISOString(),
+          });
+          window.dispatchEvent(new Event(trackerCalendarSyncEvent));
+        } catch {
+          setCalendarStatusSyncError('Stats are saved, but Calendar could not be updated or queued for retry. Keep this tracker open and retry the Calendar update.');
+        }
+      }
+      return false;
     } finally {
       setCalendarStatusSyncing(false);
     }
   };
 
-  const finishGame = () => {
+  const finishDashboardHandoff = (completed: GameSession) => {
+    if (!userId) return;
+    try {
+      saveCompletionHandoff(window.localStorage, userId, completed.id, 'local-saved');
+      window.dispatchEvent(new Event(trackerCompletionHandoffEvent));
+      setLocation('/studio');
+    } catch {
+      setError('Stats and Calendar are saved, but the dashboard completion could not open. Open the full tracker to review this game.');
+    }
+  };
+
+  const finishGame = async () => {
     const current = currentGameRef.current;
     if (!current || !userId) return;
     try {
@@ -253,16 +294,15 @@ export function GameOnInlineStatTracker({
       window.localStorage.setItem(getTrackerStorageKeys(userId).history, JSON.stringify(nextData));
       saveStoredActiveGame(window.localStorage, userId, null);
       setCurrentGame(null);
-      focusCompletedStatusOnEnd.current = false;
       setCompletedGame(completed);
-      setCompletionOpen(true);
+      focusCompletedStatusOnEnd.current = false;
       setOtherActiveGame(null);
       setEndedElsewhere(false);
       setConfirmEndGame(false);
       setError('');
-      void syncCompletedGameToCalendar(completed);
+      if (await syncCompletedGameToCalendar(completed)) finishDashboardHandoff(completed);
     } catch {
-      setError('The game could not be ended. Your live stats are still saved on this device.');
+      setError('The game could not be saved and handed off. Keep this tracker open, check device storage, and try ending the game again.');
     }
   };
 
@@ -321,14 +361,14 @@ export function GameOnInlineStatTracker({
                 type="button"
                 className="game-on-quick-tracker__primary"
                 disabled={calendarStatusSyncing}
-                onClick={() => { if (completedGame) void syncCompletedGameToCalendar(completedGame); }}
+                onClick={() => { if (completedGame) void syncCompletedGameToCalendar(completedGame).then((synced) => { if (synced) finishDashboardHandoff(completedGame); }); }}
                 data-testid="button-inline-retry-calendar-sync"
               >
                 Retry Calendar update
               </button>
             </div>
           )}
-          <button type="button" onClick={createEventGame} className="game-on-quick-tracker__primary" data-testid="button-inline-new-tracker">Start another tracker</button>
+          <button type="button" onClick={createEventGame} disabled={calendarStatusSyncing || Boolean(calendarStatusSyncError)} className="game-on-quick-tracker__primary" data-testid="button-inline-new-tracker">Start another tracker</button>
         </div>
       ) : error && !game ? (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">{error}</p>

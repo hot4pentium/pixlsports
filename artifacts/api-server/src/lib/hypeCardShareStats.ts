@@ -43,6 +43,32 @@ function collectAthleteStats(value: unknown) {
   return totals;
 }
 
+const CORRECTABLE_STAT_IDS: Record<HypeCardSport, ReadonlySet<string>> = {
+  basketball: new Set(["one-point", "two-point", "three-point", "rebound", "assist", "steal", "block", "turnover", "foul"]),
+  football: new Set(["touchdown", "field-goal", "extra-point", "two-point-conversion", "pass-yard", "rush-yard", "reception", "tackle", "interception", "sack"]),
+  soccer: new Set(["goal", "assist", "shot", "shot-on-target", "save", "yellow-card", "red-card"]),
+  baseball: new Set(["run", "hit", "single", "double", "triple", "rbi", "home-run", "strikeout", "walk", "stolen-base", "pitch", "fastball", "changeup", "slider", "curveball", "four-seam-fastball", "two-seam-fastball"]),
+  softball: new Set(["run", "hit", "rbi", "home-run", "strikeout", "walk", "stolen-base", "pitch"]),
+  volleyball: new Set(["kill", "ace", "block", "dig", "assist", "service-error", "reception"]),
+};
+
+function collectCorrectedAthleteStats(value: unknown, sport: HypeCardSport, stats: Record<string, number>) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const correction = value as { athleteStats?: unknown; correctedAt?: unknown };
+  if (typeof correction.correctedAt !== "string" || !Number.isFinite(Date.parse(correction.correctedAt))) return null;
+  if (!correction.athleteStats || typeof correction.athleteStats !== "object" || Array.isArray(correction.athleteStats)) return null;
+  const result = Object.create(null) as Record<string, number>;
+  for (const [statId, count] of Object.entries(correction.athleteStats)) {
+    if (!CORRECTABLE_STAT_IDS[sport].has(statId)
+      || typeof count !== "number"
+      || !Number.isSafeInteger(count)
+      || count < 0
+      || count > (stats[statId] ?? 0)) return null;
+    result[statId] = count;
+  }
+  return result;
+}
+
 function safeScore(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
 }
@@ -96,10 +122,12 @@ export function computeHypeCardShareStats(
       outcome?: unknown;
       stats?: unknown;
       events?: unknown;
+      finalCorrection?: unknown;
     };
     if (item.sport !== sport || item.status !== "final") continue;
     const gameStats = collectSafeStats(item.stats);
-    const athleteStats = collectAthleteStats(item.events);
+    const correctedAthleteStats = collectCorrectedAthleteStats(item.finalCorrection, sport, gameStats);
+    const athleteStats = correctedAthleteStats ?? collectAthleteStats(item.events);
     gamesPlayed += 1;
     const gameScore = safeScore(item.score);
     const scoreRecorded = hasRecordedScoreline(item);

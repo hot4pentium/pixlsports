@@ -198,6 +198,9 @@ const PublicMeetingRecapPage = lazy(() =>
 const StatTrackerPage = lazy(() =>
   import('@/features/stat-tracker-page').then(({ StatTrackerPage }) => ({ default: StatTrackerPage })),
 );
+const SeasonStatsPage = lazy(() =>
+  import('@/features/season-stats-page').then(({ SeasonStatsPage }) => ({ default: SeasonStatsPage })),
+);
 const PublicStatTrackerPage = lazy(() =>
   import('@/features/stat-tracker-spectator').then(({ PublicStatTrackerPage }) => ({ default: PublicStatTrackerPage })),
 );
@@ -4362,6 +4365,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
+               <Route path="/studio/season-stats"><ProtectedEditor kind="stat-tracker"><SeasonStatsPage /></ProtectedEditor></Route>
                 <Route path="/studio/checklist"><ChecklistRoutePage /></Route>
               <Route path="/help" component={Help} />
               <Route path="/privacy" component={Privacy} />

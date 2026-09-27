@@ -128,7 +128,7 @@ export function TrackerCompletionDialog({
             {outcome && <p className="mt-2 text-center text-xs font-bold uppercase tracking-widest text-primary-ink" data-testid="tracker-completion-outcome">{outcomeLabels[outcome]}</p>}
           </div>
           <p className="mt-5 text-sm leading-relaxed">
-            Your stats are in <strong>Stat Tracker → Game history</strong>. Open this game there for the full Game Report and season totals.
+             Your stats are in <strong>Season stats</strong>. Open this game there for the full report and season totals.
           </p>
           <p className="mt-2 text-xs text-muted-foreground" role="status">
             {saveStatus === 'saving' ? 'Saved on this device. Syncing your cloud history…'
@@ -138,7 +138,7 @@ export function TrackerCompletionDialog({
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             {onViewStats && <button type="button" onClick={onViewStats} className="min-h-11 flex-1 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="button-completion-view-stats">View game stats</button>}
-            {viewHref && <Link href={viewHref} onClick={() => onOpenChange(false)} className="inline-flex min-h-11 flex-1 items-center justify-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="button-completion-view-stats">Open Stat Tracker</Link>}
+             {viewHref && <Link href={viewHref} onClick={() => onOpenChange(false)} className="inline-flex min-h-11 flex-1 items-center justify-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="button-completion-view-stats">{viewHref.startsWith('/studio/season-stats') ? 'View game stats' : 'Open Stat Tracker'}</Link>}
             <button type="button" onClick={() => onOpenChange(false)} className="min-h-11 border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-completion-done">Done</button>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { SoccerPeriodChoice } from './tracker-period-controls';
 import {
   addFootballPassReception,
   addStatEvent,
+  applyFinalGameCorrection,
   advanceGamePeriod,
   adjustYardValue,
   adjustScore,
@@ -135,6 +136,78 @@ test('a manually marked result survives saving even when no score was recorded',
     outcome: 'loss',
   });
   assert.equal(getGameOutcome(normalizeTrackerData({ version: 1, games: [markedLoss] }).games[0]), 'loss');
+});
+
+test('corrects an older final game without changing its event history and round trips normalized correction data', () => {
+  const now = new Date('2026-09-25T20:00:00.000Z');
+  const withPlay = addFootballPassReception(
+    createGameSession('football', { opponent: 'Northside', trackYards: true }, now),
+    now,
+    18,
+    'athlete',
+  );
+  const finished = endGame(withPlay, now, true);
+  const originalEvents = structuredClone(finished.events);
+  const corrected = applyFinalGameCorrection(finished, {
+    score: 21,
+    opponentScore: 14,
+    scoreRecorded: true,
+    outcome: 'win',
+    stats: { 'pass-yard': 3, reception: 1, touchdown: 2 },
+    athleteStats: { 'pass-yard': 2, reception: 1, touchdown: 1 },
+  }, now);
+
+  assert.deepEqual(corrected.events, originalEvents);
+  assert.deepEqual(corrected.events.map(({ playId }) => playId), originalEvents.map(({ playId }) => playId));
+  assert.deepEqual(corrected.stats, { 'pass-yard': 3, reception: 1, touchdown: 2 });
+  assert.deepEqual(countStatEventsByAttribution(corrected, ['pass-yard', 'reception']), { team: 1, athlete: 3 });
+  assert.equal(corrected.score, 21);
+  assert.equal(corrected.outcome, 'win');
+  assert.deepEqual(corrected.finalCorrection, {
+    athleteStats: { 'pass-yard': 2, reception: 1, touchdown: 1 },
+    correctedAt: now.toISOString(),
+  });
+  const restored = normalizeTrackerData({ version: 1, games: [corrected] }).games[0]!;
+  assert.deepEqual(restored.finalCorrection, corrected.finalCorrection);
+  assert.deepEqual(restored.events, originalEvents);
+  assert.equal(seasonTotals([restored], 'football').score, 21);
+});
+
+test('final correction rejects nonfinal games, invalid stats, athlete overages, and incoherent scores', () => {
+  const now = new Date('2026-09-25T20:00:00.000Z');
+  const live = createGameSession('basketball', {}, now);
+  const final = endGame(live, now);
+  const input = {
+    score: 3,
+    opponentScore: 2,
+    scoreRecorded: true,
+    outcome: 'win' as const,
+    stats: { assist: 2 },
+    athleteStats: { assist: 1 },
+  };
+  assert.throws(() => applyFinalGameCorrection(live, input, now), /Only final games/);
+  assert.throws(() => applyFinalGameCorrection(final, { ...input, stats: { madeup: 2 } }, now), /not valid/);
+  assert.throws(() => applyFinalGameCorrection(final, { ...input, stats: { assist: 1.5 } }, now), /integer/);
+  assert.throws(() => applyFinalGameCorrection(final, { ...input, athleteStats: { assist: 3 } }, now), /cannot exceed/);
+  assert.throws(() => applyFinalGameCorrection(final, { ...input, outcome: 'loss' }, now), /match the recorded score/);
+});
+
+test('an unrecorded corrected score can preserve a manual result without fabricating a score', () => {
+  const now = new Date('2026-09-25T20:00:00.000Z');
+  const final = endGame(createGameSession('basketball', {}, now), now, false);
+  const corrected = applyFinalGameCorrection(final, {
+    score: 0,
+    opponentScore: 0,
+    scoreRecorded: false,
+    outcome: 'loss',
+    stats: {},
+    athleteStats: {},
+  }, now);
+  assert.equal(corrected.scoreRecorded, false);
+  assert.equal(corrected.score, 0);
+  assert.equal(corrected.opponentScore, 0);
+  assert.equal(corrected.outcome, 'loss');
+  assert.equal(getGameOutcome(corrected), 'loss');
 });
 
 test('supporters can explicitly choose any game result', () => {
@@ -1475,7 +1548,7 @@ test('game reports calculate season-to-date values through the selected game', (
     score: 1,
     stats: { goal: 1, assist: 2 },
   });
-  assert.equal(report.averages.score, 0.5);
+  assert.equal(report.averages.score, 1); // Games without a recorded score do not lower the average.
   assert.equal(report.averages.stats.assist, 1);
 });
 

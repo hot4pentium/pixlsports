@@ -1,4 +1,6 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'wouter';
+import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Swords, X } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
@@ -23,6 +25,7 @@ export type DashboardGameOnCard = {
   status: 'Draft' | 'Published' | 'Live' | 'Complete';
   isPublished: boolean;
   isUnsavedDraft?: boolean;
+  recordedGameId?: string;
 };
 
 export type GameOnCardRenderOptions = {
@@ -270,18 +273,28 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                   <span>Prep</span>
                 </button>
                 {!practice && (
-                  <button
-                    type="button"
-                    className="game-on-collection__action--tracker"
-                    onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
-                    aria-label="Open Stat Tracker"
-                    aria-expanded={trackerOpen}
-                    aria-controls={trackerPanelId}
-                    data-testid={`button-open-stat-tracker-${card.id}`}
-                  >
-                    <Activity size={15} aria-hidden="true" />
-                    <span>Stat Tracker</span>
-                  </button>
+                  card.recordedGameId
+                    ? <Link
+                        href={`/studio/season-stats?gameId=${encodeURIComponent(card.recordedGameId)}`}
+                        className="game-on-collection__action--tracker"
+                        aria-label={`View stats for ${card.opponent ? `the game versus ${card.opponent}` : 'this completed game'}`}
+                        data-testid={`link-view-card-stats-${card.id}`}
+                      >
+                        <Activity size={15} aria-hidden="true" />
+                        <span>View stats</span>
+                      </Link>
+                    : <button
+                        type="button"
+                        className="game-on-collection__action--tracker"
+                        onClick={(event) => onOpenPanel(card.id, 'tracker', event.currentTarget)}
+                        aria-label="Open Stat Tracker"
+                        aria-expanded={trackerOpen}
+                        aria-controls={trackerPanelId}
+                        data-testid={`button-open-stat-tracker-${card.id}`}
+                      >
+                        <Activity size={15} aria-hidden="true" />
+                        <span>Stat Tracker</span>
+                      </button>
                 )}
                 <button
                   type="button"
@@ -474,6 +487,11 @@ export function GameOnDashboardCollection({
     restorePanelFocusRef.current = true;
     setOpenPanel(null);
   };
+  useEffect(() => {
+    const closeCompletedTracker = () => setOpenPanel(null);
+    window.addEventListener(trackerCompletionHandoffEvent, closeCompletedTracker);
+    return () => window.removeEventListener(trackerCompletionHandoffEvent, closeCompletedTracker);
+  }, []);
 
   return (
     <section ref={setCollectionRef} id={isActiveShell ? GAME_ON_COLLECTION_ID : undefined} className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
