@@ -183,10 +183,9 @@ test('Athlete Hype Pages cap active highlight videos at three', () => {
 });
 
 test('shared card omits the intro headline while keeping the owner manage link', () => {
-  assert.match(livingCardSource, /const hasStoryContent = invite\.scheduleEvents\.length > 0/);
   const introIndex = livingCardSource.indexOf('className="living-card-intro"');
   const manageIndex = livingCardSource.indexOf('data-testid="link-manage-living-card"');
-  const layoutIndex = livingCardSource.indexOf('className={`living-card-layout');
+  const layoutIndex = livingCardSource.indexOf('className="living-card-layout living-card-layout-solo"');
   assert.ok(introIndex >= 0 && manageIndex > introIndex && manageIndex < layoutIndex);
   assert.match(livingCardSource, /\{ownerInvite && \(\s*<div className="living-card-intro">\s*<Link className="living-card-manage"/);
   assert.match(livingCardSource, /<span>Manage this athletic card<\/span><ArrowRight aria-hidden="true" \/>/);
@@ -197,6 +196,13 @@ test('shared card omits the intro headline while keeping the owner manage link',
     livingCardSource,
     /className="living-card-story"[\s\S]*?data-testid="link-manage-living-card"/,
   );
+});
+
+test('athlete pages retire schedule content and force retired API fields off', () => {
+  assert.match(source, /scheduleProjectId: null/);
+  assert.match(source, /showSchedule: false/);
+  assert.doesNotMatch(source, /scheduleProjects|Upcoming schedule|scheduleEvents|Add to Calendar|Schedule time zone/);
+  assert.doesNotMatch(livingCardSource, /scheduleEvents|living-card-schedule|Add to calendar|scheduled-event alerts/);
 });
 
 test('public Athlete Hype Pages present direct videos in an accessible horizontal carousel', () => {

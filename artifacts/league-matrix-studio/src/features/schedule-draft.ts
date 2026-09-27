@@ -272,6 +272,17 @@ export function clearSupporterScheduleSelection(
   }
 }
 
+export function clearRetiredStandaloneScheduleStorage(
+  storage: Storage = window.localStorage,
+) {
+  try {
+    storage.removeItem(scheduleStorageKey);
+    storage.removeItem(supporterScheduleSelectionStorageKey);
+  } catch {
+    // Storage can be unavailable in private browsing or during SSR.
+  }
+}
+
 export function readScheduleDraft(storage: Storage = window.localStorage): ScheduleDraft | null {
   try {
     const stored = storage.getItem(scheduleStorageKey);

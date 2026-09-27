@@ -49,6 +49,7 @@ test("public Game On Card hides private event prep and only exposes deliberate d
     const scheduleBody = CreateScheduleShareBody.parse({
       title: "Tigers",
       teamSeason: "Fall 2026",
+      purpose: "game-on-card",
       events: [{
         id: eventId,
         type: "game",
@@ -74,6 +75,8 @@ test("public Game On Card hides private event prep and only exposes deliberate d
     shareId = createdShare.shareToken;
     shareToken = createdShare.shareToken;
 
+    const retiredLegacyUrl = await fetch(`http://127.0.0.1:${address.port}/api/schedule-shares/${shareToken}`);
+    assert.equal(retiredLegacyUrl.status, 404);
     await db.insert(statTrackerSharesTable).values({
       ownerClerkUserId: ownerId,
       gameId: `${eventId}-other`,
@@ -254,6 +257,7 @@ test("owned Game On Cards lists only the caller's single game and practice share
     await insertShare(ownerId, "meeting");
     await insertShare(ownerId, "game", 2);
     const calendarShare = await insertShare(ownerId, "game", 1, false);
+    const unmarkedMeetingShare = await insertShare(ownerId, "meeting", 1, false);
     const otherShare = await insertShare(otherOwnerId, "practice");
     const address = server.address();
     assert.ok(address && typeof address === "object");
@@ -271,13 +275,141 @@ test("owned Game On Cards lists only the caller's single game and practice share
     ]));
     assert.equal(shares.some((share) => share.shareToken === otherShare.id), false);
     assert.equal(shares.some((share) => share.shareToken === calendarShare.id), false);
+    assert.equal(shares.some((share) => share.shareToken === unmarkedMeetingShare.id), false);
     assert.ok(shares.every((share) => share.teamSeason === ""));
     assert.ok(shares.every((share) => share.events.length === 1
       && (share.events[0]?.type === "game" || share.events[0]?.type === "practice")));
     const calendarResponse = await fetch(`http://127.0.0.1:${address.port}/api/schedule-shares/${calendarShare.id}`);
-    const calendar = CreateScheduleShareResponse.parse(await calendarResponse.json());
-    assert.equal(calendar.teamSeason, "Fall 2026");
-    assert.equal(calendar.events[0]?.notes, "Private");
+    assert.equal(calendarResponse.status, 404);
+    const unmarkedLegacyCardResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/game-on-cards/${calendarShare.id}`,
+    );
+    assert.equal(unmarkedLegacyCardResponse.status, 200);
+    const legacyCard = GetGameOnCardResponse.parse(await unmarkedLegacyCardResponse.json());
+    assert.equal(legacyCard.event.type, "game");
+    assert.equal(legacyCard.event.opponent, "Ravens");
+    assert.equal("notes" in legacyCard.event, false);
+    const unmarkedMeetingResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/game-on-cards/${unmarkedMeetingShare.id}`,
+    );
+    assert.equal(unmarkedMeetingResponse.status, 404);
+
+    const legacyCreateResponse = await fetch(`http://127.0.0.1:${address.port}/api/schedule-shares`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        title: "Retired calendar",
+        teamSeason: "Fall 2026",
+        events: [{
+          id: "legacy-calendar-event",
+          type: "game",
+          date: "2026-10-03",
+          time: "09:30",
+          location: "North Field",
+          opponent: "Ravens",
+          snacks: "",
+          drinks: "",
+          notes: "",
+        }],
+      }),
+    });
+    assert.equal(legacyCreateResponse.status, 410);
+
+    const convertCalendarToCardResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/schedule-shares/${calendarShare.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-test-user": ownerId },
+        body: JSON.stringify({
+          title: "Converted calendar",
+          teamSeason: "Fall 2026",
+          purpose: "game-on-card",
+          events: [{
+            id: "calendar-to-card",
+            type: "game",
+            date: "2026-10-03",
+            time: "09:30",
+            location: "North Field",
+            opponent: "Ravens",
+            snacks: "",
+            drinks: "",
+            notes: "",
+          }],
+        }),
+      },
+    );
+    assert.equal(convertCalendarToCardResponse.status, 410);
+
+    const convertCardToCalendarResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/schedule-shares/${gameShare.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-test-user": ownerId },
+        body: JSON.stringify({
+          title: "Converted card",
+          teamSeason: "Fall 2026",
+          events: [{
+            id: "card-to-calendar",
+            type: "game",
+            date: "2026-10-03",
+            time: "09:30",
+            location: "North Field",
+            opponent: "Ravens",
+            snacks: "",
+            drinks: "",
+            notes: "",
+          }],
+        }),
+      },
+    );
+    assert.equal(convertCardToCalendarResponse.status, 410);
+
+    const cardUpdateResponse = await fetch(`http://127.0.0.1:${address.port}/api/schedule-shares/${gameShare.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        title: "Updated Game On Card",
+        teamSeason: "",
+        purpose: "game-on-card",
+        events: [{
+          id: "updated-card-event",
+          type: "game",
+          date: "2026-10-03",
+          time: "09:30",
+          location: "North Field",
+          opponent: "Ravens",
+          snacks: "",
+          drinks: "",
+          notes: "",
+        }],
+      }),
+    });
+    assert.equal(cardUpdateResponse.status, 200);
+
+    const otherOwnerUpdateResponse = await fetch(
+      `http://127.0.0.1:${address.port}/api/schedule-shares/${gameShare.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "x-test-user": otherOwnerId },
+        body: JSON.stringify({
+          title: "Unauthorized card update",
+          teamSeason: "",
+          purpose: "game-on-card",
+          events: [{
+            id: "unauthorized-card-event",
+            type: "game",
+            date: "2026-10-03",
+            time: "09:30",
+            location: "North Field",
+            opponent: "Ravens",
+            snacks: "",
+            drinks: "",
+            notes: "",
+          }],
+        }),
+      },
+    );
+    assert.equal(otherOwnerUpdateResponse.status, 404);
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));

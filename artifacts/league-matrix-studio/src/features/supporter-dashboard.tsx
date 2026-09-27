@@ -51,12 +51,6 @@ import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDash
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
 import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
 import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
-import {
-  clearPendingTrackerCalendarSync,
-  readPendingTrackerCalendarSync,
-  trackerCalendarSyncEvent,
-  type PendingTrackerCalendarSync,
-} from './tracker-calendar-sync';
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
@@ -237,10 +231,7 @@ export interface SupporterDashboardViewProps {
   events: SupporterEvent[];
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
-  nextGameIsUpcoming: boolean;
   projects: SupporterProject[];
-  scheduleSource: 'custom' | null;
-  connectionLabel: string;
   selectionSyncReady?: boolean;
   athletePhotoUrl?: string;
   athletePhotoCrop?: AthletePhotoCrop;
@@ -342,10 +333,7 @@ export function SupporterDashboardView({
   events,
   onSaveCalendarEvent,
   onCompleteScheduledGame,
-  nextGameIsUpcoming,
   projects,
-  scheduleSource,
-  connectionLabel,
   selectionSyncReady = true,
   athletePhotoUrl,
   athletePhotoCrop = { x: 50, y: 50, zoom: 100 },
@@ -394,6 +382,8 @@ export function SupporterDashboardView({
   });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
   const [cardSelection, setCardSelection] = useState<{ kind: 'event' | 'share'; id: string; nonce: number } | null>(null);
+  const [tourPanelRequest, setTourPanelRequest] = useState<{ cardId: string; panel: 'prep' | 'tracker'; nonce: number; trigger: HTMLButtonElement } | null>(null);
+  const nextTourPanelNonce = useRef(0);
   const [newCardDraft, setNewCardDraft] = useState<{
     id: string;
     nonce: number;
@@ -403,38 +393,6 @@ export function SupporterDashboardView({
   } | null>(null);
   const [cardLayoutIds, setCardLayoutIds] = useState<Record<string, string>>({});
   const [justCompleted, setJustCompleted] = useState<{ game: GameSession; saveStatus: 'cloud-saved' | 'local-saved' } | null>(null);
-  const [pendingCalendarSync, setPendingCalendarSync] = useState<PendingTrackerCalendarSync[]>([]);
-  const [retryingCalendarGameId, setRetryingCalendarGameId] = useState<string | null>(null);
-  const [calendarRetryError, setCalendarRetryError] = useState<Record<string, string>>({});
-  useEffect(() => {
-    const refresh = () => setPendingCalendarSync(userId
-      ? readPendingTrackerCalendarSync(window.localStorage, userId)
-      : []);
-    refresh();
-    window.addEventListener(trackerCalendarSyncEvent, refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener(trackerCalendarSyncEvent, refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, [userId]);
-  const retryPendingCalendarSync = async (pending: PendingTrackerCalendarSync) => {
-    if (!userId || !onCompleteScheduledGame) return;
-    setRetryingCalendarGameId(pending.gameId);
-    setCalendarRetryError((current) => ({ ...current, [pending.gameId]: '' }));
-    try {
-      await onCompleteScheduledGame(pending.eventId, pending.completedAt);
-      clearPendingTrackerCalendarSync(window.localStorage, userId, pending.gameId);
-      window.dispatchEvent(new Event(trackerCalendarSyncEvent));
-    } catch {
-      setCalendarRetryError((current) => ({
-        ...current,
-        [pending.gameId]: 'Calendar still could not be marked Final. Check your connection and try again.',
-      }));
-    } finally {
-      setRetryingCalendarGameId(null);
-    }
-  };
   useEffect(() => {
     setJustCompleted(null);
     if (!userId) return;
@@ -551,8 +509,7 @@ export function SupporterDashboardView({
   const gameRecord = buildSupporterGameRecord(trackerData?.games ?? [], scoredGameIds, recordSport);
   const dashboardCards = buildGameOnDashboardEntries(events, ownedGameOnShares, profile.athleteName, currentTime, completedLocalGames);
   const recommendedGameCard = getNextGameOnDashboardEntry(dashboardCards, currentTime);
-  const scheduledRecommendedGame = gameEvents.find((event) => event.id === recommendedGameCard?.eventId);
-  const recommendedGame: SupporterEvent | undefined = scheduledRecommendedGame ?? (recommendedGameCard ? {
+  const recommendedGame: SupporterEvent | undefined = recommendedGameCard ? {
     id: recommendedGameCard.eventId,
     type: 'game',
     date: recommendedGameCard.date,
@@ -560,7 +517,7 @@ export function SupporterDashboardView({
     location: recommendedGameCard.location,
     opponent: recommendedGameCard.opponent,
     status: recommendedGameCard.status === 'Live' ? 'live' : 'upcoming',
-  } : undefined);
+  } : undefined;
   const newDraftCollectionCard = newCardDraft ? {
     id: newCardDraft.id,
     layoutId: newCardDraft.id,
@@ -584,6 +541,20 @@ export function SupporterDashboardView({
        .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id, recordedGameId: recordedGameForCard(card)?.id })),
     ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
   ]);
+  const tourPrepCard = !newCardDraft ? collectionCards[0] : undefined;
+  const tourTrackerCard = !newCardDraft ? collectionCards.find((card) => (
+    card.type === 'game' && !('recordedGameId' in card && card.recordedGameId) && card.status !== 'Complete'
+  )) : undefined;
+  const openTourCardPanel = (panel: 'prep' | 'tracker', trigger: HTMLButtonElement) => {
+    const card = panel === 'prep' ? tourPrepCard : tourTrackerCard;
+    if (!card) return;
+    setCardSelection((previous) => ({
+      kind: card.id.startsWith('share:') ? 'share' : 'event',
+      id: card.id,
+      nonce: (previous?.nonce ?? 0) + 1,
+    }));
+    setTourPanelRequest({ cardId: card.id, panel, nonce: ++nextTourPanelNonce.current, trigger });
+  };
   const featuredCardId = getFeaturedGameOnCardId(collectionCards, currentTime);
   const updateNewCardDraft = useCallback((event: SupporterEvent, sourceEventId: string) => {
     setNewCardDraft((previous) => {
@@ -691,7 +662,7 @@ export function SupporterDashboardView({
   const renderDesktopSelectedGameOnCard = (card: (typeof collectionCards)[number], options: GameOnCardRenderOptions) => renderSelectedGameOnCard(card, 'desktop', options);
   const gameStage: SupporterGameStage = contextEvent
       ? getSupporterGameStage(contextEvent, currentTime)
-      : nextGameIsUpcoming ? 'upcoming' : 'upcoming';
+      : 'upcoming';
   const recommendedGameStage = recommendedGame
     ? getSupporterGameStage(recommendedGame, currentTime)
     : null;
@@ -863,7 +834,6 @@ export function SupporterDashboardView({
         <div className="supporter-game-on-summary__event-kicker">
           <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
           <span className="mobile-featured-event-kicker" data-testid="mobile-featured-event-kicker">{recommendedGame ? 'Next game' : 'No upcoming game'}</span>
-          {scheduledRecommendedGame && scheduleSource && <span className="supporter-game-on-summary__schedule-source">· Your schedule</span>}
         </div>
         {recommendedGame && (
           <span className="supporter-game-on-summary__event-badge">
@@ -908,7 +878,7 @@ export function SupporterDashboardView({
         </div>
       ) : (
         <>
-          <p className="supporter-game-on-summary__event-date">YOUR SCHEDULE</p>
+          <p className="supporter-game-on-summary__event-date">NEXT GAME</p>
           <h2 id={variant === 'desktop' ? 'next-game-heading' : 'mobile-next-game-heading'} className="supporter-game-on-summary__event-title" data-testid={variant === 'desktop' ? 'next-game-heading' : 'mobile-featured-event-title'}>
             {recommendedGameTitle}
           </h2>
@@ -974,7 +944,7 @@ export function SupporterDashboardView({
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
            {!isDesktopDashboard && onTourDismiss && (
-             <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} autoStart={autoStartTour} onDismiss={onTourDismiss} />
+             <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
            )}
           <SupporterGameOnSummary
             variant="mobile"
@@ -1004,6 +974,7 @@ export function SupporterDashboardView({
             statTrackerAthleteName={profile.athleteName}
             statTrackerTeamName={profile.teamName}
             onCompleteScheduledGame={onCompleteScheduledGame}
+              tourPanelRequest={tourPanelRequest}
           />
           <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-mobile">
             <Link href={dashboardStatsHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#2474F5]/30 bg-white px-4 py-2 text-xs font-bold text-[#17467b]" data-testid="link-mobile-independent-stats">
@@ -1031,7 +1002,7 @@ export function SupporterDashboardView({
       <div className="supporter-dashboard-desktop-shell w-full">
     <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
       {isDesktopDashboard && onTourDismiss && (
-        <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} autoStart={autoStartTour} onDismiss={onTourDismiss} />
+        <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
       )}
       {showStageReminder && (
         <div
@@ -1094,6 +1065,7 @@ export function SupporterDashboardView({
         statTrackerAthleteName={profile.athleteName}
         statTrackerTeamName={profile.teamName}
         onCompleteScheduledGame={onCompleteScheduledGame}
+        tourPanelRequest={tourPanelRequest}
       />
       <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-desktop">
         <Link href={dashboardStatsHref} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[#55A4FF]/30 bg-[#0B1F3A] px-4 py-2 text-xs font-bold text-white" data-testid="link-desktop-independent-stats">
@@ -1116,15 +1088,7 @@ export function SupporterDashboardView({
           <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
             <div className="flex items-center gap-3">
               <h3 className="studio-textured-accent font-display text-2xl text-primary uppercase tracking-wide">Upcoming</h3>
-              {scheduleSource && (
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:flex items-center gap-1.5 border-l border-border/50 pl-3">
-                  <CalendarDays className="w-3 h-3" /> Custom Schedule
-                </span>
-              )}
             </div>
-            <Link href="/studio/schedule" className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/70 hover:text-foreground transition-colors flex items-center gap-1.5">
-              View Calendar <ArrowRight className="w-3 h-3" />
-            </Link>
           </div>
 
           <div className="bg-card border border-border relative min-h-[220px] flex flex-col clip-angled-sm">
@@ -1132,14 +1096,8 @@ export function SupporterDashboardView({
             <div className="relative p-3 sm:p-4 flex-1 flex flex-col">
               {events.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">
-                  <p className="font-bold uppercase tracking-widest">No saved schedule yet</p>
-                  <p className="text-sm max-w-xs text-balance">Create or open a schedule to see upcoming events here.</p>
-                  <Link
-                    href="/studio/schedule"
-                    className="mt-2 inline-flex items-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 clip-angled-sm"
-                  >
-                    Open Schedule Maker <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  <p className="font-bold uppercase tracking-widest">Your Game On cards live here</p>
+                  <p className="text-sm max-w-xs text-balance">Add a Game On card to keep game details close.</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -1195,11 +1153,6 @@ export function SupporterDashboardView({
 
                     return (
                       <div key={event.id} className="group relative flex items-center gap-3 sm:gap-4 py-2.5 px-2 hover:bg-muted/30 transition-colors border-b border-border/40 last:border-0 rounded-sm">
-                        {/* Link overlay */}
-                        <Link href={`/studio/schedule`} className="absolute inset-0 z-10">
-                          <span className="sr-only">View event</span>
-                        </Link>
-
                         {/* Date Block */}
                         <div className="flex flex-col items-center justify-center bg-muted/40 rounded-sm w-12 h-14 shrink-0 border border-border/30">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/60 leading-none mb-1">{dateParts.month}</span>
@@ -1278,25 +1231,6 @@ export function SupporterDashboardView({
 
     </div>
       </div>
-      {pendingCalendarSync.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-md space-y-2" data-testid="dashboard-pending-calendar-sync">
-          {pendingCalendarSync.map((pending) => (
-            <div key={pending.gameId} className="rounded-md border border-amber-400 bg-[#102b4b] p-4 text-white shadow-xl" role="alert">
-              <p className="text-sm font-semibold">Stats were saved, but Calendar has not marked this game Final yet.</p>
-              {calendarRetryError[pending.gameId] && <p className="mt-2 text-sm">{calendarRetryError[pending.gameId]}</p>}
-              <button
-                type="button"
-                className="mt-3 min-h-11 rounded-md bg-white px-4 text-xs font-bold text-[#102b4b] disabled:opacity-50"
-                disabled={!onCompleteScheduledGame || retryingCalendarGameId === pending.gameId}
-                onClick={() => void retryPendingCalendarSync(pending)}
-                data-testid={`button-dashboard-retry-calendar-${pending.gameId}`}
-              >
-                {retryingCalendarGameId === pending.gameId ? 'Updating Calendar…' : 'Retry Calendar update'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
       <TrackerCompletionDialog
         game={justCompleted?.game ?? null}
         open={Boolean(justCompleted)}

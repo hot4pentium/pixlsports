@@ -8,5 +8,5 @@ test('signup always enters supporter onboarding', () => {
 });
 
 test('landing role tools match the authenticated role tool sets', () => {
-  assert.deepEqual(roleToolKinds.fan, ['schedule', 'checklist', 'stat-tracker', 'hype']);
+  assert.deepEqual(roleToolKinds.fan, ['checklist', 'stat-tracker', 'hype']);
 });

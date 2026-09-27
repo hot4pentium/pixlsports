@@ -165,7 +165,7 @@ export function GameOnInlineEditor({
   const calendarSection = (
     <div className="game-on-inline__section">
       <h3 tabIndex={-1}><CalendarDays size={17} aria-hidden="true" /> Event details</h3>
-      <p>{scheduledEvent ? 'Changes here also update this Calendar event.' : 'This card is independent of Calendar.'}</p>
+      <p>{scheduledEvent ? 'Changes here also update the linked event snapshot.' : 'This card keeps its own event details.'}</p>
       <div className="game-on-inline__fields">
         {!isPractice && <label className="game-on-inline__wide">Opponent
           <input value={fields.opponent ?? ''} maxLength={200} onChange={(e) => setFields({ ...fields, opponent: e.target.value })} data-testid="input-inline-opponent" />

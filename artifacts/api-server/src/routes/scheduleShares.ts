@@ -53,6 +53,10 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
     res.status(400).json({ error: "A Game On Card must contain one game or practice" });
     return;
   }
+  if (parsed.data.purpose !== "game-on-card") {
+    res.status(410).json({ error: "Standalone Calendar sharing is no longer supported." });
+    return;
+  }
 
   try {
     const [created] = await db
@@ -90,6 +94,23 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
   }
 
   try {
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const [current] = await db
+      .select()
+      .from(scheduleSharesTable)
+      .where(and(
+        eq(scheduleSharesTable.id, params.data.shareToken),
+        eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+      ));
+    if (!current) {
+      res.status(404).json({ error: "Schedule share not found" });
+      return;
+    }
+    if (current.teamSeason !== GAME_ON_CARD_MARKER || parsed.data.purpose !== "game-on-card") {
+      res.status(410).json({ error: "Standalone Calendar sharing is no longer supported." });
+      return;
+    }
+
     const [updated] = await db
       .update(scheduleSharesTable)
       .set({
@@ -100,7 +121,7 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
       })
       .where(and(
         eq(scheduleSharesTable.id, params.data.shareToken),
-        eq(scheduleSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+        eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
       ))
       .returning();
 
@@ -151,21 +172,9 @@ router.get("/schedule-shares/:shareToken", async (req, res): Promise<void> => {
     return;
   }
 
-  const [share] = await db
-    .select()
-    .from(scheduleSharesTable)
-    .where(eq(scheduleSharesTable.id, params.data.shareToken));
-  if (!share) {
-    res.status(404).json({ error: "Schedule share not found" });
-    return;
-  }
-  if (!(await isAccountActive(share.ownerClerkUserId))) {
-    res.status(404).json({ error: "Schedule share not found" });
-    return;
-  }
-
-  res.setHeader("Cache-Control", "no-store");
-  res.json(shareResponse(share));
+  // Public snapshots were standalone Calendar links. Game On Cards have a
+  // dedicated, privacy-filtered route and must never fall back to this payload.
+  res.status(404).json({ error: "Schedule share not found" });
 });
 
 router.get("/game-on-cards/owned", requireAuth, async (req, res): Promise<void> => {
@@ -197,7 +206,9 @@ router.get("/game-on-cards/:shareToken", async (req, res): Promise<void> => {
       .select()
       .from(scheduleSharesTable)
       .where(eq(scheduleSharesTable.id, params.data.shareToken));
-    if (!share || !(await isAccountActive(share.ownerClerkUserId))) {
+    if (!share
+      || (share.teamSeason !== GAME_ON_CARD_MARKER && !isSingleCardEvent(share.events))
+      || !(await isAccountActive(share.ownerClerkUserId))) {
       res.status(404).json({ error: "Game On Card not found" });
       return;
     }

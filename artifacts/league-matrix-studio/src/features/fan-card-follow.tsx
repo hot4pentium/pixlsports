@@ -69,7 +69,6 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
   );
   const activeAlerts = Boolean(followToken && status.data?.active && supported && permission === 'granted');
   const liveAlerts = activeAlerts && Boolean(status.data?.liveAlerts);
-  const eventAlerts = activeAlerts && Boolean(status.data?.eventAlerts);
 
   useEffect(() => {
     const saved = storedFollow(inviteToken);
@@ -102,7 +101,7 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
     setMessage('');
     if (!following) {
       saveLocal(true, '');
-      setMessage('Following on this device. Choose which alerts you want below.');
+      setMessage('Following on this device. Choose whether to get Game Day Live alerts below.');
       return;
     }
     setPending(true);
@@ -117,16 +116,16 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
     }
   }
 
-  async function toggleAlert(kind: 'live' | 'event') {
+  async function toggleAlert() {
     if (!following || pending) return;
     setPending(true);
     setMessage('');
     const next = {
-      liveAlerts: kind === 'live' ? !liveAlerts : liveAlerts,
-      eventAlerts: kind === 'event' ? !eventAlerts : eventAlerts,
+      liveAlerts: !liveAlerts,
+      eventAlerts: false,
     };
     try {
-      if (!next.liveAlerts && !next.eventAlerts) {
+      if (!next.liveAlerts) {
         if (followToken) await remove.mutateAsync({ inviteToken });
         saveLocal(true, '');
         setMessage('Alerts are off. You are still following this card on this device.');
@@ -202,13 +201,11 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
       </button>
       {following && (
         <div className="mt-5 space-y-3 border-t border-white/15 pt-4" role="group" aria-label="Optional phone alerts">
-          {(['live', 'event'] as const).map((kind) => (
-            <label key={kind} className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
-              <span>{kind === 'live' ? 'Game Day Live starts' : 'A scheduled event begins'}</span>
-              <input type="checkbox" checked={kind === 'live' ? liveAlerts : eventAlerts} onChange={() => void toggleAlert(kind)} disabled={pending || !supported || permission === 'denied' || status.isLoading} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid={`input-fan-alert-${kind}`} />
-            </label>
-          ))}
-          <p className="text-xs leading-relaxed text-white/55">You can change either choice or unfollow here at any time. No account is needed.</p>
+          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
+            <span>Game Day Live starts</span>
+            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert()} disabled={pending || !supported || permission === 'denied' || status.isLoading} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid="input-fan-alert-live" />
+          </label>
+          <p className="text-xs leading-relaxed text-white/55">You can change this choice or unfollow here at any time. No account is needed.</p>
         </div>
       )}
       {availability && <p className="mt-3 text-xs leading-relaxed text-white/65" data-testid="status-fan-alert-availability">{availability}</p>}

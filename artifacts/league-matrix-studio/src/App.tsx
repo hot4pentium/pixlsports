@@ -56,16 +56,15 @@ import { shadcn } from '@clerk/themes';
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type {
+  SupporterEvent,
   SupporterProfile,
   SupporterProject,
 } from '@/features/supporter-dashboard';
 import { navigateToGameOnSection } from '@/features/game-on-navigation';
 import {
   createScheduleAutosaveQueue,
-  getActiveCloudScheduleProject,
   getCloudScheduleProjects,
   getCloudScheduleProjectForIdentity,
-  findScheduleGameOwner,
   getLatestCloudScheduleProject,
   getScheduleIdentity,
   moveScheduleEvent,
@@ -74,11 +73,11 @@ import {
   saveScheduleEvent,
   removeScheduleEvent,
   saveScheduleDraft,
-  scheduleStorageKey,
   updateScheduleEvent,
   updateScheduleEventStatus,
   type ScheduleEvent,
   type ScheduleEventType,
+  clearRetiredStandaloneScheduleStorage,
 } from '@/features/schedule-draft';
 import { revokeGameOnCardForScheduleEvent } from '@/features/game-on-card-storage';
 import { getGuestUsageKey } from '@/features/guest-access';
@@ -92,13 +91,11 @@ import {
   updateSupporterPhotoCache,
   useCachedSupporterPhoto,
 } from '@/features/supporter-photo-cache';
-import { fetchScheduleShareWithCache } from '@/features/schedule-offline';
 import { trackEvent } from '@/lib/analytics';
 import { LANDING_MEDIA_BADGE, LANDING_MEDIA_DETAIL, LOCAL_MEDIA_DEFAULT, PUBLIC_SHARE_MEDIA } from '@/features/privacy-copy';
 import {
   cleanSupporterProfile,
   createSupporterProfileSavePlan,
-  getSupporterScheduleSelection,
   getUserProfile,
   getUserRole,
   mapLocalSupporterHypeCard,
@@ -797,16 +794,9 @@ function LegacyHomePage() {
   );
 }
 
-const fanHubTabs: { label: string; kind: ToolKind }[] = [
-  { label: 'Calendar', kind: 'schedule' },
-  { label: 'Game Day', kind: 'checklist' },
-  { label: 'Stat Tracker', kind: 'stat-tracker' },
-  { label: 'Hype Card', kind: 'hype' },
-];
-
 function HomePage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('fan');
-  const [activeFanTool, setActiveFanTool] = useState<ToolKind>('schedule');
+  const [activeFanTool, setActiveFanTool] = useState<ToolKind>('checklist');
   const roleCopy = landingRoleCopy[selectedRole];
   const roleTools = roleToolKinds[selectedRole];
   const nextPreview = roleCopy.previewItems[1];
@@ -841,7 +831,7 @@ function HomePage() {
                   <h2>{nextPreview[1]}</h2>
                   <span><MapPin /> {nextPreview[2]}</span>
                 </div>
-                <Link href="/studio/schedule" className="pixl-landing-open-schedule" data-testid="link-landing-open-schedule">Open schedule <ArrowRight /></Link>
+                <Link href={roleSignupHref(selectedRole)} className="pixl-landing-open-schedule" data-testid="link-landing-open-studio">Enter fan hub <ArrowRight /></Link>
                 <div className="pixl-landing-principle">
                   <small>THE PIXL PRINCIPLE</small>
                   <strong>Less chasing.<br />More cheering.</strong>
@@ -878,7 +868,7 @@ function HomePage() {
               <small>FAN HUB / YOUR WEEK</small>
               <h2 id="landing-tools-heading">We guide the week. <em>{selectedRole === 'fan' ? 'You enjoy the moments.' : 'Lead the team.'}</em></h2>
             </div>
-            <p>Move from calendar to game day to celebration with one clear next step at every turn.</p>
+            <p>Move from Game On cards to game day to celebration with one clear next step at every turn.</p>
           </div>
           <div className="pixl-landing-tools-body">
             <div className="pixl-landing-tool-index">
@@ -1245,8 +1235,8 @@ function Studio({ role }: { role: UserRole }) {
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
                FAN COMMAND<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
             </h1>
-             <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
-               <span>Save Hype Cards, schedules, checklists, and stats locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
+                  <p className="mt-6 flex max-w-xl items-start gap-2 text-lg font-medium leading-relaxed text-muted-foreground">
+                <span>Save Hype Cards, checklists, and stats locally or to your Pixl Sports cloud workspace, then export finished graphics.</span>
               <Dialog>
                 <DialogTrigger asChild>
                   <button type="button" className="mt-1.5 shrink-0 text-primary transition-colors hover:text-foreground" aria-label="How local and cloud saves work" data-testid="button-save-help">
@@ -1296,7 +1286,6 @@ function Studio({ role }: { role: UserRole }) {
                </div>
                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                  <span className="border border-border bg-background px-2.5 py-2">Hype {accountAccess.remaining.hypeCards}/{accountAccess.limits.hypeCards}</span>
-                 <span className="border border-border bg-background px-2.5 py-2">Events {accountAccess.remaining.scheduleEvents}/{accountAccess.limits.scheduleEvents}</span>
                </div>
              </div>
            </div>
@@ -1364,15 +1353,13 @@ function Studio({ role }: { role: UserRole }) {
                   <div className="flex items-center justify-center h-full p-10 border border-border bg-muted/50 clip-angled-sm">
                     <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Loading Cloud Projects...</p>
                   </div>
-                ) : cloudProjects && cloudProjects.length > 0 ? (
+                ) : cloudProjects?.some((project) => !isCloudToolProject(project.project, 'schedule')) ? (
                   <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    {cloudProjects.map(project => (
+                    {cloudProjects.filter((project) => !isCloudToolProject(project.project, 'schedule')).map(project => (
                       (() => {
-                         const tool = isCloudToolProject(project.project, 'schedule')
-                           ? 'schedule'
-                           : 'hype-card';
-                         const toolLabel = tool === 'schedule' ? 'Schedule' : 'Hype Card';
-                        const projectHref = `/studio/${tool}/${project.id}`;
+                         const tool = 'hype-card';
+                         const toolLabel = 'Hype Card';
+                         const projectHref = `/studio/${tool}/${project.id}`;
                         return (
                       <div key={project.id} className="flex items-center justify-between border-l-4 border-foreground bg-muted p-5 clip-angled-sm transition-colors hover:bg-muted/80 group/project">
                         <div className="flex items-center gap-4 min-w-0">
@@ -1437,13 +1424,10 @@ function Studio({ role }: { role: UserRole }) {
 }
 
 function SupporterStudio() {
-  const [, setLocation] = useLocation();
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
-  const queryClient = useQueryClient();
   const profile = supporterProfileFromUser(user);
   const tourPending = getDashboardTourState(user?.unsafeMetadata) === 'pending';
-  const localSchedule = readScheduleDraft();
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const accountAccessQuery = useGetAccountAccess({
     query: {
@@ -1460,34 +1444,9 @@ function SupporterStudio() {
     },
   });
   const cloudProjects = cloudProjectsQuery.data;
-  const updateScheduleProject = useUpdateProject();
-  const [localScheduleVersion, setLocalScheduleVersion] = useState(0);
-  void localScheduleVersion;
-  const cloudScheduleProjects = getCloudScheduleProjects(cloudProjects ?? []);
-  const selectedCloudScheduleProject = getActiveCloudScheduleProject(cloudScheduleProjects);
-  const cloudSchedule = selectedCloudScheduleProject
-    ? normalizeScheduleDraft(selectedCloudScheduleProject.project)
-    : null;
-  const customSchedule = cloudSchedule ?? localSchedule;
-  const scheduleSelection = getSupporterScheduleSelection({
-    customSchedule,
-  });
-
-  const today = new Date();
-  const todayKey = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, '0'),
-    String(today.getDate()).padStart(2, '0'),
-  ].join('-');
-  const events = [...scheduleSelection.events]
-    .sort((left, right) => {
-      const leftKey = left.date ? `${left.date}T${left.time}` : '9999-12-31T23:59';
-      const rightKey = right.date ? `${right.date}T${right.time}` : '9999-12-31T23:59';
-      return leftKey.localeCompare(rightKey);
-    });
-  const nextGame = events.find((event) => event.type === 'game' && event.date >= todayKey)
-    ?? events.find((event) => event.type === 'game');
-  const nextGameIsUpcoming = Boolean(nextGame?.date && nextGame.date >= todayKey);
+  const [dashboardRefresh, setDashboardRefresh] = useState(0);
+  void dashboardRefresh;
+  const events: SupporterEvent[] = [];
   const [localHypeCard, setLocalHypeCard] = useState<HypeCardProject | null>(() => readHypeCardProject());
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -1505,88 +1464,6 @@ function SupporterStudio() {
      ...(localHypeCard ? [mapLocalSupporterHypeCard(localHypeCard)] : []),
      ...mapRecentSupporterProjects(cloudProjects ?? []),
    ];
-  const scheduleSource = scheduleSelection.source;
-  const scheduleLabel = scheduleSelection.source === 'custom'
-      ? [customSchedule?.teamName, customSchedule?.season].filter(Boolean).join(' · ')
-      : profile.teamName;
-
-  const saveCardCalendarEvent = async (event: Pick<ScheduleEvent, 'id' | 'type' | 'date' | 'time' | 'location' | 'opponent'>) => {
-    const source = cloudSchedule?.events.some((candidate) => candidate.id === event.id)
-      ? cloudSchedule
-      : localSchedule?.events.some((candidate) => candidate.id === event.id) ? localSchedule : null;
-    if (!source) throw new Error('This Calendar event is no longer available. Refresh and try again.');
-    const nextDraft = {
-      ...source,
-      events: source.events.map((candidate) => candidate.id === event.id
-        ? { ...candidate, date: event.date, time: event.time, location: event.location, opponent: event.type === 'game' ? event.opponent : '' }
-        : candidate),
-    };
-    if (source === cloudSchedule && selectedCloudScheduleProject) {
-      const updated = await updateScheduleProject.mutateAsync({
-        projectId: selectedCloudScheduleProject.id,
-        data: {
-          project: { ...selectedCloudScheduleProject.project as Record<string, unknown>, ...nextDraft, tool: 'schedule' },
-          expectedRevision: selectedCloudScheduleProject.revision,
-        },
-      });
-      queryClient.setQueryData(getListProjectsQueryKey(), (current: typeof cloudProjects) => current?.map((project) =>
-        project.id === updated.id ? updated : project,
-      ));
-      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    }
-    saveScheduleDraft(window.localStorage, nextDraft);
-    setLocalScheduleVersion((value) => value + 1);
-    saveWorkspaceEventContext(window.localStorage, nextDraft.events.find((candidate) => candidate.id === event.id)!);
-  };
-
-  const completeCardCalendarGame = async (eventId: string, completedAt: string) => {
-    // The tracker may have been open while Calendar was edited in another tab.
-    // Refetch before picking the owner and revision rather than saving a stale snapshot.
-    if (isSignedIn && !cloudProjectsQuery.isSuccess) {
-      throw new Error('Calendar is still loading. Retry after it becomes available.');
-    }
-    const fresh = cloudProjectsQuery.isSuccess ? await cloudProjectsQuery.refetch() : null;
-    if (fresh?.error) throw fresh.error;
-    const freshSchedules = getCloudScheduleProjects(fresh?.data ?? cloudProjects ?? []);
-    const active = freshSchedules.find((project) => project.id === selectedCloudScheduleProject?.id) ?? null;
-    const owner = findScheduleGameOwner(eventId, freshSchedules, active, readScheduleDraft());
-    if (!owner) {
-      // A standalone published card has no Calendar record. Its completed tracker is
-      // device-local, so refresh the dashboard's card status without inventing one.
-      setLocalScheduleVersion((value) => value + 1);
-      return;
-    }
-    const source = owner.draft;
-
-    const nextDraft = {
-      ...source,
-      events: updateScheduleEventStatus(source.events, eventId, 'final', completedAt),
-    };
-    let cloudSaveSucceeded = false;
-    if (owner.project) {
-      const updated = await updateScheduleProject.mutateAsync({
-        projectId: owner.project.id,
-        data: {
-          project: { ...owner.project.project as Record<string, unknown>, ...nextDraft, tool: 'schedule' },
-          expectedRevision: owner.project.revision,
-        },
-      });
-      queryClient.setQueryData(getListProjectsQueryKey(), (current: typeof cloudProjects) => current?.map((project) =>
-        project.id === updated.id ? updated : project,
-      ));
-      await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() }).catch(() => undefined);
-      cloudSaveSucceeded = true;
-    }
-
-    if (!owner.project || owner.project.id === selectedCloudScheduleProject?.id) {
-      try {
-        saveScheduleDraft(window.localStorage, nextDraft);
-      } catch (error) {
-        if (!cloudSaveSucceeded) throw error;
-      }
-    }
-    setLocalScheduleVersion((value) => value + 1);
-  };
 
   return (
     <StudioLayout role="fan">
@@ -1605,12 +1482,8 @@ function SupporterStudio() {
             await user.updateMetadata({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), dashboardTour: 'done' } });
           }}
           events={events}
-          onSaveCalendarEvent={saveCardCalendarEvent}
-          onCompleteScheduledGame={completeCardCalendarGame}
-          nextGameIsUpcoming={nextGameIsUpcoming}
+          onCompleteScheduledGame={async () => setDashboardRefresh((value) => value + 1)}
           projects={projects}
-          scheduleSource={scheduleSource}
-          connectionLabel={scheduleLabel}
           selectionSyncReady={Boolean(
             !isSignedIn
             || (
@@ -1861,7 +1734,7 @@ function ToolDirectoryCard({ kind, index }: { kind: ToolKind; index: number }) {
 }
 
 function EditorPage({ kind }: { kind: ToolKind }) {
-  if (kind === 'schedule') return <ScheduleEditor />;
+  if (kind === 'schedule') return <RetiredSchedulePage />;
 
   const tool = toolData[kind];
   const Icon = tool.icon;
@@ -2471,14 +2344,7 @@ export function ScheduleEditor() {
         {renderScheduleNotice('mb-6 lg:hidden')}
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-          <section className="min-w-0 lg:sticky lg:top-6">
-            <SchedulePreview
-              teamName={teamName}
-              season={season}
-              events={events}
-              onAddEvent={() => navigateToGameOnSection(setLocation)}
-            />
-          </section>
+          <section className="min-w-0 lg:sticky lg:top-6" aria-hidden="true" />
 
           <aside className="flex flex-col border border-border bg-card p-5 clip-angled-sm">
             <div className="relative z-10">
@@ -2914,178 +2780,25 @@ function ScheduleInstallPrompt() {
   );
 }
 
-function SchedulePreview({
-  teamName,
-  season,
-  events,
-  onAddEvent,
-  readOnly = false,
-}: {
-  teamName: string;
-  season: string;
-  events: ScheduleEvent[];
-  onAddEvent: () => void;
-  readOnly?: boolean;
-}) {
+function RetiredSchedulePage() {
   return (
-    <div className="relative mx-auto w-full max-w-[976px] overflow-hidden border border-[#2878F5] bg-[#102B4D] p-2 sm:p-3 clip-angled-sm">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,107,53,.16),transparent_26%),radial-gradient(circle_at_85%_85%,rgba(36,116,245,.16),transparent_30%)]" />
-      <div className="relative w-full max-w-[960px] overflow-hidden rounded-[28px] bg-[#102B4D] p-5 text-[#F3F6FA] shadow-[0_25px_70px_-24px_rgba(18,33,58,.65)] sm:p-8" data-testid="preview-canvas">
-        <div className="pointer-events-none absolute right-1/4 top-1/3 h-24 w-24 rotate-12 border-[10px] border-[#F3F6FA]/10" />
-        <div className="relative">
-          <div className="flex items-start justify-between gap-4 text-[10px] font-bold uppercase tracking-[.18em] text-[#F3F6FA]/70">
-            <div className="min-w-0">
-              <p className="truncate">PIXL SPORTS / YOUR WEEK</p>
-              <p className="mt-3 max-w-[90%] font-display text-5xl font-extrabold leading-[.82] tracking-[-.04em] text-[#F3F6FA] sm:text-7xl">
-                {teamName || 'TEAM NAME'}
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-[#2474F5] px-3 py-1.5 text-[#FFFFFF]">{events.length} {events.length === 1 ? 'event' : 'events'}</span>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <span className="h-1.5 w-16 bg-[#FF6433]" />
-            <p className="text-sm font-bold uppercase tracking-[.16em] text-[#F3F6FA]/75 sm:text-base">{season || 'SEASON'}</p>
-          </div>
-
-          <div className="mt-7 flex items-center justify-between gap-3">
-            <p className="font-display text-2xl font-bold uppercase tracking-wide text-[#F3F6FA] sm:text-3xl">Next up</p>
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={onAddEvent}
-                className="inline-flex items-center gap-2 rounded-md bg-[#FF6433] px-4 py-2.5 text-xs font-extrabold uppercase tracking-[.14em] text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F3F6FA] focus-visible:ring-offset-2 focus-visible:ring-offset-[#102B4D]"
-                aria-label="Add event"
-                data-testid="button-add-event"
-              >
-                <Plus className="h-4 w-4" strokeWidth={3} />
-                Add event
-              </button>
-            )}
-          </div>
-
-          <div
-            className="mt-2 max-h-[300px] space-y-3 overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable] sm:max-h-[420px]"
-            aria-label="Schedule events"
-            tabIndex={events.length > 0 ? 0 : undefined}
-            data-testid="preview-schedule-event-list"
-          >
-            {events.length === 0 ? (
-              <div className="border border-dashed border-[#F3F6FA]/35 bg-[#F3F6FA]/[.06] p-8 text-center text-sm font-bold uppercase tracking-widest text-[#F3F6FA]/75">
-                Add an event to fill the schedule
-              </div>
-            ) : events.map((event, index) => (
-              <div key={event.id} className="relative border border-[#F3F6FA]/20 bg-[#F3F6FA]/[.08] p-3.5 transition-colors hover:border-[#FF6433]/70 hover:bg-[#F3F6FA]/[.12] clip-angled-sm">
-                <div className="flex gap-3 sm:gap-5">
-                  <div className="w-[86px] shrink-0 border-r border-[#F3F6FA]/20 pr-3 sm:w-[110px]">
-                    <p className="font-display text-lg leading-none text-[#F3F6FA] sm:text-2xl">{formatScheduleDate(event.date)}</p>
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#FF6433]">{formatScheduleTime(event.time)}</p>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-sm bg-[#2474F5] px-2 py-1 text-[10px] font-extrabold uppercase tracking-[.16em] text-white">{event.type}</span>
-                      {event.type === 'game' && <span className="font-display text-xl font-bold leading-none text-[#F3F6FA] sm:text-2xl">VS {event.opponent || 'OPPONENT TBD'}</span>}
-                      {event.type === 'practice' && <span className="font-display text-xl font-bold leading-none text-[#F3F6FA] sm:text-2xl">TEAM PRACTICE</span>}
-                      {event.type === 'meeting' && <span className="font-display text-xl font-bold leading-none text-[#F3F6FA] sm:text-2xl">TEAM MEETING</span>}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold uppercase tracking-wider text-[#F3F6FA]/75">
-                      {event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-[#FF6433]" />{event.location}</span>}
-                      {!event.location && <span className="text-[#F3F6FA]/50">Location TBD</span>}
-                    </div>
-                    {(event.snacks || event.drinks) && (
-                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-[#F3F6FA]/70">
-                        {event.snacks && <span className="inline-flex items-center gap-1"><Utensils className="h-3 w-3 text-[#FF6433]" /> Snacks: {event.snacks}</span>}
-                        {event.drinks && <span className="inline-flex items-center gap-1"><CupSoda className="h-3 w-3 text-[#FF6433]" /> Drinks: {event.drinks}</span>}
-                      </div>
-                    )}
-                    {event.notes && <p className="mt-2 text-xs font-medium leading-relaxed text-[#F3F6FA]/70">{event.notes}</p>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-8 flex items-center justify-between border-t border-[#F3F6FA]/20 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-[#F3F6FA]/60">
-            <span>Bring the energy / stay in the moment</span>
-            <CalendarDays className="h-5 w-5 text-[#FF6433]" />
-          </div>
-          {readOnly && <ScheduleInstallPrompt />}
-        </div>
-      </div>
+    <div className="noise min-h-dvh bg-background">
+      <SiteNav />
+      <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[760px] flex-col items-center justify-center px-5 py-12 text-center">
+        <h1 className="font-display text-4xl uppercase tracking-wide text-foreground sm:text-5xl">Schedule Maker retired</h1>
+        <p className="mt-4 max-w-lg text-sm font-medium leading-relaxed text-muted-foreground">
+          Standalone Calendar schedules and shared schedule links are no longer available. Game On cards, your tracker, and your checklist are still here.
+        </p>
+        <Link href="/studio" className="mt-7 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-retired-schedule-dashboard">
+          Go to your dashboard
+        </Link>
+      </main>
     </div>
   );
 }
 
-function PublicSchedulePage({ params }: { params: { shareToken?: string } }) {
-  const shareToken = params.shareToken ?? '';
-  const { data: schedule, isLoading, isError } = useQuery({
-    queryKey: ['/api/schedule-shares', shareToken],
-    queryFn: ({ signal }) => fetchScheduleShareWithCache(shareToken, signal),
-    enabled: Boolean(shareToken),
-    retry: false,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="noise min-h-dvh bg-background">
-        <SiteNav />
-        <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[760px] items-center justify-center px-5 py-12">
-          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading schedule…</p>
-        </main>
-      </div>
-    );
-  }
-
-  if (isError || !schedule) {
-    return (
-      <div className="noise min-h-dvh bg-background">
-        <SiteNav />
-        <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[760px] flex-col items-center justify-center px-5 py-12 text-center">
-          <CalendarDays className="h-10 w-10 text-primary" />
-          <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Schedule not found</h1>
-          <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">This parent link may have expired or been copied incorrectly.</p>
-           <Link href="/" className="mt-7 bg-card px-5 py-3 text-xs font-bold uppercase tracking-widest text-card-foreground clip-angled-sm">Go to Pixl Sports</Link>
-        </main>
-      </div>
-    );
-  }
-
-  return (
-    <div className="noise min-h-dvh bg-background">
-      <SiteNav />
-      <main className="mx-auto w-full max-w-[860px] px-4 py-8 sm:px-8 sm:py-14">
-        {schedule.cacheStatus === 'cached' && (
-          <div
-            className="mb-6 border-l-4 border-primary bg-primary/10 px-4 py-3 text-sm font-medium leading-relaxed text-foreground"
-            data-testid="schedule-cache-status"
-            role="status"
-          >
-            <p className="font-bold uppercase tracking-widest text-primary">Saved copy</p>
-            <p className="mt-1">Refresh unavailable. You’re viewing the last schedule saved on this device.</p>
-          </div>
-        )}
-        <div className="mb-8 border-l-4 border-primary pl-4">
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-primary">Shared team schedule</p>
-          <h1 className="mt-2 font-display text-5xl leading-[.9] tracking-tight text-foreground sm:text-7xl">{schedule.title}</h1>
-          <p className="mt-4 text-base font-bold uppercase tracking-[.12em] text-muted-foreground">{schedule.teamSeason}</p>
-        </div>
-
-        <div data-testid="public-schedule-events">
-          {schedule.events.length === 0 ? (
-            <div className="border border-dashed border-border bg-card p-8 text-center text-sm font-bold uppercase tracking-widest text-muted-foreground">No events have been added yet.</div>
-          ) : (
-            <SchedulePreview
-              teamName={schedule.title}
-              season={schedule.teamSeason}
-              events={schedule.events}
-              onAddEvent={() => undefined}
-              readOnly
-            />
-          )}
-        </div>
-
-        <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from Pixl Sports</p>
-      </main>
-    </div>
-  );
+function PublicSchedulePage() {
+  return <RetiredSchedulePage />;
 }
 
 function ChecklistRoutePage() {
@@ -3110,7 +2823,6 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   );
   const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(user?.id ?? 'anonymous')}`;
   const [checklist, setChecklist] = useState<LocalGamedayChecklist>(() => createGamedayChecklist(requestedEventType.current));
-  const [localSchedule] = useState(() => readScheduleDraft());
   const [hydrated, setHydrated] = useState(false);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [notice, setNotice] = useState('');
@@ -3130,10 +2842,8 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   const revisionRef = useRef(revision);
   const activeShareToken = shared ? shareToken : checklist.shareToken;
 
-  const calendarEvents = localSchedule?.events.filter((event) => event.type !== 'meeting') ?? [];
-  const liveSelectedEvent = calendarEvents.find((event) => event.id === checklist.selectedGame?.id);
-  const displayedEvent = liveSelectedEvent ?? checklist.selectedGame;
-  const displayedEventType: ChecklistEventType = liveSelectedEvent?.type ?? checklist.selectedGame?.type ?? 'game';
+  const displayedEvent = checklist.selectedGame;
+  const displayedEventType: ChecklistEventType = checklist.selectedGame?.type ?? 'game';
   const eventCopy = getChecklistEventCopy(displayedEventType);
 
   const createShare = useCreateChecklistShare();
@@ -3206,8 +2916,9 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
   useEffect(() => {
     if (shared || !hydrated || requestedGameApplied.current || !requestedGameId.current) return;
     const searchParams = new URLSearchParams(window.location.search);
-    const requestedGame = calendarEvents.find((event) => event.id === requestedGameId.current)
-      ?? (['date', 'time', 'location', 'opponent'].some((key) => searchParams.has(key))
+    const requestedGame = latestChecklist.current.selectedGame?.id === requestedGameId.current
+      ? latestChecklist.current.selectedGame
+      : (['date', 'time', 'location', 'opponent'].some((key) => searchParams.has(key))
         ? {
           id: requestedGameId.current,
           type: requestedEventType.current === 'practice' ? 'practice' as const : 'game' as const,
@@ -3237,7 +2948,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
     latestChecklist.current = next;
     setChecklist(next);
     persistLocal(next);
-  }, [calendarEvents, hydrated, shared]);
+  }, [hydrated, shared]);
 
   const updateItem = (id: string, patch: Partial<GamedayChecklistItem>) => {
     updateChecklist({
@@ -3443,69 +3154,23 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
             </div>
           </div>
 
-          <div className="mt-3 border-t border-border pt-3 sm:mt-5 sm:pt-5" data-testid="checklist-game-selector">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
-              <label className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary"><CalendarDays className="h-3.5 w-3.5" /> {eventCopy.selectorLabel}</span>
-                <select
-                  value={displayedEvent?.id ?? ''}
-                  onChange={(event) => {
-                    const nextEvent = calendarEvents.find((candidate) => candidate.id === event.target.value);
-                     const storedForEvent = nextEvent && !shared
-                       ? readEventChecklist(window.localStorage, user?.id ?? 'anonymous', nextEvent.id)
-                       : null;
-                     const nextChecklist = storedForEvent
-                       ?? (nextEvent ? createGamedayChecklist(nextEvent.type) : createGamedayChecklist());
-                    updateChecklist({
-                       ...nextChecklist,
-                      selectedGame: nextEvent
-                        ? {
-                            id: nextEvent.id,
-                            type: nextEvent.type,
-                            date: nextEvent.date,
-                            time: nextEvent.time,
-                            location: nextEvent.location,
-                            opponent: nextEvent.opponent,
-                          }
-                        : undefined,
-                    });
-                     if (completionTimer.current !== null) window.clearTimeout(completionTimer.current);
-                     setCompletionFeedback(null);
-                  }}
-                  disabled={shared || calendarEvents.length === 0}
-                  className="mt-1 w-full border border-border bg-background px-3 py-2.5 text-sm font-bold uppercase tracking-wide text-foreground outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-70 sm:mt-2 sm:py-3"
-                  aria-label={eventCopy.selectorAriaLabel}
-                  data-testid="select-checklist-game"
-                >
-                  <option value="">{eventCopy.selectorPlaceholder}</option>
-                  {displayedEvent && !calendarEvents.some((candidate) => candidate.id === displayedEvent.id) && (
-                    <option value={displayedEvent.id}>Previously selected · {displayedEvent.opponent || eventCopy.selectorPlaceholder}</option>
-                  )}
-                  {calendarEvents.map((scheduleEvent) => (
-                    <option key={scheduleEvent.id} value={scheduleEvent.id}>
-                      {formatScheduleDate(scheduleEvent.date)} · {scheduleEvent.type === 'game' ? `VS ${scheduleEvent.opponent || 'OPPONENT TBD'}` : scheduleEvent.type.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="max-w-sm text-[11px] font-medium leading-relaxed text-muted-foreground sm:text-xs">
-                {localSchedule
-                  ? eventCopy.scheduleDescription
-                  : `Add ${displayedEventType === 'practice' ? 'practices' : displayedEventType === 'meeting' ? 'meetings' : 'games'} in Schedule to connect this checklist to an event.`}
+          <div className="mt-3 border-t border-border pt-3 sm:mt-5 sm:pt-5" data-testid="checklist-event-context">
+            {displayedEvent ? (
+              <>
+                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary">
+                  <CalendarDays className="h-3.5 w-3.5" /> Game On card details
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:gap-x-5 sm:gap-y-2 sm:py-3" data-testid="checklist-selected-event-summary">
+                  <span>{formatScheduleDate(displayedEvent.date)}</span>
+                  <span>{formatScheduleTime(displayedEvent.time)}</span>
+                  {displayedEventType === 'game' ? <span>VS {displayedEvent.opponent || 'OPPONENT TBD'}</span> : <span>{displayedEventType.toUpperCase()}</span>}
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {displayedEvent.location || 'Location TBD'}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs font-medium leading-relaxed text-muted-foreground">
+                Open this checklist from a Game On card to keep its event details with your prep.
               </p>
-            </div>
-            {displayedEvent && (
-             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:mt-4 sm:gap-x-5 sm:gap-y-2 sm:py-3" data-testid="checklist-selected-event-summary">
-                <span>{formatScheduleDate(displayedEvent.date)}</span>
-                <span>{formatScheduleTime(displayedEvent.time)}</span>
-                {displayedEventType === 'game' ? <span>VS {displayedEvent.opponent || 'OPPONENT TBD'}</span> : <span>{displayedEventType.toUpperCase()}</span>}
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {displayedEvent.location || 'Location TBD'}</span>
-              </div>
-            )}
-            {!shared && calendarEvents.length === 0 && (
-              <Link href="/studio/schedule" className="mt-2 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
-                Open schedule <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
             )}
           </div>
 
@@ -3857,7 +3522,7 @@ function SignInPage() {
   return (
     <AuthLayout
       title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
-      subtitle="Access your saved templates, schedules, and broadcast graphics across all your devices."
+      subtitle="Access your saved templates and broadcast graphics across all your devices."
     >
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
     </AuthLayout>
@@ -3991,7 +3656,7 @@ function RoleSelectionPage() {
                 </span>
                 <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
                 <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">
-                  Make hype cards and keep up with the team schedule.<br />
+                  Make Hype Cards and keep game-day details close.<br />
                   Celebrate your athlete.<br />
                   Keep friends and family in the loop.
                 </span>
@@ -4002,7 +3667,7 @@ function RoleSelectionPage() {
                <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">
                  <p className="text-xs font-bold uppercase tracking-widest text-primary">Full team account</p>
                  <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
-                   Your account includes cloud saves, publishing, schedules, checklists, stats, and Hype Cards.
+                   Your account includes cloud saves, publishing, checklists, stats, and Hype Cards.
                  </p>
                </div>
              )}
@@ -4183,6 +3848,9 @@ export { SupporterProfilePage, AccountLifecycleGate, ClerkQueryClientCacheInvali
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+  useEffect(() => {
+    clearRetiredStandaloneScheduleStorage(window.localStorage);
+  }, []);
 
   return (
     <ClerkProvider
@@ -4219,7 +3887,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/studio/setup" component={RoleSelectionPage} />
-              <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
+              <Route path="/schedule/:shareToken" component={RetiredSchedulePage} />
               <Route path="/game-on/:shareToken" component={PublicGameOnCardPage} />
                <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
                <Route path="/meeting/:shareToken" component={PublicMeetingRecapPage} />
@@ -4234,7 +3902,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio" component={StudioPortal} />
               <Route path="/studio/hype-card" component={HypeCardEditor} />
               <Route path="/studio/hype-card/:id"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
-              <Route path="/studio/schedule/:id?"><ProtectedEditor kind="schedule"><EditorPage kind="schedule" /></ProtectedEditor></Route>
+               <Route path="/studio/schedule/:id?" component={RetiredSchedulePage} />
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
                <Route path="/studio/season-stats"><ProtectedEditor kind="stat-tracker"><SeasonStatsPage /></ProtectedEditor></Route>
                 <Route path="/studio/checklist"><ChecklistRoutePage /></Route>

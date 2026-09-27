@@ -93,6 +93,12 @@ router.post("/projects", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const projectPayload = parsed.data.project as { tool?: unknown } | null;
+  if (projectPayload && typeof projectPayload === "object" && projectPayload.tool === "schedule") {
+    res.status(410).json({ error: "Standalone Calendar projects are no longer supported." });
+    return;
+  }
+
   const [{ value: projectCount }] = await db
     .select({ value: count() })
     .from(cloudProjectsTable)
@@ -209,6 +215,13 @@ router.patch("/projects/:projectId", requireAuth, async (req, res): Promise<void
     );
   if (!current) {
     res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  const currentPayload = current.project as { tool?: unknown } | null;
+  const incomingPayload = parsed.data.project as { tool?: unknown } | null | undefined;
+  if ((currentPayload && typeof currentPayload === "object" && currentPayload.tool === "schedule")
+    || (incomingPayload && typeof incomingPayload === "object" && incomingPayload.tool === "schedule")) {
+    res.status(410).json({ error: "Standalone Calendar projects are no longer supported." });
     return;
   }
   if (current.revision !== parsed.data.expectedRevision) {

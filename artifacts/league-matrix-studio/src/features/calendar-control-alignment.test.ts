@@ -3,34 +3,33 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
-const scheduleEditor = appSource.slice(
-  appSource.indexOf('<SchedulePreview'),
-  appSource.indexOf('function SchedulePreview'),
-);
-const schedulePreview = appSource.slice(
-  appSource.indexOf('function SchedulePreview'),
-  appSource.indexOf('function PublicSchedulePage'),
-);
 const supporterDashboard = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
 const gameOnCollection = readFileSync(new URL('./game-on-dashboard-collection.tsx', import.meta.url), 'utf8');
 const gameOnNavigation = readFileSync(new URL('./game-on-navigation.ts', import.meta.url), 'utf8');
+const tourSource = readFileSync(new URL('./supporter-dashboard-tour.tsx', import.meta.url), 'utf8');
 
-test('calendar preview uses the landing-page card and keeps creation controls inside it', () => {
-  assert.match(schedulePreview, /bg-\[#102B4D\]/);
-  assert.match(schedulePreview, /bg-\[#FF6433\]/);
-  assert.match(schedulePreview, /max-w-\[976px\].*bg-\[#102B4D\].*p-2.*sm:p-3/);
-  assert.doesNotMatch(schedulePreview, /min-h-\[600px\]|min-h-\[760px\]/);
-  assert.match(
-    schedulePreview,
-    /data-testid="button-add-event"/,
-  );
-  assert.doesNotMatch(schedulePreview, /schedule-bottom-actions/);
-  assert.doesNotMatch(appSource, /schedule-template-picker/);
-  assert.match(appSource, /await persistSchedule\(/);
+test('standalone Calendar routes show a clear retired notice and cannot reach the old schedule canvas', () => {
+  assert.match(appSource, /<Route path="\/schedule\/:shareToken" component=\{RetiredSchedulePage\}/);
+  assert.match(appSource, /<Route path="\/studio\/schedule\/:id\?" component=\{RetiredSchedulePage\}/);
+  assert.match(appSource, /function RetiredSchedulePage\(\)[\s\S]*?Schedule Maker retired[\s\S]*?Standalone Calendar schedules and shared schedule links are no longer available/);
+  assert.match(appSource, /data-testid="link-retired-schedule-dashboard"/);
+  assert.doesNotMatch(appSource, /function SchedulePreview|PIXL SPORTS \/ YOUR WEEK|<SchedulePreview/);
+  assert.match(appSource, /function PublicSchedulePage\(\)[\s\S]*?return <RetiredSchedulePage \/>/);
 });
 
-test('Add event actions lead to the visible Game On section instead of opening Schedule Maker flow', () => {
-  assert.match(scheduleEditor, /onAddEvent=\{\(\) => navigateToGameOnSection\(setLocation\)\}/);
+test('the supporter tour has four steps and omits Calendar', () => {
+  assert.equal((tourSource.match(/title: "/g) ?? []).length, 4);
+  assert.doesNotMatch(tourSource, /title: "Calendar"|Open Calendar|supporterToolRoutes\.schedule/);
+  assert.match(tourSource, /title: "Prep"/);
+  assert.doesNotMatch(tourSource, /title: "Checklist"|supporterToolRoutes\.checklist|supporterToolRoutes\.statTracker/);
+  assert.match(tourSource, /Show compact tracker/);
+  assert.match(tourSource, /onOpenCardPanel\?\.\(step\.panel!/);
+  assert.match(supporterDashboard, /tourPanelRequest=\{tourPanelRequest\}/);
+  assert.match(gameOnCollection, /setOpenPanel\(\{ cardId: tourPanelRequest\.cardId, panel: tourPanelRequest\.panel \}\)/);
+});
+
+test('Game On cards remain the active event-card workspace', () => {
+  assert.doesNotMatch(supporterDashboard, /href="\/studio\/schedule"/);
   assert.match(supporterDashboard, /<GameOnDashboardCollection/);
   assert.match(gameOnCollection, /id=\{isActiveShell \? GAME_ON_COLLECTION_ID : undefined\}/);
   assert.match(gameOnCollection, /data-testid="button-create-game-on-card"/);
@@ -38,29 +37,12 @@ test('Add event actions lead to the visible Game On section instead of opening S
   assert.match(gameOnNavigation, /scrollIntoView/);
 });
 
-test('public schedule recipients get the same card without creation controls', () => {
-  const publicSchedulePage = appSource.slice(
-    appSource.indexOf('function PublicSchedulePage'),
-    appSource.indexOf('function ChecklistPage'),
-  );
-  assert.match(publicSchedulePage, /<SchedulePreview/);
-  assert.match(publicSchedulePage, /readOnly/);
-  assert.doesNotMatch(publicSchedulePage, /button-add-event/);
-});
-
-test('public schedule cards include accessible phone-install guidance', () => {
-  const publicScheduleCard = appSource.slice(
-    appSource.indexOf('function ScheduleInstallPrompt'),
-    appSource.indexOf('function SchedulePreview'),
-  );
-  assert.match(publicScheduleCard, /schedule-install-prompt/);
-  assert.match(publicScheduleCard, /Install Pixl Sports on your phone/);
-  assert.match(publicScheduleCard, /beforeinstallprompt/);
-  assert.match(publicScheduleCard, /getScheduleInstallInstructions\(isIOS\)/);
-  assert.match(publicScheduleCard, /aria-expanded=\{showInstructions\}/);
-  assert.match(publicScheduleCard, /role="status"/);
-  assert.match(publicScheduleCard, /type="button"/);
-  assert.match(publicScheduleCard, /focus-visible:ring/);
-  assert.doesNotMatch(publicScheduleCard, /button-publish-schedule/);
-  assert.doesNotMatch(publicScheduleCard, /button-revoke-schedule/);
+test('standalone schedule events are not exposed through supporter dashboard or checklist links', () => {
+  assert.doesNotMatch(supporterDashboard, /\/studio\/schedule|View Calendar|Schedule Maker/);
+  const supporterStudio = appSource.slice(appSource.indexOf('function SupporterStudio'), appSource.indexOf('function SupporterProfilePage'));
+  assert.match(supporterStudio, /const events: SupporterEvent\[\] = \[\]/);
+  assert.doesNotMatch(supporterStudio, /getCloudScheduleProjects|getActiveCloudScheduleProject|getSupporterScheduleSelection|readScheduleDraft/);
+  const checklistPage = appSource.slice(appSource.indexOf('export function ChecklistPage'), appSource.indexOf('function StudioPortal'));
+  assert.doesNotMatch(checklistPage, /\/studio\/schedule|select-checklist-game|calendarEvents/);
+  assert.match(checklistPage, /Game On card details/);
 });

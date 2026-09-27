@@ -24,6 +24,7 @@ import {
   getSelectedCloudScheduleProject,
   findScheduleGameOwner,
   clearSupporterScheduleSelection,
+  clearRetiredStandaloneScheduleStorage,
   readSupporterScheduleSelection,
   saveSupporterScheduleSelection,
   updateScheduleEventStatus,
@@ -46,6 +47,21 @@ class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem' | 'removeItem
     this.values.delete(key);
   }
 }
+
+test('retiring standalone schedules clears only standalone schedule keys', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(scheduleStorageKey, 'standalone schedule');
+  storage.setItem('leaguematrix-supporter-schedule-selection', 'retired-cloud-id');
+  storage.setItem('pixlsports-game-on-cards:account-1', 'saved Game On card');
+  storage.setItem('pixlsports-game-on-card:account-1', 'saved Game On card detail');
+
+  clearRetiredStandaloneScheduleStorage(storage as Storage);
+
+  assert.equal(storage.getItem(scheduleStorageKey), null);
+  assert.equal(storage.getItem('leaguematrix-supporter-schedule-selection'), null);
+  assert.equal(storage.getItem('pixlsports-game-on-cards:account-1'), 'saved Game On card');
+  assert.equal(storage.getItem('pixlsports-game-on-card:account-1'), 'saved Game On card detail');
+});
 
 const completeEvents: ScheduleEvent[] = [
   {

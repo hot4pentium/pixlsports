@@ -131,7 +131,9 @@
   color: var(--tour-paper);
   background: #174b83;
   font-size: 12px;
+  font-family: inherit;
   font-weight: 700;
+  cursor: pointer;
   text-decoration: none;
   transition: transform .18s ease, opacity .18s ease;
 }

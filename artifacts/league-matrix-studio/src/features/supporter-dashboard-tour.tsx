@@ -10,6 +10,9 @@ type Phase = "prepare" | "capture" | "celebrate";
 export type SupporterDashboardTourProps = {
   autoStart: boolean;
   onDismiss: (kind: DismissKind) => Promise<void>;
+  canOpenPrep?: boolean;
+  canOpenCompactTracker?: boolean;
+  onOpenCardPanel?: (panel: "prep" | "tracker", trigger: HTMLButtonElement) => void;
 };
 
 const steps: ReadonlyArray<{
@@ -18,34 +21,30 @@ const steps: ReadonlyArray<{
   description: string;
   linkLabel: string;
   href: string;
+  panel?: "prep" | "tracker";
 }> = [
   {
     title: "Game On cards",
     phase: "prepare",
-    description: "Create an event card for each game or practice to keep the schedule and details organized.",
+    description: "Create an event card for each game or practice to keep the details organized.",
     linkLabel: "Explore Game On cards",
     href: `#${GAME_ON_COLLECTION_ID}`,
   },
   {
-    title: "Calendar",
+    title: "Prep",
     phase: "prepare",
-    description: "See what is coming up so your family knows where to be and when to show up.",
-    linkLabel: "Open Calendar",
-    href: supporterToolRoutes.schedule,
-  },
-  {
-    title: "Checklist",
-    phase: "prepare",
-    description: "Get the little things ready before game day, from the bag to the last-minute details.",
-    linkLabel: "Open Checklist",
-    href: supporterToolRoutes.checklist,
+    description: "Use Prep on a Game On card to make your list, add notes, and create an edit link for the people helping.",
+    linkLabel: "Show card Prep",
+    href: `#${GAME_ON_COLLECTION_ID}`,
+    panel: "prep",
   },
   {
     title: "Stat Tracker",
     phase: "capture",
-    description: "Record the plays worth remembering while the game is happening, not hours later.",
-    linkLabel: "Open Stat Tracker",
-    href: supporterToolRoutes.statTracker,
+    description: "Open the compact Stat Tracker on a game card to record plays without leaving your Game On card.",
+    linkLabel: "Show compact tracker",
+    href: `#${GAME_ON_COLLECTION_ID}`,
+    panel: "tracker",
   },
   {
     title: "Hype Cards",
@@ -56,7 +55,7 @@ const steps: ReadonlyArray<{
   },
 ];
 
-export function SupporterDashboardTour({ autoStart, onDismiss }: SupporterDashboardTourProps) {
+export function SupporterDashboardTour({ autoStart, onDismiss, canOpenPrep = false, canOpenCompactTracker = false, onOpenCardPanel }: SupporterDashboardTourProps) {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [pending, setPending] = useState(false);
@@ -116,6 +115,9 @@ export function SupporterDashboardTour({ autoStart, onDismiss }: SupporterDashbo
   };
 
   const step = steps[stepIndex];
+  const canOpenPanel = Boolean(onOpenCardPanel && (
+    (step.panel === "prep" && canOpenPrep) || (step.panel === "tracker" && canOpenCompactTracker)
+  ));
 
   return (
     <div className="supporter-tour" data-testid="supporter-dashboard-tour">
@@ -177,9 +179,18 @@ export function SupporterDashboardTour({ autoStart, onDismiss }: SupporterDashbo
               <p id="supporter-dashboard-tour-description" className="supporter-tour__description">
                 {step.description}
               </p>
-              {step.href.startsWith("#") ? (
-                <a className="supporter-tour__visit" href={step.href} data-testid="supporter-dashboard-tour-link">
+              {step.panel && canOpenPanel ? (
+                <button
+                  type="button"
+                  className="supporter-tour__visit"
+                  onClick={(event) => onOpenCardPanel?.(step.panel!, event.currentTarget)}
+                  data-testid="supporter-dashboard-tour-link"
+                >
                   {step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
+                </button>
+              ) : step.href.startsWith("#") ? (
+                <a className="supporter-tour__visit" href={step.href} data-testid="supporter-dashboard-tour-link">
+                  {step.panel ? step.panel === "prep" ? "Add a Game On card for Prep" : "Add a game card for tracking" : step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
                 </a>
               ) : (
                 <Link className="supporter-tour__visit" href={step.href} data-testid="supporter-dashboard-tour-link">

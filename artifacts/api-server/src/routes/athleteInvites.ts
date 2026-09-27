@@ -128,45 +128,13 @@ async function resolveTrackerProject(
 
 async function validateSources(
   ownerClerkUserId: string,
-  input: { trackerProjectId: string | null; scheduleProjectId: string | null },
+  input: { trackerProjectId: string | null },
 ) {
-  const [tracker, schedule] = await Promise.all([
-    validateProject(input.trackerProjectId, ownerClerkUserId, "stat-tracker"),
-    validateProject(input.scheduleProjectId, ownerClerkUserId, "schedule"),
-  ]);
+  const tracker = await validateProject(input.trackerProjectId, ownerClerkUserId, "stat-tracker");
   return {
-    valid: (!input.trackerProjectId || Boolean(tracker))
-      && (!input.scheduleProjectId || Boolean(schedule)),
+    valid: !input.trackerProjectId || Boolean(tracker),
     tracker,
-    schedule,
   };
-}
-
-function cleanScheduleEvents(payload: unknown) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
-  const source = payload as { tool?: unknown; events?: unknown };
-  if (source.tool !== "schedule" || !Array.isArray(source.events)) return [];
-  const today = new Date().toISOString().slice(0, 10);
-  return source.events.flatMap((event) => {
-    if (!event || typeof event !== "object" || Array.isArray(event)) return [];
-    const item = event as Record<string, unknown>;
-    const type = item.type === "practice" || item.type === "meeting" ? item.type : "game";
-    const status = item.status === "live" || item.status === "final" ? item.status : "upcoming";
-    const date = typeof item.date === "string" ? item.date.slice(0, 30) : "";
-    if (!date || date < today || status === "final") return [];
-    return [{
-      id: typeof item.id === "string" ? item.id.slice(0, 100) : `${type}-${date}`,
-      type,
-      status,
-      date,
-      time: typeof item.time === "string" ? item.time.slice(0, 30) : "",
-      location: typeof item.location === "string" ? item.location.slice(0, 300) : "",
-      opponent: type === "game" && typeof item.opponent === "string" ? item.opponent.slice(0, 200) : "",
-      notes: typeof item.notes === "string" ? item.notes.slice(0, 1000) : "",
-    }];
-  }).sort((left, right) => (
-    `${left.date}T${left.time || "23:59"}`.localeCompare(`${right.date}T${right.time || "23:59"}`)
-  )).slice(0, 12);
 }
 
 function cleanLiveGame(payload: unknown, fallbackId: string) {
@@ -243,15 +211,12 @@ function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
 
 async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
   const maxHighlightVideos = 3;
-  const [trackerProject, scheduleProject, latestImages, videos, liveShare] = await Promise.all([
+  const [trackerProject, latestImages, videos, liveShare] = await Promise.all([
     invite.showStats && invite.trackerProjectId
       ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
       : invite.showStats
         ? findFallbackTrackerProject(invite.ownerClerkUserId, invite.sport, "final")
         : null,
-    invite.showSchedule && invite.scheduleProjectId
-      ? validateProject(invite.scheduleProjectId, invite.ownerClerkUserId, "schedule")
-      : null,
     invite.showHypeCard
       ? db.select().from(hypeCardSharesTable).where(and(
         eq(hypeCardSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
@@ -293,11 +258,9 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
       trackerProject.updatedAt,
     )
     : null;
-  const scheduleEvents = scheduleProject ? cleanScheduleEvents(scheduleProject.project) : [];
   const updatedAt = new Date(Math.max(
     invite.updatedAt.getTime(),
     trackerProject?.updatedAt.getTime() ?? 0,
-    scheduleProject?.updatedAt.getTime() ?? 0,
     latestImage?.createdAt.getTime() ?? 0,
     latestVideo?.createdAt.getTime() ?? 0,
   ));
@@ -345,7 +308,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     } : null,
     videos: videos.map(athleteVideoResponse),
     stats,
-    scheduleEvents,
+    scheduleEvents: [],
     replies: replies.map((reply) => ({
       reaction: reply.reaction,
       message: reply.message,
@@ -385,6 +348,8 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
   try {
     const [created] = await db.insert(athleteInvitesTable).values({
       ...parsed.data,
+      scheduleProjectId: null,
+      showSchedule: false,
       paused: parsed.data.paused ?? false,
       athleteName: parsed.data.athleteName.trim(),
       teamName: parsed.data.teamName.trim(),
@@ -547,6 +512,8 @@ router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pro
   ));
   const [updated] = await db.update(athleteInvitesTable).set({
     ...parsed.data,
+    scheduleProjectId: null,
+    showSchedule: false,
     ...(parsed.data.paused === undefined ? {} : { paused: parsed.data.paused }),
     ...(parsed.data.paused === true ? { liveTrackerShareToken: null } : {}),
     athleteName: parsed.data.athleteName.trim(),

@@ -5699,11 +5699,39 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     await waitFor(connection, session, 'Boolean(document.querySelector(".game-on-collection__dialog-card"))', Boolean);
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"]')?.click()`, session);
     await waitFor(connection, session, 'Boolean(document.querySelector(\'.game-on-collection__dialog-card [data-testid="game-on-inline-prep-game-selected"]\'))', Boolean);
+    assert.equal(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"button-card-prep-edit-link-game-selected\\"]")?.textContent?.trim() || ""', session,
+    ), 'Create edit link');
+    assert.equal(await connection.evaluate<boolean>(
+      'Boolean(document.querySelector("[data-testid=\\"game-on-inline-prep-game-selected\\"] .game-on-prep__share-url"))', session,
+    ), false);
     assert.match(await connection.evaluate<string>(
       'document.querySelector("[data-testid=\\"game-on-inline-prep-game-selected\\"]")?.textContent || ""', session,
     ), /GAME VS TIGERS/i);
     await connection.evaluate(`document.querySelector('[data-testid="checkbox-card-prep-game-selected-uniform"]')?.click()`, session);
     await waitFor(connection, session, 'JSON.parse(localStorage.getItem("pixlsports-gameday-checklist:workspace-journey:event:game-selected") || "null")?.items?.some(item => item.id === "uniform" && item.completed)', Boolean);
+    await connection.evaluate(`(() => {
+      const update = (element, value) => {
+        const setter = Object.getOwnPropertyDescriptor(
+          element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value'
+        ).set;
+        setter.call(element, value);
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      update(document.querySelector('[data-testid="input-card-prep-title-game-selected"]'), 'Inline event list');
+      update(document.querySelector('[data-testid="textarea-card-prep-notes-game-selected"]'), 'Bring the first aid kit');
+      document.querySelector('[data-testid="button-add-card-prep-item-game-selected"]')?.click();
+      const item = document.querySelector('[data-testid^="input-card-prep-item-game-selected-custom-"]');
+      update(item, 'Set up the team tent');
+    })()`, session);
+    await waitFor(connection, session, `(() => {
+      const eventList = JSON.parse(localStorage.getItem('pixlsports-gameday-checklist:workspace-journey:event:game-selected') || 'null');
+      const fullDraft = JSON.parse(localStorage.getItem('pixlsports-gameday-checklist:workspace-journey') || 'null');
+      const hasEditedList = list => list?.title === 'Inline event list'
+        && list?.notes === 'Bring the first aid kit'
+        && list?.items?.some(item => item.label === 'Set up the team tent');
+      return hasEditedList(eventList) && hasEditedList(fullDraft);
+    })()`, Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-close-card-prep-game-selected"]')?.click()`, session);
     await waitFor(connection, session, 'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("aria-expanded") === "false"', Boolean);
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
@@ -5711,6 +5739,12 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     await connection.evaluate(`document.querySelector('[data-testid="link-open-full-prep-game-selected"]')?.click()`, session);
     assert.equal(await path(), '/studio/checklist');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
+    assert.equal(await connection.evaluate<string>(
+      'document.querySelector("[data-testid=\\"input-checklist-notes\\"]")?.value || ""', session,
+    ), 'Bring the first aid kit');
+    assert.equal(await connection.evaluate<string>(
+      'document.querySelector("[data-testid^=\\"input-checklist-item-custom-\\"]")?.value || ""', session,
+    ), 'Set up the team tent');
     await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-selected&eventType=game'));
     await reloadPage(connection, page);
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);

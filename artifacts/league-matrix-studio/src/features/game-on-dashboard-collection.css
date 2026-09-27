@@ -334,16 +334,47 @@
   display: flex; min-width: 0; align-items: center; gap: 8px; padding: 7px 8px;
   border: 1px solid #d7e1ec; background: rgba(255, 255, 255, .7); cursor: pointer;
 }
-.game-on-prep__item input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.game-on-prep__item-toggle { display: flex; flex: 0 0 20px; cursor: pointer; }
+.game-on-prep__item-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .game-on-prep__check {
   display: grid; width: 20px; height: 20px; flex: 0 0 20px; place-items: center;
   border: 1px solid #8197af; color: transparent;
 }
-.game-on-prep__item input:focus-visible + .game-on-prep__check { outline: 3px solid #d76a2a; outline-offset: 2px; }
-.game-on-prep__item input:checked + .game-on-prep__check { border-color: #1769c2; background: #1769c2; color: white; }
+.game-on-prep__item-toggle input:focus-visible + .game-on-prep__check { outline: 3px solid #d76a2a; outline-offset: 2px; }
+.game-on-prep__item-toggle input:checked + .game-on-prep__check { border-color: #1769c2; background: #1769c2; color: white; }
 .game-on-prep__item-label { min-width: 0; color: #183858; font-size: 11px; font-weight: 700; line-height: 1.25; }
 .game-on-prep__item.is-complete .game-on-prep__item-label { color: #62778d; text-decoration: line-through; }
+.game-on-prep__item-edit {
+  min-width: 0; width: 100%; border: 0; background: transparent; color: #183858;
+  font-size: 11px; font-weight: 700; line-height: 1.25;
+}
+.game-on-prep__item.is-complete .game-on-prep__item-edit { color: #62778d; text-decoration: line-through; }
+.game-on-prep__remove {
+  display: grid; width: 26px; height: 26px; flex: 0 0 26px; place-items: center;
+  border: 0; background: transparent; color: #62778d; cursor: pointer;
+}
+.game-on-prep__remove:hover { color: #a52d2d; }
 .game-on-prep__empty { margin: 0; color: #506782; font-size: 11px; }
+.game-on-prep__field { display: grid; gap: 5px; color: #506782; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.game-on-prep__field small { display: block; margin-top: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0; line-height: 1.4; text-transform: none; }
+.game-on-prep__field input, .game-on-prep__field textarea, .game-on-prep__share-url input {
+  width: 100%; min-width: 0; border: 1px solid #c9d6e4; border-radius: 0; padding: 8px;
+  background: rgba(255, 255, 255, .82); color: #183858; font-size: 11px; font-weight: 600;
+  letter-spacing: normal; text-transform: none;
+}
+.game-on-prep__field textarea { resize: vertical; line-height: 1.4; }
+.game-on-prep__add, .game-on-prep__share, .game-on-prep__retry {
+  display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid #1769c2; padding: 7px 10px; background: #fff; color: #1769c2;
+  font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+}
+.game-on-prep__share { min-height: 40px; background: #1769c2; color: #fff; }
+.game-on-prep__share:hover { background: #10549c; }
+.game-on-prep__share:disabled { cursor: wait; opacity: .65; }
+.game-on-prep__retry { align-self: flex-start; border-color: #a52d2d; color: #a52d2d; }
+.game-on-prep__notice { margin: 0; color: #8a3a15; font-size: 10px; font-weight: 700; line-height: 1.4; }
+.game-on-prep__share-url { display: grid; gap: 5px; color: #506782; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.game-on-prep__share-url input { font-size: 10px; }
 .game-on-prep__save-status { min-height: 1em; margin: 0; color: #506782; font-size: 9px; font-weight: 600; line-height: 1.3; }
 .game-on-prep__full-link {
   display: flex; min-height: 40px; align-items: center; justify-content: center; padding: 9px 12px;
@@ -351,7 +382,7 @@
   text-align: center; text-decoration: none; text-transform: uppercase;
 }
 .game-on-prep__full-link:hover { background: #10549c; }
-.game-on-prep :is(button, a, input):focus-visible { outline: 3px solid #d76a2a; outline-offset: 2px; }
+.game-on-prep :is(button, a, input, textarea):focus-visible { outline: 3px solid #d76a2a; outline-offset: 2px; }
 .game-on-collection__back-button:hover { border-color: #70b4ff; background: #e9f4ff; }
 .game-on-collection__card::before {
   content: "";

@@ -157,7 +157,14 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
       }),
     });
     assert.equal(create.status, 201);
-    const owned = await create.json() as { inviteToken: string };
+    const createdInvite = await create.json() as {
+      inviteToken: string;
+      scheduleProjectId: string | null;
+      showSchedule: boolean;
+    };
+    assert.equal(createdInvite.scheduleProjectId, null);
+    assert.equal(createdInvite.showSchedule, false);
+    const owned = { inviteToken: createdInvite.inviteToken };
     const publicUrl = `${listUrl}/${owned.inviteToken}`;
     const otherHeaders = { "x-test-user": otherId };
     const otherList = await fetch(listUrl, { headers: otherHeaders });
@@ -208,16 +215,59 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     assert.equal(invite.stats?.gamesPlayed, 1);
     assert.equal(invite.stats?.stats.points, 18);
     assert.equal(invite.stats?.games.some((game) => game.opponent === "Stars"), false);
-    assert.equal(invite.scheduleEvents.length, 1);
-    assert.equal(invite.scheduleEvents[0]?.opponent, "Falcons");
-    assert.equal("snacks" in (invite.scheduleEvents[0] ?? {}), false);
+    assert.deepEqual(invite.scheduleEvents, []);
+
+    // Historical rows can retain Calendar linkage until the cleanup job runs.
+    // Public athlete cards must ignore those columns without affecting other data.
+    await db.update(athleteInvitesTable).set({
+      scheduleProjectId: schedule.id,
+      showSchedule: true,
+    }).where(eq(athleteInvitesTable.publicToken, owned.inviteToken));
+    const legacyPublic = GetAthleteInviteResponse.parse(await (await fetch(publicUrl)).json());
+    assert.deepEqual(legacyPublic.scheduleEvents, []);
+    assert.equal(legacyPublic.stats?.stats.points, 18);
+    assert.equal(legacyPublic.hypeCard?.shareToken, imageToken);
+    assert.equal(legacyPublic.videos[0]?.shareToken, hypeToken);
+    const legacyFan = GetAthleteFanCardResponse.parse(await (
+      await fetch(`${publicUrl}/fan`)
+    ).json());
+    assert.deepEqual(legacyFan.scheduleEvents, []);
+
+    const legacyUpdate = await fetch(publicUrl, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        seasonName: "Fall 2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "basketball",
+        timezone: "America/Los_Angeles",
+        trackerProjectId: tracker.id,
+        scheduleProjectId: schedule.id,
+        showHypeCard: true,
+        showStats: true,
+        showSchedule: true,
+      }),
+    });
+    assert.equal(legacyUpdate.status, 200);
+    const sanitizedUpdate = await legacyUpdate.json() as {
+      scheduleProjectId: string | null;
+      showSchedule: boolean;
+    };
+    assert.equal(sanitizedUpdate.scheduleProjectId, null);
+    assert.equal(sanitizedUpdate.showSchedule, false);
+    const sanitizedRow = (await db.select().from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.publicToken, owned.inviteToken)))[0];
+    assert.equal(sanitizedRow?.scheduleProjectId, null);
+    assert.equal(sanitizedRow?.showSchedule, false);
 
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
     const ownedAfterSourceDeletion = await (await fetch(listUrl, {
       headers: { "x-test-user": ownerId },
     })).json() as Array<{ trackerProjectId: string | null; scheduleProjectId: string | null; inviteToken: string }>;
     assert.equal(ownedAfterSourceDeletion[0]?.trackerProjectId, tracker.id);
-    assert.equal(ownedAfterSourceDeletion[0]?.scheduleProjectId, schedule.id);
+    assert.equal(ownedAfterSourceDeletion[0]?.scheduleProjectId, null);
     assert.equal(ownedAfterSourceDeletion[0]?.inviteToken, owned.inviteToken);
     const publicAfterSourceDeletion = GetAthleteInviteResponse.parse(await (await fetch(publicUrl)).json());
     assert.equal(publicAfterSourceDeletion.stats, null);
@@ -306,7 +356,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
   }
 });
 
-test("athlete pages expose at most ten active videos newest first and ignore image shares", async () => {
+test("athlete pages expose at most three active videos newest first and ignore image shares", async () => {
   const ownerId = `athlete-videos-${randomUUID()}`;
   const inviteToken = randomBytes(24).toString("base64url");
   const app = express();
@@ -394,11 +444,11 @@ test("athlete pages expose at most ten active videos newest first and ignore ima
     const response = await fetch(`http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}`);
     assert.equal(response.status, 200);
     const invite = GetAthleteInviteResponse.parse(await response.json());
-    assert.equal(invite.videos.length, 10);
+    assert.equal(invite.videos.length, 3);
     assert.equal(invite.videos[0]?.title, "Moment 11");
     assert.equal(invite.videos[0]?.jerseyNumber, "31");
     assert.equal(invite.videos[0]?.position, "Point guard");
-    assert.equal(invite.videos.at(-1)?.title, "Moment 2");
+    assert.equal(invite.videos.at(-1)?.title, "Moment 9");
     assert.ok(invite.videos.every((video) => video.videoUrl.endsWith("/media/video")));
     assert.ok(invite.videos.every((video) => video.posterUrl?.endsWith("/media/poster")));
     assert.equal(invite.videos.some((video) => video.title === "Do not include"), false);

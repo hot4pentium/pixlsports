@@ -63,6 +63,7 @@
 - [Workspace selection precedence](workspace-selection-precedence.md) — explicit Calendar choices override automatic tool recommendations; Hype prefill must wait independently for project loading.
 - [Game On Card badge reference](game-on-card-badge-reference.md) — the shared card should use the supplied white lanyard badge graphic, not an abstract dark panel.
 - [Game On share identity](game-on-share-identity.md) — identify cards explicitly; one-event Calendar shares are not cards, while unmarked legacy card links remain usable.
+- [Bundled job entrypoints](bundled-job-entrypoints.md) — separate one-off CLI execution from API-imported jobs; bundling can activate a direct-run guard and close the pool.
 - [Embedded Game On drafts](embedded-game-on-drafts.md) — keep editor identity stable as parent previews mirror draft edits.
 - [Simple tracker end state](simple-tracker-end-state.md) — pause stays resumable; ending saves locally and avoids auto-starting a duplicate on reopen.
 - [Game On card focus boundaries](game-on-badge-panel-focus.md) — keep interactive panels in the modal, out of compact grid tiles, and return focus to visible actions.

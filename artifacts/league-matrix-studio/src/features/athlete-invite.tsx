@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  CalendarPlus,
   Check,
   Clipboard,
   ExternalLink,
@@ -15,7 +14,6 @@ import {
   Link2,
   MessageCircle,
   Radio,
-  MapPin,
   Share2,
   SlidersHorizontal,
   Smartphone,
@@ -50,7 +48,6 @@ import {
   useListAthleteInviteHypes,
   useDeleteAthleteInviteHype,
   type AthleteInviteInput,
-  type AthleteInviteScheduleEvent,
 } from '@workspace/api-client-react';
 
 import { Button } from '@/components/ui/button';
@@ -126,7 +123,6 @@ export function AthleteInviteManager() {
   const { data: projects } = useListProjects({ query: { enabled: Boolean(isSignedIn), queryKey: getListProjectsQueryKey() } });
   const existing = invites?.[0] ?? null;
   const trackerProjects = projects?.filter((project) => project.project.tool === 'stat-tracker') ?? [];
-  const scheduleProjects = projects?.filter((project) => project.project.tool === 'schedule') ?? [];
   const defaultSport = profile.sport && profile.sport !== 'softball' ? profile.sport : 'basketball';
   const [athleteName, setAthleteName] = useState(profile.athleteName);
   const [teamName, setTeamName] = useState(profile.teamName);
@@ -135,10 +131,8 @@ export function AthleteInviteManager() {
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   const [sport, setSport] = useState<Exclude<Sport, 'softball'>>(defaultSport);
   const [trackerProjectId, setTrackerProjectId] = useState('none');
-  const [scheduleProjectId, setScheduleProjectId] = useState('none');
   const [showHypeCard, setShowHypeCard] = useState(true);
   const [showStats, setShowStats] = useState(true);
-  const [showSchedule, setShowSchedule] = useState(true);
   const [notice, setNotice] = useState('');
   const [hypeCardGuideOpen, setHypeCardGuideOpen] = useState(false);
   const [selectedPath, setSelectedPath] = useState<'card' | 'page'>('page');
@@ -176,18 +170,9 @@ export function AthleteInviteManager() {
     setTimezone(existing.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
     setSport(existing.sport);
     setTrackerProjectId(existing.trackerProjectId ?? 'none');
-    setScheduleProjectId(existing.scheduleProjectId ?? 'none');
     setShowHypeCard(existing.showHypeCard);
     setShowStats(existing.showStats);
-    setShowSchedule(existing.showSchedule);
   }, [existing?.inviteToken]);
-
-  useEffect(() => {
-    if (existing || seasonName || !scheduleProjects.length) return;
-    const schedule = scheduleProjects[0].project as { season?: unknown };
-    if (typeof schedule.season === 'string') setSeasonName(schedule.season);
-    setScheduleProjectId(scheduleProjects[0].id);
-  }, [existing, scheduleProjects, seasonName]);
 
   useEffect(() => {
     if (existing || trackerProjectId !== 'none' || !trackerProjects.length) return;
@@ -207,12 +192,10 @@ export function AthleteInviteManager() {
     trackerProjectId: trackerProjectId === 'none' || !trackerProjects.some((project) => project.id === trackerProjectId)
       ? null
       : trackerProjectId,
-    scheduleProjectId: scheduleProjectId === 'none' || !scheduleProjects.some((project) => project.id === scheduleProjectId)
-      ? null
-      : scheduleProjectId,
+    scheduleProjectId: null,
     showHypeCard,
     showStats: showStats && (trackerProjectId === 'none' || trackerProjects.some((project) => project.id === trackerProjectId)),
-    showSchedule: showSchedule && (scheduleProjectId === 'none' || scheduleProjects.some((project) => project.id === scheduleProjectId)),
+    showSchedule: false,
     hypesEnabled: existing?.hypesEnabled ?? true,
     paused: existing?.paused ?? false,
   });
@@ -358,7 +341,7 @@ export function AthleteInviteManager() {
           <div>
            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete Hype Card</p>
             <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
-              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, highlights, finalized stats, season results, and the full schedule.</p>
+              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, highlights, finalized stats, and season results.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
@@ -426,11 +409,6 @@ export function AthleteInviteManager() {
         {selectedPath === 'page' && !existing && (
           <form onSubmit={save} className="mt-8 max-w-xl">
             <aside className="space-y-5">
-              <label className="block text-xs font-bold uppercase tracking-widest">
-                Schedule time zone
-                <input value={timezone} onChange={(event) => setTimezone(event.target.value)} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-border bg-background px-3 text-sm font-normal normal-case tracking-normal" data-testid="input-athlete-schedule-timezone" />
-                <span className="mt-2 block text-xs font-normal normal-case tracking-normal text-muted-foreground">Use the time zone where your scheduled events begin, such as America/New_York. Fan event alerts use this time zone.</span>
-              </label>
               <Button type="submit" disabled={createInvite.isPending || updateInvite.isPending} className="h-12 w-full rounded-none text-xs font-bold uppercase tracking-widest"><Check className="mr-2 h-4 w-4" />{existing ? 'Update athlete card' : 'Create athlete card'}</Button>
               {notice && <p role="status" className="border-l-2 border-primary bg-primary/5 px-3 py-3 text-xs font-bold leading-relaxed">{notice}</p>}
             </aside>
@@ -448,10 +426,8 @@ type OwnedAthleteInvite = {
   seasonEndsAt: string;
   sport: Exclude<Sport, 'softball'>;
   trackerProjectId: string | null;
-  scheduleProjectId: string | null;
   showHypeCard: boolean;
   showStats: boolean;
-  showSchedule: boolean;
   hypesEnabled: boolean;
   paused: boolean;
   inviteToken: string;
@@ -913,10 +889,8 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const deleteHypeCard = useDeleteHypeCardShare();
   const [showHypeCard, setShowHypeCard] = useState(invite.showHypeCard);
   const [showStats, setShowStats] = useState(invite.showStats);
-  const [showSchedule, setShowSchedule] = useState(invite.showSchedule);
   const [hypesEnabled, setHypesEnabled] = useState(invite.hypesEnabled);
   const [settingsDirty, setSettingsDirty] = useState(false);
-  const [timezoneDirty, setTimezoneDirty] = useState(false);
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const visibilitySavingRef = useRef(false);
   const [visibilityStatus, setVisibilityStatus] = useState<'idle' | 'saving' | 'saved' | 'refresh-error' | 'error'>('idle');
@@ -931,7 +905,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     query: { queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken), refetchOnMount: 'always', refetchInterval: 30_000 },
   });
   const deleteHype = useDeleteAthleteInviteHype();
-  const [timezone, setTimezone] = useState(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   const [notice, setNotice] = useState('');
   const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
     query: {
@@ -957,17 +930,14 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     previousInviteToken.current = invite.inviteToken;
     if (changedInvite) {
       setSettingsDirty(false);
-      setTimezoneDirty(false);
       setVisibilityStatus('idle');
       setActiveTask(window.location.hash === '#owner-fan-hypes' ? 'hypes' : null);
     }
     if (settingsDirty && !changedInvite) return;
     setShowHypeCard(invite.showHypeCard);
     setShowStats(invite.showStats);
-    setShowSchedule(invite.showSchedule);
     setHypesEnabled(invite.hypesEnabled);
-    setTimezone(invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '');
-  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showSchedule, invite.hypesEnabled, invite.timezone, settingsDirty]);
+  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.hypesEnabled, settingsDirty]);
   useEffect(() => {
     const openHypes = () => {
       if (window.location.hash === '#owner-fan-hypes') setActiveTask('hypes');
@@ -991,13 +961,13 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     teamName: invite.teamName,
     seasonName: invite.seasonName,
     seasonEndsAt: invite.seasonEndsAt,
-    timezone: useDraft ? timezone : (invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
+    timezone: invite.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || '',
     sport: invite.sport,
     trackerProjectId: invite.trackerProjectId,
-    scheduleProjectId: invite.scheduleProjectId,
+    scheduleProjectId: null,
     showHypeCard: useDraft ? showHypeCard : invite.showHypeCard,
     showStats: useDraft ? showStats : invite.showStats,
-    showSchedule: useDraft ? showSchedule : invite.showSchedule,
+    showSchedule: false,
     hypesEnabled: useDraft ? hypesEnabled : invite.hypesEnabled,
     paused,
   });
@@ -1007,31 +977,16 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
     ]);
   };
-  const saveSettings = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!timezoneDirty || visibilitySavingRef.current || updateInvite.isPending) return;
-    setNotice('');
-    try {
-      await updateInvite.mutateAsync({ inviteToken: invite.inviteToken, data: payload() });
-      await refreshPage();
-      setSettingsDirty(false);
-      setTimezoneDirty(false);
-      setNotice('Time zone updated.');
-    } catch {
-      setNotice('The time zone could not be updated. Please try again.');
-    }
-  };
   const saveVisibilityChange = async (
-    field: 'showHypeCard' | 'showStats' | 'showSchedule' | 'hypesEnabled',
+    field: 'showHypeCard' | 'showStats' | 'hypesEnabled',
     checked: boolean,
   ) => {
     if (visibilitySavingRef.current || updateInvite.isPending) return;
-    const current = { showHypeCard, showStats, showSchedule, hypesEnabled };
+    const current = { showHypeCard, showStats, hypesEnabled };
     const next = { ...current, [field]: checked };
     const setField = {
       showHypeCard: setShowHypeCard,
       showStats: setShowStats,
-      showSchedule: setShowSchedule,
       hypesEnabled: setHypesEnabled,
     }[field];
     visibilitySavingRef.current = true;
@@ -1040,14 +995,14 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     setSettingsDirty(true);
     setField(checked);
     try {
-      // Save only the toggled visibility, not an unfinished time-zone edit.
+      // Save only the toggled visibility for this section.
       await updateInvite.mutateAsync({
         inviteToken: invite.inviteToken,
         data: { ...payload(invite.paused, false), ...next },
       });
       try {
         await refreshPage();
-        setSettingsDirty(timezoneDirty);
+        setSettingsDirty(false);
         setVisibilityStatus('saved');
       } catch {
         // The mutation succeeded: keep the new switch value even if refresh failed.
@@ -1055,7 +1010,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       }
     } catch {
       setField(current[field]);
-      setSettingsDirty(timezoneDirty);
+      setSettingsDirty(false);
       setVisibilityStatus('error');
     } finally {
       visibilitySavingRef.current = false;
@@ -1174,13 +1129,12 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <FanCardPhotoManager inviteToken={invite.inviteToken} photoUrl={invite.photoUrl} />
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={visibilitySaving ? 'Saving…' : visibilityStatus === 'error' ? 'Save failed' : visibilityStatus === 'refresh-error' ? 'Refresh needed' : timezoneDirty ? 'Unsaved time zone' : undefined}>
-      <form onSubmit={saveSettings} data-testid="section-visible-athlete-page">
+      <HypeManagerTaskCard id="sections" title="Visible Sections" description="Choose what supporters see" Icon={SlidersHorizontal} active={activeTask === 'sections'} onSelect={() => toggleTask('sections')} badge={visibilitySaving ? 'Saving…' : visibilityStatus === 'error' ? 'Save failed' : visibilityStatus === 'refresh-error' ? 'Refresh needed' : undefined}>
+      <section data-testid="section-visible-athlete-page">
         <h3 className="font-display text-2xl uppercase">Visible sections</h3>
         <p className="mt-1 text-xs text-white/60">Section switches save as soon as you change them.</p>
         <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showHypeCard', value)} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showStats', value)} />
-        <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showSchedule', value)} />
         <OwnerToggle label="Fan Shoutouts" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
         {visibilityStatus !== 'idle' && (
           <p
@@ -1192,13 +1146,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
             {visibilityStatus === 'saving' ? 'Saving section change…' : visibilityStatus === 'saved' ? 'Section change saved.' : visibilityStatus === 'refresh-error' ? 'Section change saved, but the page could not refresh. Reload to confirm.' : 'Section change could not be saved. The switch was restored; try again.'}
           </p>
         )}
-        <label className="mt-4 block max-w-sm text-xs font-bold uppercase tracking-widest text-white/70">
-          Schedule time zone for fan event alerts
-          <input value={timezone} onChange={(event) => { setTimezone(event.target.value); setTimezoneDirty(true); setSettingsDirty(true); }} disabled={visibilitySaving || updateInvite.isPending} required placeholder="America/New_York" autoComplete="off" className="mt-2 block min-h-11 w-full border border-white/20 bg-black/20 px-3 text-sm font-normal normal-case tracking-normal text-white" data-testid="input-owner-athlete-timezone" />
-          <span className="mt-2 block text-xs font-normal normal-case tracking-normal text-white/50">Enter the time zone where events begin, such as America/New_York.</span>
-        </label>
-        <Button type="submit" disabled={!timezoneDirty || updateInvite.isPending || visibilitySaving} className="mt-5 h-11 w-full rounded-none text-xs font-bold uppercase tracking-widest sm:w-auto"><Check className="mr-2 h-4 w-4" />Save time zone</Button>
-      </form>
+      </section>
       </HypeManagerTaskCard>
 
       <HypeManagerTaskCard id="hypes" title="Fan Shoutouts" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => toggleTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
@@ -1701,15 +1649,6 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 <p className="mt-4 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Updated {new Date(invite.stats.updatedAt).toLocaleDateString()}</p>
               </section>
             )}
-            {invite.scheduleEvents.length > 0 && (
-              <section aria-labelledby="athlete-upcoming-events">
-                <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">What’s next</p>
-                <h2 id="athlete-upcoming-events" className="mt-2 font-display text-4xl uppercase">Upcoming events</h2>
-                <ol className="mt-5 grid gap-4 sm:grid-cols-2">
-                  {invite.scheduleEvents.map((event) => <EventCard key={event.id} event={event} teamName={invite.teamName} />)}
-                </ol>
-              </section>
-            )}
             {invite.videos[0] && (
               <section className="border border-primary/40 bg-primary/10 p-5 sm:p-7" aria-labelledby="athlete-reply-composer">
                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">For the athlete</p>
@@ -1739,7 +1678,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </ul>
               </section>
             )}
-            {invite.videos.length === 0 && !invite.stats && invite.scheduleEvents.length === 0 && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
+            {invite.videos.length === 0 && !invite.stats && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
           </div>
           <aside className="h-fit border border-white/10 bg-[#11141b] p-5 sm:p-6">
             <Smartphone className="h-7 w-7 text-primary" />
@@ -1758,37 +1697,6 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   );
 }
 
-function EventCard({ event, teamName }: { event: AthleteInviteScheduleEvent; teamName: string }) {
-  const title = event.type === 'game' ? `vs ${event.opponent || 'Opponent TBD'}` : event.type;
-  const addToCalendar = () => {
-    const start = calendarTimestamp(event.date, event.time);
-    const endDate = new Date(`${event.date}T${event.time || '12:00'}:00`);
-    endDate.setHours(endDate.getHours() + 2);
-    const end = endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-    const content = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Pixl Sports//Athlete Invite//EN', 'BEGIN:VEVENT', `UID:${event.id}@pixlsports`, `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${escapeCalendar(`${teamName ? `${teamName} ` : ''}${title}`)}`, `LOCATION:${escapeCalendar(event.location)}`, `DESCRIPTION:${escapeCalendar(event.notes)}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${event.date}-${event.type}.ics`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-  return (
-    <li className="border border-white/10 bg-white/5 p-5" data-testid="athlete-schedule-event-card">
-      <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">{event.status} · {event.type}</p><h3 className="mt-2 font-display text-3xl uppercase">{title}</h3></div><span className="border border-white/15 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-white/50">{new Date(`${event.date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span></div>
-      <p className="mt-4 text-xs font-bold uppercase tracking-widest text-white/65">{event.time ? new Date(`${event.date}T${event.time}:00`).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : 'Time TBD'}</p>
-      {event.location && <p className="mt-2 flex items-center gap-2 text-xs text-white/50"><MapPin className="h-4 w-4 text-primary" />{event.location}</p>}
-      <button type="button" onClick={addToCalendar} className="mt-5 inline-flex min-h-10 items-center gap-2 border border-primary/50 px-3 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground"><CalendarPlus className="h-4 w-4" />Add to Calendar</button>
-    </li>
-  );
-}
-
-function calendarTimestamp(date: string, time: string) {
-  return new Date(`${date}T${time || '12:00'}:00`).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
-}
-function escapeCalendar(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
-}
 function Stat({ label, value, primary = false, testId, spotlight = false }: { label: string; value: number; primary?: boolean; testId?: string; spotlight?: boolean }) {
   const cardColor = spotlight ? 'border-orange-200/25 bg-orange-300/10' : 'border-white/10 bg-black/20';
   const valueColor = primary ? 'text-primary' : spotlight ? 'text-orange-100' : 'text-white';

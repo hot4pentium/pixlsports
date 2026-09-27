@@ -9,6 +9,8 @@ Only explicitly marked shares should appear in the owner’s Game On collection.
 
 **How to apply:** Keep owner listing, card editing, and Calendar-deletion revocation limited to explicitly marked shares or locally known legacy card tokens. If deletion cannot check for a remote linked card, leave the event in place and offer a retry instead of potentially orphaning a public link.
 
+After standalone Calendar retirement, an unmarked single-game/practice share is still ambiguous: it may be a legacy Game On card or a one-event Calendar link. Preserve such rows during bulk Calendar deletion, keep the standalone schedule URL disabled, and allow the legacy Game On URL to read them without adding them to the owned card collection. **Why:** There is no reliable server-side distinction for historical unmarked single-event shares, so deleting them would break potentially valid card links. **How to apply:** Only purge one of these rows when its origin can be verified independently.
+
 For a card linked to a Calendar event, edit the original Calendar event in place and keep its card share token stable. Event-specific Prep remains private and device-local unless the owner deliberately shares through Prep; creating or updating a public Game On link must never include those notes or checklist items.
 
 **Why:** A second Calendar event or an automatic Prep publication would separate the owner's schedule from the card or expose private planning details. An independent card, by contrast, has no Calendar record to mutate.

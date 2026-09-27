@@ -50,6 +50,7 @@ type GameOnDashboardCollectionProps = {
   statTrackerAthleteName?: string;
   statTrackerTeamName?: string;
   onCompleteScheduledGame?: (eventId: string, completedAt: string) => Promise<void>;
+  tourPanelRequest?: { cardId: string; panel: 'prep' | 'tracker'; nonce: number; trigger: HTMLButtonElement } | null;
 };
 
 function getCardStatus(card: DashboardGameOnCard): DashboardGameOnCard['status'] {
@@ -392,6 +393,7 @@ export function GameOnDashboardCollection({
   statTrackerAthleteName,
   statTrackerTeamName,
   onCompleteScheduledGame,
+  tourPanelRequest,
 }: GameOnDashboardCollectionProps) {
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
@@ -403,6 +405,7 @@ export function GameOnDashboardCollection({
   const selectedCardTriggerRef = useRef<HTMLButtonElement | null>(null);
   const selectedCardLayoutIdRef = useRef<string | null>(null);
   const restorePanelFocusRef = useRef(false);
+  const handledTourRequestRef = useRef<number | null>(null);
   const labelId = useId();
   const layoutGroupId = useId();
   const dialogId = useId();
@@ -455,6 +458,13 @@ export function GameOnDashboardCollection({
     panelTriggerRef.current = frontAction ?? trigger;
     setOpenPanel({ cardId: id, panel });
   };
+  useEffect(() => {
+    if (!isActiveShell || !tourPanelRequest || selectedId !== tourPanelRequest.cardId
+      || handledTourRequestRef.current === tourPanelRequest.nonce) return;
+    handledTourRequestRef.current = tourPanelRequest.nonce;
+    panelTriggerRef.current = tourPanelRequest.trigger;
+    setOpenPanel({ cardId: tourPanelRequest.cardId, panel: tourPanelRequest.panel });
+  }, [isActiveShell, selectedId, tourPanelRequest]);
   const openCollectionCard = (id: string, trigger: HTMLButtonElement) => {
     if (selectedId !== id || !dialogOpen) {
       selectedCardTriggerRef.current = trigger;
