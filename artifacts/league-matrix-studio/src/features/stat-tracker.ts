@@ -838,6 +838,23 @@ export function normalizeTrackerData(value: unknown): StatTrackerData {
   return { version: 1, games };
 }
 
+function sameRecordedPlays(local: GameSession, cloud: GameSession): boolean {
+  return JSON.stringify(local.events) === JSON.stringify(cloud.events)
+    && JSON.stringify(local.yardStats ?? {}) === JSON.stringify(cloud.yardStats ?? {});
+}
+
+export function hasDivergentCorrectedFinalHistory(localValue: unknown, cloudValue: unknown): boolean {
+  const local = normalizeTrackerData(localValue);
+  const cloudById = new Map(normalizeTrackerData(cloudValue).games.map((game) => [game.id, game]));
+  return local.games.some((game) => {
+    const cloudGame = cloudById.get(game.id);
+    if (game.status !== 'final' || cloudGame?.status !== 'final') return false;
+    const cloudCorrection = Date.parse(cloudGame.finalCorrection?.correctedAt ?? '') || 0;
+    const localCorrection = Date.parse(game.finalCorrection?.correctedAt ?? '') || 0;
+    return cloudCorrection > 0 && cloudCorrection >= localCorrection && !sameRecordedPlays(game, cloudGame);
+  });
+}
+
 export function mergeTrackerData(localValue: unknown, cloudValue: unknown): StatTrackerData {
   const local = normalizeTrackerData(localValue);
   const cloud = normalizeTrackerData(cloudValue);
@@ -851,16 +868,35 @@ export function mergeTrackerData(localValue: unknown, cloudValue: unknown): Stat
         const cloudGame = cloudById.get(game.id);
         const cloudCorrection = Date.parse(cloudGame?.finalCorrection?.correctedAt ?? '') || 0;
         const localCorrection = Date.parse(game.finalCorrection?.correctedAt ?? '') || 0;
-        // A finalized correction is authoritative even when this device has an older
-        // same-ID copy. Keep local-first behavior for other, potentially unsynced plays.
+        // Use a newer cloud correction only when the recorded plays are identical.
+        // Divergent finals need an explicit history choice before cloud sync.
         return game.status === 'final' && cloudGame?.status === 'final'
           && cloudCorrection > 0 && cloudCorrection >= localCorrection
+          && sameRecordedPlays(game, cloudGame)
           ? cloudGame
           : game;
       }),
       ...cloud.games.filter((game) => !localGameIds.has(game.id)),
     ],
   };
+}
+
+export function reconcileTrackerDataForSync(
+  localData: StatTrackerData,
+  cloudProject: { id: string; revision: number; project: unknown } | null,
+  confirmedChoice: TrackerConflictResolution | null = null,
+): StatTrackerData {
+  if (!cloudProject) return localData;
+  if (hasDivergentCorrectedFinalHistory(localData, cloudProject.project)
+    && confirmedChoice !== 'local' && confirmedChoice !== 'cloud') {
+    throw Object.assign(new Error('Local plays and a cloud correction differ.'), {
+      status: 409,
+      data: { current: cloudProject },
+    });
+  }
+  return confirmedChoice === 'local' || confirmedChoice === 'cloud'
+    ? localData
+    : mergeTrackerData(localData, cloudProject.project);
 }
 
 /** Cloud history is authoritative for shared IDs; device-only games remain visible. */

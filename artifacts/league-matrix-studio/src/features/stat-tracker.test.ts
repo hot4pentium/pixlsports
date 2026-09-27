@@ -24,6 +24,7 @@ import {
   getPreferredTrackerSport,
   getTrackerSportForProfile,
   getTrackerConflict,
+  hasDivergentCorrectedFinalHistory,
   getTrackerSyncRecovery,
   getTrackerStorageKeys,
   getFootballYardMetricId,
@@ -32,6 +33,7 @@ import {
   migrateLegacyTrackerStorage,
   mergeTrackerData,
   normalizeTrackerData,
+  reconcileTrackerDataForSync,
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerData,
@@ -136,6 +138,61 @@ test('a manually marked result survives saving even when no score was recorded',
     outcome: 'loss',
   });
   assert.equal(getGameOutcome(normalizeTrackerData({ version: 1, games: [markedLoss] }).games[0]), 'loss');
+});
+
+test('choosing no final score keeps recorded plays, stat totals, and attribution after local save and reload', () => {
+  const now = new Date('2026-09-26T20:00:00.000Z');
+  let live = createGameSession('basketball', { opponent: 'Northside' }, now);
+  live = addStatEvent(live, 'rebound', now, 0, 'athlete');
+  live = addStatEvent(live, 'assist', now, 0, 'team');
+  live = adjustScore(live, 'athlete', 8);
+  assert.equal(live.scoreRecorded, true);
+  const beforeStats = structuredClone(live.stats);
+  const beforeEvents = structuredClone(live.events);
+  const completed = endGame({ ...live, outcome: 'win' }, now, false);
+  assert.equal(completed.scoreRecorded, false);
+  assert.equal(completed.score, 8);
+  assert.deepEqual(completed.stats, beforeStats);
+  assert.deepEqual(completed.events, beforeEvents);
+
+  const storage = createMemoryStorage();
+  storage.setItem(getTrackerStorageKeys('scoreless-account').history, JSON.stringify({ version: 1, games: [completed] }));
+  const restored = readStoredTrackerData(storage, 'scoreless-account');
+  assert.deepEqual(restored.games[0].stats, beforeStats);
+  assert.deepEqual(restored.games[0].events, beforeEvents);
+  assert.deepEqual(trackerPayload(restored).games[0].stats, beforeStats);
+  assert.deepEqual(seasonTotals(restored.games, 'basketball').stats, beforeStats);
+  assert.equal(restored.games[0].scoreRecorded, false);
+});
+
+test('a newer cloud correction cannot erase extra offline plays from a scoreless final on load or save', () => {
+  const now = new Date('2026-09-26T20:00:00.000Z');
+  const original = addStatEvent(createGameSession('basketball', {}, now), 'rebound', now, 0, 'athlete');
+  const cloudFinal = applyFinalGameCorrection(endGame(original, now, false), {
+    scoreRecorded: false,
+    score: 0,
+    opponentScore: 0,
+    outcome: null,
+    stats: { rebound: 2 },
+    athleteStats: { rebound: 1 },
+  }, new Date('2026-09-27T20:00:00.000Z'));
+  const localFinal = endGame(addStatEvent(original, 'assist', now, 0, 'team'), now, false);
+  const localData = { version: 1 as const, games: [localFinal] };
+  const cloudData = { version: 1 as const, games: [cloudFinal] };
+  const project = { id: 'project-1', revision: 2, project: trackerPayload(cloudData) };
+  assert.equal(hasDivergentCorrectedFinalHistory(localData, cloudData), true);
+  const loaded = mergeTrackerData(localData, cloudData);
+  assert.deepEqual(loaded.games[0].events, localFinal.events);
+  assert.deepEqual(loaded.games[0].stats, { rebound: 1, assist: 1 });
+  let conflict: ReturnType<typeof getTrackerConflict> = null;
+  assert.throws(() => reconcileTrackerDataForSync(loaded, project), (error) => {
+    conflict = getTrackerConflict(error, loaded);
+    return Boolean(conflict);
+  });
+  assert.deepEqual(conflict?.localData.games[0].events, localFinal.events);
+  assert.deepEqual(conflict?.cloudData.games[0].finalCorrection, cloudFinal.finalCorrection);
+  assert.deepEqual(reconcileTrackerDataForSync(loaded, project, 'local').games[0].events, localFinal.events);
+  assert.deepEqual(reconcileTrackerDataForSync(cloudData, project, 'cloud').games[0].finalCorrection, cloudFinal.finalCorrection);
 });
 
 test('corrects an older final game without changing its event history and round trips normalized correction data', () => {
@@ -248,6 +305,14 @@ test('end-game choices distinguish an unentered score, a real 0–0, and a confl
     renderer.update(view());
   });
   assert.match(renderedText(renderer), /Win result · no final score recorded/);
+  const summary = renderer.root.findByProps({ 'data-testid': 'tracker-end-summary' });
+  assert.equal(summary.props.role, 'status');
+  assert.match(summary.props.className, /bg-\[#102B4D\].*text-white/);
+  const outcomePicker = renderer.root.findByProps({ 'data-testid': 'game-outcome-picker' });
+  assert.match(outcomePicker.props.className, /bg-\[#102B4D\]/);
+  assert.match(outcomePicker.findByType('legend').props.className, /text-white/);
+  assert.match(renderer.root.findByProps({ 'data-testid': 'button-game-outcome-win' }).props.className, /aria-pressed:bg-\[#174E9C\].*aria-pressed:text-white/);
+  assert.match(outcomePicker.findAllByType('button').at(-1)!.props.className, /text-white/);
   assert.equal(renderer.root.findAllByProps({ 'data-testid': 'tracker-score-result-warning' }).length, 0);
 
   act(() => {
@@ -256,6 +321,9 @@ test('end-game choices distinguish an unentered score, a real 0–0, and a confl
   });
   assert.match(renderedText(renderer), /Win result · final score 0–0/);
   assert.match(renderedText(renderer), /scoreboard says Tie, but you selected Win.*Both will be saved as shown/);
+  const warning = renderer.root.findByProps({ 'data-testid': 'tracker-score-result-warning' });
+  assert.equal(warning.props.role, 'alert');
+  assert.match(warning.props.className, /bg-\[#55320E\].*text-white/);
   const saved = endGame({ ...createGameSession('basketball', {}), outcome: manualOutcome! }, new Date(), includeFinalScore);
   assert.equal(saved.scoreRecorded, true);
   assert.equal(getGameOutcome(saved), 'win');

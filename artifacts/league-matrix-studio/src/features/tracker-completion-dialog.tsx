@@ -18,8 +18,8 @@ export function GameOutcomePicker({
   clearLabel?: string;
 }) {
   return (
-    <fieldset className="mt-4" data-testid="game-outcome-picker">
-      <legend className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Game result</legend>
+    <fieldset className="mt-4 border border-[#476582] bg-[#102B4D] p-3" data-testid="game-outcome-picker">
+      <legend className="bg-[#102B4D] px-1 text-xs font-bold uppercase tracking-widest text-white">Game result</legend>
       <div className="mt-2 grid grid-cols-3 gap-2">
         {(['win', 'loss', 'tie'] as const).map((result) => (
           <button
@@ -29,13 +29,13 @@ export function GameOutcomePicker({
             aria-pressed={value === result}
             onClick={() => onChange(result)}
             data-testid={`button-game-outcome-${result}`}
-            className="min-h-11 border border-border bg-background px-2 py-2 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary aria-pressed:border-primary aria-pressed:bg-primary/15 aria-pressed:text-primary-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
+            className="min-h-11 border border-[#7189A2] bg-[#0B1F3A] px-2 py-2 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:border-[#55A4FF] aria-pressed:border-[#55A4FF] aria-pressed:bg-[#174E9C] aria-pressed:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#55A4FF] disabled:cursor-not-allowed disabled:opacity-80"
           >
             {outcomeLabels[result]}
           </button>
         ))}
       </div>
-      {value && <button type="button" disabled={disabled} onClick={() => onChange(null)} className="mt-2 min-h-9 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">{clearLabel}</button>}
+      {value && <button type="button" disabled={disabled} onClick={() => onChange(null)} className="mt-2 min-h-11 text-xs font-medium text-white underline underline-offset-4 hover:text-[#B8D9FF] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#55A4FF] disabled:cursor-not-allowed disabled:opacity-80">{clearLabel}</button>}
     </fieldset>
   );
 }

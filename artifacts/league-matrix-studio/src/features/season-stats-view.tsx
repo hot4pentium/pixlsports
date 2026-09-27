@@ -11,6 +11,7 @@ import {
   type GameSession,
   type Sport,
 } from './stat-tracker';
+import { useSeasonStatsReviewScroll } from './season-stats-review-scroll';
 import './season-stats-view.css';
 
 const ReportCharts = lazy(() => import('./stat-tracker-report-charts'));
@@ -85,6 +86,12 @@ export function SeasonStatsView({
     .sort((a, b) => b.date.localeCompare(a.date) || b.startedAt.localeCompare(a.startedAt)), [finals, selectedSport, selectedYear]);
   const linkedGame = selectedGameId ? finals.find((game) => game.id === selectedGameId) : null;
   const selectedGame = linkedGame ?? scopedGames[0] ?? null;
+  const { detailRef, showReview } = useSeasonStatsReviewScroll(selectedGameId, selectedGame?.id ?? null);
+  const selectGameForReview = (id: string) => {
+    setDraft(null);
+    if (id === selectedGameId && selectedGame?.id === id) showReview();
+    else onSelectGame(id);
+  };
   const outsideFilter = !!selectedGame && !scopedGames.some((game) => game.id === selectedGame.id);
   const detailScope = useMemo(() => selectedGame
     ? finals.filter((game) => game.sport === selectedGame.sport && calendarYear(game) === calendarYear(selectedGame))
@@ -237,7 +244,7 @@ export function SeasonStatsView({
               {scopedGames.length ? scopedGames.map((game) => {
                 const date = dateParts(game.date);
                 return <button className={`season-stats__game${selectedGame?.id === game.id ? ' is-selected' : ''}`} type="button" key={game.id}
-                  onClick={() => { setDraft(null); onSelectGame(game.id); }} aria-pressed={selectedGame?.id === game.id} data-testid={`button-season-game-${game.id}`}>
+                  onClick={() => selectGameForReview(game.id)} aria-pressed={selectedGame?.id === game.id} data-testid={`button-season-game-${game.id}`}>
                   <span className="season-stats__game-date">{date.day}<small>{date.month}</small></span>
                   <span className="season-stats__game-info"><strong>vs {game.opponent || 'Opponent not set'}</strong><small>{getSportRule(game.sport).label} · {result(game)?.toUpperCase() ?? 'SCORE NOT RECORDED'}</small></span>
                   <span className="season-stats__game-score">{recordedScore(game) ? `${game.score}–${game.opponentScore}` : '—'}</span>
@@ -246,7 +253,7 @@ export function SeasonStatsView({
               }) : <p className="season-stats__empty">No finalized games in this filter.</p>}
             </div>
             {selectedGame && detailRule && report ? (
-              <article className="season-stats__article" data-testid={`article-season-game-${selectedGame.id}`}>
+              <article ref={detailRef} tabIndex={-1} className="season-stats__article" data-testid={`article-season-game-${selectedGame.id}`}>
                 <div className="season-stats__article-top">
                   {outsideFilter && <div className="season-stats__caveat" data-testid="status-game-outside-filter">This linked game is outside the selected {selectedYear} {rule?.label ?? 'sport'} view. Its detail is shown here without changing the overview filters.</div>}
                   <div className="season-stats__article-heading">
@@ -306,7 +313,7 @@ export function SeasonStatsView({
                   </form>}
                   {report.games.length > 1 && <div className="season-stats__charts">
                     <Suspense fallback={<div className="season-stats__empty" role="status" data-testid="status-charts-loading">Loading season trends…</div>}>
-                      <ReportCharts report={report} rule={detailRule} trendStats={trendStats} onSelectGame={(id) => { setDraft(null); onSelectGame(id); }} />
+                      <ReportCharts report={report} rule={detailRule} trendStats={trendStats} onSelectGame={selectGameForReview} />
                     </Suspense>
                   </div>}
                 </div>

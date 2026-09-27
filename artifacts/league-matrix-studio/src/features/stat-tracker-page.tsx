@@ -50,12 +50,14 @@ import {
   getFootballYardMetricId,
   getSportRule,
   getTrackerSportForProfile,
+  hasDivergentCorrectedFinalHistory,
   getTrackerConflict,
   getTrackerStorageKeys,
   getTrackerSyncRecovery,
   isYardageTrackingAvailable,
   mergeTrackerData,
   normalizeTrackerData,
+  reconcileTrackerDataForSync,
   readStoredActiveGame,
   readStoredTrackerConflict,
   readStoredTrackerData,
@@ -1407,7 +1409,17 @@ export function StatTrackerPage() {
       });
       return;
     }
-    const mergedData = mergeTrackerData(readLocalTrackerSession(window.localStorage, accountId).data, existing.project);
+    const localData = readLocalTrackerSession(window.localStorage, accountId).data;
+    const mergedData = mergeTrackerData(localData, existing.project);
+    if (hasDivergentCorrectedFinalHistory(localData, existing.project)) {
+      setTrackerConflict({
+        localData,
+        cloudData: normalizeTrackerData(existing.project),
+        cloudProject: { id: existing.id, revision: existing.revision },
+      });
+      setRevisionConflict(true);
+      setError('This device has recorded plays missing from a corrected cloud game. Your local stats are safe; choose which game history to keep before syncing.');
+    }
     setData(mergedData);
     setSport(getTrackerSportForProfile(mergedData, profile.sport));
     setCloudProject({ id: existing.id, revision: existing.revision });
@@ -1563,14 +1575,17 @@ export function StatTrackerPage() {
     announce('STAT UPDATED');
   };
 
-  const syncTrackerData = async (nextData: StatTrackerData) => {
+  const syncTrackerData = async (
+    nextData: StatTrackerData,
+    confirmedChoice: TrackerConflictResolution | null = null,
+  ) => {
     if (!accountId || !projects) {
       throw new Error('Account history is still loading. Your game is safe on this device; retry cloud sync after it loads.');
     }
     const existing = projects
       .filter((project) => project.project.tool === 'stat-tracker')
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-    const safeData = existing ? mergeTrackerData(nextData, existing.project) : nextData;
+    const safeData = reconcileTrackerDataForSync(nextData, existing ?? null, confirmedChoice);
     if (safeData !== nextData && JSON.stringify(safeData) !== JSON.stringify(nextData)) {
       setData(safeData);
       saveLocalTracker(safeData, accountId);
@@ -1735,6 +1750,7 @@ export function StatTrackerPage() {
 
   const chooseConflictResolution = (resolution: TrackerConflictResolution) => {
     if (!trackerConflict || !accountId || saving) return;
+    if (resolution === 'merge' && hasDivergentCorrectedFinalHistory(trackerConflict.localData, trackerConflict.cloudData)) return;
 
     const nextData = resolution === 'local'
       ? trackerConflict.localData
@@ -1771,7 +1787,7 @@ export function StatTrackerPage() {
     setRetryAvailable(false);
     const selectedData = data;
     try {
-      await syncTrackerData(selectedData);
+      await syncTrackerData(selectedData, selectedConflictResolution);
       if (accountId) clearStoredTrackerConflict(window.localStorage, accountId);
       trackTrackerSyncOutcome('retry_success', 'conflict_resolution', sport);
       setRevisionConflict(false);
@@ -1916,6 +1932,12 @@ export function StatTrackerPage() {
           </div>
           <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Choose what to sync</p>
+            {hasDivergentCorrectedFinalHistory(trackerConflict.localData, trackerConflict.cloudData) && (
+              <p className="text-sm font-medium text-amber-200" role="alert">
+                A corrected cloud game and this device have different recorded plays. Merging them would discard one version.
+                Keeping local replaces the cloud correction; accepting cloud discards the extra local plays. Review both copies before choosing.
+              </p>
+            )}
             <div className="grid gap-2 sm:grid-cols-3">
               {([
                 ['local', 'Keep local copy', 'Replace cloud history with this device’s history.'],
@@ -1925,7 +1947,7 @@ export function StatTrackerPage() {
                 <button
                   key={value}
                   type="button"
-                  disabled={saving}
+                  disabled={saving || (value === 'merge' && hasDivergentCorrectedFinalHistory(trackerConflict.localData, trackerConflict.cloudData))}
                   onClick={() => chooseConflictResolution(value)}
                   className={`min-h-24 border p-3 text-left transition-colors disabled:opacity-50 ${selectedConflictResolution === value ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border bg-background hover:border-primary'}`}
                 >

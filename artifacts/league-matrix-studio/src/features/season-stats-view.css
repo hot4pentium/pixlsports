@@ -62,7 +62,7 @@
 .season-stats__game-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .season-stats__game-info small { display: block; margin-top: 4px; color: var(--season-muted); font-size: 11px; }
 .season-stats__game-score { font-family: "Barlow Condensed", sans-serif; font-size: 22px; font-weight: 700; white-space: nowrap; }
-.season-stats__article { background: var(--season-card); border: 1px solid var(--season-line); border-radius: 4px; overflow: hidden; }
+.season-stats__article { background: var(--season-card); border: 1px solid var(--season-line); border-radius: 4px; overflow: hidden; scroll-margin-top: 24px; }
 .season-stats__article-top { padding: clamp(20px, 3vw, 34px); background: #e6eff9; border-bottom: 1px solid var(--season-line); }
 .season-stats__article-heading { display: flex; justify-content: space-between; align-items: start; gap: 15px; }
 .season-stats__opponent { margin: 9px 0 0; font-size: clamp(34px, 4vw, 54px); line-height: 1; }
