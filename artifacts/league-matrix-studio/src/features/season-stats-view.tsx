@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowLeft, ArrowUpRight, Pencil, X } from 'lucide-react';
+import { Link } from 'wouter';
 import {
   buildGameReport,
   countStatEventsByAttribution,
@@ -181,6 +182,9 @@ export function SeasonStatsView({
   return (
     <main className="season-stats" data-testid="season-stats-view">
       <div className="season-stats__wrap">
+        <Link href="/studio" className="season-stats__back" data-testid="link-season-back-to-dashboard">
+          <ArrowLeft size={16} aria-hidden="true" /> Back to dashboard
+        </Link>
         <header className="season-stats__masthead">
           <div>
             <p className="season-stats__eyebrow">Pixl Sports Studio / Season review</p>
