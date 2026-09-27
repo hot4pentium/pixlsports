@@ -944,7 +944,7 @@ export function SupporterDashboardView({
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
            {!isDesktopDashboard && onTourDismiss && (
-             <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
+             <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
            )}
           <SupporterGameOnSummary
             variant="mobile"
@@ -1002,7 +1002,7 @@ export function SupporterDashboardView({
       <div className="supporter-dashboard-desktop-shell w-full">
     <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
       {isDesktopDashboard && onTourDismiss && (
-        <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
+        <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
       )}
       {showStageReminder && (
         <div

@@ -139,6 +139,11 @@
 }
 .supporter-tour__visit:hover { transform: translateY(-2px); }
 .supporter-tour__visit-arrow { color: #add0ff; }
+.supporter-tour__example-hint {
+  margin: 9px 0 0;
+  color: #c5d6ea;
+  font-size: 11px;
+}
 .supporter-tour__progress {
   display: flex;
   gap: 4px;

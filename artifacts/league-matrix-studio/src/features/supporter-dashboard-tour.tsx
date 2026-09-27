@@ -1,13 +1,14 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
 import { GAME_ON_COLLECTION_ID } from "./game-on-navigation";
 import { supporterToolRoutes } from "./supporter-dashboard-model";
+import { clearDashboardTourProgress, readDashboardTourProgress, saveDashboardTourProgress } from "./supporter-dashboard-tour-state";
 import "./supporter-dashboard-tour.css";
 
 type DismissKind = "finish" | "skip";
 type Phase = "prepare" | "capture" | "celebrate";
 
 export type SupporterDashboardTourProps = {
+  userId?: string | null;
   autoStart: boolean;
   onDismiss: (kind: DismissKind) => Promise<void>;
   canOpenPrep?: boolean;
@@ -55,12 +56,21 @@ const steps: ReadonlyArray<{
   },
 ];
 
-export function SupporterDashboardTour({ autoStart, onDismiss, canOpenPrep = false, canOpenCompactTracker = false, onOpenCardPanel }: SupporterDashboardTourProps) {
-  const [open, setOpen] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
+function sessionStorageOrNull(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function SupporterDashboardTour({ userId, autoStart, onDismiss, canOpenPrep = false, canOpenCompactTracker = false, onOpenCardPanel }: SupporterDashboardTourProps) {
+  const [resumedStep] = useState(() => readDashboardTourProgress(sessionStorageOrNull(), userId, steps.length));
+  const [open, setOpen] = useState(resumedStep !== null);
+  const [stepIndex, setStepIndex] = useState(resumedStep ?? 0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
-  const hasStartedRef = useRef(false);
+  const hasStartedRef = useRef(resumedStep !== null);
   const pendingRef = useRef(false);
   const restoreFocusRef = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -74,6 +84,10 @@ export function SupporterDashboardTour({ autoStart, onDismiss, canOpenPrep = fal
       setOpen(true);
     }
   }, [autoStart]);
+
+  useEffect(() => {
+    if (open) saveDashboardTourProgress(sessionStorageOrNull(), userId, stepIndex);
+  }, [open, stepIndex, userId]);
 
   useEffect(() => {
     if (open) headingRef.current?.focus();
@@ -103,6 +117,7 @@ export function SupporterDashboardTour({ autoStart, onDismiss, canOpenPrep = fal
     setError(false);
     try {
       await onDismiss(kind);
+      clearDashboardTourProgress(sessionStorageOrNull(), userId);
       hasStartedRef.current = true;
       restoreFocusRef.current = true;
       setOpen(false);
@@ -193,9 +208,12 @@ export function SupporterDashboardTour({ autoStart, onDismiss, canOpenPrep = fal
                   {step.panel ? step.panel === "prep" ? "Add a Game On card for Prep" : "Add a game card for tracking" : step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
                 </a>
               ) : (
-                <Link className="supporter-tour__visit" href={step.href} data-testid="supporter-dashboard-tour-link">
+                <a className="supporter-tour__visit" href={step.href} target="_blank" rel="noopener noreferrer" data-testid="supporter-dashboard-tour-link">
                   {step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
-                </Link>
+                </a>
+              )}
+              {!step.panel && !step.href.startsWith("#") && (
+                <p className="supporter-tour__example-hint">Opens in a new tab. Return here to finish the tour.</p>
               )}
             </div>
 

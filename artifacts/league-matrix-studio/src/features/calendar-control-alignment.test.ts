@@ -27,6 +27,8 @@ test('the supporter tour has four steps and omits Calendar', () => {
   assert.match(tourSource, /onOpenCardPanel\?\.\(step\.panel!/);
   assert.match(supporterDashboard, /tourPanelRequest=\{tourPanelRequest\}/);
   assert.match(gameOnCollection, /setOpenPanel\(\{ cardId: tourPanelRequest\.cardId, panel: tourPanelRequest\.panel \}\)/);
+  assert.match(tourSource, /readDashboardTourProgress\(sessionStorageOrNull\(\), userId, steps\.length\)/);
+  assert.match(tourSource, /target="_blank" rel="noopener noreferrer"/);
 });
 
 test('the Game On card keeps list editing and link sharing in Prep without a second editor button', () => {
