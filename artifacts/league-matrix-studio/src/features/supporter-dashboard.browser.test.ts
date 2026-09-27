@@ -3288,11 +3288,6 @@ function ProfilePropagationHarness() {
            setPendingPhoto(null);
          },
          onPhotoCancel: () => setPendingPhoto(null),
-         onPhotoRemove: () => {
-           const nextProfile = { ...profile, athleteImageUrl: '', athleteImageCrop: undefined };
-           setProfile(nextProfile);
-           window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
-         },
         photoBusy: false,
         photoError: '',
       }),
@@ -6682,25 +6677,33 @@ test('saved athlete profile names reach every fan tool without rewriting cloud c
       },
     );
     await connection.evaluate(`document.querySelector('[data-testid="button-test-edit-profile"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"btn-remove-athlete-photo\\"]") !== null', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="btn-remove-athlete-photo"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"input-athlete-photo\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate(`document.querySelector('[data-testid="btn-remove-athlete-photo"]') === null`, page.sessionId),
+      true,
+    );
+    assert.match(
+      await connection.evaluate(`document.querySelector('[data-testid="input-athlete-photo"]')?.parentElement?.textContent || ''`, page.sessionId),
+      /Replace Photo/,
+    );
     await connection.evaluate(`document.querySelector('[data-testid="btn-back"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"button-test-open-stat-tracker\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-test-open-stat-tracker"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") === null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null && document.querySelector("[data-testid=\\"athlete-stat-target-three-point\\"] img") !== null', Boolean);
     assert.deepEqual(
       await connection.evaluate(`(() => {
         const target = document.querySelector('[data-testid="athlete-stat-target-three-point"]');
+        const image = target?.querySelector('img');
         return {
           accessibleName: target?.getAttribute('aria-label') || '',
-          fallback: target?.textContent?.trim() || '',
+          imageSource: image?.getAttribute('src') || '',
           width: target?.getBoundingClientRect().width || 0,
           height: target?.getBoundingClientRect().height || 0,
         };
       })()`, page.sessionId),
       {
         accessibleName: 'Record Three-point field goal for Taylor Morgan',
-        fallback: 'TM',
+        imageSource: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiPjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIGZpbGw9IiNGOTczMTYiLz48L3N2Zz4=',
         width: 44,
         height: 44,
       },

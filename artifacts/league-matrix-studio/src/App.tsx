@@ -24,7 +24,6 @@ import {
   getGetSupporterPhotoQueryKey,
   useRequestSupporterPhotoUploadUrl,
   useSaveSupporterPhoto,
-  useDeleteSupporterPhoto,
   useCreateChecklistShare,
   useDeleteChecklistShare,
 } from '@workspace/api-client-react';
@@ -87,7 +86,6 @@ import {
   isIosDevice,
 } from '@/features/schedule-install';
 import {
-  clearSupporterPhotoCache,
   updateSupporterPhotoCache,
   useCachedSupporterPhoto,
 } from '@/features/supporter-photo-cache';
@@ -1512,9 +1510,8 @@ function SupporterProfilePage() {
   const [pendingPhotoCrop, setPendingPhotoCrop] = useState({ x: 50, y: 50, zoom: 100 });
   const requestPhotoUpload = useRequestSupporterPhotoUploadUrl();
   const savePhoto = useSaveSupporterPhoto();
-  const deletePhoto = useDeleteSupporterPhoto();
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
-  const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending || deletePhoto.isPending;
+  const photoBusy = requestPhotoUpload.isPending || savePhoto.isPending;
   const { data: lifecycle, isLoading: lifecycleLoading, isError: lifecycleError, refetch: refetchLifecycle } = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isSignedIn && user?.id),
@@ -1620,16 +1617,6 @@ function SupporterProfilePage() {
           onPhotoCropChange={setPendingPhotoCrop}
           onPhotoUpload={() => void uploadPhoto()}
           onPhotoCancel={() => setPendingPhoto(null)}
-          onPhotoRemove={() => {
-            setPhotoError('');
-            deletePhoto.mutate(undefined, {
-               onSuccess: () => {
-                 clearSupporterPhotoCache(queryClient);
-                 athletePhoto.clearLocalCache();
-               },
-              onError: () => setPhotoError('We could not remove the photo. Please try again.'),
-            });
-          }}
         />
         <div className="mx-auto max-w-3xl px-5 pb-12 sm:px-8">
           <section className="border border-border bg-card p-6 sm:p-8" aria-labelledby="account-info-heading" data-testid="account-information">
