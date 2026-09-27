@@ -444,3 +444,17 @@ type = "audio"
 title = "generated_music"
 description = "Generated music: Energetic warm sports-editorial instrumental background music for a 24-second Pixl Sports game-week explainer: Plan, Prep, Capture, Send. Tight rhythmic drums, warm bass, bright elec…"
 logical_id = "7e781838-2019-4183-a447-5f1e80668d0a"
+
+[[outputs]]
+id = "-QMYJfHOKp9BoXU3ahrpZ"
+uri = "file://reports/pixl-site-experience-code-health.html"
+type = "html"
+title = "Pixl Sports — experience and code health review"
+description = "A concise scorecard with inspected journeys, confirmed release-check gaps, and ranked next steps."
+logical_id = "62095148-4214-4c81-8883-437fb8d3b09f"
+content_hash = "sha256:d641a75fab2f47416e30fc84a88e2184e1c59962e13661e9f592cce56378207b"
+size = 9693
+mtime_ms = 1790476507072
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/62095148-4214-4c81-8883-437fb8d3b09f/9dadbbc2-b8be-4d80-be11-1ab84b93421c"
+storage_version_token = "1790476523797153"
+content_type = "text/html"

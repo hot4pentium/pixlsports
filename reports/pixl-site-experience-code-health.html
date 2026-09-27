@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pixl Sports — Experience &amp; Code Health Review</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, Segoe UI, sans-serif; color: #18304c; background: #edf3fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 940px; margin: 0 auto; padding: 42px 22px 88px; }
+    header { background: #102b50; color: white; padding: 34px; border-radius: 12px; }
+    h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.08; margin: 8px 0 13px; }
+    h2 { font-size: 23px; margin: 34px 0 13px; }
+    h3 { font-size: 17px; margin: 0 0 8px; }
+    p, li { line-height: 1.6; }
+    p { margin: 9px 0; }
+    .eyebrow { color: #75b4ff; text-transform: uppercase; font-size: 12px; font-weight: 800; letter-spacing: .13em; }
+    .lede { color: #d5e5f6; max-width: 740px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+    .score { padding: 18px; background: white; border: 1px solid #d3e1ef; border-radius: 9px; }
+    .score strong { font-size: 30px; display: block; color: #166add; }
+    .score span { font-size: 13px; font-weight: 700; }
+    .panel { background: white; border: 1px solid #d3e1ef; border-radius: 9px; padding: 20px 24px; margin: 12px 0; }
+    .panel ul { padding-left: 21px; margin: 8px 0; }
+    .panel li + li { margin-top: 8px; }
+    .badge { display: inline-block; background: #e6f0fe; color: #1254a6; padding: 3px 8px; font-size: 12px; font-weight: 800; border-radius: 5px; margin-right: 6px; }
+    .risk { background: #fff4df; color: #765012; }
+    .evidence { color: #526982; font-size: 12px; overflow-wrap: anywhere; }
+    .note { border-left: 4px solid #e49a35; background: #fff7e9; padding: 14px 18px; border-radius: 3px; }
+    code { font-size: .94em; overflow-wrap: anywhere; }
+    @media (max-width: 660px) { main { padding: 18px 14px 60px; } header { padding: 24px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Pixl Sports / focused review</div>
+    <h1>Experience &amp; code health</h1>
+    <p class="lede">A practical assessment of what is working, what is verified to need attention, and what remains untested. Scores are directional judgments, not certification.</p>
+  </header>
+
+  <div class="grid" aria-label="Directional scorecard">
+    <div class="score"><strong>8/10</strong><span>Public presentation</span><p>Clear positioning and strong responsive visual hierarchy.</p></div>
+    <div class="score"><strong>7/10*</strong><span>Product usability</span><p>Thoughtful states and recovery; signed-in visual confidence is limited.</p></div>
+    <div class="score"><strong>6/10</strong><span>Change safety</span><p>Good boundaries and tests, but release checks and test selection need attention.</p></div>
+  </div>
+  <p class="evidence">*Provisional. The signed-in dashboard, Calendar, Stat Tracker, and Season Stats were not interactively reviewed with an authenticated fixture.</p>
+
+  <h2>What works well</h2>
+  <div class="panel">
+    <ul>
+      <li><strong>Clear public entry:</strong> Phone (402px) and desktop (1440px) previews show a legible season promise and distinct “Open Creative Studio” / “Explore the tools” actions. Navigation condenses on the phone without visible overflow. The guest Hype Card editor works as a visible four-step walkthrough; desktop shows editing and preview side by side, while mobile stacks them.</li>
+      <li><strong>Relevant game-day hierarchy:</strong> The dashboard model considers upcoming, live, and completed stages rather than presenting one static list. Its code exposes direct tool actions and accounts for stale selections. <span class="evidence">Evidence: <code>supporter-dashboard-model.ts:302-423</code>; <code>supporter-dashboard.tsx:932-1011</code>.</span></li>
+      <li><strong>Helpful state and failure language:</strong> The tracker distinguishes device-saved from cloud-saved work, offers retries/conflict choices, and Season Stats keeps edits in place after a failed correction. Hype Card media explains when it is available only on the device. <span class="evidence">Evidence: <code>stat-tracker-page.tsx:240-296,1388-1427</code>; <code>season-stats-view.tsx:139-175,291-312</code>; <code>hype-card.tsx:2775-2822</code>.</span></li>
+      <li><strong>Sound underlying boundaries:</strong> API routes, database schema, generated clients, and feature models are separated. Local-first saves and revision conflict handling show deliberate data-loss protection, while lazy-loaded routes reduce initial feature loading. <span class="evidence">Evidence: <code>App.tsx:162-215</code>; <code>stat-tracker-page.tsx:1578-1608</code>; <code>artifacts/api-server/src/routes/index.ts</code>.</span></li>
+    </ul>
+  </div>
+
+  <h2>What deserves attention</h2>
+  <div class="panel">
+    <h3><span class="badge risk">Confirmed</span>Whole-workspace typecheck is red</h3>
+    <p><code>pnpm run typecheck</code> stops at <code>artifacts/mockup-sandbox/src/components/mockups/live-tracker/RecipientView.tsx:42</code> with TS7030 (“Not all code paths return a value”). The main Studio typecheck passes when run independently. Because the root build runs the workspace typecheck first, this preview-only error blocks that release gate even though the main web artifact compiles.</p>
+  </div>
+  <div class="panel">
+    <h3><span class="badge risk">Confirmed</span>The default Studio test command misses unit tests</h3>
+    <p>The Studio has 42 non-browser feature test files, but its <code>test</code> script hand-lists 30; 12 newer unit tests are omitted from that command. The 12 browser-test files are deliberately separate and should remain a separate tier. A passing default test run therefore does not mean all inexpensive feature checks ran. <span class="evidence">Evidence: <code>artifacts/league-matrix-studio/package.json:10-22</code>; source test-file inventory.</span></p>
+  </div>
+  <div class="panel">
+    <h3><span class="badge">Risk, not proven defect</span>Cross-feature editing is concentrated</h3>
+    <p><code>App.tsx</code> is roughly 4,400 lines and owns navigation, account gating, schedule/checklist work, and several save paths. The Hype Card editor is roughly 3,600 lines and the tracker page roughly 2,100. Large files are not inherently poor code, but these particular files combine interaction state and persistence orchestration, raising the chance that a narrow change affects an unrelated flow. Extract one controller at a time with its existing tests; do not rewrite all three. <span class="evidence">Evidence: <code>App.tsx:1976-2280,3110-3775,4320-4371</code>; <code>hype-card.tsx</code>; <code>stat-tracker-page.tsx</code>.</span></p>
+  </div>
+  <div class="panel">
+    <h3><span class="badge">Validate with users</span>Mobile tool discovery and small controls</h3>
+    <p>The signed-in dashboard mobile menu exposes the Hub and sign-out, while access to individual tools relies on cards and contextual actions. That may be a sensible simplification, but whether a returning supporter can promptly find Calendar, Tracker, or Season Stats is not established by source review. In the guest Hype Card phone preview, save and preview are icon-only (both have accessible labels) and several supporting labels are small; verify comprehension and readable text at real phone sizes before changing the navigation. <span class="evidence">Evidence: <code>supporter-dashboard.tsx:932-1011</code>; <code>hype-card.tsx:2785-2811</code>; phone screenshots inspected.</span></p>
+  </div>
+
+  <h2>Ranked next steps</h2>
+  <div class="panel">
+    <ol>
+      <li><strong>Restore the workspace release check — Small.</strong> Fix the preview component’s missing effect return path and confirm the root typecheck is green. Benefit: release validation becomes trustworthy again.</li>
+      <li><strong>Run every fast Studio unit test by default — Small.</strong> Replace the manual 30-file list with test discovery restricted to non-browser tests; keep the expensive browser suites explicit. Benefit: new tests stop being silently excluded.</li>
+      <li><strong>Validate the signed-in mobile journey — Medium.</strong> With disposable fixtures, try “find the next game → track it → review final stats → make a Hype Card” on phone and desktop, recording missed actions, focus changes, and recovery. Benefit: turns the navigation concern into evidence before adding more UI.</li>
+      <li><strong>Extract one high-change orchestration boundary — Medium/Large.</strong> After the checks are green, separate a single schedule or checklist save controller from the main app without changing user behavior. Benefit: smaller, safer changes to local/cloud sync. Do not start with a broad refactor.</li>
+    </ol>
+  </div>
+
+  <div class="note">
+    <strong>Limits and existing work.</strong> Public landing and guest editor were visually inspected at phone and desktop widths, and the anonymous Studio route displayed sign-in. Signed-in visual journeys, keyboard-only use, actual cloud failures, and screen-reader output were not verified with an authenticated session. This is not a performance, security, or accessibility certification. Earlier Task #676 (Simplify dashboard navigation) is merged; do not undo it without usability evidence. Task #265 (Restore the release typecheck for schedule status displays) is already drafted, but the Studio typecheck currently passes; the observed failure is in the separate preview sandbox.
+  </div>
+</main>
+</body>
+</html>
