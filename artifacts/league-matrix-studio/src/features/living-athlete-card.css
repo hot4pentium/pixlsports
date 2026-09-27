@@ -61,17 +61,18 @@
 .living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #061427d9 0, #06142773 18%, transparent 43%); }
 .living-card-photo-watermark {
   position: absolute;
-  left: 68%;
-  top: 61%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  transform-origin: center;
+  right: clamp(16px, 4%, 32px);
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
-  color: rgb(255 255 255 / 72%);
-  -webkit-text-stroke: .8px rgb(2 7 14 / 66%);
+  color: rgb(255 255 255 / 52%);
+  -webkit-text-stroke: .8px rgb(2 7 14 / 42%);
   paint-order: stroke fill;
-  text-shadow: 0 1px 2px rgb(2 7 14 / 48%);
+  text-shadow: 0 1px 2px rgb(2 7 14 / 26%);
   font-family: 'Oswald', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
   font-size: clamp(20px, 5.2vw, 35px);
   font-weight: 700;
