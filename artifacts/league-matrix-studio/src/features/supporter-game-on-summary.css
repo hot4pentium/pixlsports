@@ -57,6 +57,43 @@
   box-shadow: none;
 }
 
+.supporter-game-on-summary__header--with-action {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.supporter-game-on-summary__header-action {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 560px;
+}
+
+.supporter-game-on-summary__header-action .supporter-tour {
+  margin: 0;
+  padding-inline: 0;
+}
+
+.supporter-game-on-summary__header--with-action .supporter-game-on-summary__athlete-link {
+  flex: 0 1 auto;
+  max-width: min(48%, 320px);
+}
+
+@media (max-width: 639px) {
+  .supporter-game-on-summary__header--with-action {
+    flex-wrap: wrap;
+  }
+
+  .supporter-game-on-summary__header-action {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .supporter-game-on-summary__header--with-action .supporter-game-on-summary__athlete-link {
+    max-width: 100%;
+    margin-left: auto;
+  }
+}
+
 .supporter-game-on-summary__athlete-link {
   display: inline-flex;
   min-width: 0;

@@ -943,9 +943,6 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
-           {!isDesktopDashboard && onTourDismiss && (
-             <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
-           )}
           <SupporterGameOnSummary
             variant="mobile"
             athleteName={profile.athleteName}
@@ -955,6 +952,9 @@ export function SupporterDashboardView({
             profileHref={supporterToolRoutes.profile}
             sport={recordSport}
             record={gameRecord}
+            headerAction={!isDesktopDashboard && onTourDismiss ? (
+              <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
+            ) : undefined}
           >
             {renderGameOnEventContent('mobile')}
           </SupporterGameOnSummary>
@@ -1001,9 +1001,6 @@ export function SupporterDashboardView({
       {/* DESKTOP VIEW (hidden on mobile) */}
       <div className="supporter-dashboard-desktop-shell w-full">
     <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
-      {isDesktopDashboard && onTourDismiss && (
-        <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
-      )}
       {showStageReminder && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-5 backdrop-blur-sm"
@@ -1046,6 +1043,9 @@ export function SupporterDashboardView({
         profileHref={supporterToolRoutes.profile}
         sport={recordSport}
         record={gameRecord}
+        headerAction={isDesktopDashboard && onTourDismiss ? (
+          <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
+        ) : undefined}
       >
         {renderGameOnEventContent('desktop')}
       </SupporterGameOnSummary>

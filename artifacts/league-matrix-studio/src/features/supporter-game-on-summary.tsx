@@ -16,6 +16,7 @@ type SupporterGameOnSummaryProps = {
   profileHref: string;
   sport: Sport | null;
   record: SupporterGameRecord;
+  headerAction?: ReactNode;
   children: ReactNode;
 };
 
@@ -28,6 +29,7 @@ export function SupporterGameOnSummary({
   profileHref,
   sport,
   record,
+  headerAction,
   children,
 }: SupporterGameOnSummaryProps) {
   const isMobile = variant === 'mobile';
@@ -40,11 +42,12 @@ export function SupporterGameOnSummary({
       data-testid={isMobile ? 'mobile-hero-banner' : 'desktop-game-on-summary'}
     >
       <header
-        className="supporter-game-on-summary__header"
-        aria-label="Athlete profile"
+        className={`supporter-game-on-summary__header${headerAction ? ' supporter-game-on-summary__header--with-action' : ''}`}
+        aria-label={headerAction ? 'Dashboard tools and athlete profile' : 'Athlete profile'}
         data-testid={isMobile ? 'mobile-athlete-summary' : 'athlete-summary'}
       >
         <h1 id={`game-on-summary-heading-${variant}`} className="sr-only">Athlete overview</h1>
+        {headerAction && <div className="supporter-game-on-summary__header-action">{headerAction}</div>}
         <Link
           href={profileHref}
           className="supporter-game-on-summary__athlete-link"
