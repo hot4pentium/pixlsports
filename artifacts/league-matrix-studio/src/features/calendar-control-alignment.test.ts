@@ -31,8 +31,9 @@ test('calendar preview uses the landing-page card and keeps creation controls in
 
 test('Add event actions lead to the visible Game On section instead of opening Schedule Maker flow', () => {
   assert.match(scheduleEditor, /onAddEvent=\{\(\) => navigateToGameOnSection\(setLocation\)\}/);
-  assert.match(supporterDashboard, /onClick=\{\(\) => navigateToGameOnSection\(setLocation\)\}/);
+  assert.match(supporterDashboard, /<GameOnDashboardCollection/);
   assert.match(gameOnCollection, /id=\{isActiveShell \? GAME_ON_COLLECTION_ID : undefined\}/);
+  assert.match(gameOnCollection, /data-testid="button-create-game-on-card"/);
   assert.match(gameOnNavigation, /navigate\('\/studio'\)/);
   assert.match(gameOnNavigation, /scrollIntoView/);
 });

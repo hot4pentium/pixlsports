@@ -421,6 +421,7 @@ test("two checklist collaborators recover a stale revision and keep it after rel
         firstItemTop: number;
         scrollWidth: number;
         viewportWidth: number;
+        viewportHeight: number;
       }>(`(() => {
         const firstItem = document.querySelector('[data-testid="checklist-items"] [data-completed]');
         return {
@@ -428,10 +429,11 @@ test("two checklist collaborators recover a stale revision and keep it after rel
           firstItemTop: firstItem?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
           scrollWidth: document.documentElement.scrollWidth,
           viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
         };
       })()`, sessionId);
       assert.equal(layout.toolbarVisible, false);
-      assert.ok(layout.firstItemTop < 700, `First checklist item should be near the opening viewport: ${JSON.stringify(layout)}`);
+      assert.ok(layout.firstItemTop < layout.viewportHeight - 120, `First checklist item should be near the opening viewport: ${JSON.stringify(layout)}`);
       assert.ok(layout.scrollWidth <= layout.viewportWidth, `Checklist page should not overflow horizontally: ${JSON.stringify(layout)}`);
     }
 

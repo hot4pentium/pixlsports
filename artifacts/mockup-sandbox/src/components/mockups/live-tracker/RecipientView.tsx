@@ -45,6 +45,7 @@ export function RecipientView() {
       const timer = window.setTimeout(() => setShowLatest(false), 900);
       return () => window.clearTimeout(timer);
     }
+    return undefined;
   }, [secondsAgo]);
 
   return (
