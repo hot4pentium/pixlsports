@@ -13,6 +13,8 @@
 }
 
 .pixl-dashboard > section.supporter-game-on-summary {
+  grid-column: 1 / -1;
+  grid-row: auto;
   min-height: 0;
   border: 1px solid rgba(85, 164, 255, .32);
   padding: 0;
@@ -207,9 +209,10 @@
     linear-gradient(135deg, #183b5e 0%, #0d2748 48%, #07162d 100%);
 }
 
-.pixl-dashboard .supporter-game-on-summary__event {
+.pixl-dashboard .supporter-game-on-summary__grid > .supporter-game-on-summary__event {
   position: relative;
   grid-column: auto;
+  grid-row: auto;
   min-height: 196px;
   border: 1px solid rgba(128, 175, 238, .25);
   border-radius: 13px;
@@ -824,6 +827,16 @@
 @media (min-width: 1024px) {
   .supporter-game-on-summary__grid {
     grid-template-columns: minmax(0, 1.18fr) minmax(210px, .7fr) minmax(270px, .95fr);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .pixl-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pixl-dashboard .supporter-game-on-summary--desktop .supporter-game-on-summary__grid > .supporter-game-on-summary__event {
+    grid-column: 1 / -1;
   }
 }
 
