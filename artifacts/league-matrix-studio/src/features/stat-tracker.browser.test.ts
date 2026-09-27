@@ -47,8 +47,10 @@ import {
   type ScheduledGame,
 } from './src/features/stat-tracker-page';
 import { GameReportView } from './src/features/stat-tracker-game-report';
+import { TrackerCompletionDialog } from './src/features/tracker-completion-dialog';
 import { buildGameReport, createGameSession, endGame, getSportRule, normalizeTrackerData, trackerSaveErrorMessage } from './src/features/stat-tracker';
 import './src/index.css';
+import './src/features/tracker-completion-dialog.css';
 
 const scheduledGame = {
   id: 'game-1',
@@ -127,6 +129,7 @@ function SaveFeedbackHarness() {
 
 function TrackerHarness() {
   const saveFeedbackMode = new URLSearchParams(window.location.search).get('saveFeedback') === '1';
+  const completionMode = new URLSearchParams(window.location.search).get('completion') === '1';
   const footballMode = new URLSearchParams(window.location.search).get('sport') === 'football';
   const persistenceMode = new URLSearchParams(window.location.search).get('persistence') === '1';
   const trackerHistoryStorageKey = 'stat-tracker-browser-history';
@@ -176,6 +179,7 @@ function TrackerHarness() {
     : null;
 
   if (saveFeedbackMode) return createElement(SaveFeedbackHarness);
+  if (completionMode) return createElement(CompletionHarness);
 
   return createElement('main', null,
     createElement('output', {
@@ -255,6 +259,24 @@ function TrackerHarness() {
       rule: getSportRule('football'),
       onClose: () => setSelectedReportGameId(null),
       onSelectGame: setSelectedReportGameId,
+    }),
+  );
+}
+
+function CompletionHarness() {
+  const [open, setOpen] = useState(true);
+  const [viewed, setViewed] = useState(false);
+  const [game] = useState(() => endGame(createGameSession('football', { opponent: 'Northside' })));
+  return createElement('main', null,
+    createElement('button', { type: 'button', 'data-testid': 'reopen-completion', onClick: () => setOpen(true) }, 'Open completion'),
+    createElement('output', { 'data-testid': 'completion-viewed' }, viewed ? 'Viewed' : 'Not viewed'),
+    createElement(TrackerCompletionDialog, {
+      game,
+      open,
+      onOpenChange: setOpen,
+      teamName: 'Falcons',
+      onViewStats: () => { setViewed(true); setOpen(false); },
+      viewHref: '/studio/stat-tracker',
     }),
   );
 }
@@ -642,6 +664,50 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       await connection.evaluate<boolean>('!document.body.textContent.includes("Cloud sync active")', page.sessionId),
       true,
     );
+
+    await connection.evaluate('window.location.href = "/stat-tracker-test.html?completion=1"', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") !== null', Boolean);
+    await connection.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 }, page.sessionId);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 568, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const confetti = document.querySelector('.tracker-completion-confetti');
+        return confetti && getComputedStyle(confetti).animationDuration === '3.2s';
+      })()`, page.sessionId),
+      true,
+      'celebration confetti should remain animated for over three seconds',
+    );
+    const tapCompletion = async (testId: string, selectorTag = '') => {
+      const target = await connection!.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
+        const element = document.querySelector('${selectorTag}[data-testid="${testId}"]');
+        if (!(element instanceof HTMLElement)) throw new Error('Missing completion action: ${testId}');
+        element.scrollIntoView({ block: 'center' });
+        const rect = element.getBoundingClientRect();
+        const x = Math.round(rect.left + rect.width / 2);
+        const y = Math.round(rect.top + rect.height / 2);
+        return { x, y, hit: element.contains(document.elementFromPoint(x, y)) };
+      })()`, page!.sessionId);
+      assert.equal(target.hit, true, `${testId} must receive touches at its center`);
+      await connection!.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: target.x, y: target.y }] }, page!.sessionId);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      await connection!.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, page!.sessionId);
+    };
+    await tapCompletion('button-completion-close');
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") === null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"reopen-completion\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") !== null', Boolean);
+    await tapCompletion('button-completion-done');
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") === null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"reopen-completion\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") !== null', Boolean);
+    await tapCompletion('button-completion-view-stats');
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"completion-viewed\\"]")?.textContent === "Viewed" && document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") === null', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"reopen-completion\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") !== null', Boolean);
+    await tapCompletion('button-completion-view-stats', 'a');
+    await waitFor(connection, page.sessionId, 'window.location.pathname === "/studio/stat-tracker"', Boolean);
+    await connection.evaluate('window.location.href = "/stat-tracker-test.html?saveFeedback=1"', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"save-outcome-success\\"]") !== null', Boolean);
 
     await connection.evaluate('document.querySelector("[data-testid=\\"save-outcome-success\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saving game to cloud")', Boolean);
