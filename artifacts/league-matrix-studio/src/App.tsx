@@ -3240,27 +3240,69 @@ const clerkAppearance = {
     cardBox: "bg-[#102B4D] w-[440px] max-w-full overflow-hidden rounded-xl border border-[#55A4FF]/30 shadow-[0_24px_80px_rgba(0,8,25,.38)]",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "font-display text-3xl uppercase tracking-wide !text-white",
-    headerSubtitle: "text-sm font-medium !text-[#B9CADC]",
-    socialButtonsBlockButtonText: "text-xs font-bold uppercase tracking-wider !text-white",
-    formFieldLabel: "text-xs font-bold uppercase tracking-wider !text-[#E0EDFA]",
-    footerActionLink: "!text-[#73B5FF] font-bold hover:underline",
-    footerActionText: "text-sm font-medium !text-[#B9CADC]",
-    dividerText: "text-xs font-bold uppercase tracking-widest !text-[#B9CADC]",
-    identityPreviewEditButton: "!text-[#73B5FF]",
-    formFieldSuccessText: "!text-[#73B5FF] text-xs",
+    headerTitle: "font-display text-3xl uppercase tracking-wide text-white",
+    headerSubtitle: "text-sm font-medium text-[#B9CADC]",
+    socialButtonsBlockButtonText: "text-xs font-bold uppercase tracking-wider text-white",
+    formFieldLabel: "text-xs font-bold uppercase tracking-wider text-[#E0EDFA]",
+    footerActionLink: "text-[#73B5FF] font-bold hover:underline",
+    footerActionText: "text-sm font-medium text-[#B9CADC]",
+    dividerText: "text-xs font-bold uppercase tracking-widest text-[#B9CADC]",
+    identityPreviewEditButton: "text-[#73B5FF]",
+    formFieldSuccessText: "text-[#73B5FF] text-xs",
     alertText: "text-sm font-medium",
     logoBox: "mb-3",
     logoImage: "h-10 max-w-[134px] object-contain",
     socialButtonsBlockButton: "h-12 rounded-md border border-[#91ACC3]/40 bg-white/5 hover:bg-white/10 transition-colors text-white",
     formButtonPrimary: "h-12 rounded-md font-bold bg-[#55A4FF] !text-[#0B1F3A] hover:!bg-[#82BDFF] transition-colors",
-    formFieldInput: "h-12 rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] !text-white font-medium focus:border-[#55A4FF] focus:ring-1 focus:ring-[#55A4FF] transition-all",
+    formFieldInput: "h-12 rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] text-white font-medium focus:border-[#55A4FF] focus:ring-1 focus:ring-[#55A4FF] transition-all",
     footerAction: "mt-4",
     dividerLine: "bg-white/20",
     alert: "rounded-md border border-destructive/30 bg-destructive/10 text-white",
     otpCodeFieldInput: "rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] text-white focus:border-[#55A4FF]",
     formFieldRow: "mb-3",
     main: "p-6 sm:p-8",
+  },
+};
+
+const authFormAppearance = {
+  ...clerkAppearance,
+  variables: {
+    ...clerkAppearance.variables,
+    colorPrimary: "#2878F5",
+    colorForeground: "#0B1F3A",
+    colorMutedForeground: "#47617B",
+    colorBackground: "#FFFFFF",
+    colorInput: "#EDF5FC",
+    colorInputForeground: "#0B1F3A",
+    colorNeutral: "#9EB8CF",
+  },
+  elements: {
+    ...clerkAppearance.elements,
+    cardBox: "bg-white w-[440px] max-w-full overflow-hidden rounded-xl border border-[#B4C9DC] border-t-4 border-t-[#FF6433] shadow-[0_24px_80px_rgba(0,8,25,.45)]",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none !gap-5 !px-6 !py-5 sm:!px-8 sm:!py-7",
+    header: "!gap-3",
+    headerTitle: "font-display text-3xl uppercase tracking-wide !text-[#0B1F3A]",
+    headerSubtitle: "text-sm font-medium !text-[#47617B]",
+    logoBox: "mb-2",
+    logoImage: "h-9 max-w-[125px] object-contain",
+    socialButtonsBlockButton: "h-12 rounded-md border border-[#8AA9C6] !bg-[#EDF5FC] hover:!bg-[#DCEEFF] transition-colors",
+    socialButtonsBlockButtonText: "text-xs font-bold uppercase tracking-wider !text-[#0B1F3A]",
+    formFieldLabel: "text-xs font-bold uppercase tracking-wider !text-[#193752]",
+    formFieldInput: "h-12 rounded-md border border-[#8AA9C6] !bg-[#EDF5FC] !text-[#0B1F3A] font-medium focus:border-[#2878F5] focus:ring-1 focus:ring-[#2878F5] transition-all",
+    formButtonPrimary: "h-12 rounded-md font-bold !bg-[#55A4FF] !text-[#0B1F3A] hover:!bg-[#82BDFF] transition-colors",
+    footerActionLink: "!text-[#165FAF] font-bold hover:underline",
+    footerActionText: "text-sm font-medium !text-[#47617B]",
+    dividerText: "text-xs font-bold uppercase tracking-widest !text-[#47617B]",
+    dividerLine: "bg-[#B4C9DC]",
+    identityPreviewEditButton: "!text-[#165FAF]",
+    formFieldSuccessText: "!text-[#165FAF] text-xs",
+    alertText: "!text-[#762323] text-sm font-medium",
+    alert: "rounded-md border border-[#D59090] bg-[#FFF0F0] !text-[#762323]",
+    otpCodeFieldInput: "rounded-md border border-[#8AA9C6] !bg-[#EDF5FC] !text-[#0B1F3A] focus:border-[#2878F5]",
+    form: "!gap-4",
+    formFieldRow: "!mb-0 !gap-2",
+    footerAction: "mt-3",
+    main: "!p-0 !gap-4",
   },
 };
 
@@ -3301,7 +3343,7 @@ function SignInPage() {
       title={<>Pick up<br/><span>the season.</span></>}
       subtitle="Your athlete’s season, all in one place. Pick up where you left off."
     >
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
+      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
     </AuthLayout>
   );
 }
@@ -3315,7 +3357,7 @@ function SignUpPage() {
       title={<>Start their<br/><span>season here.</span></>}
       subtitle="Plan each week, share game day, and cheer on your athlete together."
     >
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={roleRedirect} />
+      <SignUp appearance={authFormAppearance} routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={roleRedirect} />
     </AuthLayout>
   );
 }
