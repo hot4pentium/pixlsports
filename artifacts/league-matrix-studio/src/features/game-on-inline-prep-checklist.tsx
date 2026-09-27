@@ -5,7 +5,7 @@ import {
 } from '@workspace/api-client-react';
 import { useUser } from '@clerk/react';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 import { ArrowLeft, Check, ClipboardCheck, Plus, Trash2 } from 'lucide-react';
 import {
   applyChecklistEventType,
@@ -21,7 +21,7 @@ import {
   saveGamedayChecklist,
   type LocalGamedayChecklist,
 } from './gameday-checklist';
-import { buildWorkspaceToolHref, type WorkspaceEventContext } from './workspace-context';
+import { type WorkspaceEventContext } from './workspace-context';
 
 type InlineSyncStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -125,7 +125,6 @@ export function GameOnInlinePrepChecklist({
     : event.opponent
       ? `Game vs ${event.opponent}`
       : 'Game day prep';
-  const prepHref = buildWorkspaceToolHref('prep', event);
   const userStorageKey = `${gamedayChecklistStorageKey}:${encodeURIComponent(resolvedUserId)}`;
   const pendingStorageKey = pendingSharedSyncStorageKey(resolvedUserId, event.id);
   const activeShareToken = checklist.shareToken;
@@ -561,9 +560,6 @@ export function GameOnInlinePrepChecklist({
         </label>
       )}
 
-      <Link href={prepHref} className="game-on-prep__full-link" data-testid={`link-open-full-prep-${event.id}`}>
-        Edit full Prep checklist
-      </Link>
     </section>
   );
 }

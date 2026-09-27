@@ -7,6 +7,7 @@ const supporterDashboard = readFileSync(new URL('./supporter-dashboard.tsx', imp
 const gameOnCollection = readFileSync(new URL('./game-on-dashboard-collection.tsx', import.meta.url), 'utf8');
 const gameOnNavigation = readFileSync(new URL('./game-on-navigation.ts', import.meta.url), 'utf8');
 const tourSource = readFileSync(new URL('./supporter-dashboard-tour.tsx', import.meta.url), 'utf8');
+const inlinePrepSource = readFileSync(new URL('./game-on-inline-prep-checklist.tsx', import.meta.url), 'utf8');
 
 test('standalone Calendar routes show a clear retired notice and cannot reach the old schedule canvas', () => {
   assert.match(appSource, /<Route path="\/schedule\/:shareToken" component=\{RetiredSchedulePage\}/);
@@ -26,6 +27,13 @@ test('the supporter tour has four steps and omits Calendar', () => {
   assert.match(tourSource, /onOpenCardPanel\?\.\(step\.panel!/);
   assert.match(supporterDashboard, /tourPanelRequest=\{tourPanelRequest\}/);
   assert.match(gameOnCollection, /setOpenPanel\(\{ cardId: tourPanelRequest\.cardId, panel: tourPanelRequest\.panel \}\)/);
+});
+
+test('the Game On card keeps list editing and link sharing in Prep without a second editor button', () => {
+  assert.match(inlinePrepSource, /Add prep item/);
+  assert.match(inlinePrepSource, /Prep notes/);
+  assert.match(inlinePrepSource, /Create edit link/);
+  assert.doesNotMatch(inlinePrepSource, /Edit full Prep checklist|link-open-full-prep|buildWorkspaceToolHref/);
 });
 
 test('Game On cards remain the active event-card workspace', () => {

@@ -4731,9 +4731,9 @@ test('supporter dashboard tools stay keyboard reachable and compact at phone and
     await connection.evaluate(`window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate'));`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-2"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid^="link-open-full-prep-"]')?.click()`, page.sessionId);
-    assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/studio/checklist');
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"game-on-inline-prep-\\"]"))', Boolean);
+    assert.equal(await connection.evaluate<string>('location.pathname', page.sessionId), '/');
+    assert.equal(await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', page.sessionId), false);
 
   } finally {
     if (page && connection) {
@@ -5427,8 +5427,9 @@ test('supporters can switch saved checklist event types and keep the latest one 
     await connection.evaluate(`window.__setSupporterDashboardEvents(${JSON.stringify(schedule.events)})`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(\'[data-testid^="button-open-card-prep-"][data-prep-href*="game-1"]\') !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid^="button-open-card-prep-"][data-prep-href*="game-1"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid^="link-open-full-prep-"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid^=\\"game-on-inline-prep-\\"]"))', Boolean);
+    assert.equal(await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', page.sessionId), false);
+    await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-1&eventType=game'));
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"checklist-page\\"]") !== null', Boolean);
 
     const readChecklistContext = () => connection!.evaluate<{
@@ -5736,7 +5737,8 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     await waitFor(connection, session, 'document.querySelector(\'.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]\')?.getAttribute("aria-expanded") === "false"', Boolean);
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="button-open-card-prep-"][data-prep-href*="game-selected"]')?.click()`, session);
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"checkbox-card-prep-game-selected-uniform\\"]")?.checked === true', Boolean);
-    await connection.evaluate(`document.querySelector('[data-testid="link-open-full-prep-game-selected"]')?.click()`, session);
+    assert.equal(await connection.evaluate<boolean>('Boolean(document.querySelector("[data-testid^=\\"link-open-full-prep-\\"]"))', session), false);
+    await navigatePage(connection, page, fixtureRoute('checklist', '&gameId=game-selected&eventType=game'));
     assert.equal(await path(), '/studio/checklist');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"select-checklist-game\\"]")?.value === "game-selected"', Boolean);
     assert.equal(await connection.evaluate<string>(
