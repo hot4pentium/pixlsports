@@ -9,8 +9,8 @@ export function getLatestFanActivity(
     ...(fanHypes ?? []).map((hype) => ({
       id: `hype-${hype.id}`,
       reaction: hype.reaction,
-      title: hype.senderName ? `Fan Hype · ${hype.senderName}` : 'Fan Hype · Anonymous',
-      message: hype.message || 'Sent a Hype',
+      title: hype.senderName ? `Fan Shoutout · ${hype.senderName}` : 'Fan Shoutout · Anonymous',
+      message: hype.message || 'Sent a Shoutout',
       createdAt: hype.createdAt,
     })),
     ...(inbox?.groups ?? []).flatMap((group) => group.replies.map((reply) => ({

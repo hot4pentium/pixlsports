@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { notifyAthleteInviteHypeOwner } from "./athleteInviteHypeNotification";
 
-test("fan Hype alerts notify the owner privately and open the owner Hypes section", async () => {
+test("fan Shoutout alerts notify the owner privately and open the owner Shoutouts section", async () => {
   let delivered: { ownerId: string; payload: unknown } | undefined;
   await notifyAthleteInviteHypeOwner({
     id: "invite-id",
@@ -17,8 +17,8 @@ test("fan Hype alerts notify the owner privately and open the owner Hypes sectio
   assert.deepEqual(delivered, {
     ownerId: "owner-id",
     payload: {
-      title: "New fan Hype for Taylor Athlete",
-      body: "A fan sent a cheer. Tap to read it.",
+      title: "New fan Shoutout for Taylor Athlete",
+      body: "A fan sent a shoutout. Tap to read it.",
       url: "/player/token%2Fwith%20spaces/manage#owner-fan-hypes",
       tag: "athlete-invite-hype-hype-id",
     },

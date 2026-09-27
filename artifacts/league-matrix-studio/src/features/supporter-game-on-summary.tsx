@@ -82,7 +82,7 @@ export function SupporterGameOnSummary({
           </div>
         </section>
 
-        <div className="supporter-game-on-summary__replies" aria-label="Recent Hypes and replies">
+        <div className="supporter-game-on-summary__replies" aria-label="Recent Shoutouts and replies">
           <HypeCardReplyInboxTrigger variant="dashboard" />
         </div>
 

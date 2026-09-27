@@ -10,6 +10,14 @@ const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
 const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
+
+test('fan Shoutouts keep owner-only privacy wording distinct from media replies', () => {
+  assert.match(livingCardSource, /Send a Shoutout/);
+  assert.match(livingCardSource, /Only the card owner can read your message/);
+  assert.match(livingCardSource, /Your shoutout could not be sent/);
+  assert.match(source, /Fan Shoutouts/);
+  assert.match(source, /Leave a reply/);
+});
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
@@ -26,7 +34,7 @@ test('the new fan card Videos side excludes photos inherited from old Hype Card 
 
 test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
   assert.match(source, /HypeCardReplyComposer/);
-  assert.match(source, /Choose a reaction and add an optional message without leaving this athlete page/);
+  assert.match(source, /Choose a reaction and add an optional message for the latest shared video without leaving this athlete page/);
   assert.match(source, /shareToken=\{invite\.videos\[0\]\.shareToken\}/);
   assert.match(source, /setLocalReplies/);
   assert.doesNotMatch(source, /Send your own reply →/);
@@ -86,7 +94,7 @@ test('posting a Hype Card opens the living fan card and keeps owner management a
   assert.match(source, /target\?\.focus\(\{ preventScroll: true \}\)/);
   assert.match(source, /redirect_url=\$\{encodeURIComponent\(redirectUrl\)\}/);
   assert.match(source, /#owner-fan-hypes/);
-  assert.match(source, /When browser alerts are enabled, new Hypes open directly here/);
+  assert.match(source, /When browser alerts are enabled, new Shoutouts open directly here/);
   assert.match(source, /function OwnerVideoUpload/);
   assert.match(source, /Add a video here/);
   assert.match(source, /data-testid="section-manage-athlete-videos"/);
@@ -196,7 +204,7 @@ test('public Athlete Hype Pages present direct videos in an accessible horizonta
   assert.match(source, /athlete-video-stage/);
   assert.match(source, /data-testid="athlete-video-reflection"/);
   assert.match(source, /href="#athlete-reply-composer"/);
-  assert.match(source, /Send some hype/);
+  assert.match(source, /Leave a reply/);
   assert.match(source, /data-testid="button-send-hype-for-video"/);
   assert.match(source, /invite\.videos\.map\(\(video, index\)/);
   assert.match(source, /src=\{video\.videoUrl\}/);

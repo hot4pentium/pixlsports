@@ -319,7 +319,7 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === true && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'false'", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'true'", Boolean, 12_000);
-    for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Hypes', 'Add Media']) {
+    for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Shoutouts', 'Add Media']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
     }
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
@@ -330,9 +330,9 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.notEqual(changedSetting, originalSetting);
     await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved')", Boolean, 12_000);
     assert.equal(owned.showHypeCard, changedSetting === 'true', 'the switch is saved without submitting the form');
-    await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Hypes\"]').click()", ownerManage);
-    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved') && document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Hypes\"]')?.disabled === false", Boolean, 12_000);
-    assert.equal(owned.hypesEnabled, false, 'Fan Hypes are disabled immediately on toggle');
+    await connection.evaluate("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Shoutouts\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"status-owner-visible-sections\"]')?.textContent?.includes('saved') && document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[aria-label=\"Fan Shoutouts\"]')?.disabled === false", Boolean, 12_000);
+    assert.equal(owned.hypesEnabled, false, 'Fan Shoutouts are disabled immediately on toggle');
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-media\"]').click()", ownerManage);
     assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-media')?.hidden", ownerManage), false);
     assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), true);

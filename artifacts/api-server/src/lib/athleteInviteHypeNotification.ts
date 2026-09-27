@@ -13,8 +13,8 @@ export function buildAthleteInviteHypeNotification(
   hypeId: string,
 ): PushNotificationPayload {
   return {
-    title: `New fan Hype for ${invite.athleteName}`,
-    body: "A fan sent a cheer. Tap to read it.",
+    title: `New fan Shoutout for ${invite.athleteName}`,
+    body: "A fan sent a shoutout. Tap to read it.",
     url: `/player/${encodeURIComponent(invite.publicToken)}/manage#owner-fan-hypes`,
     tag: `athlete-invite-hype-${hypeId}`,
   };

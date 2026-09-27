@@ -315,7 +315,7 @@ export function HypeCardReplyComposer({
 
   return (
     <form onSubmit={submitReply} className={className} aria-label="Reply to this Hype Card" aria-busy={createReply.isPending} data-testid="hype-card-reply-composer">
-      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Send some hype</p>
+      <p className="text-[10px] font-bold uppercase tracking-[.18em] text-primary">Reply to this moment</p>
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Choose a reaction">
         {reactions.map((item) => (
           <button

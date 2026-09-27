@@ -1128,9 +1128,9 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     try {
       await deleteHype.mutateAsync({ inviteToken: invite.inviteToken, hypeId: id });
       await queryClient.invalidateQueries({ queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken) });
-      setNotice('Hype removed.');
+      setNotice('Shoutout removed.');
     } catch {
-      setNotice('The Hype could not be removed. Please try again.');
+      setNotice('The shoutout could not be removed. Please try again.');
     }
   };
 
@@ -1181,7 +1181,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showHypeCard', value)} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showStats', value)} />
         <OwnerToggle label="Upcoming schedule" detail="Uses event cards with Add to Calendar." checked={showSchedule} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showSchedule', value)} />
-        <OwnerToggle label="Fan Hypes" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
+        <OwnerToggle label="Fan Shoutouts" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
         {visibilityStatus !== 'idle' && (
           <p
             className={`mt-4 text-xs font-semibold ${visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'text-amber-200' : 'text-white/70'}`}
@@ -1201,20 +1201,20 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </form>
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="hypes" title="Fan Hypes" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => toggleTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
+      <HypeManagerTaskCard id="hypes" title="Fan Shoutouts" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => toggleTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
       <section aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
-        <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Hypes</h3>
-        <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Hypes are on for the living card.' : 'Hypes are off. Earlier messages remain available to you.'}</p>
-        <p className="mt-2 text-xs text-white/50">When browser alerts are enabled, new Hypes open directly here. Alert previews do not show fan messages.</p>
-        {hypesLoading ? <p role="status" className="mt-4 text-sm">Loading Hypes…</p>
-          : hypesError ? <p role="alert" className="mt-4 text-sm">Could not load Hypes. Refresh to try again.</p>
+        <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Shoutouts</h3>
+        <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Shoutouts are on for the living card.' : 'Shoutouts are off. Earlier messages remain available to you.'}</p>
+        <p className="mt-2 text-xs text-white/50">When browser alerts are enabled, new Shoutouts open directly here. Alert previews do not show fan messages.</p>
+        {hypesLoading ? <p role="status" className="mt-4 text-sm">Loading Shoutouts…</p>
+          : hypesError ? <p role="alert" className="mt-4 text-sm">Could not load Shoutouts. Refresh to try again.</p>
           : hypes?.length ? <ul className="mt-4 space-y-3">{hypes.map((hype) => (
             <li key={hype.id} className="flex items-start justify-between gap-4 border border-white/20 p-4">
               <div className="min-w-0"><strong>{hype.reaction}</strong><p className="mt-1 break-words text-xs text-white/60">{hype.senderName ? `From ${hype.senderName}` : 'Anonymous fan'}</p>{hype.message && <p className="mt-1 whitespace-pre-wrap break-words text-sm">{hype.message}</p>}
                 <time className="mt-2 block text-xs text-white/50" dateTime={hype.createdAt}>{new Date(hype.createdAt).toLocaleString()}</time></div>
               <button type="button" disabled={deleteHype.isPending} onClick={() => void removeHype(hype.id)} className="shrink-0 text-xs font-bold uppercase text-primary hover:underline">Remove</button>
             </li>
-          ))}</ul> : <p className="mt-4 text-sm text-white/60">No Hypes yet.</p>}
+          ))}</ul> : <p className="mt-4 text-sm text-white/60">No Shoutouts yet.</p>}
       </section>
       </HypeManagerTaskCard>
 
@@ -1615,10 +1615,10 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                           <a
                             href="#athlete-reply-composer"
                             className="inline-flex min-h-9 items-center border border-primary/60 px-3 text-[10px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-                            aria-label={`Send some hype about ${video.title}`}
+                            aria-label={`Open media reply form from ${video.title}`}
                             data-testid="button-send-hype-for-video"
                           >
-                            Send some hype
+                            Leave a reply
                           </a>
                         </div>
                         {details && <p className="mt-3 text-xs font-bold uppercase tracking-[.16em] text-white/55">{details}</p>}
@@ -1713,8 +1713,8 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
             {invite.videos[0] && (
               <section className="border border-primary/40 bg-primary/10 p-5 sm:p-7" aria-labelledby="athlete-reply-composer">
                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">For the athlete</p>
-                <h2 id="athlete-reply-composer" className="mt-2 font-display text-3xl uppercase">Send some hype</h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">Choose a reaction and add an optional message without leaving this athlete page.</p>
+                <h2 id="athlete-reply-composer" className="mt-2 font-display text-3xl uppercase">Reply to the latest highlight</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/60">Choose a reaction and add an optional message for the latest shared video without leaving this athlete page.</p>
                 <HypeCardReplyComposer
                   shareToken={invite.videos[0].shareToken}
                   className="mt-5 border-t border-primary/20 pt-5"

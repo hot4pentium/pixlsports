@@ -120,22 +120,22 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     <button
       type="button"
       className={`reply-inbox-summary-trigger ${className}`}
-      aria-label={`Open Hypes and replies, ${totalCount} ${totalCount === 1 ? 'message' : 'messages'}`}
+      aria-label={`Open Shoutouts and replies, ${totalCount} ${totalCount === 1 ? 'message' : 'messages'}`}
       data-testid="btn-reply-inbox"
     >
       <span className="reply-inbox-summary-trigger__header">
         <span className="reply-inbox-summary-trigger__label">
           <MessageCircleHeart size={15} aria-hidden="true" />
-          <span>Hypes & replies · <span data-testid="reply-inbox-total-count">{isLoading ? '…' : isError ? '—' : totalCount}</span></span>
+          <span>Shoutouts & replies · <span data-testid="reply-inbox-total-count">{isLoading ? '…' : isError ? '—' : totalCount}</span></span>
         </span>
         {unreadCount > 0 && (
           <span className="reply-inbox-summary-trigger__unread">{unreadCount} new</span>
         )}
       </span>
       {isLoading && latestActivity.length === 0 ? (
-        <span className="reply-inbox-summary-trigger__empty">Loading recent Hypes…</span>
+        <span className="reply-inbox-summary-trigger__empty">Loading recent Shoutouts and replies…</span>
       ) : isError && latestActivity.length === 0 ? (
-        <span className="reply-inbox-summary-trigger__empty">Hypes or replies are unavailable right now.</span>
+        <span className="reply-inbox-summary-trigger__empty">Shoutouts or replies are unavailable right now.</span>
       ) : latestActivity.length > 0 ? (
         <span className="reply-inbox-summary-trigger__items">
           {latestActivity.map(({ id, reaction, title, message }) => (
@@ -149,7 +149,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
           ))}
         </span>
       ) : (
-        <span className="reply-inbox-summary-trigger__empty">Hypes and replies will show up here.</span>
+        <span className="reply-inbox-summary-trigger__empty">Shoutouts and replies will show up here.</span>
       )}
       <span className="reply-inbox-summary-trigger__footer">
         View all <ArrowRight size={14} aria-hidden="true" />
@@ -165,7 +165,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     >
       <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
         <MessageCircleHeart className={`h-4 w-4 ${unreadCount > 0 ? 'text-primary animate-pulse' : ''}`} />
-        <span>{isLoading ? '...' : isError ? 'Error' : `${totalCount} Hypes & Replies`}</span>
+        <span>{isLoading ? '...' : isError ? 'Error' : `${totalCount} Shoutouts & Replies`}</span>
       </div>
       {unreadCount > 0 && (
         <span className="flex h-5 items-center justify-center bg-primary px-2 text-[10px] font-bold text-primary-foreground clip-angled-sm">
@@ -186,10 +186,10 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
         <DialogHeader className="p-4 sm:p-6 border-b border-white/10 shrink-0 bg-foreground">
           <DialogTitle className="font-display text-3xl tracking-wide uppercase text-white flex items-center gap-3">
             <Inbox className="h-6 w-6 text-primary" />
-            Hypes &amp; Replies
+            Shoutouts &amp; Replies
           </DialogTitle>
           <DialogDescription className="text-white/60">
-            Fan Hypes and replies to shared moments.
+            Fan Shoutouts and replies to shared moments.
           </DialogDescription>
         </DialogHeader>
 
@@ -197,7 +197,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-12 text-white/50 gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-bold uppercase tracking-widest">Loading Hypes and replies...</p>
+              <p className="text-sm font-bold uppercase tracking-widest">Loading Shoutouts and replies...</p>
             </div>
           )}
 
@@ -205,18 +205,18 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
             <div className="flex flex-col items-center justify-center py-12 text-destructive gap-4 text-center">
               <AlertTriangle className="h-10 w-10 mb-2" />
               <p className="font-bold uppercase tracking-widest">Failed to load</p>
-              <p className="text-sm text-white/50 max-w-sm">Some Hypes or replies could not be loaded. Please try again.</p>
+              <p className="text-sm text-white/50 max-w-sm">Some Shoutouts or replies could not be loaded. Please try again.</p>
             </div>
           )}
 
           {inviteToken && fanHypes && fanHypes.length > 0 && (
             <section aria-labelledby="inbox-fan-hypes" className="border border-white/10 bg-white/5 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 id="inbox-fan-hypes" className="font-display text-xl uppercase tracking-wide">Fan Hypes</h3>
+                <h3 id="inbox-fan-hypes" className="font-display text-xl uppercase tracking-wide">Fan Shoutouts</h3>
                 <a
                   href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/player/${encodeURIComponent(inviteToken)}/manage#owner-fan-hypes`}
                   className="text-xs font-bold text-primary hover:underline"
-                >Manage Hypes</a>
+                >Manage Shoutouts</a>
               </div>
               <ul className="mt-3 space-y-3">
                 {fanHypes.map((hype) => (
@@ -237,7 +237,7 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
                 <MessageCircleHeart className="h-8 w-8 text-white/20" />
               </div>
               <p className="font-display text-2xl uppercase tracking-wide text-white/50">It's quiet here</p>
-              <p className="mt-2 text-sm text-white/40 max-w-xs font-medium">When fans send Hypes or reply to shared media, their messages will appear here.</p>
+              <p className="mt-2 text-sm text-white/40 max-w-xs font-medium">When fans send Shoutouts or reply to shared media, their messages will appear here.</p>
             </div>
           )}
 

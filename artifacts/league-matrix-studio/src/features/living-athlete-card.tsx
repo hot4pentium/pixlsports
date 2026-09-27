@@ -245,12 +245,12 @@ export function LivingAthleteCardPage({
       } });
       setSenderName('');
       setMessage('');
-      setHypeFeedback(`Your ${reaction} Hype was sent. Thanks for cheering ${invite.athleteName} on!`);
+      setHypeFeedback(`Your ${reaction} shoutout was sent to the card owner. Thanks for cheering ${invite.athleteName} on!`);
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
-      setHypeFeedback(status === 429 ? 'You have sent several Hypes. Please try again in an hour.'
-        : status === 404 ? 'This card is no longer accepting Hypes. Refresh to check its status.'
-        : 'Your Hype could not be sent. Please try again.');
+      setHypeFeedback(status === 429 ? 'You have sent several shoutouts. Please try again in an hour.'
+        : status === 404 ? 'This card is no longer accepting shoutouts. Refresh to check its status.'
+        : 'Your shoutout could not be sent. Please try again.');
     }
   };
 
@@ -494,7 +494,7 @@ export function LivingAthleteCardPage({
                     )}
                     {invite.videos[0] && (
                       <section id="living-card-reply-composer" className="living-card-media-reply" aria-labelledby="living-card-media-reply-title">
-                        <h3 id="living-card-media-reply-title">Send some hype</h3>
+                        <h3 id="living-card-media-reply-title">Reply to this moment</h3>
                         <p>Choose a reaction and add an optional message without leaving this card. Replies stay separate from Hypes sent from the card front.</p>
                         <HypeCardReplyComposer
                           shareToken={invite.videos[0].shareToken}
@@ -561,14 +561,14 @@ export function LivingAthleteCardPage({
                  <DialogTrigger asChild>
                    <button type="button" className="living-card-support-action living-card-support-action-hype" data-testid="button-open-fan-card-hypes">
                      <Send aria-hidden="true" />
-                     <span>Send Hypes</span>
+                      <span>Send a Shoutout</span>
                      <small>A note for the owner</small>
                    </button>
                  </DialogTrigger>
                  <DialogContent className="living-card-dialog living-card-hype-dialog" data-testid="dialog-hypes-fan-card">
                    <DialogHeader className="living-card-dialog-header">
                      <span className="living-card-dialog-kicker">From the stands</span>
-                     <DialogTitle>Send some Hype.</DialogTitle>
+                      <DialogTitle>Send a Shoutout.</DialogTitle>
                      <DialogDescription>
                        Pick a cheer and add a short message for {invite.athleteName}. Only the card owner can read your message.
                      </DialogDescription>
@@ -591,13 +591,13 @@ export function LivingAthleteCardPage({
                          <textarea id="fan-card-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} rows={4} placeholder="A few words of encouragement" data-testid="input-fan-card-message" />
                          <div className="living-card-dialog-form-footer">
                            <span>{message.length}/240</span>
-                           <button type="submit" disabled={sendHype.isPending} data-testid="button-submit-fan-card-hype">{sendHype.isPending ? 'Sending…' : 'Send Hype'}</button>
+                            <button type="submit" disabled={sendHype.isPending} data-testid="button-submit-fan-card-hype">{sendHype.isPending ? 'Sending shoutout…' : 'Send a Shoutout'}</button>
                          </div>
                        </form>
                      ) : (
                        <div className="living-card-dialog-disabled" data-testid="status-fan-card-hypes-disabled">
                          <Send aria-hidden="true" />
-                         <h3>Hypes are turned off.</h3>
+                          <h3>Shoutouts are turned off.</h3>
                          <p>The owner is not accepting messages on this card right now. You can still follow the season and view its public updates.</p>
                        </div>
                      )}
