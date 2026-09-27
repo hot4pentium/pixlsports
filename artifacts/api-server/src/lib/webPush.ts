@@ -86,7 +86,7 @@ export async function sendPushNotificationToUser(ownerClerkUserId: string, paylo
       await sender.sendNotification({
         endpoint: subscription.endpoint,
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-      }, serialized);
+      }, serialized, { timeout: 15_000 });
       sent += 1;
     } catch (error: unknown) {
       const statusCode = typeof error === "object" && error !== null && "statusCode" in error

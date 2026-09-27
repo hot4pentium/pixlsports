@@ -1,19 +1,24 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import {
   cloudProjectsTable,
   db,
+  plannerCardNotificationDeliveriesTable,
   plannerNotificationDeliveriesTable,
   plannerNotificationPreferencesTable,
+  scheduleSharesTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { sendPushNotificationToUser } from "../lib/webPush";
+import { GAME_ON_CARD_MARKER } from "../routes/scheduleShares";
 
 const INTERVAL_MS = 15 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MORNING_HOUR = 7;
 const CAPTURE_OPEN_GRACE_MS = 3 * ONE_HOUR_MS;
+const PENDING_DELIVERY_TIMEOUT_MS = 2 * 60 * 1000;
+const PENDING_DELIVERY_HEARTBEAT_MS = 20 * 1000;
 
 type PlannerEvent = {
   id: string;
@@ -77,6 +82,24 @@ function parsePlannerProject(value: unknown): PlannerProject | null {
       location: asString(event.location),
       opponent: asString(event.opponent),
     })),
+  };
+}
+
+function parseGameOnCard(events: unknown, teamName: string): PlannerProject | null {
+  if (!Array.isArray(events) || events.length !== 1 || !isPlannerEvent(events[0]) || events[0].type === "meeting") return null;
+  const event = events[0];
+  return {
+    teamName,
+    season: "",
+    events: [{
+      id: event.id,
+      type: event.type,
+      ...(event.status ? { status: event.status } : {}),
+      date: event.date,
+      time: asString(event.time),
+      location: asString(event.location),
+      opponent: asString(event.opponent),
+    }],
   };
 }
 
@@ -289,8 +312,86 @@ async function sendPlannerReminder(
   }).onConflictDoNothing();
 }
 
+async function sendGameOnCardReminder(
+  shareId: string,
+  ownerClerkUserId: string,
+  card: PlannerProject,
+  event: PlannerEvent,
+  reminderType: PlannerReminderType,
+  sendPush: typeof sendPushNotificationToUser,
+  heartbeatMs: number,
+) {
+  const deliveryKey = and(
+    eq(plannerCardNotificationDeliveriesTable.shareId, shareId),
+    eq(plannerCardNotificationDeliveriesTable.eventId, event.id),
+    eq(plannerCardNotificationDeliveriesTable.notificationType, reminderType),
+    eq(plannerCardNotificationDeliveriesTable.eventDate, event.date),
+  );
+  const deliveryId = randomUUID();
+  const now = new Date();
+  const [inserted] = await db.insert(plannerCardNotificationDeliveriesTable).values({
+    id: deliveryId,
+    shareId,
+    eventId: event.id,
+    notificationType: reminderType,
+    eventDate: event.date,
+    createdAt: now,
+  }).onConflictDoNothing().returning({ id: plannerCardNotificationDeliveriesTable.id });
+  if (!inserted) {
+    const [existing] = await db.select({
+      id: plannerCardNotificationDeliveriesTable.id,
+      sentAt: plannerCardNotificationDeliveriesTable.sentAt,
+    }).from(plannerCardNotificationDeliveriesTable).where(deliveryKey).limit(1);
+    if (!existing) return false;
+    if (existing.sentAt) return true;
+    const [reclaimed] = await db.update(plannerCardNotificationDeliveriesTable)
+      .set({ id: deliveryId, createdAt: now })
+      .where(and(
+        deliveryKey,
+        eq(plannerCardNotificationDeliveriesTable.id, existing.id),
+        isNull(plannerCardNotificationDeliveriesTable.sentAt),
+        lt(plannerCardNotificationDeliveriesTable.createdAt, new Date(now.getTime() - PENDING_DELIVERY_TIMEOUT_MS)),
+      ))
+      .returning({ id: plannerCardNotificationDeliveriesTable.id });
+    if (!reclaimed) return true;
+  }
+
+  const heartbeat = setInterval(() => {
+    void db.update(plannerCardNotificationDeliveriesTable)
+      .set({ createdAt: new Date() })
+      .where(and(
+        eq(plannerCardNotificationDeliveriesTable.id, deliveryId),
+        isNull(plannerCardNotificationDeliveriesTable.sentAt),
+      ))
+      .catch((error) => logger.warn({ err: error }, "Unable to renew pending Game On reminder"));
+  }, heartbeatMs);
+  heartbeat.unref();
+  let result: Awaited<ReturnType<typeof sendPush>>;
+  try {
+    result = await sendPush(ownerClerkUserId, {
+      ...reminderPayload(card, event, reminderType),
+      deliveryId,
+      tag: `planner-card-${shareId}-${event.id}-${reminderType}-${event.date}`,
+    });
+  } catch (error) {
+    await db.delete(plannerCardNotificationDeliveriesTable).where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+    throw error;
+  } finally {
+    clearInterval(heartbeat);
+  }
+  if (result.sent === 0) {
+    await db.delete(plannerCardNotificationDeliveriesTable).where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+    return false;
+  }
+  await db.update(plannerCardNotificationDeliveriesTable)
+    .set({ sentAt: new Date() })
+    .where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+  return true;
+}
+
 export type PlannerNotificationJobDependencies = {
   sendPushNotificationToUser?: typeof sendPushNotificationToUser;
+  pendingDeliveryHeartbeatMs?: number;
 };
 
 export async function runPlannerNotificationJob(
@@ -335,6 +436,8 @@ export async function runPlannerNotificationJob(
     })
     .from(cloudProjectsTable);
 
+  const calendarEvents = new Set<string>();
+  const eventKey = (owner: string, event: PlannerEvent) => `${owner}\0${event.id}\0${event.date}`;
   for (const row of projects) {
     const timezone = owners.get(row.ownerClerkUserId);
     if (!timezone) continue;
@@ -342,10 +445,44 @@ export async function runPlannerNotificationJob(
     if (!project) continue;
     const preferences = preferencesByOwner.get(row.ownerClerkUserId) ?? DEFAULT_REMINDER_PREFERENCES;
     for (const event of project.events) {
+      if (event.status === "final" || parseEventTime(event.time)) {
+        calendarEvents.add(eventKey(row.ownerClerkUserId, event));
+      }
       if (event.type === "game" && event.status === "final") continue;
       const reminderTypes = getReminderTypes(event.date, event.time, now, timezone, preferences);
       for (const reminderType of reminderTypes) {
         await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType, sendPush);
+      }
+    }
+  }
+
+  const cards = await db
+    .select({
+      id: scheduleSharesTable.id,
+      ownerClerkUserId: scheduleSharesTable.ownerClerkUserId,
+      title: scheduleSharesTable.title,
+      events: scheduleSharesTable.events,
+    })
+    .from(scheduleSharesTable)
+    .where(eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER))
+    .orderBy(desc(scheduleSharesTable.updatedAt));
+  const cardEvents = new Set<string>();
+  for (const row of cards) {
+    const timezone = owners.get(row.ownerClerkUserId);
+    if (!timezone) continue;
+    const card = parseGameOnCard(row.events, row.title);
+    if (!card) continue;
+    const event = card.events[0];
+    const key = eventKey(row.ownerClerkUserId, event);
+    if (calendarEvents.has(key) || cardEvents.has(key)) continue;
+    if (event.status === "final") continue;
+    const preferences = preferencesByOwner.get(row.ownerClerkUserId) ?? DEFAULT_REMINDER_PREFERENCES;
+    for (const reminderType of getReminderTypes(event.date, event.time, now, timezone, preferences)) {
+      if (await sendGameOnCardReminder(
+        row.id, row.ownerClerkUserId, card, event, reminderType, sendPush,
+        dependencies.pendingDeliveryHeartbeatMs ?? PENDING_DELIVERY_HEARTBEAT_MS,
+      )) {
+        cardEvents.add(key);
       }
     }
   }

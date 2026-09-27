@@ -10,8 +10,10 @@ import {
 import {
   cloudProjectsTable,
   db,
+  plannerCardNotificationDeliveriesTable,
   plannerNotificationDeliveriesTable,
   plannerNotificationPreferencesTable,
+  scheduleSharesTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
@@ -185,17 +187,38 @@ router.post("/notifications/deliveries/:deliveryId/displayed", async (req, res):
       .where(eq(plannerNotificationDeliveriesTable.id, params.data.deliveryId))
       .limit(1);
 
-    if (!matchingDelivery) {
+    const [matchingCardDelivery] = matchingDelivery ? [] : await db
+      .select({ id: plannerCardNotificationDeliveriesTable.id })
+      .from(plannerCardNotificationDeliveriesTable)
+      .innerJoin(
+        scheduleSharesTable,
+        eq(scheduleSharesTable.id, plannerCardNotificationDeliveriesTable.shareId),
+      )
+      .innerJoin(
+        webPushSubscriptionsTable,
+        and(
+          eq(webPushSubscriptionsTable.ownerClerkUserId, scheduleSharesTable.ownerClerkUserId),
+          eq(webPushSubscriptionsTable.endpoint, parsed.data.subscriptionEndpoint),
+        ),
+      )
+      .where(eq(plannerCardNotificationDeliveriesTable.id, params.data.deliveryId))
+      .limit(1);
+
+    if (!matchingDelivery && !matchingCardDelivery) {
       res.status(404).json({ error: "Notification delivery not found." });
       return;
     }
 
     await db
-      .update(plannerNotificationDeliveriesTable)
+      .update(matchingDelivery ? plannerNotificationDeliveriesTable : plannerCardNotificationDeliveriesTable)
       .set({ displayedAt: new Date() })
       .where(and(
-        eq(plannerNotificationDeliveriesTable.id, params.data.deliveryId),
-        isNull(plannerNotificationDeliveriesTable.displayedAt),
+        matchingDelivery
+          ? eq(plannerNotificationDeliveriesTable.id, params.data.deliveryId)
+          : eq(plannerCardNotificationDeliveriesTable.id, params.data.deliveryId),
+        matchingDelivery
+          ? isNull(plannerNotificationDeliveriesTable.displayedAt)
+          : isNull(plannerCardNotificationDeliveriesTable.displayedAt),
       ));
     res.status(204).end();
   } catch (error) {

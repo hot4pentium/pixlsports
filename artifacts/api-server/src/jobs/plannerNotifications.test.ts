@@ -2,12 +2,17 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { and, eq } from "drizzle-orm";
+import express from "express";
 import {
   cloudProjectsTable,
   db,
+  plannerCardNotificationDeliveriesTable,
   plannerNotificationDeliveriesTable,
+  scheduleSharesTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
+import { GAME_ON_CARD_MARKER } from "../routes/scheduleShares";
+import webPushRouter from "../routes/webPush";
 import {
   getPlannerReminderTypesForTest,
   runPlannerNotificationJob,
@@ -279,5 +284,469 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
     }
     await db.delete(webPushSubscriptionsTable)
       .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerId));
+  }
+});
+
+const cardEvent = (overrides: Record<string, unknown> = {}) => ({
+  id: "game-on-card-event",
+  type: "game",
+  status: "upcoming",
+  date: "2026-09-27",
+  time: "14:50",
+  location: "Main Field",
+  opponent: "Falcons",
+  ...overrides,
+});
+
+async function insertGameOnCard(ownerId: string, events: unknown[] = [cardEvent()]) {
+  const [share] = await db.insert(scheduleSharesTable).values({
+    ownerClerkUserId: ownerId,
+    title: "Standalone Game On Card",
+    teamSeason: GAME_ON_CARD_MARKER,
+    events,
+  }).returning({ id: scheduleSharesTable.id });
+  return share.id;
+}
+
+async function addPlannerSubscription(ownerId: string) {
+  await db.insert(webPushSubscriptionsTable).values({
+    ownerClerkUserId: ownerId,
+    endpoint: `https://push.example.test/${randomUUID()}`,
+    p256dh: "card-test-p256dh",
+    auth: "card-test-auth",
+    timezone: "UTC",
+  });
+}
+
+async function cleanCardFixture(ownerId: string, shareIds: string[], projectIds: string[] = []) {
+  for (const shareId of shareIds) {
+    await db.delete(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, shareId));
+  }
+  for (const projectId of projectIds) {
+    await db.delete(plannerNotificationDeliveriesTable)
+      .where(eq(plannerNotificationDeliveriesTable.projectId, projectId));
+    await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, projectId));
+  }
+  await db.delete(webPushSubscriptionsTable)
+    .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerId));
+}
+
+test("planner sends and records a one-hour reminder for a standalone Game On Card", async () => {
+  const ownerId = `planner-card-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sent: Array<{ ownerId: string; title: string; tag?: string }> = [];
+
+  try {
+    await addPlannerSubscription(ownerId);
+    shareIds.push(await insertGameOnCard(ownerId));
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      sendPushNotificationToUser: async (sentOwnerId, payload) => {
+        sent.push({ ownerId: sentOwnerId, title: payload.title, tag: payload.tag });
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0]?.ownerId, ownerId);
+    assert.equal(sent[0]?.title, "GAME DAY · IN 1 HOUR");
+    assert.match(sent[0]?.tag ?? "", /^planner-card-/);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareIds[0]!));
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0]?.eventId, "game-on-card-event");
+    assert.equal(deliveries[0]?.eventDate, "2026-09-27");
+    assert.equal(deliveries[0]?.notificationType, "one_hour");
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+
+test("planner card reminders deduplicate repeats and send again when the event date changes", async () => {
+  const ownerId = `planner-card-dedupe-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sentTags: string[] = [];
+  const dependencies = {
+    sendPushNotificationToUser: async (_sentOwnerId: string, payload: { tag?: string }) => {
+      sentTags.push(payload.tag ?? "");
+      return { configured: true, sent: 1, removed: 0 };
+    },
+  };
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const firstReminderTime = new Date("2026-09-27T13:50:00.000Z");
+    await runPlannerNotificationJob(firstReminderTime, dependencies);
+    await runPlannerNotificationJob(firstReminderTime, dependencies);
+    assert.equal(sentTags.length, 1);
+
+    await db.update(scheduleSharesTable).set({
+      events: [cardEvent({ date: "2026-09-28" })],
+    }).where(eq(scheduleSharesTable.id, shareId));
+    await runPlannerNotificationJob(new Date("2026-09-28T13:50:00.000Z"), dependencies);
+
+    assert.equal(sentTags.length, 2);
+    assert.match(sentTags[0] ?? "", /one_hour-2026-09-27$/);
+    assert.match(sentTags[1] ?? "", /one_hour-2026-09-28$/);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.deepEqual(
+      deliveries.map((delivery) => delivery.eventDate).sort(),
+      ["2026-09-27", "2026-09-28"],
+    );
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("deleted Game On Cards do not produce future planner reminders", async () => {
+  const ownerId = `planner-card-delete-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let pushCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const dependencies = {
+      sendPushNotificationToUser: async () => {
+        pushCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    const reminderTime = new Date("2026-09-27T13:50:00.000Z");
+    await runPlannerNotificationJob(reminderTime, dependencies);
+    assert.equal(pushCount, 1);
+
+    await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, shareId));
+    shareIds.splice(shareIds.indexOf(shareId), 1);
+    await runPlannerNotificationJob(reminderTime, dependencies);
+    assert.equal(pushCount, 1);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("planner skips final Game On Cards and cards matching a Calendar event", async () => {
+  const ownerId = `planner-card-skip-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const projectIds: string[] = [];
+  const sentTitles: string[] = [];
+
+  try {
+    await addPlannerSubscription(ownerId);
+    shareIds.push(await insertGameOnCard(ownerId, [cardEvent({ status: "final" })]));
+    const duplicateEvent = cardEvent({ id: "same-game" });
+    const duplicateCardId = await insertGameOnCard(ownerId, [duplicateEvent]);
+    shareIds.push(duplicateCardId);
+    const [project] = await db.insert(cloudProjectsTable).values({
+      ownerClerkUserId: ownerId,
+      name: "Calendar duplicate test",
+      project: {
+        tool: "schedule",
+        teamName: "Test Team",
+        season: "2026",
+        events: [duplicateEvent],
+      },
+    }).returning({ id: cloudProjectsTable.id });
+    projectIds.push(project.id);
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      sendPushNotificationToUser: async (_sentOwnerId, payload) => {
+        sentTitles.push(payload.title);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.deepEqual(sentTitles, ["GAME DAY · IN 1 HOUR"]);
+    const cardDeliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, duplicateCardId));
+    assert.equal(cardDeliveries.length, 0);
+    const projectDeliveries = await db.select()
+      .from(plannerNotificationDeliveriesTable)
+      .where(eq(plannerNotificationDeliveriesTable.projectId, project.id));
+    assert.equal(projectDeliveries.length, 1);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds, projectIds);
+  }
+});
+
+test("Game On Card display receipts require the matching push subscription", async () => {
+  const ownerId = `planner-card-receipt-test-${randomUUID()}`;
+  const endpoint = `https://push.example.test/${randomUUID()}`;
+  const shareIds: string[] = [];
+  let deliveryId: string | undefined;
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).log = { error: () => undefined };
+    next();
+  });
+  app.use("/api", webPushRouter);
+  const server = app.listen(0);
+
+  try {
+    await db.insert(webPushSubscriptionsTable).values({
+      ownerClerkUserId: ownerId,
+      endpoint,
+      p256dh: "receipt-test-p256dh",
+      auth: "receipt-test-auth",
+      timezone: "UTC",
+    });
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const [delivery] = await db.insert(plannerCardNotificationDeliveriesTable).values({
+      shareId,
+      eventId: "game-on-card-event",
+      notificationType: "one_hour",
+      eventDate: "2026-09-27",
+    }).returning({ id: plannerCardNotificationDeliveriesTable.id });
+    deliveryId = delivery.id;
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const receiptUrl = `http://127.0.0.1:${address.port}/api/notifications/deliveries/${deliveryId}/displayed`;
+    const rejected = await fetch(receiptUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ subscriptionEndpoint: `https://push.example.test/${randomUUID()}` }),
+    });
+    assert.equal(rejected.status, 404);
+
+    const accepted = await fetch(receiptUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ subscriptionEndpoint: endpoint }),
+    });
+    assert.equal(accepted.status, 204);
+
+    const [updatedDelivery] = await db.select({
+      displayedAt: plannerCardNotificationDeliveriesTable.displayedAt,
+    }).from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+    assert.ok(updatedDelivery?.displayedAt instanceof Date);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (deliveryId) {
+      await db.delete(plannerCardNotificationDeliveriesTable)
+        .where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+    }
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("concurrent planner runs send a Game On Card reminder only once", async () => {
+  const ownerId = `planner-card-concurrent-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+  let signalSenderStarted!: () => void;
+  let releaseSender!: () => void;
+  const senderStarted = new Promise<void>((resolve) => {
+    signalSenderStarted = resolve;
+  });
+  const senderRelease = new Promise<{ configured: boolean; sent: number; removed: number }>((resolve) => {
+    releaseSender = () => resolve({ configured: true, sent: 1, removed: 0 });
+  });
+
+  try {
+    await addPlannerSubscription(ownerId);
+    shareIds.push(await insertGameOnCard(ownerId));
+    const dependencies = {
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        signalSenderStarted();
+        return senderRelease;
+      },
+    };
+    const now = new Date("2026-09-27T13:50:00.000Z");
+    const firstRun = runPlannerNotificationJob(now, dependencies);
+    await senderStarted;
+    await runPlannerNotificationJob(now, dependencies);
+    assert.equal(sendCount, 1);
+    releaseSender();
+    await firstRun;
+
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareIds[0]!));
+    assert.equal(deliveries.length, 1);
+    assert.ok(deliveries[0]?.sentAt instanceof Date);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("zero-send card attempts release their pending claim for a successful retry", async () => {
+  const ownerId = `planner-card-retry-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const dependencies = {
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: sendCount === 1 ? 0 : 1, removed: 0 };
+      },
+    };
+    const now = new Date("2026-09-27T13:50:00.000Z");
+    await runPlannerNotificationJob(now, dependencies);
+    const afterZeroSend = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(afterZeroSend.length, 0);
+
+    await runPlannerNotificationJob(now, dependencies);
+    const afterRetry = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(sendCount, 2);
+    assert.equal(afterRetry.length, 1);
+    assert.ok(afterRetry[0]?.sentAt instanceof Date);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("stale pending card claims can be reclaimed and sent", async () => {
+  const ownerId = `planner-card-stale-claim-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const staleCreatedAt = new Date(Date.now() - 3 * 60 * 1000);
+    const [pendingClaim] = await db.insert(plannerCardNotificationDeliveriesTable).values({
+      shareId,
+      eventId: "game-on-card-event",
+      notificationType: "one_hour",
+      eventDate: "2026-09-27",
+      createdAt: staleCreatedAt,
+    }).returning({ id: plannerCardNotificationDeliveriesTable.id });
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(sendCount, 1);
+    assert.equal(deliveries.length, 1);
+    assert.notEqual(deliveries[0]?.id, pendingClaim.id);
+    assert.ok(deliveries[0]?.sentAt instanceof Date);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("heartbeat renews an aged in-flight claim before an overlapping planner run", async () => {
+  const ownerId = `planner-card-heartbeat-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+  let signalSenderStarted!: () => void;
+  let releaseSender!: () => void;
+  let firstRun: Promise<void> | undefined;
+  const senderStarted = new Promise<void>((resolve) => {
+    signalSenderStarted = resolve;
+  });
+  const senderRelease = new Promise<{ configured: boolean; sent: number; removed: number }>((resolve) => {
+    releaseSender = () => resolve({ configured: true, sent: 1, removed: 0 });
+  });
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const dependencies = {
+      pendingDeliveryHeartbeatMs: 20,
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        signalSenderStarted();
+        return senderRelease;
+      },
+    };
+    const now = new Date("2026-09-27T13:50:00.000Z");
+    firstRun = runPlannerNotificationJob(now, dependencies);
+    await senderStarted;
+
+    const staleCreatedAt = new Date(Date.now() - 3 * 60 * 1000);
+    await db.update(plannerCardNotificationDeliveriesTable)
+      .set({ createdAt: staleCreatedAt })
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+
+    let renewedCreatedAt: Date | undefined;
+    const renewalDeadline = Date.now() + 1_000;
+    while (Date.now() < renewalDeadline) {
+      const [claim] = await db.select({
+        createdAt: plannerCardNotificationDeliveriesTable.createdAt,
+      }).from(plannerCardNotificationDeliveriesTable)
+        .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+      if (claim && claim.createdAt > staleCreatedAt) {
+        renewedCreatedAt = claim.createdAt;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.ok(renewedCreatedAt && renewedCreatedAt > staleCreatedAt);
+
+    await runPlannerNotificationJob(now, dependencies);
+    assert.equal(sendCount, 1);
+    releaseSender();
+    await firstRun;
+
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(deliveries.length, 1);
+    assert.ok(deliveries[0]?.sentAt instanceof Date);
+  } finally {
+    releaseSender();
+    await firstRun?.catch(() => undefined);
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("final practice Game On Cards do not alert", async () => {
+  const ownerId = `planner-card-final-practice-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId, [
+      cardEvent({ type: "practice", status: "final" }),
+    ]);
+    shareIds.push(shareId);
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.equal(sendCount, 0);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(deliveries.length, 0);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
   }
 });

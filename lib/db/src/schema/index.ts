@@ -234,6 +234,27 @@ export const plannerNotificationDeliveriesTable = pgTable("planner_notification_
   projectIndex: index("planner_notification_deliveries_project_index").on(table.projectId),
 }));
 
+export const plannerCardNotificationDeliveriesTable = pgTable("planner_card_notification_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  shareId: uuid("share_id").notNull().references(() => scheduleSharesTable.id, {
+    onDelete: "cascade",
+  }),
+  eventId: text("event_id").notNull(),
+  notificationType: text("notification_type").notNull(),
+  eventDate: text("event_date").notNull(),
+  displayedAt: timestamp("displayed_at", { withTimezone: true }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  deliveryUnique: uniqueIndex("planner_card_notification_deliveries_key_unique").on(
+    table.shareId,
+    table.eventId,
+    table.notificationType,
+    table.eventDate,
+  ),
+  shareIndex: index("planner_card_notification_deliveries_share_index").on(table.shareId),
+}));
+
 export * from "./checklistShares";
 export * from "./meetingWorkspaces";
 export * from "./statTrackerShares";
