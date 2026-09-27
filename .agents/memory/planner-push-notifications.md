@@ -20,3 +20,9 @@ The existing project's Publishing → Adjust settings screen offers “Add deplo
 **Why:** The platform's multi-artifact documentation says a project's artifacts publish together, while search summaries gave contradictory claims about independent deployment types. The actual screen did not support the proposed path.
 
 **How to apply:** Treat same-project concurrent Scheduled + Autoscale hosting as unverified until a supported UI/API path is observed. Consider a separate scheduled project or a secured frequent external trigger only after checking shared-data access and obtaining approval for the changed approach and cost.
+
+A separate Replit scheduled project should trigger a narrowly authenticated HTTPS endpoint in PIXL's published API rather than attempt to share PIXL's managed production database or push keys.
+
+**Why:** Replit projects have isolated databases; copying production data credentials into a second project unnecessarily expands access. A request wakes the existing Autoscale API, where the alert ledger and push sender already live.
+
+**How to apply:** Use a signed, time-limited internal trigger with replay protection and no user data in the response. Keep scheduling secrets in each project's secrets store, check actual cron acceptance in the new project's publishing flow, and obtain owner approval before creation or publishing.
