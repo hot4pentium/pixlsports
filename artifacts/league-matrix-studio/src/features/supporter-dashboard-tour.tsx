@@ -22,7 +22,7 @@ const steps: ReadonlyArray<{
   {
     title: "Game On cards",
     phase: "prepare",
-    description: "Keep each game in one place. Pick a card to bring its plan, moments, and memories together.",
+    description: "Create an event card for each game or practice to keep the schedule and details organized.",
     linkLabel: "Explore Game On cards",
     href: `#${GAME_ON_COLLECTION_ID}`,
   },
