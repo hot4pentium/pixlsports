@@ -14,3 +14,9 @@ Replit Routines have a documented one-hour minimum; do not conflate them with Sc
 **Why:** Documentation search summaries conflated these two products and incorrectly ruled out a frequent Scheduled Deployment. An hourly run would miss the intended one-hour-before moment for arbitrary event times.
 
 **How to apply:** Recheck current deployment docs and verify the desired cron expression in publishing controls before promising cadence. Obtain owner approval after the actual pricing is displayed and before any hosting-cost change.
+
+The existing project's Publishing → Adjust settings screen offers “Add deployment secret,” not a way to add a second Scheduled Deployment beside Autoscale. Do not direct the owner to that control for a second deployment.
+
+**Why:** The platform's multi-artifact documentation says a project's artifacts publish together, while search summaries gave contradictory claims about independent deployment types. The actual screen did not support the proposed path.
+
+**How to apply:** Treat same-project concurrent Scheduled + Autoscale hosting as unverified until a supported UI/API path is observed. Consider a separate scheduled project or a secured frequent external trigger only after checking shared-data access and obtaining approval for the changed approach and cost.
