@@ -1,0 +1,84 @@
+.supporter-profile-wallet {
+  color: #f3f6fa;
+}
+
+.supporter-profile-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.supporter-profile-heading h1 {
+  line-height: 1;
+}
+
+.supporter-profile-heading p:not(.supporter-profile-eyebrow) {
+  color: #aabbd0;
+}
+
+.supporter-profile-eyebrow {
+  margin-bottom: 12px;
+  color: #55a4ff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.supporter-profile-back {
+  flex: 0 0 auto;
+  padding: 10px 0;
+  color: #55a4ff;
+  transition: opacity .2s ease;
+}
+
+.supporter-profile-back:hover { opacity: .7; }
+.supporter-profile-back:focus-visible { outline: 3px solid #c4e64b; outline-offset: 4px; }
+
+.supporter-profile-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.supporter-profile-content {
+  min-width: 0;
+  border-radius: 12px;
+}
+
+.supporter-profile-content input:not([type="range"], [type="checkbox"], [type="file"]),
+.supporter-profile-content select {
+  max-width: 100%;
+}
+
+.supporter-profile-content .athlete-card-preview-settings {
+  max-width: 100%;
+}
+
+.supporter-profile-content #notification-settings,
+.supporter-profile-content [data-testid="notification-settings"] {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.supporter-profile-account-section {
+  padding: 0 0 24px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.supporter-profile-danger {
+  margin-top: 24px;
+}
+
+@media (max-width: 640px) {
+  .supporter-profile-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .supporter-profile-back { order: -1; margin-bottom: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supporter-profile-back { transition: none; }
+}

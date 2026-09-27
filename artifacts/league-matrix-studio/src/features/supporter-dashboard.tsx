@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -16,7 +16,7 @@ import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
   Users, Activity, Image as ImageIcon,
   ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, X,
-  Menu, RotateCcw
+  Menu, RotateCcw, Bell, ShieldCheck
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
 import {
@@ -55,6 +55,7 @@ import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { NotificationSettings } from './notification-settings';
+import { HypeManagerTaskCard } from './hype-manager-wallet';
 import { trackEvent } from '../lib/analytics';
 import {
   readWorkspaceEventContext,
@@ -63,6 +64,7 @@ import {
 } from './workspace-context';
 import './supporter-dashboard-pixl.css';
 import './supporter-game-on-summary.css';
+import './supporter-profile-wallet.css';
 
 export interface SupporterProfile {
   displayName: string;
@@ -1248,6 +1250,8 @@ export function SupporterDashboardView({
 // ----------------------------------------------------------------------
 
 export interface SupporterProfileViewProps {
+  accountInformation?: ReactNode;
+  initialSection?: 'athlete' | 'alerts' | 'account' | null;
   profile: SupporterProfile;
   saving: boolean;
   error: string;
@@ -1267,6 +1271,8 @@ export interface SupporterProfileViewProps {
 }
 
 export function SupporterProfileView({
+  accountInformation,
+  initialSection = null,
   profile,
   saving,
   error,
@@ -1284,26 +1290,30 @@ export function SupporterProfileView({
   onPhotoUpload,
   onPhotoCancel,
 }: SupporterProfileViewProps) {
+  const [activeSection, setActiveSection] = useState<'athlete' | 'alerts' | 'account' | null>(initialSection);
+  const toggleSection = (section: 'athlete' | 'alerts' | 'account') =>
+    setActiveSection((current) => current === section ? null : section);
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onSave();
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-5 py-8 sm:px-8 sm:py-12 animate-slide-up">
-      <div className="mb-8">
-        <button onClick={onCancel} className="text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 mb-6" data-testid="btn-back">
-          <ChevronRight className="w-4 h-4 rotate-180" /> Back to Dashboard
+    <div className="supporter-profile-wallet w-full max-w-[808px] mx-auto px-5 py-8 sm:px-8 sm:py-12 animate-slide-up">
+      <div className="supporter-profile-heading mb-8">
+        <div>
+          <p className="supporter-profile-eyebrow">Your account</p>
+          <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">Supporter Profile</h1>
+          <p className="mt-2 text-sm sm:text-base">Everything for the athlete you follow, all in one place.</p>
+        </div>
+        <button type="button" onClick={onCancel} className="supporter-profile-back text-xs font-bold uppercase tracking-widest flex items-center gap-2" data-testid="btn-back">
+          Back to Dashboard <ChevronRight className="w-4 h-4" aria-hidden="true" />
         </button>
-        <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">
-          Supporter <span className="text-primary studio-textured-accent">Profile.</span>
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Personalize your dashboard and pre-fill graphics with your athlete's details.
-        </p>
       </div>
 
-      <div className="bg-card border border-border p-6 sm:p-8 clip-angled-tl relative">
+      <div className="supporter-profile-stack">
+      <HypeManagerTaskCard id="athlete-profile" title="Athlete Profile" description="Photo, team and player details" Icon={User} active={activeSection === 'athlete'} onSelect={() => toggleSection('athlete')}>
+      <div className="supporter-profile-content bg-card border border-border p-5 sm:p-8 relative">
         <div className="absolute inset-0 bg-tech-grid opacity-30 pointer-events-none" />
 
         <form onSubmit={handleSubmit} className="relative space-y-8">
@@ -1511,8 +1521,6 @@ export function SupporterProfileView({
             </div>
           </div>
 
-          <NotificationSettings />
-
           <div className="pt-6 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-end gap-4">
             <button
               type="button"
@@ -1539,6 +1547,20 @@ export function SupporterProfileView({
             </button>
           </div>
         </form>
+      </div>
+      </HypeManagerTaskCard>
+      <HypeManagerTaskCard id="phone-alerts" title="Phone Alerts" description="Stay ready for games and practices" Icon={Bell} active={activeSection === 'alerts'} onSelect={() => toggleSection('alerts')}>
+        <div className="supporter-profile-content bg-card border border-border p-5 sm:p-8">
+          <NotificationSettings />
+        </div>
+      </HypeManagerTaskCard>
+      {accountInformation && (
+        <HypeManagerTaskCard id="account-information" title="Account Information" description="Sign-in, plan and account access" Icon={ShieldCheck} active={activeSection === 'account'} onSelect={() => toggleSection('account')}>
+          <div className="supporter-profile-content supporter-profile-account bg-card border border-border p-5 sm:p-8">
+            {accountInformation}
+          </div>
+        </HypeManagerTaskCard>
+      )}
       </div>
     </div>
   );

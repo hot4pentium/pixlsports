@@ -1617,80 +1617,82 @@ function SupporterProfilePage() {
           onPhotoCropChange={setPendingPhotoCrop}
           onPhotoUpload={() => void uploadPhoto()}
           onPhotoCancel={() => setPendingPhoto(null)}
+          accountInformation={
+            <>
+              <section className="supporter-profile-account-section" aria-labelledby="account-info-heading" data-testid="account-information">
+                <h2 id="account-info-heading" className="font-display text-3xl uppercase tracking-wide">Account information</h2>
+                <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sign-in email</dt>
+                    <dd className="mt-2 break-all text-sm font-semibold">{user.primaryEmailAddress?.emailAddress ?? 'No primary email available'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Subscriber plan</dt>
+                    <dd className="mt-2 text-sm font-semibold" data-testid="account-plan">
+                      {lifecycleLoading ? 'Loading plan…' : lifecycleError || !lifecycle ? 'Plan unavailable — retry below' : ({ free: 'Free', plus: 'Plus', pro: 'Pro' } as const)[lifecycle.planTier]}
+                    </dd>
+                  </div>
+                </dl>
+                {lifecycleError && <button type="button" onClick={() => void refetchLifecycle()} className="mt-4 text-sm font-bold text-primary underline">Retry account information</button>}
+              </section>
+              <section className="supporter-profile-danger mt-6 border-l-4 border-destructive bg-destructive/5 p-5 sm:p-6" aria-labelledby="account-danger-heading" data-testid="account-danger-zone">
+                <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
+                <h2 id="account-danger-heading" className="mt-2 font-display text-3xl uppercase tracking-wide">Danger zone</h2>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">These actions lock access to your studio immediately. Your sign-in remains available.</p>
+                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+                  <Dialog onOpenChange={() => pauseAccount.reset()}>
+                    <DialogTrigger asChild>
+                      <button type="button" disabled={!lifecycle || lifecycle.status !== 'active' || pauseAccount.isPending || cancelAccount.isPending} className="min-h-11 border border-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-open-pause-account">Pause account</button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="font-display text-3xl uppercase">Pause for 90 days?</DialogTitle>
+                        <DialogDescription className="text-left leading-relaxed">
+                          Your studio and shared content will be unavailable immediately. Your data is preserved, not queued for deletion. Access returns automatically after 90 days, or you can resume early. This does not pause any external billing.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogClose asChild><button type="button" disabled={pauseAccount.isPending} className="border border-border px-4 py-2.5 text-xs font-bold uppercase">Keep account active</button></DialogClose>
+                        <button type="button" disabled={pauseAccount.isPending} onClick={() => pauseAccount.mutate(undefined, {
+                          onSuccess: (result) => {
+                            queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), user.id], result);
+                            queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
+                            setLocation('/studio');
+                          },
+                        })} className="bg-foreground px-4 py-2.5 text-xs font-bold uppercase text-background disabled:opacity-50" data-testid="button-confirm-pause-account">{pauseAccount.isPending ? 'Pausing…' : 'Pause and lock'}</button>
+                      </DialogFooter>
+                      {pauseAccount.isError && <p role="alert" className="text-sm text-destructive">Pause failed. Please try again.</p>}
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog onOpenChange={() => cancelAccount.reset()}>
+                    <DialogTrigger asChild>
+                      <button type="button" disabled={!lifecycle || lifecycle.status !== 'active' || pauseAccount.isPending || cancelAccount.isPending} className="min-h-11 border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="button-open-cancel-account">Cancel account</button>
+                    </DialogTrigger>
+                    <DialogContent className="border-destructive sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="font-display text-3xl uppercase">Cancel your account?</DialogTitle>
+                        <DialogDescription className="text-left leading-relaxed">
+                          Your studio and shared content lock immediately. Your data enters a 90-day recovery window and may be permanently deleted after {new Date(Date.now() + (lifecycle?.retentionDays ?? 90) * 86_400_000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} if you do not return. Signing in during recovery extends this window; you can reactivate before it expires. This does not cancel any external billing.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <DialogClose asChild><button type="button" disabled={cancelAccount.isPending} className="border border-border px-4 py-2.5 text-xs font-bold uppercase">Keep account</button></DialogClose>
+                        <button type="button" disabled={cancelAccount.isPending} onClick={() => cancelAccount.mutate(undefined, {
+                          onSuccess: (result) => {
+                            queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), user.id], result);
+                            queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
+                            setLocation('/studio');
+                          },
+                        })} className="bg-destructive px-4 py-2.5 text-xs font-bold uppercase text-destructive-foreground disabled:opacity-50" data-testid="button-confirm-cancel-account">{cancelAccount.isPending ? 'Cancelling…' : 'Cancel and lock'}</button>
+                      </DialogFooter>
+                      {cancelAccount.isError && <p role="alert" className="text-sm text-destructive">Cancellation failed. Please try again.</p>}
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </section>
+            </>
+          }
         />
-        <div className="mx-auto max-w-3xl px-5 pb-12 sm:px-8">
-          <section className="border border-border bg-card p-6 sm:p-8" aria-labelledby="account-info-heading" data-testid="account-information">
-            <h2 id="account-info-heading" className="font-display text-3xl uppercase tracking-wide">Account information</h2>
-            <dl className="mt-5 grid gap-5 sm:grid-cols-2">
-              <div className="min-w-0">
-                <dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sign-in email</dt>
-                <dd className="mt-2 break-all text-sm font-semibold">{user.primaryEmailAddress?.emailAddress ?? 'No primary email available'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Subscriber plan</dt>
-                <dd className="mt-2 text-sm font-semibold" data-testid="account-plan">
-                  {lifecycleLoading ? 'Loading plan…' : lifecycleError || !lifecycle ? 'Plan unavailable — retry below' : ({ free: 'Free', plus: 'Plus', pro: 'Pro' } as const)[lifecycle.planTier]}
-                </dd>
-              </div>
-            </dl>
-            {lifecycleError && <button type="button" onClick={() => void refetchLifecycle()} className="mt-4 text-sm font-bold text-primary underline">Retry account information</button>}
-          </section>
-          <section className="mt-6 border-l-4 border-destructive bg-destructive/5 p-6 sm:p-8" aria-labelledby="account-danger-heading" data-testid="account-danger-zone">
-            <p className="text-xs font-bold uppercase tracking-widest text-destructive">Account access</p>
-            <h2 id="account-danger-heading" className="mt-2 font-display text-3xl uppercase tracking-wide">Danger zone</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">These actions lock access to your studio immediately. Your sign-in remains available.</p>
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
-              <Dialog onOpenChange={() => pauseAccount.reset()}>
-                <DialogTrigger asChild>
-                  <button type="button" disabled={!lifecycle || lifecycle.status !== 'active' || pauseAccount.isPending || cancelAccount.isPending} className="min-h-11 border border-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-open-pause-account">Pause account</button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="font-display text-3xl uppercase">Pause for 90 days?</DialogTitle>
-                    <DialogDescription className="text-left leading-relaxed">
-                      Your studio and shared content will be unavailable immediately. Your data is preserved, not queued for deletion. Access returns automatically after 90 days, or you can resume early. This does not pause any external billing.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter className="gap-2 sm:gap-0">
-                    <DialogClose asChild><button type="button" disabled={pauseAccount.isPending} className="border border-border px-4 py-2.5 text-xs font-bold uppercase">Keep account active</button></DialogClose>
-                    <button type="button" disabled={pauseAccount.isPending} onClick={() => pauseAccount.mutate(undefined, {
-                      onSuccess: (result) => {
-                        queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), user.id], result);
-                        queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
-                        setLocation('/studio');
-                      },
-                    })} className="bg-foreground px-4 py-2.5 text-xs font-bold uppercase text-background disabled:opacity-50" data-testid="button-confirm-pause-account">{pauseAccount.isPending ? 'Pausing…' : 'Pause and lock'}</button>
-                  </DialogFooter>
-                  {pauseAccount.isError && <p role="alert" className="text-sm text-destructive">Pause failed. Please try again.</p>}
-                </DialogContent>
-              </Dialog>
-              <Dialog onOpenChange={() => cancelAccount.reset()}>
-                <DialogTrigger asChild>
-                  <button type="button" disabled={!lifecycle || lifecycle.status !== 'active' || pauseAccount.isPending || cancelAccount.isPending} className="min-h-11 border border-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive disabled:opacity-50" data-testid="button-open-cancel-account">Cancel account</button>
-                </DialogTrigger>
-                <DialogContent className="border-destructive sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle className="font-display text-3xl uppercase">Cancel your account?</DialogTitle>
-                    <DialogDescription className="text-left leading-relaxed">
-                      Your studio and shared content lock immediately. Your data enters a 90-day recovery window and may be permanently deleted after {new Date(Date.now() + (lifecycle?.retentionDays ?? 90) * 86_400_000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} if you do not return. Signing in during recovery extends this window; you can reactivate before it expires. This does not cancel any external billing.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter className="gap-2 sm:gap-0">
-                    <DialogClose asChild><button type="button" disabled={cancelAccount.isPending} className="border border-border px-4 py-2.5 text-xs font-bold uppercase">Keep account</button></DialogClose>
-                    <button type="button" disabled={cancelAccount.isPending} onClick={() => cancelAccount.mutate(undefined, {
-                      onSuccess: (result) => {
-                        queryClient.setQueryData([...getGetAccountLifecycleQueryKey(), user.id], result);
-                        queryClient.removeQueries({ queryKey: getListProjectsQueryKey() });
-                        setLocation('/studio');
-                      },
-                    })} className="bg-destructive px-4 py-2.5 text-xs font-bold uppercase text-destructive-foreground disabled:opacity-50" data-testid="button-confirm-cancel-account">{cancelAccount.isPending ? 'Cancelling…' : 'Cancel and lock'}</button>
-                  </DialogFooter>
-                  {cancelAccount.isError && <p role="alert" className="text-sm text-destructive">Cancellation failed. Please try again.</p>}
-                </DialogContent>
-              </Dialog>
-            </div>
-          </section>
-        </div>
       </main>
     </StudioLayout>
   );

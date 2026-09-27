@@ -123,7 +123,9 @@ test('signed-in account controls survive phone and desktop transitions against r
     const phone = await open(owner, 390, 844);
     await waitFor(connection, phone, "Boolean(document.body?.innerText.includes('Could not check your account access'))", Boolean, 30_000);
     assert.equal(await state(owner).then((result) => result.status), 'active');
-    await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Retry')).click()", phone);
+    await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => /try again|retry/i.test(button.textContent || ''))?.click()", phone);
+    await waitVisible(phone, 'button-hype-manager-account-information');
+    await click(phone, 'button-hype-manager-account-information');
     await waitVisible(phone, 'account-information');
     await waitFor(connection, phone, "document.querySelector('[data-testid=\"account-plan\"]')?.textContent.trim() === 'Pro'", Boolean);
     assert.match(await connection.evaluate<string>("document.querySelector('[data-testid=\"account-information\"]').innerText", phone), /morgan@example.test/);
@@ -137,6 +139,8 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.equal((await state(owner)).status, 'active');
 
     const desktop = await open(other, 1280, 850);
+    await waitVisible(desktop, 'button-hype-manager-account-information');
+    await click(desktop, 'button-hype-manager-account-information');
     await waitVisible(desktop, 'account-information');
     await waitFor(connection, desktop, "document.querySelector('[data-testid=\"account-plan\"]')?.textContent.trim() === 'Free'", Boolean);
     assert.match(await connection.evaluate<string>("document.querySelector('[data-testid=\"account-information\"]').innerText", desktop), /taylor@example.test/);
@@ -166,6 +170,8 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.equal(await connection.evaluate<string>('location.pathname', phone), '/studio');
 
     await connection.evaluate(`window.__switchLifecycleAccount(${JSON.stringify(other)}); window.__navigateLifecycle('/studio/profile')`, phone);
+    await waitVisible(phone, 'button-hype-manager-account-information');
+    await click(phone, 'button-hype-manager-account-information');
     await waitVisible(phone, 'account-information');
     await waitFor(connection, phone, "document.querySelector('[data-testid=\"account-plan\"]')?.textContent.trim() === 'Free'", Boolean);
     const switched = await connection.evaluate<string>("document.querySelector('[data-testid=\"account-information\"]').innerText", phone);
@@ -191,12 +197,16 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.equal((await state(other)).status, 'active');
 
     await connection.evaluate("window.__navigateLifecycle('/studio/profile')", phone);
+    await waitVisible(phone, 'button-hype-manager-account-information');
+    await click(phone, 'button-hype-manager-account-information');
     await waitVisible(phone, 'button-open-pause-account');
     await click(phone, 'button-open-pause-account');
     await click(phone, 'button-confirm-pause-account');
     await waitVisible(phone, 'button-resume-account');
     await admin('expire', { viewer: other });
     const afterExpiry = await open(other, 390, 844);
+    await waitVisible(afterExpiry, 'button-hype-manager-account-information');
+    await click(afterExpiry, 'button-hype-manager-account-information');
     await waitVisible(afterExpiry, 'account-information');
     assert.equal((await state(other)).status, 'active');
     assert.equal(await connection.evaluate(visible('locked-account-page'), afterExpiry), false);

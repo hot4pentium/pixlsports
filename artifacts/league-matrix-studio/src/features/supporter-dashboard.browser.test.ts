@@ -3288,6 +3288,7 @@ function ProfilePropagationHarness() {
            setPendingPhoto(null);
          },
          onPhotoCancel: () => setPendingPhoto(null),
+          initialSection: 'athlete',
         photoBusy: false,
         photoError: '',
       }),
