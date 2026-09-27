@@ -856,6 +856,144 @@ test("concurrent planner runs send a Game On Card reminder only once", async () 
   }
 });
 
+test("a delayed run catches due cards across customers without repeating them", async () => {
+  const utcOwner = `planner-worker-utc-${randomUUID()}`;
+  const easternOwner = `planner-worker-eastern-${randomUUID()}`;
+  const futureOwner = `planner-worker-future-${randomUUID()}`;
+  const fixtures: Array<{ ownerId: string; shareId: string }> = [];
+  const sentOwners: string[] = [];
+
+  try {
+    await addPlannerSubscription(utcOwner, "UTC");
+    await addPlannerSubscription(easternOwner, "America/New_York");
+    await addPlannerSubscription(futureOwner, "UTC");
+    fixtures.push({
+      ownerId: utcOwner,
+      shareId: await insertGameOnCard(utcOwner, [cardEvent({ date: "2026-09-27", time: "14:50" })]),
+    });
+    fixtures.push({
+      ownerId: easternOwner,
+      shareId: await insertGameOnCard(easternOwner, [cardEvent({ date: "2026-09-27", time: "10:50 AM" })]),
+    });
+    fixtures.push({
+      ownerId: futureOwner,
+      shareId: await insertGameOnCard(futureOwner, [cardEvent({ date: "2026-09-27", time: "17:50" })]),
+    });
+
+    const dependencies = {
+      sendPushNotificationToUser: async (ownerId: string) => {
+        sentOwners.push(ownerId);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    // Both target times were 13:50Z; a worker delayed eight minutes must
+    // still find both owners' due cards and only deliver once on the next run.
+    await runPlannerNotificationJob(new Date("2026-09-27T13:58:00.000Z"), dependencies);
+    await runPlannerNotificationJob(new Date("2026-09-27T14:00:00.000Z"), dependencies);
+
+    assert.deepEqual(sentOwners.sort(), [easternOwner, utcOwner].sort());
+    for (const { ownerId, shareId } of fixtures) {
+      const rows = await db.select().from(plannerCardNotificationDeliveriesTable)
+        .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+      assert.equal(rows.length, ownerId === futureOwner ? 0 : 1);
+    }
+  } finally {
+    for (const { ownerId, shareId } of fixtures) {
+      await cleanCardFixture(ownerId, [shareId]);
+    }
+  }
+});
+
+test("one customer's failed push does not prevent other due customers, and retries only the failure", async () => {
+  const firstOwner = `planner-customer-failure-a-${randomUUID()}`;
+  const secondOwner = `planner-customer-failure-b-${randomUUID()}`;
+  const fixtures: Array<{ ownerId: string; shareId: string }> = [];
+  const sent: string[] = [];
+  let failFirst = true;
+  try {
+    for (const ownerId of [firstOwner, secondOwner]) {
+      await addPlannerSubscription(ownerId, "UTC");
+      fixtures.push({ ownerId, shareId: await insertGameOnCard(ownerId) });
+    }
+    const dependencies = {
+      sendPushNotificationToUser: async (ownerId: string) => {
+        if (ownerId === firstOwner && failFirst) throw new Error("temporary push failure");
+        sent.push(ownerId);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    const now = new Date("2026-09-27T13:50:00.000Z");
+    await assert.rejects(runPlannerNotificationJob(now, dependencies), /Game On reminders failed/);
+    assert.deepEqual(sent, [secondOwner]);
+    failFirst = false;
+    await runPlannerNotificationJob(new Date("2026-09-27T13:52:00.000Z"), dependencies);
+    assert.deepEqual(sent, [secondOwner, firstOwner]);
+  } finally {
+    for (const { ownerId, shareId } of fixtures) {
+      await cleanCardFixture(ownerId, [shareId]);
+    }
+  }
+});
+
+test("a run delayed past game start sends one capture-open catch-up, not an old one-hour alert", async () => {
+  const ownerId = `planner-worker-catchup-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sentTitles: string[] = [];
+  try {
+    await addPlannerSubscription(ownerId, "UTC");
+    const shareId = await insertGameOnCard(ownerId, [cardEvent({ time: "14:50" })]);
+    shareIds.push(shareId);
+    const dependencies = {
+      sendPushNotificationToUser: async (_owner: string, payload: { title: string }) => {
+        sentTitles.push(payload.title);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    await runPlannerNotificationJob(new Date("2026-09-27T15:08:00.000Z"), dependencies);
+    await runPlannerNotificationJob(new Date("2026-09-27T15:10:00.000Z"), dependencies);
+    assert.deepEqual(sentTitles, ["GAME DAY · CAPTURE OPEN"]);
+    const rows = await db.select().from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.deepEqual(rows.map((row) => row.notificationType), ["capture_open"]);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("an acknowledged pending alert is never resent by a later worker", async () => {
+  const ownerId = `planner-displayed-retry-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    const displayedAt = new Date(Date.now() - 3 * 60 * 1000);
+    await db.insert(plannerCardNotificationDeliveriesTable).values({
+      shareId,
+      eventId: "game-on-card-event",
+      notificationType: "one_hour",
+      eventDate: "2026-09-27",
+      createdAt: displayedAt,
+      displayedAt,
+    });
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:58:00.000Z"), {
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+    assert.equal(sendCount, 0);
+    const [delivery] = await db.select().from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(delivery?.sentAt?.getTime(), displayedAt.getTime());
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
 test("zero-send card attempts release their pending claim for a successful retry", async () => {
   const ownerId = `planner-card-retry-test-${randomUUID()}`;
   const shareIds: string[] = [];

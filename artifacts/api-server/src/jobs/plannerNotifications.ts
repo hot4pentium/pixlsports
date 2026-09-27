@@ -13,12 +13,12 @@ import { logger } from "../lib/logger";
 import { sendPushNotificationToUser } from "../lib/webPush";
 import { GAME_ON_CARD_MARKER } from "../routes/scheduleShares";
 
-const INTERVAL_MS = 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MORNING_HOUR = 7;
 const CAPTURE_OPEN_GRACE_MS = 3 * ONE_HOUR_MS;
 const PENDING_DELIVERY_TIMEOUT_MS = 2 * 60 * 1000;
 const PENDING_DELIVERY_HEARTBEAT_MS = 20 * 1000;
+const MAX_CONCURRENT_REMINDERS = 8;
 
 type PlannerEvent = {
   id: string;
@@ -267,9 +267,21 @@ async function sendGameOnCardReminder(
     const [existing] = await db.select({
       id: plannerCardNotificationDeliveriesTable.id,
       sentAt: plannerCardNotificationDeliveriesTable.sentAt,
+      displayedAt: plannerCardNotificationDeliveriesTable.displayedAt,
     }).from(plannerCardNotificationDeliveriesTable).where(deliveryKey).limit(1);
     if (!existing) return false;
     if (existing.sentAt) return true;
+    if (existing.displayedAt) {
+      // The service worker may have acknowledged display before a prior worker
+      // exited without recording sentAt. Do not re-send that alert.
+      await db.update(plannerCardNotificationDeliveriesTable)
+        .set({ sentAt: existing.displayedAt })
+        .where(and(
+          eq(plannerCardNotificationDeliveriesTable.id, existing.id),
+          isNull(plannerCardNotificationDeliveriesTable.sentAt),
+        ));
+      return true;
+    }
     const [reclaimed] = await db.update(plannerCardNotificationDeliveriesTable)
       .set({ id: deliveryId, createdAt: now })
       .where(and(
@@ -439,6 +451,7 @@ export async function runPlannerNotificationJob(
     .filter((row) => (row.game as { status?: unknown })?.status === "final")
     .map((row) => `${row.ownerClerkUserId}\0${row.gameId}`));
   const cardEvents = new Set<string>();
+  const dueReminders: Array<() => Promise<boolean>> = [];
   for (const row of cards) {
     const timezone = owners.get(row.ownerClerkUserId);
     if (!timezone || inactiveOwners.has(row.ownerClerkUserId)) continue;
@@ -453,23 +466,30 @@ export async function runPlannerNotificationJob(
       || (event.type === "game" && finalTrackedGames.has(`${row.ownerClerkUserId}\0${event.id}`))) continue;
     const preferences = preferencesByOwner.get(row.ownerClerkUserId) ?? DEFAULT_REMINDER_PREFERENCES;
     for (const reminderType of getReminderTypes(event.date, event.time, now, timezone, preferences)) {
-      await sendGameOnCardReminder(
+      dueReminders.push(() => sendGameOnCardReminder(
         row.id, row.ownerClerkUserId, card, event, reminderType, sendPush,
         dependencies.pendingDeliveryHeartbeatMs ?? PENDING_DELIVERY_HEARTBEAT_MS, now,
         dependencies.beforeEligibilityRecheck,
-      );
+      ));
     }
   }
-}
-
-export function startPlannerNotificationSchedule() {
-  const run = () => {
-    void runPlannerNotificationJob().catch((error) => {
-      logger.error({ err: error }, "Planner notification job failed");
-    });
-  };
-  const initial = setTimeout(run, 15_000);
-  const interval = setInterval(run, INTERVAL_MS);
-  initial.unref();
-  interval.unref();
+  let nextReminder = 0;
+  const errors: unknown[] = [];
+  await Promise.all(Array.from(
+    { length: Math.min(MAX_CONCURRENT_REMINDERS, dueReminders.length) },
+    async () => {
+      while (nextReminder < dueReminders.length) {
+        const send = dueReminders[nextReminder++]!;
+        try {
+          await send();
+        } catch (error) {
+          errors.push(error);
+          logger.error({ err: error }, "Unable to process Game On reminder");
+        }
+      }
+    },
+  ));
+  if (errors.length > 0) {
+    throw new AggregateError(errors, `${errors.length} Game On reminders failed`);
+  }
 }

@@ -4,7 +4,6 @@ import { startExpiredAccountPurgeSchedule } from "./jobs/purgeCancelledAccounts"
 import { startHypeCardSharePurgeSchedule } from "./jobs/purgeHypeCardShares";
 import { startSupporterPhotoUploadPurgeSchedule } from "./jobs/purgeSupporterPhotoUploads";
 import { startProjectMediaUploadClaimPurgeSchedule } from "./jobs/purgeProjectMediaUploadClaims";
-import { startPlannerNotificationSchedule } from "./jobs/plannerNotifications";
 import { startAthleteInviteFanAlertSchedule } from "./jobs/athleteInviteFanAlerts";
 import { startAthleteInvitePhotoUploadPurgeSchedule } from "./jobs/purgeAthleteInvitePhotoUploads";
 import { retireStandaloneCalendars } from "./jobs/retireStandaloneCalendars";
@@ -48,7 +47,6 @@ async function startServer() {
     startHypeCardSharePurgeSchedule();
     startSupporterPhotoUploadPurgeSchedule();
     startProjectMediaUploadClaimPurgeSchedule();
-    startPlannerNotificationSchedule();
     startAthleteInviteFanAlertSchedule();
     startAthleteInvitePhotoUploadPurgeSchedule();
   });
