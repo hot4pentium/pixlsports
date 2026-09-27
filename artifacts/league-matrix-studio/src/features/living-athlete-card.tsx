@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { HypeCardReplyComposer } from './public-hype-card';
 import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
-import './living-athlete-card.css';
+import { LivingAthleteCardFront } from './living-athlete-card-front';
 
 type CardSide = 'front' | 'stats' | 'videos';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
@@ -286,24 +286,13 @@ export function LivingAthleteCardPage({
             <div className="living-card-frame-outer">
               <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'stats' ? 'finalized stats' : 'videos'}`}>
                 {side === 'front' && (
-                  <div className="living-card-face" key="front">
-                    {photoUrl && !brokenPhoto ? (
-                      <img className="living-card-photo" src={photoUrl} alt={`Portrait of ${invite.athleteName}`} onError={() => setBrokenPhoto(true)} data-testid="img-living-card-athlete" />
-                    ) : (
-                      <div className="living-card-photo-fallback" aria-label="No athlete portrait selected yet">
-                        <span aria-hidden="true">{invite.athleteName.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'P'}</span>
-                        <small>Portrait coming soon</small>
-                      </div>
-                    )}
-                    <div className="living-card-photo-shade" />
-                    {photoUrl && !brokenPhoto && (
-                      <span className="living-card-photo-watermark" aria-hidden="true">HYPE CARD</span>
-                    )}
-                    <div className="living-card-front-identity">
-                      <h2 className="living-card-athlete-name" data-testid="text-living-card-athlete-name">{invite.athleteName}</h2>
-                      {invite.teamName && <p className="living-card-team-name" data-testid="text-living-card-team-name">{invite.teamName}</p>}
-                    </div>
-                  </div>
+                  <LivingAthleteCardFront
+                    key="front"
+                    athleteName={invite.athleteName}
+                    teamName={invite.teamName}
+                    photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
+                    onPhotoError={() => setBrokenPhoto(true)}
+                  />
                 )}
 
                 {side === 'stats' && (

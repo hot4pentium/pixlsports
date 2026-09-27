@@ -1,595 +1,244 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { CalendarDays, Activity, Zap, ArrowRight, Check, Maximize2, Menu, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Check, Menu, X, Play } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import candidAthlete from '@/assets/landing-candid-athlete.jpg';
+import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
+import { PreviewArtwork } from './hype-card-preview';
+import { defaultProject } from './hype-card-types';
 
-// Using responsive images
-import statTrackerLive from '@/assets/stat-tracker-live-768.webp';
-import gameDayChecklist from '@/assets/game-day-checklist-768.webp';
-import hypeCardRecipientPreview from '@/assets/hype-card-recipient-preview.png';
-import sidelineParents from '../../../../attached_assets/generated_images/sideline-parents.jpg';
-import selectedSportsBanner from '../../../../attached_assets/selectedsports_1790210785807.png';
-import planChecklistVideo from '../../../../attached_assets/Officialprep_1789962901507.mp4';
-import planChecklistPoster from '../../../../attached_assets/Officialprep_1789962901507-poster.webp';
+const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
+const WEEK_VIDEO = `${BASE_PATH}/week-path-explainer.mp4`;
 
-const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-function usePrefersReducedMotion() {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
-
-    updatePreference();
-    mediaQuery.addEventListener('change', updatePreference);
-    return () => mediaQuery.removeEventListener('change', updatePreference);
-  }, []);
-
-  return prefersReducedMotion;
+function Brand() {
+  return <span className="brand" aria-label="Pixl Sports">PIXL<span>SPORTS</span></span>;
 }
 
-function BrandMark() {
-  return (
-    <span className="flex items-center">
-      <img
-        src={`${BASE_PATH}/pixlsports-logo.png`}
-        alt="Pixl Sports"
-        className="h-9 w-auto object-contain sm:h-10"
-      />
-    </span>
-  );
-}
-
-function LandingNav() {
+function LandingNav({ isSignedIn }: { isSignedIn: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { isSignedIn } = useUser();
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [menuOpen]);
 
+  const destination = isSignedIn ? '/studio' : '/sign-up';
   return (
-    <header className="sticky top-0 z-50 bg-landing-white border-b border-landing-gray/20">
-      <div className="mx-auto flex h-[72px] sm:h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
-        <Link href="/" className="shrink-0 transition-opacity hover:opacity-80" data-testid="link-landing-home">
-          <BrandMark />
-        </Link>
-        <nav className="hidden items-center gap-8 md:flex">
-          <a href="#tools" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-tools">Tools</a>
-          <a href="#how-it-works" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-how-it-works">How It Works</a>
-          <a href="#pricing" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-pricing">Pricing</a>
-          {isSignedIn ? (
-            <Link href="/studio" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-dashboard">Dashboard</Link>
-          ) : (
-            <Link href="/sign-in" className="text-[15px] font-semibold text-landing-text hover:text-landing-orange transition-colors" data-testid="link-landing-sign-in">Sign In</Link>
-          )}
-          <Link href="/studio" className="inline-flex items-center justify-center rounded-sm bg-landing-primary px-6 py-2.5 text-[15px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-landing-get-started-nav">
-            Open Studio
-          </Link>
+    <header className="site-header">
+      <div className="container header-inner">
+        <Link href="/" className="brand-link" data-testid="link-landing-home"><Brand /></Link>
+        <nav className="desktop-nav" aria-label="Main navigation">
+          <a href="#how-it-works" data-testid="link-landing-how-it-works">How it works</a>
+          <a href="#athlete-cards" data-testid="link-landing-athlete-cards">Athlete cards</a>
+          <a href="#tools" data-testid="link-landing-tools">The tools</a>
         </nav>
-        <button type="button" className="grid min-h-11 min-w-11 place-items-center md:hidden text-landing-text" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} aria-controls="landing-mobile-menu" data-testid="button-landing-mobile-menu">
-          {menuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
-        </button>
-      </div>
-      {menuOpen && (
-        <div id="landing-mobile-menu" className="absolute inset-x-0 top-[72px] sm:top-20 bg-landing-white border-b border-landing-gray/20 p-6 shadow-xl md:hidden flex flex-col gap-4">
-          <a href="#tools" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-landing-text" data-testid="link-mobile-landing-tools">Tools</a>
-          <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-landing-text" data-testid="link-mobile-landing-how-it-works">How It Works</a>
-          <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-landing-text" data-testid="link-mobile-landing-pricing">Pricing</a>
-          {isSignedIn ? (
-            <Link href="/studio" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-landing-text" data-testid="link-mobile-landing-dashboard">Dashboard</Link>
-          ) : (
-            <Link href="/sign-in" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-landing-text" data-testid="link-mobile-landing-sign-in">Sign In</Link>
-          )}
+        <div className="header-actions">
+          <Link href={isSignedIn ? '/studio' : '/sign-in'} className="desktop-account-link" style={{ color: '#d4e0e2', fontSize: 12, fontWeight: 700 }} data-testid={isSignedIn ? 'link-landing-dashboard' : 'link-landing-sign-in'}>{isSignedIn ? 'Studio' : 'Sign in'}</Link>
+          <Link href={destination} className="pill pill-lime" data-testid="link-landing-get-started-nav">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={15} aria-hidden="true" /></Link>
+          <button type="button" className="menu-button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} aria-controls="landing-mobile-menu" onClick={() => setMenuOpen(value => !value)} data-testid="button-landing-mobile-menu">
+            {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+          </button>
         </div>
-      )}
+      </div>
+      {menuOpen && <nav className="mobile-nav" id="landing-mobile-menu" aria-label="Mobile navigation">
+        <a href="#how-it-works" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-how-it-works">How it works</a>
+        <a href="#athlete-cards" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-athlete-cards">Athlete cards</a>
+        <a href="#tools" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-tools">The tools</a>
+        <Link href="/help" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-help">Help</Link>
+        <Link href={isSignedIn ? '/studio' : '/sign-in'} onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-sign-in">{isSignedIn ? 'Studio' : 'Sign in'}</Link>
+        <Link href={destination} className="pill pill-lime" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
+      </nav>}
     </header>
   );
 }
 
-function LandingFooter() {
+const steps = [
+  { number: '01', title: 'Plan', description: 'Keep games, practices, and the next event together.', icon: CalendarDays },
+  { number: '02', title: 'Prep', description: 'Get the details and game-day checklist ready.', icon: ClipboardCheck },
+  { number: '03', title: 'Follow', description: 'Stay close to the action and capture what matters.', icon: Activity },
+  { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
+];
+
+function AthletePreview() {
   return (
-    <footer className="border-t border-landing-gray/20 bg-landing-white py-12">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex flex-col items-center md:items-start gap-4">
-          <BrandMark />
-          <p className="text-sm font-medium text-landing-gray">Simple tools for better seasons.</p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 text-sm font-bold uppercase tracking-wider text-landing-gray">
-          <Link href="/studio" className="hover:text-landing-text transition-colors" data-testid="link-footer-tools">Tools</Link>
-          <Link href="/help" className="hover:text-landing-text transition-colors" data-testid="link-footer-help">Help / FAQ</Link>
-          <Link href="/privacy" className="hover:text-landing-text transition-colors" data-testid="link-footer-privacy">Privacy</Link>
-          <Link href="/sign-in" className="hover:text-landing-text transition-colors" data-testid="link-footer-sign-in">Sign In</Link>
-        </div>
-        <div className="text-xs text-landing-gray/60 font-medium">
-          &copy; {new Date().getFullYear()} Pixl Sports
+    <div className="athlete-showcase">
+      <div className="landing-athlete-render" role="img" aria-label="Sample Pixl athlete fan card showing fictional soccer athlete Maya Rivera">
+        <div className="living-card-frame-outer" aria-hidden="true">
+          <div className="living-card-frame">
+            <LivingAthleteCardFront athleteName="Maya Rivera" teamName="Eastside FC" photoUrl={candidAthlete} />
+          </div>
         </div>
       </div>
-    </footer>
+      <span className="showcase-note">Product preview · Fictional athlete</span>
+    </div>
   );
 }
 
-function LandingSportShowcase() {
+function GameOnPreview() {
   return (
-    <div className="landing-sports-banner-wrap" data-testid="landing-sport-showcase">
-      <div className="landing-sports-banner-scroll">
-        <img
-          src={selectedSportsBanner}
-          alt="Supported sports: soccer, football, basketball, volleyball, baseball, and softball"
-          width={2145}
-          height={733}
-          className="landing-sports-banner"
-          data-testid="landing-sports-banner"
-        />
+    <div className="tool-preview">
+      <span className="preview-watermark">Product preview · Fictional event</span>
+      <div className="event-preview" role="img" aria-label="Sample Pixl Game On badge for fictional Eastside FC versus Harbor United">
+        <div className="event-preview-render" aria-hidden="true">
+          <PublicGameOnCardFrontFace
+            eventTitle="Eastside FC"
+            eventType="game"
+            stageLabel="Upcoming game"
+            opponent="Harbor United"
+            dateLabel="Saturday, October 17"
+            time="10:30 AM"
+            location="Riverside Park · Field 2"
+            athleteName="Maya Rivera"
+            athletePageStatus="unpublished"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GraphicPreview() {
+  const sampleProject = {
+    ...defaultProject(),
+    format: 'card' as const,
+    layout: 'all-star' as const,
+    mediaType: 'image' as const,
+    photo: candidAthlete,
+    headline: 'GAME DAY',
+    playerName: 'Maya Rivera',
+    jerseyNumber: '07',
+    teamName: 'Eastside FC',
+    position: 'Midfield',
+    stat: '',
+    achievement: '',
+    message: '',
+    visibility: { stat: false, achievement: false, message: false },
+  };
+  return (
+    <div className="tool-preview">
+      <span className="preview-watermark">Product preview · Fictional athlete</span>
+      <div className="graphic-preview" role="img" aria-label="Sample Pixl graphic maker game-day card for fictional athlete Maya Rivera">
+        <div aria-hidden="true" className="graphic-preview-artwork">
+          <PreviewArtwork project={sampleProject} ns="landing-sample" testId="landing-graphic-maker-render" />
+        </div>
       </div>
     </div>
   );
 }
 
 export function PublicLandingPage() {
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const heroRef = useRef<HTMLElement>(null);
-  const checklistVideoRef = useRef<HTMLVideoElement>(null);
-  const fullscreenDialogRef = useRef<HTMLDialogElement>(null);
-  const fallbackVideoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero) return;
-    if (prefersReducedMotion) {
-      hero.style.setProperty('--landing-hero-parallax', '0px');
-      return;
-    }
-
-    let frame = 0;
-    const updateParallax = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = 0;
-        const distance = Math.min(Math.max(window.scrollY, 0), hero.offsetHeight);
-        hero.style.setProperty('--landing-hero-parallax', `${Math.round(distance * 0.12)}px`);
-      });
-    };
-    updateParallax();
-    window.addEventListener('scroll', updateParallax, { passive: true });
-    window.addEventListener('resize', updateParallax);
-    return () => {
-      window.removeEventListener('scroll', updateParallax);
-      window.removeEventListener('resize', updateParallax);
-      window.cancelAnimationFrame(frame);
-    };
-  }, [prefersReducedMotion]);
-
-  useEffect(() => {
-    const video = checklistVideoRef.current;
-    if (!video) return;
-    const restorePreview = () => {
-      video.controls = false;
-      video.muted = true;
-    };
-    const onFullscreenChange = () => {
-      if (document.fullscreenElement !== video) restorePreview();
-    };
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    video.addEventListener('webkitendfullscreen', restorePreview);
-    return () => {
-      document.removeEventListener('fullscreenchange', onFullscreenChange);
-      video.removeEventListener('webkitendfullscreen', restorePreview);
-    };
-  }, []);
-
-  const expandChecklistVideo = async () => {
-    const video = checklistVideoRef.current;
-    if (!video) return;
-    video.controls = true;
-    video.muted = false;
-
-    if (typeof video.requestFullscreen === 'function') {
-      try {
-        await video.requestFullscreen();
-        return;
-      } catch {
-        // Some mobile browsers only support their native video fullscreen method.
-      }
-    }
-
-    const webkitVideo = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
-    if (typeof webkitVideo.webkitEnterFullscreen === 'function') {
-      try {
-        webkitVideo.webkitEnterFullscreen();
-        return;
-      } catch {
-        // Use the full-window viewer when native fullscreen is unavailable.
-      }
-    }
-
-    video.controls = false;
-    video.muted = true;
-    const dialog = fullscreenDialogRef.current;
-    const fallbackVideo = fallbackVideoRef.current;
-    if (!dialog || !fallbackVideo) return;
-    fallbackVideo.currentTime = video.currentTime;
-    dialog.showModal();
-    void fallbackVideo.play().catch(() => {
-      // Playback controls remain available if the browser requires a second tap.
-    });
-  };
-
+  const { isSignedIn } = useUser();
+  const destination = isSignedIn ? '/studio' : '/sign-up';
   return (
     <div className="new-landing">
-      <LandingNav />
+      <LandingNav isSignedIn={Boolean(isSignedIn)} />
       <main>
-        {/* HERO SECTION */}
-        <section ref={heroRef} className="relative overflow-hidden bg-landing-bg pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pb-32">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-4xl text-center">
-              <span className="inline-block text-landing-orange font-extrabold uppercase tracking-widest text-xs mb-5">
-                YOUR SEASON, GUIDED
-              </span>
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-[76px] font-extrabold leading-[0.92] text-landing-text mb-6">
-                <span className="landing-hero-slam inline-block">One place for</span><br />
-                <span className="text-landing-primary">the whole season.</span>
-              </h1>
-              <p className="mx-auto mb-10 max-w-2xl text-lg font-medium leading-[1.6] text-landing-text/75 sm:text-[21px]">
-                Plan each week. Share game day with family wherever they are. Cheer on your athlete.
-              </p>
-              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link href="/studio" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-8 py-[18px] text-[17px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-sm" data-testid="link-hero-get-started">
-                  Open Creative Studio
-                </Link>
-                <a href="#tools" className="group w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-landing-gray/30 bg-transparent px-8 py-[18px] text-[17px] font-bold text-landing-text hover:border-landing-primary hover:text-landing-orange transition-colors" data-testid="link-hero-explore-tools">
-                  Explore the tools <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </a>
+        <section className="hero" aria-labelledby="landing-headline">
+          <div className="container hero-inner">
+            <div className="hero-copy">
+              <span className="micro">For the people in their corner</span>
+              <h1 id="landing-headline" className="display" data-testid="text-landing-headline">Their<br />season.<br /><em>Your front<br />row.</em></h1>
+              <p className="hero-description">Plan the week, follow the game, and celebrate the athlete you love—all in one place built for families and supporters.</p>
+              <div className="hero-buttons">
+                <Link href={destination} className="pill pill-lime" data-testid="link-hero-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
+                <a href="#how-it-works" className="pill pill-ghost" data-testid="link-hero-see-week">See how it works <ArrowRight size={16} aria-hidden="true" /></a>
               </div>
             </div>
-            <LandingSportShowcase />
-          </div>
-        </section>
-
-        {/* BENEFITS SECTION */}
-        <section className="bg-landing-white py-12 sm:py-20 border-y border-landing-gray/15">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid grid-cols-3 divide-x divide-landing-gray/15">
-              <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:pr-12">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-3 h-3 bg-landing-orange/20 rounded-bl-xl"></div>
-                  <CalendarDays className="h-6 w-6 sm:h-8 sm:w-8 relative z-10" strokeWidth={1.5} />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Plan the week</h3>
-                <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Turn season details into a clean, shareable schedule.
-                </p>
+            <div className="hero-visual">
+              <div className="hero-image-frame">
+                <img src={candidAthlete} alt="Illustrative photo of a fictional soccer athlete enjoying a game-day moment" width="900" height="1125" fetchPriority="high" decoding="async" />
               </div>
-              
-              <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:px-12">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-3 h-3 bg-landing-orange/20 rounded-bl-xl"></div>
-                  <Activity className="h-6 w-6 sm:h-8 sm:w-8 relative z-10" strokeWidth={1.5} />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Follow the game</h3>
-                <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Our Live Stat Tracker lets you log the big plays. Share with others to follow in real time.
-                </p>
-              </div>
-
-              <div className="flex min-w-0 flex-col items-center px-2 text-center sm:items-start sm:px-8 sm:text-left lg:pl-12">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-landing-pale-blue text-landing-primary sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-3 h-3 bg-landing-orange/20 rounded-bl-xl"></div>
-                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 relative z-10" strokeWidth={1.5} />
-                </div>
-                <h3 className="mb-2 font-display text-lg font-bold leading-none text-landing-text sm:mb-3 sm:text-[28px]">Celebrate the moment</h3>
-                <p className="text-[11px] font-medium leading-snug text-landing-text/70 sm:text-[17px] sm:font-normal sm:leading-relaxed">
-                  Follow one athlete fan card with highlights, finalized stats, and season results.
-                </p>
+              <span className="photo-caption">The moments that make a season</span>
+              <div className="hero-message">
+                <span className="micro">PIXL athlete card / 07</span>
+                <strong>Every player has a story worth sharing.</strong>
+                <p>One place for the highlights, photos, and shoutouts.</p>
+                <div className="message-line" aria-hidden="true" />
               </div>
             </div>
           </div>
         </section>
 
-        {/* GUIDED WEEK SECTION */}
-        <section id="how-it-works" className="py-24 sm:py-32 bg-landing-bg">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="text-center max-w-3xl mx-auto mb-10">
-              <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">
-                Every week moves the season forward.
-              </h2>
-              <p className="text-lg sm:text-[21px] text-landing-text/75 font-medium leading-relaxed">
-                Plan the next game, follow the action, and share the moments—week after week.
-              </p>
+        <div className="week-ribbon" aria-label="Plan the week, show up ready, celebrate together">
+          <div className="container ribbon-inner"><span>Plan the week</span><span className="ribbon-star" aria-hidden="true" /><span>Show up ready</span><span className="ribbon-star" aria-hidden="true" /><span>Celebrate together</span></div>
+        </div>
+
+        <section className="week-section" id="how-it-works" aria-labelledby="week-heading">
+          <div className="container">
+            <div className="section-intro">
+              <div><span className="micro">A simpler game week</span><h2 className="display" id="week-heading">One week.<br />Everything in motion.</h2></div>
+              <p>PIXL gives you a clear next step, from putting a game on the calendar to sharing the moments afterward.</p>
             </div>
+            <div className="week-grid">
+              {steps.map(({ number, title, description, icon: Icon }) => <div className="step-card" key={number} data-testid={`card-landing-step-${number}`}>
+                <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
+                <h3 className="display">{title}</h3><p>{description}</p>
+              </div>)}
+            </div>
+            <a href={WEEK_VIDEO} target="_blank" rel="noopener noreferrer" className="week-video-link" data-testid="link-landing-week-path-video"><Play size={14} fill="currentColor" aria-hidden="true" /> Watch the week path explainer <ArrowUpRight size={14} aria-hidden="true" /></a>
+          </div>
+        </section>
 
-            <figure className="landing-week-video mx-auto mb-16 max-w-4xl sm:mb-20" aria-labelledby="landing-week-video-title">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <h3 id="landing-week-video-title" className="font-display text-2xl font-bold text-landing-text sm:text-3xl">See the week path in 24 seconds</h3>
-                <span className="text-xs font-semibold uppercase tracking-widest text-landing-primary">A quick look at Pixl Sports</span>
-              </div>
-              <video
-                controls
-                playsInline
-                preload="none"
-                poster={`${import.meta.env.BASE_URL}week-path-explainer-poster.webp`}
-                aria-label="The week path: a short video explaining the game week"
-                aria-describedby="landing-week-video-summary"
-                className="block aspect-video w-full rounded-2xl border border-landing-primary/10 bg-landing-pale-blue shadow-2xl"
-                data-testid="landing-week-path-video"
-              >
-                <source src={`${import.meta.env.BASE_URL}week-path-explainer.mp4`} type="video/mp4" />
-                Your browser does not support video playback.
-              </video>
-              <figcaption id="landing-week-video-summary" className="mt-4 text-sm leading-relaxed text-landing-text/75 sm:text-base">
-                Plan the week with a calendar card. Prep by checking off the game day list. Capture the game on the live stat-tracker scoreboard, then send the highlights with an Athlete Hype Page.
-              </figcaption>
-            </figure>
-
-            <div className="relative">
-              <div className="absolute bottom-24 left-[84px] top-24 hidden w-0.5 bg-landing-text/10 lg:block" aria-hidden="true" />
-
-              <div className="relative z-10 flex flex-col gap-8 sm:gap-10">
-                {/* Step 1 */}
-                <div className="pixl-gradient-edge relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-gray/15 bg-landing-white p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange/60"></div>
-                  <div className="relative flex justify-center lg:justify-start">
-                    <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-text/10 bg-landing-bg shadow-sm">
-                      <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-white">
-                        <span className="font-display text-5xl font-extrabold text-landing-text">01</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="landing-before-game-day-content grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12">
-                    <div className="flex flex-col">
-                      <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left" data-testid="landing-before-game-day-title">Before game day</h3>
-                      <ul className="mx-auto w-full max-w-[420px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
-                        <li className="flex items-start gap-3">
-                          <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                          Build the schedule
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                          Share your event card to keep others up to date
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                          Prepare with the game day checklist
-                        </li>
-                      </ul>
-                    </div>
-                    <div className="flex flex-col items-center justify-center gap-2 lg:pt-0">
-                      <video
-                        ref={checklistVideoRef}
-                        src={planChecklistVideo}
-                        autoPlay={!prefersReducedMotion}
-                        muted
-                        loop
-                        playsInline
-                        poster={planChecklistPoster}
-                        preload="metadata"
-                        aria-label="Plan and game day checklist video"
-                        data-testid="landing-checklist-video"
-                        className="landing-checklist-video w-full max-w-[240px] object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => { void expandChecklistVideo(); }}
-                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md border border-landing-gray/30 px-2 text-[10px] font-bold text-landing-text transition-colors hover:border-landing-orange lg:hidden"
-                        aria-label="Play checklist video full screen"
-                        data-testid="button-checklist-video-fullscreen"
-                      >
-                        <Maximize2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        Full screen
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Step 2 */}
-                <div className="pixl-gradient-edge relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-primary/10 bg-landing-pale-blue p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange/80"></div>
-                  <div className="relative flex justify-center lg:justify-start">
-                    <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-primary/15 bg-landing-white shadow-sm">
-                      <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-white">
-                        <span className="font-display text-5xl font-extrabold text-landing-text">02</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-text lg:text-left">During the game</h3>
-                    <ul className="mx-auto w-full max-w-[560px] space-y-4 text-[17px] font-medium text-landing-text/80 lg:mx-0">
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                        Follow the live action
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                        Track stats and key moments
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-landing-orange" aria-hidden="true" />
-                        Keep supporters connected
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="pixl-gradient-edge relative grid grid-cols-1 gap-8 rounded-[2rem] border border-landing-orange/15 bg-[#FFF1EA] p-6 shadow-sm sm:p-10 lg:grid-cols-[168px_minmax(0,1fr)] lg:items-start lg:gap-10 overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-landing-orange"></div>
-                  <div className="relative flex justify-center lg:justify-start">
-                    <div className="flex h-[136px] w-[136px] items-center justify-center rounded-full border-2 border-landing-orange/15 bg-landing-white shadow-sm">
-                      <div className="flex h-[116px] w-[116px] items-center justify-center rounded-full bg-landing-primary">
-                        <span className="font-display text-5xl font-extrabold text-landing-white">03</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="mb-5 text-center font-display text-[32px] font-bold text-landing-bg lg:text-left">After the final whistle</h3>
-                    <ul className="mx-auto w-full max-w-[560px] space-y-4 text-[17px] font-medium text-landing-bg lg:mx-0">
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-[#B33B1B]" aria-hidden="true" />
-                        Celebrate the performance
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-[#B33B1B]" aria-hidden="true" />
-                        Create athlete graphics
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <Check className="mt-1 h-5 w-5 shrink-0 text-[#B33B1B]" aria-hidden="true" />
-                        Share highlights and memories
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+        <section className="athlete-section" id="athlete-cards" aria-labelledby="athlete-heading">
+          <div className="container athlete-grid">
+            <AthletePreview />
+            <div className="athlete-copy">
+              <span className="micro">More than a profile</span>
+              <h2 className="display" id="athlete-heading">Give their moments a home.</h2>
+              <p>Make an athlete card they’ll want to show off. Add photos and media, share it with family, and let supporters send a shoutout.</p>
+              <ul className="check-list">
+                <li><Check size={16} aria-hidden="true" /> Make it theirs</li>
+                <li><Check size={16} aria-hidden="true" /> Share it easily</li>
+                <li><Check size={16} aria-hidden="true" /> Collect the encouragement</li>
+              </ul>
+              <Link href={destination} className="pill pill-navy" data-testid="link-landing-athlete-cards-cta">Explore athlete cards <ArrowUpRight size={16} aria-hidden="true" /></Link>
             </div>
           </div>
         </section>
 
-        {/* PRODUCT PREVIEW SECTION */}
-        <section id="tools" className="scroll-mt-20 py-24 sm:py-32 bg-landing-white border-y border-landing-gray/15 overflow-hidden">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-              <div>
-                <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">
-                  Tools made for the moments.
-                </h2>
-                <p className="text-lg sm:text-[21px] text-landing-text/75 mb-12 font-medium leading-relaxed">
-                  Choose a focused creative tool, customize your design, preview it, and export when it’s ready.
-                </p>
-                
-                <div className="space-y-8 relative">
-                  <div className="absolute left-[11px] top-4 bottom-4 w-px bg-landing-gray/15" />
-                  
-                  <div className="block relative pl-10" data-testid="preview-schedule">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
-                    </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
-                      Schedule Graphic Maker
-                    </h4>
-                    <p className="text-[17px] text-landing-text/70 font-medium">Know what is happening next.</p>
-                  </div>
-                  <div className="block relative pl-10" data-testid="preview-checklist">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
-                    </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
-                      Game-Day Checklist
-                    </h4>
-                    <p className="text-[17px] text-landing-text/70 font-medium">Arrive prepared.</p>
-                  </div>
-                  <div className="block relative pl-10" data-testid="preview-stat-tracker">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
-                    </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
-                      Live Stat Tracker
-                    </h4>
-                    <p className="text-[17px] text-landing-text/70 font-medium">Follow the action.</p>
-                  </div>
-                  <div className="block relative pl-10" data-testid="preview-hype-card">
-                    <div className="absolute left-0 top-2.5 w-6 h-6 rounded-full bg-landing-white border-2 border-landing-gray/30 flex items-center justify-center">
-                       <div className="w-2 h-2 rounded-full bg-landing-orange opacity-0" />
-                    </div>
-                    <h4 className="font-display text-[26px] font-bold text-landing-text mb-1">
-                      Hype-Card Creator
-                    </h4>
-                    <p className="text-[17px] text-landing-text/70 font-medium">Celebrate and share the moment.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative h-[480px] sm:h-[650px] w-full">
-                {/* Decorative overlapping composition */}
-                <div className="pixl-gradient-edge absolute top-0 right-0 w-[65%] sm:w-[55%] rounded-2xl shadow-2xl border border-landing-gray/15 overflow-hidden z-20 hover:-translate-y-1 transition-transform duration-300">
-                  <img src={statTrackerLive} alt="Stat Tracker preview" className="w-full h-auto object-cover" />
-                </div>
-                <div className="pixl-gradient-edge absolute bottom-4 right-[10%] w-[60%] sm:w-[50%] rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] border border-landing-gray/15 overflow-hidden z-30 hover:-translate-y-1 transition-transform duration-300">
-                  <img src={hypeCardRecipientPreview} alt="Hype Card preview" className="w-full h-auto object-cover" />
-                </div>
-                <div className="pixl-gradient-edge absolute top-[25%] left-0 w-[70%] sm:w-[60%] rounded-2xl shadow-xl border border-landing-gray/15 overflow-hidden z-10 hover:-translate-y-1 transition-transform duration-300">
-                  <img src={gameDayChecklist} alt="Checklist preview" className="w-full h-auto object-cover" />
-                </div>
-              </div>
+        <section className="tools-section" id="tools" aria-labelledby="tools-heading">
+          <div className="container">
+            <div className="tools-intro section-intro">
+              <div><span className="micro">Made for real life around sports</span><h2 className="display" id="tools-heading">The little things<br />make the week.</h2></div>
+              <p>Useful tools for the rides, the sidelines, and the moments everyone wants to remember.</p>
+            </div>
+            <div className="tool-grid">
+              <article className="tool-card">
+                <GameOnPreview />
+                <div className="tool-card-body"><span className="micro">01 / Bring everyone along</span><h3 className="display">Make game day feel real</h3><p>Create a Game On card for each event, then open it for the details and next steps.</p><Link href={destination} data-testid="link-landing-game-on-tool">Explore Game On <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
+              </article>
+              <article className="tool-card">
+                <GraphicPreview />
+                <div className="tool-card-body"><span className="micro">02 / Keep the moment</span><h3 className="display">Share the excitement</h3><p>Make a graphic that’s easy to send and fun to keep.</p><Link href={destination} data-testid="link-landing-graphic-tool">Explore graphic maker <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
+              </article>
             </div>
           </div>
         </section>
 
-        {/* AUDIENCE SECTION */}
-        <section className="py-24 sm:py-32 bg-landing-pale-blue">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="flex flex-col lg:flex-row-reverse items-center gap-16 lg:gap-24">
-              <div className="flex-1 text-center lg:text-left">
-                <span className="inline-block text-landing-orange font-extrabold uppercase tracking-widest text-sm mb-5">
-                  BUILT FOR THE PEOPLE ON THE SIDELINE
-                </span>
-                <h2 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-landing-text mb-6 leading-[0.95]">
-                  Create the moments your team will remember.
-                </h2>
-                <p className="text-lg sm:text-[21px] text-landing-text/75 mb-10 max-w-xl mx-auto lg:mx-0 font-medium leading-relaxed">
-                  Pixl gives coaches and families simple tools for schedules, game-day prep, and shareable graphics—without needing design experience.
-                </p>
-              </div>
-              <div className="flex-1 w-full relative">
-                <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border-[6px] border-landing-white">
-                  <img 
-                    src={sidelineParents} 
-                    alt="Parents smiling on the sideline"
-                     width={1024}
-                     height={1024}
-                     loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FINAL CTA */}
-        <section id="pricing" className="scroll-mt-20 bg-landing-text py-24 sm:py-32 text-center">
-          <div className="mx-auto max-w-4xl px-6 lg:px-8">
-            <h2 className="font-display text-5xl sm:text-6xl lg:text-[72px] font-extrabold text-landing-white mb-6 leading-[0.92]">
-              Make something worth sharing.
-            </h2>
-            <p className="text-xl sm:text-[24px] text-landing-white/70 mb-12 max-w-2xl mx-auto font-medium">
-              Start with a focused tool, make it yours, and export something your team will be proud to share.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
-              <Link href="/studio" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-landing-primary px-10 py-5 text-[19px] font-bold text-landing-white transition-transform hover:-translate-y-0.5 shadow-md" data-testid="link-final-get-started">
-                Open Creative Studio
-              </Link>
-              <a href="#tools" className="w-full sm:w-auto inline-flex items-center justify-center rounded-md border-2 border-landing-white/20 bg-transparent px-10 py-5 text-[19px] font-bold text-landing-white hover:bg-landing-white hover:text-landing-text transition-colors" data-testid="link-final-explore-tools">
-                Explore the tools
-              </a>
-            </div>
+        <section className="closing" aria-labelledby="closing-heading">
+          <div className="container">
+            <span className="micro">We guide their week</span>
+            <h2 className="display" id="closing-heading">Every game week has a<br />story.</h2>
+            <p>Bring the plans, the people, and the good stuff together.</p>
+            <Link href={destination} className="pill pill-lime" data-testid="link-landing-closing-cta">{isSignedIn ? 'Open studio' : 'Explore the tools'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
           </div>
         </section>
       </main>
-      <dialog
-        ref={fullscreenDialogRef}
-        className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-black p-4 text-white backdrop:bg-black"
-        aria-label="Checklist video full screen"
-        onClose={() => fallbackVideoRef.current?.pause()}
-      >
-        <div className="flex h-full flex-col items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => fullscreenDialogRef.current?.close()}
-            className="self-end rounded-md border border-white/50 px-4 py-2 text-sm font-bold"
-            aria-label="Close full screen video"
-          >
-            Close
-          </button>
-          <video
-            ref={fallbackVideoRef}
-            src={planChecklistVideo}
-            poster={planChecklistPoster}
-            controls
-            playsInline
-            className="min-h-0 max-h-[calc(100dvh-100px)] max-w-full flex-1 object-contain"
-            aria-label="Plan and game day checklist video"
-          />
+      <footer className="site-footer">
+        <div className="container footer-inner">
+          <Link href="/" data-testid="link-footer-home"><Brand /></Link>
+          <p>Built for the people who show up.</p>
+          <nav className="footer-links" aria-label="Footer navigation">
+            <Link href="/studio" data-testid="link-footer-tools">Studio</Link>
+            <Link href="/help" data-testid="link-footer-help">Help / FAQ</Link>
+            <Link href="/privacy" data-testid="link-footer-privacy">Privacy</Link>
+             <Link href={isSignedIn ? '/studio' : '/sign-in'} data-testid="link-footer-sign-in">{isSignedIn ? 'Studio' : 'Sign in'}</Link>
+          </nav>
         </div>
-      </dialog>
-      <LandingFooter />
+        <div className="container footer-bottom">© {new Date().getFullYear()} PIXL Sports. Illustrative previews feature fictional athletes and events.</div>
+      </footer>
     </div>
   );
 }
