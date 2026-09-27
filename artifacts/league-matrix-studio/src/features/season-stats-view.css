@@ -91,6 +91,7 @@
 .season-stats__check input { width: 17px; height: 17px; accent-color: var(--season-blue); }
 .season-stats__edit-row { display: grid; grid-template-columns: minmax(100px, 1fr) repeat(2, minmax(80px, 125px)); align-items: end; gap: 12px; border-top: 1px solid var(--season-line); padding: 13px 0; }
 .season-stats__edit-row > strong { padding-bottom: 11px; font-size: 12px; }
+.season-stats__row-error { grid-column: 1 / -1; margin: 0; line-height: 1.5; }
 .season-stats__message { margin: 14px 0 0; color: #17539a; font-size: 12px; font-weight: 700; }
 .season-stats__message--error { color: #a53637; }
 .season-stats__empty { padding: 42px 24px; background: var(--season-card); border: 1px dashed var(--season-line); text-align: center; color: var(--season-muted); font-size: 13px; }

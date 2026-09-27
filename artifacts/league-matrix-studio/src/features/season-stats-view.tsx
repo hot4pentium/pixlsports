@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowLeft, ArrowUpRight, Pencil, X } from 'lucide-react';
 import {
@@ -12,6 +12,7 @@ import {
   type Sport,
 } from './stat-tracker';
 import { useSeasonStatsReviewScroll } from './season-stats-review-scroll';
+import { nonnegativeInteger, validateStatCounts } from './season-stats-validation';
 import './season-stats-view.css';
 
 const ReportCharts = lazy(() => import('./stat-tracker-report-charts'));
@@ -61,12 +62,6 @@ function result(game: GameSession) {
   return getGameOutcome(game);
 }
 
-function nonnegativeInteger(value: string): number | null {
-  if (!/^\d+$/.test(value.trim())) return null;
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : null;
-}
-
 export function SeasonStatsView({
   games, athleteName, teamName, selectedGameId, onSelectGame, onSaveCorrection, saving, saveMessage, saveError,
 }: Props) {
@@ -76,6 +71,12 @@ export function SeasonStatsView({
   const [yearChoice, setYearChoice] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [formError, setFormError] = useState('');
+  const [invalidStat, setInvalidStat] = useState<{ id: string; field: 'total' | 'athlete' } | null>(null);
+  const editFormRef = useRef<HTMLFormElement>(null);
+  const clearValidationError = () => {
+    setFormError('');
+    setInvalidStat(null);
+  };
 
   const selectedSport = sportChoice && availableSports.includes(sportChoice) ? sportChoice : availableSports[0] ?? null;
   const availableYears = useMemo(() => [...new Set(finals.filter((game) => game.sport === selectedSport).map(calendarYear))]
@@ -133,7 +134,7 @@ export function SeasonStatsView({
       stats: Object.fromEntries(gameRule.stats.map((stat) => [stat.id, String(game.stats[stat.id] ?? 0)])),
       athleteStats: Object.fromEntries(gameRule.stats.map((stat) => [stat.id, String(countStatEventsByAttribution(game, stat.id).athlete)])),
     });
-    setFormError('');
+    clearValidationError();
   };
 
   const saveCorrection = async (event: FormEvent<HTMLFormElement>) => {
@@ -142,22 +143,24 @@ export function SeasonStatsView({
     const score = nonnegativeInteger(draft.score);
     const opponentScore = nonnegativeInteger(draft.opponentScore);
     if (draft.scoreRecorded && (score === null || opponentScore === null)) {
+      setInvalidStat(null);
       setFormError('Enter a non-negative whole number for each score.');
       return;
     }
     const stats: Record<string, number> = {};
     const athleteStats: Record<string, number> = {};
     for (const stat of detailRule.stats) {
-      const total = nonnegativeInteger(draft.stats[stat.id] ?? '');
-      const athlete = nonnegativeInteger(draft.athleteStats[stat.id] ?? '');
-      if (total === null || athlete === null || athlete > total) {
-        setFormError(`Check ${stat.label}: both counts must be whole numbers, and athlete credit cannot exceed the total.`);
+      const counts = validateStatCounts(stat.label, draft.stats[stat.id] ?? '', draft.athleteStats[stat.id] ?? '');
+      if (!counts.valid) {
+        setInvalidStat({ id: stat.id, field: counts.field });
+        setFormError(counts.message);
+        editFormRef.current?.querySelector<HTMLInputElement>(`[data-testid="input-${counts.field}-${stat.id}"]`)?.focus();
         return;
       }
-      stats[stat.id] = total;
-      athleteStats[stat.id] = athlete;
+      stats[stat.id] = counts.total;
+      athleteStats[stat.id] = counts.athlete;
     }
-    setFormError('');
+    clearValidationError();
     const finalScore = draft.scoreRecorded ? score! : 0;
     const finalOpponentScore = draft.scoreRecorded ? opponentScore! : 0;
     try {
@@ -294,8 +297,8 @@ export function SeasonStatsView({
                   </div>
                   {saveMessage && <p role="status" className="season-stats__message" data-testid="status-correction-success">{saveMessage}</p>}
                   {saveError && <p role="alert" className="season-stats__message season-stats__message--error" data-testid="status-correction-error">{saveError}</p>}
-                  {draft?.gameId === selectedGame.id && <form className="season-stats__edit" onSubmit={saveCorrection} data-testid="form-final-stats">
-                    <div className="season-stats__section-head"><h4 className="season-stats__heading">Correct the final</h4><button type="button" className="season-stats__action season-stats__action--quiet" onClick={() => { setDraft(null); setFormError(''); }} disabled={saving} data-testid="button-cancel-correction"><X size={14} aria-hidden="true" /> Cancel</button></div>
+                   {draft?.gameId === selectedGame.id && <form ref={editFormRef} className="season-stats__edit" onSubmit={saveCorrection} data-testid="form-final-stats">
+                     <div className="season-stats__section-head"><h4 className="season-stats__heading">Correct the final</h4><button type="button" className="season-stats__action season-stats__action--quiet" onClick={() => { setDraft(null); clearValidationError(); }} disabled={saving} data-testid="button-cancel-correction"><X size={14} aria-hidden="true" /> Cancel</button></div>
                     <p className="season-stats__edit-intro">Adjust the tracked total and how much of it belongs to {athleteName || 'the athlete'}. Athlete credit cannot exceed the total. Changes to older records may rebuild attribution from these counts.</p>
                     <label className="season-stats__check"><input type="checkbox" checked={draft.scoreRecorded} onChange={(event) => setDraft({ ...draft, scoreRecorded: event.target.checked })} data-testid="checkbox-score-recorded" /> Final score recorded</label>
                     {draft.scoreRecorded && <div className="season-stats__score-fields">
@@ -303,12 +306,13 @@ export function SeasonStatsView({
                       <label className="season-stats__field"><span>Opponent score</span><input type="number" min="0" step="1" required value={draft.opponentScore} onChange={(event) => setDraft({ ...draft, opponentScore: event.target.value })} data-testid="input-opponent-score" /></label>
                     </div>}
                     {!draft.scoreRecorded && <label className="season-stats__field"><span>Result without a score</span><select value={draft.outcome ?? ''} onChange={(event) => setDraft({ ...draft, outcome: event.target.value === '' ? null : event.target.value as 'win' | 'loss' | 'tie' })} data-testid="select-scoreless-result"><option value="">Not recorded</option><option value="win">Win</option><option value="loss">Loss</option><option value="tie">Tie</option></select></label>}
-                    {detailRule.stats.map((stat) => <div className="season-stats__edit-row" key={stat.id}>
+                     {detailRule.stats.map((stat) => <div className="season-stats__edit-row" key={stat.id}>
                       <strong>{stat.label}</strong>
-                      <label className="season-stats__field"><span>Total tracked</span><input type="number" min="0" step="1" required value={draft.stats[stat.id] ?? ''} onChange={(event) => setDraft({ ...draft, stats: { ...draft.stats, [stat.id]: event.target.value } })} data-testid={`input-total-${stat.id}`} /></label>
-                      <label className="season-stats__field"><span>Athlete credited</span><input type="number" min="0" step="1" required value={draft.athleteStats[stat.id] ?? ''} onChange={(event) => setDraft({ ...draft, athleteStats: { ...draft.athleteStats, [stat.id]: event.target.value } })} data-testid={`input-athlete-${stat.id}`} /></label>
+                       <label className="season-stats__field"><span>Total tracked</span><input type="number" min="0" step="1" required value={draft.stats[stat.id] ?? ''} onChange={(event) => { clearValidationError(); setDraft({ ...draft, stats: { ...draft.stats, [stat.id]: event.target.value } }); }} aria-invalid={invalidStat?.id === stat.id && invalidStat.field === 'total'} aria-describedby={invalidStat?.id === stat.id && invalidStat.field === 'total' ? `season-stat-error-${stat.id}` : undefined} data-testid={`input-total-${stat.id}`} /></label>
+                       <label className="season-stats__field"><span>Athlete credited</span><input type="number" min="0" step="1" required value={draft.athleteStats[stat.id] ?? ''} onChange={(event) => { clearValidationError(); setDraft({ ...draft, athleteStats: { ...draft.athleteStats, [stat.id]: event.target.value } }); }} aria-invalid={invalidStat?.id === stat.id && invalidStat.field === 'athlete'} aria-describedby={invalidStat?.id === stat.id && invalidStat.field === 'athlete' ? `season-stat-error-${stat.id}` : undefined} data-testid={`input-athlete-${stat.id}`} /></label>
+                       {invalidStat?.id === stat.id && <p id={`season-stat-error-${stat.id}`} className="season-stats__message season-stats__message--error season-stats__row-error" role="alert" data-testid="status-correction-validation">{formError}</p>}
                     </div>)}
-                    {formError && <p className="season-stats__message season-stats__message--error" role="alert" data-testid="status-correction-validation">{formError}</p>}
+                     {formError && !invalidStat && <p className="season-stats__message season-stats__message--error" role="alert" data-testid="status-correction-validation">{formError}</p>}
                     <div className="season-stats__actions"><button type="submit" className="season-stats__action" disabled={saving} data-testid="button-save-correction">{saving ? 'Saving correction…' : 'Save corrected final'}</button></div>
                   </form>}
                   {report.games.length > 1 && <div className="season-stats__charts">
