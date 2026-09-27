@@ -361,7 +361,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 userId={statTrackerUserId}
                 sport={statTrackerSport ?? null}
                 athleteName={statTrackerAthleteName ?? card.athleteName}
-                teamName={statTrackerTeamName ?? ''}
+                  teamName={statTrackerTeamName ?? ''}
                 eventId={eventId}
                 date={card.date}
                 time={card.time}
@@ -498,10 +498,13 @@ export function GameOnDashboardCollection({
     setOpenPanel(null);
   };
   useEffect(() => {
-    const closeCompletedTracker = () => setOpenPanel(null);
+    const closeCompletedTracker = () => {
+      setOpenPanel(null);
+      if (dialogOpen && selectedCard && isActiveShell) onOpen(selectedCard.id);
+    };
     window.addEventListener(trackerCompletionHandoffEvent, closeCompletedTracker);
     return () => window.removeEventListener(trackerCompletionHandoffEvent, closeCompletedTracker);
-  }, []);
+  }, [dialogOpen, selectedCard?.id, isActiveShell, onOpen]);
 
   return (
     <section ref={setCollectionRef} id={isActiveShell ? GAME_ON_COLLECTION_ID : undefined} className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">

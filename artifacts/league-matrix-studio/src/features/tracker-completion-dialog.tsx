@@ -99,7 +99,7 @@ export function TrackerCompletionDialog({
   const outcome = getGameOutcome(game);
   const hasScore = hasRecordedGameScore(game);
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-background/85 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) onOpenChange(false); }}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-background/85 p-4 backdrop-blur-sm pointer-events-auto" onMouseDown={(event) => { if (event.target === event.currentTarget) onOpenChange(false); }}>
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={headingId} aria-describedby={descriptionId} className="tracker-completion-dialog relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain border border-primary bg-card text-card-foreground shadow-2xl outline-none clip-angled-sm" data-testid="dialog-tracker-completed">
         <button type="button" onClick={() => onOpenChange(false)} className="absolute right-3 top-3 z-10 grid min-h-11 min-w-11 place-items-center border border-border bg-card text-foreground" aria-label="Close game completion" data-testid="button-completion-close"><X size={18} aria-hidden="true" /></button>
         <div className="tracker-completion-celebration" aria-hidden="true">

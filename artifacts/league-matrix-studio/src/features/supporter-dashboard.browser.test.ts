@@ -1998,14 +1998,49 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         subtree: true,
       });
     })()`, page.sessionId);
+    await connection.evaluate(`(() => {
+      const recoverySelector = '[data-testid="button-inline-new-tracker"], [data-testid="status-inline-tracker-completed"], [data-testid="stat-tracker-setup"]';
+      window.__trackerRecoveryAppearedBeforeCongrats = Boolean(document.querySelector(recoverySelector));
+      window.__trackerCongratsSeenByObserver = false;
+      window.__trackerRecoveryTransitionObserver = new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of Array.from(record.addedNodes)) {
+            const element = node instanceof Element ? node : null;
+            const recoveryAppeared = Boolean(element
+              && (element.matches(recoverySelector) || element.querySelector(recoverySelector)));
+            if (recoveryAppeared && !window.__trackerCongratsSeenByObserver) {
+              window.__trackerRecoveryAppearedBeforeCongrats = true;
+            }
+            if (element
+              && (element.matches('[data-testid="dialog-tracker-completed"]')
+                || element.querySelector('[data-testid="dialog-tracker-completed"]'))) {
+              window.__trackerCongratsSeenByObserver = true;
+            }
+          }
+        }
+      });
+      window.__trackerRecoveryTransitionObserver.observe(document.body, { childList: true, subtree: true });
+    })()`, page.sessionId);
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector("[data-testid=\\"status-inline-tracker-completed\\"]") !== null
+    await waitFor(connection, page.sessionId, `document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") !== null
+      && document.activeElement?.getAttribute('data-testid') === 'dialog-tracker-completed'
       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() === 'Game vs Rivals is complete.'
       && Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
         .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
-        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'`, Boolean);
+         ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'
+       && Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+         .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+         ?.getAttribute('data-tracker-open') === 'false'`, Boolean);
+    await connection.evaluate(`window.__trackerRecoveryTransitionObserver?.disconnect()`, page.sessionId);
+    assert.equal(
+      await connection.evaluate<boolean>(`window.__trackerRecoveryAppearedBeforeCongrats === false
+        && window.__trackerCongratsSeenByObserver === true
+        && document.querySelector('[data-testid="dialog-tracker-completed"]')?.textContent?.includes('Congrats!')`, page.sessionId),
+      true,
+      'saving a completed game should open Congrats without briefly showing the old tracker recovery controls',
+    );
     await waitFor(connection, page.sessionId, 'window.__gameOnCompletionAnnouncementMutations === 1', Boolean);
     assert.deepEqual(await connection.evaluate<{
       dashboardStillOpen: boolean;
@@ -2019,7 +2054,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       announcementMutations: window.__gameOnCompletionAnnouncementMutations || 0,
     }))()`, page.sessionId), {
       dashboardStillOpen: true,
-      activeElementTestId: 'status-inline-tracker-completed',
+      activeElementTestId: 'dialog-tracker-completed',
       announcement: 'Game vs Rivals is complete.',
       announcementMutations: 1,
     });
@@ -2057,8 +2092,10 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       announcement: 'Game vs Rivals is complete.',
       announcementMutations: firstAnnouncementMutations,
       announcementMessages: ['Game vs Rivals is complete.'],
-      activeElementTestId: 'status-inline-tracker-completed',
+      activeElementTestId: 'dialog-tracker-completed',
     }, 'an unrelated dashboard rerender must not repeat the completion announcement or steal focus');
+    await connection.evaluate(`document.querySelector('[data-testid="button-completion-done"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") === null', Boolean);
     assert.deepEqual(await connection.evaluate<{
       activeGame: string | null;
       completed: { status: string; score: number; statCount: number; attribution: string } | null;
@@ -2087,7 +2124,6 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       const scheduledGame = window.__getSupporterDashboardEvents?.().find((event) => event.id === 'game-1');
       return scheduledGame?.status === 'final' && Number.isFinite(Date.parse(scheduledGame.completedAt));
     })()`, Boolean);
-    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'Array.from(document.querySelectorAll(".game-on-collection__card")).some(card => card.getClientRects().length > 0 && card.querySelector(".game-on-collection__kind")?.textContent?.includes("Game") && card.getAttribute("data-tracker-open") === "false")', Boolean);
     assert.equal(
       await connection.evaluate<string>(`Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
@@ -2160,11 +2196,15 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell [data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-inline-tracker-completed"]') !== null
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dialog-tracker-completed"]') !== null
+      && document.activeElement?.getAttribute('data-testid') === 'dialog-tracker-completed'
        && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() === 'Game vs Falcons is complete.'
        && Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
          .find((card) => card.querySelector('.game-on-collection__opponent')?.textContent?.includes('Falcons'))
-         ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'`, Boolean);
+        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'
+      && Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+        .find((card) => card.querySelector('.game-on-collection__opponent')?.textContent?.includes('Falcons'))
+        ?.getAttribute('data-tracker-open') === 'false'`, Boolean);
     await waitFor(connection, page.sessionId, 'window.__gameOnCompletionAnnouncementMutations === 2', Boolean);
     assert.deepEqual(await connection.evaluate<{
        announcement: string;
@@ -2194,6 +2234,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
        announcementMutations: 2,
        announcementMessages: ['Game vs Rivals is complete.', 'Game vs Falcons is complete.'],
     }, 'an unrelated rerender after both games must not repeat either completion announcement');
+    await connection.evaluate(`document.querySelector('[data-testid="button-completion-done"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") === null', Boolean);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -2251,11 +2293,15 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-inline-end-game"]')?.click()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-mobile-shell [data-testid=\\"confirm-inline-end-game\\"]") !== null', Boolean);
     await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-inline-confirm-end-game"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-inline-tracker-completed"]') !== null
+    await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="dialog-tracker-completed"]') !== null
+      && document.activeElement?.getAttribute('data-testid') === 'dialog-tracker-completed'
       && document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-completion-announcement"]')?.textContent?.trim() === 'Game vs Rivals is complete.'
       && Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
         .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
-        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'`, Boolean);
+        ?.querySelector('[data-testid^="status-game-on-card-"]')?.textContent?.trim() === 'Complete'
+      && Array.from(document.querySelectorAll('.supporter-dashboard-mobile-shell .game-on-collection__card'))
+        .find((card) => card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'))
+        ?.getAttribute('data-tracker-open') === 'false'`, Boolean);
     await waitFor(connection, page.sessionId, 'window.__phoneGameCompletionAnnouncementMutations === 1', Boolean);
     await connection.send('Accessibility.enable', {}, page.sessionId);
     const phoneAccessibilityTree = await connection.send<{
@@ -2308,8 +2354,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       dashboardStillOpen: true,
       mobileAnnouncementVisible: true,
       desktopAnnouncementHidden: true,
-      activeElementTestId: 'status-inline-tracker-completed',
-      activeElementInsidePhoneTracker: true,
+      activeElementTestId: 'dialog-tracker-completed',
+      activeElementInsidePhoneTracker: false,
       phoneAnnouncement: 'Game vs Rivals is complete.',
       desktopAnnouncement: 'Game vs Falcons is complete.',
       announcementMutations: 1,
@@ -2341,6 +2387,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       phoneAccessibilityTree.nodes.some((node) => !node.ignored && node.name?.value === 'Game vs Rivals is complete.'),
       'the phone completion message should be available in the active dashboard accessibility tree',
     );
+    await connection.evaluate(`document.querySelector('[data-testid="button-completion-done"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"dialog-tracker-completed\\"]") === null', Boolean);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 1000,

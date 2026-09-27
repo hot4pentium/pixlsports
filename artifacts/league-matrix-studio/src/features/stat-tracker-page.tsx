@@ -1231,6 +1231,7 @@ export function StatTrackerPage() {
   const [saveStatus, setSaveStatus] = useState<TrackerSaveStatus | null>(null);
   const [justCompletedGame, setJustCompletedGame] = useState<GameSession | null>(null);
   const [completionOpen, setCompletionOpen] = useState(false);
+  const [handoffPending, setHandoffPending] = useState(false);
   const [retryAvailable, setRetryAvailable] = useState(false);
   const [revisionConflict, setRevisionConflict] = useState(false);
   const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
@@ -1627,6 +1628,7 @@ export function StatTrackerPage() {
       return;
     }
     setData(nextData);
+    if (handoffToDashboard) setHandoffPending(true);
     setCurrentGame(null);
     if (handoffToDashboard) {
       setJustCompletedGame(null);
@@ -1676,6 +1678,9 @@ export function StatTrackerPage() {
       } catch {
         setError('Your game is saved on this device, but the dashboard handoff could not be saved. Open Game history here to review it, and check device storage before leaving.');
         announce('GAME SAVED — DASHBOARD HANDOFF NEEDS ATTENTION');
+        setJustCompletedGame(completed);
+        setCompletionOpen(true);
+        setHandoffPending(false);
         return;
       }
       setLocation('/studio');
@@ -1892,7 +1897,7 @@ export function StatTrackerPage() {
         ))}
       </div>
 
-      {nextGame && !currentGame && (
+      {nextGame && !currentGame && !handoffPending && (
         <StatTrackerUpcomingNotice
           nextGame={nextGame}
           onUseUpcomingGame={useNextGameForSetup}
@@ -1906,7 +1911,7 @@ export function StatTrackerPage() {
         />
       )}
 
-      <StatTrackerSaveRecoveryAlert
+      {!handoffPending && <StatTrackerSaveRecoveryAlert
         message={error}
         retryAvailable={retryAvailable}
         revisionConflict={revisionConflict}
@@ -1914,9 +1919,9 @@ export function StatTrackerPage() {
         saving={saving}
         onRetry={() => void retryCloudSync()}
         onRefresh={() => window.location.reload()}
-      />
+      />}
 
-      {revisionConflict && trackerConflict && (
+      {!handoffPending && revisionConflict && trackerConflict && (
         <section className="mb-6 border border-primary/50 bg-card p-5 clip-angled-sm sm:p-7" aria-labelledby="tracker-conflict-heading" data-testid="stat-tracker-conflict">
           <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -1969,7 +1974,11 @@ export function StatTrackerPage() {
         </section>
       )}
 
-      {!currentGame ? (
+      {handoffPending ? (
+        <section className="border border-[#446a94] bg-[#102b4d] p-6 text-white clip-angled-sm" role="status" data-testid="status-tracker-handoff-pending">
+          Saving your game and preparing the summary…
+        </section>
+      ) : !currentGame ? (
         <section ref={setupSectionRef} className="grid scroll-mt-6 gap-6 lg:grid-cols-[1.2fr_0.8fr]" data-testid="stat-tracker-setup">
           <div className="space-y-5">
             <AthleteResultPanel

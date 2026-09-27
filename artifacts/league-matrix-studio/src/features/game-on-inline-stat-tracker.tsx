@@ -21,7 +21,6 @@ import {
   type Sport,
 } from './stat-tracker';
 import { buildWorkspaceToolHref } from './workspace-context';
-import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import { saveCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
@@ -84,6 +83,7 @@ export function GameOnInlineStatTracker({
   const endGameButtonRef = useRef<HTMLButtonElement>(null);
   const cancelEndGameButtonRef = useRef<HTMLButtonElement>(null);
   const completedStatusRef = useRef<HTMLDivElement>(null);
+  const savingFinalRef = useRef(false);
   const wasConfirmingEndGame = useRef(false);
   const focusCompletedStatusOnEnd = useRef(false);
   const [game, setGame] = useState<GameSession | null>(null);
@@ -93,11 +93,11 @@ export function GameOnInlineStatTracker({
   const [error, setError] = useState('');
   const [calendarStatusSyncing, setCalendarStatusSyncing] = useState(false);
   const [calendarStatusSyncError, setCalendarStatusSyncError] = useState('');
+  const [savingFinal, setSavingFinal] = useState(false);
   const [endedElsewhere, setEndedElsewhere] = useState(false);
   const [confirmEndGame, setConfirmEndGame] = useState(false);
   const [includeFinalScore, setIncludeFinalScore] = useState(false);
   const [manualOutcome, setManualOutcome] = useState<GameOutcome | null>(null);
-  const [completionOpen, setCompletionOpen] = useState(false);
   const trackerHref = buildWorkspaceToolHref('stats', {
     id: eventId,
     type: 'game',
@@ -271,19 +271,24 @@ export function GameOnInlineStatTracker({
   };
 
   const finishDashboardHandoff = (completed: GameSession) => {
-    if (!userId) return;
+    if (!userId) return false;
     try {
       saveCompletionHandoff(window.localStorage, userId, completed.id, 'local-saved');
       window.dispatchEvent(new Event(trackerCompletionHandoffEvent));
       setLocation('/studio');
+      return true;
     } catch {
       setError('Stats and Calendar are saved, but the dashboard completion could not open. Open the full tracker to review this game.');
+      return false;
     }
   };
 
   const finishGame = async () => {
     const current = currentGameRef.current;
-    if (!current || !userId) return;
+    if (!current || !userId || savingFinalRef.current) return;
+    savingFinalRef.current = true;
+    setSavingFinal(true);
+    let handedOff = false;
     try {
       const completed = endGame({ ...current, ...(manualOutcome ? { outcome: manualOutcome } : {}) }, new Date(), includeFinalScore);
       const storedData = readStoredTrackerData(window.localStorage, userId);
@@ -294,15 +299,22 @@ export function GameOnInlineStatTracker({
       window.localStorage.setItem(getTrackerStorageKeys(userId).history, JSON.stringify(nextData));
       saveStoredActiveGame(window.localStorage, userId, null);
       setCurrentGame(null);
-      setCompletedGame(completed);
-      focusCompletedStatusOnEnd.current = false;
       setOtherActiveGame(null);
       setEndedElsewhere(false);
       setConfirmEndGame(false);
       setError('');
-      if (await syncCompletedGameToCalendar(completed)) finishDashboardHandoff(completed);
+      if (await syncCompletedGameToCalendar(completed)) {
+        handedOff = finishDashboardHandoff(completed);
+      }
+      if (!handedOff) {
+        focusCompletedStatusOnEnd.current = true;
+        setCompletedGame(completed);
+      }
     } catch {
       setError('The game could not be saved and handed off. Keep this tracker open, check device storage, and try ending the game again.');
+    } finally {
+      savingFinalRef.current = false;
+      if (!handedOff) setSavingFinal(false);
     }
   };
 
@@ -341,14 +353,19 @@ export function GameOnInlineStatTracker({
           </p>
           <Link href={trackerHref} className="game-on-quick-tracker__primary">Open the active tracker</Link>
         </div>
+      ) : savingFinal ? (
+        <p className="game-on-quick-tracker__finishing" role="status" data-testid="status-inline-tracker-finishing">
+          Saving your game and preparing the summary…
+        </p>
       ) : endedElsewhere && !game ? (
         <div className="game-on-quick-tracker__message" role="status">
           <p>This game was ended in another tab.</p>
-          <button type="button" onClick={createEventGame} className="game-on-quick-tracker__primary">Start a new tracker</button>
+          <Link href={trackerHref} className="game-on-quick-tracker__primary">Open Stat Tracker</Link>
         </div>
       ) : completedGame && !game ? (
         <div ref={completedStatusRef} tabIndex={-1} className="game-on-quick-tracker__message" role="status" data-testid="status-inline-tracker-completed">
           <p>This game is ended and saved on this device. Open the full tracker to review or sync it.</p>
+          {error && <p className="game-on-quick-tracker__save-warning" role="alert">{error}</p>}
           {calendarStatusSyncing && (
             <p className="game-on-quick-tracker__save-warning" role="status" data-testid="status-inline-calendar-sync">
               Updating this game’s Calendar status…
@@ -368,7 +385,7 @@ export function GameOnInlineStatTracker({
               </button>
             </div>
           )}
-          <button type="button" onClick={createEventGame} disabled={calendarStatusSyncing || Boolean(calendarStatusSyncError)} className="game-on-quick-tracker__primary" data-testid="button-inline-new-tracker">Start another tracker</button>
+          <Link href={trackerHref} className="game-on-quick-tracker__primary">Open full tracker</Link>
         </div>
       ) : error && !game ? (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">{error}</p>
@@ -533,13 +550,6 @@ export function GameOnInlineStatTracker({
       ) : (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">The Stat Tracker could not start for this game.</p>
       )}
-      <TrackerCompletionDialog
-        game={completedGame}
-        open={completionOpen}
-        onOpenChange={(open) => { setCompletionOpen(open); if (!open) window.setTimeout(() => completedStatusRef.current?.focus(), 0); }}
-        teamName={teamName}
-        viewHref={trackerHref}
-      />
     </section>
   );
 }

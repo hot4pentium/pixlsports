@@ -419,6 +419,17 @@
 }
 
 .game-on-quick-tracker__message p { margin: 0; }
+.game-on-quick-tracker__finishing {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #446a94;
+  border-radius: 6px;
+  background: #102b4d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
 .game-on-quick-tracker__message--error,
 .game-on-quick-tracker__save-warning { color: #9b3025; }
 

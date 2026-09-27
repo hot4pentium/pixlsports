@@ -243,17 +243,9 @@ export function LivingAthleteCardPage({
                       </div>
                     )}
                     <div className="living-card-photo-shade" />
-                    <div className="living-card-corner">
-                      <span className="living-card-edition">Pixl / Athlete edition</span>
-                      <span className="living-card-number">{invite.seasonName}<br />{sport}</span>
-                    </div>
-                    <div className="living-card-front-bottom">
-                      <span className="living-card-overline">The season belongs to</span>
+                    <div className="living-card-front-identity">
                       <h2 className="living-card-athlete-name" data-testid="text-living-card-athlete-name">{invite.athleteName}</h2>
-                      <div className="living-card-front-meta">
-                        <span>{invite.teamName || sport}</span>
-                        <span>Always in the game / Pixl Sports</span>
-                      </div>
+                      {invite.teamName && <p className="living-card-team-name" data-testid="text-living-card-team-name">{invite.teamName}</p>}
                     </div>
                   </div>
                 )}

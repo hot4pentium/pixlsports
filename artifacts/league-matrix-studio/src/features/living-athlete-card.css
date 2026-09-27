@@ -56,16 +56,10 @@
 .living-card-photo-fallback { height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, #2e6093, transparent 53%), repeating-linear-gradient(110deg, transparent 0 48px, #a2caff0d 49px 50px), #0b2544; }
 .living-card-photo-fallback span { font: 900 clamp(170px, 27vw, 360px)/1 'Barlow Condensed', sans-serif; color: #b5d8f71a; text-shadow: 1px 1px #c7eaff5c; }
 .living-card-photo-fallback small { position: absolute; top: 56%; color: #e2eff8af; font-size: 10px; letter-spacing: .2em; text-transform: uppercase; font-weight: 800; }
-.living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #07172b87 0, transparent 22%, transparent 44%, #07172b50 60%, #061427 83%); }
-.living-card-corner { position: absolute; top: 28px; left: 28px; right: 28px; display: flex; align-items: start; justify-content: space-between; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .19em; text-transform: uppercase; }
-.living-card-edition { padding: 8px 10px; background: #07172bd9; border: 1px solid #badbfa69; }
-.living-card-number { color: #d4eaff; text-align: right; }
-.living-card-front-bottom { position: absolute; inset: auto 0 0; padding: 70px clamp(24px, 5vw, 47px) 120px; background: linear-gradient(transparent, #061427d9 25%, #061427 80%); }
-.living-card-front-bottom::before { content: ''; position: absolute; left: clamp(24px, 5vw, 47px); top: 76px; height: 3px; width: 53px; background: var(--lc-orange); }
-.living-card-front-bottom .living-card-overline { padding-top: 22px; }
-.living-card-athlete-name { margin: 10px 0 13px; font: 900 clamp(61px, 11vw, 122px)/.77 'Barlow Condensed', sans-serif; letter-spacing: -.025em; text-transform: uppercase; overflow-wrap: anywhere; max-width: 100%; }
-.living-card-front-meta { padding-top: 18px; border-top: 1px solid #c9e3fb45; display: flex; justify-content: space-between; gap: 12px; font-size: 10px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: #d9eafa; }
-.living-card-front-meta span:last-child { color: var(--lc-orange); text-align: right; }
+.living-card-photo-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #061427d9 0, #06142773 18%, transparent 43%); }
+.living-card-front-identity { position: absolute; top: clamp(22px, 4vw, 38px); left: clamp(22px, 4vw, 38px); right: clamp(22px, 4vw, 38px); max-width: 480px; text-shadow: 0 2px 12px #061427e8; }
+.living-card-athlete-name { margin: 0; font: 900 clamp(45px, 7vw, 82px)/.9 'Barlow Condensed', sans-serif; letter-spacing: -.015em; text-transform: uppercase; overflow-wrap: anywhere; }
+.living-card-team-name { margin: 10px 0 0; color: #edf5ff; font-size: clamp(11px, 1.6vw, 16px); font-weight: 800; line-height: 1.25; letter-spacing: .16em; text-transform: uppercase; overflow-wrap: anywhere; }
 .living-card-face-alt { inset: 0 0 76px; padding: clamp(23px, 5vw, 42px); background: transparent; display: flex; flex-direction: column; overflow-y: auto; scrollbar-color: #6fa9d6 #0b2544; }
 .living-card-face-alt::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--lc-blue), var(--lc-sky), var(--lc-orange)); }
 .living-card-alt-top { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
@@ -255,10 +249,8 @@
   .living-card-main { padding: 31px 17px 55px; }
   .living-card-intro { display: flex; }
   .living-card-frame { min-height: 540px; height: 144vw; max-height: 700px; }
-  .living-card-corner { left: 18px; right: 18px; top: 18px; }
-  .living-card-front-bottom { padding: 60px 23px 105px; }
-  .living-card-front-bottom::before { left: 23px; top: 65px; }
-  .living-card-athlete-name { font-size: clamp(57px, 14vw, 88px); }
+  .living-card-front-identity { left: 20px; right: 20px; top: 22px; }
+  .living-card-athlete-name { font-size: clamp(42px, 12vw, 68px); }
   .living-card-controls { bottom: 12px; gap: 4px; padding: 4px; }
   .living-card-control { min-height: 44px; gap: 4px; padding: 4px 5px; font-size: 8px; letter-spacing: .04em; }
   .living-card-face-alt { bottom: 70px; padding: 23px; }
