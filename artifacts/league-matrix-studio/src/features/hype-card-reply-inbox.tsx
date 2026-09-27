@@ -183,12 +183,12 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{triggerContent}</DialogTrigger>
       <DialogContent className="w-[92vw] sm:w-[90vw] max-w-2xl max-h-[85vh] border-primary bg-[#111316] text-white p-0 overflow-hidden flex flex-col clip-angled-sm sm:clip-angled">
-        <DialogHeader className="p-4 sm:p-6 border-b border-white/10 shrink-0 bg-foreground">
+        <DialogHeader className="p-4 sm:p-6 border-b border-white/10 shrink-0 bg-[#14263e]">
           <DialogTitle className="font-display text-3xl tracking-wide uppercase text-white flex items-center gap-3">
             <Inbox className="h-6 w-6 text-primary" />
             Shoutouts &amp; Replies
           </DialogTitle>
-          <DialogDescription className="text-white/60">
+          <DialogDescription className="text-[#d4e1f2]">
             Fan Shoutouts and replies to shared moments.
           </DialogDescription>
         </DialogHeader>

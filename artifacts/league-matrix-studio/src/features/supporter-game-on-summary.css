@@ -40,7 +40,7 @@
   display: flex;
   min-height: 60px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   padding: 11px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, .12);
@@ -55,28 +55,6 @@
   background: transparent;
   clip-path: none;
   box-shadow: none;
-}
-
-.supporter-game-on-summary__brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.supporter-game-on-summary__brand h1 {
-  margin: 0;
-  color: #f7faff;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: .16em;
-  line-height: 1;
-}
-
-.supporter-game-on-summary__brand-mark {
-  width: 26px;
-  height: 2px;
-  background: #55a4ff;
-  box-shadow: 0 0 13px rgba(85, 164, 255, .8);
 }
 
 .supporter-game-on-summary__athlete-link {
@@ -750,7 +728,7 @@
 }
 
 .supporter-game-on-summary--mobile .supporter-game-on-summary__athlete-link {
-  max-width: calc(100% - 120px);
+  max-width: 100%;
   gap: 6px;
   padding-right: 7px;
 }

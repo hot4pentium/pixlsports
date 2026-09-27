@@ -41,13 +41,10 @@ export function SupporterGameOnSummary({
     >
       <header
         className="supporter-game-on-summary__header"
-        aria-labelledby={`game-on-summary-heading-${variant}`}
+        aria-label="Athlete profile"
         data-testid={isMobile ? 'mobile-athlete-summary' : 'athlete-summary'}
       >
-        <div className="supporter-game-on-summary__brand">
-          <h1 id={`game-on-summary-heading-${variant}`}>GAME ON</h1>
-          <span className="supporter-game-on-summary__brand-mark" aria-hidden="true" />
-        </div>
+        <h1 id={`game-on-summary-heading-${variant}`} className="sr-only">Athlete overview</h1>
         <Link
           href={profileHref}
           className="supporter-game-on-summary__athlete-link"
