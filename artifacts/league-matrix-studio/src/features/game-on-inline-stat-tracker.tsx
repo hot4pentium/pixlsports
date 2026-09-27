@@ -9,7 +9,6 @@ import {
   createGameSession,
   endGame,
   getGamePhaseLabel,
-  outcomeFromScore,
   getSportRule,
   getTrackerStorageKeys,
   getTrackerSportForProfile,
@@ -22,7 +21,8 @@ import {
   type Sport,
 } from './stat-tracker';
 import { buildWorkspaceToolHref } from './workspace-context';
-import { GameOutcomePicker, TrackerCompletionDialog } from './tracker-completion-dialog';
+import { TrackerCompletionDialog } from './tracker-completion-dialog';
+import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import './game-on-inline-stat-tracker.css';
 
@@ -442,13 +442,13 @@ export function GameOnInlineStatTracker({
                 <p id={endConfirmationHeadingId} className="game-on-quick-tracker__confirmation-title">End this game?</p>
                 <p className="game-on-quick-tracker__confirmation-copy">This saves the current stats as a completed game on this device.</p>
               </div>
-              <label className="mt-3 flex items-start gap-2 text-sm">
-                <input type="checkbox" checked={includeFinalScore} onChange={(event) => setIncludeFinalScore(event.currentTarget.checked)} data-testid="checkbox-inline-record-final-score" className="mt-1" />
-                Include this score in the record (turn on for a real 0–0 game)
-              </label>
-              <GameOutcomePicker
-                value={manualOutcome ?? (includeFinalScore ? outcomeFromScore(game.score, game.opponentScore) : null)}
-                onChange={setManualOutcome}
+              <TrackerEndGameChoices
+                score={game.score}
+                opponentScore={game.opponentScore}
+                includeFinalScore={includeFinalScore}
+                onIncludeFinalScoreChange={setIncludeFinalScore}
+                manualOutcome={manualOutcome}
+                onManualOutcomeChange={setManualOutcome}
               />
               <div className="game-on-quick-tracker__game-confirmation-actions">
                 <button

@@ -86,6 +86,7 @@ import {
 } from './stat-tracker';
 import { GameReportView } from './stat-tracker-game-report';
 import { GameOutcomePicker, TrackerCompletionDialog } from './tracker-completion-dialog';
+import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import { trackEvent } from '../lib/analytics';
 import { toStatTrackerShareInput } from './stat-tracker-share';
@@ -1100,22 +1101,13 @@ export function LiveTrackerGame({
               <h3 id={`end-live-game-title-${currentGame.id}`} className="text-sm font-bold uppercase tracking-widest text-destructive">End this game?</h3>
               <p className="mt-2 text-sm text-muted-foreground">This will save the current stats as a completed game in your history.</p>
             </div>
-            <label className="mt-3 flex cursor-pointer items-start gap-3 border border-border bg-background p-4 text-sm">
-              <input
-                type="checkbox"
-                checked={includeFinalScore}
-                onChange={(event) => setIncludeFinalScore(event.currentTarget.checked)}
-                className="mt-1 h-4 w-4 accent-primary"
-                data-testid="checkbox-record-final-score"
-              />
-              <span>
-                <span className="block font-bold">Include this score in the season record</span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Turn this on for a real 0–0 result. Leave it off if the score was not entered.</span>
-              </span>
-            </label>
-            <GameOutcomePicker
-              value={manualOutcome ?? (includeFinalScore ? outcomeFromScore(currentGame.score, currentGame.opponentScore) : null)}
-              onChange={setManualOutcome}
+            <TrackerEndGameChoices
+              score={currentGame.score}
+              opponentScore={currentGame.opponentScore}
+              includeFinalScore={includeFinalScore}
+              onIncludeFinalScoreChange={setIncludeFinalScore}
+              manualOutcome={manualOutcome}
+              onManualOutcomeChange={setManualOutcome}
               disabled={saving}
             />
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:justify-end">

@@ -3,6 +3,7 @@ import test from 'node:test';
 import { act, create, type ReactTestRendererNode } from 'react-test-renderer';
 import { createElement } from 'react';
 import { GameOutcomePicker } from './tracker-completion-dialog';
+import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 
 import {
@@ -144,6 +145,54 @@ test('supporters can explicitly choose any game result', () => {
     act(() => { renderer.root.findByProps({ 'data-testid': `button-game-outcome-${result}` }).props.onClick(); });
   }
   assert.deepEqual(selections, ['win', 'loss', 'tie']);
+  act(() => renderer.unmount());
+});
+
+test('end-game choices distinguish an unentered score, a real 0–0, and a conflicting result', () => {
+  let includeFinalScore = false;
+  let manualOutcome: 'win' | 'loss' | 'tie' | null = null;
+  const view = () => createElement(TrackerEndGameChoices, {
+    score: 0,
+    opponentScore: 0,
+    includeFinalScore,
+    onIncludeFinalScoreChange: (value: boolean) => { includeFinalScore = value; },
+    manualOutcome,
+    onManualOutcomeChange: (value: 'win' | 'loss' | 'tie' | null) => { manualOutcome = value; },
+  });
+  let renderer!: ReturnType<typeof create>;
+  act(() => { renderer = create(view()); });
+
+  const noScore = renderer.root.findByProps({ 'data-testid': 'radio-final-score-no' });
+  const finalScore = renderer.root.findByProps({ 'data-testid': 'radio-final-score-yes' });
+  assert.equal(noScore.props.checked, true);
+  assert.equal(finalScore.props.checked, false);
+  assert.equal(noScore.props.name, finalScore.props.name);
+  assert.match(renderedText(renderer), /Is the scoreboard showing the final score\?/);
+  assert.match(renderedText(renderer), /no result selected · no final score recorded/);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'button-game-outcome-win' }).props.onClick();
+    renderer.update(view());
+  });
+  assert.match(renderedText(renderer), /Win result · no final score recorded/);
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'tracker-score-result-warning' }).length, 0);
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'radio-final-score-yes' }).props.onChange();
+    renderer.update(view());
+  });
+  assert.match(renderedText(renderer), /Win result · final score 0–0/);
+  assert.match(renderedText(renderer), /scoreboard says Tie, but you selected Win.*Both will be saved as shown/);
+  const saved = endGame({ ...createGameSession('basketball', {}), outcome: manualOutcome! }, new Date(), includeFinalScore);
+  assert.equal(saved.scoreRecorded, true);
+  assert.equal(getGameOutcome(saved), 'win');
+
+  act(() => {
+    renderer.root.findByProps({ 'data-testid': 'radio-final-score-no' }).props.onChange();
+    renderer.update(view());
+  });
+  assert.equal(renderer.root.findAllByProps({ 'data-testid': 'tracker-score-result-warning' }).length, 0);
+  assert.match(renderedText(renderer), /Win result · no final score recorded/);
   act(() => renderer.unmount());
 });
 

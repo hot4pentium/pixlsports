@@ -10,10 +10,12 @@ export function GameOutcomePicker({
   value,
   onChange,
   disabled = false,
+  clearLabel = 'Clear selection / use score instead',
 }: {
   value: GameOutcome | null;
   onChange: (value: GameOutcome | null) => void;
   disabled?: boolean;
+  clearLabel?: string;
 }) {
   return (
     <fieldset className="mt-4" data-testid="game-outcome-picker">
@@ -33,7 +35,7 @@ export function GameOutcomePicker({
           </button>
         ))}
       </div>
-      {value && <button type="button" disabled={disabled} onClick={() => onChange(null)} className="mt-2 min-h-9 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">Clear selection / use score instead</button>}
+      {value && <button type="button" disabled={disabled} onClick={() => onChange(null)} className="mt-2 min-h-9 text-xs font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">{clearLabel}</button>}
     </fieldset>
   );
 }

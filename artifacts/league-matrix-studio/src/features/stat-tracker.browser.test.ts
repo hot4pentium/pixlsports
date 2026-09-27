@@ -535,6 +535,17 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-end-live-game\\"]") !== null', Boolean);
     await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid") === "button-cancel-end-live-game"', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"radio-final-score-yes\\"]")?.checked === true && document.querySelector("[data-testid=\\"tracker-end-summary\\"]")?.textContent.includes("final score") === true', page.sessionId),
+      true,
+      'an entered scoreboard should offer to save the final score and explain that choice',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"radio-final-score-no\\"]")?.click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-game-outcome-win\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"tracker-end-summary\\"]")?.textContent.includes("Win result · no final score recorded")', Boolean);
+    await connection.evaluate('document.querySelector("[data-testid=\\"radio-final-score-yes\\"]")?.click()', page.sessionId);
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-game-outcome-loss\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"tracker-score-result-warning\\"]")?.textContent.includes("Both will be saved as shown")', Boolean);
     assert.deepEqual(
       await connection.evaluate<{
         confirmationParts: {
