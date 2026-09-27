@@ -40,6 +40,7 @@ import {
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardThumbnail } from './hype-card-thumbnail';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
+import { SupporterDashboardTour } from './supporter-dashboard-tour';
 import { GameOnCardPanel } from './game-on-card';
 import { GameOnInlineEditor } from './game-on-inline-editor';
 import {
@@ -230,6 +231,8 @@ function AthleteCardPreview({
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   userId?: string | null;
+  autoStartTour?: boolean;
+  onTourDismiss?: (kind: 'finish' | 'skip') => Promise<void>;
   prepUserId?: string | null;
   events: SupporterEvent[];
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
@@ -333,6 +336,8 @@ const stageCopy: Record<SupporterGameStage, {
 export function SupporterDashboardView({
   profile,
   userId,
+  autoStartTour = false,
+  onTourDismiss,
   prepUserId,
   events,
   onSaveCalendarEvent,
@@ -968,6 +973,9 @@ export function SupporterDashboardView({
 
         {/* Content */}
         <div className="px-4 py-6 flex flex-col gap-6 flex-1">
+           {!isDesktopDashboard && onTourDismiss && (
+             <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} autoStart={autoStartTour} onDismiss={onTourDismiss} />
+           )}
           <SupporterGameOnSummary
             variant="mobile"
             athleteName={profile.athleteName}
@@ -1022,6 +1030,9 @@ export function SupporterDashboardView({
       {/* DESKTOP VIEW (hidden on mobile) */}
       <div className="supporter-dashboard-desktop-shell w-full">
     <div className="pixl-dashboard w-full max-w-[1400px] mx-auto px-5 py-8 sm:px-8 space-y-12">
+      {isDesktopDashboard && onTourDismiss && (
+        <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} autoStart={autoStartTour} onDismiss={onTourDismiss} />
+      )}
       {showStageReminder && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 p-5 backdrop-blur-sm"

@@ -116,6 +116,7 @@ import {
 } from '@/features/workspace-context';
 import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
+import { getDashboardTourState, tourStateAfterSetup } from '@/features/supporter-dashboard-tour-state';
 import {
   completedChecklistCount,
   applyChecklistEventType,
@@ -1441,6 +1442,7 @@ function SupporterStudio() {
   const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const profile = supporterProfileFromUser(user);
+  const tourPending = getDashboardTourState(user?.unsafeMetadata) === 'pending';
   const localSchedule = readScheduleDraft();
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const accountAccessQuery = useGetAccountAccess({
@@ -1590,8 +1592,18 @@ function SupporterStudio() {
     <StudioLayout role="fan">
       <main className="flex-1 bg-background">
         <SupporterDashboardView
+          key={user?.id}
           profile={profile}
           userId={user?.id}
+          autoStartTour={tourPending && Boolean(
+            accountAccessQuery.isSuccess
+            && cloudProjectsQuery.isSuccess
+            && !cloudProjectsQuery.isFetching
+          )}
+          onTourDismiss={async () => {
+            if (!user) throw new Error('Sign in to save your tour choice.');
+            await user.updateMetadata({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), dashboardTour: 'done' } });
+          }}
           events={events}
           onSaveCalendarEvent={saveCardCalendarEvent}
           onCompleteScheduledGame={completeCardCalendarGame}
@@ -3853,7 +3865,7 @@ function SignInPage() {
 }
 
 function SignUpPage() {
-  const roleRedirect = `${basePath}/studio`;
+  const roleRedirect = `${basePath}/studio/setup`;
   const signInUrl = `${basePath}/sign-in`;
 
   return (
@@ -3882,6 +3894,9 @@ function RoleSelectionPage() {
     return <AccountLoadingScreen />;
   }
   if (!user) return <Redirect to="/sign-in" />;
+  if (existingProfile.role === 'fan' && existingProfile.teamName && existingProfile.displayName) {
+    return <Redirect to="/studio" />;
+  }
 
   const saveProfile = async () => {
     const cleanName = displayName.trim();
@@ -3904,6 +3919,10 @@ function RoleSelectionPage() {
           accessMode: selectedAccessMode,
           displayName: cleanName,
           teamName: cleanTeam,
+           ...(tourStateAfterSetup(
+             user.unsafeMetadata,
+             Boolean(existingProfile.role && existingProfile.teamName && existingProfile.displayName),
+           ) === 'pending' ? { dashboardTour: 'pending' } : {}),
         },
       });
       setLocation('/studio');
@@ -4199,6 +4218,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
+              <Route path="/studio/setup" component={RoleSelectionPage} />
               <Route path="/schedule/:shareToken" component={PublicSchedulePage} />
               <Route path="/game-on/:shareToken" component={PublicGameOnCardPage} />
                <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
