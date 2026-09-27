@@ -8,7 +8,9 @@ import {
   db,
   plannerCardNotificationDeliveriesTable,
   plannerNotificationDeliveriesTable,
+  plannerNotificationPreferencesTable,
   scheduleSharesTable,
+  statTrackerSharesTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { GAME_ON_CARD_MARKER } from "../routes/scheduleShares";
@@ -109,6 +111,7 @@ test("day-of reminders arrive at 7 AM locally and can be selected independently"
 test("planner job uses the most recently updated subscription timezone", async () => {
   const ownerId = `planner-timezone-test-${randomUUID()}`;
   const sent: Array<{ title: string }> = [];
+  const shareIds: string[] = [];
   let projectId: string | undefined;
 
   try {
@@ -130,18 +133,29 @@ test("planner job uses the most recently updated subscription timezone", async (
         updatedAt: new Date("2026-09-23T11:00:00.000Z"),
       },
     ]);
+    const [share] = await db.insert(scheduleSharesTable).values({
+      ownerClerkUserId: ownerId,
+      title: "Standalone Game On Card",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [cardEvent({
+        id: "timezone-card-game",
+        date: "2026-09-23",
+        time: "2:50 PM",
+      })],
+    }).returning({ id: scheduleSharesTable.id });
+    shareIds.push(share.id);
     const [project] = await db.insert(cloudProjectsTable).values({
       ownerClerkUserId: ownerId,
-      name: "Planner timezone test",
+      name: "Legacy Calendar timezone test",
       project: {
         tool: "schedule",
         teamName: "Test Team",
         season: "2026",
         events: [{
-          id: "meeting-1",
+          id: "legacy-meeting",
           type: "meeting",
           date: "2026-09-23",
-          time: "12:00",
+          time: "14:50",
           location: "Main office",
           opponent: "",
         }],
@@ -149,15 +163,30 @@ test("planner job uses the most recently updated subscription timezone", async (
     }).returning();
     projectId = project.id;
 
-    await runPlannerNotificationJob(new Date("2026-09-23T15:12:00.000Z"), {
+    await runPlannerNotificationJob(new Date("2026-09-23T17:50:00.000Z"), {
       sendPushNotificationToUser: async (_ownerId, payload) => {
         sent.push({ title: payload.title });
         return { configured: true, sent: 1, removed: 0 };
       },
     });
 
-    assert.deepEqual(sent, [{ title: "TEAM MEETING · IN 1 HOUR" }]);
+    assert.deepEqual(sent, [{ title: "GAME DAY · IN 1 HOUR" }]);
+    const cardDeliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, share.id));
+    assert.equal(cardDeliveries.length, 1);
+    assert.equal(cardDeliveries[0]?.notificationType, "one_hour");
+    assert.equal(cardDeliveries[0]?.eventDate, "2026-09-23");
+    const projectDeliveries = await db.select()
+      .from(plannerNotificationDeliveriesTable)
+      .where(eq(plannerNotificationDeliveriesTable.projectId, project.id));
+    assert.equal(projectDeliveries.length, 0);
   } finally {
+    for (const shareId of shareIds) {
+      await db.delete(plannerCardNotificationDeliveriesTable)
+        .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+      await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, shareId));
+    }
     if (projectId) {
       await db.delete(plannerNotificationDeliveriesTable)
         .where(eq(plannerNotificationDeliveriesTable.projectId, projectId));
@@ -170,21 +199,26 @@ test("planner job uses the most recently updated subscription timezone", async (
 
 test("planner job skips invalid dates, sends valid events, and deduplicates repeated runs", async () => {
   const ownerId = `planner-test-${randomUUID()}`;
-  const endpoint = `https://push.example.test/${randomUUID()}`;
-  const sent: Array<{ ownerId: string; tag?: string; title: string }> = [];
+  const shareIds: string[] = [];
   let projectId: string | undefined;
+  const sent: Array<{ ownerId: string; tag?: string; title: string }> = [];
 
   try {
-    await db.insert(webPushSubscriptionsTable).values({
+    await addPlannerSubscription(ownerId, "America/New_York");
+    const [share] = await db.insert(scheduleSharesTable).values({
       ownerClerkUserId: ownerId,
-      endpoint,
-      p256dh: "test-p256dh",
-      auth: "test-auth",
-      timezone: "America/New_York",
-    });
+      title: "Standalone Game On Card",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [cardEvent({
+        id: "event-1",
+        date: "2026-09-27",
+        time: "2:50 PM",
+      })],
+    }).returning({ id: scheduleSharesTable.id });
+    shareIds.push(share.id);
     const [project] = await db.insert(cloudProjectsTable).values({
       ownerClerkUserId: ownerId,
-      name: "Planner notification test",
+      name: "Legacy Calendar-only notification test",
       project: {
         tool: "schedule",
         teamName: "Test Team",
@@ -193,15 +227,15 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
           {
             id: "invalid-date",
             type: "game",
-            date: "2026-02-30",
+            date: "2026-09-31",
             opponent: "Ignored",
           },
           {
-            id: "event-1",
+            id: "legacy-event",
             type: "game",
             status: "upcoming",
-            date: "2026-03-10",
-            time: "13:00",
+            date: "2026-09-27",
+            time: "14:50",
             location: "Main Gym",
             opponent: "Falcons",
           },
@@ -219,7 +253,7 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
         return { configured: true, sent: 1, removed: 0 };
       },
     };
-    const oneHourBefore = new Date("2026-03-10T16:00:00.000Z");
+    const oneHourBefore = new Date("2026-09-27T17:50:00.000Z");
 
     await runPlannerNotificationJob(oneHourBefore, dependencies);
     await runPlannerNotificationJob(oneHourBefore, dependencies);
@@ -227,63 +261,49 @@ test("planner job skips invalid dates, sends valid events, and deduplicates repe
     assert.equal(sent.length, 1);
     assert.equal(sent[0]?.ownerId, ownerId);
     assert.equal(sent[0]?.title, "GAME DAY · IN 1 HOUR");
-    assert.match(sent[0]?.tag ?? "", /event-1-one_hour-2026-03-10/);
+    assert.match(sent[0]?.tag ?? "", /event-1-one_hour-2026-09-27/);
 
     const deliveriesAfterRepeat = await db
       .select()
-      .from(plannerNotificationDeliveriesTable)
-      .where(eq(plannerNotificationDeliveriesTable.projectId, projectId));
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, share.id));
     assert.equal(deliveriesAfterRepeat.length, 1);
-    assert.equal(deliveriesAfterRepeat[0]?.eventDate, "2026-03-10");
+    assert.equal(deliveriesAfterRepeat[0]?.eventDate, "2026-09-27");
 
-    await db.update(cloudProjectsTable).set({
-      project: {
-        tool: "schedule",
-        teamName: "Test Team",
-        season: "2026",
-        events: [
-          {
-            id: "invalid-date",
-            type: "game",
-            date: "not-a-date",
-            opponent: "Ignored",
-          },
-          {
-            id: "event-1",
-            type: "game",
-            status: "upcoming",
-            date: "2026-03-11",
-            time: "13:00",
-            location: "Main Gym",
-            opponent: "Falcons",
-          },
-        ],
-      },
-    }).where(eq(cloudProjectsTable.id, projectId));
+    await db.update(scheduleSharesTable).set({
+      events: [cardEvent({
+        id: "event-1",
+        date: "2026-09-28",
+        time: "2:50 PM",
+      })],
+    }).where(eq(scheduleSharesTable.id, share.id));
 
-    await runPlannerNotificationJob(new Date("2026-03-11T16:00:00.000Z"), dependencies);
+    await runPlannerNotificationJob(new Date("2026-09-28T17:50:00.000Z"), dependencies);
 
     assert.equal(sent.length, 2);
-    assert.match(sent[1]?.tag ?? "", /event-1-one_hour-2026-03-11/);
+    assert.match(sent[1]?.tag ?? "", /event-1-one_hour-2026-09-28/);
     const deliveriesAfterDateChange = await db
       .select()
-      .from(plannerNotificationDeliveriesTable)
+      .from(plannerCardNotificationDeliveriesTable)
       .where(and(
-        eq(plannerNotificationDeliveriesTable.projectId, projectId),
-        eq(plannerNotificationDeliveriesTable.eventId, "event-1"),
+        eq(plannerCardNotificationDeliveriesTable.shareId, share.id),
+        eq(plannerCardNotificationDeliveriesTable.eventId, "event-1"),
       ));
     assert.deepEqual(
       deliveriesAfterDateChange.map((delivery) => delivery.eventDate).sort(),
-      ["2026-03-10", "2026-03-11"],
+      ["2026-09-27", "2026-09-28"],
     );
+    const legacyProjectDeliveries = await db.select()
+      .from(plannerNotificationDeliveriesTable)
+      .where(eq(plannerNotificationDeliveriesTable.projectId, project.id));
+    assert.equal(legacyProjectDeliveries.length, 0);
   } finally {
+    await cleanCardFixture(ownerId, shareIds);
     if (projectId) {
       await db.delete(plannerNotificationDeliveriesTable)
         .where(eq(plannerNotificationDeliveriesTable.projectId, projectId));
       await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, projectId));
     }
-    await db.delete(webPushSubscriptionsTable)
-      .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerId));
   }
 });
 
@@ -308,13 +328,13 @@ async function insertGameOnCard(ownerId: string, events: unknown[] = [cardEvent(
   return share.id;
 }
 
-async function addPlannerSubscription(ownerId: string) {
+async function addPlannerSubscription(ownerId: string, timezone = "UTC") {
   await db.insert(webPushSubscriptionsTable).values({
     ownerClerkUserId: ownerId,
     endpoint: `https://push.example.test/${randomUUID()}`,
     p256dh: "card-test-p256dh",
     auth: "card-test-auth",
-    timezone: "UTC",
+    timezone,
   });
 }
 
@@ -329,6 +349,8 @@ async function cleanCardFixture(ownerId: string, shareIds: string[], projectIds:
       .where(eq(plannerNotificationDeliveriesTable.projectId, projectId));
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, projectId));
   }
+  await db.delete(plannerNotificationPreferencesTable)
+    .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
   await db.delete(webPushSubscriptionsTable)
     .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerId));
 }
@@ -336,7 +358,7 @@ async function cleanCardFixture(ownerId: string, shareIds: string[], projectIds:
 test("planner sends and records a one-hour reminder for a standalone Game On Card", async () => {
   const ownerId = `planner-card-test-${randomUUID()}`;
   const shareIds: string[] = [];
-  const sent: Array<{ ownerId: string; title: string; tag?: string }> = [];
+  const sent: Array<{ ownerId: string; title: string; body: string; tag?: string }> = [];
 
   try {
     await addPlannerSubscription(ownerId);
@@ -344,7 +366,7 @@ test("planner sends and records a one-hour reminder for a standalone Game On Car
 
     await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
       sendPushNotificationToUser: async (sentOwnerId, payload) => {
-        sent.push({ ownerId: sentOwnerId, title: payload.title, tag: payload.tag });
+        sent.push({ ownerId: sentOwnerId, title: payload.title, body: payload.body, tag: payload.tag });
         return { configured: true, sent: 1, removed: 0 };
       },
     });
@@ -352,6 +374,10 @@ test("planner sends and records a one-hour reminder for a standalone Game On Car
     assert.equal(sent.length, 1);
     assert.equal(sent[0]?.ownerId, ownerId);
     assert.equal(sent[0]?.title, "GAME DAY · IN 1 HOUR");
+    assert.equal(sent[0]?.body, "Open Pixl Sports to see your Game On Card.");
+    for (const privateDetail of ["Falcons", "Main Field", "Standalone Game On Card"]) {
+      assert.equal(sent[0]?.body.includes(privateDetail), false);
+    }
     assert.match(sent[0]?.tag ?? "", /^planner-card-/);
     const deliveries = await db.select()
       .from(plannerCardNotificationDeliveriesTable)
@@ -360,6 +386,213 @@ test("planner sends and records a one-hour reminder for a standalone Game On Car
     assert.equal(deliveries[0]?.eventId, "game-on-card-event");
     assert.equal(deliveries[0]?.eventDate, "2026-09-27");
     assert.equal(deliveries[0]?.notificationType, "one_hour");
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("planner releases its claim when the card date changes before eligibility recheck", async () => {
+  const ownerId = `planner-card-recheck-edit-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+  let hookCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      beforeEligibilityRecheck: async (claimedShareId) => {
+        assert.equal(claimedShareId, shareId);
+        hookCount += 1;
+        await db.update(scheduleSharesTable).set({
+          events: [cardEvent({ date: "2026-09-28" })],
+        }).where(eq(scheduleSharesTable.id, shareId));
+      },
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.equal(hookCount, 1);
+    assert.equal(sendCount, 0);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(deliveries.length, 0);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("planner releases its claim when a tracker game is finalized before eligibility recheck", async () => {
+  const ownerId = `planner-card-recheck-tracker-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+  let hookCount = 0;
+  const event = cardEvent({ id: "recheck-tracker-game" });
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId, [event]);
+    shareIds.push(shareId);
+    await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: event.id,
+      athleteName: "Recheck Test Athlete",
+      teamName: "Recheck Test Team",
+      game: { status: "live" },
+      expiresAt: new Date("2026-09-28T13:50:00.000Z"),
+    });
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      beforeEligibilityRecheck: async (claimedShareId) => {
+        assert.equal(claimedShareId, shareId);
+        hookCount += 1;
+        await db.update(statTrackerSharesTable).set({
+          game: { status: "final" },
+        }).where(and(
+          eq(statTrackerSharesTable.ownerClerkUserId, ownerId),
+          eq(statTrackerSharesTable.gameId, event.id),
+        ));
+      },
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.equal(hookCount, 1);
+    assert.equal(sendCount, 0);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(deliveries.length, 0);
+  } finally {
+    await db.delete(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("planner releases its claim when reminder preference is disabled before eligibility recheck", async () => {
+  const ownerId = `planner-card-recheck-preference-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+  let hookCount = 0;
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      beforeEligibilityRecheck: async (claimedShareId) => {
+        assert.equal(claimedShareId, shareId);
+        hookCount += 1;
+        await db.insert(plannerNotificationPreferencesTable).values({
+          ownerClerkUserId: ownerId,
+          oneHourBefore: false,
+          dayOf: false,
+        });
+      },
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.equal(hookCount, 1);
+    assert.equal(sendCount, 0);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(deliveries.length, 0);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("planner sends one-hour practice reminders from Game On Cards", async () => {
+  const ownerId = `planner-card-practice-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sentTitles: string[] = [];
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId, [
+      cardEvent({ id: "practice-event", type: "practice" }),
+    ]);
+    shareIds.push(shareId);
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      sendPushNotificationToUser: async (_sentOwnerId, payload) => {
+        sentTitles.push(payload.title);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.deepEqual(sentTitles, ["PRACTICE · IN 1 HOUR"]);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0]?.eventId, "practice-event");
+    assert.equal(deliveries[0]?.notificationType, "one_hour");
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("planner honors card reminder preference toggles", async () => {
+  const ownerId = `planner-card-preferences-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sentTitles: string[] = [];
+  const dependencies = {
+    sendPushNotificationToUser: async (_sentOwnerId: string, payload: { title: string }) => {
+      sentTitles.push(payload.title);
+      return { configured: true, sent: 1, removed: 0 };
+    },
+  };
+
+  try {
+    await addPlannerSubscription(ownerId);
+    const shareId = await insertGameOnCard(ownerId);
+    shareIds.push(shareId);
+    await db.insert(plannerNotificationPreferencesTable).values({
+      ownerClerkUserId: ownerId,
+      oneHourBefore: false,
+      dayOf: false,
+    });
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), dependencies);
+    assert.deepEqual(sentTitles, []);
+    await db.update(plannerNotificationPreferencesTable).set({
+      oneHourBefore: false,
+      dayOf: true,
+    }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
+    await runPlannerNotificationJob(new Date("2026-09-27T07:00:00.000Z"), dependencies);
+    assert.deepEqual(sentTitles, ["GAME DAY · TODAY"]);
+
+    await db.update(plannerNotificationPreferencesTable).set({
+      oneHourBefore: true,
+      dayOf: false,
+    }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
+    await db.update(scheduleSharesTable).set({
+      events: [cardEvent({ date: "2026-09-28" })],
+    }).where(eq(scheduleSharesTable.id, shareId));
+    await runPlannerNotificationJob(new Date("2026-09-28T13:50:00.000Z"), dependencies);
+    assert.deepEqual(sentTitles, ["GAME DAY · TODAY", "GAME DAY · IN 1 HOUR"]);
+
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
+    assert.deepEqual(
+      deliveries.map((delivery) => delivery.notificationType).sort(),
+      ["day_of", "one_hour"],
+    );
   } finally {
     await cleanCardFixture(ownerId, shareIds);
   }
@@ -434,7 +667,7 @@ test("deleted Game On Cards do not produce future planner reminders", async () =
   }
 });
 
-test("planner skips final Game On Cards and cards matching a Calendar event", async () => {
+test("planner ignores legacy Calendar events and skips final Game On Cards", async () => {
   const ownerId = `planner-card-skip-test-${randomUUID()}`;
   const shareIds: string[] = [];
   const projectIds: string[] = [];
@@ -466,16 +699,55 @@ test("planner skips final Game On Cards and cards matching a Calendar event", as
     });
 
     assert.deepEqual(sentTitles, ["GAME DAY · IN 1 HOUR"]);
-    const cardDeliveries = await db.select()
-      .from(plannerCardNotificationDeliveriesTable)
-      .where(eq(plannerCardNotificationDeliveriesTable.shareId, duplicateCardId));
-    assert.equal(cardDeliveries.length, 0);
+    const deliveriesByCard = await Promise.all(shareIds.map((shareId) => (
+      db.select()
+        .from(plannerCardNotificationDeliveriesTable)
+        .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId))
+    )));
+    assert.equal(deliveriesByCard.reduce((sum, deliveries) => sum + deliveries.length, 0), 1);
     const projectDeliveries = await db.select()
       .from(plannerNotificationDeliveriesTable)
       .where(eq(plannerNotificationDeliveriesTable.projectId, project.id));
-    assert.equal(projectDeliveries.length, 1);
+    assert.equal(projectDeliveries.length, 0);
   } finally {
     await cleanCardFixture(ownerId, shareIds, projectIds);
+  }
+});
+
+test("planner skips a Game On Card whose tracker game is finalized", async () => {
+  const ownerId = `planner-card-final-tracker-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sendCount = 0;
+  const event = cardEvent({ id: "tracker-finalized-game" });
+
+  try {
+    await addPlannerSubscription(ownerId);
+    shareIds.push(await insertGameOnCard(ownerId, [event]));
+    await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: event.id,
+      athleteName: "Test Athlete",
+      teamName: "Test Team",
+      game: { status: "final", opponent: event.opponent },
+      expiresAt: new Date("2026-09-28T13:50:00.000Z"),
+    });
+
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), {
+      sendPushNotificationToUser: async () => {
+        sendCount += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    });
+
+    assert.equal(sendCount, 0);
+    const deliveries = await db.select()
+      .from(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareIds[0]!));
+    assert.equal(deliveries.length, 0);
+  } finally {
+    await db.delete(statTrackerSharesTable)
+      .where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
+    await cleanCardFixture(ownerId, shareIds);
   }
 });
 

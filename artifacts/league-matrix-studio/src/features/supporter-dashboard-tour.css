@@ -2,13 +2,12 @@
 
 .supporter-tour {
   --tour-ink: #0b1f3a;
-  --tour-panel: #102b4d;
   --tour-blue: #55a4ff;
   --tour-orange: #ff6433;
   --tour-paper: #f3f6fa;
   box-sizing: border-box;
   width: min(100%, 560px);
-  margin: 18px 0 18px auto;
+  margin: 18px auto 18px 0;
   color: var(--tour-paper);
   font-family: "DM Sans", sans-serif;
 }
@@ -30,7 +29,6 @@
   min-height: 44px;
   align-items: center;
   gap: 9px;
-  margin-left: auto;
   padding: 8px 14px;
   border: 1px solid #47709c;
   border-radius: 4px;
@@ -51,10 +49,10 @@
   position: relative;
   margin-top: 10px;
   overflow: hidden;
-  border: 1px solid #476b92;
+  border: 1px solid #df8759;
   border-top: 3px solid var(--tour-orange);
   border-radius: 5px;
-  background: var(--tour-panel);
+  background: linear-gradient(125deg, #a64717 0%, #8e3517 52%, #522820 100%);
   box-shadow: 0 14px 32px rgba(4, 20, 39, .18);
 }
 
@@ -65,7 +63,7 @@
   height: 100%;
   pointer-events: none;
   opacity: .24;
-  background-image: linear-gradient(90deg, #55a4ff24 1px, transparent 1px), linear-gradient(#55a4ff24 1px, transparent 1px);
+  background-image: linear-gradient(90deg, #ffd4a624 1px, transparent 1px), linear-gradient(#ffd4a624 1px, transparent 1px);
   background-size: 38px 38px;
 }
 
@@ -76,19 +74,19 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 6px 14px;
-  color: var(--tour-blue);
+  color: #ffe0c1;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .16em;
   text-transform: uppercase;
 }
-.supporter-tour__count { color: #c5d6ea; letter-spacing: .1em; }
+.supporter-tour__count { color: #fff4e8; letter-spacing: .1em; }
 .supporter-tour__path {
   display: flex;
   align-items: center;
   gap: 7px;
   margin: 14px 0 17px;
-  color: #c5d6ea;
+  color: #fff4e8;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -106,7 +104,7 @@
   background: var(--tour-orange);
   vertical-align: 2px;
 }
-.supporter-tour__path-arrow { color: var(--tour-blue); opacity: .7; }
+.supporter-tour__path-arrow { color: #ffd09e; }
 .supporter-tour__heading {
   margin: 0;
   font: 800 clamp(28px, 6vw, 38px)/.98 "Barlow Condensed", sans-serif;
@@ -116,7 +114,7 @@
 .supporter-tour__description {
   max-width: 44ch;
   margin: 10px 0 17px;
-  color: #d2deed;
+  color: #fff1e5;
   font-size: 13px;
   line-height: 1.55;
 }
@@ -141,7 +139,7 @@
 .supporter-tour__visit-arrow { color: #add0ff; }
 .supporter-tour__example-hint {
   margin: 9px 0 0;
-  color: #c5d6ea;
+  color: #fff1e5;
   font-size: 11px;
 }
 .supporter-tour__progress {
@@ -173,7 +171,7 @@
 }
 .supporter-tour__control:hover:not(:disabled) { transform: translateY(-2px); }
 .supporter-tour__control:disabled { opacity: .45; cursor: not-allowed; }
-.supporter-tour__control--skip { margin-right: auto; border-color: transparent; color: #d2deed; }
+.supporter-tour__control--skip { margin-right: auto; border-color: transparent; color: #fff1e5; }
 .supporter-tour__control--primary { border-color: #55a4ff; background: #2878f5; color: #f3f6fa; }
 .supporter-tour__error {
   margin: 0 0 12px;
@@ -184,7 +182,7 @@
   font-size: 12px;
   line-height: 1.4;
 }
-.supporter-tour__saving { margin: 0 0 12px; color: #d2deed; font-size: 12px; }
+.supporter-tour__saving { margin: 0 0 12px; color: #fff1e5; font-size: 12px; }
 
 @media (max-width: 480px) {
   .supporter-tour { width: 100%; margin-block: 12px 20px; padding-inline: 12px; }

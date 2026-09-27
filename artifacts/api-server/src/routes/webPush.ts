@@ -231,8 +231,8 @@ router.post("/notifications/test", requireAuth, async (req, res): Promise<void> 
   if (!getWebPushConfig().available) { res.status(503).json({ error: "Push notifications are not configured on this server." }); return; }
   try {
     const result = await sendPushNotificationToUser(getRequiredClerkUserId(res), {
-      title: "Pixl Sports is locked in",
-      body: "Test alert received. You’re ready for Hype Card replies.",
+      title: "Pixl Sports test alert",
+      body: "This device can receive alerts. Game On reminders also need an upcoming card and saved preferences.",
       url: "/studio/profile",
       tag: "pixl-test-notification",
     });

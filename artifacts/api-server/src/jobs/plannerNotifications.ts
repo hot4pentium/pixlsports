@@ -1,19 +1,19 @@
-import { and, desc, eq, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import {
-  cloudProjectsTable,
+  accountAccessTable,
   db,
   plannerCardNotificationDeliveriesTable,
-  plannerNotificationDeliveriesTable,
   plannerNotificationPreferencesTable,
   scheduleSharesTable,
+  statTrackerSharesTable,
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { sendPushNotificationToUser } from "../lib/webPush";
 import { GAME_ON_CARD_MARKER } from "../routes/scheduleShares";
 
-const INTERVAL_MS = 15 * 60 * 1000;
+const INTERVAL_MS = 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const MORNING_HOUR = 7;
 const CAPTURE_OPEN_GRACE_MS = 3 * ONE_HOUR_MS;
@@ -22,7 +22,7 @@ const PENDING_DELIVERY_HEARTBEAT_MS = 20 * 1000;
 
 type PlannerEvent = {
   id: string;
-  type: "game" | "practice" | "meeting";
+  type: "game" | "practice";
   status?: "upcoming" | "live" | "final";
   date: string;
   time: string;
@@ -30,9 +30,8 @@ type PlannerEvent = {
   opponent: string;
 };
 
-type PlannerProject = {
+type ReminderCard = {
   teamName: string;
-  season: string;
   events: PlannerEvent[];
 };
 
@@ -62,35 +61,15 @@ function isPlannerEvent(value: unknown): value is PlannerEvent {
   if (!value || typeof value !== "object") return false;
   const event = value as Partial<PlannerEvent>;
   return typeof event.id === "string"
-    && (event.type === "game" || event.type === "practice" || event.type === "meeting")
+    && (event.type === "game" || event.type === "practice")
     && isValidEventDate(asString(event.date));
 }
 
-function parsePlannerProject(value: unknown): PlannerProject | null {
-  if (!value || typeof value !== "object") return null;
-  const project = value as { tool?: unknown; teamName?: unknown; season?: unknown; events?: unknown };
-  if (project.tool !== "schedule" || !Array.isArray(project.events)) return null;
-  return {
-    teamName: asString(project.teamName),
-    season: asString(project.season),
-    events: project.events.filter(isPlannerEvent).map((event) => ({
-      id: event.id,
-      type: event.type,
-      ...(event.status ? { status: event.status } : {}),
-      date: event.date,
-      time: asString(event.time),
-      location: asString(event.location),
-      opponent: asString(event.opponent),
-    })),
-  };
-}
-
-function parseGameOnCard(events: unknown, teamName: string): PlannerProject | null {
-  if (!Array.isArray(events) || events.length !== 1 || !isPlannerEvent(events[0]) || events[0].type === "meeting") return null;
+function parseGameOnCard(events: unknown, teamName: string): ReminderCard | null {
+  if (!Array.isArray(events) || events.length !== 1 || !isPlannerEvent(events[0])) return null;
   const event = events[0];
   return {
     teamName,
-    season: "",
     events: [{
       id: event.id,
       type: event.type,
@@ -227,40 +206,22 @@ function getReminderTypes(
   return reminders;
 }
 
-function eventLabel(event: PlannerEvent) {
-  if (event.type === "game") return event.opponent ? `Game vs ${event.opponent}` : "Game day";
-  if (event.type === "practice") return "Practice";
-  return "Team meeting";
-}
-
-function eventDetails(event: PlannerEvent) {
-  const details = [
-    event.time ? `at ${event.time}` : "",
-    event.location ? `at ${event.location}` : "",
-  ].filter(Boolean);
-  return details.length > 0 ? ` ${details.join(" ")}` : "";
-}
-
 function reminderPayload(
-  project: PlannerProject,
   event: PlannerEvent,
   reminderType: PlannerReminderType,
 ) {
-  const label = eventLabel(event);
-  const eventTypeLabel = event.type === "game"
-    ? "GAME DAY"
-    : event.type === "practice"
-      ? "PRACTICE"
-      : "TEAM MEETING";
+  const eventTypeLabel = event.type === "game" ? "GAME DAY" : "PRACTICE";
   return {
     title: reminderType === "one_hour"
       ? `${eventTypeLabel} · IN 1 HOUR`
       : reminderType === "capture_open"
         ? `${eventTypeLabel} · CAPTURE OPEN`
         : `${eventTypeLabel} · TODAY`,
+    // Push notifications can outlive a browser sign-out on a shared device.
+    // Keep private card details behind the authenticated app, not in the OS tray.
     body: reminderType === "day_of"
-      ? `${label}${eventDetails(event)}. ${project.teamName || "Your team"} is on your schedule today. Open Pixl Sports to see the full week.`
-      : `${label}${eventDetails(event)}. ${project.teamName || "Your team"} is ready in Pixl Sports.`,
+      ? "You have a Game On Card today. Sign in to see the details."
+      : "Open Pixl Sports to see your Game On Card.",
     url: "/studio",
   };
 }
@@ -275,51 +236,16 @@ export function getPlannerReminderTypesForTest(
   return getReminderTypes(eventDate, eventTime, now, timezone, preferences);
 }
 
-async function sendPlannerReminder(
-  projectId: string,
-  ownerClerkUserId: string,
-  project: PlannerProject,
-  event: PlannerEvent,
-  reminderType: PlannerReminderType,
-  sendPush: typeof sendPushNotificationToUser,
-) {
-  const [existingDelivery] = await db
-    .select({ id: plannerNotificationDeliveriesTable.id })
-    .from(plannerNotificationDeliveriesTable)
-    .where(and(
-      eq(plannerNotificationDeliveriesTable.projectId, projectId),
-      eq(plannerNotificationDeliveriesTable.eventId, event.id),
-      eq(plannerNotificationDeliveriesTable.notificationType, reminderType),
-      eq(plannerNotificationDeliveriesTable.eventDate, event.date),
-    ))
-    .limit(1);
-  if (existingDelivery) return;
-  const deliveryId = randomUUID();
-
-  const result = await sendPush(ownerClerkUserId, {
-    ...reminderPayload(project, event, reminderType),
-    deliveryId,
-    tag: `planner-${projectId}-${event.id}-${reminderType}-${event.date}`,
-  });
-  if (result.sent === 0) return;
-
-  await db.insert(plannerNotificationDeliveriesTable).values({
-    id: deliveryId,
-    projectId,
-    eventId: event.id,
-    notificationType: reminderType,
-    eventDate: event.date,
-  }).onConflictDoNothing();
-}
-
 async function sendGameOnCardReminder(
   shareId: string,
   ownerClerkUserId: string,
-  card: PlannerProject,
+  card: ReminderCard,
   event: PlannerEvent,
   reminderType: PlannerReminderType,
   sendPush: typeof sendPushNotificationToUser,
   heartbeatMs: number,
+  reminderNow: Date,
+  beforeEligibilityRecheck?: (shareId: string) => Promise<void>,
 ) {
   const deliveryKey = and(
     eq(plannerCardNotificationDeliveriesTable.shareId, shareId),
@@ -356,6 +282,60 @@ async function sendGameOnCardReminder(
     if (!reclaimed) return true;
   }
 
+  await beforeEligibilityRecheck?.(shareId);
+  // A card can be edited or removed while this run is selecting candidates.
+  // Re-read the current event before contacting a push service.
+  const [currentShare] = await db.select({
+    ownerClerkUserId: scheduleSharesTable.ownerClerkUserId,
+    title: scheduleSharesTable.title,
+    events: scheduleSharesTable.events,
+  }).from(scheduleSharesTable).where(and(
+    eq(scheduleSharesTable.id, shareId),
+    eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER),
+  )).limit(1);
+  const currentCard = currentShare && parseGameOnCard(currentShare.events, currentShare.title);
+  const currentEvent = currentCard?.events[0];
+  if (currentShare?.ownerClerkUserId !== ownerClerkUserId
+    || currentCard?.teamName !== card.teamName
+    || currentEvent?.id !== event.id
+    || currentEvent?.date !== event.date
+    || currentEvent?.time !== event.time
+    || currentEvent?.status !== event.status
+    || currentEvent?.type !== event.type) {
+    await db.delete(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+    return false;
+  }
+
+  const [[latestSubscription], [latestPreferences], [account], trackerShares] = await Promise.all([
+    db.select({ timezone: webPushSubscriptionsTable.timezone })
+      .from(webPushSubscriptionsTable)
+      .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId))
+      .orderBy(desc(webPushSubscriptionsTable.updatedAt)).limit(1),
+    db.select({ oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore, dayOf: plannerNotificationPreferencesTable.dayOf })
+      .from(plannerNotificationPreferencesTable)
+      .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId)).limit(1),
+    db.select({ lifecycleStatus: accountAccessTable.lifecycleStatus, pauseEndsAt: accountAccessTable.pauseEndsAt })
+      .from(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId)).limit(1),
+    event.type === "game"
+      ? db.select({ game: statTrackerSharesTable.game }).from(statTrackerSharesTable)
+        .where(and(eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId), eq(statTrackerSharesTable.gameId, event.id))).limit(1)
+      : Promise.resolve([] as Array<{ game: unknown }>),
+  ]);
+  const accountInactive = account && account.lifecycleStatus !== "active"
+    && !(account.lifecycleStatus === "paused" && account.pauseEndsAt && account.pauseEndsAt <= reminderNow);
+  if (!latestSubscription
+    || accountInactive
+    || trackerShares.some((share) => (share.game as { status?: unknown })?.status === "final")
+    || !getReminderTypes(
+      event.date, event.time, reminderNow, latestSubscription.timezone || "UTC",
+      latestPreferences ?? DEFAULT_REMINDER_PREFERENCES,
+    ).includes(reminderType)) {
+    await db.delete(plannerCardNotificationDeliveriesTable)
+      .where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
+    return false;
+  }
+
   const heartbeat = setInterval(() => {
     void db.update(plannerCardNotificationDeliveriesTable)
       .set({ createdAt: new Date() })
@@ -369,7 +349,7 @@ async function sendGameOnCardReminder(
   let result: Awaited<ReturnType<typeof sendPush>>;
   try {
     result = await sendPush(ownerClerkUserId, {
-      ...reminderPayload(card, event, reminderType),
+      ...reminderPayload(event, reminderType),
       deliveryId,
       tag: `planner-card-${shareId}-${event.id}-${reminderType}-${event.date}`,
     });
@@ -392,6 +372,7 @@ async function sendGameOnCardReminder(
 export type PlannerNotificationJobDependencies = {
   sendPushNotificationToUser?: typeof sendPushNotificationToUser;
   pendingDeliveryHeartbeatMs?: number;
+  beforeEligibilityRecheck?: (shareId: string) => Promise<void>;
 };
 
 export async function runPlannerNotificationJob(
@@ -428,34 +409,6 @@ export async function runPlannerNotificationJob(
     }]),
   );
 
-  const projects = await db
-    .select({
-      id: cloudProjectsTable.id,
-      ownerClerkUserId: cloudProjectsTable.ownerClerkUserId,
-      project: cloudProjectsTable.project,
-    })
-    .from(cloudProjectsTable);
-
-  const calendarEvents = new Set<string>();
-  const eventKey = (owner: string, event: PlannerEvent) => `${owner}\0${event.id}\0${event.date}`;
-  for (const row of projects) {
-    const timezone = owners.get(row.ownerClerkUserId);
-    if (!timezone) continue;
-    const project = parsePlannerProject(row.project);
-    if (!project) continue;
-    const preferences = preferencesByOwner.get(row.ownerClerkUserId) ?? DEFAULT_REMINDER_PREFERENCES;
-    for (const event of project.events) {
-      if (event.status === "final" || parseEventTime(event.time)) {
-        calendarEvents.add(eventKey(row.ownerClerkUserId, event));
-      }
-      if (event.type === "game" && event.status === "final") continue;
-      const reminderTypes = getReminderTypes(event.date, event.time, now, timezone, preferences);
-      for (const reminderType of reminderTypes) {
-        await sendPlannerReminder(row.id, row.ownerClerkUserId, project, event, reminderType, sendPush);
-      }
-    }
-  }
-
   const cards = await db
     .select({
       id: scheduleSharesTable.id,
@@ -465,25 +418,46 @@ export async function runPlannerNotificationJob(
     })
     .from(scheduleSharesTable)
     .where(eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER))
-    .orderBy(desc(scheduleSharesTable.updatedAt));
+    .orderBy(desc(scheduleSharesTable.updatedAt), desc(scheduleSharesTable.id));
+  const [accountRows, trackerRows] = await Promise.all([
+    db.select({
+      ownerClerkUserId: accountAccessTable.ownerClerkUserId,
+      lifecycleStatus: accountAccessTable.lifecycleStatus,
+      pauseEndsAt: accountAccessTable.pauseEndsAt,
+    }).from(accountAccessTable).where(inArray(accountAccessTable.ownerClerkUserId, [...owners.keys()])),
+    db.select({
+      ownerClerkUserId: statTrackerSharesTable.ownerClerkUserId,
+      gameId: statTrackerSharesTable.gameId,
+      game: statTrackerSharesTable.game,
+    }).from(statTrackerSharesTable).where(inArray(statTrackerSharesTable.ownerClerkUserId, [...owners.keys()])),
+  ]);
+  const inactiveOwners = new Set(accountRows
+    .filter((row) => row.lifecycleStatus !== "active"
+      && !(row.lifecycleStatus === "paused" && row.pauseEndsAt && row.pauseEndsAt <= now))
+    .map((row) => row.ownerClerkUserId));
+  const finalTrackedGames = new Set(trackerRows
+    .filter((row) => (row.game as { status?: unknown })?.status === "final")
+    .map((row) => `${row.ownerClerkUserId}\0${row.gameId}`));
   const cardEvents = new Set<string>();
   for (const row of cards) {
     const timezone = owners.get(row.ownerClerkUserId);
-    if (!timezone) continue;
+    if (!timezone || inactiveOwners.has(row.ownerClerkUserId)) continue;
     const card = parseGameOnCard(row.events, row.title);
     if (!card) continue;
     const event = card.events[0];
-    const key = eventKey(row.ownerClerkUserId, event);
-    if (calendarEvents.has(key) || cardEvents.has(key)) continue;
-    if (event.status === "final") continue;
+    const key = `${row.ownerClerkUserId}\0${event.id}\0${event.date}`;
+    if (cardEvents.has(key)) continue;
+    // The newest card is authoritative if duplicate shares reference one event.
+    cardEvents.add(key);
+    if (event.status === "final"
+      || (event.type === "game" && finalTrackedGames.has(`${row.ownerClerkUserId}\0${event.id}`))) continue;
     const preferences = preferencesByOwner.get(row.ownerClerkUserId) ?? DEFAULT_REMINDER_PREFERENCES;
     for (const reminderType of getReminderTypes(event.date, event.time, now, timezone, preferences)) {
-      if (await sendGameOnCardReminder(
+      await sendGameOnCardReminder(
         row.id, row.ownerClerkUserId, card, event, reminderType, sendPush,
-        dependencies.pendingDeliveryHeartbeatMs ?? PENDING_DELIVERY_HEARTBEAT_MS,
-      )) {
-        cardEvents.add(key);
-      }
+        dependencies.pendingDeliveryHeartbeatMs ?? PENDING_DELIVERY_HEARTBEAT_MS, now,
+        dependencies.beforeEligibilityRecheck,
+      );
     }
   }
 }
