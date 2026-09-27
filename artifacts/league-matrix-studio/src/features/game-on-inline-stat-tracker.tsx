@@ -3,10 +3,13 @@ import { Link } from 'wouter';
 import { CircleStop, ExternalLink, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react';
 import {
   addStatEvent,
+  advanceGamePeriod,
   adjustScore,
   countStatEventsByAttribution,
   createGameSession,
   endGame,
+  getGamePhaseLabel,
+  outcomeFromScore,
   getSportRule,
   getTrackerStorageKeys,
   getTrackerSportForProfile,
@@ -15,9 +18,12 @@ import {
   saveStoredActiveGame,
   undoLastStatEvent,
   type GameSession,
+  type GameOutcome,
   type Sport,
 } from './stat-tracker';
 import { buildWorkspaceToolHref } from './workspace-context';
+import { GameOutcomePicker, TrackerCompletionDialog } from './tracker-completion-dialog';
+import { SoccerPeriodChoice } from './tracker-period-controls';
 import './game-on-inline-stat-tracker.css';
 
 type GameOnInlineStatTrackerProps = {
@@ -80,6 +86,9 @@ export function GameOnInlineStatTracker({
   const [calendarStatusSyncError, setCalendarStatusSyncError] = useState('');
   const [endedElsewhere, setEndedElsewhere] = useState(false);
   const [confirmEndGame, setConfirmEndGame] = useState(false);
+  const [includeFinalScore, setIncludeFinalScore] = useState(false);
+  const [manualOutcome, setManualOutcome] = useState<GameOutcome | null>(null);
+  const [completionOpen, setCompletionOpen] = useState(false);
   const trackerHref = buildWorkspaceToolHref('stats', {
     id: eventId,
     type: 'game',
@@ -118,7 +127,12 @@ export function GameOnInlineStatTracker({
     if (!userId) return;
     try {
       const storedData = readStoredTrackerData(window.localStorage, userId);
-      const next = createGameSession(getTrackerSportForProfile(storedData, sport), { date, opponent });
+      const nextSport = getTrackerSportForProfile(storedData, sport);
+      const next = createGameSession(nextSport, {
+        date,
+        opponent,
+        ...(nextSport === 'soccer' ? { soccerPeriodFormat: null } : {}),
+      });
       saveStoredActiveGame(window.localStorage, userId, next);
       setOtherActiveGame(null);
       setCompletedGame(null);
@@ -230,7 +244,7 @@ export function GameOnInlineStatTracker({
     const current = currentGameRef.current;
     if (!current || !userId) return;
     try {
-      const completed = endGame(current);
+      const completed = endGame({ ...current, ...(manualOutcome ? { outcome: manualOutcome } : {}) }, new Date(), includeFinalScore);
       const storedData = readStoredTrackerData(window.localStorage, userId);
       const nextData = {
         ...storedData,
@@ -239,8 +253,9 @@ export function GameOnInlineStatTracker({
       window.localStorage.setItem(getTrackerStorageKeys(userId).history, JSON.stringify(nextData));
       saveStoredActiveGame(window.localStorage, userId, null);
       setCurrentGame(null);
-      focusCompletedStatusOnEnd.current = true;
+      focusCompletedStatusOnEnd.current = false;
       setCompletedGame(completed);
+      setCompletionOpen(true);
       setOtherActiveGame(null);
       setEndedElsewhere(false);
       setConfirmEndGame(false);
@@ -317,6 +332,16 @@ export function GameOnInlineStatTracker({
         </div>
       ) : error && !game ? (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">{error}</p>
+      ) : game && rule && game.sport === 'soccer' && game.soccerPeriodFormat === null ? (
+        <div className="game-on-quick-tracker__message" data-testid="inline-soccer-period-setup">
+          <p>Choose the soccer game format before recording plays.</p>
+          <SoccerPeriodChoice
+            value={null}
+            onChange={(format) => updateGame((current) => ({ ...current, soccerPeriodFormat: format }))}
+            className="mt-3"
+          />
+          {error && <p className="game-on-quick-tracker__save-warning" role="alert">{error}</p>}
+        </div>
       ) : game && rule ? (
         <>
           <div className="game-on-quick-tracker__scoreboard" data-testid="game-on-inline-scoreboard" aria-live="polite">
@@ -324,7 +349,7 @@ export function GameOnInlineStatTracker({
               <span className={`game-on-quick-tracker__live${game.status === 'paused' ? ' game-on-quick-tracker__live--paused' : ''}`} data-testid="game-on-inline-status">
                 <span aria-hidden="true" /> {game.status === 'paused' ? 'Paused' : 'Live'}
               </span>
-              <span className="game-on-quick-tracker__period">{rule.phaseLabel} {game.period}</span>
+              <span className="game-on-quick-tracker__period" data-testid="inline-tracker-period">{getGamePhaseLabel(game)} {game.period}</span>
             </div>
             <div className="game-on-quick-tracker__score-grid">
               {([
@@ -340,6 +365,18 @@ export function GameOnInlineStatTracker({
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="game-on-quick-tracker__period-row">
+              <span>Now tracking {getGamePhaseLabel(game).toLowerCase()} {game.period}</span>
+              <button
+                type="button"
+                disabled={confirmEndGame}
+                onClick={() => updateGame(advanceGamePeriod)}
+                aria-label={`Advance to ${getGamePhaseLabel(game)} ${game.period + 1}`}
+                data-testid="button-inline-advance-game-period"
+              >
+                Next {getGamePhaseLabel(game)}
+              </button>
             </div>
           </div>
 
@@ -405,6 +442,14 @@ export function GameOnInlineStatTracker({
                 <p id={endConfirmationHeadingId} className="game-on-quick-tracker__confirmation-title">End this game?</p>
                 <p className="game-on-quick-tracker__confirmation-copy">This saves the current stats as a completed game on this device.</p>
               </div>
+              <label className="mt-3 flex items-start gap-2 text-sm">
+                <input type="checkbox" checked={includeFinalScore} onChange={(event) => setIncludeFinalScore(event.currentTarget.checked)} data-testid="checkbox-inline-record-final-score" className="mt-1" />
+                Include this score in the record (turn on for a real 0–0 game)
+              </label>
+              <GameOutcomePicker
+                value={manualOutcome ?? (includeFinalScore ? outcomeFromScore(game.score, game.opponentScore) : null)}
+                onChange={setManualOutcome}
+              />
               <div className="game-on-quick-tracker__game-confirmation-actions">
                 <button
                   type="button"
@@ -435,7 +480,7 @@ export function GameOnInlineStatTracker({
                 type="button"
                 ref={endGameButtonRef}
                 className="game-on-quick-tracker__game-action game-on-quick-tracker__game-action--end"
-                onClick={() => setConfirmEndGame(true)}
+                 onClick={() => { setIncludeFinalScore(game.scoreRecorded === true || game.score > 0 || game.opponentScore > 0); setManualOutcome(null); setConfirmEndGame(true); }}
                 aria-controls={endConfirmationId}
                 data-testid="button-inline-end-game"
               >
@@ -448,6 +493,13 @@ export function GameOnInlineStatTracker({
       ) : (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">The Stat Tracker could not start for this game.</p>
       )}
+      <TrackerCompletionDialog
+        game={completedGame}
+        open={completionOpen}
+        onOpenChange={(open) => { setCompletionOpen(open); if (!open) window.setTimeout(() => completedStatusRef.current?.focus(), 0); }}
+        teamName={teamName}
+        viewHref={trackerHref}
+      />
     </section>
   );
 }

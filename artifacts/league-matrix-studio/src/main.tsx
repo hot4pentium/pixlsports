@@ -4,6 +4,7 @@ import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 import './index.css';
+import './features/tracker-completion-dialog.css';
 
 const offlineCachePrefix = 'pixl-sports-shell';
 const developmentWorkerResetKey = 'pixl-sports-dev-worker-reset';

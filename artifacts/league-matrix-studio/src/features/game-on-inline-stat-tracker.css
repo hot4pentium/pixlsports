@@ -105,6 +105,31 @@
   text-transform: uppercase;
 }
 
+.game-on-quick-tracker__period-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: rgba(255, 255, 255, .7);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.game-on-quick-tracker__period-row button {
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, .4);
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  text-transform: uppercase;
+}
+.game-on-quick-tracker__period-row button:hover:not(:disabled) { background: rgba(85, 164, 255, .3); }
+.game-on-quick-tracker__period-row button:focus-visible { outline: 2px solid #8fc6ff; outline-offset: 2px; }
+.game-on-quick-tracker__period-row button:disabled { opacity: .5; cursor: not-allowed; }
+
 .game-on-quick-tracker__score-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

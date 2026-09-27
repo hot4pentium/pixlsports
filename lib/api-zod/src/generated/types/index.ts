@@ -174,6 +174,7 @@ export * from './statTrackerConflict';
 export * from './statTrackerEvent';
 export * from './statTrackerEventAttribution';
 export * from './statTrackerGameSnapshot';
+export * from './statTrackerGameSnapshotSoccerPeriodFormat';
 export * from './statTrackerGameSnapshotSport';
 export * from './statTrackerGameSnapshotStats';
 export * from './statTrackerGameSnapshotStatus';

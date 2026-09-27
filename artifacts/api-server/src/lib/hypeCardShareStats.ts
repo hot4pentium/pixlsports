@@ -93,6 +93,7 @@ export function computeHypeCardShareStats(
       score?: unknown;
       opponentScore?: unknown;
       scoreRecorded?: unknown;
+      outcome?: unknown;
       stats?: unknown;
       events?: unknown;
     };
@@ -103,11 +104,14 @@ export function computeHypeCardShareStats(
     const gameScore = safeScore(item.score);
     const scoreRecorded = hasRecordedScoreline(item);
     const opponentScore = safeScore(item.opponentScore);
-    if (scoreRecorded) {
-      score += gameScore;
+    if (scoreRecorded) score += gameScore;
+    const outcome = item.outcome === "win" || item.outcome === "loss" || item.outcome === "tie"
+      ? item.outcome
+      : scoreRecorded ? gameScore > opponentScore ? "win" : gameScore < opponentScore ? "loss" : "tie" : null;
+    if (outcome) {
       record.gamesPlayed += 1;
-      if (gameScore > opponentScore) record.wins += 1;
-      else if (gameScore < opponentScore) record.losses += 1;
+      if (outcome === "win") record.wins += 1;
+      else if (outcome === "loss") record.losses += 1;
       else record.ties += 1;
     }
     games.push({

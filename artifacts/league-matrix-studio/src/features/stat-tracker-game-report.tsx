@@ -1,7 +1,7 @@
 import React, { Component, lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 import { ArrowLeft, FileText, RotateCcw } from 'lucide-react';
 
-import { countStatEventsByAttribution, footballYardMetricDefinitions, isYardageTrackingAvailable, type GameReport, type SportRule } from './stat-tracker';
+import { countStatEventsByAttribution, footballYardMetricDefinitions, getGameOutcome, hasRecordedGameScore, isYardageTrackingAvailable, type GameReport, type SportRule } from './stat-tracker';
 
 type ReportChartsProps = {
   report: GameReport;
@@ -118,6 +118,7 @@ export function GameReportView({
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Game Report</p>
           <h2 id="game-report-title" className="font-display text-2xl uppercase tracking-wide">{selectedGame.opponent ? `vs ${selectedGame.opponent}` : 'Game'}</h2>
+          {getGameOutcome(selectedGame) && <p className="text-xs font-bold uppercase tracking-widest text-primary-ink">{getGameOutcome(selectedGame)}</p>}
         </div>
         <button type="button" autoFocus onClick={onClose} data-testid="game-report-close" className="inline-flex min-h-11 items-center justify-center gap-2 border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-widest text-foreground hover:bg-muted clip-angled-sm"><ArrowLeft className="h-4 w-4" /> Back to Tracker</button>
       </div>
@@ -125,7 +126,7 @@ export function GameReportView({
       <div className="flex-1 overflow-y-auto p-5 sm:p-8">
         <div className="mx-auto max-w-[1200px] space-y-6 sm:space-y-8">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="border border-primary/40 bg-primary/5 p-5 clip-angled-sm" data-testid="report-score-box"><p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink">Final Score</p><p className="mt-2 font-display text-5xl text-foreground sm:text-6xl">{selectedGame.score}<span className="text-muted-foreground">–</span><span className="text-muted-foreground">{selectedGame.opponentScore}</span></p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(selectedGame.date)}</p></div>
+            <div className="border border-primary/40 bg-primary/5 p-5 clip-angled-sm" data-testid="report-score-box"><p className="text-[10px] font-bold uppercase tracking-widest text-primary-ink">Final Score</p>{!hasRecordedGameScore(selectedGame) ? <p className="mt-2 text-sm font-bold text-muted-foreground">Score not recorded</p> : <p className="mt-2 font-display text-5xl text-foreground sm:text-6xl">{selectedGame.score}<span className="text-muted-foreground">–</span><span className="text-muted-foreground">{selectedGame.opponentScore}</span></p>}<p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(selectedGame.date)}</p></div>
             <div className="border border-border bg-card p-5 clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season to Date (thru this game)</p><p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{seasonToDate.score} PTS</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary-ink">{seasonToDate.gamesPlayed} GAMES</p></div>
             <div className="border border-border bg-card p-5 clip-angled-sm"><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Season Average</p><p className="mt-2 font-display text-4xl text-foreground sm:text-5xl">{averages.score.toFixed(1)} <span className="text-xl">PTS/G</span></p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">OVER {seasonToDate.gamesPlayed} GAMES</p></div>
           </div>

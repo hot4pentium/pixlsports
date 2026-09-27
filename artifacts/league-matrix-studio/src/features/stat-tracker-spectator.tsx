@@ -38,7 +38,7 @@ function formatEventTime(value: string) {
     : date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-function getPhaseLabel(sport: string) {
+function getPhaseLabel(sport: string, soccerPeriodFormat?: string) {
   switch (sport) {
     case "baseball":
     case "softball":
@@ -47,7 +47,7 @@ function getPhaseLabel(sport: string) {
     case "football":
       return "Quarter";
     case "soccer":
-      return "Half";
+      return soccerPeriodFormat === "quarters" ? "Quarter" : "Half";
     case "volleyball":
       return "Set";
     default:
@@ -251,7 +251,7 @@ export function PublicStatTrackerPage() {
   }
 
   const game = data.game;
-  const phaseLabel = getPhaseLabel(game.sport);
+  const phaseLabel = getPhaseLabel(game.sport, game.soccerPeriodFormat);
   const status = getStatusCopy(game.status);
   const allStats = [
     ...Object.entries(game.stats || {}).map(([key, value]) => ({ key, value: String(value) })),

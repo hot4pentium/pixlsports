@@ -590,6 +590,14 @@ export const StatTrackerGameSnapshotStatus = {
   final: 'final',
 } as const;
 
+export type StatTrackerGameSnapshotSoccerPeriodFormat = typeof StatTrackerGameSnapshotSoccerPeriodFormat[keyof typeof StatTrackerGameSnapshotSoccerPeriodFormat];
+
+
+export const StatTrackerGameSnapshotSoccerPeriodFormat = {
+  halves: 'halves',
+  quarters: 'quarters',
+} as const;
+
 export type StatTrackerGameSnapshotStats = {[key: string]: number};
 
 export type StatTrackerGameSnapshotYardStats = {[key: string]: number};
@@ -608,6 +616,7 @@ export interface StatTrackerGameSnapshot {
   opponent: string;
   /** @minimum 1 */
   period: number;
+  soccerPeriodFormat?: StatTrackerGameSnapshotSoccerPeriodFormat;
   /** @minimum 0 */
   score: number;
   /** @minimum 0 */

@@ -68,6 +68,14 @@ test('paired football pass and reception events keep their shared play id in a s
   assert.equal(receptionEvent?.yards, 14);
 });
 
+test('a soccer share keeps its chosen period format for supporters', () => {
+  const quarters = createGameSession('soccer', { soccerPeriodFormat: 'quarters' });
+  const halves = createGameSession('soccer', { soccerPeriodFormat: 'halves' });
+  assert.equal(toStatTrackerShareInput(quarters, 'Maya', 'Falcons').game.soccerPeriodFormat, 'quarters');
+  assert.equal(toStatTrackerShareInput(halves, 'Maya', 'Falcons').game.soccerPeriodFormat, 'halves');
+  assert.equal(toStatTrackerShareInput(game(), 'Maya', 'Falcons').game.soccerPeriodFormat, undefined);
+});
+
 test('season snapshot and recipient scoreboard use readable dark-card contrast', () => {
   assert.match(trackerPageSource, /className="[^"]*bg-card[^"]*text-card-foreground[^"]*" data-testid="stat-tracker-season-snapshot"/);
   assert.match(trackerPageSource, /Season snapshot[\s\S]*?text-muted-foreground/);

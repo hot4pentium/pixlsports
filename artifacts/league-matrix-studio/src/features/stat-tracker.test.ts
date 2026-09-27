@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { act, create, type ReactTestRendererNode } from 'react-test-renderer';
 import { createElement } from 'react';
+import { GameOutcomePicker } from './tracker-completion-dialog';
+import { SoccerPeriodChoice } from './tracker-period-controls';
 
 import {
   addFootballPassReception,
   addStatEvent,
+  advanceGamePeriod,
   adjustYardValue,
   adjustScore,
   buildGameReport,
@@ -14,6 +17,8 @@ import {
   createAthleteResultGame,
   createGameSession,
   endGame,
+  getGameOutcome,
+  getGamePhaseLabel,
   getPreferredTrackerSport,
   getTrackerSportForProfile,
   getTrackerConflict,
@@ -108,6 +113,77 @@ test('explicit final-score choices preserve a real 0–0 tie through tracker nor
   const stored = normalizeTrackerData({ version: 1, games: [unenteredScore, recordedTie, adjustedScore] });
   assert.deepEqual(stored.games.map((game) => game.scoreRecorded), [false, true, true]);
   assert.equal(trackerPayload(stored).games[1].scoreRecorded, true);
+});
+
+test('a manually marked result survives saving even when no score was recorded', () => {
+  const game = endGame({
+    ...createGameSession('basketball', { opponent: 'Northside' }),
+    outcome: 'win',
+  });
+  const stored = normalizeTrackerData({ version: 1, games: [game] });
+  assert.equal(stored.games[0].scoreRecorded, false);
+  assert.equal(stored.games[0].outcome, 'win');
+  assert.equal(getGameOutcome(stored.games[0]), 'win');
+  assert.equal(getGameOutcome(endGame(createGameSession('basketball', {}))), null);
+  assert.equal(getGameOutcome(endGame(createGameSession('basketball', {}), new Date(), true)), 'tie');
+  const markedLoss = endGame({
+    ...createGameSession('basketball', {}),
+    score: 10,
+    opponentScore: 7,
+    scoreRecorded: true,
+    outcome: 'loss',
+  });
+  assert.equal(getGameOutcome(normalizeTrackerData({ version: 1, games: [markedLoss] }).games[0]), 'loss');
+});
+
+test('supporters can explicitly choose any game result', () => {
+  const selections: string[] = [];
+  let renderer: ReturnType<typeof create>;
+  act(() => { renderer = create(createElement(GameOutcomePicker, { value: null, onChange: (value) => { if (value) selections.push(value); } })); });
+  for (const result of ['win', 'loss', 'tie']) {
+    act(() => { renderer.root.findByProps({ 'data-testid': `button-game-outcome-${result}` }).props.onClick(); });
+  }
+  assert.deepEqual(selections, ['win', 'loss', 'tie']);
+  act(() => renderer.unmount());
+});
+
+test('advancing the period labels later plays correctly for each sport', () => {
+  const soccer = createGameSession('soccer', { soccerPeriodFormat: 'quarters' });
+  assert.equal(getGamePhaseLabel(soccer), 'Quarter');
+  const second = advanceGamePeriod(soccer);
+  assert.equal(soccer.period, 1);
+  assert.equal(second.period, 2);
+  assert.equal(addStatEvent(second, 'goal').events[0].period, 2);
+  assert.equal(getGamePhaseLabel(createGameSession('soccer', { soccerPeriodFormat: 'halves' })), 'Half');
+  assert.equal(getGamePhaseLabel(createGameSession('soccer', {})), 'Half');
+  for (const [sport, label] of [
+    ['basketball', 'Quarter'], ['football', 'Quarter'],
+    ['baseball', 'Inning'], ['softball', 'Inning'], ['volleyball', 'Set'],
+  ] as const) {
+    const game = createGameSession(sport, {});
+    assert.equal(getGamePhaseLabel(game), label);
+    assert.equal(advanceGamePeriod(game).period, 2);
+  }
+  const pending = createGameSession('soccer', { soccerPeriodFormat: null });
+  assert.equal(advanceGamePeriod(pending), pending);
+  assert.equal(advanceGamePeriod(endGame(soccer)).period, 1);
+  assert.equal(normalizeTrackerData({ version: 1, games: [endGame(second)] }).games[0].soccerPeriodFormat, 'quarters');
+  const storage = createMemoryStorage();
+  saveStoredActiveGame(storage, 'soccer-account', second);
+  const restored = readStoredActiveGame(storage, 'soccer-account');
+  assert.equal(restored?.period, 2);
+  assert.equal(restored && getGamePhaseLabel(restored), 'Quarter');
+});
+
+test('soccer format choice asks for halves or quarters', () => {
+  const choices: string[] = [];
+  let renderer!: ReturnType<typeof create>;
+  act(() => { renderer = create(createElement(SoccerPeriodChoice, { value: null, onChange: (value) => choices.push(value) })); });
+  for (const format of ['halves', 'quarters']) {
+    act(() => { renderer.root.findByProps({ 'data-testid': `button-soccer-period-${format}` }).props.onClick(); });
+  }
+  assert.deepEqual(choices, ['halves', 'quarters']);
+  act(() => renderer.unmount());
 });
 
 test('athlete result panel defaults to result entry, supports skipping stats, and keeps advanced team stats separate', () => {

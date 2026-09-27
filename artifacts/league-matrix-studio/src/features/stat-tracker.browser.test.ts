@@ -524,6 +524,14 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       true,
     );
 
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-advance-game-period\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-scoreboard\\"]")?.textContent.includes("Quarter 2")', Boolean);
+    assert.equal(
+      await connection.evaluate<number>('JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null")?.period', page.sessionId),
+      2,
+      'advancing a quarter should persist the active game period',
+    );
+
     await connection.evaluate('document.querySelector("[data-testid=\\"button-end-live-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"confirm-end-live-game\\"]") !== null', Boolean);
     await waitFor(connection, page.sessionId, 'document.activeElement?.getAttribute("data-testid") === "button-cancel-end-live-game"', Boolean);

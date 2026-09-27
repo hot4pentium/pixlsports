@@ -32,6 +32,7 @@ import {
 import {
   addFootballPassReception,
   addStatEvent,
+  advanceGamePeriod,
   adjustYardValue,
   adjustScore,
   baseballHitChoices,
@@ -41,6 +42,10 @@ import {
   createGameSession,
   createAthleteResultGame,
   endGame,
+  getGameOutcome,
+  getGamePhaseLabel,
+  hasRecordedGameScore,
+  outcomeFromScore,
   footballYardMetricDefinitions,
   getFootballYardMetricId,
   getSportRule,
@@ -66,6 +71,8 @@ import {
   undoLastStatEvent,
   buildGameReport,
   type GameSession,
+  type GameOutcome,
+  type SoccerPeriodFormat,
   type AthleteResultCapture,
   type Sport,
   type StatTrackerData,
@@ -78,6 +85,8 @@ import {
   type TrackerSaveStatus,
 } from './stat-tracker';
 import { GameReportView } from './stat-tracker-game-report';
+import { GameOutcomePicker, TrackerCompletionDialog } from './tracker-completion-dialog';
+import { SoccerPeriodChoice } from './tracker-period-controls';
 import { trackEvent } from '../lib/analytics';
 import { toStatTrackerShareInput } from './stat-tracker-share';
 
@@ -330,6 +339,8 @@ export function StatTrackerStartPanel({
   onDateChange,
   onOpponentChange,
   onNotesChange,
+  soccerPeriodFormat,
+  onSoccerPeriodFormatChange,
   onStartGame,
   onReviewPreviousGames,
 }: {
@@ -343,6 +354,8 @@ export function StatTrackerStartPanel({
   onDateChange: (value: string) => void;
   onOpponentChange: (value: string) => void;
   onNotesChange: (value: string) => void;
+  soccerPeriodFormat?: SoccerPeriodFormat | null;
+  onSoccerPeriodFormatChange?: (format: SoccerPeriodFormat) => void;
   onStartGame: () => void;
   onReviewPreviousGames: () => void;
 }) {
@@ -372,7 +385,8 @@ export function StatTrackerStartPanel({
           <textarea value={notes} onChange={(event) => onNotesChange(event.target.value)} placeholder="What should you remember about this game?" rows={3} className="mt-2 w-full resize-y border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary" />
         </label>
         {nextGame && <p className="mt-5 border-l-2 border-primary pl-3 text-xs font-medium text-muted-foreground">Prefilled from your next scheduled game. You can change it before starting.</p>}
-        <button type="button" onClick={onStartGame} data-testid="button-confirm-start-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110">
+        {onSoccerPeriodFormatChange && <SoccerPeriodChoice value={soccerPeriodFormat} onChange={onSoccerPeriodFormatChange} className="mt-5" />}
+        <button type="button" onClick={onStartGame} disabled={Boolean(onSoccerPeriodFormatChange && !soccerPeriodFormat)} data-testid="button-confirm-start-game" className="mt-8 inline-flex min-h-12 items-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
           <Clock3 className="h-4 w-4" /> Start game
         </button>
       </div>}
@@ -413,6 +427,7 @@ export function AthleteResultPanel({
 }) {
   const [score, setScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
+  const [manualOutcome, setManualOutcome] = useState<GameOutcome | null>(null);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [showStats, setShowStats] = useState(false);
   const [skippedStats, setSkippedStats] = useState(false);
@@ -471,6 +486,8 @@ export function AthleteResultPanel({
         </div>
       </fieldset>
 
+      <GameOutcomePicker value={manualOutcome ?? outcomeFromScore(score, opponentScore)} onChange={setManualOutcome} />
+
       <div className="mt-6 border border-primary/30 bg-primary/5 p-4" data-testid="athlete-result-stats-choice">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -503,7 +520,7 @@ export function AthleteResultPanel({
 
       <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
         <button type="button" onClick={onOpenAdvanced} data-testid="button-open-advanced-team-stats" className="inline-flex min-h-11 items-center justify-center border border-border px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-foreground">Advanced team stats</button>
-        <button type="button" disabled={saving || !date} onClick={() => onSave({ date, opponent, score, opponentScore, notes, stats })} data-testid="button-save-athlete-result" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
+        <button type="button" disabled={saving || !date} onClick={() => onSave({ date, opponent, score, opponentScore, ...(manualOutcome ? { outcome: manualOutcome } : {}), notes, stats })} data-testid="button-save-athlete-result" className="inline-flex min-h-12 items-center justify-center gap-2 bg-primary px-6 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground hover:brightness-110 disabled:opacity-50">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {saving ? 'Saving result…' : 'Save game result'}
         </button>
       </div>
@@ -632,7 +649,7 @@ type LiveTrackerGameProps = {
   onGameChange: (game: GameSession) => void;
   onToggleShowAllStats: () => void;
   onLeaveGame: () => void;
-  onEndGame: (scoreRecorded: boolean) => void;
+  onEndGame: (scoreRecorded: boolean, outcome: GameOutcome | null) => void;
 };
 
 function latestYardEventIds(game: GameSession) {
@@ -681,6 +698,7 @@ export function LiveTrackerGame({
   const [includeFinalScore, setIncludeFinalScore] = useState(
     currentGame.scoreRecorded === true || currentGame.score > 0 || currentGame.opponentScore > 0,
   );
+  const [manualOutcome, setManualOutcome] = useState<GameOutcome | null>(null);
   const endGameButtonRef = useRef<HTMLButtonElement>(null);
   const cancelEndGameButtonRef = useRef<HTMLButtonElement>(null);
   const wasConfirmingEndGame = useRef(false);
@@ -700,6 +718,7 @@ export function LiveTrackerGame({
     setIncludeFinalScore(
       currentGame.scoreRecorded === true || currentGame.score > 0 || currentGame.opponentScore > 0,
     );
+    setManualOutcome(null);
   }, [currentGame.id, currentGame.scoreRecorded, currentGame.score, currentGame.opponentScore]);
 
   useEffect(() => {
@@ -814,6 +833,22 @@ export function LiveTrackerGame({
     onCapture(kind, file);
   };
 
+  if (currentGame.sport === 'soccer' && currentGame.soccerPeriodFormat === null) {
+    return (
+      <section data-testid="live-tracker-layout" className="border border-border bg-card p-5 sm:p-7">
+        <h2 className="font-display text-2xl uppercase">Choose the soccer game format</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Choose before recording plays so each stat has the right half or quarter.</p>
+        <SoccerPeriodChoice
+          value={null}
+          onChange={(format) => updateCurrentGame((game) => ({ ...game, soccerPeriodFormat: format }))}
+          className="mt-5"
+        />
+        <button type="button" onClick={onLeaveGame} className="mt-4 min-h-11 border border-border px-4 text-xs font-bold uppercase tracking-widest">Leave game open</button>
+      </section>
+    );
+  }
+
+  const phaseLabel = getGamePhaseLabel(currentGame);
   return (
     <section data-testid="live-tracker-layout" className="grid gap-3 lg:grid-cols-[0.85fr_1.15fr] lg:gap-6">
       <div className="order-1 lg:col-start-1 lg:row-start-1">
@@ -837,11 +872,11 @@ export function LiveTrackerGame({
           </div>
           <div className="mt-2 flex items-center justify-between gap-4 sm:mt-4">
             <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-widest text-white/45">Manual score adjustment</span>
-            <span className="shrink-0 text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{rule.phaseLabel} {currentGame.period}</span>
+            <span className="shrink-0 text-right font-display text-lg uppercase tracking-wide text-white/80 sm:text-xl">{phaseLabel} {currentGame.period}</span>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 sm:mt-7">
             <button type="button" onClick={() => onGameChange({ ...currentGame, status: currentGame.status === 'paused' ? 'live' : 'paused' })} data-testid="button-toggle-live-game-pause" className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">{currentGame.status === 'paused' ? 'Resume' : 'Pause'}</button>
-            <button type="button" onClick={() => onGameChange({ ...currentGame, period: currentGame.period + 1 })} className="border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {rule.phaseLabel}</button>
+            <button type="button" onClick={() => updateCurrentGame(advanceGamePeriod)} aria-label={`Advance to ${phaseLabel} ${currentGame.period + 1}`} data-testid="button-advance-game-period" className="min-h-11 border border-white/20 px-3 py-2 text-xs font-bold uppercase tracking-widest text-white hover:bg-white/10 sm:px-4 sm:py-3">Next {phaseLabel}</button>
           </div>
           <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 sm:right-5 sm:top-5" data-testid="live-tracker-capture-controls">
             <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 border border-white/20 bg-white/5 px-2.5 py-2 text-[10px] font-bold uppercase tracking-widest text-white/75 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary focus-within:border-primary focus-within:text-primary sm:min-h-11 sm:px-3" data-testid="label-stat-tracker-capture-photo">
@@ -1078,6 +1113,11 @@ export function LiveTrackerGame({
                 <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Turn this on for a real 0–0 result. Leave it off if the score was not entered.</span>
               </span>
             </label>
+            <GameOutcomePicker
+              value={manualOutcome ?? (includeFinalScore ? outcomeFromScore(currentGame.score, currentGame.opponentScore) : null)}
+              onChange={setManualOutcome}
+              disabled={saving}
+            />
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -1091,7 +1131,7 @@ export function LiveTrackerGame({
               <button
                 type="button"
                 disabled={saving}
-                onClick={() => onEndGame(includeFinalScore)}
+                onClick={() => onEndGame(includeFinalScore, manualOutcome)}
                 className="inline-flex min-h-12 items-center justify-center gap-2 border border-destructive bg-destructive px-5 py-3 text-xs font-bold uppercase tracking-widest text-destructive-foreground hover:brightness-110 disabled:opacity-50"
                 data-testid="button-confirm-end-live-game"
               >
@@ -1129,7 +1169,7 @@ export function LiveTrackerGame({
               <div key={event.id} className={`border-b pb-2 text-sm ${isSelectedYardEvent ? 'border-primary/60 bg-primary/5 px-2 pt-2' : 'border-border/60'}`} data-testid={`recent-activity-${event.id}`}>
                 <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-medium">{eventLabel(event.statId)}{yardMetricId ? ` · ${event.yards ?? 0} yds` : ''} <span className="text-xs font-bold uppercase text-primary-ink">· {event.attribution === 'athlete' ? athleteTargetName : 'Team'}</span></span>
-                  <span className="shrink-0 text-xs text-muted-foreground">{rule.phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{phaseLabel} {event.period} · {formatEventTime(event.createdAt)}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
@@ -1179,6 +1219,7 @@ export function StatTrackerPage() {
     [selectedScheduleEventId],
   );
   const [sport, setSport] = useState<Sport>(profile.sport ?? 'basketball');
+  const [soccerPeriodFormat, setSoccerPeriodFormat] = useState<SoccerPeriodFormat | null>(null);
   const [storageAccountId, setStorageAccountId] = useState<string | null>(null);
   const [data, setData] = useState<StatTrackerData>(() => normalizeTrackerData(null));
   const [currentGame, setCurrentGame] = useState<GameSession | null>(null);
@@ -1193,6 +1234,8 @@ export function StatTrackerPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<TrackerSaveStatus | null>(null);
+  const [justCompletedGame, setJustCompletedGame] = useState<GameSession | null>(null);
+  const [completionOpen, setCompletionOpen] = useState(false);
   const [retryAvailable, setRetryAvailable] = useState(false);
   const [revisionConflict, setRevisionConflict] = useState(false);
   const [trackerConflict, setTrackerConflict] = useState<TrackerConflict | null>(null);
@@ -1325,6 +1368,8 @@ export function StatTrackerPage() {
     setTrackerConflict(null);
     setSelectedConflictResolution(null);
     setSaveStatus(null);
+    setJustCompletedGame(null);
+    setCompletionOpen(false);
     if (!accountId) {
       setData(normalizeTrackerData(null));
       setCurrentGame(null);
@@ -1477,6 +1522,7 @@ export function StatTrackerPage() {
   }
 
   const beginGame = () => {
+    if (sport === 'soccer' && !soccerPeriodFormat) return;
     setError('');
     setRetryAvailable(false);
     setRevisionConflict(false);
@@ -1488,7 +1534,8 @@ export function StatTrackerPage() {
       && nextGame.opponent === opponent
       ? nextGame
       : undefined;
-    setCurrentGame(createGameSession(sport, { date, opponent, notes }));
+    setCurrentGame(createGameSession(sport, { date, opponent, notes, ...(sport === 'soccer' ? { soccerPeriodFormat } : {}) }));
+    setSoccerPeriodFormat(null);
     setShowUpcomingNotice(false);
     updateOwnedScheduledGameStatus(activeScheduledGame.current, 'live');
     announce('GAME STARTED — LIVE STATS ARE READY');
@@ -1540,11 +1587,22 @@ export function StatTrackerPage() {
       window.clearTimeout(shareUpdateTimer.current);
       shareUpdateTimer.current = null;
     }
-    await publishTrackerShare(completed, share ?? undefined);
-    updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final', completed.endedAt);
     const nextData = { ...data, games: [...data.games, completed] };
+    try {
+      if (!accountId) throw new Error('No tracker account');
+      saveLocalTracker(nextData, accountId);
+      saveStoredActiveGame(window.localStorage, accountId, null);
+    } catch {
+      setError('The completed game could not be saved on this device. Your live game is still open; check storage access and try again.');
+      announce('GAME NOT SAVED — KEEP TRACKING');
+      return;
+    }
     setData(nextData);
     setCurrentGame(null);
+    setJustCompletedGame(completed);
+    setCompletionOpen(true);
+    void publishTrackerShare(completed, share ?? undefined);
+    updateOwnedScheduledGameStatus(activeScheduledGame.current, 'final', completed.endedAt);
     setSaving(true);
     setSaveStatus('saving');
     setError('');
@@ -1577,9 +1635,9 @@ export function StatTrackerPage() {
     }
   };
 
-  const saveCompletedGame = async (scoreRecorded: boolean) => {
+  const saveCompletedGame = async (scoreRecorded: boolean, outcome: GameOutcome | null) => {
     if (!currentGame) return;
-    await persistCompletedGame(endGame(currentGame, new Date(), scoreRecorded), activeTrackerShare);
+    await persistCompletedGame(endGame({ ...currentGame, ...(outcome ? { outcome } : {}) }, new Date(), scoreRecorded), activeTrackerShare);
   };
 
   const saveAthleteResult = async (capture: AthleteResultCapture) => {
@@ -1892,6 +1950,8 @@ export function StatTrackerPage() {
                   onDateChange={(value) => { manuallyEditedSetup.current.date = true; setDate(value); }}
                   onOpponentChange={(value) => { manuallyEditedSetup.current.opponent = true; setOpponent(value); }}
                   onNotesChange={setNotes}
+                  soccerPeriodFormat={sport === 'soccer' ? soccerPeriodFormat : undefined}
+                  onSoccerPeriodFormatChange={sport === 'soccer' ? setSoccerPeriodFormat : undefined}
                   onStartGame={beginGame}
                   onReviewPreviousGames={reviewPreviousGames}
                 />
@@ -1947,14 +2007,14 @@ export function StatTrackerPage() {
            onGameChange={(next) => { setCurrentGame(next); announce('STAT UPDATED'); }}
           onToggleShowAllStats={() => setShowAllStats((value) => !value)}
           onLeaveGame={() => { setCurrentGame(null); setShowUpcomingNotice(false); }}
-          onEndGame={(scoreRecorded) => void saveCompletedGame(scoreRecorded)}
+           onEndGame={(scoreRecorded, outcome) => void saveCompletedGame(scoreRecorded, outcome)}
         />
         </>
       )}
 
       <section ref={historySectionRef} id="tracker-game-history" tabIndex={-1} className="mt-10 scroll-mt-6 border border-border bg-card p-5 clip-angled-sm outline-none sm:p-7" data-testid="stat-tracker-history">
         <div className="mb-5 flex items-center justify-between border-b border-border pb-3"><div><p className="text-xs font-bold uppercase tracking-widest text-accent">Game history</p><h2 className="mt-1 font-display text-3xl uppercase tracking-wide">{rule.label} season</h2></div><Save className="h-5 w-5 text-muted-foreground" /></div>
-         {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p></div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{game.score}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{game.opponentScore}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">final score</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
+         {data.games.filter((game) => game.sport === sport).length ? <div className="grid gap-3 md:grid-cols-2">{data.games.filter((game) => game.sport === sport).slice().reverse().map((game) => <button type="button" key={game.id} onClick={() => setSelectedReportGameId(game.id)} data-testid={`history-card-${game.id}`} className="group min-w-0 w-full text-left border border-border bg-background p-4 transition-colors hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary clip-angled-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-display text-xl uppercase group-hover:text-primary transition-colors">{game.opponent ? `vs ${game.opponent}` : 'Game'}</p><p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">{formatDate(game.date)} · {game.events.length} plays</p>{getGameOutcome(game) && <p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary-ink">{getGameOutcome(game)}</p>}</div><div className="shrink-0 text-right"><p className="font-display text-3xl text-primary group-hover:scale-105 transition-transform origin-right">{hasRecordedGameScore(game) ? game.score : '—'}<span className="px-1 text-muted-foreground">–</span><span className="text-foreground">{hasRecordedGameScore(game) ? game.opponentScore : '—'}</span></p><p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{hasRecordedGameScore(game) ? 'final score' : 'score not recorded'}</p></div></div>{game.notes && <p className="mt-4 border-t border-border/60 pt-3 text-sm font-medium text-muted-foreground truncate"><FileText className="mr-2 inline h-3.5 w-3.5 text-primary" />{game.notes}</p>}</button>)}</div> : <p className="text-sm text-muted-foreground">No completed {rule.label.toLowerCase()} games yet.</p>}
       </section>
       {report && (
         <GameReportView
@@ -1964,6 +2024,14 @@ export function StatTrackerPage() {
           onSelectGame={setSelectedReportGameId}
         />
       )}
+      <TrackerCompletionDialog
+        game={justCompletedGame}
+        open={completionOpen}
+        onOpenChange={setCompletionOpen}
+        teamName={profile.teamName}
+        saveStatus={saveStatus === 'saving' || saveStatus === 'cloud-saved' || saveStatus === 'local-saved' ? saveStatus : undefined}
+        onViewStats={() => { if (justCompletedGame) setSelectedReportGameId(justCompletedGame.id); setCompletionOpen(false); }}
+      />
       {notice && <div className="fixed bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 border border-primary bg-foreground px-4 py-3 text-xs font-bold uppercase tracking-widest text-primary shadow-lg" role="status"><Check className="h-4 w-4" /> {notice}</div>}
       </div>
     </div>

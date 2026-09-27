@@ -150,3 +150,22 @@ test("counts an explicitly recorded 0–0 tie but excludes an unentered 0–0 sc
   assert.deepEqual(result?.record, { wins: 0, losses: 0, ties: 1, gamesPlayed: 1 });
   assert.deepEqual(result?.games.map((game) => game.scoreRecorded), [true, false]);
 });
+
+test("counts manually marked results without inventing a final score", () => {
+  const result = computeHypeCardShareStats({
+    tool: "stat-tracker",
+    games: [{
+      sport: "basketball",
+      status: "final",
+      score: 0,
+      opponentScore: 0,
+      scoreRecorded: false,
+      outcome: "win",
+      stats: {},
+      events: [],
+    }],
+  }, "Jordan", "basketball", new Date());
+
+  assert.deepEqual(result?.record, { wins: 1, losses: 0, ties: 0, gamesPlayed: 1 });
+  assert.equal(result?.games[0].scoreRecorded, false);
+});

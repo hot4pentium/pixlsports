@@ -2246,6 +2246,9 @@ components:
         date: { type: string, maxLength: 30 }
         opponent: { type: string, maxLength: 240 }
         period: { type: integer, minimum: 1 }
+        soccerPeriodFormat:
+          type: string
+          enum: [halves, quarters]
         score: { type: integer, minimum: 0 }
         opponentScore: { type: integer, minimum: 0 }
         stats:

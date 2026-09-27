@@ -16,6 +16,9 @@ export function toStatTrackerShareInput(
       date: game.date,
       opponent: game.opponent,
       period: game.period,
+      ...(game.sport === 'soccer' && (game.soccerPeriodFormat === 'halves' || game.soccerPeriodFormat === 'quarters')
+        ? { soccerPeriodFormat: game.soccerPeriodFormat }
+        : {}),
       score: game.score,
       opponentScore: game.opponentScore,
       stats: { ...game.stats },

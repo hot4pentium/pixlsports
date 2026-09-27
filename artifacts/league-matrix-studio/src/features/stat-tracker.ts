@@ -37,6 +37,22 @@ export type StatEvent = {
 };
 
 export type YardStats = Record<string, number>;
+export type GameOutcome = 'win' | 'loss' | 'tie';
+export type SoccerPeriodFormat = 'halves' | 'quarters';
+
+export function outcomeFromScore(score: number, opponentScore: number): GameOutcome {
+  return score > opponentScore ? 'win' : score < opponentScore ? 'loss' : 'tie';
+}
+
+export function hasRecordedGameScore(game: GameSession): boolean {
+  return game.scoreRecorded === true
+    || (game.scoreRecorded === undefined && (game.score > 0 || game.opponentScore > 0));
+}
+
+export function getGameOutcome(game: GameSession): GameOutcome | null {
+  if (game.outcome === 'win' || game.outcome === 'loss' || game.outcome === 'tie') return game.outcome;
+  return hasRecordedGameScore(game) ? outcomeFromScore(game.score, game.opponentScore) : null;
+}
 
 export type GameSession = {
   id: string;
@@ -45,9 +61,11 @@ export type GameSession = {
   date: string;
   opponent: string;
   period: number;
+  soccerPeriodFormat?: SoccerPeriodFormat | null;
   score: number;
   opponentScore: number;
   scoreRecorded?: boolean;
+  outcome?: GameOutcome;
   notes: string;
   stats: Record<string, number>;
   trackYards?: boolean;
@@ -270,8 +288,14 @@ function normalizeYardStats(value: unknown): YardStats {
 }
 
 function normalizeGameSession(game: GameSession): GameSession {
+  const { soccerPeriodFormat: _untrustedFormat, ...rest } = game;
   return {
-    ...game,
+    ...rest,
+    ...(game.sport === 'soccer' && (
+      game.soccerPeriodFormat === 'halves'
+      || game.soccerPeriodFormat === 'quarters'
+      || game.soccerPeriodFormat === null
+    ) ? { soccerPeriodFormat: game.soccerPeriodFormat } : {}),
     trackYards: game.sport === 'football' && game.trackYards === true,
     yardStats: normalizeYardStats(game.yardStats),
     events: Array.isArray(game.events)
@@ -397,13 +421,24 @@ export function getSportRule(sport: Sport): SportRule {
   return sportRules[sport];
 }
 
+export function getGamePhaseLabel(game: GameSession): string {
+  return game.sport === 'soccer' && game.soccerPeriodFormat === 'quarters'
+    ? 'Quarter'
+    : getSportRule(game.sport).phaseLabel;
+}
+
+export function advanceGamePeriod(game: GameSession): GameSession {
+  if (game.status === 'final' || (game.sport === 'soccer' && game.soccerPeriodFormat === null)) return game;
+  return { ...game, period: game.period + 1 };
+}
+
 export function isSport(value: unknown): value is Sport {
   return typeof value === 'string' && sports.includes(value as Sport);
 }
 
 export function createGameSession(
   sport: Sport,
-  input: { date?: string; opponent?: string; notes?: string },
+  input: { date?: string; opponent?: string; notes?: string; soccerPeriodFormat?: SoccerPeriodFormat | null },
   now = new Date(),
 ): GameSession {
   return {
@@ -413,6 +448,7 @@ export function createGameSession(
     date: input.date ?? now.toISOString().slice(0, 10),
     opponent: input.opponent?.trim() ?? '',
     period: 1,
+    ...(sport === 'soccer' && 'soccerPeriodFormat' in input ? { soccerPeriodFormat: input.soccerPeriodFormat } : {}),
     score: 0,
     opponentScore: 0,
     scoreRecorded: false,
@@ -490,6 +526,7 @@ export type AthleteResultCapture = {
   opponent: string;
   score: number;
   opponentScore: number;
+  outcome?: GameOutcome;
   notes: string;
   stats: Record<string, number>;
 };
@@ -527,6 +564,7 @@ export function createAthleteResultGame(
     score: capture.score,
     opponentScore: capture.opponentScore,
     scoreRecorded: true,
+    ...(capture.outcome ? { outcome: capture.outcome } : {}),
   }, now);
 }
 
@@ -673,11 +711,17 @@ export function normalizeTrackerData(value: unknown): StatTrackerData {
       && typeof (game as GameSession).stats === 'object'
       && Array.isArray((game as GameSession).events)
     ))
-    .map((game) => ({
-      ...normalizeGameSession(game),
-      opponentScore: typeof game.opponentScore === 'number' ? Math.max(0, game.opponentScore) : 0,
-      notes: typeof game.notes === 'string' ? game.notes : '',
-    }))
+    .map((game) => {
+      const { outcome: _untrustedOutcome, ...normalized } = normalizeGameSession(game);
+      return {
+        ...normalized,
+        opponentScore: typeof game.opponentScore === 'number' ? Math.max(0, game.opponentScore) : 0,
+        notes: typeof game.notes === 'string' ? game.notes : '',
+        ...(game.outcome === 'win' || game.outcome === 'loss' || game.outcome === 'tie'
+          ? { outcome: game.outcome }
+          : {}),
+      };
+    })
     : [];
   return { version: 1, games };
 }

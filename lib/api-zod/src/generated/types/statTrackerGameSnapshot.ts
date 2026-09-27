@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StatTrackerEvent } from './statTrackerEvent';
+import type { StatTrackerGameSnapshotSoccerPeriodFormat } from './statTrackerGameSnapshotSoccerPeriodFormat';
 import type { StatTrackerGameSnapshotSport } from './statTrackerGameSnapshotSport';
 import type { StatTrackerGameSnapshotStats } from './statTrackerGameSnapshotStats';
 import type { StatTrackerGameSnapshotStatus } from './statTrackerGameSnapshotStatus';
@@ -25,6 +26,7 @@ export interface StatTrackerGameSnapshot {
   opponent: string;
   /** @minimum 1 */
   period: number;
+  soccerPeriodFormat?: StatTrackerGameSnapshotSoccerPeriodFormat;
   /** @minimum 0 */
   score: number;
   /** @minimum 0 */
