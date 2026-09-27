@@ -21,10 +21,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { HypeCardReplyComposer } from './public-hype-card';
+import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
 import './living-athlete-card.css';
 
 type CardSide = 'front' | 'stats' | 'videos';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
+type FanVideo = PublicAthleteFanCard['videos'][number];
 const hypeReactions = [
   { emoji: '👏', label: 'Applause' },
   { emoji: '💪', label: 'Strong' },
@@ -60,6 +62,57 @@ function Shell({ children }: { children: ReactNode }) {
       </header>
       {children}
     </div>
+  );
+}
+
+function FanCardVideo({
+  video,
+  index,
+  onError,
+  onPlay,
+}: {
+  video: FanVideo;
+  index: number;
+  onError: () => void;
+  onPlay: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
+}) {
+  const [poster, setPoster] = useState(video.posterUrl ?? undefined);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let fallbackUrl: string | undefined;
+    const recoverBlankPoster = async () => {
+      if (video.posterUrl) {
+        try {
+          if (!(await isBlankVideoPoster(video.posterUrl, controller.signal))) return;
+        } catch {
+          if (controller.signal.aborted) return;
+        }
+      }
+      const image = await captureVideoThumbnail(video.videoUrl, controller.signal);
+      if (controller.signal.aborted) return;
+      fallbackUrl = URL.createObjectURL(image);
+      setPoster(fallbackUrl);
+    };
+    void recoverBlankPoster().catch(() => undefined);
+    return () => {
+      controller.abort();
+      if (fallbackUrl) URL.revokeObjectURL(fallbackUrl);
+    };
+  }, [video.posterUrl, video.videoUrl]);
+
+  return (
+    <video
+      src={video.videoUrl}
+      poster={poster}
+      controls
+      preload="none"
+      playsInline
+      aria-label={`Video: ${video.title || video.mediaName}`}
+      data-testid={`video-living-card-${index}`}
+      onError={onError}
+      onPlay={onPlay}
+    />
   );
 }
 
@@ -420,14 +473,9 @@ export function LivingAthleteCardPage({
                             {failedVideos.includes(video.shareToken) ? (
                               <p className="living-card-video-error" role="status">This highlight is unavailable right now.</p>
                             ) : (
-                              <video
-                                src={video.videoUrl}
-                                poster={video.posterUrl ?? undefined}
-                                controls
-                                preload="none"
-                                playsInline
-                                aria-label={`Video: ${video.title || video.mediaName}`}
-                                data-testid={`video-living-card-${index}`}
+                              <FanCardVideo
+                                video={video}
+                                index={index}
                                 onError={() => setFailedVideos((tokens) => tokens.includes(video.shareToken) ? tokens : [...tokens, video.shareToken])}
                                 onPlay={(event) => {
                                   videosRef.current?.querySelectorAll('video').forEach((other) => {

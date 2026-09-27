@@ -50,6 +50,7 @@
 - [Tracker mobile start actions](tracker-mobile-start-actions.md) — keep the compact scheduled-game actions accessible when the larger setup card is hidden on mobile.
 - [Hype Page video streaming](hype-page-video-streaming.md) — public video responses need bounded byte ranges; large open-ended ranges fail through the published proxy.
 - [Hosted clip duration validation](hosted-clip-duration-validation.md) — a browser-recorded Hype Page MP4 can be much longer than the selected trim despite reporting the trim duration in its manifest.
+- [Hosted video poster capture](hosted-video-poster-capture.md) — generate thumbnails from the finished clip; saved black posters need a viewer fallback.
 - [Planner reminder preferences](planner-reminder-preferences.md) — store alert choices per account while keeping local scheduling based on the push subscription time zone.
 - [Planner subscription time zones](planner-subscription-timezones.md) — never derive reminder timing from an arbitrary push subscription row when accounts have multiple devices.
 - [Push display receipts](push-display-receipts.md) — service-worker receipts confirm OS display acceptance, not that a user saw or read the alert.

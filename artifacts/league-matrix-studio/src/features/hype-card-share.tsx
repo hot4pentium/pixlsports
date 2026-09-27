@@ -4,6 +4,7 @@ import {
   createAudioCaptureSession,
   exportVideoCanvas,
 } from './hype-card-export';
+import { captureVideoThumbnail } from './video-thumbnail';
 
 export const MAX_HOSTED_VIDEO_BYTES = 35 * 1024 * 1024;
 const VIDEO_PREPARATION_STEP_TIMEOUT_MS = 10_000;
@@ -179,42 +180,6 @@ function seekVideo(video: HTMLVideoElement, time: number, signal?: AbortSignal) 
   });
 }
 
-function createPosterBlob(canvas: HTMLCanvasElement, signal?: AbortSignal) {
-  return new Promise<Blob>((resolve, reject) => {
-    let settled = false;
-    let timeoutId = 0;
-    const cleanup = () => {
-      window.clearTimeout(timeoutId);
-      signal?.removeEventListener('abort', onAbort);
-    };
-    const settle = (callback: () => void) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      callback();
-    };
-    const onAbort = () => settle(() => reject(abortError()));
-
-    if (signal?.aborted) {
-      onAbort();
-      return;
-    }
-    signal?.addEventListener('abort', onAbort, { once: true });
-    timeoutId = window.setTimeout(() => {
-      settle(() => reject(new Error('Video preparation stalled while creating the preview image.')));
-    }, VIDEO_PREPARATION_STEP_TIMEOUT_MS);
-
-    try {
-      canvas.toBlob((blob) => {
-        if (blob) settle(() => resolve(blob));
-        else settle(() => reject(new Error('Could not create the poster image.')));
-      }, 'image/jpeg', 0.88);
-    } catch (error) {
-      settle(() => reject(error instanceof Error ? error : new Error('Could not create the poster image.')));
-    }
-  });
-}
-
 function drawContained(context: CanvasRenderingContext2D, video: HTMLVideoElement, width: number, height: number) {
   const scale = Math.min(width / video.videoWidth, height / video.videoHeight);
   const drawWidth = video.videoWidth * scale;
@@ -264,12 +229,6 @@ export async function prepareHypeCardShareMedia(
     const levels = quality === 'compact'
       ? [{ longEdge: 640, bitrate: 800_000 }, { longEdge: 480, bitrate: 550_000 }, { longEdge: 360, bitrate: 400_000 }]
       : [{ longEdge: 960, bitrate: 2_000_000 }, { longEdge: 640, bitrate: 800_000 }, { longEdge: 480, bitrate: 550_000 }];
-    const firstScale = Math.min(1, levels[0].longEdge / Math.max(video.videoWidth, video.videoHeight));
-    canvas.width = Math.max(2, Math.round(video.videoWidth * firstScale / 2) * 2);
-    canvas.height = Math.max(2, Math.round(video.videoHeight * firstScale / 2) * 2);
-    drawContained(context, video, canvas.width, canvas.height);
-    const poster = await createPosterBlob(canvas, options.signal);
-    if (options.signal?.aborted) throw abortError();
     for (const [index, level] of levels.entries()) {
       if (options.signal?.aborted) throw abortError();
       reportProgress(index / levels.length + 0.01);
@@ -302,6 +261,13 @@ export async function prepareHypeCardShareMedia(
         }
         const actualDuration = await readVideoDuration(clip.blob, options.signal);
         if (isUsableHostedVideo(actualDuration, expectedDuration, clip.blob.size)) {
+          const clipUrl = URL.createObjectURL(clip.blob);
+          let poster: Blob;
+          try {
+            poster = await captureVideoThumbnail(clipUrl, options.signal);
+          } finally {
+            URL.revokeObjectURL(clipUrl);
+          }
           reportProgress(1);
           return { video: clip.blob, videoContentType: clip.mimeType, poster, duration: actualDuration };
         }

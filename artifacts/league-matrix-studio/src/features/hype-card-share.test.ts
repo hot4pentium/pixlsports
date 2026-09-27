@@ -6,6 +6,7 @@ import { hostedVideoBudgetBytes, isUsableHostedVideo, monotonicProgress } from '
 
 const shareSource = readFileSync(new URL('./hype-card-share.tsx', import.meta.url), 'utf8');
 const exportSource = readFileSync(new URL('./hype-card-export.ts', import.meta.url), 'utf8');
+const thumbnailSource = readFileSync(new URL('./video-thumbnail.ts', import.meta.url), 'utf8');
 
 test('preparation progress starts visibly and never moves backward between phases', () => {
   assert.equal(monotonicProgress(0, 0.01), 0.01);
@@ -38,7 +39,8 @@ test('video preparation loads the first frame and bounds stalled local preparati
   assert.match(exportSource, /waitForMediaEvent\([\s\S]*?'loadeddata'/);
   assert.match(shareSource, /VIDEO_PREPARATION_STEP_TIMEOUT_MS = 10_000/);
   assert.match(shareSource, /Video preparation stalled while opening the selected segment/);
-  assert.match(shareSource, /Video preparation stalled while creating the preview image/);
+  assert.match(shareSource, /captureVideoThumbnail\(clipUrl, options\.signal\)/);
+  assert.match(thumbnailSource, /video\.currentTime = Math\.max\(0\.01, time\)/);
 });
 
 test('hosted preparation activates one audio context before awaiting and passes it through verification', () => {
