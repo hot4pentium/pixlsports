@@ -143,6 +143,7 @@ import gameDayChecklist480 from '@/assets/game-day-checklist-480.webp';
 import gameDayChecklist768 from '@/assets/game-day-checklist-768.webp';
 import gameDayChecklist1404 from '@/assets/game-day-checklist-1404.webp';
 import './landing-unified.css';
+import './auth-page.css';
 
 const PublicLandingPage = lazy(() =>
   import('@/features/landing-home').then(({ PublicLandingPage }) => ({ default: PublicLandingPage })),
@@ -3220,97 +3221,75 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${appOrigin}${basePath}/logo.svg`,
+    logoImageUrl: `${appOrigin}${basePath}/pixlsports-logo.png`,
   },
   variables: {
-    colorPrimary: "#2878F5",
+    colorPrimary: "#55A4FF",
     colorForeground: "#F3F6FA",
-    colorMutedForeground: "#9FB0C8",
+    colorMutedForeground: "#B9CADC",
     colorDanger: "hsl(0 84% 60%)",
     colorBackground: "#102B4D",
     colorInput: "#0B1F3A",
     colorInputForeground: "#F3F6FA",
-    colorNeutral: "rgba(85,164,255,0.16)",
-    fontFamily: "var(--app-font-sans)",
-    borderRadius: "0.125rem",
+    colorNeutral: "#91ACC3",
+    fontFamily: "'DM Sans', sans-serif",
+    borderRadius: "0.375rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-[#102B4D] w-[440px] max-w-full overflow-hidden clip-angled-sm border border-[#55A4FF]/20 shadow-2xl",
+    cardBox: "bg-[#102B4D] w-[440px] max-w-full overflow-hidden rounded-xl border border-[#55A4FF]/30 shadow-[0_24px_80px_rgba(0,8,25,.38)]",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    headerTitle: "font-display text-4xl uppercase tracking-wide text-white",
-    headerSubtitle: "text-sm font-medium text-white/60",
-    socialButtonsBlockButtonText: "text-sm font-bold uppercase tracking-wider !text-white",
-    formFieldLabel: "text-xs font-bold uppercase tracking-widest text-white/80",
-    footerActionLink: "text-primary font-bold hover:underline",
-    footerActionText: "text-sm font-medium text-white/60",
-    dividerText: "text-xs font-bold uppercase tracking-widest text-white/40",
-    identityPreviewEditButton: "text-primary",
-    formFieldSuccessText: "text-primary text-xs",
+    headerTitle: "font-display text-3xl uppercase tracking-wide !text-white",
+    headerSubtitle: "text-sm font-medium !text-[#B9CADC]",
+    socialButtonsBlockButtonText: "text-xs font-bold uppercase tracking-wider !text-white",
+    formFieldLabel: "text-xs font-bold uppercase tracking-wider !text-[#E0EDFA]",
+    footerActionLink: "!text-[#73B5FF] font-bold hover:underline",
+    footerActionText: "text-sm font-medium !text-[#B9CADC]",
+    dividerText: "text-xs font-bold uppercase tracking-widest !text-[#B9CADC]",
+    identityPreviewEditButton: "!text-[#73B5FF]",
+    formFieldSuccessText: "!text-[#73B5FF] text-xs",
     alertText: "text-sm font-medium",
-    logoBox: "mb-6",
-    logoImage: "h-16 object-contain",
-    socialButtonsBlockButton: "rounded-none border border-white/10 clip-angled-sm h-12 bg-white/5 hover:bg-white/10 transition-colors text-white",
-    formButtonPrimary: "rounded-none h-12 clip-angled-sm font-bold uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground transition-transform hover:scale-[1.02]",
-    formFieldInput: "rounded-none h-12 border-white/10 bg-[#0B1F3A] text-white font-medium focus:border-primary focus:ring-1 focus:ring-primary clip-angled-sm transition-all",
-    footerAction: "mt-8",
-    dividerLine: "bg-white/10",
-    alert: "rounded-none border border-destructive/20 bg-destructive/10 text-destructive clip-angled-sm",
-    otpCodeFieldInput: "rounded-none border-white/10 bg-[#0B1F3A] text-white focus:border-primary clip-angled-sm",
-    formFieldRow: "mb-5",
-    main: "p-8 sm:p-10",
+    logoBox: "mb-3",
+    logoImage: "h-10 max-w-[134px] object-contain",
+    socialButtonsBlockButton: "h-12 rounded-md border border-[#91ACC3]/40 bg-white/5 hover:bg-white/10 transition-colors text-white",
+    formButtonPrimary: "h-12 rounded-md font-bold bg-[#55A4FF] !text-[#0B1F3A] hover:!bg-[#82BDFF] transition-colors",
+    formFieldInput: "h-12 rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] !text-white font-medium focus:border-[#55A4FF] focus:ring-1 focus:ring-[#55A4FF] transition-all",
+    footerAction: "mt-4",
+    dividerLine: "bg-white/20",
+    alert: "rounded-md border border-destructive/30 bg-destructive/10 text-white",
+    otpCodeFieldInput: "rounded-md border border-[#91ACC3]/40 bg-[#0B1F3A] text-white focus:border-[#55A4FF]",
+    formFieldRow: "mb-3",
+    main: "p-6 sm:p-8",
   },
 };
 
 function AuthLayout({ children, title, subtitle }: { children: ReactNode, title: ReactNode, subtitle: string }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col lg:flex-row bg-background noise">
-      {/* Brand & Context Panel */}
-      <div className="relative flex w-full flex-col justify-between overflow-hidden bg-card text-card-foreground lg:w-[45%] xl:w-[40%] px-5 py-6 sm:px-10 sm:py-12 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 shadow-2xl z-20">
-        <div className="absolute inset-0 bg-tech-grid-dark opacity-[0.05]" />
-        <div className="absolute -left-20 -top-20 h-[500px] w-[500px] rounded-full bg-primary/20 blur-[120px] pointer-events-none animate-stadium-flash" />
-
-        <div className="relative z-10 flex items-center justify-between">
-          <Link href="/" className="inline-block transition-opacity hover:opacity-80 scale-[0.85] origin-left sm:scale-100" data-testid="link-auth-home">
-            <BrandMark inverse />
-          </Link>
-          <div className="hidden lg:inline-flex items-center gap-2 border border-accent/20 bg-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
-            <Activity className="h-4 w-4" /> Secure Auth
-          </div>
-        </div>
-
-        <div className="relative z-10 mt-8 mb-4 lg:my-0">
-          <h1 className="font-display text-4xl leading-[0.85] tracking-tight uppercase sm:text-5xl lg:text-6xl xl:text-7xl">
-            {title}
-          </h1>
-          <p className="mt-4 hidden lg:block max-w-md text-lg font-medium leading-relaxed text-white/70">
-            {subtitle}
-          </p>
-        </div>
-
-        <div className="relative z-10 hidden lg:block mt-8 border-t border-white/10 pt-8">
-          <div className="flex items-start gap-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center bg-white/5 text-primary clip-angled-sm">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div>
-               <p className="text-sm font-bold uppercase tracking-wider text-white" data-testid="status-cloud-sync">Cloud sync is included.</p>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-white/60">
-                   Sign in to manage your athlete fan card, stats, and game-day workspace.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Auth Form Panel */}
-      <div className="relative flex flex-1 p-5 py-8 sm:p-10 bg-background">
-        <div className="absolute inset-0 bg-tech-grid-dark opacity-[0.02]" />
-        <div className="relative z-10 w-full max-w-[440px] animate-slide-up m-auto">
+    <div className="auth-page">
+      <header className="auth-header">
+        <Link href="/" className="auth-home" data-testid="link-auth-home">
+          <BrandMark inverse />
+        </Link>
+        <Link href="/" className="auth-back"><ArrowLeft size={16} aria-hidden="true" /> Back to Pixl Sports</Link>
+      </header>
+      <main className="auth-shell">
+        <section className="auth-story" aria-label="About Pixl Sports">
+          <p className="auth-eyebrow"><span aria-hidden="true" /> Your season, guided</p>
+          <h1>{title}</h1>
+          <p className="auth-subtitle">{subtitle}</p>
+          <div className="auth-story-rule" aria-hidden="true" />
+          <ul className="auth-highlights">
+            <li><Check size={17} aria-hidden="true" /> Plan each week</li>
+            <li><Check size={17} aria-hidden="true" /> Share game day</li>
+            <li><Check size={17} aria-hidden="true" /> Cheer on your athlete</li>
+          </ul>
+        </section>
+        <div className="auth-form-wrap">
           {children}
+          <p className="auth-footnote">A season worth keeping / Pixl Sports</p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
@@ -3319,8 +3298,8 @@ function SignInPage() {
   const redirectUrl = new URLSearchParams(window.location.search).get('redirect_url');
   return (
     <AuthLayout
-      title={<>ENTER<br/><span className="text-primary">CONTROL ROOM.</span></>}
-      subtitle="Access your athlete fan card and game-day workspace."
+      title={<>Pick up<br/><span>the season.</span></>}
+      subtitle="Your athlete’s season, all in one place. Pick up where you left off."
     >
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
     </AuthLayout>
@@ -3333,8 +3312,8 @@ function SignUpPage() {
 
   return (
     <AuthLayout
-      title={<>CREATE<br/><span className="text-primary">CALLSIGN.</span></>}
-       subtitle="Join Pixl Sports to manage your athlete fan card and game-day workspace."
+      title={<>Start their<br/><span>season here.</span></>}
+      subtitle="Plan each week, share game day, and cheer on your athlete together."
     >
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={roleRedirect} />
     </AuthLayout>
@@ -3659,14 +3638,14 @@ function ClerkProviderWithRoutes() {
       localization={{
         signIn: {
           start: {
-            title: "ENTER THE ARENA",
-            subtitle: "Sign in to access your Pixl Sports workspace",
+            title: "WELCOME BACK",
+            subtitle: "Sign in to continue your athlete’s season",
           },
         },
         signUp: {
           start: {
-            title: "JOIN THE TEAM",
-            subtitle: "Create an account to manage your athlete fan card",
+            title: "JOIN PIXL SPORTS",
+            subtitle: "Create an account to start your athlete’s season",
           },
         },
       }}
