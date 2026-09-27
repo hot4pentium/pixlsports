@@ -103,10 +103,21 @@
 .season-stats__message { margin: 14px 0 0; color: #17539a; font-size: 12px; font-weight: 700; }
 .season-stats__message--error { color: #a53637; }
 .season-stats__empty { padding: 42px 24px; background: var(--season-card); border: 1px dashed var(--season-line); text-align: center; color: var(--season-muted); font-size: 13px; }
-.season-stats__charts { margin-top: 25px; }
+.season-stats__charts {
+  --report-chart-muted: #596d85;
+  --report-chart-grid: #c9d7e6;
+  --report-chart-cursor: #c7d9ef;
+  --report-tooltip-bg: #fbfdff;
+  --report-tooltip-ink: #142b49;
+  --report-tooltip-border: #b8cbe0;
+  --report-score-ink: #1758a9;
+  margin-top: 25px;
+}
 .season-stats__charts > div { margin-top: 12px; }
 .season-stats__charts .bg-card { background: var(--season-card); }
 .season-stats__charts .bg-background { background: var(--season-paper); }
+.season-stats__charts .text-foreground { color: var(--season-ink); }
+.season-stats__charts .text-muted-foreground { color: var(--season-muted); }
 @media (max-width: 850px) {
   .season-stats__layout { grid-template-columns: 1fr; }
   .season-stats__log { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
