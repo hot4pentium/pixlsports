@@ -31,7 +31,7 @@ export function FanCardInstall({ inviteToken }: { inviteToken: string }) {
       event.preventDefault();
       setPrompt(event as InstallPrompt);
     };
-    const onInstalled = () => { setInstalled(true); setPrompt(null); setNotice('The Hype Card is on your home screen.'); };
+    const onInstalled = () => { setInstalled(true); setPrompt(null); setNotice('The Hype Card is installed as an app.'); };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
@@ -52,7 +52,7 @@ export function FanCardInstall({ inviteToken }: { inviteToken: string }) {
       if (choice.outcome === 'dismissed') setShowInstructions(true);
     } catch {
       setShowInstructions(true);
-      setNotice('Use your browser menu to add this card to your home screen.');
+      setNotice('Use your browser menu to install this card as an app.');
     }
   }
 
@@ -62,15 +62,15 @@ export function FanCardInstall({ inviteToken }: { inviteToken: string }) {
         <Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
         <div>
           <h2 className="font-display text-xl uppercase">Keep this card close</h2>
-          <p className="mt-1 text-xs leading-relaxed text-white/60">Save this athlete’s link to your phone. The card stays current as the season grows.</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/60">Install this athlete’s card as an app on your phone or desktop. The card stays current as the season grows.</p>
         </div>
       </div>
       {!installed ? (
         <button type="button" onClick={() => void install()} className="mt-4 inline-flex min-h-11 items-center gap-2 border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary hover:text-primary-foreground" aria-expanded={showInstructions} data-testid="button-install-fan-card">
-          <Download className="h-4 w-4" aria-hidden="true" /> {prompt ? 'Add to home screen' : 'How to add to home screen'}
+          <Download className="h-4 w-4" aria-hidden="true" /> {prompt ? 'Install as app' : 'How to install as app'}
         </button>
       ) : (
-        <p className="mt-4 text-xs font-bold uppercase tracking-widest text-primary" role="status">Opened from your home screen</p>
+        <p className="mt-4 text-xs font-bold uppercase tracking-widest text-primary" role="status">Opened as an app</p>
       )}
       {showInstructions && !installed && (
         <p className="mt-3 text-sm leading-relaxed text-white/70" data-testid="fan-card-install-instructions">
