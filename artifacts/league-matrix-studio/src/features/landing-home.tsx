@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import candidAthlete from '@/assets/landing-candid-athlete.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
 import prepChecklist from '@/assets/landing-prep-checklist.png';
+import followStatTracker from '@/assets/landing-follow-stat-tracker.png';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
 import { PreviewArtwork } from './hype-card-preview';
@@ -62,6 +63,30 @@ const steps = [
   { number: '03', title: 'Follow', description: 'Stay close to the action and capture what matters.', icon: Activity },
   { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
 ];
+
+const stepPreviews: Record<string, { src: string; alt: string; description: string; width: number; height: number }> = {
+  '01': {
+    src: planEventDetails,
+    alt: 'Completed Game On Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions.',
+    description: 'Completed Game On Card',
+    width: 1250,
+    height: 756,
+  },
+  '02': {
+    src: prepChecklist,
+    alt: 'Game vs Tigers prep checklist with six items, private notes, an add prep item button, and a create edit link button.',
+    description: 'game-day checklist',
+    width: 1160,
+    height: 1096,
+  },
+  '03': {
+    src: followStatTracker,
+    alt: 'Live Game vs Tigers stat tracker showing Warriors and Tigers tied at zero, set one, and six athlete stat categories.',
+    description: 'live stat tracker',
+    width: 1160,
+    height: 1254,
+  },
+};
 
 function FlippableStepCard({
   step: { number, title, description, icon: Icon },
@@ -207,24 +232,8 @@ export function PublicLandingPage() {
               <p>PIXL gives you a clear next step, from putting a game on the calendar to sharing the moments afterward.</p>
             </div>
             <div className="week-grid">
-              {steps.map(step => step.number === '01' || step.number === '02'
-                ? <FlippableStepCard
-                    key={step.number}
-                    step={step}
-                    preview={step.number === '01' ? {
-                      src: planEventDetails,
-                      alt: 'Completed Game On Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions.',
-                      description: 'Completed Game On Card',
-                      width: 1250,
-                      height: 756,
-                    } : {
-                      src: prepChecklist,
-                      alt: 'Game vs Tigers prep checklist with six items, private notes, an add prep item button, and a create edit link button.',
-                      description: 'game-day checklist',
-                      width: 1160,
-                      height: 1096,
-                    }}
-                  />
+              {steps.map(step => stepPreviews[step.number]
+                ? <FlippableStepCard key={step.number} step={step} preview={stepPreviews[step.number]} />
                 : <div className="step-card" key={step.number} data-testid={`card-landing-step-${step.number}`}>
                   <div className="step-top"><span className="step-icon"><step.icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{step.number}</span></div>
                   <h3 className="display">{step.title}</h3><p>{step.description}</p>
