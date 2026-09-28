@@ -34,6 +34,7 @@
 - [Approved Hype manager layout](approved-hype-manager-layout.md) — the owner-only wallet-style task cards are approved; their chevrons should toggle panels open and closed.
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
 - [Approved dashboard visual direction](approved-dashboard-visual-direction.md) — the supporter dashboard’s navy sports-editorial gradient, chevrons, and responsive path treatment are approved.
+- [Dashboard mockup boundary](dashboard-mockup-boundary.md) — supporter dashboard images must look like populated signed-in workspaces, not promotional landing pages.
 - [Planner push notifications](planner-push-notifications.md) — server-side planner reminders use the device time zone and durable delivery keys.
 - [Owner event-day announcements](owner-event-day-announcements.md) — Autoscale event-day sharing uses an in-app owner reminder and confirmable manual follower push, never an owner timer.
 - [Planner alert labels](planner-alert-labels.md) — visible push titles should identify both the schedule item type and reminder timing.

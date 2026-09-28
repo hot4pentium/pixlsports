@@ -472,3 +472,17 @@ mtime_ms = 1790561300658
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/c820bcfb-a64c-4992-8d38-bdcb45bb3f57/3bec2960-f164-431c-926e-0386444e4aba"
 storage_version_token = "1790561311816076"
 content_type = "image/png"
+
+[[outputs]]
+id = "C8OT52lIpaGtXG1hydJdn"
+uri = "file://exports/pixl-signed-in-supporter-dashboard.png"
+type = "image"
+title = "Signed-in supporter dashboard mockup"
+description = "Full-page desktop image of a fictional Pixl Sports supporter’s actual workspace layout: athlete overview, next Game On event, card collection, record, inbox, and tools."
+logical_id = "e026d845-b2aa-4b03-b29a-b8ace971110d"
+content_hash = "sha256:a6ed10cff722ec32adb53a045bfc30907bb8e390109d41f0a48facd3fbe85482"
+size = 485661
+mtime_ms = 1790561563866
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/e026d845-b2aa-4b03-b29a-b8ace971110d/7f591425-a467-4258-a821-76bbe6d0b4a4"
+storage_version_token = "1790561581546413"
+content_type = "image/png"

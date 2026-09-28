@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>Pixl Sports — signed-in supporter dashboard mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy:#091e30; --surface:#102c43; --surface2:#153650; --stroke:#ffffff19; --lime:#c9f45a; --blue:#75bbf6; --cream:#f7f8f2; --muted:#a9bdc5; }
+    * { box-sizing:border-box; }
+    html,body { width:1440px; margin:0; }
+    body { background:#091e30; color:var(--cream); font-family:"DM Sans",Arial,sans-serif; }
+    h1,h2,h3,p { margin:0; }
+    .condensed { font-family:"Barlow Condensed","Arial Narrow",Impact,sans-serif; font-weight:800; text-transform:uppercase; }
+    .app { display:flex; width:1440px; min-height:1510px; }
+    .sidebar { width:226px; flex:none; background:#071926; border-right:1px solid #ffffff1c; padding:26px 16px 24px; display:flex; flex-direction:column; }
+    .brand { font:900 27px/1 "Barlow Condensed",Impact,sans-serif; letter-spacing:-.7px; margin-left:11px; }
+    .brand span { color:var(--lime); }
+    .workspace-chip { margin:38px 7px 33px; border:1px solid #9fccb547; background:#123344; border-radius:10px; padding:12px; display:flex; align-items:center; gap:10px; }
+    .workspace-chip .initials { width:32px; height:32px; border-radius:7px; background:#c9f45a; color:#092235; display:grid; place-items:center; font-size:12px; font-weight:800; }
+    .workspace-chip b { display:block; font-size:11px; line-height:1.2; }
+    .workspace-chip small { display:block; color:#acc6c5; font-size:9px; margin-top:4px; }
+    .navlabel { color:#6f8a94; text-transform:uppercase; font-weight:800; font-size:10px; letter-spacing:1.7px; margin:0 12px 13px; }
+    .navitem { min-height:43px; display:flex; align-items:center; gap:12px; padding:0 13px; margin:2px 0; border-radius:7px; color:#a9c1c5; font-size:12px; font-weight:700; }
+    .navitem .glyph { font-size:16px; width:20px; text-align:center; font-weight:400; }
+    .navitem.current { background:#c9f45a16; color:#eaffc7; border-left:3px solid var(--lime); padding-left:10px; }
+    .navitem.current .glyph { color:var(--lime); }
+    .navgap { margin-top:31px; }
+    .sidebar-bottom { margin-top:auto; padding-top:18px; border-top:1px solid #ffffff1c; }
+    .sidebar-bottom .navitem { color:#91aab0; }
+    .main { width:1214px; background:radial-gradient(circle at 90% 5%,#15394d 0,transparent 440px), #0a2235; }
+    .topbar { height:74px; padding:0 31px; border-bottom:1px solid var(--stroke); display:flex; align-items:center; gap:18px; }
+    .breadcrumb { color:#b6cbd0; font-size:11px; font-weight:700; }
+    .breadcrumb b { color:#f2f7f3; }
+    .topbar-right { margin-left:auto; display:flex; gap:18px; align-items:center; color:#b4c9cc; font-size:12px; }
+    .search { border:1px solid #ffffff22; background:#123047; padding:10px 15px; border-radius:7px; width:221px; color:#88a3ac; font-size:11px; }
+    .top-icon { width:37px; height:37px; border:1px solid #ffffff25; border-radius:8px; display:grid; place-items:center; font-size:17px; }
+    .account { border-left:1px solid #ffffff25; padding-left:17px; display:flex; align-items:center; gap:9px; font-size:11px; font-weight:800; color:#eef5ef; }
+    .account .round { width:32px; height:32px; display:grid; place-items:center; background:#315369; border-radius:50%; font-size:10px; }
+    .content { padding:29px 30px 41px; }
+    .page-title { display:flex; align-items:end; justify-content:space-between; margin-bottom:19px; }
+    .page-title h1 { font-size:35px; line-height:1; }
+    .page-title p { color:#a9c1c7; font-size:12px; margin-top:7px; }
+    .date { color:#afc6cb; font-size:11px; font-weight:700; padding-bottom:4px; }
+    .athlete-strip { display:flex; align-items:center; gap:20px; padding:16px 20px; border:1px solid #ffffff2c; background:linear-gradient(115deg,#173e53,#102d43 67%); border-radius:12px; min-height:117px; }
+    .athlete-photo { width:77px; height:77px; border-radius:50%; object-fit:cover; object-position:48% 18%; border:3px solid #a9d4dc; flex:none; }
+    .athlete-label { color:#91bbc5; font-size:9px; letter-spacing:1.7px; font-weight:800; }
+    .athlete-name { font-size:28px; line-height:1; margin-top:4px; }
+    .athlete-sub { margin-top:6px; color:#b9d0d2; font-size:11px; }
+    .small-link { font-size:10px; font-weight:800; color:var(--lime); margin-left:8px; }
+    .strip-spacer { flex:1; }
+    .stat-mini { border-left:1px solid #ffffff2c; padding:2px 26px; text-align:center; min-width:97px; }
+    .stat-mini b { font:800 28px/1 "Barlow Condensed",sans-serif; display:block; }
+    .stat-mini small { color:#a6c0c5; font-size:9px; text-transform:uppercase; letter-spacing:1.2px; }
+    .strip-action { margin-left:5px; padding:10px 13px; border:1px solid #a4cece65; border-radius:6px; color:#dbeae7; font-size:10px; font-weight:800; white-space:nowrap; }
+    .overview { display:grid; grid-template-columns:minmax(0,1.95fr) minmax(270px,1fr); gap:14px; margin-top:16px; }
+    .pane { border:1px solid #ffffff26; border-radius:11px; background:#112e43; }
+    .next-game { min-height:301px; padding:24px 26px; background:radial-gradient(circle at 97% 0,#20536b,transparent 55%),linear-gradient(125deg,#123950,#0c283d); position:relative; overflow:hidden; }
+    .next-game::after { content:""; position:absolute; right:14px; top:0; bottom:0; width:42%; opacity:.13; background-image:linear-gradient(#c0d8e4 1px,transparent 1px),linear-gradient(90deg,#c0d8e4 1px,transparent 1px); background-size:29px 29px; pointer-events:none; }
+    .next-game > * { position:relative; z-index:1; }
+    .kicker { font-size:9px; letter-spacing:1.7px; text-transform:uppercase; font-weight:800; color:var(--lime); }
+    .next-game .status { float:right; border:1px solid #c9f45a66; border-radius:30px; padding:7px 10px; color:#dff5b1; font-size:9px; font-weight:800; }
+    .next-game h2 { font-size:61px; line-height:.85; margin:26px 0 10px; }
+    .next-game .event-type { color:#a6c9cd; font-size:11px; font-weight:700; }
+    .event-meta { display:flex; gap:23px; color:#d3e4e4; font-size:11px; font-weight:700; margin-top:18px; }
+    .next-game .actions { display:flex; gap:8px; margin-top:28px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 15px; border-radius:6px; font-size:10px; font-weight:800; white-space:nowrap; }
+    .btn.lime { background:var(--lime); color:#082336; }
+    .btn.ghost { border:1px solid #98b8c560; color:#e5f3f0; }
+    .side-stack { display:grid; grid-template-rows:1fr 1fr; gap:12px; }
+    .inbox,.record { padding:19px 20px; }
+    .side-title { font:800 25px/1 "Barlow Condensed",sans-serif; text-transform:uppercase; margin-top:7px; }
+    .inbox p,.record p { color:#b1c5cb; font-size:11px; margin-top:7px; line-height:1.5; }
+    .inbox .count { float:right; background:#c9f45a; color:#0b2b3a; border-radius:40px; font-size:10px; font-weight:800; padding:4px 9px; }
+    .inbox .inline { display:block; color:var(--lime); font-size:10px; font-weight:800; margin-top:11px; }
+    .record-grid { display:flex; margin-top:13px; gap:20px; }
+    .record-grid strong { font:800 24px/1 "Barlow Condensed",sans-serif; display:block; }
+    .record-grid small { color:#99b7be; font-size:9px; font-weight:800; text-transform:uppercase; }
+    .collection { margin-top:25px; }
+    .collection-head { display:flex; align-items:end; justify-content:space-between; }
+    .collection h2 { font-size:34px; line-height:.9; }
+    .collection-head p { color:#9eb8be; font-size:11px; margin-top:8px; }
+    .create { padding:10px 14px; border-radius:6px; background:var(--lime); color:#0b2d3b; font-size:10px; font-weight:800; }
+    .toolbar { margin-top:17px; height:50px; padding:0 15px; background:#112e42; border:1px solid #ffffff25; border-radius:7px; display:flex; align-items:center; justify-content:space-between; }
+    .toolbar label { color:#d9e9e8; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+    .toolbar label span { margin-left:12px; color:#8faeb5; text-transform:none; letter-spacing:0; font-weight:600; }
+    .toolbar .search { width:227px; padding:8px 11px; }
+    .badge-row { margin-top:13px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .badge { height:325px; position:relative; background:#f7f8f1; color:#0b2638; border-radius:12px; padding:19px; box-shadow:0 14px 24px #03141f47; border:1px solid #d6e4de; display:flex; flex-direction:column; }
+    .badge:before { content:""; position:absolute; top:-1px; left:calc(50% - 20px); width:40px; height:6px; border-radius:0 0 6px 6px; background:#829aa2; }
+    .badge.featured { border-color:#c9f45a; box-shadow:0 0 0 2px #c9f45a4a,0 14px 24px #03141f47; }
+    .badge .badge-top { display:flex; justify-content:space-between; align-items:center; padding-bottom:13px; border-bottom:1px solid #d9e5df; }
+    .badge .badge-top b { font:900 23px/1 "Barlow Condensed",sans-serif; }
+    .badge .badge-top small { padding:5px 8px; background:#e7efe8; border-radius:50px; font-size:9px; font-weight:800; }
+    .badge.featured .badge-top small { background:#dbefad; }
+    .badge .dateblock { display:flex; align-items:center; gap:13px; margin-top:18px; }
+    .badge .big-day { font:900 59px/.78 "Barlow Condensed",sans-serif; letter-spacing:-1px; }
+    .badge .month { font-size:11px; font-weight:800; line-height:1.5; }
+    .badge h3 { font-size:32px; line-height:.96; margin-top:19px; }
+    .badge .place { color:#62787c; font-size:10px; font-weight:700; margin-top:8px; }
+    .badge .badge-bottom { margin-top:auto; padding-top:15px; border-top:1px solid #dbe7df; display:flex; justify-content:space-between; align-items:center; color:#366276; font-size:10px; font-weight:800; }
+    .badge .upnext { position:absolute; right:18px; top:63px; padding:5px 9px; border-radius:4px; background:#c9f45a; color:#173a3d; font-size:9px; font-weight:800; text-transform:uppercase; }
+    .badge-actions { margin-top:13px; display:flex; gap:9px; }
+    .badge-actions span { border:1px solid #a4c0c146; padding:8px 12px; border-radius:5px; color:#c9dee0; font-size:10px; font-weight:700; }
+    .quick { margin-top:27px; }
+    .quick h2 { font-size:29px; margin-bottom:12px; }
+    .quick-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .quick-card { height:134px; background:#123249; border:1px solid #ffffff29; border-radius:10px; padding:19px; display:flex; flex-direction:column; align-items:flex-start; }
+    .quick-card .icon { width:30px; height:30px; border-radius:6px; background:#c9f45a20; color:var(--lime); display:grid; place-items:center; font-size:17px; }
+    .quick-card h3 { font-size:22px; margin-top:14px; }
+    .quick-card p { color:#9fb9c1; font-size:10px; margin-top:3px; }
+    .quick-card .go { align-self:flex-end; color:var(--lime); font-weight:800; margin-top:-28px; font-size:13px; }
+    .footer { border-top:1px solid #ffffff1c; color:#75939e; font-size:10px; display:flex; justify-content:space-between; padding:16px 2px 0; margin-top:37px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">PIXL <span>SPORTS</span></div>
+      <div class="workspace-chip"><span class="initials">JB</span><div><b>Jordan’s workspace</b><small>Ridgeview Hawks · Football</small></div></div>
+      <div class="navlabel">YOUR WORKSPACE</div>
+      <div class="navitem current"><span class="glyph">▦</span>Dashboard</div>
+      <div class="navitem"><span class="glyph">▧</span>Game On cards</div>
+      <div class="navitem"><span class="glyph">▤</span>Calendar</div>
+      <div class="navitem"><span class="glyph">☑</span>Prep checklist</div>
+      <div class="navitem"><span class="glyph">⌁</span>Stat Tracker</div>
+      <div class="navlabel navgap">SHARE &amp; CELEBRATE</div>
+      <div class="navitem"><span class="glyph">✦</span>Hype Card</div>
+      <div class="navitem"><span class="glyph">▣</span>Graphic maker</div>
+      <div class="navitem"><span class="glyph">▻</span>Videos</div>
+      <div class="sidebar-bottom">
+        <div class="navitem"><span class="glyph">◉</span>Profile &amp; settings</div>
+        <div class="navitem"><span class="glyph">?</span>Help / FAQ</div>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">Workspace &nbsp; / &nbsp; <b>Dashboard</b></div>
+        <div class="topbar-right"><div class="search">⌕ &nbsp; Search your cards</div><div class="top-icon">♧</div><div class="account"><span class="round">AB</span> Alex Brooks ▾</div></div>
+      </header>
+      <main class="content">
+        <div class="page-title"><div><h1 class="condensed">Dashboard</h1><p>Manage Jordan’s games, prep, and season moments.</p></div><span class="date">Sunday, September 27, 2026</span></div>
+        <section class="athlete-strip" aria-label="Athlete overview">
+          <img class="athlete-photo" src="../artifacts/league-matrix-studio/src/assets/landing-youth-football-hero.jpg" alt="Fictional football athlete Jordan Brooks">
+          <div><div class="athlete-label">YOUR ATHLETE</div><h2 class="condensed athlete-name">Jordan Brooks <span style="color:var(--lime)">#11</span></h2><div class="athlete-sub">Ridgeview Hawks &nbsp; · &nbsp; Football &nbsp; <span class="small-link">Edit athlete →</span></div></div>
+          <div class="strip-spacer"></div>
+          <div class="stat-mini"><b>2–1–0</b><small>Tracked record</small></div>
+          <div class="stat-mini"><b>06</b><small>Games this season</small></div>
+          <span class="strip-action">Switch athlete &nbsp;⌄</span>
+        </section>
+        <div class="overview">
+          <section class="pane next-game" aria-label="Next game context">
+            <span class="status">UPCOMING · 6 DAYS</span>
+            <div class="kicker">NEXT GAME · GAME ON</div>
+            <h2 class="condensed">VS NORTHSIDE<br>WOLVES</h2>
+            <div class="event-type">Ridgeview Hawks · Jordan #11</div>
+            <div class="event-meta"><span>◷ &nbsp; Sat, Oct 3 · 4:30 PM</span><span>⌖ &nbsp; Ridgeview Field</span></div>
+            <div class="actions"><span class="btn lime">Open Game On card &nbsp; →</span><span class="btn ghost">Prep checklist &nbsp; →</span><span class="btn ghost">Event details</span></div>
+          </section>
+          <div class="side-stack">
+            <section class="pane inbox"><span class="count">3 NEW</span><div class="kicker">SUPPORTER ACTIVITY</div><h2 class="side-title">Shoutouts &amp; replies</h2><p>3 new messages on Jordan’s Hype Card.</p><span class="inline">Open inbox &nbsp; →</span></section>
+            <section class="pane record"><div class="kicker">TRACKED GAMES · FOOTBALL</div><h2 class="side-title">Record</h2><div class="record-grid"><div><strong>2</strong><small>Wins</small></div><div><strong>1</strong><small>Loss</small></div><div><strong>0</strong><small>Ties</small></div></div><p>3 completed games with results recorded.</p></section>
+          </div>
+        </div>
+        <section class="collection" aria-label="Game On card collection">
+          <div class="collection-head"><div><h2 class="condensed">Game On cards</h2><p>Every game and practice, organized around Jordan.</p></div><span class="create">＋ &nbsp; Create Game On card</span></div>
+          <div class="toolbar"><label>Your cards <span>Showing 3 of 3 cards</span></label><div class="search">⌕ &nbsp; Opponent, location, or date</div></div>
+          <div class="badge-row">
+            <article class="badge featured">
+              <div class="badge-top"><b>GAME ON</b><small>PUBLISHED</small></div><span class="upnext">Up next</span>
+              <div class="dateblock"><span class="big-day">03</span><span class="month">OCT<br>SAT · 2026</span></div>
+              <h3 class="condensed">VS NORTHSIDE<br>WOLVES</h3><div class="place">◷ 4:30 PM &nbsp; · &nbsp; ⌖ Ridgeview Field</div>
+              <div class="badge-bottom"><span>JORDAN BROOKS · #11</span><span>OPEN →</span></div>
+            </article>
+            <article class="badge">
+              <div class="badge-top"><b>GAME ON</b><small>SHARED</small></div>
+              <div class="dateblock"><span class="big-day">29</span><span class="month">SEP<br>TUE · 2026</span></div>
+              <h3 class="condensed">TEAM PRACTICE</h3><div class="place">◷ 5:00 PM &nbsp; · &nbsp; ⌖ Ridgeview Field</div>
+              <div class="badge-bottom"><span>JORDAN BROOKS · #11</span><span>OPEN →</span></div>
+            </article>
+            <article class="badge">
+              <div class="badge-top"><b>GAME ON</b><small>DRAFT</small></div>
+              <div class="dateblock"><span class="big-day">10</span><span class="month">OCT<br>SAT · 2026</span></div>
+              <h3 class="condensed">VS WESTBROOK<br>BEARS</h3><div class="place">◷ 2:00 PM &nbsp; · &nbsp; ⌖ Westbrook Stadium</div>
+              <div class="badge-bottom"><span>JORDAN BROOKS · #11</span><span>OPEN →</span></div>
+            </article>
+          </div>
+          <div class="badge-actions"><span>☑ &nbsp; Prep</span><span>⌁ &nbsp; Stat Tracker</span><span>▤ &nbsp; Details</span><span style="border-color:transparent;color:#8ba8b0;">Actions for the selected Game On card</span></div>
+        </section>
+        <section class="quick">
+          <h2 class="condensed">Quick access</h2>
+          <div class="quick-grid">
+            <article class="quick-card"><span class="icon">⌁</span><h3 class="condensed">View stats</h3><p>Jordan’s recorded games and season totals.</p><span class="go">↗</span></article>
+            <article class="quick-card"><span class="icon">✦</span><h3 class="condensed">View athlete fan card</h3><p>Photos, highlights, and supporter shoutouts.</p><span class="go">↗</span></article>
+            <article class="quick-card"><span class="icon">▤</span><h3 class="condensed">Calendar</h3><p>Keep the next game and practice in sight.</p><span class="go">↗</span></article>
+          </div>
+        </section>
+        <footer class="footer"><span>Help / FAQ &nbsp; · &nbsp; Privacy</span><span>MOCKUP · FICTIONAL ATHLETE &amp; EVENTS</span></footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
