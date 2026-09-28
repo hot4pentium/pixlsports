@@ -500,3 +500,17 @@ mtime_ms = 1790562777311
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/eaa5300c-b2e9-4cfe-86f2-2685e9988776/efdce8b7-2138-4c33-97ac-4da74586dc81"
 storage_version_token = "1790562787240720"
 content_type = "image/png"
+
+[[outputs]]
+id = "RyRjtG8O-iiWDQjNObG2S"
+uri = "file://exports/pixl-real-dashboard-demo-landscape.png"
+type = "image"
+title = "Landscape dashboard demo image"
+description = "Landscape view using the same fictional Maya Chen dashboard data, with six Game On cards in a three-column grid and no tour button."
+logical_id = "7e24c74f-664d-4aed-830d-0ce13787d63b"
+content_hash = "sha256:b0529f41efc1d2cfb22a28612b94911c3506b6c3d6c1c46c04465cfe70aad166"
+size = 680440
+mtime_ms = 1790562881089
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/7e24c74f-664d-4aed-830d-0ce13787d63b/52395f98-9ae3-4811-a4c8-cd0aa6d928c2"
+storage_version_token = "1790562896962782"
+content_type = "image/png"

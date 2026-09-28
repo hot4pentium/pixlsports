@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1600">
+  <title>Pixl Sports user dashboard — fictional landscape demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing:border-box; }
+    html,body { width:1600px; margin:0; }
+    body { background:#e5ebf4; color:#f7faff; font-family:"DM Sans",Arial,sans-serif; }
+    .condensed { font-family:"Barlow Condensed",Impact,sans-serif; font-weight:800; text-transform:uppercase; }
+    .topbar { height:64px; background:#101115; border-bottom:3px solid #c96435; display:flex; align-items:center; padding:0 35px; gap:15px; }
+    .logo { font:900 27px "Barlow Condensed",sans-serif; letter-spacing:5px; color:#3280f1; margin-right:auto; }
+    .topbar .circle { width:38px; height:38px; display:grid; place-items:center; border:1px solid #ffffff30; border-radius:50%; background:#192031; color:#fff; font-size:18px; }
+    .topbar .account { background:#e3eafa; color:#142a4b; font-size:16px; font-weight:800; }
+    main { padding:20px 26px 24px; }
+    .summary { height:325px; border:1px solid #416593; border-radius:22px; position:relative; overflow:hidden; background:radial-gradient(ellipse at 52% 0,#123c6c,#081a33 66%,#081429); box-shadow:0 14px 25px #061d3d2e; padding:12px; }
+    .summary:before { content:""; position:absolute; inset:0; opacity:.21; background-image:linear-gradient(90deg,#8ca7ca2b 1px,transparent 1px),linear-gradient(#8ca7ca2b 1px,transparent 1px); background-size:40px 40px; pointer-events:none; }
+    .summary > * { position:relative; z-index:1; }
+    .summary-head { height:62px; padding:0 9px 10px; display:flex; justify-content:flex-end; align-items:center; }
+    .athlete { display:flex; align-items:center; gap:11px; border-radius:60px; border:1px solid #a3bde83a; background:#0b2240d9; padding:5px 13px 5px 6px; min-width:222px; }
+    .avatar { width:40px; height:40px; display:grid; place-items:center; border-radius:50%; border:1px solid #91b1dc; background:linear-gradient(135deg,#4a88d0,#173d76); font-size:13px; font-weight:800; }
+    .athlete-copy { flex:1; text-align:right; }
+    .athlete-copy small { display:block; color:#a0b6db; font-size:10px; letter-spacing:1.8px; font-weight:800; }
+    .athlete-copy b { font-size:12px; }.athlete-copy b span { color:#b4d5f8; }
+    .chevron { font-size:24px; color:#e6edfa; }
+    .tiles { display:grid; grid-template-columns:1.32fr 1fr 1fr; gap:12px; }
+    .tile { min-height:235px; border:1px solid #7692bd45; border-radius:14px; position:relative; overflow:hidden; padding:20px 23px; box-shadow:inset 0 0 0 1px #ffffff0b; }
+    .next { background:radial-gradient(ellipse at 85% 5%,#2678d2,#16427e 53%,#113066); }
+    .next:after { content:""; position:absolute; width:290px; height:200px; border:1px solid #a2cfff2c; border-radius:50%; right:-70px; bottom:-90px; box-shadow:0 0 0 44px #a2cfff0b; }
+    .eyebrow { color:#a9c2e0; font-size:12px; font-weight:800; letter-spacing:2px; text-transform:uppercase; }
+    .dot { display:inline-block; width:8px; height:8px; margin-right:9px; border-radius:50%; background:#6cb2ff; }
+    .next .caption { color:#bfdaff; font-size:10px; letter-spacing:1.5px; font-weight:800; margin-top:14px; }
+    .next h2 { font-size:42px; line-height:.94; margin:7px 0 5px; }
+    .next .detail { font-size:11px; font-weight:700; color:#e1f0ff; margin-top:6px; }
+    .next .open { display:inline-block; margin-top:14px; border:1px solid #86b9f2; border-radius:5px; padding:8px 17px; background:#0a2c63cf; text-transform:uppercase; font-size:10px; font-weight:800; }
+    .shoutout,.record { background:linear-gradient(145deg,#10345d,#081d3a); }
+    .shoutout .heading { display:flex; gap:8px; align-items:flex-start; text-transform:uppercase; font-weight:800; font-size:16px; letter-spacing:.6px; line-height:1.3; }
+    .bubble { color:#8ebeff; font-size:19px; }
+    .shoutout .rule { height:1px; background:#82a5cd36; margin:16px 0; }
+    .reply { display:flex; gap:10px; }.flame { font-size:19px; }
+    .reply .eyebrow { font-size:10px; letter-spacing:.8px; }
+    .reply p { font-size:15px; margin:5px 0; }
+    .shoutout .view { position:absolute; bottom:18px; left:23px; right:23px; display:flex; justify-content:space-between; color:#95bef1; font-size:10px; font-weight:800; }
+    .shoutout .view span { font-size:19px; }
+    .record { text-align:center; padding:25px 17px; }
+    .record h2 { font-size:25px; margin-top:6px; }
+    .record .sub { color:#9bb5d3; font-size:11px; font-weight:800; letter-spacing:1.1px; margin-top:2px; }
+    .record .numbers { display:flex; margin:16px 0 9px; }
+    .record .numbers div { flex:1; border-right:1px solid #4a83b870; }
+    .record .numbers div:last-child { border:0; }
+    .record strong { display:block; font-size:35px; line-height:1; }
+    .record small { color:#a7c4e5; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; }
+    .record .foot { color:#9bb5d3; font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+    .collection { margin-top:18px; border:1px solid #769aca; border-radius:20px; background:radial-gradient(ellipse at 50% 0,#20558b,#102c52 49%,#0b203e 96%); box-shadow:0 10px 20px #061d3b30; padding:20px 25px 18px; }
+    .collection-head { display:flex; justify-content:space-between; align-items:center; }
+    .collection .eyebrow { font-size:11px; }
+    .collection .eyebrow:before { content:""; display:inline-block; width:28px; height:2px; background:#56adff; margin-right:11px; vertical-align:4px; }
+    .collection h2 { font-size:40px; line-height:1; margin-top:5px; }
+    .collection .intro { color:#b5cce9; font-size:12px; margin-top:5px; }
+    .add { display:inline-block; padding:13px 17px; color:#fff; background:#2e82f6; border:1px solid #83bdff; border-radius:8px; font-size:11px; font-weight:800; box-shadow:0 4px 10px #07183375; }
+    .add span { font-size:19px; margin-right:6px; vertical-align:-2px; }
+    .toolbar { display:flex; justify-content:space-between; align-items:center; margin:17px 0 11px; color:#bdd1e7; font-size:10px; font-weight:800; letter-spacing:1px; }
+    .toolbar b { letter-spacing:0; color:#90accc; margin-left:9px; }
+    .search { border:1px solid #ffffff35; border-radius:6px; background:#102b4e; color:#9bb5d9; padding:9px 12px; font-size:10px; font-weight:500; letter-spacing:0; width:230px; }
+    .cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .card { height:177px; position:relative; border:1px solid #bfd5e8; border-radius:11px; overflow:hidden; background:linear-gradient(145deg,#fff,#e8f0fa); color:#102d53; text-align:center; box-shadow:0 5px 10px #0410224a; }
+    .card .stripe { height:7px; background:#367fe7; }
+    .card .tag { position:absolute; right:9px; top:14px; color:#205496; background:#d8e9fb; padding:4px 7px; border-radius:3px; font-size:8px; font-weight:800; }
+    .card .month { color:#39546f; font-size:10px; font-weight:800; letter-spacing:2px; margin-top:17px; }
+    .card strong { display:block; font:900 60px/.96 "Barlow Condensed",sans-serif; margin:2px 0; }
+    .card .kind { position:absolute; left:14px; right:14px; bottom:9px; padding-top:8px; border-top:1px solid #c7d9ea; font:900 19px "Barlow Condensed",sans-serif; letter-spacing:.8px; text-transform:uppercase; }
+    .quick { display:flex; gap:9px; margin-top:14px; }
+    .quick span { background:#98361d; border:1px solid #e69165; border-radius:5px; padding:9px 12px; font-size:10px; font-weight:800; }
+    footer { text-align:center; color:#527191; font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; padding-top:16px; }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="logo">PIXL SPORTS</div><div class="circle">♧</div><div class="circle account">D</div><div class="circle">☰</div></header>
+  <main>
+    <section class="summary">
+      <div class="summary-head"><div class="athlete"><span class="avatar">MC</span><span class="athlete-copy"><small>ATHLETE</small><b>Maya Chen <span>#12</span></b><small>HARBOR HAWKS</small></span><span class="chevron">›</span></div></div>
+      <div class="tiles">
+        <article class="tile next"><div class="eyebrow"><i class="dot"></i>NEXT GAME</div><div class="caption">SAT · OCT 3 · 10:00 AM</div><h2 class="condensed">HAWKS VS EASTSIDE</h2><div class="detail">Volleyball · Up next</div><div class="detail">⌖ Harbor Community Gym</div><div class="open">OPEN GAME CARD →</div></article>
+        <article class="tile shoutout"><div class="heading"><span class="bubble">◉</span>SHOUTOUTS &amp; REPLIES · 1</div><div class="rule"></div><div class="reply"><span class="flame">🔥</span><div><span class="eyebrow">FAN SHOUTOUT · CASEY</span><p>Great game, Maya!</p></div></div><div class="view">VIEW ALL <span>→</span></div></article>
+        <article class="tile record"><div class="eyebrow">TRACKED GAMES</div><h2 class="condensed">RECORD</h2><div class="sub">VOLLEYBALL · COMPLETED GAMES</div><div class="numbers"><div><strong>7</strong><small>WINS</small></div><div><strong>1</strong><small>LOSSES</small></div><div><strong>0</strong><small>TIES</small></div></div><div class="foot">8 SCORED GAMES TRACKED</div></article>
+      </div>
+    </section>
+    <section class="collection">
+      <div class="collection-head"><div><div class="eyebrow">YOUR SEASON, ONE CARD AT A TIME</div><h2 class="condensed">GAME ON</h2><p class="intro">Everything for the next game or practice, right where you need it.</p></div><div class="add"><span>＋</span>ADD GAME ON CARD</div></div>
+      <div class="toolbar"><span>YOUR CARDS <b>Showing 6 of 6 cards</b></span><span class="search">⌕ &nbsp; Search cards</span></div>
+      <div class="cards">
+        <article class="card"><div class="stripe"></div><div class="tag">PUBLISHED</div><div class="month">OCTOBER</div><strong>03</strong><div class="kind">GAME · UP NEXT</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">PUBLISHED</div><div class="month">OCTOBER</div><strong>06</strong><div class="kind">PRACTICE</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">DRAFT</div><div class="month">OCTOBER</div><strong>10</strong><div class="kind">GAME</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>26</strong><div class="kind">GAME</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>19</strong><div class="kind">GAME</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>12</strong><div class="kind">GAME</div></article>
+      </div>
+      <div class="quick"><span>⌁ &nbsp; VIEW STATS</span><span>✦ &nbsp; VIEW ATHLETE FAN CARD</span></div>
+    </section>
+    <footer>DEMO IMAGE · ALL NAMES, EVENTS, AND RESULTS ARE FICTIONAL</footer>
+  </main>
+</body>
+</html>
