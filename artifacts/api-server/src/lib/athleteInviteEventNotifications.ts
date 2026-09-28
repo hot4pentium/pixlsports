@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import {
   athleteInviteEventDeliveryClaimsTable,
-  athleteInviteEventLinksTable,
   athleteInviteFansTable,
   athleteInvitesTable,
   db,
@@ -65,12 +64,6 @@ async function validateInviteEvent(
     eq(athleteInvitesTable.paused, false),
   )).for("update").limit(1);
   if (!invite || !(await isAccountActive(ownerClerkUserId))) return null;
-  const [link] = await tx.select({ id: athleteInviteEventLinksTable.id })
-    .from(athleteInviteEventLinksTable).where(and(
-      eq(athleteInviteEventLinksTable.inviteId, invite.id),
-      eq(athleteInviteEventLinksTable.shareId, shareToken),
-    )).limit(1);
-  if (!link) return null;
   const [share] = await tx.select().from(scheduleSharesTable).where(and(
     eq(scheduleSharesTable.id, shareToken),
     eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
@@ -78,6 +71,7 @@ async function validateInviteEvent(
   )).for("update").limit(1);
   const event = getSingleEvent(share?.events);
   if (!share || !event || typeof event.id !== "string") return null;
+  if (!invite.showEvents) return { invite, share, event, upcoming: false };
   const trackerStatus = await currentTrackerStatus(tx, ownerClerkUserId, event);
   if (event.status === "final" || event.status === "live" || trackerStatus === "final" || trackerStatus === "live"
     || !validUpcomingEvent(event, invite.timezone, new Date())) {

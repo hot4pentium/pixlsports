@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Check,
+  CalendarDays,
   Clipboard,
   ExternalLink,
   ImagePlus,
@@ -29,6 +30,7 @@ import { Link } from 'wouter';
 import {
   getListAthleteInvitesQueryKey,
   getGetAthleteInviteQueryKey,
+  getGetAthleteFanCardQueryKey,
   getListAthleteInviteHypesQueryKey,
   getListProjectsQueryKey,
   getListHypeCardSharesQueryKey,
@@ -46,6 +48,7 @@ import {
   useUpdateAthleteInvite,
   useListAthleteInviteHypes,
   useDeleteAthleteInviteHype,
+  type AthleteInviteEventSummary,
   type AthleteInviteInput,
 } from '@workspace/api-client-react';
 
@@ -54,7 +57,7 @@ import { Switch } from '@/components/ui/switch';
 import { HypeCardReplyComposer } from './public-hype-card';
 import { FanCardPhotoManager } from './fan-card-photo-manager';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
-import { OwnerEventLinks } from './owner-event-links';
+import { OwnerEventNotifications } from './owner-event-notifications';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
@@ -386,6 +389,8 @@ type OwnedAthleteInvite = {
   trackerProjectId: string | null;
   showHypeCard: boolean;
   showStats: boolean;
+  showEvents: boolean;
+  events: AthleteInviteEventSummary[];
   hypesEnabled: boolean;
   paused: boolean;
   inviteToken: string;
@@ -847,13 +852,16 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const deleteHypeCard = useDeleteHypeCardShare();
   const [showHypeCard, setShowHypeCard] = useState(invite.showHypeCard);
   const [showStats, setShowStats] = useState(invite.showStats);
+  const [showEvents, setShowEvents] = useState(invite.showEvents);
   const [hypesEnabled, setHypesEnabled] = useState(invite.hypesEnabled);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const visibilitySavingRef = useRef(false);
   const [visibilityStatus, setVisibilityStatus] = useState<'idle' | 'saving' | 'saved' | 'refresh-error' | 'error'>('idle');
-  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'hypes' | 'media' | null>(
-    () => window.location.hash === '#owner-fan-hypes' ? 'hypes' : null,
+  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'events' | 'hypes' | 'media' | null>(
+    () => window.location.hash === '#owner-fan-hypes'
+      ? 'hypes'
+      : window.location.hash === '#owner-notify-followers' ? 'events' : null,
   );
   const toggleTask = (task: Exclude<typeof activeTask, null>) => {
     setActiveTask((current) => current === task ? null : task);
@@ -889,20 +897,24 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     if (changedInvite) {
       setSettingsDirty(false);
       setVisibilityStatus('idle');
-      setActiveTask(window.location.hash === '#owner-fan-hypes' ? 'hypes' : null);
+      setActiveTask(window.location.hash === '#owner-fan-hypes'
+        ? 'hypes'
+        : window.location.hash === '#owner-notify-followers' ? 'events' : null);
     }
     if (settingsDirty && !changedInvite) return;
     setShowHypeCard(invite.showHypeCard);
     setShowStats(invite.showStats);
+    setShowEvents(invite.showEvents);
     setHypesEnabled(invite.hypesEnabled);
-  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.hypesEnabled, settingsDirty]);
+  }, [invite.inviteToken, invite.showHypeCard, invite.showStats, invite.showEvents, invite.hypesEnabled, settingsDirty]);
   useEffect(() => {
-    const openHypes = () => {
+    const openOwnerTask = () => {
       if (window.location.hash === '#owner-fan-hypes') setActiveTask('hypes');
+      if (window.location.hash === '#owner-notify-followers') setActiveTask('events');
     };
-    openHypes();
-    window.addEventListener('hashchange', openHypes);
-    return () => window.removeEventListener('hashchange', openHypes);
+    openOwnerTask();
+    window.addEventListener('hashchange', openOwnerTask);
+    return () => window.removeEventListener('hashchange', openOwnerTask);
   }, [invite.inviteToken]);
   useEffect(() => {
     if (activeTask !== 'hypes' || window.location.hash !== '#owner-fan-hypes') return;
@@ -926,6 +938,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     showHypeCard: useDraft ? showHypeCard : invite.showHypeCard,
     showStats: useDraft ? showStats : invite.showStats,
     showSchedule: false,
+    showEvents: useDraft ? showEvents : invite.showEvents,
     hypesEnabled: useDraft ? hypesEnabled : invite.hypesEnabled,
     paused,
   });
@@ -933,18 +946,20 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(invite.inviteToken) }),
+      queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(invite.inviteToken) }),
     ]);
   };
   const saveVisibilityChange = async (
-    field: 'showHypeCard' | 'showStats' | 'hypesEnabled',
+    field: 'showHypeCard' | 'showStats' | 'showEvents' | 'hypesEnabled',
     checked: boolean,
   ) => {
     if (visibilitySavingRef.current || updateInvite.isPending) return;
-    const current = { showHypeCard, showStats, hypesEnabled };
+    const current = { showHypeCard, showStats, showEvents, hypesEnabled };
     const next = { ...current, [field]: checked };
     const setField = {
       showHypeCard: setShowHypeCard,
       showStats: setShowStats,
+      showEvents: setShowEvents,
       hypesEnabled: setHypesEnabled,
     }[field];
     visibilitySavingRef.current = true;
@@ -1107,6 +1122,39 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </section>
       </HypeManagerTaskCard>
 
+      <HypeManagerTaskCard
+        id="events"
+        title="Allow Events"
+        description="Show all Game On Cards, or none"
+        Icon={CalendarDays}
+        active={activeTask === 'events'}
+        onSelect={() => toggleTask('events')}
+        badge={visibilitySaving ? 'Saving…' : showEvents ? 'Events on' : 'Events off'}
+      >
+        <section aria-labelledby="owner-event-visibility-title" data-testid="section-owner-event-visibility">
+          <h3 id="owner-event-visibility-title" className="font-display text-2xl uppercase">Game On Card events</h3>
+          <p className="mt-1 text-xs text-white/60">This setting saves as soon as you change it.</p>
+          <OwnerToggle
+            label="Allow events"
+            detail="When on, all your eligible shared Game On Cards appear on the HYPE Card, including cards you create later. When off, none appear."
+            checked={showEvents}
+            disabled={visibilitySaving || updateInvite.isPending}
+            onChange={(value) => void saveVisibilityChange('showEvents', value)}
+          />
+          {visibilityStatus !== 'idle' && (
+            <p
+              className={`mt-4 text-xs font-semibold ${visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'text-amber-200' : 'text-white/70'}`}
+              role={visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'alert' : 'status'}
+              aria-live="polite"
+              data-testid="status-owner-events"
+            >
+              {visibilityStatus === 'saving' ? 'Saving event visibility…' : visibilityStatus === 'saved' ? 'Event visibility saved.' : visibilityStatus === 'refresh-error' ? 'Event visibility saved, but the page could not refresh. Reload to confirm.' : 'Event visibility could not be saved. The switch was restored; try again.'}
+            </p>
+          )}
+        </section>
+        <OwnerEventNotifications invite={{ inviteToken: invite.inviteToken, showEvents, events: invite.events }} />
+      </HypeManagerTaskCard>
+
       <HypeManagerTaskCard id="hypes" title="Fan Shoutouts" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => toggleTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
       <section aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
         <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Shoutouts</h3>
@@ -1225,7 +1273,6 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
           <ChevronLeft className="mr-2 h-4 w-4" />Back to Hype Page
         </Link>
         <OwnerHypePageManage invite={ownerInvite} />
-        <div className="mx-auto max-w-[760px]"><OwnerEventLinks key={ownerInvite.inviteToken} invite={ownerInvite} /></div>
       </main>
     </div>
   );

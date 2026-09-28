@@ -17,6 +17,7 @@ export const athleteInvitesTable = pgTable("athlete_invites", {
   showHypeCard: boolean("show_hype_card").notNull().default(true),
   showStats: boolean("show_stats").notNull().default(true),
   showSchedule: boolean("show_schedule").notNull().default(true),
+  showEvents: boolean("show_events").notNull().default(false),
   hypesEnabled: boolean("hypes_enabled").notNull().default(true),
   paused: boolean("paused").notNull().default(false),
   liveTrackerShareToken: text("live_tracker_share_token"),

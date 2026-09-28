@@ -19,8 +19,6 @@ export * from './accountUsage';
 export * from './accountUsageConsumeInput';
 export * from './accountUsageConsumeInputCategory';
 export * from './accountUsageRemaining';
-export * from './athleteInviteEventLinks';
-export * from './athleteInviteEventLinksInput';
 export * from './athleteInviteEventNotifyResult';
 export * from './athleteInviteEventSummary';
 export * from './athleteInviteEventSummaryStatus';

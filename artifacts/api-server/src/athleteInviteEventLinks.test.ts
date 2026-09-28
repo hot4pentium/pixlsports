@@ -39,7 +39,7 @@ async function beforeDeadline<T>(operation: Promise<T>, message: string, timeout
   }
 }
 
-test("athlete event links expose only owned marked shares and manual delivery is durable per event and device", async () => {
+test("HYPE Card event visibility is all-or-none, includes future Game On Cards, and keeps manual delivery durable", async () => {
   const ownerId = `athlete-event-owner-${randomUUID()}`;
   const otherOwnerId = `athlete-event-other-${randomUUID()}`;
   const inviteToken = randomBytes(24).toString("base64url");
@@ -120,45 +120,57 @@ test("athlete event links expose only owned marked shares and manual delivery is
     assert.ok(address && typeof address === "object");
     const baseUrl = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}`;
     const headers = { "x-test-user": ownerId, "content-type": "application/json" };
-    const emptyLinks = await fetch(`${baseUrl}/event-links`, { headers });
-    assert.deepEqual(await emptyLinks.json(), { shareTokens: [] });
-    const linked = await fetch(`${baseUrl}/event-links`, {
-      method: "PUT",
+    const setShowEvents = (showEvents: boolean) => fetch(baseUrl, {
+      method: "PATCH",
       headers,
-      body: JSON.stringify({ shareTokens: [upcoming!.id, finalByTracker!.id] }),
+      body: JSON.stringify({
+        athleteName: "Alex",
+        teamName: "North",
+        seasonName: "2026",
+        seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        sport: "basketball",
+        timezone: "UTC",
+        trackerProjectId: null,
+        scheduleProjectId: null,
+        showHypeCard: true,
+        showStats: true,
+        showSchedule: false,
+        showEvents,
+        hypesEnabled: true,
+        paused: false,
+      }),
     });
-    assert.equal(linked.status, 200);
-    assert.deepEqual((await linked.json() as { shareTokens: string[] }).shareTokens, [upcoming!.id, finalByTracker!.id]);
-
-    const invalidCrossOwner = await fetch(`${baseUrl}/event-links`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ shareTokens: [foreign!.id] }),
-    });
-    assert.equal(invalidCrossOwner.status, 400);
-    assert.equal((await (await fetch(`${baseUrl}/event-links`, { headers })).json() as { shareTokens: string[] }).shareTokens.length, 2);
-    const invalidLegacy = await fetch(`${baseUrl}/event-links`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ shareTokens: [unmarked!.id] }),
-    });
-    assert.equal(invalidLegacy.status, 400);
-    assert.equal((await fetch(`${baseUrl}/event-links`, { headers: { "x-test-user": otherOwnerId } })).status, 404);
 
     const publicFan = await fetch(`${baseUrl}/fan`);
     assert.equal(publicFan.status, 200);
-    const publicFanBody = await publicFan.json() as { events: Array<Record<string, unknown>>; timezone: string | null };
+    const publicFanBody = await publicFan.json() as { showEvents: boolean; events: Array<Record<string, unknown>>; timezone: string | null };
     const publicEvents = publicFanBody.events;
     assert.equal(publicFanBody.timezone, "UTC");
-    assert.equal(publicEvents.length, 2);
-    assert.equal(publicEvents[0]?.shareToken, upcoming!.id);
-    assert.equal(publicEvents[0]?.eventId, (upcoming!.events as Array<{ id: string }>)[0]!.id);
-    assert.equal(publicEvents[0]?.date, futureDate(30));
-    assert.equal(publicEvents[0]?.status, "upcoming");
-    assert.equal(publicEvents[0]?.title, "Away game");
-    assert.equal(publicEvents[0]?.opponent, "Owls");
-    assert.equal(publicEvents[0]?.location, "North Gym");
-    assert.equal(publicEvents[1]?.status, "final");
+    assert.equal(publicFanBody.showEvents, false);
+    assert.equal(publicEvents.length, 0);
+
+    const hiddenOwned = await fetch(`http://127.0.0.1:${address.port}/api/athlete-invites`, { headers });
+    const hiddenOwnedBody = await hiddenOwned.json() as Array<{ showEvents: boolean; events: unknown[] }>;
+    assert.equal(hiddenOwnedBody[0]?.showEvents, false);
+    assert.equal(hiddenOwnedBody[0]?.events.length, 0);
+
+    const enabled = await setShowEvents(true);
+    assert.equal(enabled.status, 200);
+    assert.equal((await enabled.json() as { showEvents: boolean }).showEvents, true);
+    const enabledFan = await fetch(`${baseUrl}/fan`);
+    const enabledFanBody = await enabledFan.json() as { showEvents: boolean; events: Array<Record<string, unknown>> };
+    const visibleEvents = enabledFanBody.events;
+    assert.equal(enabledFanBody.showEvents, true);
+    assert.equal(visibleEvents.length, 2);
+    const upcomingPublic = visibleEvents.find((event) => event.shareToken === upcoming!.id);
+    const finalPublic = visibleEvents.find((event) => event.shareToken === finalByTracker!.id);
+    assert.equal(upcomingPublic?.eventId, (upcoming!.events as Array<{ id: string }>)[0]!.id);
+    assert.equal(upcomingPublic?.date, futureDate(30));
+    assert.equal(upcomingPublic?.status, "upcoming");
+    assert.equal(upcomingPublic?.title, "Away game");
+    assert.equal(upcomingPublic?.opponent, "Owls");
+    assert.equal(upcomingPublic?.location, "North Gym");
+    assert.equal(finalPublic?.status, "final");
 
     const owned = await fetch(`http://127.0.0.1:${address.port}/api/athlete-invites`, { headers });
     assert.equal((await owned.json() as Array<{ events: unknown[] }>)[0]?.events.length, 2);
@@ -224,7 +236,6 @@ test("athlete event links expose only owned marked shares and manual delivery is
       events: [{ id: `event-${randomUUID()}`, type: "game", status: "upcoming", date: futureDate(35), time: "18:00" }],
     }).returning();
     shareIds.push(slowShare!.id);
-    await db.insert(athleteInviteEventLinksTable).values({ inviteId: invite!.id, shareId: slowShare!.id });
     const extraFollowers = await db.insert(athleteInviteFansTable).values(
       Array.from({ length: 3 }, () => ({
         inviteId: invite!.id,
@@ -279,7 +290,6 @@ test("athlete event links expose only owned marked shares and manual delivery is
       events: [{ id: `event-${randomUUID()}`, type: "game", status: "upcoming", date: futureDate(36), time: "18:00" }],
     }).returning();
     shareIds.push(largeShare!.id);
-    await db.insert(athleteInviteEventLinksTable).values({ inviteId: invite!.id, shareId: largeShare!.id });
     const largeFollowers = await db.insert(athleteInviteFansTable).values(Array.from({ length: 29 }, () => ({
       inviteId: invite!.id,
       endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID().replaceAll("-", "")}`,
@@ -307,7 +317,7 @@ test("athlete event links expose only owned marked shares and manual delivery is
       if (first.status !== "ok") throw new Error("Event missing");
       assert.equal(first.pending, 8);
       assert.equal(first.remaining, 24); // 29 new followers plus three still opted in
-      const baseLarge = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}/event-links/${largeShare!.id}/notify`;
+      const baseLarge = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}/events/${largeShare!.id}/notify`;
       const reported = await fetch(baseLarge, { headers });
       assert.equal(reported.status, 200);
       assert.equal((await reported.json() as { pending: number }).pending, 8);
@@ -342,6 +352,18 @@ test("athlete event links expose only owned marked shares and manual delivery is
     const publicAfterDeletion = await fetch(`${baseUrl}/fan`);
     const remainingEvents = (await publicAfterDeletion.json() as { events: Array<{ shareToken: string }> }).events;
     assert.deepEqual(remainingEvents.map((event) => event.shareToken).sort(), [upcoming!.id, slowShare!.id, largeShare!.id].sort());
+
+    const disabled = await setShowEvents(false);
+    assert.equal(disabled.status, 200);
+    const hiddenAgain = await fetch(`${baseUrl}/fan`);
+    const hiddenAgainBody = await hiddenAgain.json() as { showEvents: boolean; events: unknown[] };
+    assert.equal(hiddenAgainBody.showEvents, false);
+    assert.equal(hiddenAgainBody.events.length, 0);
+    assert.deepEqual(
+      await notifyAthleteInviteEventFollowers(inviteToken, ownerId, upcoming!.id, { send }),
+      { status: "not-upcoming" },
+    );
+    assert.equal((await setShowEvents(true)).status, 200);
 
     await db.update(athleteInvitesTable).set({ timezone: null }).where(eq(athleteInvitesTable.id, invite!.id));
     const legacyTimezoneFan = await fetch(`${baseUrl}/fan`);

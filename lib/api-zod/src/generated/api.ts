@@ -1474,6 +1474,7 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "showEvents": zod.boolean(),
   "hypesEnabled": zod.boolean(),
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
@@ -1520,6 +1521,7 @@ export const CreateAthleteInviteBody = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "showEvents": zod.boolean().optional(),
   "hypesEnabled": zod.boolean().optional(),
   "paused": zod.boolean().default(createAthleteInviteBodyPausedDefault)
 })
@@ -1541,6 +1543,7 @@ export const CreateAthleteInviteResponse = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "showEvents": zod.boolean(),
   "hypesEnabled": zod.boolean(),
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
@@ -1674,6 +1677,7 @@ export const GetAthleteInviteResponse = zod.object({
   "opponent": zod.string(),
   "notes": zod.string()
 })),
+  "showEvents": zod.boolean(),
   "events": zod.array(zod.object({
   "shareToken": zod.string().uuid(),
   "eventId": zod.string(),
@@ -1731,6 +1735,7 @@ export const UpdateAthleteInviteBody = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "showEvents": zod.boolean().optional(),
   "hypesEnabled": zod.boolean().optional(),
   "paused": zod.boolean().default(updateAthleteInviteBodyPausedDefault)
 })
@@ -1752,6 +1757,7 @@ export const UpdateAthleteInviteResponse = zod.object({
   "showHypeCard": zod.boolean(),
   "showStats": zod.boolean(),
   "showSchedule": zod.boolean(),
+  "showEvents": zod.boolean(),
   "hypesEnabled": zod.boolean(),
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
@@ -1914,6 +1920,7 @@ export const GetAthleteFanCardResponse = zod.object({
   "opponent": zod.string(),
   "notes": zod.string()
 })),
+  "showEvents": zod.boolean(),
   "events": zod.array(zod.object({
   "shareToken": zod.string().uuid(),
   "eventId": zod.string(),
@@ -1944,46 +1951,8 @@ export const GetAthleteFanCardResponse = zod.object({
 
 
 /**
- * @summary List Game On Cards linked to an owned athlete invite
- */
-export const getAthleteInviteEventLinksPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
-
-
-export const GetAthleteInviteEventLinksParams = zod.object({
-  "inviteToken": zod.coerce.string().regex(getAthleteInviteEventLinksPathInviteTokenRegExp)
-})
-
-export const GetAthleteInviteEventLinksResponse = zod.object({
-  "shareTokens": zod.array(zod.string().uuid())
-})
-
-
-/**
- * @summary Replace the Game On Cards linked to an owned athlete invite
- */
-export const replaceAthleteInviteEventLinksPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
-
-
-export const ReplaceAthleteInviteEventLinksParams = zod.object({
-  "inviteToken": zod.coerce.string().regex(replaceAthleteInviteEventLinksPathInviteTokenRegExp)
-})
-
-export const replaceAthleteInviteEventLinksBodyShareTokensMax = 100;
-
-
-
-export const ReplaceAthleteInviteEventLinksBody = zod.object({
-  "shareTokens": zod.array(zod.string().uuid()).max(replaceAthleteInviteEventLinksBodyShareTokensMax)
-})
-
-export const ReplaceAthleteInviteEventLinksResponse = zod.object({
-  "shareTokens": zod.array(zod.string().uuid())
-})
-
-
-/**
  * Starts at most eight durable device attempts per request. Repeat while remaining is positive; claimed attempts are never resent even if the process is interrupted.
- * @summary Manually notify opted-in followers about a linked upcoming Game On Card
+ * @summary Manually notify opted-in followers about an upcoming Game On Card while events are enabled
  */
 export const notifyAthleteInviteEventFollowersPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 

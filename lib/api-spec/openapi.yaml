@@ -536,55 +536,14 @@ paths:
                 $ref: "#/components/schemas/PublicAthleteFanCard"
         "404":
           $ref: "#/components/responses/NotFound"
-  /athlete-invites/{inviteToken}/event-links:
-    parameters:
-      - $ref: "#/components/parameters/AthleteInviteToken"
-    get:
-      operationId: getAthleteInviteEventLinks
-      tags: [athlete-invites]
-      summary: List Game On Cards linked to an owned athlete invite
-      responses:
-        "200":
-          description: Explicitly linked Game On Card share tokens
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AthleteInviteEventLinks"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-    put:
-      operationId: replaceAthleteInviteEventLinks
-      tags: [athlete-invites]
-      summary: Replace the Game On Cards linked to an owned athlete invite
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AthleteInviteEventLinksInput"
-      responses:
-        "200":
-          description: Replaced explicit Game On Card links
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AthleteInviteEventLinks"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-  /athlete-invites/{inviteToken}/event-links/{shareToken}/notify:
+  /athlete-invites/{inviteToken}/events/{shareToken}/notify:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
       - $ref: "#/components/parameters/ScheduleShareToken"
     post:
       operationId: notifyAthleteInviteEventFollowers
       tags: [athlete-invites]
-      summary: Manually notify opted-in followers about a linked upcoming Game On Card
+      summary: Manually notify opted-in followers about an upcoming Game On Card while events are enabled
       description: Starts at most eight durable device attempts per request. Repeat while remaining is positive; claimed attempts are never resent even if the process is interrupted.
       responses:
         "200":
@@ -598,7 +557,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: The linked event is no longer upcoming or eligible
+          description: The event is no longer upcoming or eligible, or HYPE Card events are disabled
           content:
             application/json:
               schema:
@@ -619,7 +578,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: The linked event is no longer upcoming or eligible
+          description: The event is no longer upcoming or eligible, or HYPE Card events are disabled
           content:
             application/json:
               schema:
@@ -2677,11 +2636,12 @@ components:
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showSchedule: { type: boolean }
+        showEvents: { type: boolean }
         hypesEnabled: { type: boolean }
         paused: { type: boolean, default: false }
     OwnedAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, hypesEnabled, paused, liveTrackerShareToken, photoUrl, events, createdAt, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, trackerProjectId, scheduleProjectId, showHypeCard, showStats, showSchedule, showEvents, hypesEnabled, paused, liveTrackerShareToken, photoUrl, events, createdAt, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -2695,6 +2655,7 @@ components:
         showHypeCard: { type: boolean }
         showStats: { type: boolean }
         showSchedule: { type: boolean }
+        showEvents: { type: boolean }
         hypesEnabled: { type: boolean }
         paused: { type: boolean }
         liveTrackerShareToken: { type: ["string", "null"] }
@@ -2718,22 +2679,6 @@ components:
         status: { type: string, enum: [upcoming, live, final] }
         opponent: { type: string }
         location: { type: string }
-    AthleteInviteEventLinksInput:
-      type: object
-      required: [shareTokens]
-      properties:
-        shareTokens:
-          type: array
-          maxItems: 100
-          uniqueItems: true
-          items: { type: string, format: uuid }
-    AthleteInviteEventLinks:
-      type: object
-      required: [shareTokens]
-      properties:
-        shareTokens:
-          type: array
-          items: { type: string, format: uuid }
     AthleteInviteEventNotifyResult:
       type: object
       required: [eligible, sent, failed, pending, remaining]
@@ -2821,7 +2766,7 @@ components:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"
     PublicAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, events, replies, liveGame, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveGame, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -2849,6 +2794,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        showEvents: { type: boolean }
         events:
           type: array
           items:
@@ -3174,7 +3120,7 @@ components:
         teamName: { type: string, maxLength: 160 }
     PublicAthleteFanCard:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, events, replies, liveScoreboard, hypesEnabled, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, hypesEnabled, updatedAt]
       properties:
         inviteToken: { type: string }
         hypesEnabled: { type: boolean }
@@ -3207,6 +3153,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AthleteInviteScheduleEvent"
+        showEvents: { type: boolean }
         events:
           type: array
           items:

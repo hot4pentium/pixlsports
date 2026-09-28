@@ -10,6 +10,21 @@ const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardShares.ts', import.meta.url), 'utf8');
 const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
 const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
+const eventNotificationsSource = readFileSync(new URL('./owner-event-notifications.tsx', import.meta.url), 'utf8');
+
+test('HYPE Card events use one persistent all-or-none setting', () => {
+  assert.match(source, /title="Allow Events"/);
+  assert.match(source, /label="Allow events"/);
+  assert.match(source, /saveVisibilityChange\('showEvents', value\)/);
+  assert.match(source, /including cards you create later/);
+  assert.match(source, /OwnerEventNotifications/);
+  assert.doesNotMatch(source, /OwnerEventLinks|Link game days/);
+  assert.match(athleteApiSource, /async function availableAthleteEvents/);
+  assert.match(athleteApiSource, /invite\.showEvents \? availableAthleteEvents\(invite\) : Promise\.resolve\(\[\]\)/);
+  assert.match(livingCardSource, /The card owner has turned off event sharing/);
+  assert.match(livingCardSource, /All eligible Game On Cards shared by/);
+  assert.match(eventNotificationsSource, /Turn on “Allow events” above/);
+});
 
 test('fan Shoutouts keep owner-only privacy wording distinct from media replies', () => {
   assert.match(livingCardSource, /Send a Shoutout/);
