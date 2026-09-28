@@ -20,9 +20,7 @@
   .summary {padding:9px 9px 10px;border-radius:0 0 26px 26px;border:1px solid #416593;background:radial-gradient(ellipse at 48% 4%,#10396c 0%,#07172f 65%,#081329 100%);box-shadow:0 17px 27px #061d3d35;position:relative;overflow:hidden}
   .summary:before {content:"";position:absolute;inset:0;opacity:.25;background-image:linear-gradient(90deg,#8ca7ca2b 1px,transparent 1px),linear-gradient(#8ca7ca2b 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
   .summary > * {position:relative;z-index:1}
-  .summary-head {height:158px;padding:0 8px;display:flex;flex-direction:column;align-items:flex-end}
-  .tour {align-self:flex-start;margin:0 0 10px 0;padding:15px 18px;background:linear-gradient(105deg,#ac4219,#782d1e);border:1px solid #d48457;border-radius:6px;box-shadow:0 3px 9px #0007;text-transform:uppercase;font-size:13px;font-weight:800;letter-spacing:.07em}
-  .tour .arrow {font-size:23px;font-weight:400;margin-right:9px;vertical-align:-2px}
+  .summary-head {height:85px;padding:0 8px;display:flex;align-items:center;justify-content:flex-end}
   .athlete {display:flex;align-items:center;gap:11px;min-width:225px;padding:8px 11px;border-radius:70px;border:1px solid #a3bde83a;background:#0b2240b8}
   .avatar {width:42px;height:42px;flex:none;border:1px solid #91b1dc;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff;background:linear-gradient(135deg,#4a88d0,#173d76)}
   .athlete-copy {text-align:right}
@@ -68,7 +66,7 @@
   .toolbar {display:flex;justify-content:space-between;align-items:center;gap:9px;margin:22px 0 13px;color:#bdd1e7;font-size:9px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase}
   .toolbar b {letter-spacing:0;color:#89a9d2;text-transform:none}
   .search {border:1px solid #ffffff35;background:#102b4e;border-radius:7px;color:#9bb5d9;padding:8px 10px;font-size:9px;font-weight:500;letter-spacing:0;text-transform:none;white-space:nowrap}
-  .cards {display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .cards {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .card {height:210px;position:relative;border:1px solid #bfd5e8;border-radius:12px;background:linear-gradient(145deg,#fff 0%,#e8f0fa 100%);color:#102d53;text-align:center;overflow:hidden;box-shadow:0 7px 12px #04102260}
   .card .stripe {height:8px;background:#367fe7}.card .tag {position:absolute;right:8px;top:16px;color:#205496;background:#d8e9fb;padding:4px 6px;border-radius:3px;font-size:8px;font-weight:800;text-transform:uppercase}
   .card .month {font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-top:30px}
@@ -84,7 +82,6 @@
   <main>
     <section class="summary">
       <div class="summary-head">
-        <div class="tour"><span class="arrow">↗</span> Tour the dashboard</div>
         <div class="athlete"><span class="avatar">MC</span><span class="athlete-copy"><small>ATHLETE</small><b>Maya Chen <span>#12</span></b><small>HARBOR HAWKS</small></span><span class="chevron">›</span></div>
       </div>
       <div class="tiles">
@@ -98,12 +95,14 @@
       <h2 class="condensed">GAME ON</h2>
       <p class="intro">Everything for the next game or practice, right where you need it.</p>
       <div class="add"><span>＋</span>ADD GAME ON CARD</div>
-      <div class="toolbar"><span>YOUR CARDS &nbsp; <b>Showing 4 of 4 cards</b></span><span class="search">⌕ &nbsp; Search cards</span></div>
+      <div class="toolbar"><span>YOUR CARDS &nbsp; <b>Showing 6 of 6 cards</b></span><span class="search">⌕ &nbsp; Search cards</span></div>
       <div class="cards">
         <article class="card"><div class="stripe"></div><div class="tag">PUBLISHED</div><div class="month">OCTOBER</div><strong>03</strong><div class="kind">Game · Up next</div></article>
         <article class="card"><div class="stripe"></div><div class="tag">PUBLISHED</div><div class="month">OCTOBER</div><strong>06</strong><div class="kind">Practice</div></article>
         <article class="card"><div class="stripe"></div><div class="tag">DRAFT</div><div class="month">OCTOBER</div><strong>10</strong><div class="kind">Game</div></article>
         <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>26</strong><div class="kind">Game</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>19</strong><div class="kind">Game</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>12</strong><div class="kind">Game</div></article>
       </div>
       <div class="quick"><span>⌁ &nbsp; VIEW STATS</span><span>✦ &nbsp; VIEW ATHLETE FAN CARD</span></div>
     </section>
