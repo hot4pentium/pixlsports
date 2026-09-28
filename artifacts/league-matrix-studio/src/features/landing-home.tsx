@@ -3,6 +3,7 @@ import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Check, Menu, X, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import candidAthlete from '@/assets/landing-candid-athlete.jpg';
+import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
 import prepChecklist from '@/assets/landing-prep-checklist.png';
 import followStatTracker from '@/assets/landing-follow-stat-tracker.png';
@@ -216,7 +217,7 @@ export function PublicLandingPage() {
             </div>
             <div className="hero-visual">
               <div className="hero-image-frame">
-                <img src={candidAthlete} alt="Illustrative photo of a fictional soccer athlete enjoying a game-day moment" width="900" height="1125" fetchPriority="high" decoding="async" />
+                <img src={youthFootballHero} alt="Black youth football player smiling on the field while carrying a helmet" width="1024" height="1024" fetchPriority="high" decoding="async" />
               </div>
               <span className="photo-caption">The moments that make a season</span>
               <div className="hero-message">
