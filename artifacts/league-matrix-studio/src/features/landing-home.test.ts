@@ -4,11 +4,8 @@ import test from 'node:test';
 
 const source = readFileSync(new URL('./landing-home.tsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../landing-unified.css', import.meta.url), 'utf8');
-const fanCard = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
-const gameOn = readFileSync(new URL('./game-on-card.tsx', import.meta.url), 'utf8');
-const graphicMaker = readFileSync(new URL('./hype-card-preview.tsx', import.meta.url), 'utf8');
 
-test('landing follows the concept with real product renderers and fictional examples', () => {
+test('landing shows the dashboard in mobile and landscape with fictional examples', () => {
   for (const section of ['hero', 'week-ribbon', 'week-section', 'athlete-section', 'tools-section', 'closing', 'site-footer']) {
     assert.match(source, new RegExp(`className="${section}"`));
   }
@@ -16,15 +13,21 @@ test('landing follows the concept with real product renderers and fictional exam
     assert.match(source, new RegExp(`title: '${step}'`));
   }
   assert.match(source, /Product preview · Fictional/);
-  assert.match(source, /candidAthlete/);
-  assert.match(source, /<LivingAthleteCardFront athleteName="Maya Rivera"/);
-  assert.match(fanCard, /<LivingAthleteCardFront/);
-  assert.match(source, /<PublicGameOnCardFrontFace/);
-  assert.match(gameOn, /<PublicGameOnCardFrontFace/);
-  assert.match(source, /<PreviewArtwork project=\{sampleProject\}/);
-  assert.match(graphicMaker, /buildHypeCardSvg\(project/);
-  assert.ok(existsSync(new URL('../assets/landing-candid-athlete.jpg', import.meta.url)));
+  assert.match(source, /DashboardPreview variant="mobile"/);
+  assert.match(source, /DashboardPreview variant="landscape"/);
+  assert.match(source, /Your athlete’s week/);
+  assert.ok(existsSync(new URL('../assets/landing-dashboard-mobile.png', import.meta.url)));
+  assert.ok(existsSync(new URL('../assets/landing-dashboard-landscape.png', import.meta.url)));
+  assert.doesNotMatch(source, /Make game day feel real|Share the excitement/);
   assert.doesNotMatch(source, /Hero athlete photo|Replace with a real PIXL|screenshot containing|\.pdf['"]|ADD PLAYER MEDIA/);
+});
+
+test('Hype Card copy comes before its preview on phones without changing the desktop columns', () => {
+  const copy = source.indexOf('<div className="athlete-copy">');
+  const preview = source.indexOf('<AthletePreview />');
+  assert.ok(copy >= 0 && preview > copy);
+  assert.match(styles, /athlete-grid \{[^}]*grid-template-areas: "preview copy"/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*athlete-grid \{[^}]*grid-template-areas:"copy" "preview"/);
 });
 
 test('visitor actions use real destinations and preserve the explainer', () => {
@@ -43,21 +46,21 @@ test('mobile navigation and accessibility basics are built in', () => {
   assert.match(source, /aria-expanded=\{menuOpen\}/);
   assert.match(source, /aria-controls="landing-mobile-menu"/);
   assert.match(source, /event\.key === 'Escape'/);
-  assert.match(source, /candidAthlete from '@\/assets\/landing-candid-athlete\.jpg'/);
+  assert.match(source, /dashboardMobile from '@\/assets\/landing-dashboard-mobile\.png'/);
   assert.match(source, /fetchPriority="high"/);
   assert.match(styles, /:focus-visible/);
   assert.match(styles, /prefers-reduced-motion: reduce/);
   assert.match(styles, /@media \(max-width: 700px\)/);
 });
 
-test('only the Plan step offers a reversible, accessible image preview', () => {
-  assert.match(source, /step\.number === '01'\s*\?\s*<PlanStepCard/);
+test('week steps offer reversible, accessible image previews', () => {
+  assert.match(source, /stepPreviews\[step\.number\]\s*\?\s*<FlippableStepCard/);
   assert.match(source, /type="button"[\s\S]*aria-pressed=\{flipped\}/);
   assert.match(source, /aria-hidden=\{flipped\}/);
   assert.match(source, /aria-hidden=\{!flipped\}/);
   assert.match(source, /planEventDetails/);
   assert.ok(existsSync(new URL('../assets/landing-plan-event-details.png', import.meta.url)));
   assert.match(styles, /rotateY\(180deg\)/);
-  assert.match(styles, /object-fit:\s*contain/);
+  assert.match(styles, /plan-face--back img[\s\S]*object-fit:\s*fill/);
   assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*plan-face--back/);
 });

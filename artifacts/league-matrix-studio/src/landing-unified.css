@@ -106,8 +106,9 @@
 .new-landing .week-video-link:hover { border-color: var(--pixl-navy); }
 
 .new-landing .athlete-section { background: var(--pixl-mist); padding: 106px 0; }
-.new-landing .athlete-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(50px, 9vw, 145px); }
-.new-landing .athlete-showcase { min-height: 505px; border-radius: 17px; background: radial-gradient(circle at 60% 22%,#347c99,#17445b 45%,#092739); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px #ffffff24; }
+.new-landing .athlete-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "preview copy"; align-items: center; gap: clamp(50px, 9vw, 145px); }
+.new-landing .athlete-showcase { grid-area: preview; min-height: 505px; border-radius: 17px; background: radial-gradient(circle at 60% 22%,#347c99,#17445b 45%,#092739); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px #ffffff24; }
+.new-landing .athlete-copy { grid-area: copy; }
 .new-landing .athlete-showcase::before { content: ""; position: absolute; inset: 0; opacity: .11; background: repeating-linear-gradient(145deg, transparent 0 16px,#fff 17px 18px); }
 .new-landing .landing-athlete-render { display: block; width: min(70%, 265px); height: auto; border-radius: 17px; transform: rotate(-5deg); box-shadow: 0 18px 32px #051e2c70; }
 .new-landing .athlete-showcase .showcase-note {position:absolute;bottom:23px;left:25px;color:#d1e6e9;font-size:10px;letter-spacing:.1em;text-transform:uppercase;}
@@ -124,13 +125,15 @@
 .new-landing .tool-grid { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
 .new-landing .tool-card { border:1px solid #e5eae8;border-radius:15px;overflow:hidden;background:#fff; }
 .new-landing .tool-preview { height:360px;display:grid;place-items:center;overflow:hidden;position:relative; }
-.new-landing .tool-card:first-child .tool-preview { background: radial-gradient(circle at 75% 15%,#9ac5cf,#5998aa 55%,#417f95); }
-.new-landing .tool-card:last-child .tool-preview { background:radial-gradient(circle at 75% 15%,#c1dfcf,#8ebdac 65%,#78ae9b); }
+.new-landing .tool-card:first-child .tool-preview { background:radial-gradient(circle at 70% 10%,#81a9bf,#3c6e89 60%,#1e455f); }
+.new-landing .tool-card:last-child .tool-preview { background:radial-gradient(circle at 70% 10%,#8fb6c6,#4d829c 58%,#24536d); }
 .new-landing .preview-watermark { position:absolute;top:18px;left:20px;z-index:2;font-size:9px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:#173d4b; background:#f9fff2db;padding:7px 10px;border-radius:4px; }
-.new-landing .event-preview { width:216px; height:325px; position:relative; transform:rotate(-4deg); pointer-events:none; }
-.new-landing .event-preview-render { width:480px; transform:scale(.45); transform-origin:top left; }
-.new-landing .graphic-preview { width:230px; aspect-ratio:5/7; position:relative; overflow:hidden; background:#09283b; box-shadow:0 21px 38px #194b485d; transform:rotate(4deg); }
-.new-landing .graphic-preview-artwork { width:100%; height:100%; }
+.new-landing .dashboard-preview {pointer-events:none;box-shadow:0 21px 38px #092b4269;overflow:hidden;}
+.new-landing .dashboard-preview img {display:block;width:100%;height:auto;}
+.new-landing .dashboard-preview--mobile {position:absolute;top:35px;left:50%;width:205px;padding:7px;background:#edf2f5;border-radius:18px;transform:translateX(-50%) rotate(-5deg);}
+.new-landing .dashboard-preview--mobile img {border-radius:11px;}
+.new-landing .dashboard-preview--landscape {width:min(91%,550px);padding:7px;background:#e8eef1;border-radius:12px;transform:rotate(3deg);}
+.new-landing .dashboard-preview--landscape img {border-radius:6px;}
 .new-landing .tool-card-body {padding:25px 30px 29px;}
 .new-landing .tool-card-body .micro {color:#598094;font-size:9px;margin-bottom:10px;}
 .new-landing .tool-card-body h3 {font-size:29px;}
@@ -190,7 +193,7 @@
    .new-landing .plan-face--front {padding:17px;}
   .new-landing .step-card h3 {margin-top:34px;font-size:27px;}
   .new-landing .step-card p {font-size:11px;}
-  .new-landing .athlete-grid {grid-template-columns:1fr;gap:41px;}
+  .new-landing .athlete-grid {grid-template-columns:1fr;grid-template-areas:"copy" "preview";gap:41px;}
   .new-landing .athlete-showcase {min-height:400px;}
   .new-landing .landing-athlete-render {width:min(70%,225px);}
   .new-landing .athlete-copy > p {font-size:14px;}

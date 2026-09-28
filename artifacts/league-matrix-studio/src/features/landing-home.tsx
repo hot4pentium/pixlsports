@@ -2,16 +2,14 @@ import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Check, Menu, X, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import candidAthlete from '@/assets/landing-candid-athlete.jpg';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
 import prepChecklist from '@/assets/landing-prep-checklist.png';
 import followStatTracker from '@/assets/landing-follow-stat-tracker.png';
 import celebrateVideoReply from '@/assets/landing-celebrate-video-reply.png';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
-import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
-import { PreviewArtwork } from './hype-card-preview';
-import { defaultProject } from './hype-card-types';
+import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
+import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
 const WEEK_VIDEO = `${BASE_PATH}/week-path-explainer.mp4`;
@@ -37,7 +35,7 @@ function LandingNav({ isSignedIn }: { isSignedIn: boolean }) {
         <nav className="desktop-nav" aria-label="Main navigation">
           <a href="#how-it-works" data-testid="link-landing-how-it-works">How it works</a>
           <a href="#athlete-cards" data-testid="link-landing-athlete-cards">Athlete cards</a>
-          <a href="#tools" data-testid="link-landing-tools">The tools</a>
+          <a href="#tools" data-testid="link-landing-tools">The dashboard</a>
         </nav>
         <div className="header-actions">
           <Link href={isSignedIn ? '/studio' : '/sign-in'} className="desktop-account-link" style={{ color: '#d4e0e2', fontSize: 12, fontWeight: 700 }} data-testid={isSignedIn ? 'link-landing-dashboard' : 'link-landing-sign-in'}>{isSignedIn ? 'Studio' : 'Sign in'}</Link>
@@ -50,7 +48,7 @@ function LandingNav({ isSignedIn }: { isSignedIn: boolean }) {
       {menuOpen && <nav className="mobile-nav" id="landing-mobile-menu" aria-label="Mobile navigation">
         <a href="#how-it-works" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-how-it-works">How it works</a>
         <a href="#athlete-cards" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-athlete-cards">Athlete cards</a>
-        <a href="#tools" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-tools">The tools</a>
+        <a href="#tools" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-tools">The dashboard</a>
         <Link href="/help" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-help">Help</Link>
         <Link href={isSignedIn ? '/studio' : '/sign-in'} onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-sign-in">{isSignedIn ? 'Studio' : 'Sign in'}</Link>
         <Link href={destination} className="pill pill-lime" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
@@ -145,53 +143,21 @@ function AthletePreview() {
   );
 }
 
-function GameOnPreview() {
+function DashboardPreview({ variant }: { variant: 'mobile' | 'landscape' }) {
+  const mobile = variant === 'mobile';
   return (
     <div className="tool-preview">
-      <span className="preview-watermark">Product preview · Fictional event</span>
-      <div className="event-preview" role="img" aria-label="Sample Pixl Game On badge for fictional Eastside FC versus Harbor United">
-        <div className="event-preview-render" aria-hidden="true">
-          <PublicGameOnCardFrontFace
-            eventTitle="Eastside FC"
-            eventType="game"
-            stageLabel="Upcoming game"
-            opponent="Harbor United"
-            dateLabel="Saturday, October 17"
-            time="10:30 AM"
-            location="Riverside Park · Field 2"
-            athleteName="Maya Rivera"
-            athletePageStatus="unpublished"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GraphicPreview() {
-  const sampleProject = {
-    ...defaultProject(),
-    format: 'card' as const,
-    layout: 'all-star' as const,
-    mediaType: 'image' as const,
-    photo: candidAthlete,
-    headline: 'GAME DAY',
-    playerName: 'Maya Rivera',
-    jerseyNumber: '07',
-    teamName: 'Eastside FC',
-    position: 'Midfield',
-    stat: '',
-    achievement: '',
-    message: '',
-    visibility: { stat: false, achievement: false, message: false },
-  };
-  return (
-    <div className="tool-preview">
-      <span className="preview-watermark">Product preview · Fictional athlete</span>
-      <div className="graphic-preview" role="img" aria-label="Sample Pixl graphic maker game-day card for fictional athlete Maya Rivera">
-        <div aria-hidden="true" className="graphic-preview-artwork">
-          <PreviewArtwork project={sampleProject} ns="landing-sample" testId="landing-graphic-maker-render" />
-        </div>
+      <span className="preview-watermark">Product preview · Fictional dashboard</span>
+      <div className={`dashboard-preview dashboard-preview--${variant}`}>
+        <img
+          src={mobile ? dashboardMobile : dashboardLandscape}
+          alt={mobile
+            ? 'Fictional supporter dashboard on a phone: Maya Chen’s next volleyball game, shoutout, tracked record, and Game On cards.'
+            : 'The same fictional supporter dashboard in a wide view, showing Maya Chen’s game details and six Game On cards in three columns.'}
+          width={mobile ? 516 : 1600}
+          height={mobile ? 1500 : 1100}
+          decoding="async"
+        />
       </div>
     </div>
   );
@@ -254,7 +220,6 @@ export function PublicLandingPage() {
 
         <section className="athlete-section" id="athlete-cards" aria-labelledby="athlete-heading">
           <div className="container athlete-grid">
-            <AthletePreview />
             <div className="athlete-copy">
               <span className="micro">More than a profile</span>
               <h2 className="display" id="athlete-heading">Their moments.<br />Their <span className="hype-word">Hype</span> Card.</h2>
@@ -266,23 +231,24 @@ export function PublicLandingPage() {
               </ul>
               <Link href={destination} className="pill pill-navy" data-testid="link-landing-athlete-cards-cta">Explore Hype Cards <ArrowUpRight size={16} aria-hidden="true" /></Link>
             </div>
+            <AthletePreview />
           </div>
         </section>
 
         <section className="tools-section" id="tools" aria-labelledby="tools-heading">
           <div className="container">
             <div className="tools-intro section-intro">
-              <div><span className="micro">Made for real life around sports</span><h2 className="display" id="tools-heading">The little things<br />make the week.</h2></div>
-              <p>Useful tools for the rides, the sidelines, and the moments everyone wants to remember.</p>
+              <div><span className="micro">A look inside your dashboard</span><h2 className="display" id="tools-heading">Your athlete’s week.<br />All in view.</h2></div>
+              <p>See the next game, Game On cards, tracked results, and supporter shoutouts together. These previews use fictional details.</p>
             </div>
             <div className="tool-grid">
               <article className="tool-card">
-                <GameOnPreview />
-                <div className="tool-card-body"><span className="micro">01 / Bring everyone along</span><h3 className="display">Make game day feel real</h3><p>Create a Game On card for each event, then open it for the details and next steps.</p><Link href={destination} data-testid="link-landing-game-on-tool">Explore Game On <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
+                <DashboardPreview variant="mobile" />
+                <div className="tool-card-body"><span className="micro">01 / On the go</span><h3 className="display">Your game week in one place</h3><p>Check the next matchup, catch new shoutouts, and find every Game On card from your phone.</p><Link href={destination} data-testid="link-landing-dashboard-mobile">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
               </article>
               <article className="tool-card">
-                <GraphicPreview />
-                <div className="tool-card-body"><span className="micro">02 / Keep the moment</span><h3 className="display">Share the excitement</h3><p>Make a graphic that’s easy to send and fun to keep.</p><Link href={destination} data-testid="link-landing-graphic-tool">Explore graphic maker <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
+                <DashboardPreview variant="landscape" />
+                <div className="tool-card-body"><span className="micro">02 / The wider view</span><h3 className="display">See the whole season</h3><p>On a larger screen, the same dashboard keeps game details, your record, and Game On cards in sight.</p><Link href={destination} data-testid="link-landing-dashboard-landscape">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
               </article>
             </div>
           </div>
@@ -293,7 +259,7 @@ export function PublicLandingPage() {
             <span className="micro">We guide their week</span>
             <h2 className="display" id="closing-heading">Every game week has a<br />story.</h2>
             <p>Bring the plans, the people, and the good stuff together.</p>
-            <Link href={destination} className="pill pill-lime" data-testid="link-landing-closing-cta">{isSignedIn ? 'Open studio' : 'Explore the tools'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
+            <Link href={destination} className="pill pill-lime" data-testid="link-landing-closing-cta">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
           </div>
         </section>
       </main>

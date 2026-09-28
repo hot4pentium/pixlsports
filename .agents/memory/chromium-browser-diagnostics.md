@@ -20,3 +20,9 @@ For install-prompt journeys, headless Chromium does not provide a reliable nativ
 **Why:** This keeps Android prompt handling and iPhone/iPad fallback rendering testable without depending on a desktop browser's install eligibility or a physical-device Share menu.
 
 **How to apply:** Keep the synthetic event limited to the browser test, and assert the real rendered public recipient card after the event or platform override.
+
+Very tall headless Chromium screenshots can show transformed PNG previews as blank rectangles even when the images have loaded and decoded.
+
+**Why:** An oversized viewport capture showed white dashboard frames while the same page's images had nonzero natural dimensions and rendered correctly in ordinary desktop and phone viewport captures.
+
+**How to apply:** Before treating blank areas in a tall capture as an app bug, check image loading and capture a normal-height viewport after scrolling the section into view through CDP.
