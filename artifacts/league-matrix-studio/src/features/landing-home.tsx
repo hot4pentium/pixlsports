@@ -73,7 +73,7 @@ function PlanStepCard({ step: { number, title, description, icon: Icon } }: { st
           <span className="plan-face-cue">Flip for a preview <ArrowRight size={12} aria-hidden="true" /></span>
         </div>
         <div className="plan-face plan-face--back" aria-hidden={!flipped}>
-          <img src={planEventDetails} alt="Game vs Tigers event details preview: opponent Thunder, September 25, 2025 at 4 PM, Upper Park." width="1024" height="574" />
+          <img src={planEventDetails} alt="Completed Game On Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions." width="1250" height="756" />
           <span className="plan-face-cue">Tap to return to Plan <ArrowRight size={12} aria-hidden="true" /></span>
         </div>
       </div>
@@ -81,7 +81,7 @@ function PlanStepCard({ step: { number, title, description, icon: Icon } }: { st
         type="button"
         className="plan-card-toggle"
         aria-pressed={flipped}
-        aria-label={flipped ? 'Event details preview shown. Return to Plan card.' : 'Plan: Keep games, practices, and the next event together. Flip to see an event details preview.'}
+        aria-label={flipped ? 'Completed Game On Card preview shown. Return to Plan card.' : 'Plan: Keep games, practices, and the next event together. Flip to see a completed Game On Card preview.'}
         onClick={() => setFlipped(value => !value)}
         data-testid="button-landing-plan-flip"
       />
