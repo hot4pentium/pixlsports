@@ -24,6 +24,9 @@ import type {
   AccountAccessInput,
   AccountLifecycle,
   AccountUsageConsumeInput,
+  AthleteInviteEventLinks,
+  AthleteInviteEventLinksInput,
+  AthleteInviteEventNotifyResult,
   AthleteInviteFanFollow,
   AthleteInviteFanFollowCreated,
   AthleteInviteFanFollowInput,
@@ -2305,6 +2308,249 @@ export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthlet
 
 
 
+
+export const getGetAthleteInviteEventLinksUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/event-links`
+}
+
+/**
+ * @summary List Game On Cards linked to an owned athlete invite
+ */
+export const getAthleteInviteEventLinks = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteEventLinks> => {
+
+  return customFetch<AthleteInviteEventLinks>(getGetAthleteInviteEventLinksUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteEventLinksQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/event-links`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteEventLinksQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInviteEventLinks>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEventLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteEventLinksQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInviteEventLinks>>> = ({ signal }) => getAthleteInviteEventLinks(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEventLinks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteEventLinksQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInviteEventLinks>>>
+export type GetAthleteInviteEventLinksQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary List Game On Cards linked to an owned athlete invite
+ */
+
+export function useGetAthleteInviteEventLinks<TData = Awaited<ReturnType<typeof getAthleteInviteEventLinks>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEventLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteEventLinksQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReplaceAthleteInviteEventLinksUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/event-links`
+}
+
+/**
+ * @summary Replace the Game On Cards linked to an owned athlete invite
+ */
+export const replaceAthleteInviteEventLinks = async (inviteToken: string,
+    athleteInviteEventLinksInput: AthleteInviteEventLinksInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteEventLinks> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInviteEventLinks>(getReplaceAthleteInviteEventLinksUrl(inviteToken),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteEventLinksInput)
+  }
+);}
+
+
+
+
+
+export const getReplaceAthleteInviteEventLinksMutationKey = () => ['replaceAthleteInviteEventLinks'] as const;
+
+export const getReplaceAthleteInviteEventLinksMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceAthleteInviteEventLinks>>, TError,ReplaceAthleteInviteEventLinksMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceAthleteInviteEventLinks>>, TError,ReplaceAthleteInviteEventLinksMutationVariables, TContext> => {
+
+const mutationKey = getReplaceAthleteInviteEventLinksMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceAthleteInviteEventLinks>>, ReplaceAthleteInviteEventLinksMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  replaceAthleteInviteEventLinks(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceAthleteInviteEventLinksMutationResult = NonNullable<Awaited<ReturnType<typeof replaceAthleteInviteEventLinks>>>
+    export type ReplaceAthleteInviteEventLinksMutationBody = BodyType<AthleteInviteEventLinksInput>
+    export type ReplaceAthleteInviteEventLinksMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type ReplaceAthleteInviteEventLinksMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteEventLinksInput>}
+
+    /**
+ * @summary Replace the Game On Cards linked to an owned athlete invite
+ */
+export const useReplaceAthleteInviteEventLinks = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceAthleteInviteEventLinks>>, TError,ReplaceAthleteInviteEventLinksMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceAthleteInviteEventLinks>>,
+        TError,
+        ReplaceAthleteInviteEventLinksMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReplaceAthleteInviteEventLinksMutationOptions(options));
+    }
+
+export const getNotifyAthleteInviteEventFollowersUrl = (inviteToken: string,
+    shareToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/event-links/${shareToken}/notify`
+}
+
+/**
+ * Sends only to current followers with event alerts enabled. Each recipient gets at most one attempted push per share event.
+ * @summary Manually notify opted-in followers about a linked upcoming Game On Card
+ */
+export const notifyAthleteInviteEventFollowers = async (inviteToken: string,
+    shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteEventNotifyResult> => {
+
+  return customFetch<AthleteInviteEventNotifyResult>(getNotifyAthleteInviteEventFollowersUrl(inviteToken,shareToken),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getNotifyAthleteInviteEventFollowersMutationKey = () => ['notifyAthleteInviteEventFollowers'] as const;
+
+export const getNotifyAthleteInviteEventFollowersMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notifyAthleteInviteEventFollowers>>, TError,NotifyAthleteInviteEventFollowersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof notifyAthleteInviteEventFollowers>>, TError,NotifyAthleteInviteEventFollowersMutationVariables, TContext> => {
+
+const mutationKey = getNotifyAthleteInviteEventFollowersMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof notifyAthleteInviteEventFollowers>>, NotifyAthleteInviteEventFollowersMutationVariables> = (props) => {
+          const {inviteToken,shareToken} = props ?? {};
+
+          return  notifyAthleteInviteEventFollowers(inviteToken,shareToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type NotifyAthleteInviteEventFollowersMutationResult = NonNullable<Awaited<ReturnType<typeof notifyAthleteInviteEventFollowers>>>
+
+    export type NotifyAthleteInviteEventFollowersMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>
+    export type NotifyAthleteInviteEventFollowersMutationVariables = {inviteToken: string;shareToken: string}
+
+    /**
+ * @summary Manually notify opted-in followers about a linked upcoming Game On Card
+ */
+export const useNotifyAthleteInviteEventFollowers = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notifyAthleteInviteEventFollowers>>, TError,NotifyAthleteInviteEventFollowersMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof notifyAthleteInviteEventFollowers>>,
+        TError,
+        NotifyAthleteInviteEventFollowersMutationVariables,
+        TContext
+      > => {
+      return useMutation(getNotifyAthleteInviteEventFollowersMutationOptions(options));
+    }
 
 export const getSendAthleteInviteHypeUrl = (inviteToken: string,) => {
 

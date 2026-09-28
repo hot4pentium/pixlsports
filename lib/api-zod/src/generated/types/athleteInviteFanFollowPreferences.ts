@@ -7,6 +7,7 @@
  */
 
 export interface AthleteInviteFanFollowPreferences {
-  liveAlerts: boolean;
-  eventAlerts: boolean;
+  liveAlerts?: boolean;
+  eventAlerts?: boolean;
+  preEventAlerts?: boolean;
 }

@@ -11,6 +11,7 @@ import {
 } from '@workspace/api-client-react';
 import { isIosDevice } from './schedule-install';
 import { FanCardInstall } from './fan-card-install';
+import { nextFanAlertPreferences, type FanAlertChoice } from './fan-card-alerts';
 
 function decodePublicKey(value: string): Uint8Array<ArrayBuffer> {
   const padded = `${value}${'='.repeat((4 - value.length % 4) % 4)}`.replace(/-/g, '+').replace(/_/g, '/');
@@ -67,8 +68,8 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
     && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
     && (!isIOS || standalone),
   );
-  const activeAlerts = Boolean(followToken && status.data?.active && supported && permission === 'granted');
-  const liveAlerts = activeAlerts && Boolean(status.data?.liveAlerts);
+  const liveAlerts = Boolean(followToken && status.data?.liveAlerts);
+  const preEventAlerts = Boolean(followToken && status.data?.preEventAlerts);
 
   useEffect(() => {
     const saved = storedFollow(inviteToken);
@@ -101,7 +102,7 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
     setMessage('');
     if (!following) {
       saveLocal(true, '');
-      setMessage('Following on this device. Choose whether to get Game Day Live alerts below.');
+      setMessage('Following on this device. Choose which phone alerts to receive below.');
       return;
     }
     setPending(true);
@@ -116,26 +117,25 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
     }
   }
 
-  async function toggleAlert() {
-    if (!following || pending) return;
+  async function toggleAlert(kind: FanAlertChoice) {
+    if (!following || pending || (followToken && (status.isError || !status.data))) return;
     setPending(true);
     setMessage('');
-    const next = {
-      liveAlerts: !liveAlerts,
-      eventAlerts: false,
-    };
+    const enabling = kind === 'live' ? !liveAlerts : !preEventAlerts;
+    const next = nextFanAlertPreferences({ liveAlerts, preEventAlerts }, kind);
+    const legacyEventAlerts = Boolean(status.data?.eventAlerts);
     try {
-      if (!next.liveAlerts) {
+      if (!next.liveAlerts && !next.preEventAlerts && !legacyEventAlerts) {
         if (followToken) await remove.mutateAsync({ inviteToken });
         saveLocal(true, '');
         setMessage('Alerts are off. You are still following this card on this device.');
         return;
       }
-      if (!supported || !config.data?.publicKey) {
+      if (enabling && (!supported || !config.data?.publicKey)) {
         setMessage('Alerts are not available in this browser. You can still keep this card on your home screen.');
         return;
       }
-      if (!followToken) {
+      if (enabling && permission !== 'granted') {
         const nextPermission = await Notification.requestPermission();
         setPermission(nextPermission);
         if (nextPermission !== 'granted') {
@@ -144,6 +144,9 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
             : 'Notification permission was not granted. No alerts were enabled.');
           return;
         }
+      }
+      if (!followToken) {
+        if (!config.data?.publicKey) throw new Error('Push alerts are not configured on this server.');
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription()
           ?? await registration.pushManager.subscribe({
@@ -159,12 +162,17 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
           data: {
             endpoint: data.endpoint,
             keys: { p256dh: data.keys.p256dh, auth: data.keys.auth },
-            ...next,
+            liveAlerts: next.liveAlerts,
+            eventAlerts: false,
+            preEventAlerts: next.preEventAlerts,
           },
         });
         saveLocal(true, created.followToken);
       } else {
-        await update.mutateAsync({ inviteToken, data: next });
+        await update.mutateAsync({
+          inviteToken,
+          data: { liveAlerts: next.liveAlerts, eventAlerts: legacyEventAlerts, preEventAlerts: next.preEventAlerts },
+        });
         await status.refetch();
       }
       setMessage('Your alert choices were saved for this device.');
@@ -199,15 +207,18 @@ function FanCardFollow({ inviteToken }: { inviteToken: string }) {
       <button type="button" onClick={() => void toggleFollow()} disabled={pending} className="mt-4 min-h-11 border border-[#ff7849] bg-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#102b4d] disabled:opacity-50" aria-pressed={following} data-testid="button-follow-fan-card">
         {following ? 'Unfollow this card' : 'Follow on this device'}
       </button>
-      {following && (
-        <div className="mt-5 space-y-3 border-t border-white/15 pt-4" role="group" aria-label="Optional phone alerts">
+      <div className="mt-5 space-y-3 border-t border-white/15 pt-4" role="group" aria-label="Optional phone alerts">
+          {!following && <p className="text-xs leading-relaxed text-white/65">Follow this card to choose your phone alerts. Both choices start off.</p>}
           <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
             <span>Game Day Live starts</span>
-            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert()} disabled={pending || !supported || permission === 'denied' || status.isLoading} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid="input-fan-alert-live" />
+            <input type="checkbox" checked={liveAlerts} onChange={() => void toggleAlert('live')} disabled={!following || pending || status.isLoading || Boolean(followToken && (status.isError || !status.data)) || (!liveAlerts && (!supported || permission === 'denied'))} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid="input-fan-alert-live" />
           </label>
-          <p className="text-xs leading-relaxed text-white/55">You can change this choice or unfollow here at any time. No account is needed.</p>
-        </div>
-      )}
+          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm">
+            <span>Pre-event Hype Card announcements</span>
+            <input type="checkbox" checked={preEventAlerts} onChange={() => void toggleAlert('event')} disabled={!following || pending || status.isLoading || Boolean(followToken && (status.isError || !status.data)) || (!preEventAlerts && (!supported || permission === 'denied'))} className="h-5 w-5 accent-[#ff7849] disabled:opacity-40" data-testid="input-fan-alert-event" />
+          </label>
+          <p className="text-xs leading-relaxed text-white/55">The card owner chooses whether to send a pre-event announcement. Following or enabling Game Day Live does not turn these on. Change either choice or unfollow here at any time; no account is needed.</p>
+      </div>
       {availability && <p className="mt-3 text-xs leading-relaxed text-white/65" data-testid="status-fan-alert-availability">{availability}</p>}
       {message && <p role="status" className="mt-3 text-xs leading-relaxed text-[#ffae8f]" data-testid="status-fan-follow">{message}</p>}
     </section>

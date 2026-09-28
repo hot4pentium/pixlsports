@@ -13,4 +13,5 @@ export interface AthleteInviteFanFollowInput {
   keys: AthleteInviteFanFollowInputKeys;
   liveAlerts: boolean;
   eventAlerts: boolean;
+  preEventAlerts?: boolean;
 }

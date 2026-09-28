@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -55,6 +55,12 @@ import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { NotificationSettings } from './notification-settings';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
+import {
+  dismissEventDaySharing,
+  eventDaySharingDismissalPrefix,
+  getOwnerEventDayReminders,
+  hasDismissedEventDaySharing,
+} from './event-day-sharing-model';
 import { trackEvent } from '../lib/analytics';
 import {
   readWorkspaceEventContext,
@@ -371,6 +377,11 @@ export function SupporterDashboardView({
   } | null>(null);
   const [cardLayoutIds, setCardLayoutIds] = useState<Record<string, string>>({});
   const [justCompleted, setJustCompleted] = useState<{ game: GameSession; saveStatus: 'cloud-saved' | 'local-saved' } | null>(null);
+  const [eventDayDismissalVersion, setEventDayDismissalVersion] = useState(0);
+  const eventDayDialogRef = useRef<HTMLDivElement>(null);
+  const eventDayReturnFocusRef = useRef<HTMLElement | null>(null);
+  const eventDayWasOpenRef = useRef(false);
+  const skipEventDayFocusReturnRef = useRef(false);
   useEffect(() => {
     setJustCompleted(null);
     if (!userId) return;
@@ -664,6 +675,29 @@ export function SupporterDashboardView({
     && typeof window !== 'undefined'
     && !hasAcknowledgedSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage),
   );
+  const eventDayReminders = userId && athleteInvitesQuery.isSuccess && !athleteInvitesQuery.isFetching && !athleteInvitesQuery.isError
+    ? getOwnerEventDayReminders({
+      invites: athleteInvitesQuery.data ?? [],
+      dashboardEvents: events,
+      now: currentTime,
+    })
+    : [];
+  // Keep the local-storage read reactive to this tab's own dismissal and to
+  // storage events from other dashboard tabs.
+  void eventDayDismissalVersion;
+  const visibleEventDayReminders = userId
+    ? eventDayReminders.filter((reminder) => !hasDismissedEventDaySharing(
+      window.localStorage,
+      userId,
+      reminder.localDate,
+    ))
+    : [];
+  const showEventDayReminder = Boolean(
+    visibleEventDayReminders.length
+    && !showStageReminder
+    && !justCompleted
+    && !mobileMenuOpen,
+  );
   const gameTitle = nextGame
     ? `${profile.teamName || 'Your team'}${nextGame.opponent ? ` vs ${nextGame.opponent}` : ''}`
     : 'Your next game';
@@ -685,6 +719,34 @@ export function SupporterDashboardView({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameStage, showStageReminder, stageReminderGame, stageReminderKey]);
+
+  useEffect(() => {
+    if (showEventDayReminder && !eventDayWasOpenRef.current) {
+      eventDayReturnFocusRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+      window.requestAnimationFrame(() => {
+        const firstAction = eventDayDialogRef.current?.querySelector<HTMLElement>('[data-event-day-first-action]');
+        firstAction?.focus();
+      });
+    } else if (!showEventDayReminder && eventDayWasOpenRef.current) {
+      if (!skipEventDayFocusReturnRef.current) {
+        window.requestAnimationFrame(() => eventDayReturnFocusRef.current?.focus());
+      }
+      skipEventDayFocusReturnRef.current = false;
+    }
+    eventDayWasOpenRef.current = showEventDayReminder;
+  }, [showEventDayReminder]);
+
+  useEffect(() => {
+    const handleEventDayDismissalSync = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (event.key && !event.key.startsWith(`${eventDaySharingDismissalPrefix}:`)) return;
+      setEventDayDismissalVersion((version) => version + 1);
+    };
+    window.addEventListener('storage', handleEventDayDismissalSync);
+    return () => window.removeEventListener('storage', handleEventDayDismissalSync);
+  }, []);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -729,6 +791,39 @@ export function SupporterDashboardView({
     if (!stageReminderGame) return;
     acknowledgeSupporterGameStage(window.localStorage, stageReminderGame.id, gameStage);
     setReminderVersion((version) => version + 1);
+  };
+
+  const dismissEventDayReminder = (restoreFocus = true) => {
+    if (!userId) return;
+    skipEventDayFocusReturnRef.current = !restoreFocus;
+    dismissEventDaySharing(
+      window.localStorage,
+      userId,
+      eventDayReminders.map((reminder) => reminder.localDate),
+    );
+    setEventDayDismissalVersion((version) => version + 1);
+  };
+
+  const handleEventDayDialogKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      dismissEventDayReminder();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = eventDayDialogRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   const persistActiveGameSelection = (gameId: string | null) => {
@@ -869,8 +964,93 @@ export function SupporterDashboardView({
     </>
   );
 
+  const ownerDayEventRows = visibleEventDayReminders.flatMap((reminder) => (
+    reminder.events.map((event) => ({
+      ...event,
+      localDate: reminder.localDate,
+      timezone: reminder.timezone,
+      inviteToken: reminder.inviteToken,
+      athleteName: reminder.athleteName,
+    }))
+  ));
+  const firstOwnerDayEvent = ownerDayEventRows[0];
+  const ownerManageHref = firstOwnerDayEvent
+    ? `/player/${encodeURIComponent(firstOwnerDayEvent.inviteToken)}/manage`
+    : '';
+  const ownerNotifyHref = firstOwnerDayEvent
+    ? `${ownerManageHref}?shareToken=${encodeURIComponent(firstOwnerDayEvent.shareToken)}#owner-notify-followers`
+    : '';
+
   return (
     <>
+      {showEventDayReminder && firstOwnerDayEvent && (
+        <div
+          className="fixed inset-0 z-[110] flex items-end justify-center bg-[#071426]/75 p-3 backdrop-blur-sm sm:items-center sm:p-5"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) dismissEventDayReminder();
+          }}
+          data-testid="owner-event-day-sharing-backdrop"
+        >
+          <div
+            ref={eventDayDialogRef}
+            className="max-h-[min(90dvh,760px)] w-full max-w-xl overflow-y-auto border border-primary/40 bg-card p-5 shadow-2xl sm:p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="owner-event-day-sharing-heading"
+            aria-describedby="owner-event-day-sharing-description"
+            onKeyDown={handleEventDayDialogKeyDown}
+            data-testid="owner-event-day-sharing-dialog"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Game day is here</p>
+            <h2 id="owner-event-day-sharing-heading" className="mt-2 font-display text-3xl uppercase tracking-wide sm:text-4xl">
+              Share the moment
+            </h2>
+            <p id="owner-event-day-sharing-description" className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {firstOwnerDayEvent.athleteName || 'Your athlete'} has {ownerDayEventRows.length === 1 ? 'a Game On event' : `${ownerDayEventRows.length} Game On events`} today. Share the Hype Card or open the follower notification tools when you’re ready.
+            </p>
+            <ul className="mt-5 space-y-3" aria-label="Today's shared games">
+              {ownerDayEventRows.map((event) => (
+                <li key={`${event.inviteToken}:${event.eventId}`} className="border border-border/70 bg-muted/40 p-3">
+                  <p className="font-bold">{event.title || 'Game On'}{event.opponent ? ` vs ${event.opponent}` : ''}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {event.date}{event.time ? ` · ${formatTimeDisplay(event.time)}` : ''}
+                    {event.location ? ` · ${event.location}` : ''}
+                    {event.timezone ? ` · ${event.timezone}` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Link
+                href={ownerManageHref}
+                onClick={() => dismissEventDayReminder(false)}
+                className="inline-flex min-h-12 flex-1 items-center justify-center bg-primary px-4 py-3 text-center text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90"
+                data-event-day-first-action
+                data-testid="owner-event-day-share-hype-card"
+              >
+                Share Hype Card
+              </Link>
+              <Link
+                href={ownerNotifyHref}
+                onClick={() => dismissEventDayReminder(false)}
+                className="inline-flex min-h-12 flex-1 items-center justify-center border border-primary px-4 py-3 text-center text-xs font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/10"
+                data-testid="owner-event-day-notify-followers"
+              >
+                Notify followers
+              </Link>
+              <button
+                type="button"
+                onClick={() => dismissEventDayReminder()}
+                className="inline-flex min-h-12 flex-1 items-center justify-center border border-border px-4 py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-colors hover:border-primary"
+                data-testid="owner-event-day-not-now"
+              >
+                Not now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* MOBILE VIEW */}
       <div className="supporter-dashboard-mobile-shell relative z-0 min-h-dvh w-full pixl-dashboard-mobile flex-col">
         {/* Mobile Header */}

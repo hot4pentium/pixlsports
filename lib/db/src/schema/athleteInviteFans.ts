@@ -25,6 +25,7 @@ export const athleteInviteFansTable = pgTable("athlete_invite_fans", {
   followTokenHash: text("follow_token_hash").notNull(),
   liveAlerts: boolean("live_alerts").notNull(),
   eventAlerts: boolean("event_alerts").notNull(),
+  preEventAlerts: boolean("pre_event_alerts").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, Bell, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
+import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { Link } from 'wouter';
 import {
@@ -11,6 +11,7 @@ import {
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
 } from '@workspace/api-client-react';
+import { gameOnHref, hasEventToday } from './athlete-event-links';
 
 import {
   Dialog,
@@ -24,7 +25,7 @@ import { HypeCardReplyComposer } from './public-hype-card';
 import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 
-type CardSide = 'front' | 'stats' | 'videos';
+type CardSide = 'front' | 'stats' | 'videos' | 'events';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
 type FanVideo = PublicAthleteFanCard['videos'][number];
 const hypeReactions = [
@@ -125,6 +126,7 @@ export function LivingAthleteCardPage({
 }) {
   const inviteToken = params.inviteToken ?? '';
   const [side, setSide] = useState<CardSide>('front');
+  const [todayTick, setTodayTick] = useState(() => Date.now());
   const [brokenPhoto, setBrokenPhoto] = useState(false);
   const [failedVideos, setFailedVideos] = useState<string[]>([]);
   const [selectedGameKey, setSelectedGameKey] = useState('');
@@ -171,6 +173,12 @@ export function LivingAthleteCardPage({
   }, [inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
   useEffect(() => {
+    const updateToday = () => setTodayTick(Date.now());
+    const timer = window.setInterval(updateToday, 30_000);
+    document.addEventListener('visibilitychange', updateToday);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', updateToday); };
+  }, []);
+  useEffect(() => {
     if (!invite) return;
     const previous = document.title;
     document.title = `${invite.athleteName} · The living card | Pixl Sports`;
@@ -209,6 +217,8 @@ export function LivingAthleteCardPage({
   }
 
   const recentVideos = [...invite.videos].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const linkedEvents = invite.events ?? [];
+  const eventToday = hasEventToday(linkedEvents, invite.timezone, new Date(todayTick));
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
   const orderedGames = (invite.stats?.games ?? [])
@@ -284,7 +294,7 @@ export function LivingAthleteCardPage({
         <div className="living-card-layout living-card-layout-solo">
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s living athlete card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'stats' ? 'finalized stats' : 'videos'}`}>
+              <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
                 {side === 'front' && (
                   <LivingAthleteCardFront
                     key="front"
@@ -517,10 +527,40 @@ export function LivingAthleteCardPage({
                     )}
                   </div>
                 )}
+                {side === 'events' && (
+                  <div className="living-card-face living-card-face-alt" key="events" data-testid="living-card-events-side">
+                    <div className="living-card-alt-top"><span className="living-card-overline">Pixl / Game days</span><span>{invite.seasonName}</span></div>
+                    <h2 className="living-card-alt-title">Events.</h2>
+                    <p className="living-card-alt-subtitle">The Game On Cards shared by {invite.athleteName}’s card owner. Open one for its full details.</p>
+                    {linkedEvents.length > 0 ? (
+                      <ol className="living-card-events-list" aria-label="Linked Game On Cards">
+                        {linkedEvents.map((event) => (
+                          <li className="living-card-event" data-status={event.status} key={`${event.shareToken}-${event.eventId}`} data-testid={`card-living-event-${event.shareToken}`}>
+                            <div className="living-card-event-top"><span>{event.type} / {formatDate(event.date) || 'Date to come'}</span><span>{event.status}</span></div>
+                            <h3>{event.opponent ? `vs ${event.opponent}` : event.title}</h3>
+                            {event.opponent && <p className="living-card-event-title">{event.title}</p>}
+                            <dl>
+                              <div><dt>Time</dt><dd>{event.time || 'To be announced'}</dd></div>
+                              <div><dt>Location</dt><dd>{event.location || 'To be announced'}</dd></div>
+                            </dl>
+                            <Link href={gameOnHref(event.shareToken)} data-testid={`link-living-event-${event.shareToken}`}>Full Game On Card <ArrowRight aria-hidden="true" /></Link>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <div className="living-card-empty" data-testid="living-card-events-empty">
+                        <CalendarDays size={30} strokeWidth={1.5} aria-hidden="true" />
+                        <h3>Game days will land here.</h3>
+                        <p>There are no Game On Cards linked to this athlete yet. Check back as the season moves.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
                   <button type="button" className="living-card-control" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Card front</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
-                  <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 ? ` (${recentVideos.length})` : ''}</button>
+                  <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 && <span className="living-card-control-count">({recentVideos.length})</span>}</button>
+                  <button type="button" className={`living-card-control${eventToday ? ' living-card-control-today' : ''}`} aria-pressed={side === 'events'} aria-controls="living-card-display" onClick={() => selectSide('events')} data-testid="button-living-card-events"><CalendarDays aria-hidden="true" /> Events{linkedEvents.length > 0 && <span className="living-card-control-count">({linkedEvents.length})</span>}{eventToday && <span className="sr-only"> · Event today</span>}</button>
                 </div>
               </div>
             </div>

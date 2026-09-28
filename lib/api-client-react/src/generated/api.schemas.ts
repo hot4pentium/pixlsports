@@ -984,6 +984,36 @@ export const OwnedAthleteInviteSport = {
   volleyball: 'volleyball',
 } as const;
 
+export type AthleteInviteEventSummaryType = typeof AthleteInviteEventSummaryType[keyof typeof AthleteInviteEventSummaryType];
+
+
+export const AthleteInviteEventSummaryType = {
+  game: 'game',
+  practice: 'practice',
+} as const;
+
+export type AthleteInviteEventSummaryStatus = typeof AthleteInviteEventSummaryStatus[keyof typeof AthleteInviteEventSummaryStatus];
+
+
+export const AthleteInviteEventSummaryStatus = {
+  upcoming: 'upcoming',
+  live: 'live',
+  final: 'final',
+} as const;
+
+export interface AthleteInviteEventSummary {
+  shareToken: string;
+  eventId: string;
+  title: string;
+  /** YYYY-MM-DD event date in the athlete invite timezone */
+  date: string;
+  time: string;
+  type: AthleteInviteEventSummaryType;
+  status: AthleteInviteEventSummaryStatus;
+  opponent: string;
+  location: string;
+}
+
 export interface OwnedAthleteInvite {
   inviteToken: string;
   athleteName: string;
@@ -1009,8 +1039,29 @@ export interface OwnedAthleteInvite {
   liveTrackerShareToken: string | null;
   /** @nullable */
   photoUrl: string | null;
+  events: AthleteInviteEventSummary[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AthleteInviteEventLinksInput {
+  /** @maxItems 100 */
+  shareTokens: string[];
+}
+
+export interface AthleteInviteEventLinks {
+  shareTokens: string[];
+}
+
+export interface AthleteInviteEventNotifyResult {
+  /** @minimum 0 */
+  attempted: number;
+  /** @minimum 0 */
+  sent: number;
+  /** @minimum 0 */
+  failed: number;
+  /** @minimum 0 */
+  alreadySent: number;
 }
 
 export type AthleteInviteHypeInputReaction = typeof AthleteInviteHypeInputReaction[keyof typeof AthleteInviteHypeInputReaction];
@@ -1159,6 +1210,7 @@ export interface PublicAthleteInvite {
   videos: AthleteInviteVideo[];
   stats: HypeCardShareStats | null;
   scheduleEvents: AthleteInviteScheduleEvent[];
+  events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveGame: AthleteInviteLiveSessionPublic | null;
   updatedAt: string;
@@ -1263,16 +1315,19 @@ export interface AthleteInviteFanFollowInput {
   keys: AthleteInviteFanFollowInputKeys;
   liveAlerts: boolean;
   eventAlerts: boolean;
+  preEventAlerts?: boolean;
 }
 
 export interface AthleteInviteFanFollowPreferences {
-  liveAlerts: boolean;
-  eventAlerts: boolean;
+  liveAlerts?: boolean;
+  eventAlerts?: boolean;
+  preEventAlerts?: boolean;
 }
 
 export interface AthleteInviteFanFollow {
   liveAlerts: boolean;
   eventAlerts: boolean;
+  preEventAlerts: boolean;
   active: boolean;
 }
 
@@ -1732,6 +1787,12 @@ export interface PublicAthleteFanCard {
   teamName: string;
   seasonName: string;
   seasonEndsAt: string;
+  /**
+     * Validated IANA timezone, or null for a legacy invite without one.
+     * @maxLength 100
+     * @nullable
+     */
+  timezone: string | null;
   sport: PublicAthleteFanCardSport;
   /** @nullable */
   photoUrl: string | null;
@@ -1740,6 +1801,7 @@ export interface PublicAthleteFanCard {
   videos: AthleteInviteVideo[];
   stats: HypeCardShareStats | null;
   scheduleEvents: AthleteInviteScheduleEvent[];
+  events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveScoreboard: AthleteInviteLiveScoreboard | null;
   updatedAt: string;

@@ -35,6 +35,7 @@
 - [Nested dashboard grid overrides](nested-dashboard-grid-overrides.md) — broad desktop grid selectors can reposition nested hero panels; scoped row and column overrides are required.
 - [Approved dashboard visual direction](approved-dashboard-visual-direction.md) — the supporter dashboard’s navy sports-editorial gradient, chevrons, and responsive path treatment are approved.
 - [Planner push notifications](planner-push-notifications.md) — server-side planner reminders use the device time zone and durable delivery keys.
+- [Owner event-day announcements](owner-event-day-announcements.md) — Autoscale event-day sharing uses an in-app owner reminder and confirmable manual follower push, never an owner timer.
 - [Planner alert labels](planner-alert-labels.md) — visible push titles should identify both the schedule item type and reminder timing.
 - [Athlete identity visuals](athlete-identity-visuals.md) — never present a supporter account photo as the named athlete; use athlete-owned media or initials.
 - [Supporter photo query cache](supporter-photo-query-cache.md) — photo mutations must refresh account-scoped tracker query entries, not only the generated base key.

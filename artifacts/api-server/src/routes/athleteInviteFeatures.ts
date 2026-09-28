@@ -338,7 +338,8 @@ router.post(
   async (req, res): Promise<void> => {
     const params = CreateAthleteInviteFanFollowParams.safeParse(req.params);
     const parsed = CreateAthleteInviteFanFollowBody.safeParse(req.body);
-    if (!params.success || !parsed.success || (!parsed.data.liveAlerts && !parsed.data.eventAlerts)) {
+    if (!params.success || !parsed.success
+      || (!parsed.data.liveAlerts && !parsed.data.eventAlerts && !parsed.data.preEventAlerts)) {
       res.status(400).json({ error: "Choose at least one alert and provide a valid browser subscription." });
       return;
     }
@@ -373,6 +374,7 @@ router.post(
         followTokenHash: followTokenHash(token),
         liveAlerts: parsed.data.liveAlerts,
         eventAlerts: parsed.data.eventAlerts,
+        preEventAlerts: parsed.data.preEventAlerts ?? false,
       }).onConflictDoNothing().returning();
       if (!follow) {
         res.status(409).json({ error: "This browser subscription is already following an invite." });
@@ -382,6 +384,7 @@ router.post(
         followToken: token,
         liveAlerts: follow.liveAlerts,
         eventAlerts: follow.eventAlerts,
+        preEventAlerts: follow.preEventAlerts,
         active: true,
       }));
     } catch (error) {
@@ -402,6 +405,7 @@ router.get(
     res.json(GetAthleteInviteFanFollowResponse.parse({
       liveAlerts: record.follow.liveAlerts,
       eventAlerts: record.follow.eventAlerts,
+      preEventAlerts: record.follow.preEventAlerts,
       active: record.active,
     }));
   },
@@ -413,21 +417,30 @@ router.patch(
     const params = UpdateAthleteInviteFanFollowParams.safeParse(req.params);
     const header = UpdateAthleteInviteFanFollowHeader.safeParse({ "X-Fan-Follow-Token": req.get("X-Fan-Follow-Token") });
     const parsed = UpdateAthleteInviteFanFollowBody.safeParse(req.body);
-    if (!params.success || !header.success || !parsed.success || (!parsed.data.liveAlerts && !parsed.data.eventAlerts)) {
+    if (!params.success || !header.success || !parsed.success) {
       res.status(400).json({ error: "Choose at least one alert." });
       return;
     }
     const record = await isFollowTokenValid(req);
     if (!record) { res.status(404).json({ error: "Follow not found." }); return; }
+    const liveAlerts = parsed.data.liveAlerts ?? record.follow.liveAlerts;
+    const eventAlerts = parsed.data.eventAlerts ?? record.follow.eventAlerts;
+    const preEventAlerts = parsed.data.preEventAlerts ?? record.follow.preEventAlerts;
+    if (!liveAlerts && !eventAlerts && !preEventAlerts) {
+      res.status(400).json({ error: "Choose at least one alert." });
+      return;
+    }
     const [updated] = await db.update(athleteInviteFansTable).set({
-      liveAlerts: parsed.data.liveAlerts,
-      eventAlerts: parsed.data.eventAlerts,
+      liveAlerts,
+      eventAlerts,
+      preEventAlerts,
       updatedAt: new Date(),
     }).where(eq(athleteInviteFansTable.id, record.follow.id)).returning();
     if (!updated) { res.status(404).json({ error: "Follow not found." }); return; }
     res.json(UpdateAthleteInviteFanFollowResponse.parse({
       liveAlerts: updated.liveAlerts,
       eventAlerts: updated.eventAlerts,
+      preEventAlerts: updated.preEventAlerts,
       active: record.active,
     }));
   },

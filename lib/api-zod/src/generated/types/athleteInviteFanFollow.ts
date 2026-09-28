@@ -9,5 +9,6 @@
 export interface AthleteInviteFanFollow {
   liveAlerts: boolean;
   eventAlerts: boolean;
+  preEventAlerts: boolean;
   active: boolean;
 }

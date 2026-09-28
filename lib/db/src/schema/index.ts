@@ -12,6 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
+import { athleteInvitesTable } from "./athleteInvites";
 
 export const cloudProjectsTable = pgTable("cloud_projects", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -88,6 +89,32 @@ export const scheduleSharesTable = pgTable("schedule_shares", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
+
+export const athleteInviteEventLinksTable = pgTable("athlete_invite_event_links", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  inviteId: uuid("invite_id").notNull().references(() => athleteInvitesTable.id, { onDelete: "cascade" }),
+  shareId: uuid("share_id").notNull().references(() => scheduleSharesTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  inviteShareUnique: uniqueIndex("athlete_invite_event_links_invite_share_unique").on(table.inviteId, table.shareId),
+  inviteIndex: index("athlete_invite_event_links_invite_index").on(table.inviteId),
+  shareIndex: index("athlete_invite_event_links_share_index").on(table.shareId),
+}));
+
+export const athleteInviteEventDeliveryClaimsTable = pgTable("athlete_invite_event_delivery_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  inviteId: uuid("invite_id").notNull(),
+  shareId: uuid("share_id").notNull(),
+  eventId: text("event_id").notNull(),
+  deviceKeyHash: text("device_key_hash").notNull(),
+  result: text("result").notNull().default("claimed"),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (table) => ({
+  deliveryUnique: uniqueIndex("athlete_invite_event_delivery_claims_event_device_unique")
+    .on(table.inviteId, table.eventId, table.deviceKeyHash),
+  shareIndex: index("athlete_invite_event_delivery_claims_share_index").on(table.shareId),
+}));
 
 export const hypeCardSharesTable = pgTable("hype_card_shares", {
   id: uuid("id").defaultRandom().primaryKey(),

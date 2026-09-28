@@ -115,7 +115,7 @@ export async function sendPushNotificationToSubscription(
     await sender.sendNotification({
       endpoint: subscription.endpoint,
       keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-    }, validatePushNotificationPayload(payload));
+    }, validatePushNotificationPayload(payload), { timeout: 15_000 });
     return { configured: true, sent: true, stale: false };
   } catch (error: unknown) {
     const statusCode = typeof error === "object" && error !== null && "statusCode" in error

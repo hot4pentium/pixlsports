@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AthleteInviteEventSummary } from './athleteInviteEventSummary';
 import type { AthleteInviteHypeCard } from './athleteInviteHypeCard';
 import type { AthleteInviteLiveSessionPublic } from './athleteInviteLiveSessionPublic';
 import type { AthleteInviteReply } from './athleteInviteReply';
@@ -27,6 +28,7 @@ export interface PublicAthleteInvite {
   videos: AthleteInviteVideo[];
   stats: HypeCardShareStats | null;
   scheduleEvents: AthleteInviteScheduleEvent[];
+  events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveGame: AthleteInviteLiveSessionPublic | null;
   updatedAt: Date;

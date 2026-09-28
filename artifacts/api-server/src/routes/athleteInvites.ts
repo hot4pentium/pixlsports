@@ -15,7 +15,14 @@ import {
   GetAthleteInviteResponse,
   GetAthleteFanCardParams,
   GetAthleteFanCardResponse,
+  GetAthleteInviteEventLinksParams,
+  GetAthleteInviteEventLinksResponse,
   ListAthleteInvitesResponse,
+  NotifyAthleteInviteEventFollowersParams,
+  NotifyAthleteInviteEventFollowersResponse,
+  ReplaceAthleteInviteEventLinksBody,
+  ReplaceAthleteInviteEventLinksParams,
+  ReplaceAthleteInviteEventLinksResponse,
   StartAthleteInviteLiveParams,
   StartAthleteInviteLiveResponse,
   StopAthleteInviteLiveParams,
@@ -27,11 +34,13 @@ import {
 import {
   athleteInvitesTable,
   athleteInviteHypesTable,
+  athleteInviteEventLinksTable,
   cloudProjectsTable,
   db,
   hypeCardShareRepliesTable,
   hypeCardSharesTable,
   statTrackerSharesTable,
+  scheduleSharesTable,
 } from "@workspace/db";
 
 import { isAccountActive } from "../lib/accountLifecycle";
@@ -39,35 +48,12 @@ import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShare
 import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotification";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
+import { GAME_ON_CARD_MARKER } from "./scheduleShares";
+import { notifyAthleteInviteEventFollowers } from "../lib/athleteInviteEventNotifications";
 
 const router: IRouter = Router();
 
 type InviteRow = typeof athleteInvitesTable.$inferSelect;
-
-function ownedInviteResponse(invite: InviteRow) {
-  return {
-    inviteToken: invite.publicToken,
-    athleteName: invite.athleteName,
-    teamName: invite.teamName,
-    seasonName: invite.seasonName,
-    seasonEndsAt: invite.seasonEndsAt,
-    sport: invite.sport,
-    timezone: invite.timezone,
-    trackerProjectId: invite.trackerProjectId,
-    scheduleProjectId: invite.scheduleProjectId,
-    showHypeCard: invite.showHypeCard,
-    showStats: invite.showStats,
-    showSchedule: invite.showSchedule,
-    hypesEnabled: invite.hypesEnabled,
-    paused: invite.paused,
-    liveTrackerShareToken: invite.liveTrackerShareToken,
-    photoUrl: invite.photoObjectPath
-      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
-      : null,
-    createdAt: invite.createdAt,
-    updatedAt: invite.updatedAt,
-  };
-}
 
 async function validateProject(
   projectId: string | null,
@@ -209,9 +195,77 @@ function athleteVideoResponse(share: typeof hypeCardSharesTable.$inferSelect) {
   };
 }
 
+function sourceEventFromCard(events: unknown) {
+  if (!Array.isArray(events) || events.length !== 1) return null;
+  const event: unknown = events[0];
+  if (!event || typeof event !== "object" || Array.isArray(event)) return null;
+  const item = event as Record<string, unknown>;
+  return item.type === "game" || item.type === "practice" ? item : null;
+}
+
+function validEventDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+async function linkedAthleteEvents(invite: InviteRow) {
+  const linkedShares = await db.select({ share: scheduleSharesTable })
+    .from(athleteInviteEventLinksTable)
+    .innerJoin(scheduleSharesTable, eq(athleteInviteEventLinksTable.shareId, scheduleSharesTable.id))
+    .where(and(
+      eq(athleteInviteEventLinksTable.inviteId, invite.id),
+      eq(scheduleSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+      eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER),
+    ))
+    .orderBy(desc(athleteInviteEventLinksTable.createdAt));
+  const eligible = linkedShares.flatMap(({ share }) => {
+    const event = sourceEventFromCard(share.events);
+    if (!event || typeof event.id !== "string" || !validEventDate(event.date)) return [];
+    return [{ share, event }];
+  });
+  const gameIds = [...new Set(eligible.flatMap(({ event }) => event.type === "game" ? [event.id as string] : []))];
+  const trackerStatusByGame = new Map<string, string>();
+  if (gameIds.length) {
+    const trackerRows = await db.select({
+      gameId: statTrackerSharesTable.gameId,
+      game: statTrackerSharesTable.game,
+    }).from(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.ownerClerkUserId, invite.ownerClerkUserId),
+      inArray(statTrackerSharesTable.gameId, gameIds),
+    ));
+    for (const tracker of trackerRows) {
+      const game = tracker.game && typeof tracker.game === "object" && !Array.isArray(tracker.game)
+        ? tracker.game as Record<string, unknown>
+        : {};
+      if (game.status === "final" || game.status === "live") trackerStatusByGame.set(tracker.gameId, game.status);
+    }
+  }
+  return eligible.map(({ share, event }) => {
+    const eventStatus = event.status === "final" || event.status === "live" ? event.status : "upcoming";
+    const trackerStatus = event.type === "game" ? trackerStatusByGame.get(event.id as string) : undefined;
+    const status = eventStatus === "final" || trackerStatus === "final"
+      ? "final"
+      : eventStatus === "live" || trackerStatus === "live"
+        ? "live"
+        : "upcoming";
+    return {
+      shareToken: share.id,
+      eventId: event.id as string,
+      title: share.title,
+      date: event.date as string,
+      time: typeof event.time === "string" ? event.time : "",
+      type: event.type as "game" | "practice",
+      status,
+      opponent: typeof event.opponent === "string" ? event.opponent : "",
+      location: typeof event.location === "string" ? event.location : "",
+    };
+  });
+}
+
 async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
   const maxHighlightVideos = 3;
-  const [trackerProject, latestImages, videos, liveShare] = await Promise.all([
+  const [trackerProject, latestImages, videos, liveShare, events] = await Promise.all([
     invite.showStats && invite.trackerProjectId
       ? validateProject(invite.trackerProjectId, invite.ownerClerkUserId, "stat-tracker")
       : invite.showStats
@@ -242,6 +296,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
         gt(statTrackerSharesTable.expiresAt, new Date()),
       )).then(([share]) => share ?? null)
       : Promise.resolve(null),
+    linkedAthleteEvents(invite),
   ]);
   const latestImage = latestImages[0] ?? null;
   const latestVideo = videos[0] ?? null;
@@ -309,6 +364,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
     videos: videos.map(athleteVideoResponse),
     stats,
     scheduleEvents: [],
+    events,
     replies: replies.map((reply) => ({
       reaction: reply.reaction,
       message: reply.message,
@@ -324,13 +380,102 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
   };
 }
 
+async function ownedInviteResponse(invite: InviteRow) {
+  return {
+    inviteToken: invite.publicToken,
+    athleteName: invite.athleteName,
+    teamName: invite.teamName,
+    seasonName: invite.seasonName,
+    seasonEndsAt: invite.seasonEndsAt,
+    sport: invite.sport,
+    timezone: invite.timezone,
+    trackerProjectId: invite.trackerProjectId,
+    scheduleProjectId: invite.scheduleProjectId,
+    showHypeCard: invite.showHypeCard,
+    showStats: invite.showStats,
+    showSchedule: invite.showSchedule,
+    hypesEnabled: invite.hypesEnabled,
+    paused: invite.paused,
+    liveTrackerShareToken: invite.liveTrackerShareToken,
+    photoUrl: invite.photoObjectPath
+      ? `/api/athlete-invites/${invite.publicToken}/photo/image?v=${invite.updatedAt.getTime()}`
+      : null,
+    events: await linkedAthleteEvents(invite),
+    createdAt: invite.createdAt,
+    updatedAt: invite.updatedAt,
+  };
+}
+
 router.get("/athlete-invites", requireAuth, async (_req, res): Promise<void> => {
   const invites = await db
     .select()
     .from(athleteInvitesTable)
     .where(eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)))
     .orderBy(desc(athleteInvitesTable.createdAt));
-  res.json(ListAthleteInvitesResponse.parse(invites.map(ownedInviteResponse)));
+  res.json(ListAthleteInvitesResponse.parse(await Promise.all(invites.map(ownedInviteResponse))));
+});
+
+router.get("/athlete-invites/:inviteToken/event-links", requireAuth, async (req, res): Promise<void> => {
+  const params = GetAthleteInviteEventLinksParams.safeParse(req.params);
+  if (!params.success) { res.status(404).json({ error: "Athlete invite not found" }); return; }
+  const [invite] = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable).where(and(
+    eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+    eq(athleteInvitesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+  )).limit(1);
+  if (!invite) { res.status(404).json({ error: "Athlete invite not found" }); return; }
+  const links = await db.select({ shareToken: scheduleSharesTable.id, events: scheduleSharesTable.events })
+    .from(athleteInviteEventLinksTable)
+    .innerJoin(scheduleSharesTable, eq(athleteInviteEventLinksTable.shareId, scheduleSharesTable.id))
+    .where(and(
+      eq(athleteInviteEventLinksTable.inviteId, invite.id),
+      eq(scheduleSharesTable.ownerClerkUserId, getRequiredClerkUserId(res)),
+      eq(scheduleSharesTable.teamSeason, GAME_ON_CARD_MARKER),
+    ));
+  res.json(GetAthleteInviteEventLinksResponse.parse({
+    shareTokens: links.flatMap(({ shareToken, events }) => sourceEventFromCard(events) ? [shareToken] : []),
+  }));
+});
+
+router.put("/athlete-invites/:inviteToken/event-links", requireAuth, async (req, res): Promise<void> => {
+  const params = ReplaceAthleteInviteEventLinksParams.safeParse(req.params);
+  const parsed = ReplaceAthleteInviteEventLinksBody.safeParse(req.body);
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: "Choose valid owned Game On Cards to link." });
+    return;
+  }
+  const ownerClerkUserId = getRequiredClerkUserId(res);
+  const invite = await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(athleteInvitesTable).where(and(
+      eq(athleteInvitesTable.publicToken, params.data.inviteToken),
+      eq(athleteInvitesTable.ownerClerkUserId, ownerClerkUserId),
+    )).for("update").limit(1);
+    if (!current) return null;
+
+    const candidateShares = parsed.data.shareTokens.length
+      ? await tx.select().from(scheduleSharesTable).where(and(
+        eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+        inArray(scheduleSharesTable.id, parsed.data.shareTokens),
+      ))
+      : [];
+    const validTokens = new Set(candidateShares
+      .filter((share) => share.teamSeason === GAME_ON_CARD_MARKER && sourceEventFromCard(share.events))
+      .map((share) => share.id));
+    if (validTokens.size !== parsed.data.shareTokens.length) return "invalid" as const;
+    await tx.delete(athleteInviteEventLinksTable).where(eq(athleteInviteEventLinksTable.inviteId, current.id));
+    if (parsed.data.shareTokens.length) {
+      await tx.insert(athleteInviteEventLinksTable).values(parsed.data.shareTokens.map((shareId) => ({
+        inviteId: current.id,
+        shareId,
+      })));
+    }
+    return current;
+  });
+  if (!invite) { res.status(404).json({ error: "Athlete invite not found" }); return; }
+  if (invite === "invalid") {
+    res.status(400).json({ error: "Each link must be an active single-card Game On share owned by this account." });
+    return;
+  }
+  res.json(ReplaceAthleteInviteEventLinksResponse.parse({ shareTokens: parsed.data.shareTokens }));
 });
 
 router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => {
@@ -357,7 +502,7 @@ router.post("/athlete-invites", requireAuth, async (req, res): Promise<void> => 
       ownerClerkUserId,
       publicToken: randomBytes(24).toString("base64url"),
     }).returning();
-    res.status(201).json(CreateAthleteInviteResponse.parse(ownedInviteResponse(created)));
+    res.status(201).json(CreateAthleteInviteResponse.parse(await ownedInviteResponse(created)));
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "23505") {
       res.status(409).json({ error: "This account already has an athlete invite. Update or revoke it first." });
@@ -402,7 +547,35 @@ router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> 
   }
   const { liveGame: _liveGame, ...card } = await publicAthleteInviteData(invite, false);
   void _liveGame;
-  res.json(GetAthleteFanCardResponse.parse({ ...card, hypesEnabled: invite.hypesEnabled }));
+  res.json(GetAthleteFanCardResponse.parse({
+    ...card,
+    timezone: isIanaTimezone(invite.timezone) ? invite.timezone : null,
+    hypesEnabled: invite.hypesEnabled,
+  }));
+});
+
+router.post("/athlete-invites/:inviteToken/event-links/:shareToken/notify", requireAuth, async (req, res): Promise<void> => {
+  const params = NotifyAthleteInviteEventFollowersParams.safeParse(req.params);
+  if (!params.success) { res.status(404).json({ error: "Game On Card not found" }); return; }
+  const outcome = await notifyAthleteInviteEventFollowers(
+    params.data.inviteToken,
+    getRequiredClerkUserId(res),
+    params.data.shareToken,
+  );
+  if (outcome.status === "not-found") {
+    res.status(404).json({ error: "Athlete invite or linked Game On Card not found" });
+    return;
+  }
+  if (outcome.status === "not-upcoming") {
+    res.status(409).json({ error: "Only a linked upcoming Game On event can be announced." });
+    return;
+  }
+  res.json(NotifyAthleteInviteEventFollowersResponse.parse({
+    attempted: outcome.attempted,
+    sent: outcome.sent,
+    failed: outcome.failed,
+    alreadySent: outcome.alreadySent,
+  }));
 });
 
 router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<void> => {
@@ -534,7 +707,7 @@ router.patch("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pro
       eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
     ));
   }
-  res.json(UpdateAthleteInviteResponse.parse(ownedInviteResponse(updated)));
+  res.json(UpdateAthleteInviteResponse.parse(await ownedInviteResponse(updated)));
 });
 
 router.delete("/athlete-invites/:inviteToken", requireAuth, async (req, res): Promise<void> => {

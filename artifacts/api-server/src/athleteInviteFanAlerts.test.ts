@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { eq } from "drizzle-orm";
 import {
@@ -9,6 +10,11 @@ import {
   db,
 } from "@workspace/db";
 import { getAthleteInviteEventStartForTest, runAthleteInviteFanAlertJob } from "./jobs/athleteInviteFanAlerts";
+
+test("legacy athlete invite event sender is not started by API startup", () => {
+  const apiEntry = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(apiEntry, /startAthleteInviteFanAlertSchedule/);
+});
 
 test("athlete invite schedule alert time resolves local event start", () => {
   assert.equal(

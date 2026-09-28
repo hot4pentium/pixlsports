@@ -1471,6 +1471,17 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string().describe('YYYY-MM-DD event date in the athlete invite timezone'),
+  "time": zod.string(),
+  "type": zod.enum(['game', 'practice']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "opponent": zod.string(),
+  "location": zod.string()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -1527,6 +1538,17 @@ export const CreateAthleteInviteResponse = zod.object({
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string().describe('YYYY-MM-DD event date in the athlete invite timezone'),
+  "time": zod.string(),
+  "type": zod.enum(['game', 'practice']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "opponent": zod.string(),
+  "location": zod.string()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -1645,6 +1667,17 @@ export const GetAthleteInviteResponse = zod.object({
   "opponent": zod.string(),
   "notes": zod.string()
 })),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string().describe('YYYY-MM-DD event date in the athlete invite timezone'),
+  "time": zod.string(),
+  "type": zod.enum(['game', 'practice']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "opponent": zod.string(),
+  "location": zod.string()
+})),
   "replies": zod.array(zod.object({
   "reaction": zod.string().max(getAthleteInviteResponseRepliesItemReactionMax),
   "message": zod.string().max(getAthleteInviteResponseRepliesItemMessageMax).nullable(),
@@ -1716,6 +1749,17 @@ export const UpdateAthleteInviteResponse = zod.object({
   "paused": zod.boolean(),
   "liveTrackerShareToken": zod.string().nullable(),
   "photoUrl": zod.string().nullable(),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string().describe('YYYY-MM-DD event date in the athlete invite timezone'),
+  "time": zod.string(),
+  "type": zod.enum(['game', 'practice']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "opponent": zod.string(),
+  "location": zod.string()
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -1745,6 +1789,8 @@ export const getAthleteFanCardPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]
 export const GetAthleteFanCardParams = zod.object({
   "inviteToken": zod.coerce.string().regex(getAthleteFanCardPathInviteTokenRegExp)
 })
+
+export const getAthleteFanCardResponseTimezoneMax = 100;
 
 export const getAthleteFanCardResponseHypeCardOneMediaNameMax = 80;
 
@@ -1807,6 +1853,7 @@ export const GetAthleteFanCardResponse = zod.object({
   "teamName": zod.string(),
   "seasonName": zod.string(),
   "seasonEndsAt": zod.coerce.date(),
+  "timezone": zod.string().max(getAthleteFanCardResponseTimezoneMax).nullable().describe('Validated IANA timezone, or null for a legacy invite without one.'),
   "sport": zod.enum(['baseball', 'basketball', 'football', 'soccer', 'volleyball']),
   "photoUrl": zod.string().nullable(),
   "hypeCard": zod.union([zod.object({
@@ -1860,6 +1907,17 @@ export const GetAthleteFanCardResponse = zod.object({
   "opponent": zod.string(),
   "notes": zod.string()
 })),
+  "events": zod.array(zod.object({
+  "shareToken": zod.string().uuid(),
+  "eventId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string().describe('YYYY-MM-DD event date in the athlete invite timezone'),
+  "time": zod.string(),
+  "type": zod.enum(['game', 'practice']),
+  "status": zod.enum(['upcoming', 'live', 'final']),
+  "opponent": zod.string(),
+  "location": zod.string()
+})),
   "replies": zod.array(zod.object({
   "reaction": zod.string().max(getAthleteFanCardResponseRepliesItemReactionMax),
   "message": zod.string().max(getAthleteFanCardResponseRepliesItemMessageMax).nullable(),
@@ -1875,6 +1933,74 @@ export const GetAthleteFanCardResponse = zod.object({
   "teamName": zod.string().max(getAthleteFanCardResponseLiveScoreboardOneTeamNameMax)
 }),zod.null()]),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List Game On Cards linked to an owned athlete invite
+ */
+export const getAthleteInviteEventLinksPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteEventLinksParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInviteEventLinksPathInviteTokenRegExp)
+})
+
+export const GetAthleteInviteEventLinksResponse = zod.object({
+  "shareTokens": zod.array(zod.string().uuid())
+})
+
+
+/**
+ * @summary Replace the Game On Cards linked to an owned athlete invite
+ */
+export const replaceAthleteInviteEventLinksPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ReplaceAthleteInviteEventLinksParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(replaceAthleteInviteEventLinksPathInviteTokenRegExp)
+})
+
+export const replaceAthleteInviteEventLinksBodyShareTokensMax = 100;
+
+
+
+export const ReplaceAthleteInviteEventLinksBody = zod.object({
+  "shareTokens": zod.array(zod.string().uuid()).max(replaceAthleteInviteEventLinksBodyShareTokensMax)
+})
+
+export const ReplaceAthleteInviteEventLinksResponse = zod.object({
+  "shareTokens": zod.array(zod.string().uuid())
+})
+
+
+/**
+ * Sends only to current followers with event alerts enabled. Each recipient gets at most one attempted push per share event.
+ * @summary Manually notify opted-in followers about a linked upcoming Game On Card
+ */
+export const notifyAthleteInviteEventFollowersPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const NotifyAthleteInviteEventFollowersParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(notifyAthleteInviteEventFollowersPathInviteTokenRegExp),
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const notifyAthleteInviteEventFollowersResponseAttemptedMin = 0;
+
+export const notifyAthleteInviteEventFollowersResponseSentMin = 0;
+
+export const notifyAthleteInviteEventFollowersResponseFailedMin = 0;
+
+export const notifyAthleteInviteEventFollowersResponseAlreadySentMin = 0;
+
+
+
+export const NotifyAthleteInviteEventFollowersResponse = zod.object({
+  "attempted": zod.number().int().min(notifyAthleteInviteEventFollowersResponseAttemptedMin),
+  "sent": zod.number().int().min(notifyAthleteInviteEventFollowersResponseSentMin),
+  "failed": zod.number().int().min(notifyAthleteInviteEventFollowersResponseFailedMin),
+  "alreadySent": zod.number().int().min(notifyAthleteInviteEventFollowersResponseAlreadySentMin)
 })
 
 
@@ -2111,7 +2237,7 @@ export const createAthleteInviteFanFollowBodyKeysAuthMax = 128;
 
 
 export const createAthleteInviteFanFollowBodyKeysAuthRegExp = new RegExp('^[A-Za-z0-9_-]+$');
-
+export const createAthleteInviteFanFollowBodyPreEventAlertsDefault = false;
 
 export const CreateAthleteInviteFanFollowBody = zod.object({
   "endpoint": zod.string().url().max(createAthleteInviteFanFollowBodyEndpointMax),
@@ -2120,7 +2246,8 @@ export const CreateAthleteInviteFanFollowBody = zod.object({
   "auth": zod.string().min(createAthleteInviteFanFollowBodyKeysAuthMin).max(createAthleteInviteFanFollowBodyKeysAuthMax).regex(createAthleteInviteFanFollowBodyKeysAuthRegExp)
 }),
   "liveAlerts": zod.boolean(),
-  "eventAlerts": zod.boolean()
+  "eventAlerts": zod.boolean(),
+  "preEventAlerts": zod.boolean().default(createAthleteInviteFanFollowBodyPreEventAlertsDefault)
 })
 
 export const createAthleteInviteFanFollowResponseTwoFollowTokenMin = 40;
@@ -2131,6 +2258,7 @@ export const createAthleteInviteFanFollowResponseTwoFollowTokenMax = 100;
 export const CreateAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
+  "preEventAlerts": zod.boolean(),
   "active": zod.boolean()
 }).and(zod.object({
   "followToken": zod.string().min(createAthleteInviteFanFollowResponseTwoFollowTokenMin).max(createAthleteInviteFanFollowResponseTwoFollowTokenMax)
@@ -2160,6 +2288,7 @@ export const GetAthleteInviteFanFollowHeader = zod.object({
 export const GetAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
+  "preEventAlerts": zod.boolean(),
   "active": zod.boolean()
 })
 
@@ -2184,14 +2313,18 @@ export const UpdateAthleteInviteFanFollowHeader = zod.object({
   "X-Fan-Follow-Token": zod.string().min(updateAthleteInviteFanFollowHeaderXFanFollowTokenMin).max(updateAthleteInviteFanFollowHeaderXFanFollowTokenMax)
 })
 
+export const updateAthleteInviteFanFollowBodyPreEventAlertsDefault = false;
+
 export const UpdateAthleteInviteFanFollowBody = zod.object({
-  "liveAlerts": zod.boolean(),
-  "eventAlerts": zod.boolean()
+  "liveAlerts": zod.boolean().optional(),
+  "eventAlerts": zod.boolean().optional(),
+  "preEventAlerts": zod.boolean().default(updateAthleteInviteFanFollowBodyPreEventAlertsDefault)
 })
 
 export const UpdateAthleteInviteFanFollowResponse = zod.object({
   "liveAlerts": zod.boolean(),
   "eventAlerts": zod.boolean(),
+  "preEventAlerts": zod.boolean(),
   "active": zod.boolean()
 })
 

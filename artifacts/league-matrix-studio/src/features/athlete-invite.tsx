@@ -54,6 +54,7 @@ import { Switch } from '@/components/ui/switch';
 import { HypeCardReplyComposer } from './public-hype-card';
 import { FanCardPhotoManager } from './fan-card-photo-manager';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
+import { OwnerEventLinks } from './owner-event-links';
 import { getActiveCarouselIndex } from './athlete-video-carousel';
 import { getSportRule, type Sport } from './stat-tracker';
 import { getUserProfile } from './supporter-dashboard-model';
@@ -1200,7 +1201,9 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
     return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading management tools…</p></PublicShell>;
   }
   if (!isSignedIn) {
-    const redirectUrl = `${basePath}/player/${encodeURIComponent(inviteToken)}/manage#owner-fan-hypes`;
+    const ownerDeepLink = window.location.hash === '#owner-notify-followers';
+    const shareToken = new URLSearchParams(window.location.search).get('shareToken');
+    const redirectUrl = `${basePath}/player/${encodeURIComponent(inviteToken)}/manage${ownerDeepLink && shareToken ? `?shareToken=${encodeURIComponent(shareToken)}` : ''}${ownerDeepLink ? '#owner-notify-followers' : '#owner-fan-hypes'}`;
     return (
       <PublicShell>
         <div className="max-w-md text-center">
@@ -1222,6 +1225,7 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
           <ChevronLeft className="mr-2 h-4 w-4" />Back to Hype Page
         </Link>
         <OwnerHypePageManage invite={ownerInvite} />
+        <div className="mx-auto max-w-[760px]"><OwnerEventLinks key={ownerInvite.inviteToken} invite={ownerInvite} /></div>
       </main>
     </div>
   );

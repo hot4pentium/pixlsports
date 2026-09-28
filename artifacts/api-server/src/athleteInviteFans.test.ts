@@ -89,13 +89,19 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
         endpoint,
         keys: { p256dh: "public_encryption_key_".repeat(3), auth: "authentication-key" },
         liveAlerts: true,
-        eventAlerts: false,
+        eventAlerts: true,
       }),
     });
     assert.equal(create.status, 201);
-    const follow = await create.json() as { followToken: string; liveAlerts: boolean; eventAlerts: boolean };
+    const follow = await create.json() as {
+      followToken: string;
+      liveAlerts: boolean;
+      eventAlerts: boolean;
+      preEventAlerts: boolean;
+    };
     assert.equal(follow.liveAlerts, true);
-    assert.equal(follow.eventAlerts, false);
+    assert.equal(follow.eventAlerts, true);
+    assert.equal(follow.preEventAlerts, false);
     assert.equal(follow.followToken.length >= 40, true);
 
     const duplicate = await fetch(`${baseUrl}/follows`, {
@@ -105,7 +111,7 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
         endpoint,
         keys: { p256dh: "public_encryption_key_".repeat(3), auth: "authentication-key" },
         liveAlerts: true,
-        eventAlerts: false,
+        eventAlerts: true,
       }),
     });
     assert.equal(duplicate.status, 409);
@@ -113,7 +119,12 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     const followHeaders = { "X-Fan-Follow-Token": follow.followToken };
     const status = await fetch(`${baseUrl}/follows/me`, { headers: followHeaders });
     assert.equal(status.status, 200);
-    assert.deepEqual(await status.json(), { liveAlerts: true, eventAlerts: false, active: true });
+    assert.deepEqual(await status.json(), {
+      liveAlerts: true,
+      eventAlerts: true,
+      preEventAlerts: false,
+      active: true,
+    });
     assert.equal((await fetch(`${baseUrl}/follows/me`, {
       headers: { "X-Fan-Follow-Token": "knows-endpoint-only" },
     })).status, 404);
@@ -121,22 +132,37 @@ test("anonymous fan follow token scopes preference updates and deletion", async 
     const update = await fetch(`${baseUrl}/follows/me`, {
       method: "PATCH",
       headers: { ...followHeaders, "content-type": "application/json" },
-      body: JSON.stringify({ liveAlerts: false, eventAlerts: true }),
+      body: JSON.stringify({ liveAlerts: false, preEventAlerts: true }),
     });
     assert.equal(update.status, 200);
-    assert.deepEqual(await update.json(), { liveAlerts: false, eventAlerts: true, active: true });
+    assert.deepEqual(await update.json(), {
+      liveAlerts: false,
+      eventAlerts: true,
+      preEventAlerts: true,
+      active: true,
+    });
 
     await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
     const pausedStatus = await fetch(`${baseUrl}/follows/me`, { headers: followHeaders });
     assert.equal(pausedStatus.status, 200);
-    assert.deepEqual(await pausedStatus.json(), { liveAlerts: false, eventAlerts: true, active: false });
+    assert.deepEqual(await pausedStatus.json(), {
+      liveAlerts: false,
+      eventAlerts: true,
+      preEventAlerts: true,
+      active: false,
+    });
     const pausedPatch = await fetch(`${baseUrl}/follows/me`, {
       method: "PATCH",
       headers: { ...followHeaders, "content-type": "application/json" },
       body: JSON.stringify({ liveAlerts: true, eventAlerts: false }),
     });
     assert.equal(pausedPatch.status, 200);
-    assert.deepEqual(await pausedPatch.json(), { liveAlerts: true, eventAlerts: false, active: false });
+    assert.deepEqual(await pausedPatch.json(), {
+      liveAlerts: true,
+      eventAlerts: false,
+      preEventAlerts: false,
+      active: false,
+    });
     assert.equal((await fetch(`${baseUrl}/follows`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-forwarded-for": sourceIp },
@@ -218,12 +244,18 @@ test("one browser endpoint can follow separate athlete invites independently", a
     const values = await Promise.all(results.map((result) => result.json())) as Array<{
       liveAlerts: boolean;
       eventAlerts: boolean;
+      preEventAlerts: boolean;
       followToken: string;
       active: boolean;
     }>;
-    assert.deepEqual(values.map(({ liveAlerts, eventAlerts, active }) => ({ liveAlerts, eventAlerts, active })), [
-      { liveAlerts: true, eventAlerts: false, active: true },
-      { liveAlerts: false, eventAlerts: true, active: true },
+    assert.deepEqual(values.map(({ liveAlerts, eventAlerts, preEventAlerts, active }) => ({
+      liveAlerts,
+      eventAlerts,
+      preEventAlerts,
+      active,
+    })), [
+      { liveAlerts: true, eventAlerts: false, preEventAlerts: false, active: true },
+      { liveAlerts: false, eventAlerts: true, preEventAlerts: false, active: true },
     ]);
     assert.notEqual(values[0]!.followToken, values[1]!.followToken);
   } finally {

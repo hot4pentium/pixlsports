@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AthleteInviteEventSummary } from './athleteInviteEventSummary';
 import type { AthleteInviteHypeCard } from './athleteInviteHypeCard';
 import type { AthleteInviteLiveScoreboard } from './athleteInviteLiveScoreboard';
 import type { AthleteInviteReply } from './athleteInviteReply';
@@ -20,6 +21,12 @@ export interface PublicAthleteFanCard {
   teamName: string;
   seasonName: string;
   seasonEndsAt: Date;
+  /**
+     * Validated IANA timezone, or null for a legacy invite without one.
+     * @maxLength 100
+     * @nullable
+     */
+  timezone: string | null;
   sport: PublicAthleteFanCardSport;
   /** @nullable */
   photoUrl: string | null;
@@ -28,6 +35,7 @@ export interface PublicAthleteFanCard {
   videos: AthleteInviteVideo[];
   stats: HypeCardShareStats | null;
   scheduleEvents: AthleteInviteScheduleEvent[];
+  events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveScoreboard: AthleteInviteLiveScoreboard | null;
   updatedAt: Date;
