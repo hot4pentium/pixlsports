@@ -31,10 +31,12 @@ credentials belong in the scheduled caller.
    `pnpm --filter @workspace/api-server run run:game-on-alerts-trigger`.
    This caller needs only the endpoint URL and trigger secret; it must not
    receive `DATABASE_URL`, VAPID keys, or push subscription data.
-6. The proposed cadence is every two minutes in UTC (`*/2 * * * *`). Replit
-   documents cron schedules but not the minimum interval, so confirm that the
-   publishing controls accept this cadence before activating it. Keep the
-   main API on Autoscale.
+6. Replit Scheduled Deployments have a minimum interval of one hour, which is
+   too slow for timely one-hour reminders. Use an owner-approved external
+   scheduler that can run this CLI or an equivalent signer every two minutes in
+   UTC (`*/2 * * * *`). Do not enable the recurring caller until its secret,
+   endpoint, and failure reporting are configured. Keep the main API on
+   Autoscale.
 
 The reminder job re-reads the current Game On Card on every pass. That lets
 edits, final status, and removed events affect eligibility without creating
