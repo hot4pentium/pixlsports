@@ -189,15 +189,24 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
             {step.homeScreenGuide && (
               <div className="supporter-tour__install-guidance" data-testid="supporter-dashboard-tour-install-guidance">
                 <section aria-labelledby="supporter-tour-ios-heading">
-                  <h3 id="supporter-tour-ios-heading">iPhone or iPad</h3>
-                  <p>Open this page in Safari, tap Share, choose Add to Home Screen, then tap Add.</p>
+                  <h3 id="supporter-tour-ios-heading">iPhone or iPad · Safari</h3>
+                  <p>
+                    Open this page in Safari. <strong>iPhone:</strong> tap Share (or More → Share in some layouts) → Add to Home Screen.
+                    If it’s missing, scroll down to Edit Actions → Add to Home Screen. Turn on Open as Web App if it appears, then tap Add.
+                  </p>
+                  <p>
+                    <strong>iPad:</strong> tap Share → View More → Add to Home Screen. Turn on Open as Web App if it appears, then tap Add.
+                  </p>
                 </section>
                 <section aria-labelledby="supporter-tour-android-heading">
                   <h3 id="supporter-tour-android-heading">Android</h3>
-                  <p>In Chrome, open the three-dot menu and choose Add to Home screen or Install app, then tap Add or Install.</p>
+                  <p>
+                    In Chrome, open the three-dot menu → Install and create shortcut. Choose Install, or Create shortcut → Add. Some versions say Add to Home screen;
+                    follow its prompt. If no install or shortcut option appears, bookmark this page.
+                  </p>
                 </section>
                 <p className="supporter-tour__desktop-note">
-                  On desktop, you can use Chrome’s Install Pixl Sports option if it’s available, or bookmark this page. Both phone guides above stay visible so you can follow them later.
+                  On desktop, use Chrome’s Install option if available, or bookmark this page. Both phone guides stay visible here so you can follow them later.
                 </p>
               </div>
             )}

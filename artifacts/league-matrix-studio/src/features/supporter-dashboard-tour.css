@@ -127,11 +127,11 @@
 .supporter-tour__install-guidance {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 20px;
+  gap: 8px;
+  margin-top: 14px;
 }
 .supporter-tour__install-guidance section {
-  padding: 13px;
+  padding: 11px;
   border: 1px solid rgba(255, 241, 229, .22);
   background: rgba(35, 24, 23, .24);
 }
@@ -144,15 +144,16 @@
   text-transform: uppercase;
 }
 .supporter-tour__install-guidance section p {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: #fff1e5;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.42;
 }
+.supporter-tour__install-guidance strong { color: #fff4e8; }
 .supporter-tour__desktop-note {
   grid-column: 1 / -1;
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-left: 2px solid var(--tour-orange);
   color: #fff1e5;
   background: rgba(35, 24, 23, .2);
@@ -203,10 +204,13 @@
 
 @media (max-width: 480px) {
   .supporter-tour { width: 100%; margin-block: 12px 20px; padding-inline: 12px; }
-  .supporter-tour__inner { padding: 20px 16px 16px; }
+  .supporter-tour__inner { padding: 16px 14px 14px; }
+  .supporter-tour__dialog { max-height: min(94dvh, 820px); }
   .supporter-tour__path { gap: 5px; font-size: 9px; }
   .supporter-tour__control { padding-inline: 10px; }
   .supporter-tour__install-guidance { grid-template-columns: 1fr; }
+  .supporter-tour__install-guidance section { padding: 9px 10px; }
+  .supporter-tour__install-guidance section p { margin-top: 5px; font-size: 11px; line-height: 1.38; }
   .supporter-tour__desktop-note { grid-column: auto; }
 }
 

@@ -8,6 +8,7 @@ const gameOnCollection = readFileSync(new URL('./game-on-dashboard-collection.ts
 const gameOnNavigation = readFileSync(new URL('./game-on-navigation.ts', import.meta.url), 'utf8');
 const tourSource = readFileSync(new URL('./supporter-dashboard-tour.tsx', import.meta.url), 'utf8');
 const inlinePrepSource = readFileSync(new URL('./game-on-inline-prep-checklist.tsx', import.meta.url), 'utf8');
+const tourStyles = readFileSync(new URL('./supporter-dashboard-tour.css', import.meta.url), 'utf8');
 
 test('standalone Calendar routes show a clear retired notice and cannot reach the old schedule canvas', () => {
   assert.match(appSource, /<Route path="\/schedule\/:shareToken" component=\{RetiredSchedulePage\}/);
@@ -28,6 +29,16 @@ test('the supporter tour is an informational modal with optional phone install g
   assert.match(tourSource, /iPhone or iPad/);
   assert.match(tourSource, /Android/);
   assert.match(tourSource, /On desktop/);
+  assert.match(tourSource, /Share \(or More → Share in some layouts\)/);
+  assert.match(tourSource, /Edit Actions → Add to Home Screen/);
+  assert.match(tourSource, /Share → View More → Add to Home Screen/);
+  assert.match(tourSource, /Open as Web App if it appears/);
+  assert.match(tourSource, /Install and create shortcut/);
+  assert.match(tourSource, /Some versions say Add to Home screen/);
+  assert.match(tourSource, /bookmark this page/);
+  assert.match(tourSource, /Both phone guides stay visible here/);
+  assert.match(tourStyles, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(tourStyles, /@media \(max-width: 480px\)[\s\S]*?grid-template-columns: 1fr/);
   assert.match(tourSource, /aria-modal="true"/);
   assert.doesNotMatch(tourSource, /supporter-dashboard-tour-link|onOpenCardPanel|<a\b/);
   assert.doesNotMatch(supporterDashboard, /tourPanelRequest|openTourCardPanel/);
