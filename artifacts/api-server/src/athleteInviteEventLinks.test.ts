@@ -17,7 +17,7 @@ import {
 import athleteInvitesRouter from "./routes/athleteInvites";
 import { notifyAthleteInviteFans } from "./lib/athleteInviteFanNotifications";
 import { GAME_ON_CARD_MARKER } from "./routes/scheduleShares";
-import { notifyAthleteInviteEventFollowers } from "./lib/athleteInviteEventNotifications";
+import { getAthleteInviteEventNotificationProgress, notifyAthleteInviteEventFollowers } from "./lib/athleteInviteEventNotifications";
 
 function futureDate(days: number) {
   const date = new Date();
@@ -184,9 +184,9 @@ test("athlete event links expose only owned marked shares and manual delivery is
       notifyAthleteInviteEventFollowers(inviteToken, ownerId, upcoming!.id, { send }),
     ]);
     assert.deepEqual(manualRecipients, [endpoints[1]]);
-    assert.equal(sendResults.reduce((sum, result) => sum + (result.status === "ok" ? result.sent : 0), 0), 1);
+    assert.equal(sendResults.every((result) => result.status === "ok"), true);
     const priorResult = await notifyAthleteInviteEventFollowers(inviteToken, ownerId, upcoming!.id, { send });
-    assert.deepEqual(priorResult, { status: "ok", attempted: 0, sent: 0, failed: 0, alreadySent: 1 });
+    assert.deepEqual(priorResult, { status: "ok", eligible: 1, sent: 1, failed: 0, pending: 0, remaining: 0 });
     assert.deepEqual(manualRecipients, [endpoints[1]]);
 
     const scheduledRecipients: string[] = [];
@@ -267,15 +267,81 @@ test("athlete event links expose only owned marked shares and manual delivery is
     const slowResult = await sending;
     if (slowError) throw slowError;
     assert.equal(startedEndpoints.length, 4);
-    assert.deepEqual(slowResult, { status: "ok", attempted: 4, sent: 4, failed: 0, alreadySent: 0 });
+    assert.deepEqual(slowResult, { status: "ok", eligible: 3, sent: 3, failed: 0, pending: 0, remaining: 0 });
     const afterSlowSend = await notifyAthleteInviteEventFollowers(inviteToken, ownerId, slowShare!.id, { send: slowSend });
-    assert.deepEqual(afterSlowSend, { status: "ok", attempted: 0, sent: 0, failed: 0, alreadySent: 3 });
+    assert.deepEqual(afterSlowSend, slowResult);
     assert.equal(startedEndpoints.length, 4);
+
+    const [largeShare] = await db.insert(scheduleSharesTable).values({
+      ownerClerkUserId: ownerId,
+      title: "Large slow audience",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [{ id: `event-${randomUUID()}`, type: "game", status: "upcoming", date: futureDate(36), time: "18:00" }],
+    }).returning();
+    shareIds.push(largeShare!.id);
+    await db.insert(athleteInviteEventLinksTable).values({ inviteId: invite!.id, shareId: largeShare!.id });
+    const largeFollowers = await db.insert(athleteInviteFansTable).values(Array.from({ length: 29 }, () => ({
+      inviteId: invite!.id,
+      endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID().replaceAll("-", "")}`,
+      p256dh: "test-key",
+      auth: "test-auth",
+      followTokenHash: randomUUID().replaceAll("-", ""),
+      liveAlerts: false,
+      eventAlerts: false,
+      preEventAlerts: true,
+    }))).returning();
+    let finishSlow!: () => void;
+    const stalled = new Promise<void>((resolve) => { finishSlow = resolve; });
+    const attemptedEndpoints: string[] = [];
+    const nonDelivering = async (subscription: { endpoint: string; p256dh: string; auth: string }) => {
+      attemptedEndpoints.push(subscription.endpoint);
+      if (attemptedEndpoints.length <= 8) await stalled;
+      return { configured: true, sent: false, stale: false };
+    };
+    try {
+      const first = await beforeDeadline(
+        notifyAthleteInviteEventFollowers(inviteToken, ownerId, largeShare!.id, { send: nonDelivering, background: true }),
+        "A slow push held the owner request open", 5000,
+      );
+      assert.equal(first.status, "ok");
+      if (first.status !== "ok") throw new Error("Event missing");
+      assert.equal(first.pending, 8);
+      assert.equal(first.remaining, 24); // 29 new followers plus three still opted in
+      const baseLarge = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}/event-links/${largeShare!.id}/notify`;
+      const reported = await fetch(baseLarge, { headers });
+      assert.equal(reported.status, 200);
+      assert.equal((await reported.json() as { pending: number }).pending, 8);
+      assert.equal((await fetch(baseLarge, { headers: { "x-test-user": otherOwnerId } })).status, 404);
+      // Simulate the owner losing the response/process mid-flight. A repeat
+      // must continue unclaimed devices, never retry the eight uncertain ones.
+      for (let index = 0; index < 3; index++) {
+        const next = await notifyAthleteInviteEventFollowers(inviteToken, ownerId, largeShare!.id, { send: nonDelivering });
+        assert.equal(next.status, "ok");
+      }
+      assert.equal(attemptedEndpoints.length, 32);
+      assert.equal(new Set(attemptedEndpoints).size, 32);
+      const pendingReport = await getAthleteInviteEventNotificationProgress(inviteToken, ownerId, largeShare!.id);
+      assert.deepEqual(pendingReport, { status: "ok", eligible: 32, sent: 0, failed: 24, pending: 8, remaining: 0 });
+    } finally {
+      finishSlow();
+    }
+    await beforeDeadline((async () => {
+      while (true) {
+        const report = await getAthleteInviteEventNotificationProgress(inviteToken, ownerId, largeShare!.id);
+        if (report.status === "ok" && report.pending === 0) {
+          assert.equal(report.failed, 32);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    })(), "Stalled attempts never recorded their outcome", 6000);
+    assert.equal(attemptedEndpoints.length, 32);
+    await db.delete(athleteInviteFansTable).where(inArray(athleteInviteFansTable.id, largeFollowers.map(({ id }) => id)));
 
     await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, finalByTracker!.id));
     const publicAfterDeletion = await fetch(`${baseUrl}/fan`);
     const remainingEvents = (await publicAfterDeletion.json() as { events: Array<{ shareToken: string }> }).events;
-    assert.deepEqual(remainingEvents.map((event) => event.shareToken).sort(), [upcoming!.id, slowShare!.id].sort());
+    assert.deepEqual(remainingEvents.map((event) => event.shareToken).sort(), [upcoming!.id, slowShare!.id, largeShare!.id].sort());
 
     await db.update(athleteInvitesTable).set({ timezone: null }).where(eq(athleteInvitesTable.id, invite!.id));
     const legacyTimezoneFan = await fetch(`${baseUrl}/fan`);

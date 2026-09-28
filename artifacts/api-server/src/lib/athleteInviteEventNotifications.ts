@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   athleteInviteEventDeliveryClaimsTable,
   athleteInviteEventLinksTable,
@@ -14,6 +14,7 @@ import { getAthleteInviteEventStartForTest } from "../jobs/athleteInviteFanAlert
 import { GAME_ON_CARD_MARKER } from "../routes/scheduleShares";
 import { isIanaTimezone } from "./timezone";
 import { sendPushNotificationToSubscription } from "./webPush";
+import { logger } from "./logger";
 
 const MAX_PARALLEL_PUSHES = 8;
 
@@ -175,26 +176,10 @@ async function sendClaimedDelivery(
   return { state: outcome.sent ? "sent" as const : "failed" as const };
 }
 
-async function awaitExistingDeliveryResult(inviteId: string, eventId: string, deviceKeyHash: string) {
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    const [claim] = await db.select({ result: athleteInviteEventDeliveryClaimsTable.result })
-      .from(athleteInviteEventDeliveryClaimsTable).where(and(
-        eq(athleteInviteEventDeliveryClaimsTable.inviteId, inviteId),
-        eq(athleteInviteEventDeliveryClaimsTable.eventId, eventId),
-        eq(athleteInviteEventDeliveryClaimsTable.deviceKeyHash, deviceKeyHash),
-      )).limit(1);
-    if (!claim || claim.result !== "claimed") return claim?.result ?? "failed";
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  return "failed";
-}
-
-export async function notifyAthleteInviteEventFollowers(
+async function eventContext(
   inviteToken: string,
   ownerClerkUserId: string,
   shareToken: string,
-  options: { send?: PushSender; now?: () => Date } = {},
 ) {
   const [invite] = await db.select().from(athleteInvitesTable).where(and(
     eq(athleteInvitesTable.publicToken, inviteToken),
@@ -212,50 +197,77 @@ export async function notifyAthleteInviteEventFollowers(
   });
   if (initial === "not-found") return { status: "not-found" as const };
   if (initial === "not-upcoming") return { status: "not-upcoming" as const };
+  return { status: "ok" as const, invite, eventId: initial.eventId };
+}
 
-  const followers = await db.select({ id: athleteInviteFansTable.id })
+async function deliveryProgress(inviteId: string, eventId: string) {
+  const followers = await db.select({ id: athleteInviteFansTable.id, endpoint: athleteInviteFansTable.endpoint })
     .from(athleteInviteFansTable).where(and(
-      eq(athleteInviteFansTable.inviteId, invite.id),
+      eq(athleteInviteFansTable.inviteId, inviteId),
       eq(athleteInviteFansTable.preEventAlerts, true),
     ));
-  const counts = { attempted: 0, sent: 0, failed: 0, alreadySent: 0 };
-  const send = options.send ?? sendPushNotificationToSubscription;
-  const batches = Array.from({ length: Math.ceil(followers.length / MAX_PARALLEL_PUSHES) }, (_, batchIndex) => (
-    followers.slice(batchIndex * MAX_PARALLEL_PUSHES, (batchIndex + 1) * MAX_PARALLEL_PUSHES)
+  const claims = await db.select({
+    deviceKeyHash: athleteInviteEventDeliveryClaimsTable.deviceKeyHash,
+    result: athleteInviteEventDeliveryClaimsTable.result,
+  }).from(athleteInviteEventDeliveryClaimsTable).where(and(
+    eq(athleteInviteEventDeliveryClaimsTable.inviteId, inviteId),
+    eq(athleteInviteEventDeliveryClaimsTable.eventId, eventId),
   ));
-  for (const batch of batches) {
-    await Promise.all(batch.map(async ({ id: followId }) => {
-      const claim = await claimDeviceDelivery(invite.id, ownerClerkUserId, shareToken, initial.eventId, followId);
-      if (claim.state === "stale") return;
-      if (claim.state === "duplicate") {
-        const result = claim.result === "claimed"
-          ? await awaitExistingDeliveryResult(invite.id, initial.eventId, claim.deviceKeyHash)
-          : claim.result;
-        if (result === "sent") counts.alreadySent += 1;
-        else counts.failed += 1;
-        return;
-      }
-      const outcome = await sendClaimedDelivery(
-        invite.id,
-        ownerClerkUserId,
-        shareToken,
-        initial.eventId,
-        followId,
-        claim.claimId,
-        {
-          title: `${invite.athleteName} has a game-day card`,
-          body: "You enabled event alerts for a Hype Card you follow. There's a game-day card to see.",
-          url: `/fan/${invite.publicToken}`,
-          tag: `athlete-invite-event-${invite.id}-${initial.eventId}`,
-        },
-        send,
-        options.now ?? (() => new Date()),
-      );
-      if (outcome.state === "stale") return;
-      counts.attempted += 1;
-      if (outcome.state === "sent") counts.sent += 1;
-      else counts.failed += 1;
-    }));
+  const byDevice = new Map(claims.map((claim) => [claim.deviceKeyHash, claim.result]));
+  const remainingIds: string[] = [];
+  const counts = { eligible: followers.length, sent: 0, failed: 0, pending: 0, remaining: 0 };
+  for (const follow of followers) {
+    const hash = createHash("sha256").update(follow.endpoint).digest("hex");
+    const result = byDevice.get(hash);
+    if (result === "sent") counts.sent++;
+    else if (result === "failed") counts.failed++;
+    else if (result === "claimed") counts.pending++;
+    else { counts.remaining++; remainingIds.push(follow.id); }
   }
-  return { status: "ok" as const, ...counts };
+  return { counts, remainingIds };
+}
+
+export async function getAthleteInviteEventNotificationProgress(
+  inviteToken: string, ownerClerkUserId: string, shareToken: string,
+) {
+  const context = await eventContext(inviteToken, ownerClerkUserId, shareToken);
+  if (context.status !== "ok") return context;
+  return { status: "ok" as const, ...(await deliveryProgress(context.invite.id, context.eventId)).counts };
+}
+
+export async function notifyAthleteInviteEventFollowers(
+  inviteToken: string,
+  ownerClerkUserId: string,
+  shareToken: string,
+  options: { send?: PushSender; now?: () => Date; background?: boolean } = {},
+) {
+  const context = await eventContext(inviteToken, ownerClerkUserId, shareToken);
+  if (context.status !== "ok") return context;
+  const { invite, eventId } = context;
+  const { remainingIds } = await deliveryProgress(invite.id, eventId);
+  const send = options.send ?? sendPushNotificationToSubscription;
+  // Claim at most one batch per request. In background mode the HTTP response
+  // reports the durable claims immediately, not a promise of device delivery.
+  // Unfinished claims remain "pending" after a process interruption: retrying
+  // other devices never duplicates a push whose outcome is unknown.
+  const claimed = await Promise.all(remainingIds.slice(0, MAX_PARALLEL_PUSHES).map(async (followId) => {
+    const claim = await claimDeviceDelivery(invite.id, ownerClerkUserId, shareToken, eventId, followId);
+    return claim.state === "claimed" ? { followId, claimId: claim.claimId } : null;
+  }));
+  const work = Promise.all(claimed.filter((item): item is NonNullable<typeof item> => item !== null).map(async ({ followId, claimId }) => {
+    await sendClaimedDelivery(invite.id, ownerClerkUserId, shareToken, eventId, followId, claimId, {
+      title: `${invite.athleteName} has a game-day card`,
+      body: "You enabled event alerts for a Hype Card you follow. There's a game-day card to see.",
+      url: `/fan/${invite.publicToken}`,
+      tag: `athlete-invite-event-${invite.id}-${eventId}`,
+    }, send, options.now ?? (() => new Date()));
+  }));
+  if (options.background) {
+    void work.catch((error: unknown) => {
+      logger.error({ err: error, inviteId: invite.id, eventId }, "Event announcement batch interrupted");
+    });
+  } else {
+    await work;
+  }
+  return { status: "ok" as const, ...(await deliveryProgress(invite.id, eventId)).counts };
 }

@@ -585,10 +585,31 @@ paths:
       operationId: notifyAthleteInviteEventFollowers
       tags: [athlete-invites]
       summary: Manually notify opted-in followers about a linked upcoming Game On Card
-      description: Sends only to current followers with event alerts enabled. Each recipient gets at most one attempted push per share event.
+      description: Starts at most eight durable device attempts per request. Repeat while remaining is positive; claimed attempts are never resent even if the process is interrupted.
       responses:
         "200":
-          description: Push attempt outcomes
+          description: Current cumulative progress; pending does not imply delivery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteEventNotifyResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The linked event is no longer upcoming or eligible
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: getAthleteInviteEventNotificationProgress
+      tags: [athlete-invites]
+      summary: Report durable progress of a manual event announcement
+      responses:
+        "200":
+          description: Current eligible-device progress
           content:
             application/json:
               schema:
@@ -2709,12 +2730,13 @@ components:
           items: { type: string, format: uuid }
     AthleteInviteEventNotifyResult:
       type: object
-      required: [attempted, sent, failed, alreadySent]
+      required: [eligible, sent, failed, pending, remaining]
       properties:
-        attempted: { type: integer, minimum: 0 }
+        eligible: { type: integer, minimum: 0 }
         sent: { type: integer, minimum: 0 }
         failed: { type: integer, minimum: 0 }
-        alreadySent: { type: integer, minimum: 0 }
+        pending: { type: integer, minimum: 0 }
+        remaining: { type: integer, minimum: 0 }
     AthleteInviteHypeInput:
       type: object
       required: [reaction]

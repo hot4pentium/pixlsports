@@ -2485,7 +2485,7 @@ export const getNotifyAthleteInviteEventFollowersUrl = (inviteToken: string,
 }
 
 /**
- * Sends only to current followers with event alerts enabled. Each recipient gets at most one attempted push per share event.
+ * Starts at most eight durable device attempts per request. Repeat while remaining is positive; claimed attempts are never resent even if the process is interrupted.
  * @summary Manually notify opted-in followers about a linked upcoming Game On Card
  */
 export const notifyAthleteInviteEventFollowers = async (inviteToken: string,
@@ -2551,6 +2551,88 @@ export const useNotifyAthleteInviteEventFollowers = <TError = ErrorType<Unauthor
       > => {
       return useMutation(getNotifyAthleteInviteEventFollowersMutationOptions(options));
     }
+
+export const getGetAthleteInviteEventNotificationProgressUrl = (inviteToken: string,
+    shareToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/event-links/${shareToken}/notify`
+}
+
+/**
+ * @summary Report durable progress of a manual event announcement
+ */
+export const getAthleteInviteEventNotificationProgress = async (inviteToken: string,
+    shareToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteEventNotifyResult> => {
+
+  return customFetch<AthleteInviteEventNotifyResult>(getGetAthleteInviteEventNotificationProgressUrl(inviteToken,shareToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAthleteInviteEventNotificationProgressQueryKey = (inviteToken: string,
+    shareToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/event-links/${shareToken}/notify`
+    ] as const;
+    }
+
+
+export const getGetAthleteInviteEventNotificationProgressQueryOptions = <TData = Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>>(inviteToken: string,
+    shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAthleteInviteEventNotificationProgressQueryKey(inviteToken,shareToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>> = ({ signal }) => getAthleteInviteEventNotificationProgress(inviteToken,shareToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined && shareToken !== null && shareToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAthleteInviteEventNotificationProgressQueryResult = NonNullable<Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>>
+export type GetAthleteInviteEventNotificationProgressQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>
+
+
+/**
+ * @summary Report durable progress of a manual event announcement
+ */
+
+export function useGetAthleteInviteEventNotificationProgress<TData = Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>>(
+ inviteToken: string,
+    shareToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAthleteInviteEventNotificationProgress>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAthleteInviteEventNotificationProgressQueryOptions(inviteToken,shareToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getSendAthleteInviteHypeUrl = (inviteToken: string,) => {
 

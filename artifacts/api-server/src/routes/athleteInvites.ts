@@ -17,6 +17,8 @@ import {
   GetAthleteFanCardResponse,
   GetAthleteInviteEventLinksParams,
   GetAthleteInviteEventLinksResponse,
+  GetAthleteInviteEventNotificationProgressParams,
+  GetAthleteInviteEventNotificationProgressResponse,
   ListAthleteInvitesResponse,
   NotifyAthleteInviteEventFollowersParams,
   NotifyAthleteInviteEventFollowersResponse,
@@ -49,7 +51,7 @@ import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotificati
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import { GAME_ON_CARD_MARKER } from "./scheduleShares";
-import { notifyAthleteInviteEventFollowers } from "../lib/athleteInviteEventNotifications";
+import { getAthleteInviteEventNotificationProgress, notifyAthleteInviteEventFollowers } from "../lib/athleteInviteEventNotifications";
 
 const router: IRouter = Router();
 
@@ -561,6 +563,7 @@ router.post("/athlete-invites/:inviteToken/event-links/:shareToken/notify", requ
     params.data.inviteToken,
     getRequiredClerkUserId(res),
     params.data.shareToken,
+    { background: true },
   );
   if (outcome.status === "not-found") {
     res.status(404).json({ error: "Athlete invite or linked Game On Card not found" });
@@ -571,11 +574,29 @@ router.post("/athlete-invites/:inviteToken/event-links/:shareToken/notify", requ
     return;
   }
   res.json(NotifyAthleteInviteEventFollowersResponse.parse({
-    attempted: outcome.attempted,
+    eligible: outcome.eligible,
     sent: outcome.sent,
     failed: outcome.failed,
-    alreadySent: outcome.alreadySent,
+    pending: outcome.pending,
+    remaining: outcome.remaining,
   }));
+});
+
+router.get("/athlete-invites/:inviteToken/event-links/:shareToken/notify", requireAuth, async (req, res): Promise<void> => {
+  const params = GetAthleteInviteEventNotificationProgressParams.safeParse(req.params);
+  if (!params.success) { res.status(404).json({ error: "Game On Card not found" }); return; }
+  const outcome = await getAthleteInviteEventNotificationProgress(
+    params.data.inviteToken, getRequiredClerkUserId(res), params.data.shareToken,
+  );
+  if (outcome.status === "not-found") {
+    res.status(404).json({ error: "Athlete invite or linked Game On Card not found" });
+    return;
+  }
+  if (outcome.status === "not-upcoming") {
+    res.status(409).json({ error: "Only a linked upcoming Game On event can be announced." });
+    return;
+  }
+  res.json(GetAthleteInviteEventNotificationProgressResponse.parse(outcome));
 });
 
 router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<void> => {

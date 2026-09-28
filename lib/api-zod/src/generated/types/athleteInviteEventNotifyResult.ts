@@ -8,11 +8,13 @@
 
 export interface AthleteInviteEventNotifyResult {
   /** @minimum 0 */
-  attempted: number;
+  eligible: number;
   /** @minimum 0 */
   sent: number;
   /** @minimum 0 */
   failed: number;
   /** @minimum 0 */
-  alreadySent: number;
+  pending: number;
+  /** @minimum 0 */
+  remaining: number;
 }

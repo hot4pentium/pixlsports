@@ -1975,7 +1975,7 @@ export const ReplaceAthleteInviteEventLinksResponse = zod.object({
 
 
 /**
- * Sends only to current followers with event alerts enabled. Each recipient gets at most one attempted push per share event.
+ * Starts at most eight durable device attempts per request. Repeat while remaining is positive; claimed attempts are never resent even if the process is interrupted.
  * @summary Manually notify opted-in followers about a linked upcoming Game On Card
  */
 export const notifyAthleteInviteEventFollowersPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
@@ -1986,21 +1986,56 @@ export const NotifyAthleteInviteEventFollowersParams = zod.object({
   "shareToken": zod.coerce.string().uuid()
 })
 
-export const notifyAthleteInviteEventFollowersResponseAttemptedMin = 0;
+export const notifyAthleteInviteEventFollowersResponseEligibleMin = 0;
 
 export const notifyAthleteInviteEventFollowersResponseSentMin = 0;
 
 export const notifyAthleteInviteEventFollowersResponseFailedMin = 0;
 
-export const notifyAthleteInviteEventFollowersResponseAlreadySentMin = 0;
+export const notifyAthleteInviteEventFollowersResponsePendingMin = 0;
+
+export const notifyAthleteInviteEventFollowersResponseRemainingMin = 0;
 
 
 
 export const NotifyAthleteInviteEventFollowersResponse = zod.object({
-  "attempted": zod.number().int().min(notifyAthleteInviteEventFollowersResponseAttemptedMin),
+  "eligible": zod.number().int().min(notifyAthleteInviteEventFollowersResponseEligibleMin),
   "sent": zod.number().int().min(notifyAthleteInviteEventFollowersResponseSentMin),
   "failed": zod.number().int().min(notifyAthleteInviteEventFollowersResponseFailedMin),
-  "alreadySent": zod.number().int().min(notifyAthleteInviteEventFollowersResponseAlreadySentMin)
+  "pending": zod.number().int().min(notifyAthleteInviteEventFollowersResponsePendingMin),
+  "remaining": zod.number().int().min(notifyAthleteInviteEventFollowersResponseRemainingMin)
+})
+
+
+/**
+ * @summary Report durable progress of a manual event announcement
+ */
+export const getAthleteInviteEventNotificationProgressPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const GetAthleteInviteEventNotificationProgressParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(getAthleteInviteEventNotificationProgressPathInviteTokenRegExp),
+  "shareToken": zod.coerce.string().uuid()
+})
+
+export const getAthleteInviteEventNotificationProgressResponseEligibleMin = 0;
+
+export const getAthleteInviteEventNotificationProgressResponseSentMin = 0;
+
+export const getAthleteInviteEventNotificationProgressResponseFailedMin = 0;
+
+export const getAthleteInviteEventNotificationProgressResponsePendingMin = 0;
+
+export const getAthleteInviteEventNotificationProgressResponseRemainingMin = 0;
+
+
+
+export const GetAthleteInviteEventNotificationProgressResponse = zod.object({
+  "eligible": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseEligibleMin),
+  "sent": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseSentMin),
+  "failed": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseFailedMin),
+  "pending": zod.number().int().min(getAthleteInviteEventNotificationProgressResponsePendingMin),
+  "remaining": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseRemainingMin)
 })
 
 

@@ -5,8 +5,11 @@ import { Link } from 'wouter';
 import {
   getGetAthleteFanCardQueryKey,
   getGetAthleteInviteEventLinksQueryKey,
+  getAthleteInviteEventNotificationProgress,
+  getGetAthleteInviteEventNotificationProgressQueryKey,
   getListAthleteInvitesQueryKey,
   useGetAthleteInviteEventLinks,
+  useGetAthleteInviteEventNotificationProgress,
   useListOwnedGameOnCards,
   useNotifyAthleteInviteEventFollowers,
   useReplaceAthleteInviteEventLinks,
@@ -28,6 +31,7 @@ export function OwnerEventLinks({ invite }: { invite: OwnedAthleteInvite }) {
   const [feedbackError, setFeedbackError] = useState(false);
   const [notifyFeedback, setNotifyFeedback] = useState('');
   const [notifyError, setNotifyError] = useState(false);
+  const [sendingToken, setSendingToken] = useState('');
   const requestedToken = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('shareToken') : null;
   const [selectedToken, setSelectedToken] = useState(requestedToken ?? '');
   const initializedFor = useRef('');
@@ -52,6 +56,14 @@ export function OwnerEventLinks({ invite }: { invite: OwnedAthleteInvite }) {
   const validDraft = currentDraft.filter((shareToken) => availableTokens.has(shareToken));
   const hasUnavailableSavedCards = savedTokens.some((shareToken) => !availableTokens.has(shareToken));
   const dirty = [...validDraft].sort().join('\0') !== [...savedTokens].sort().join('\0');
+  const progress = useGetAthleteInviteEventNotificationProgress(token, validSelection, {
+    query: {
+      queryKey: getGetAthleteInviteEventNotificationProgressQueryKey(token, validSelection),
+      enabled: !!token && !!validSelection && !dirty,
+      refetchOnWindowFocus: true,
+      refetchInterval: (query) => query.state.data?.pending ? 3000 : false,
+    },
+  });
 
   useEffect(() => {
     if (window.location.hash !== '#owner-notify-followers' || links.isLoading || cards.isLoading || !links.data || !cards.data) return;
@@ -85,16 +97,46 @@ export function OwnerEventLinks({ invite }: { invite: OwnedAthleteInvite }) {
   };
 
   const send = async () => {
-    if (!selected || notify.isPending || dirty) return;
+    if (!selected || notify.isPending || sendingToken || dirty) return;
+    if (progress.data?.remaining === 0) {
+      await progress.refetch();
+      return;
+    }
     if (!window.confirm(`Notify followers about “${selected.title}”? This attempts a one-time notification to every follower who separately enabled pre-event alerts on their own device. Following or enabling Game Day Live alone does not opt them in. It cannot confirm delivery or a read.`)) return;
     setNotifyFeedback('');
     setNotifyError(false);
+    setSendingToken(selected.shareToken);
     try {
-      const result = await notify.mutateAsync({ inviteToken: token, shareToken: selected.shareToken });
-      setNotifyFeedback(`Attempted: ${result.attempted}. Sent to notification services: ${result.sent}. Failed: ${result.failed}. Already sent: ${result.alreadySent}. Delivery to a device and reads cannot be confirmed.`);
+      let result = await notify.mutateAsync({ inviteToken: token, shareToken: selected.shareToken });
+      let lastChangeAt = Date.now();
+      let lastSnapshot = '';
+      // Continue only after the previous batch has finished. If an attempt is
+      // still unresolved after the deadline, leave its claim intact and let
+      // the owner resume the unclaimed devices explicitly.
+      while (true) {
+        queryClient.setQueryData(getGetAthleteInviteEventNotificationProgressQueryKey(token, selected.shareToken), result);
+        if (result.remaining === 0 && result.pending === 0) break;
+        const snapshot = `${result.sent}/${result.failed}/${result.pending}/${result.remaining}`;
+        if (snapshot !== lastSnapshot) {
+          lastSnapshot = snapshot;
+          lastChangeAt = Date.now();
+        } else if (Date.now() - lastChangeAt > 25_000) break;
+        if (result.pending > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          result = await getAthleteInviteEventNotificationProgress(token, selected.shareToken);
+        } else {
+          result = await notify.mutateAsync({ inviteToken: token, shareToken: selected.shareToken });
+        }
+      }
+      setNotifyFeedback(result.remaining || result.pending
+        ? 'Some devices have not finished. You can continue the remaining devices; unresolved attempts will not be sent again.'
+        : 'Announcement attempts finished. Sending to a notification service does not confirm device delivery or a read.');
     } catch {
       setNotifyError(true);
-      setNotifyFeedback('Could not notify followers. No successful send is confirmed. Check the game is still linked and upcoming, then try again.');
+      setNotifyFeedback('Progress could not be refreshed. Previous attempts may have succeeded. Check the report and continue remaining devices; attempts already claimed will not be repeated.');
+    } finally {
+      setSendingToken('');
+      await queryClient.invalidateQueries({ queryKey: getGetAthleteInviteEventNotificationProgressQueryKey(token, selected.shareToken) });
     }
   };
 
@@ -152,11 +194,15 @@ export function OwnerEventLinks({ invite }: { invite: OwnedAthleteInvite }) {
             {upcoming.length ? (
               <div className="mt-5">
                 <label htmlFor="owner-notify-game" className="block text-[10px] font-extrabold uppercase tracking-[.2em] text-[#8ecbff]">Linked upcoming game</label>
-                <select id="owner-notify-game" value={validSelection} onChange={(event) => { setSelectedToken(event.currentTarget.value); setNotifyFeedback(''); }} className="mt-2 min-h-11 w-full border border-[#8ecbff80] bg-[#071b31] px-3 text-sm text-[#edf3f6]" data-testid="select-owner-notify-game">
+                <select id="owner-notify-game" value={validSelection} disabled={!!sendingToken} onChange={(event) => { setSelectedToken(event.currentTarget.value); setNotifyFeedback(''); }} className="mt-2 min-h-11 w-full border border-[#8ecbff80] bg-[#071b31] px-3 text-sm text-[#edf3f6]" data-testid="select-owner-notify-game">
                   {upcoming.map((event) => <option key={event.shareToken} value={event.shareToken}>{event.title} · {event.date}{event.opponent ? ` · vs ${event.opponent}` : ''}</option>)}
                 </select>
-                <button type="button" disabled={notify.isPending || dirty} onClick={() => void send()} className="mt-4 min-h-11 border border-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#ffcfbd] disabled:cursor-not-allowed disabled:opacity-50" data-testid="button-notify-event-followers">{notify.isPending ? 'Requesting notification…' : 'Review and notify followers'}</button>
+                <button type="button" disabled={!!sendingToken || dirty} onClick={() => void send()} className="mt-4 min-h-11 border border-[#ff7849] px-5 text-xs font-extrabold uppercase tracking-widest text-[#ffcfbd] disabled:cursor-not-allowed disabled:opacity-50" data-testid="button-notify-event-followers">{sendingToken ? 'Checking announcement progress…' : progress.data?.remaining === 0 ? 'Refresh announcement report' : progress.data?.remaining && progress.data.remaining < progress.data.eligible ? 'Continue remaining devices' : 'Review and notify followers'}</button>
                 {dirty && <p className="mt-2 text-xs text-[#b9cede]">Save event link changes before notifying followers.</p>}
+                {progress.data && <p role="status" aria-live="polite" className="mt-3 text-sm leading-relaxed text-[#b9cede]" data-testid="progress-owner-notify-followers">
+                  Eligible now: {progress.data.eligible}. Sent to notification services: {progress.data.sent}. Failed: {progress.data.failed}. In progress or outcome unknown: {progress.data.pending}. Not yet attempted: {progress.data.remaining}. Claimed devices are not retried, even if an attempt was interrupted. Delivery and reads cannot be confirmed.
+                </p>}
+                {progress.isError && <p role="alert" className="mt-2 text-sm text-[#ffcfbd]">The announcement report could not be loaded. Try refreshing this page before continuing.</p>}
               </div>
             ) : <p className="mt-5 text-sm text-[#b9cede]">Link an upcoming game to this card to make it available for notification.</p>}
             {notifyFeedback && <p role={notifyError ? 'alert' : 'status'} aria-live="polite" className="mt-4 border-l-2 border-[#ff7849] bg-[#071b31] p-4 text-sm leading-relaxed" data-testid="status-owner-notify-followers">{notifyFeedback}</p>}
