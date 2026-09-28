@@ -282,6 +282,14 @@ export const plannerCardNotificationDeliveriesTable = pgTable("planner_card_noti
   shareIndex: index("planner_card_notification_deliveries_share_index").on(table.shareId),
 }));
 
+export const internalJobRequestsTable = pgTable("internal_job_requests", {
+  nonce: text("nonce").primaryKey(),
+  jobName: text("job_name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  createdAtIndex: index("internal_job_requests_created_at_index").on(table.createdAt),
+}));
+
 export * from "./checklistShares";
 export * from "./meetingWorkspaces";
 export * from "./statTrackerShares";

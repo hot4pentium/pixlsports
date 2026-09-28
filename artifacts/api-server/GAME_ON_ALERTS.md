@@ -1,23 +1,42 @@
-# Game On alert worker (not published yet)
+# Game On reminder runner
 
-The API remains on Autoscale. It no longer polls for Game On alerts; the
-standalone worker makes one database-backed pass over all subscribed accounts
-and exits. Do not run it manually against live data to test it: it can send
-real push notifications.
+The API remains on Autoscale and does not poll for Game On reminders. The
+scheduled caller makes a short authenticated HTTP request to the API; the API
+keeps production database and VAPID access. No database or push-signing
+credentials belong in the scheduled caller.
 
-For the proposed separate Replit **Scheduled Deployment**:
+## Current status
 
-- Schedule: `*/2 * * * *` (every two minutes), time zone UTC.
-- Build command: `pnpm --filter @workspace/api-server run build`
-- Run command: `node --enable-source-maps artifacts/api-server/dist/gameOnAlertsCli.mjs`
-- Share the production database and VAPID configuration with the API.
-- Keep the existing main deployment on Autoscale; do not replace it.
+- `runPlannerNotificationJob` performs one database-backed pass over eligible
+  Game On Cards and sends due reminders.
+- `gameOnAlertsTriggerCli` signs and sends one request to the API, then exits.
+- `POST /api/internal/jobs/game-on-alerts` rejects missing configuration,
+  invalid or stale signatures, request bodies, query parameters, and reused
+  nonces.
+- No recurring schedule is configured by this code. The existing
+  `run:game-on-alerts` command calls the database-backed job directly; do not
+  run it against live subscriptions as a test because it can send real alerts.
 
-**Publishing gate:** Replit documents cron expressions for Scheduled
-Deployments, but not their minimum interval. Confirm the publishing controls
-accept this exact schedule and display the actual price before creating or
-publishing the scheduled deployment. Stop and ask the owner to review both;
-do not switch the API to a Reserved VM. A two-minute cadence targets delivery
-within five minutes during ordinary operation. A delayed run sends still-
-relevant due reminders; an outage longer than five minutes cannot satisfy
-the original timing window retroactively.
+## Configure the caller
+
+1. Publish the API code and development schema change so the trigger endpoint
+   and replay-protection table exist in production.
+2. Add a randomly generated secret of at least 32 characters as
+   `GAME_ON_ALERTS_TRIGGER_SECRET` in the API's Production Secrets.
+3. Configure the scheduled caller with that same secret and
+   `GAME_ON_ALERTS_TRIGGER_URL`, set to the published API endpoint ending in
+   `/api/internal/jobs/game-on-alerts`. Do not use a development URL.
+4. Build with `pnpm --filter @workspace/api-server run build`.
+5. Run
+   `pnpm --filter @workspace/api-server run run:game-on-alerts-trigger`.
+   This caller needs only the endpoint URL and trigger secret; it must not
+   receive `DATABASE_URL`, VAPID keys, or push subscription data.
+6. The proposed cadence is every two minutes in UTC (`*/2 * * * *`). Replit
+   documents cron schedules but not the minimum interval, so confirm that the
+   publishing controls accept this cadence before activating it. Keep the
+   main API on Autoscale.
+
+The reminder job re-reads the current Game On Card on every pass. That lets
+edits, final status, and removed events affect eligibility without creating
+one long-lived timer per event. Durable delivery records prevent duplicate
+push attempts across repeated runner calls.

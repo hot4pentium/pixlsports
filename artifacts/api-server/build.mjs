@@ -18,6 +18,7 @@ async function buildAll() {
     entryPoints: [
       path.resolve(artifactDir, "src/index.ts"),
       path.resolve(artifactDir, "src/jobs/gameOnAlertsCli.ts"),
+      path.resolve(artifactDir, "src/jobs/gameOnAlertsTriggerCli.ts"),
     ],
     platform: "node",
     bundle: true,

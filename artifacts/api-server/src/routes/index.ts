@@ -15,6 +15,7 @@ import webPushRouter from "./webPush";
 import athleteInvitesRouter from "./athleteInvites";
 import athleteInviteFeaturesRouter from "./athleteInviteFeatures";
 import supporterActiveGameRouter from "./supporterActiveGame";
+import internalJobsRouter from "./internalJobs";
 
 const router: IRouter = Router();
 
@@ -32,7 +33,8 @@ router.use(supporterPhotoRouter);
 router.use(checklistSharesRouter);
 router.use(meetingWorkspacesRouter);
 router.use(statTrackerSharesRouter);
-  router.use(webPushRouter);
+router.use(webPushRouter);
+router.use(internalJobsRouter);
 router.use(supporterActiveGameRouter);
 
 export default router;
