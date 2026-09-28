@@ -128,6 +128,12 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
         assert.equal(await connection.evaluate('document.querySelector("[data-testid=card-landing-step-03] .plan-face--back").getAttribute("aria-hidden")', page.sessionId), 'false');
         await connection.evaluate('document.querySelector("[data-testid=button-landing-follow-flip]").click()', page.sessionId);
         assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-follow-flip]").getAttribute("aria-pressed")', page.sessionId), 'false');
+        await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=card-landing-step-04] .plan-face--back img")?.naturalWidth', value => value === 680);
+        await connection.evaluate('document.querySelector("[data-testid=button-landing-celebrate-flip]").click()', page.sessionId);
+        assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-celebrate-flip]").getAttribute("aria-pressed")', page.sessionId), 'true');
+        assert.equal(await connection.evaluate('document.querySelector("[data-testid=card-landing-step-04] .plan-face--back").getAttribute("aria-hidden")', page.sessionId), 'false');
+        await connection.evaluate('document.querySelector("[data-testid=button-landing-celebrate-flip]").click()', page.sessionId);
+        assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-celebrate-flip]").getAttribute("aria-pressed")', page.sessionId), 'false');
       if (width < 700) {
         await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").click()', page.sessionId);
         assert.equal(await connection.evaluate('document.querySelector("[data-testid=button-landing-mobile-menu]").getAttribute("aria-expanded")', page.sessionId), 'true');
@@ -148,6 +154,8 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
     assert.equal(await connection.evaluate('getComputedStyle(document.querySelector("[data-testid=card-landing-step-02] .plan-face--back")).display', page.sessionId), 'flex');
     await connection.evaluate('document.querySelector("[data-testid=button-landing-follow-flip]").click()', page.sessionId);
     assert.equal(await connection.evaluate('getComputedStyle(document.querySelector("[data-testid=card-landing-step-03] .plan-face--back")).display', page.sessionId), 'flex');
+    await connection.evaluate('document.querySelector("[data-testid=button-landing-celebrate-flip]").click()', page.sessionId);
+    assert.equal(await connection.evaluate('getComputedStyle(document.querySelector("[data-testid=card-landing-step-04] .plan-face--back")).display', page.sessionId), 'flex');
   } finally {
     if (connection) {
       await Promise.all(pages.map(page => connection?.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined)));

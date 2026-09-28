@@ -6,6 +6,7 @@ import candidAthlete from '@/assets/landing-candid-athlete.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
 import prepChecklist from '@/assets/landing-prep-checklist.png';
 import followStatTracker from '@/assets/landing-follow-stat-tracker.png';
+import celebrateVideoReply from '@/assets/landing-celebrate-video-reply.png';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
 import { PreviewArtwork } from './hype-card-preview';
@@ -85,6 +86,13 @@ const stepPreviews: Record<string, { src: string; alt: string; description: stri
     description: 'live stat tracker',
     width: 1160,
     height: 1254,
+  },
+  '04': {
+    src: celebrateVideoReply,
+    alt: 'Shared Good Save highlight video with a reply panel, reaction choices, and Card Front, Stats, Videos, and Events navigation.',
+    description: 'shared video and reply',
+    width: 680,
+    height: 824,
   },
 };
 
