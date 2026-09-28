@@ -458,3 +458,17 @@ mtime_ms = 1790476507072
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/62095148-4214-4c81-8883-437fb8d3b09f/9dadbbc2-b8be-4d80-be11-1ab84b93421c"
 storage_version_token = "1790476523797153"
 content_type = "text/html"
+
+[[outputs]]
+id = "FKO8xcQnbmMWTK_V73vJ8"
+uri = "file://exports/pixl-supporter-dashboard-mockup.png"
+type = "image"
+title = "Pixl Sports supporter dashboard mockup"
+description = "Full-page desktop concept featuring a fictional football athlete, game-week path, calendar, and Hype Card."
+logical_id = "c820bcfb-a64c-4992-8d38-bdcb45bb3f57"
+content_hash = "sha256:f69640fc5636b93a5f0ca902013ca0b667f6f72cf57888d8793a6c2d13a948ab"
+size = 1384630
+mtime_ms = 1790561300658
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/c820bcfb-a64c-4992-8d38-bdcb45bb3f57/3bec2960-f164-431c-926e-0386444e4aba"
+storage_version_token = "1790561311816076"
+content_type = "image/png"

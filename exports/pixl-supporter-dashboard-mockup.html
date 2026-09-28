@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>Pixl Sports — Supporter dashboard concept</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy:#082336; --deep:#061b2a; --panel:#103449; --lime:#c9f45a; --paper:#f2f6f1; --mist:#d8e8e8; --muted:#9eb6ba; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; width:1440px; min-height:2240px; }
+    body { background:var(--deep); color:var(--paper); font-family:"DM Sans",Arial,sans-serif; }
+    .page { width:1440px; min-height:2240px; overflow:hidden; background:radial-gradient(circle at 85% 4%, #174c5e 0, transparent 620px), linear-gradient(170deg,#092b3c 0,#071e2e 51%,#061a28 100%); }
+    h1,h2,h3,p { margin:0; }
+    h1,h2,h3,.display,.brand { font-family:"Barlow Condensed","Arial Narrow",Impact,sans-serif; text-transform:uppercase; }
+    .topbar { height:82px; display:flex; align-items:center; padding:0 61px; border-bottom:1px solid #ffffff24; background:#082336ec; }
+    .brand { font-size:31px; font-weight:900; letter-spacing:-1.3px; white-space:nowrap; line-height:1; }
+    .brand b { color:var(--lime); font-weight:900; }
+    .nav { margin-left:132px; display:flex; gap:44px; align-items:center; font-size:13px; font-weight:700; color:#bfced0; }
+    .nav .active { color:var(--paper); position:relative; }
+    .nav .active::after { content:""; position:absolute; left:0; right:0; bottom:-30px; height:3px; background:var(--lime); border-radius:4px; }
+    .top-right { margin-left:auto; display:flex; align-items:center; gap:21px; font-size:12px; font-weight:700; }
+    .bell { width:39px; height:39px; display:grid; place-items:center; border:1px solid #b7d0d046; border-radius:50%; color:var(--mist); font-size:17px; }
+    .avatar { width:39px; height:39px; display:grid; place-items:center; border:1px solid #c9f45a90; background:#183d46; border-radius:50%; font-size:13px; }
+    .content { width:1318px; margin:0 auto; }
+    .eyebrow { color:var(--lime); font-size:11px; font-weight:800; letter-spacing:2.5px; text-transform:uppercase; }
+    .header { padding-top:53px; display:flex; align-items:end; justify-content:space-between; }
+    .header h1 { font-size:70px; line-height:.88; letter-spacing:-1.4px; margin-top:17px; }
+    .header h1 em { color:var(--lime); font-style:normal; }
+    .header p { color:#bdd0d1; font-size:15px; margin-top:17px; }
+    .date-chip { border:1px solid #6a90944a; background:#ffffff0c; border-radius:100px; padding:13px 18px; color:#d6e4e3; font-size:12px; font-weight:700; }
+    .hero { margin-top:37px; height:420px; border-radius:20px; overflow:hidden; position:relative; border:1px solid #a3c8ca57; background:linear-gradient(120deg,#12475a,#071c2d 65%); box-shadow:0 24px 60px #00131c6b; }
+    .hero::before { content:""; position:absolute; inset:0; opacity:.14; background-image:linear-gradient(#b6e2de 1px,transparent 1px),linear-gradient(90deg,#b6e2de 1px,transparent 1px); background-size:48px 48px; }
+    .hero img { position:absolute; right:0; top:0; width:555px; height:420px; object-fit:cover; object-position:center 22%; filter:saturate(.85) contrast(1.08); }
+    .hero .image-fade { position:absolute; inset:0; background:linear-gradient(90deg,#0a2b3b 0%,#0b2c3b 42%,#0b2c3bba 58%,transparent 83%),linear-gradient(0deg,#061a28a8,transparent 38%); }
+    .hero-copy { position:relative; padding:42px 48px; z-index:1; width:770px; }
+    .hero-copy .eyebrow { display:flex; align-items:center; gap:12px; }
+    .hero-copy .eyebrow::before { content:""; height:7px; width:7px; background:var(--lime); border-radius:50%; }
+    .hero-copy h2 { font-size:91px; line-height:.84; letter-spacing:-1.4px; margin:34px 0 20px; }
+    .hero-copy h2 span { color:var(--lime); }
+    .hero-copy p { font-size:15px; line-height:1.65; max-width:485px; color:#d6e5e3; }
+    .hero-actions { display:flex; gap:12px; margin-top:24px; align-items:center; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:43px; border-radius:50px; padding:0 20px; font-size:12px; font-weight:800; white-space:nowrap; }
+    .button.primary { background:var(--lime); color:var(--navy); }
+    .button.outline { border:1px solid #9cbbba99; color:var(--paper); }
+    .hero-bottom { position:absolute; z-index:1; right:26px; bottom:22px; padding:11px 15px; border-radius:8px; background:#071e2cb8; border:1px solid #ffffff35; font-size:10px; letter-spacing:1px; font-weight:800; }
+    .section-label { display:flex; align-items:center; justify-content:space-between; margin-bottom:17px; }
+    .section-label h2 { font-size:38px; line-height:1; }
+    .section-label small { color:#afc3c3; font-size:12px; font-weight:700; }
+    .path { margin-top:50px; }
+    .path-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .path-card { min-height:170px; position:relative; overflow:hidden; padding:21px 23px; border-radius:12px; border:1px solid #7cadb035; background:linear-gradient(145deg,#163e4e,#102d3e); }
+    .path-card::before { content:""; position:absolute; inset:0; opacity:.14; background:repeating-linear-gradient(140deg,transparent 0 12px,#d7f5ee 13px 14px); }
+    .path-card > * { position:relative; }
+    .path-card .num { font:800 11px "DM Sans",sans-serif; letter-spacing:1.5px; color:#8eacad; }
+    .path-card h3 { margin-top:18px; font-size:39px; line-height:.9; }
+    .path-card p { color:#bdd1d1; margin-top:11px; font-size:12px; line-height:1.5; max-width:225px; }
+    .path-card .arrow { position:absolute; right:21px; top:18px; color:#a9c7c6; font-size:19px; }
+    .path-card.active { background:linear-gradient(130deg,#e9f5d0,#c9f45a); border-color:var(--lime); color:var(--navy); box-shadow:0 13px 27px #c9f45a20; }
+    .path-card.active::before { opacity:.11; background:repeating-linear-gradient(140deg,transparent 0 12px,#164242 13px 14px); }
+    .path-card.active .num, .path-card.active p, .path-card.active .arrow { color:#315746; }
+    .main-grid { display:grid; grid-template-columns:1.37fr 1fr; gap:19px; margin-top:47px; }
+    .panel { position:relative; background:#f4f8f3; color:var(--navy); border-radius:16px; overflow:hidden; border:1px solid #d6e9e2; }
+    .panel::before { content:""; position:absolute; left:0; right:0; top:0; height:5px; background:var(--lime); }
+    .panel-pad { padding:28px 32px; }
+    .panel .eyebrow { color:#507c75; font-size:10px; }
+    .panel h2 { font-size:43px; letter-spacing:-.3px; line-height:1; }
+    .panel p { color:#506b72; }
+    .game-panel { min-height:407px; }
+    .game-panel .panel-head { display:flex; justify-content:space-between; align-items:start; }
+    .panel .pill { display:inline-block; background:#e3efd6; color:#335444; font-size:10px; font-weight:800; padding:9px 12px; border-radius:40px; }
+    .game-panel h2 { font-size:53px; margin-top:24px; }
+    .game-panel .opponent { color:#326077; }
+    .game-panel .game-meta { margin-top:19px; display:flex; gap:25px; font-size:13px; font-weight:700; }
+    .game-panel .game-meta span::before { content:"◈"; margin-right:9px; color:#488b7b; }
+    .game-panel .divider { height:1px; background:#d6e4e1; margin-top:27px; }
+    .game-panel .next { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
+    .game-panel .next .eyebrow { color:#5d8082; }
+    .game-panel .next strong { display:block; margin-top:9px; font-size:16px; }
+    .prep-list { display:flex; gap:8px; margin-top:24px; }
+    .prep-list span { padding:9px 11px; background:#e4efe7; border-radius:7px; color:#4c6a65; font-size:11px; font-weight:700; }
+    .prep-list span.done { background:#dff0c2; color:#315535; }
+    .button.navy { background:var(--navy); color:white; }
+    .calendar-panel { min-height:407px; }
+    .calendar-panel .panel-head { display:flex; justify-content:space-between; align-items:center; }
+    .calendar-panel h2 { margin-top:12px; }
+    .calendar-panel .month { margin:24px 0 18px; padding:12px 14px; border-radius:8px; background:#e7f0ea; display:flex; justify-content:space-between; font-size:12px; font-weight:800; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px 3px; text-align:center; font-size:12px; }
+    .cal-grid span { height:31px; display:grid; place-items:center; color:#607780; }
+    .cal-grid .weekday { font-weight:800; color:#8ba1a6; font-size:10px; height:19px; }
+    .cal-grid .marked { border-radius:50%; color:var(--navy); background:var(--lime); font-weight:800; }
+    .cal-grid .other { color:#b5c4c4; }
+    .calendar-panel .event-note { border-top:1px solid #d6e4e1; margin-top:15px; padding-top:15px; display:flex; gap:12px; align-items:center; font-size:12px; font-weight:700; }
+    .event-dot { width:8px; height:8px; border-radius:50%; background:#90c331; }
+    .lower { margin-top:50px; }
+    .lower-grid { display:grid; grid-template-columns:1.37fr 1fr; gap:19px; }
+    .hype-panel { height:410px; padding:31px; border-radius:17px; display:flex; gap:29px; overflow:hidden; position:relative; border:1px solid #82b2a557; background:radial-gradient(circle at 5% 25%,#23667b,#0e354b 43%,#0a273c); }
+    .hype-panel::before { content:""; position:absolute; inset:0; opacity:.1; background:repeating-linear-gradient(145deg,transparent 0 16px,#fff 17px 18px); }
+    .hype-panel > * { position:relative; z-index:1; }
+    .hype-card { flex:0 0 226px; height:346px; position:relative; overflow:hidden; border:6px solid #f1f6ef; border-radius:15px; transform:rotate(-4deg); box-shadow:0 20px 30px #00141e87; background:#193649; }
+    .hype-card img { display:block; width:100%; height:100%; object-fit:cover; object-position:44% center; }
+    .hype-card::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg,#061a28f5,transparent 58%); }
+    .card-text { position:absolute; z-index:2; left:13px; right:10px; bottom:14px; }
+    .card-text small { font-size:10px; letter-spacing:1.3px; color:var(--lime); font-weight:800; }
+    .card-text strong { display:block; font:900 35px/.82 "Barlow Condensed",Impact,sans-serif; text-transform:uppercase; margin-top:7px; }
+    .card-text b { font-size:11px; letter-spacing:1px; }
+    .hype-copy { padding:9px 0; max-width:400px; }
+    .hype-copy h2 { font-size:66px; line-height:.88; margin-top:27px; }
+    .hype-copy h2 em { font-style:normal; color:var(--lime); }
+    .hype-copy p { font-size:13px; color:#c7ddda; line-height:1.7; max-width:340px; margin-top:19px; }
+    .hype-copy .button { margin-top:22px; }
+    .activity-panel { height:410px; }
+    .activity-panel h2 { margin-top:12px; }
+    .activity-list { margin-top:22px; }
+    .activity-row { display:flex; gap:15px; align-items:center; padding:15px 0; border-top:1px solid #dbe8e3; }
+    .activity-icon { height:37px; width:37px; flex:0 0 37px; display:grid; place-items:center; border-radius:9px; background:#e4eee7; font-size:17px; color:#3c7376; }
+    .activity-row b { font-size:13px; }
+    .activity-row small { display:block; color:#70878a; font-size:11px; margin-top:3px; }
+    .activity-more { display:block; margin-top:18px; color:#315d60; font-size:12px; font-weight:800; }
+    .closing { margin-top:42px; display:flex; align-items:center; justify-content:space-between; border:1px solid #ffffff2c; background:#ffffff0d; border-radius:13px; padding:23px 29px; }
+    .closing h3 { font-size:30px; }
+    .closing p { font-size:12px; color:#b6cccc; margin-top:5px; }
+    .footer { display:flex; justify-content:space-between; align-items:center; margin-top:42px; padding-bottom:34px; color:#7f9ea4; font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand">PIXL <b>SPORTS</b></div>
+    <div class="nav"><span class="active">Dashboard</span><span>Calendar</span><span>Game On</span><span>Hype Card</span><span>Studio</span></div>
+    <div class="top-right"><span class="bell">✧</span><span class="avatar">AB</span><span>Alex B. ▾</span></div>
+  </div>
+  <main class="content">
+    <header class="header">
+      <div><div class="eyebrow">The supporter dashboard / 01</div><h1>Jordan’s season.<br><em>Your front row.</em></h1><p>Everything you need for the week ahead, all in one place.</p></div>
+      <div class="date-chip">Sunday, September 27, 2026 &nbsp; ↗</div>
+    </header>
+    <section class="hero" aria-label="Next game">
+      <img src="../artifacts/league-matrix-studio/src/assets/landing-youth-football-hero.jpg" alt="Fictional youth football player">
+      <div class="image-fade"></div>
+      <div class="hero-copy">
+        <div class="eyebrow">This week is about Jordan</div>
+        <h2>Show up<br><span>ready.</span></h2>
+        <p>One game on the horizon. You’ve got the plan, the people, and the moments covered.</p>
+        <div class="hero-actions"><span class="button primary">Open next game &nbsp; ↗</span><span class="button outline">View week path &nbsp; →</span></div>
+      </div>
+      <div class="hero-bottom">JORDAN BROOKS &nbsp; / &nbsp; #11 &nbsp; / &nbsp; RIDGEVIEW HAWKS</div>
+    </section>
+    <section class="path" aria-label="Week path">
+      <div class="section-label"><h2>THE WEEK PATH</h2><small>One clear step at a time &nbsp; →</small></div>
+      <div class="path-grid">
+        <article class="path-card"><span class="num">01 / READY</span><span class="arrow">↗</span><h3>PLAN</h3><p>Game on the calendar and details shared.</p></article>
+        <article class="path-card active"><span class="num">02 / UP NEXT</span><span class="arrow">↗</span><h3>PREP</h3><p>Checklist ready. Add the last few details.</p></article>
+        <article class="path-card"><span class="num">03 / GAME DAY</span><span class="arrow">↗</span><h3>FOLLOW</h3><p>Stay close to the action as it happens.</p></article>
+        <article class="path-card"><span class="num">04 / AFTERWARD</span><span class="arrow">↗</span><h3>CELEBRATE</h3><p>Keep the best moments and share the hype.</p></article>
+      </div>
+    </section>
+    <div class="main-grid">
+      <section class="panel game-panel panel-pad" aria-label="Next game details">
+        <div class="panel-head"><div class="eyebrow">UP NEXT / GAME ON</div><span class="pill">SATURDAY · 6 DAYS AWAY</span></div>
+        <h2>HAWKS <span class="opponent">VS WOLVES</span></h2>
+        <div class="game-meta"><span>Oct 3 · 4:30 PM</span><span>Ridgeview Field</span></div>
+        <div class="divider"></div>
+        <div class="next">
+          <div><div class="eyebrow">YOUR NEXT STEP</div><strong>Finish Jordan’s game-day checklist</strong><p style="font-size:12px;margin-top:5px">4 of 6 items ready for Saturday.</p></div>
+          <span class="button navy">Open prep &nbsp; →</span>
+        </div>
+        <div class="prep-list"><span class="done">✓ Gear packed</span><span class="done">✓ Water bottles</span><span>○ Confirm ride</span></div>
+      </section>
+      <section class="panel calendar-panel panel-pad" aria-label="Upcoming calendar">
+        <div class="eyebrow">STAY ON TOP OF IT</div><div class="panel-head"><h2>YOUR CALENDAR</h2><span style="font-size:16px;color:#64848a">↗</span></div>
+        <div class="month"><span>SEPTEMBER 2026</span><span>‹ &nbsp; ›</span></div>
+        <div class="cal-grid">
+          <span class="weekday">SUN</span><span class="weekday">MON</span><span class="weekday">TUE</span><span class="weekday">WED</span><span class="weekday">THU</span><span class="weekday">FRI</span><span class="weekday">SAT</span>
+          <span class="other">30</span><span class="other">31</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+          <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span>
+          <span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span>
+          <span>20</span><span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span>
+          <span class="marked">27</span><span>28</span><span>29</span><span>30</span><span class="other">1</span><span class="other">2</span><span class="other">3</span>
+        </div>
+        <div class="event-note"><span class="event-dot"></span><span>Next: Hawks vs Wolves · Oct 3</span></div>
+      </section>
+    </div>
+    <section class="lower">
+      <div class="section-label"><h2>THE MOMENTS THAT MATTER</h2><small>Make the most of every game &nbsp; →</small></div>
+      <div class="lower-grid">
+        <div class="hype-panel" aria-label="Hype Card">
+          <div class="hype-card"><img src="../artifacts/league-matrix-studio/src/assets/landing-youth-football-hero.jpg" alt=""><div class="card-text"><small>PIXL HYPE CARD / 11</small><strong>JORDAN<br>BROOKS</strong><b>RIDGEVIEW HAWKS</b></div></div>
+          <div class="hype-copy"><div class="eyebrow">MORE THAN A PROFILE</div><h2>HIS STORY.<br>HIS <em>HYPE</em><br>CARD.</h2><p>Photos, highlights, and shoutouts in one place he’ll want to show off.</p><span class="button primary">Explore Hype Card &nbsp; ↗</span></div>
+        </div>
+        <section class="panel activity-panel panel-pad" aria-label="Recent moments">
+          <div class="eyebrow">RECENT MOMENTS</div><h2>AROUND THE SEASON</h2>
+          <div class="activity-list">
+            <div class="activity-row"><span class="activity-icon">✦</span><div><b>New shoutout for Jordan</b><small>“Can’t wait to see you play!” · Yesterday</small></div></div>
+            <div class="activity-row"><span class="activity-icon">▣</span><div><b>Game On Card shared</b><small>Hawks vs Wolves · Sep 25</small></div></div>
+            <div class="activity-row"><span class="activity-icon">◌</span><div><b>Highlight added to Hype Card</b><small>Friday night lights · Sep 21</small></div></div>
+          </div>
+          <span class="activity-more">See all moments &nbsp; ↗</span>
+        </section>
+      </div>
+    </section>
+    <section class="closing"><div><h3>THE NEXT MEMORY STARTS HERE.</h3><p>Keep the week moving, then bring the good stuff home.</p></div><span class="button primary">Open the studio &nbsp; ↗</span></section>
+    <footer class="footer"><span>PIXL SPORTS / BUILT FOR THE PEOPLE WHO SHOW UP</span><span>VISUAL CONCEPT · FICTIONAL ATHLETE &amp; EVENTS</span></footer>
+  </main>
+</div>
+</body>
+</html>
