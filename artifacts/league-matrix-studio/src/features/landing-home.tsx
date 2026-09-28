@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart
 import { useEffect, useState } from 'react';
 import candidAthlete from '@/assets/landing-candid-athlete.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
+import prepChecklist from '@/assets/landing-prep-checklist.png';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
 import { PreviewArtwork } from './hype-card-preview';
@@ -62,10 +63,16 @@ const steps = [
   { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
 ];
 
-function PlanStepCard({ step: { number, title, description, icon: Icon } }: { step: (typeof steps)[number] }) {
+function FlippableStepCard({
+  step: { number, title, description, icon: Icon },
+  preview,
+}: {
+  step: (typeof steps)[number];
+  preview: { src: string; alt: string; description: string; width: number; height: number };
+}) {
   const [flipped, setFlipped] = useState(false);
   return (
-    <div className="step-card step-card--plan" data-flipped={flipped} data-testid={`card-landing-step-${number}`}>
+    <div className="step-card step-card--flippable" data-flipped={flipped} data-testid={`card-landing-step-${number}`}>
       <div className="plan-flip-inner">
         <div className="plan-face plan-face--front" aria-hidden={flipped}>
           <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
@@ -73,17 +80,17 @@ function PlanStepCard({ step: { number, title, description, icon: Icon } }: { st
           <span className="plan-face-cue">Flip for a preview <ArrowRight size={12} aria-hidden="true" /></span>
         </div>
         <div className="plan-face plan-face--back" aria-hidden={!flipped}>
-          <img src={planEventDetails} alt="Completed Game On Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions." width="1250" height="756" />
-          <span className="plan-face-cue">Tap to return to Plan <ArrowRight size={12} aria-hidden="true" /></span>
+          <img src={preview.src} alt={preview.alt} width={preview.width} height={preview.height} />
+          <span className="plan-face-cue">Tap to return to {title} <ArrowRight size={12} aria-hidden="true" /></span>
         </div>
       </div>
       <button
         type="button"
         className="plan-card-toggle"
         aria-pressed={flipped}
-        aria-label={flipped ? 'Completed Game On Card preview shown. Return to Plan card.' : 'Plan: Keep games, practices, and the next event together. Flip to see a completed Game On Card preview.'}
+        aria-label={flipped ? `${preview.description} preview shown. Return to ${title} card.` : `${title}: ${description} Flip to see a ${preview.description} preview.`}
         onClick={() => setFlipped(value => !value)}
-        data-testid="button-landing-plan-flip"
+        data-testid={`button-landing-${title.toLowerCase()}-flip`}
       />
     </div>
   );
@@ -200,8 +207,24 @@ export function PublicLandingPage() {
               <p>PIXL gives you a clear next step, from putting a game on the calendar to sharing the moments afterward.</p>
             </div>
             <div className="week-grid">
-              {steps.map(step => step.number === '01'
-                ? <PlanStepCard key={step.number} step={step} />
+              {steps.map(step => step.number === '01' || step.number === '02'
+                ? <FlippableStepCard
+                    key={step.number}
+                    step={step}
+                    preview={step.number === '01' ? {
+                      src: planEventDetails,
+                      alt: 'Completed Game On Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions.',
+                      description: 'Completed Game On Card',
+                      width: 1250,
+                      height: 756,
+                    } : {
+                      src: prepChecklist,
+                      alt: 'Game vs Tigers prep checklist with six items, private notes, an add prep item button, and a create edit link button.',
+                      description: 'game-day checklist',
+                      width: 1160,
+                      height: 1096,
+                    }}
+                  />
                 : <div className="step-card" key={step.number} data-testid={`card-landing-step-${step.number}`}>
                   <div className="step-top"><span className="step-icon"><step.icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{step.number}</span></div>
                   <h3 className="display">{step.title}</h3><p>{step.description}</p>

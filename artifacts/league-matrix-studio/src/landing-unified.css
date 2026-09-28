@@ -85,9 +85,9 @@
 .new-landing .step-card .step-number { color: #a6b6bb; font: 700 18px "Barlow Condensed", sans-serif; }
 .new-landing .step-card h3 { font-size: 31px; margin-top: 40px; }
 .new-landing .step-card p { margin-top: 7px; color: #5c6f75; font-size: 12px; line-height: 1.65; max-width: 210px; }
-.new-landing .step-card--plan { position: relative; padding: 0; perspective: 900px; }
+.new-landing .step-card--flippable { position: relative; padding: 0; perspective: 900px; }
 .new-landing .plan-flip-inner { position: absolute; inset: 0; border-radius: inherit; transform-style: preserve-3d; transition: transform .65s cubic-bezier(.2,.7,.2,1); }
-.new-landing .step-card--plan[data-flipped="true"] .plan-flip-inner { transform: rotateY(180deg); }
+.new-landing .step-card--flippable[data-flipped="true"] .plan-flip-inner { transform: rotateY(180deg); }
 .new-landing .plan-face { position: absolute; inset: 0; border-radius: inherit; background: #fff; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .new-landing .plan-face--front { padding: 23px 22px 26px; }
 .new-landing .plan-face--back { transform: rotateY(180deg); padding: 10px; background: var(--pixl-navy); display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -182,7 +182,7 @@
   .new-landing .section-intro > p {padding:0;margin-top:18px;font-size:14px;}
   .new-landing .week-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
   .new-landing .step-card {min-height:202px;padding:17px;}
-   .new-landing .step-card--plan {padding:0;}
+   .new-landing .step-card--flippable {padding:0;}
    .new-landing .plan-face--front {padding:17px;}
   .new-landing .step-card h3 {margin-top:34px;font-size:27px;}
   .new-landing .step-card p {font-size:11px;}
@@ -206,9 +206,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .new-landing *, .new-landing *::before, .new-landing *::after {scroll-behavior:auto !important;animation-duration:.01ms !important;transition-duration:.01ms !important;}
-   .new-landing .step-card--plan .plan-flip-inner, .new-landing .step-card--plan[data-flipped="true"] .plan-flip-inner {transform:none;}
-   .new-landing .step-card--plan .plan-face {backface-visibility:visible; -webkit-backface-visibility:visible;}
-   .new-landing .step-card--plan .plan-face--back {display:none;transform:none;}
-   .new-landing .step-card--plan[data-flipped="true"] .plan-face--front {display:none;}
-   .new-landing .step-card--plan[data-flipped="true"] .plan-face--back {display:flex;}
+   .new-landing .step-card--flippable .plan-flip-inner, .new-landing .step-card--flippable[data-flipped="true"] .plan-flip-inner {transform:none;}
+   .new-landing .step-card--flippable .plan-face {backface-visibility:visible; -webkit-backface-visibility:visible;}
+   .new-landing .step-card--flippable .plan-face--back {display:none;transform:none;}
+   .new-landing .step-card--flippable[data-flipped="true"] .plan-face--front {display:none;}
+   .new-landing .step-card--flippable[data-flipped="true"] .plan-face--back {display:flex;}
 }
