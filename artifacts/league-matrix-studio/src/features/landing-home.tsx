@@ -257,14 +257,14 @@ export function PublicLandingPage() {
             <AthletePreview />
             <div className="athlete-copy">
               <span className="micro">More than a profile</span>
-              <h2 className="display" id="athlete-heading">Give their moments a home.</h2>
-              <p>Make an athlete card they’ll want to show off. Add photos and media, share it with family, and let supporters send a shoutout.</p>
+              <h2 className="display" id="athlete-heading">Their moments.<br />Their Hype Card.</h2>
+              <p>Make a Hype Card they’ll want to show off. Add photos and videos, share it with family, and let supporters send a shoutout.</p>
               <ul className="check-list">
                 <li><Check size={16} aria-hidden="true" /> Make it theirs</li>
                 <li><Check size={16} aria-hidden="true" /> Share it easily</li>
                 <li><Check size={16} aria-hidden="true" /> Collect the encouragement</li>
               </ul>
-              <Link href={destination} className="pill pill-navy" data-testid="link-landing-athlete-cards-cta">Explore athlete cards <ArrowUpRight size={16} aria-hidden="true" /></Link>
+              <Link href={destination} className="pill pill-navy" data-testid="link-landing-athlete-cards-cta">Explore Hype Cards <ArrowUpRight size={16} aria-hidden="true" /></Link>
             </div>
           </div>
         </section>
