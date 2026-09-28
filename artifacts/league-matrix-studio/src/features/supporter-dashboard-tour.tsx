@@ -61,10 +61,8 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
   const [error, setError] = useState(false);
   const hasStartedRef = useRef(resumedStep !== null);
   const pendingRef = useRef(false);
-  const restoreFocusRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const replayRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (autoStart && !hasStartedRef.current) {
@@ -90,23 +88,6 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
     }
   }, [open, stepIndex]);
 
-  useEffect(() => {
-    if (open || !restoreFocusRef.current) return;
-    restoreFocusRef.current = false;
-    const frame = window.requestAnimationFrame(() => replayRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [open]);
-
-  const replay = () => {
-    if (pendingRef.current) return;
-    hasStartedRef.current = true;
-    setError(false);
-    setStepIndex(0);
-    setOpen(true);
-    // A replay while already on the first step has no state change to trigger the focus effect.
-    if (open && stepIndex === 0) headingRef.current?.focus();
-  };
-
   const dismiss = async (kind: DismissKind) => {
     if (pendingRef.current) return;
     pendingRef.current = true;
@@ -116,7 +97,6 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
       await onDismiss(kind);
       clearDashboardTourProgress(sessionStorageOrNull(), userId);
       hasStartedRef.current = true;
-      restoreFocusRef.current = true;
       setOpen(false);
     } catch {
       setError(true);
@@ -130,20 +110,6 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
 
   return (
     <div className="supporter-tour" data-testid="supporter-dashboard-tour">
-      <button
-        ref={replayRef}
-        className="supporter-tour__replay"
-        type="button"
-        onClick={replay}
-        disabled={pending}
-        aria-expanded={open}
-        aria-controls="supporter-dashboard-tour-panel"
-        data-testid="supporter-dashboard-tour-replay"
-      >
-        <span className="supporter-tour__replay-mark" aria-hidden="true">↗</span>
-        {open ? "Start tour over" : "Tour the dashboard"}
-      </button>
-
       <dialog
         ref={dialogRef}
         className="supporter-tour__dialog"

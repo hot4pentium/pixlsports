@@ -1,12 +1,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@500;600;700&display=swap");
 
 .supporter-tour {
+  display: contents;
   --tour-blue: #55a4ff;
   --tour-orange: #ff6433;
   --tour-paper: #f3f6fa;
-  box-sizing: border-box;
-  width: min(100%, 560px);
-  margin: 18px auto 18px 0;
   color: var(--tour-paper);
   font-family: "DM Sans", sans-serif;
 }
@@ -22,28 +20,6 @@
   outline: 3px solid var(--tour-orange);
   outline-offset: 3px;
 }
-
-.supporter-tour__replay {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 14px;
-  border: 1px solid #ef9b68;
-  border-radius: 4px;
-  background: linear-gradient(115deg, #b94a16 0%, #933317 55%, #67291e 100%);
-  color: var(--tour-paper);
-  box-shadow: 0 6px 16px rgba(80, 30, 16, .18);
-  font: 700 11px/1.2 "DM Sans", sans-serif;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: transform .18s ease, opacity .18s ease;
-}
-
-.supporter-tour__replay:hover { transform: translateY(-2px); }
-.supporter-tour__replay:disabled { opacity: .6; cursor: wait; }
-.supporter-tour__replay-mark { color: #ffe1c0; font-size: 17px; line-height: 1; }
 
 .supporter-tour__dialog {
   position: fixed;
