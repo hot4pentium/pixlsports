@@ -257,7 +257,7 @@ export function PublicLandingPage() {
             <AthletePreview />
             <div className="athlete-copy">
               <span className="micro">More than a profile</span>
-              <h2 className="display" id="athlete-heading">Their moments.<br />Their Hype Card.</h2>
+              <h2 className="display" id="athlete-heading">Their moments.<br />Their <span className="hype-word">Hype</span> Card.</h2>
               <p>Make a Hype Card they’ll want to show off. Add photos and videos, share it with family, and let supporters send a shoutout.</p>
               <ul className="check-list">
                 <li><Check size={16} aria-hidden="true" /> Make it theirs</li>
