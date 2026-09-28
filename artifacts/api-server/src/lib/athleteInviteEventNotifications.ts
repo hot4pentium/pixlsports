@@ -131,9 +131,9 @@ async function sendClaimedDelivery(
   claimId: string,
   payload: Parameters<PushSender>[1],
   send: PushSender,
-  completedAt: Date,
+  now: () => Date,
 ) {
-  return db.transaction(async (tx) => {
+  const currentFollow = await db.transaction(async (tx) => {
     const validated = await validateInviteEvent(tx, inviteId, ownerClerkUserId, shareToken);
     const [follow] = validated?.upcoming && validated.event.id === eventId
       ? await tx.select().from(athleteInviteFansTable).where(and(
@@ -145,24 +145,34 @@ async function sendClaimedDelivery(
     if (!follow) {
       await tx.delete(athleteInviteEventDeliveryClaimsTable)
         .where(eq(athleteInviteEventDeliveryClaimsTable.id, claimId));
-      return { state: "stale" as const };
+      return null;
     }
+    return follow;
+  });
+  if (!currentFollow) return { state: "stale" as const };
 
-    let outcome: Awaited<ReturnType<PushSender>>;
-    try {
-      outcome = await send(follow, payload);
-    } catch {
-      outcome = { configured: true, sent: false, stale: false };
-    }
+  // The short transaction above is the final eligibility/consent check.
+  // Do not hold the invite/share/follower locks during the network request:
+  // slow push services must not block other recipients or preference changes.
+  let outcome: Awaited<ReturnType<PushSender>>;
+  try {
+    outcome = await send(currentFollow, payload);
+  } catch {
+    outcome = { configured: true, sent: false, stale: false };
+  }
+  await db.transaction(async (tx) => {
     await tx.update(athleteInviteEventDeliveryClaimsTable).set({
       result: outcome.sent ? "sent" : "failed",
-      completedAt,
+      completedAt: now(),
     }).where(eq(athleteInviteEventDeliveryClaimsTable.id, claimId));
     if (outcome.stale) {
-      await tx.delete(athleteInviteFansTable).where(eq(athleteInviteFansTable.id, followId));
+      await tx.delete(athleteInviteFansTable).where(and(
+        eq(athleteInviteFansTable.id, followId),
+        eq(athleteInviteFansTable.endpoint, currentFollow.endpoint),
+      ));
     }
-    return { state: outcome.sent ? "sent" as const : "failed" as const };
   });
+  return { state: outcome.sent ? "sent" as const : "failed" as const };
 }
 
 async function awaitExistingDeliveryResult(inviteId: string, eventId: string, deviceKeyHash: string) {
@@ -239,7 +249,7 @@ export async function notifyAthleteInviteEventFollowers(
           tag: `athlete-invite-event-${invite.id}-${initial.eventId}`,
         },
         send,
-        (options.now ?? (() => new Date()))(),
+        options.now ?? (() => new Date()),
       );
       if (outcome.state === "stale") return;
       counts.attempted += 1;

@@ -25,6 +25,20 @@ function futureDate(days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+async function beforeDeadline<T>(operation: Promise<T>, message: string, timeoutMs: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 test("athlete event links expose only owned marked shares and manual delivery is durable per event and device", async () => {
   const ownerId = `athlete-event-owner-${randomUUID()}`;
   const otherOwnerId = `athlete-event-other-${randomUUID()}`;
@@ -150,7 +164,7 @@ test("athlete event links expose only owned marked shares and manual delivery is
     assert.equal((await owned.json() as Array<{ events: unknown[] }>)[0]?.events.length, 2);
 
     const endpoints = [true, false].map((_, index) => `https://fcm.googleapis.com/fcm/send/${randomUUID().replaceAll("-", "")}-${index}`);
-    await db.insert(athleteInviteFansTable).values(endpoints.map((endpoint, index) => ({
+    const originalFollowers = await db.insert(athleteInviteFansTable).values(endpoints.map((endpoint, index) => ({
       inviteId: invite!.id,
       endpoint,
       p256dh: "test-key",
@@ -159,7 +173,7 @@ test("athlete event links expose only owned marked shares and manual delivery is
       liveAlerts: false,
       eventAlerts: index === 0,
       preEventAlerts: index === 1,
-    })));
+    }))).returning();
     const manualRecipients: string[] = [];
     const send = async (subscription: { endpoint: string; p256dh: string; auth: string }) => {
       manualRecipients.push(subscription.endpoint);
@@ -203,9 +217,65 @@ test("athlete event links expose only owned marked shares and manual delivery is
       { endpoint: endpoints[1], eventAlerts: false, preEventAlerts: true },
     ]);
 
+    const [slowShare] = await db.insert(scheduleSharesTable).values({
+      ownerClerkUserId: ownerId,
+      title: "Slow push test",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [{ id: `event-${randomUUID()}`, type: "game", status: "upcoming", date: futureDate(35), time: "18:00" }],
+    }).returning();
+    shareIds.push(slowShare!.id);
+    await db.insert(athleteInviteEventLinksTable).values({ inviteId: invite!.id, shareId: slowShare!.id });
+    const extraFollowers = await db.insert(athleteInviteFansTable).values(
+      Array.from({ length: 3 }, () => ({
+        inviteId: invite!.id,
+        endpoint: `https://fcm.googleapis.com/fcm/send/${randomUUID().replaceAll("-", "")}`,
+        p256dh: "test-key",
+        auth: "test-auth",
+        followTokenHash: randomUUID().replaceAll("-", ""),
+        liveAlerts: false,
+        eventAlerts: false,
+        preEventAlerts: true,
+      })),
+    ).returning();
+    let releasePush!: () => void;
+    const pushGate = new Promise<void>((resolve) => { releasePush = resolve; });
+    let allStarted!: () => void;
+    const started = new Promise<void>((resolve) => { allStarted = resolve; });
+    const startedEndpoints: string[] = [];
+    const slowSend = async (subscription: { endpoint: string; p256dh: string; auth: string }) => {
+      startedEndpoints.push(subscription.endpoint);
+      if (startedEndpoints.length === extraFollowers.length + 1) allStarted();
+      await pushGate;
+      return { configured: true, sent: true, stale: false };
+    };
+    const sending = notifyAthleteInviteEventFollowers(inviteToken, ownerId, slowShare!.id, { send: slowSend });
+    let slowError: unknown;
+    try {
+      // All network requests should start while the first is still unresolved.
+      await beforeDeadline(started, "Push requests serialized behind an invite lock", 6000);
+      // Opting out must commit while the push service is still stalled.
+      await beforeDeadline(
+        db.update(athleteInviteFansTable).set({ preEventAlerts: false })
+          .where(eq(athleteInviteFansTable.id, originalFollowers[1]!.id)),
+        "Follower opt-out blocked by a slow push", 3000,
+      );
+    } catch (error) {
+      slowError = error;
+    } finally {
+      releasePush();
+    }
+    const slowResult = await sending;
+    if (slowError) throw slowError;
+    assert.equal(startedEndpoints.length, 4);
+    assert.deepEqual(slowResult, { status: "ok", attempted: 4, sent: 4, failed: 0, alreadySent: 0 });
+    const afterSlowSend = await notifyAthleteInviteEventFollowers(inviteToken, ownerId, slowShare!.id, { send: slowSend });
+    assert.deepEqual(afterSlowSend, { status: "ok", attempted: 0, sent: 0, failed: 0, alreadySent: 3 });
+    assert.equal(startedEndpoints.length, 4);
+
     await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, finalByTracker!.id));
     const publicAfterDeletion = await fetch(`${baseUrl}/fan`);
-    assert.deepEqual((await publicAfterDeletion.json() as { events: unknown[] }).events, [publicEvents[0]]);
+    const remainingEvents = (await publicAfterDeletion.json() as { events: Array<{ shareToken: string }> }).events;
+    assert.deepEqual(remainingEvents.map((event) => event.shareToken).sort(), [upcoming!.id, slowShare!.id].sort());
 
     await db.update(athleteInvitesTable).set({ timezone: null }).where(eq(athleteInvitesTable.id, invite!.id));
     const legacyTimezoneFan = await fetch(`${baseUrl}/fan`);
