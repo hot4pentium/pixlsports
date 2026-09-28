@@ -79,3 +79,4 @@
 - [Season correction reconciliation](season-correction-reconciliation.md) — cloud finals supersede matching plays only; divergent offline plays require an explicit choice.
 - [Tracker Calendar completion](tracker-calendar-completion.md) — compact completion waits for Calendar Final; failures stay visible and retryable after the card closes.
 - [New-account tour eligibility](new-account-tour-eligibility.md) — onboarding requires an explicit pending marker from setup; an absent completion marker must not enroll established accounts.
+- [Game On scheduled caller](game-on-scheduled-caller.md) — use the approved Cloudflare Free cron for two-minute reminders, keeping the API on Autoscale and paid add-ons off.
