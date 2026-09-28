@@ -9,6 +9,7 @@ import {
   plannerCardNotificationDeliveriesTable,
   plannerNotificationDeliveriesTable,
   plannerNotificationPreferencesTable,
+  plannerOwnerEventAlertClaimsTable,
   scheduleSharesTable,
   statTrackerSharesTable,
   webPushSubscriptionsTable,
@@ -21,6 +22,7 @@ import {
 } from "./plannerNotifications";
 
 test("planner reminders use each subscription's local event time", () => {
+  const oneHourPreferences = { oneHourBefore: true, dayOf: false };
   const cases = [
     {
       timezone: "America/New_York",
@@ -42,15 +44,15 @@ test("planner reminders use each subscription's local event time", () => {
 
   for (const current of cases) {
     assert.deepEqual(
-      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.beforeReminder), current.timezone),
+      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.beforeReminder), current.timezone, oneHourPreferences),
       [],
     );
     assert.deepEqual(
-      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.reminder), current.timezone),
+      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.reminder), current.timezone, oneHourPreferences),
       ["one_hour"],
     );
     assert.deepEqual(
-      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.eventStart), current.timezone),
+      getPlannerReminderTypesForTest(current.eventDate, current.eventTime, new Date(current.eventStart), current.timezone, oneHourPreferences),
       ["capture_open"],
     );
     assert.deepEqual(
@@ -59,6 +61,7 @@ test("planner reminders use each subscription's local event time", () => {
         current.eventTime,
         new Date(new Date(current.eventStart).getTime() + 3 * 60 * 60 * 1000),
         current.timezone,
+        oneHourPreferences,
       ),
       [],
     );
@@ -72,6 +75,7 @@ test("planner reminders keep one-hour timing correct across daylight-saving tran
       "10:00",
       new Date("2026-03-08T13:00:00.000Z"),
       "America/New_York",
+      { oneHourBefore: true, dayOf: false },
     ),
     ["one_hour"],
   );
@@ -81,6 +85,7 @@ test("planner reminders keep one-hour timing correct across daylight-saving tran
       "10:00",
       new Date("2026-11-01T14:00:00.000Z"),
       "America/New_York",
+      { oneHourBefore: true, dayOf: false },
     ),
     ["one_hour"],
   );
@@ -133,6 +138,11 @@ test("planner job uses the most recently updated subscription timezone", async (
         updatedAt: new Date("2026-09-23T11:00:00.000Z"),
       },
     ]);
+    await db.insert(plannerNotificationPreferencesTable).values({
+      ownerClerkUserId: ownerId,
+      oneHourBefore: true,
+      dayOf: false,
+    });
     const [share] = await db.insert(scheduleSharesTable).values({
       ownerClerkUserId: ownerId,
       title: "Standalone Game On Card",
@@ -336,6 +346,11 @@ async function addPlannerSubscription(ownerId: string, timezone = "UTC") {
     auth: "card-test-auth",
     timezone,
   });
+  await db.insert(plannerNotificationPreferencesTable).values({
+    ownerClerkUserId: ownerId,
+    oneHourBefore: true,
+    dayOf: false,
+  }).onConflictDoNothing();
 }
 
 async function cleanCardFixture(ownerId: string, shareIds: string[], projectIds: string[] = []) {
@@ -351,6 +366,8 @@ async function cleanCardFixture(ownerId: string, shareIds: string[], projectIds:
   }
   await db.delete(plannerNotificationPreferencesTable)
     .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
+  await db.delete(plannerOwnerEventAlertClaimsTable)
+    .where(eq(plannerOwnerEventAlertClaimsTable.ownerClerkUserId, ownerId));
   await db.delete(webPushSubscriptionsTable)
     .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerId));
 }
@@ -374,7 +391,7 @@ test("planner sends and records a one-hour reminder for a standalone Game On Car
     assert.equal(sent.length, 1);
     assert.equal(sent[0]?.ownerId, ownerId);
     assert.equal(sent[0]?.title, "GAME DAY · IN 1 HOUR");
-    assert.equal(sent[0]?.body, "Open Pixl Sports to see your Game On Card.");
+    assert.equal(sent[0]?.body, "Your event is in one hour. Open Pixl Sports to publish or share your Hype Card.");
     for (const privateDetail of ["Falcons", "Main Field", "Standalone Game On Card"]) {
       assert.equal(sent[0]?.body.includes(privateDetail), false);
     }
@@ -386,6 +403,37 @@ test("planner sends and records a one-hour reminder for a standalone Game On Car
     assert.equal(deliveries[0]?.eventId, "game-on-card-event");
     assert.equal(deliveries[0]?.eventDate, "2026-09-27");
     assert.equal(deliveries[0]?.notificationType, "one_hour");
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("an owner must explicitly choose one-hour alerts before receiving a Hype Card publish prompt", async () => {
+  const ownerId = `planner-opt-in-test-${randomUUID()}`;
+  const shareIds: string[] = [];
+  let sent = 0;
+  try {
+    await addPlannerSubscription(ownerId);
+    await db.delete(plannerNotificationPreferencesTable)
+      .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
+    shareIds.push(await insertGameOnCard(ownerId));
+    const dependencies = {
+      sendPushNotificationToUser: async () => {
+        sent += 1;
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    const now = new Date("2026-09-27T13:50:00.000Z");
+    await runPlannerNotificationJob(now, dependencies);
+    assert.equal(sent, 0);
+
+    await db.insert(plannerNotificationPreferencesTable).values({
+      ownerClerkUserId: ownerId,
+      oneHourBefore: true,
+      dayOf: false,
+    });
+    await runPlannerNotificationJob(now, dependencies);
+    assert.equal(sent, 1);
   } finally {
     await cleanCardFixture(ownerId, shareIds);
   }
@@ -492,11 +540,10 @@ test("planner releases its claim when reminder preference is disabled before eli
       beforeEligibilityRecheck: async (claimedShareId) => {
         assert.equal(claimedShareId, shareId);
         hookCount += 1;
-        await db.insert(plannerNotificationPreferencesTable).values({
-          ownerClerkUserId: ownerId,
+        await db.update(plannerNotificationPreferencesTable).set({
           oneHourBefore: false,
           dayOf: false,
-        });
+        }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
       },
       sendPushNotificationToUser: async () => {
         sendCount += 1;
@@ -561,11 +608,10 @@ test("planner honors card reminder preference toggles", async () => {
     await addPlannerSubscription(ownerId);
     const shareId = await insertGameOnCard(ownerId);
     shareIds.push(shareId);
-    await db.insert(plannerNotificationPreferencesTable).values({
-      ownerClerkUserId: ownerId,
+    await db.update(plannerNotificationPreferencesTable).set({
       oneHourBefore: false,
       dayOf: false,
-    });
+    }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerId));
 
     await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), dependencies);
     assert.deepEqual(sentTitles, []);
@@ -955,6 +1001,55 @@ test("a run delayed past game start sends one capture-open catch-up, not an old 
     const rows = await db.select().from(plannerCardNotificationDeliveriesTable)
       .where(eq(plannerCardNotificationDeliveriesTable.shareId, shareId));
     assert.deepEqual(rows.map((row) => row.notificationType), ["capture_open"]);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("an owner who got the one-hour Hype Card prompt is not sent a second post-start alert", async () => {
+  const ownerId = `planner-no-second-push-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sentTitles: string[] = [];
+  try {
+    await addPlannerSubscription(ownerId);
+    shareIds.push(await insertGameOnCard(ownerId));
+    const dependencies = {
+      sendPushNotificationToUser: async (_owner: string, payload: { title: string }) => {
+        sentTitles.push(payload.title);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), dependencies);
+    await runPlannerNotificationJob(new Date("2026-09-27T15:08:00.000Z"), dependencies);
+    assert.deepEqual(sentTitles, ["GAME DAY · IN 1 HOUR"]);
+  } finally {
+    await cleanCardFixture(ownerId, shareIds);
+  }
+});
+
+test("replacing a Game On Card does not repeat the owner alert for the same event", async () => {
+  const ownerId = `planner-card-replacement-${randomUUID()}`;
+  const shareIds: string[] = [];
+  const sentTitles: string[] = [];
+  try {
+    await addPlannerSubscription(ownerId);
+    const firstShareId = await insertGameOnCard(ownerId);
+    shareIds.push(firstShareId);
+    const dependencies = {
+      sendPushNotificationToUser: async (_owner: string, payload: { title: string }) => {
+        sentTitles.push(payload.title);
+        return { configured: true, sent: 1, removed: 0 };
+      },
+    };
+    await runPlannerNotificationJob(new Date("2026-09-27T13:50:00.000Z"), dependencies);
+    await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, firstShareId));
+    shareIds.push(await insertGameOnCard(ownerId));
+    await runPlannerNotificationJob(new Date("2026-09-27T13:52:00.000Z"), dependencies);
+    await runPlannerNotificationJob(new Date("2026-09-27T15:08:00.000Z"), dependencies);
+    assert.deepEqual(sentTitles, ["GAME DAY · IN 1 HOUR"]);
+    const claims = await db.select().from(plannerOwnerEventAlertClaimsTable)
+      .where(eq(plannerOwnerEventAlertClaimsTable.ownerClerkUserId, ownerId));
+    assert.equal(claims.length, 1);
   } finally {
     await cleanCardFixture(ownerId, shareIds);
   }

@@ -5,6 +5,7 @@ import {
   db,
   plannerCardNotificationDeliveriesTable,
   plannerNotificationPreferencesTable,
+  plannerOwnerEventAlertClaimsTable,
   scheduleSharesTable,
   statTrackerSharesTable,
   webPushSubscriptionsTable,
@@ -43,7 +44,7 @@ export type PlannerReminderPreferences = {
 };
 
 const DEFAULT_REMINDER_PREFERENCES: PlannerReminderPreferences = {
-  oneHourBefore: true,
+  oneHourBefore: false,
   dayOf: false,
 };
 
@@ -221,7 +222,9 @@ function reminderPayload(
     // Keep private card details behind the authenticated app, not in the OS tray.
     body: reminderType === "day_of"
       ? "You have a Game On Card today. Sign in to see the details."
-      : "Open Pixl Sports to see your Game On Card.",
+      : reminderType === "one_hour"
+        ? "Your event is in one hour. Open Pixl Sports to publish or share your Hype Card."
+        : "Open Pixl Sports to see your Game On Card.",
     url: "/studio",
   };
 }
@@ -236,7 +239,7 @@ export function getPlannerReminderTypesForTest(
   return getReminderTypes(eventDate, eventTime, now, timezone, preferences);
 }
 
-async function sendGameOnCardReminder(
+async function sendGameOnCardReminderForShare(
   shareId: string,
   ownerClerkUserId: string,
   card: ReminderCard,
@@ -247,6 +250,32 @@ async function sendGameOnCardReminder(
   reminderNow: Date,
   beforeEligibilityRecheck?: (shareId: string) => Promise<void>,
 ) {
+  if (reminderType === "capture_open") {
+    const [ownerPrompt] = await db.select({ id: plannerOwnerEventAlertClaimsTable.id })
+      .from(plannerOwnerEventAlertClaimsTable).where(and(
+        eq(plannerOwnerEventAlertClaimsTable.ownerClerkUserId, ownerClerkUserId),
+        eq(plannerOwnerEventAlertClaimsTable.eventId, event.id),
+        eq(plannerOwnerEventAlertClaimsTable.eventDate, event.date),
+      )).limit(1);
+    if (ownerPrompt) return false;
+    // Capture-open is a missed-reminder fallback, not a second alert after
+    // the owner already received the one-hour publish/share prompt.
+    const [oneHourDelivery] = await db.select({
+      sentAt: plannerCardNotificationDeliveriesTable.sentAt,
+      displayedAt: plannerCardNotificationDeliveriesTable.displayedAt,
+      createdAt: plannerCardNotificationDeliveriesTable.createdAt,
+    }).from(plannerCardNotificationDeliveriesTable).where(and(
+      eq(plannerCardNotificationDeliveriesTable.shareId, shareId),
+      eq(plannerCardNotificationDeliveriesTable.eventId, event.id),
+      eq(plannerCardNotificationDeliveriesTable.notificationType, "one_hour"),
+      eq(plannerCardNotificationDeliveriesTable.eventDate, event.date),
+    )).limit(1);
+    if (oneHourDelivery && (
+      oneHourDelivery.sentAt
+      || oneHourDelivery.displayedAt
+      || oneHourDelivery.createdAt.getTime() > Date.now() - PENDING_DELIVERY_TIMEOUT_MS
+    )) return false;
+  }
   const deliveryKey = and(
     eq(plannerCardNotificationDeliveriesTable.shareId, shareId),
     eq(plannerCardNotificationDeliveriesTable.eventId, event.id),
@@ -379,6 +408,49 @@ async function sendGameOnCardReminder(
     .set({ sentAt: new Date() })
     .where(eq(plannerCardNotificationDeliveriesTable.id, deliveryId));
   return true;
+}
+
+async function sendGameOnCardReminder(
+  shareId: string,
+  ownerClerkUserId: string,
+  card: ReminderCard,
+  event: PlannerEvent,
+  reminderType: PlannerReminderType,
+  sendPush: typeof sendPushNotificationToUser,
+  heartbeatMs: number,
+  reminderNow: Date,
+  beforeEligibilityRecheck?: (shareId: string) => Promise<void>,
+) {
+  const args = [
+    shareId, ownerClerkUserId, card, event, reminderType,
+    sendPush, heartbeatMs, reminderNow, beforeEligibilityRecheck,
+  ] as const;
+  if (reminderType !== "one_hour") return sendGameOnCardReminderForShare(...args);
+
+  // Unlike share-level delivery records, this claim survives replacing a
+  // Game On Card. A crash with an uncertain push outcome keeps the claim so
+  // another card cannot repeat the owner prompt.
+  const claimId = randomUUID();
+  const [claim] = await db.insert(plannerOwnerEventAlertClaimsTable).values({
+    id: claimId,
+    ownerClerkUserId,
+    eventId: event.id,
+    eventDate: event.date,
+  }).onConflictDoNothing().returning({ id: plannerOwnerEventAlertClaimsTable.id });
+  if (!claim) return false;
+
+  try {
+    const result = await sendGameOnCardReminderForShare(...args);
+    if (!result) {
+      await db.delete(plannerOwnerEventAlertClaimsTable)
+        .where(eq(plannerOwnerEventAlertClaimsTable.id, claimId));
+    }
+    return result;
+  } catch (error) {
+    await db.delete(plannerOwnerEventAlertClaimsTable)
+      .where(eq(plannerOwnerEventAlertClaimsTable.id, claimId));
+    throw error;
+  }
 }
 
 export type PlannerNotificationJobDependencies = {

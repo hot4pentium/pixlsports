@@ -175,3 +175,73 @@ test("internal Game On trigger requires configuration and rejects bodies or quer
     await server.close();
   }
 });
+
+test("cron-job.org trigger accepts a fresh token request once and rejects stale or altered requests", async () => {
+  const usedNonces = new Set<string>();
+  let runs = 0;
+  const server = await startServer(createInternalJobsRouter({
+    getSecret: () => undefined,
+    getCronToken: () => SECRET,
+    now: () => NOW,
+    claimNonce: async (nonce) => {
+      if (usedNonces.has(nonce)) return false;
+      usedNonces.add(nonce);
+      return true;
+    },
+    runGameOnAlerts: async () => { runs += 1; },
+  }));
+  const headers = {
+    "x-game-on-alerts-timestamp": String(Math.floor(NOW / 1000)),
+    "x-game-on-alerts-nonce": randomUUID(),
+    "x-game-on-alerts-token": SECRET,
+  };
+  const url = `${server.url}/cron`;
+
+  try {
+    const first = await fetch(url, { method: "POST", headers });
+    assert.equal(first.status, 200);
+    assert.equal(runs, 1);
+
+    const replay = await fetch(url, { method: "POST", headers });
+    assert.equal(replay.status, 409);
+    const wrongToken = await fetch(url, {
+      method: "POST",
+      headers: { ...headers, "x-game-on-alerts-nonce": randomUUID(), "x-game-on-alerts-token": "x".repeat(SECRET.length) },
+    });
+    assert.equal(wrongToken.status, 401);
+    const stale = await fetch(url, {
+      method: "POST",
+      headers: { ...headers, "x-game-on-alerts-nonce": randomUUID(), "x-game-on-alerts-timestamp": String(Math.floor(NOW / 1000) - 120) },
+    });
+    assert.equal(stale.status, 401);
+    const withBody = await fetch(url, {
+      method: "POST",
+      headers: { ...headers, "x-game-on-alerts-nonce": randomUUID(), "content-type": "application/json" },
+      body: "{}",
+    });
+    assert.equal(withBody.status, 400);
+    const withQuery = await fetch(`${url}?run=1`, {
+      method: "POST",
+      headers: { ...headers, "x-game-on-alerts-nonce": randomUUID() },
+    });
+    assert.equal(withQuery.status, 400);
+    const hmacUnavailable = await fetch(server.url, { method: "POST", headers });
+    assert.equal(hmacUnavailable.status, 503);
+    assert.equal(runs, 1);
+  } finally {
+    await server.close();
+  }
+});
+
+test("cron-job.org trigger stays off without a dedicated production token", async () => {
+  const server = await startServer(createInternalJobsRouter({
+    getCronToken: () => undefined,
+    runGameOnAlerts: async () => assert.fail("must not run without configuration"),
+  }));
+  try {
+    const response = await fetch(`${server.url}/cron`, { method: "POST" });
+    assert.equal(response.status, 503);
+  } finally {
+    await server.close();
+  }
+});

@@ -236,7 +236,7 @@ export const webPushSubscriptionsTable = pgTable("web_push_subscriptions", {
 
 export const plannerNotificationPreferencesTable = pgTable("planner_notification_preferences", {
   ownerClerkUserId: text("owner_clerk_user_id").primaryKey(),
-  oneHourBefore: boolean("one_hour_before").notNull().default(true),
+  oneHourBefore: boolean("one_hour_before").notNull().default(false),
   dayOf: boolean("day_of").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -280,6 +280,20 @@ export const plannerCardNotificationDeliveriesTable = pgTable("planner_card_noti
     table.eventDate,
   ),
   shareIndex: index("planner_card_notification_deliveries_share_index").on(table.shareId),
+}));
+
+export const plannerOwnerEventAlertClaimsTable = pgTable("planner_owner_event_alert_claims", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
+  eventId: text("event_id").notNull(),
+  eventDate: text("event_date").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  eventUnique: uniqueIndex("planner_owner_event_alert_claims_event_unique").on(
+    table.ownerClerkUserId,
+    table.eventId,
+    table.eventDate,
+  ),
 }));
 
 export const internalJobRequestsTable = pgTable("internal_job_requests", {

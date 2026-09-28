@@ -76,3 +76,43 @@ The reminder job re-reads the current Game On Card on every pass. That lets
 edits, final status, and removed events affect eligibility without creating
 one long-lived timer per event. Durable delivery records prevent duplicate
 push attempts across repeated runner calls.
+
+## cron-job.org alternative (not activated)
+
+The same API job can be called by cron-job.org without a Cloudflare Worker.
+This uses a **separate** long random token in a request header instead of
+the per-request HMAC signature. Never put that token in the URL. Keep the
+Cloudflare Cron Trigger disabled if you use cron-job.org, so only one caller
+runs. The job sends a one-hour-before alert only to account owners who have
+connected phone alerts **and explicitly selected** the one-hour preference.
+Timed Game On events are required; date-only events cannot have a one-hour
+alert. The alert prompts owners to publish or share a Hype Card even if they
+have already published. A post-start capture-open alert is sent only when
+the one-hour alert was missed. It does not automatically notify Hype Card
+followers.
+One-hour owner prompts use an event-level delivery claim that survives
+replacing a Game On Card with the same event ID and date. This prevents a
+recreated card from sending the owner another prompt.
+
+After publishing the API and the replay-protection schema, set a unique
+random token of at least 32 characters as `GAME_ON_ALERTS_CRON_TOKEN` in the
+API's Production Secrets. In cron-job.org, configure an **initially disabled**
+job with the verified published API URL and path
+`/api/internal/jobs/game-on-alerts/cron`. Set the schedule to every two
+minutes, method `POST`, no body or query parameters, and these headers:
+
+| Header | Value |
+| --- | --- |
+| `x-game-on-alerts-timestamp` | `%cjo:unixtime%` |
+| `x-game-on-alerts-nonce` | `%cjo:uuid4%` |
+| `x-game-on-alerts-token` | The same secret stored in the API's Production Secrets |
+
+cron-job.org replaces its [timestamp and UUID variables](https://docs.cron-job.org/creating-cron-jobs.html)
+for each execution. The API checks freshness, the token, and a durable
+one-time nonce before processing reminders. Confirm the production schema
+and secret are ready before enabling the job: even a manual test can send
+real pushes to opted-in devices. Enable failure notifications and inspect
+execution history after the first run. cron-job.org closes connections
+after [30 seconds](https://cron-job.org/en/faq/); if the reminder job
+starts exceeding that, disable this schedule and batch the work before
+resuming. The API stays on Autoscale.

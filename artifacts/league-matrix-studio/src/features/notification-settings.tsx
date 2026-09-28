@@ -51,7 +51,7 @@ export function NotificationSettings() {
   });
   const updatePreferences = useUpdateNotificationPreferences();
   const [enabled, setEnabled] = useState(false);
-  const [oneHourBefore, setOneHourBefore] = useState(true);
+  const [oneHourBefore, setOneHourBefore] = useState(false);
   const [dayOf, setDayOf] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -172,7 +172,7 @@ export function NotificationSettings() {
                    className="mt-0.5 h-4 w-4 accent-primary"
                    data-testid="checkbox-reminder-one-hour"
                  />
-                 <span><span className="font-semibold">One hour before</span><span className="block text-xs text-muted-foreground">Preference for a future automatic pre-game alert.</span></span>
+                  <span><span className="font-semibold">One hour before</span><span className="block text-xs text-muted-foreground">Event reminder with a prompt to publish or share your Hype Card. Sent once per event with a start time, even if you have already published.</span></span>
                </label>
                <label className="flex items-start gap-3 text-sm">
                  <input

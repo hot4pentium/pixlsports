@@ -40,7 +40,7 @@ router.get("/notifications/preferences", requireAuth, async (_req, res): Promise
     .limit(1);
 
   res.json({
-    oneHourBefore: preferences?.oneHourBefore ?? true,
+    oneHourBefore: preferences?.oneHourBefore ?? false,
     dayOf: preferences?.dayOf ?? false,
   });
 });

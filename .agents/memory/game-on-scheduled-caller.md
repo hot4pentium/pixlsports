@@ -3,8 +3,8 @@ name: Game On scheduled caller
 description: Approved provider and activation boundary for recurring Game On reminder checks.
 ---
 
-Keep the app/API on Autoscale and use a Cloudflare Workers Cron Trigger for the two-minute Game On reminder caller, without enabling paid add-ons.
+Keep the app/API on Autoscale and use only one free two-minute Game On reminder caller. Cloudflare Workers Cron Trigger was initially approved; cron-job.org was later prepared as an alternative. Do not enable both.
 
-**Why:** Replit Scheduled Deployments have a one-hour minimum interval, too slow for the requested reminders. The user approved Cloudflare after discussing the expected Free-plan usage, but did not approve a paid upgrade.
+**Why:** Replit Scheduled Deployments have a one-hour minimum interval, too slow for the requested reminders. The user approved Cloudflare after discussing expected Free-plan usage, then explored cron-job.org for the owner alert. They did not approve a paid upgrade, and two callers would repeat work.
 
-**How to apply:** Do not substitute an hourly scheduler or enable a live Cron Trigger before the production API, replay-protection schema, and matching signing secrets are ready. Keep the caller limited to a signed request; database and push credentials remain in the API.
+**How to apply:** Do not substitute an hourly scheduler or enable a live caller before the production API, replay-protection schema, matching secret, and request-duration limit are ready. Cloudflare uses a signed request; cron-job.org uses its separate production bearer header. Database and push credentials remain in the API.
