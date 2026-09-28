@@ -384,7 +384,7 @@ async function sendGameOnCardReminderForShare(
         eq(plannerCardNotificationDeliveriesTable.id, deliveryId),
         isNull(plannerCardNotificationDeliveriesTable.sentAt),
       ))
-      .catch((error) => logger.warn({ err: error }, "Unable to renew pending Game On reminder"));
+      .catch(() => logger.warn("Unable to renew pending Game On reminder"));
   }, heartbeatMs);
   heartbeat.unref();
   let result: Awaited<ReturnType<typeof sendPush>>;
@@ -546,7 +546,7 @@ export async function runPlannerNotificationJob(
     }
   }
   let nextReminder = 0;
-  const errors: unknown[] = [];
+  let failureCount = 0;
   await Promise.all(Array.from(
     { length: Math.min(MAX_CONCURRENT_REMINDERS, dueReminders.length) },
     async () => {
@@ -554,14 +554,14 @@ export async function runPlannerNotificationJob(
         const send = dueReminders[nextReminder++]!;
         try {
           await send();
-        } catch (error) {
-          errors.push(error);
-          logger.error({ err: error }, "Unable to process Game On reminder");
+        } catch {
+          failureCount += 1;
+          logger.error("Unable to process Game On reminder");
         }
       }
     },
   ));
-  if (errors.length > 0) {
-    throw new AggregateError(errors, `${errors.length} Game On reminders failed`);
+  if (failureCount > 0) {
+    throw new Error(`${failureCount} Game On reminders failed`);
   }
 }

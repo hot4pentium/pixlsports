@@ -51,16 +51,20 @@ export function createInternalJobsRouter(dependencies: InternalJobDependencies =
       return;
     }
 
+    let phase: "claim" | "run" = "claim";
     try {
       const claimed = await claimNonce(nonce, new Date(nowMs));
       if (!claimed) {
         res.status(409).json({ error: "Scheduled job request was already used." });
         return;
       }
+      phase = "run";
       await runGameOnAlerts();
       res.status(200).json({ success: true });
-    } catch (error) {
-      logger.error({ err: error }, "Game On scheduled reminder run failed");
+    } catch {
+      // Push-provider and database errors can contain endpoints or private
+      // event data. Log only the failing phase; HTTP status reports failure.
+      logger.error({ phase }, "Game On scheduled reminder run failed");
       res.status(500).json({ error: "Game On reminders could not be processed." });
     }
   }

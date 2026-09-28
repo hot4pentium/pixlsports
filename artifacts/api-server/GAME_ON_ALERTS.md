@@ -12,6 +12,9 @@ credentials belong in the scheduled caller.
 - `POST /api/internal/jobs/game-on-alerts` rejects missing configuration,
   invalid or stale signatures, request bodies, query parameters, and reused
   nonces.
+- `POST /api/internal/jobs/game-on-alerts/cron` accepts cron-job.org's
+  time-stamped, one-time header request only when its separate production
+  token is configured.
 - `cloudflare-worker/worker.mjs` signs one request with Web Crypto. The active
   Wrangler configuration runs it every two minutes in UTC; the disabled
   configuration has no cron trigger for safe setup or pausing.
@@ -38,10 +41,11 @@ credentials belong in the scheduled caller.
    for the initial deploy and **both** secret uploads. Confirm in Cloudflare
    that the deployed Worker has zero Cron Triggers before continuing.
 4. Deploy `cloudflare-worker/wrangler.jsonc` to enable the UTC
-   `*/2 * * * *` Cron Trigger. This begins real reminder checks for opted-in
-   supporters. Monitor the Cloudflare scheduled-run status and API logs for
-   non-2xx responses and job errors; the Worker logs only HTTP status, not
-   event details or push credentials.
+    `*/2 * * * *` Cron Trigger. This begins real reminder checks for opted-in
+    account owners. Monitor the Cloudflare scheduled-run status and API logs
+    for non-2xx responses and job errors; the Worker logs only HTTP status,
+    not event details or push credentials. Its request aborts after 60
+    seconds; pause the trigger if production runs approach that limit.
 5. To pause calls without changing the Autoscale API, deploy
    `cloudflare-worker/wrangler.disabled.jsonc` again.
 
@@ -90,6 +94,7 @@ alert. The alert prompts owners to publish or share a Hype Card even if they
 have already published. A post-start capture-open alert is sent only when
 the one-hour alert was missed. It does not automatically notify Hype Card
 followers.
+
 One-hour owner prompts use an event-level delivery claim that survives
 replacing a Game On Card with the same event ID and date. This prevents a
 recreated card from sending the owner another prompt.
@@ -113,6 +118,8 @@ one-time nonce before processing reminders. Confirm the production schema
 and secret are ready before enabling the job: even a manual test can send
 real pushes to opted-in devices. Enable failure notifications and inspect
 execution history after the first run. cron-job.org closes connections
-after [30 seconds](https://cron-job.org/en/faq/); if the reminder job
-starts exceeding that, disable this schedule and batch the work before
-resuming. The API stays on Autoscale.
+after [30 seconds](https://cron-job.org/en/faq/). The current API job scans
+all eligible cards in one pass, so leave this caller disabled if a full run
+cannot reliably finish within that limit. Do not use a production request
+to benchmark it; batch the work durably before enabling at higher volume.
+The API stays on Autoscale.

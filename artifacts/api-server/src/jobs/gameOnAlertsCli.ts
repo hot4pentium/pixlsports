@@ -6,8 +6,8 @@ async function main() {
   try {
     await runPlannerNotificationJob();
     logger.info("Game On alert check completed");
-  } catch (error) {
-    logger.error({ err: error }, "Game On alert check failed");
+  } catch {
+    logger.error("Game On alert check failed");
     process.exitCode = 1;
   } finally {
     await pool.end();

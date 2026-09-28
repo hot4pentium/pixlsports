@@ -96,7 +96,7 @@ export async function sendPushNotificationToUser(ownerClerkUserId: string, paylo
         await db.delete(webPushSubscriptionsTable).where(eq(webPushSubscriptionsTable.id, subscription.id));
         removed += 1;
       } else {
-        logger.warn({ err: error, subscriptionId: subscription.id }, "Unable to send web push notification");
+        logger.warn({ statusCode: Number.isInteger(statusCode) ? statusCode : 0, subscriptionId: subscription.id }, "Unable to send web push notification");
       }
     }
   }));
@@ -122,7 +122,7 @@ export async function sendPushNotificationToSubscription(
       ? Number((error as { statusCode?: unknown }).statusCode)
       : 0;
     if (statusCode === 404 || statusCode === 410) return { configured: true, sent: false, stale: true };
-    logger.warn({ err: error }, "Unable to send athlete invite fan push notification");
+    logger.warn({ statusCode: Number.isInteger(statusCode) ? statusCode : 0 }, "Unable to send athlete invite fan push notification");
     return { configured: true, sent: false, stale: false };
   }
 }
