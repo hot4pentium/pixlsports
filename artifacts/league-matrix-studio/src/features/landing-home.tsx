@@ -7,7 +7,7 @@ import planEventDetails from '@/assets/landing-plan-event-details.png';
 import prepChecklist from '@/assets/landing-prep-checklist.png';
 import followStatTracker from '@/assets/landing-follow-stat-tracker.png';
 import celebrateVideoReply from '@/assets/landing-celebrate-video-reply.png';
-import { LivingAthleteCardFront } from './living-athlete-card-front';
+import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
 import { PreviewArtwork } from './hype-card-preview';
 import { defaultProject } from './hype-card-types';
@@ -132,14 +132,14 @@ function FlippableStepCard({
 function AthletePreview() {
   return (
     <div className="athlete-showcase">
-      <div className="landing-athlete-render" role="img" aria-label="Sample Pixl athlete fan card showing fictional soccer athlete Maya Rivera">
-        <div className="living-card-frame-outer" aria-hidden="true">
-          <div className="living-card-frame">
-            <LivingAthleteCardFront athleteName="Maya Rivera" teamName="Eastside FC" photoUrl={candidAthlete} />
-          </div>
-        </div>
-      </div>
-      <span className="showcase-note">Product preview · Fictional athlete</span>
+      <img
+        className="landing-athlete-render"
+        src={kimberlyHypeCard}
+        alt="Kimberly in a pink soccer jersey holding a ball on a Pixl Hype Card, with Card Front, Stats, and Videos tabs."
+        width="1228"
+        height="1981"
+      />
+      <span className="showcase-note">Product preview · Hype Card</span>
     </div>
   );
 }

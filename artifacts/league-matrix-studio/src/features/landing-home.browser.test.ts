@@ -66,7 +66,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       }>(`(() => ({
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
-        fanCardImage: document.querySelector('.landing-athlete-render .living-card-photo')?.complete && document.querySelector('.landing-athlete-render .living-card-photo')?.naturalWidth > 0,
+        fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
         gameOnBadge: document.querySelector('.event-preview-render img')?.complete && document.querySelector('.event-preview-render img')?.naturalWidth > 0 && document.querySelector('.event-preview-render')?.textContent?.includes('Harbor United'),
         graphicSvg: Boolean(document.querySelector('.graphic-preview svg')) && document.querySelector('.graphic-preview')?.textContent?.includes('MAYA RIVERA'),
         sections: document.querySelectorAll('.step-card').length,
