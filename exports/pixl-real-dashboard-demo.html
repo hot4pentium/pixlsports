@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=516">
+<title>Pixl Sports user dashboard — fictional demo data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * {box-sizing:border-box}
+  html,body {width:516px;margin:0}
+  body {font-family:"DM Sans",Arial,sans-serif;background:#e4ebf4;color:#f4f8ff}
+  .condensed {font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;text-transform:uppercase}
+  .topbar {height:46px;background:#101115;border-bottom:3px solid #c96435;display:flex;align-items:center;padding:0 18px;gap:13px}
+  .logo {font:900 19px "Barlow Condensed",sans-serif;letter-spacing:4px;color:#3280f1;margin-right:auto}
+  .topbar .circle {width:37px;height:37px;display:grid;place-items:center;border:1px solid #ffffff2e;border-radius:50%;background:#192031;color:white;font-size:18px}
+  .topbar .circle.account {background:#e3eafa;color:#142a4b;font-size:17px;font-weight:800}
+  main {padding:0 10px 26px}
+  .summary {padding:9px 9px 10px;border-radius:0 0 26px 26px;border:1px solid #416593;background:radial-gradient(ellipse at 48% 4%,#10396c 0%,#07172f 65%,#081329 100%);box-shadow:0 17px 27px #061d3d35;position:relative;overflow:hidden}
+  .summary:before {content:"";position:absolute;inset:0;opacity:.25;background-image:linear-gradient(90deg,#8ca7ca2b 1px,transparent 1px),linear-gradient(#8ca7ca2b 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+  .summary > * {position:relative;z-index:1}
+  .summary-head {height:158px;padding:0 8px;display:flex;flex-direction:column;align-items:flex-end}
+  .tour {align-self:flex-start;margin:0 0 10px 0;padding:15px 18px;background:linear-gradient(105deg,#ac4219,#782d1e);border:1px solid #d48457;border-radius:6px;box-shadow:0 3px 9px #0007;text-transform:uppercase;font-size:13px;font-weight:800;letter-spacing:.07em}
+  .tour .arrow {font-size:23px;font-weight:400;margin-right:9px;vertical-align:-2px}
+  .athlete {display:flex;align-items:center;gap:11px;min-width:225px;padding:8px 11px;border-radius:70px;border:1px solid #a3bde83a;background:#0b2240b8}
+  .avatar {width:42px;height:42px;flex:none;border:1px solid #91b1dc;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff;background:linear-gradient(135deg,#4a88d0,#173d76)}
+  .athlete-copy {text-align:right}
+  .athlete-copy small {display:block;letter-spacing:2.3px;color:#a0b6db;font-size:11px;font-weight:800}
+  .athlete-copy b {font-size:13px;color:#fff}.athlete-copy b span {color:#b4d5f8}
+  .chevron {font-size:27px;font-weight:300;color:#e6edfa}
+  .tiles {display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tile {height:226px;border-radius:15px;border:1px solid #7692bd45;box-shadow:inset 0 0 0 1px #ffffff0b;padding:17px;position:relative;overflow:hidden}
+  .next {background:radial-gradient(ellipse at 70% 5%,#2678d2 0%,#16427e 45%,#113066 100%);}
+  .next:after {content:"";position:absolute;bottom:-45px;right:-40px;width:210px;height:145px;border:1px solid #a2cfff29;border-radius:50%;box-shadow:0 0 0 32px #a2cfff0b;pointer-events:none}
+  .dot {display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#6cb2ff}
+  .eyebrow {font-size:11px;font-weight:800;letter-spacing:2.1px;color:#a4bddd;text-transform:uppercase}
+  .next .caption {margin-top:14px;font-size:10px;letter-spacing:1.6px;font-weight:800;color:#bcd0ef;text-transform:uppercase}
+  .next h2 {font-size:26px;line-height:.94;margin-top:8px;letter-spacing:.01em}
+  .next .date {margin-top:8px;color:#f1f8ff;font-size:11px;font-weight:800}
+  .next .place {font-size:10px;color:#c2d7f1;margin-top:5px;line-height:1.35}
+  .next .open {position:absolute;bottom:16px;left:17px;right:17px;text-align:center;padding:9px 6px;border:1px solid #86b9f2;border-radius:5px;background:#0a2c63cf;font-size:10px;font-weight:800;text-transform:uppercase}
+  .shoutout {background:linear-gradient(145deg,#102f58,#07182f);padding:17px 13px}
+  .shoutout .heading {display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:800;letter-spacing:.5px;line-height:1.4;text-transform:uppercase}
+  .bubble {color:#8ebeff;font-size:19px}
+  .shoutout .rule {height:1px;background:#82a5cd27;margin:12px 0}
+  .reply {display:flex;gap:8px}.reply .flame {font-size:18px}
+  .reply .eyebrow {font-size:9px;letter-spacing:.8px}
+  .reply p {font-size:13px;margin:4px 0}
+  .shoutout .view {position:absolute;bottom:16px;left:13px;right:13px;color:#95bef1;font-size:9px;font-weight:800;display:flex;justify-content:space-between;align-items:center;text-transform:uppercase}
+  .shoutout .view span {font-size:21px}
+  .record {margin-top:10px;height:225px;border-radius:15px;border:1px solid #719bc148;background:linear-gradient(120deg,#123761,#0b2a4d 70%,#0b2346);padding:23px 16px;text-align:center;box-shadow:inset 0 0 0 1px #ffffff0b}
+  .record .eyebrow {font-size:12px;letter-spacing:2.1px}
+  .record h2 {font-size:20px;letter-spacing:1.5px;margin-top:6px}
+  .record .sub {color:#94b1d1;font-size:11px;letter-spacing:1.4px;font-weight:800;margin-top:3px;text-transform:uppercase}
+  .record .numbers {display:flex;margin:12px 0 10px}
+  .record .numbers > div {flex:1;border-right:1px solid #4a83b870}.record .numbers > div:last-child {border:0}
+  .record strong {display:block;font-size:33px;line-height:1.1}
+  .record small {font-size:11px;color:#a7c4e5;font-weight:800;letter-spacing:1.3px;text-transform:uppercase}
+  .record .foot {font-size:11px;font-weight:800;letter-spacing:1.3px;color:#99b7d9;text-transform:uppercase}
+  .collection {margin-top:27px;padding:19px 12px 23px;border:1px solid #769aca;border-radius:20px;background:radial-gradient(ellipse at 50% 5%,#20558b,#102c52 50%,#0b203e 95%);box-shadow:0 8px 20px #061d3b39}
+  .collection .eyebrow {color:#b7cae7;font-size:11px;letter-spacing:2px}
+  .collection .eyebrow:before {content:"";display:inline-block;width:27px;height:2px;background:#56adff;margin-right:9px;vertical-align:4px}
+  .collection h2 {font-size:39px;line-height:1;margin-top:9px}
+  .collection .intro {font-size:13px;line-height:1.45;color:#b5cce9;margin:9px 0 19px}
+  .add {display:inline-block;background:#2e82f6;color:white;border:1px solid #83bdff;border-radius:8px;padding:13px 18px;text-transform:uppercase;font-size:13px;font-weight:800;box-shadow:0 4px 11px #0b172997}
+  .add span {font-size:22px;font-weight:400;margin-right:7px;vertical-align:-2px}
+  .toolbar {display:flex;justify-content:space-between;align-items:center;gap:9px;margin:22px 0 13px;color:#bdd1e7;font-size:9px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase}
+  .toolbar b {letter-spacing:0;color:#89a9d2;text-transform:none}
+  .search {border:1px solid #ffffff35;background:#102b4e;border-radius:7px;color:#9bb5d9;padding:8px 10px;font-size:9px;font-weight:500;letter-spacing:0;text-transform:none;white-space:nowrap}
+  .cards {display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .card {height:210px;position:relative;border:1px solid #bfd5e8;border-radius:12px;background:linear-gradient(145deg,#fff 0%,#e8f0fa 100%);color:#102d53;text-align:center;overflow:hidden;box-shadow:0 7px 12px #04102260}
+  .card .stripe {height:8px;background:#367fe7}.card .tag {position:absolute;right:8px;top:16px;color:#205496;background:#d8e9fb;padding:4px 6px;border-radius:3px;font-size:8px;font-weight:800;text-transform:uppercase}
+  .card .month {font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-top:30px}
+  .card strong {display:block;font:900 65px/.9 "Barlow Condensed",sans-serif;margin:6px 0}
+  .card .kind {border-top:1px solid #c7d9ea;position:absolute;bottom:10px;left:13px;right:13px;padding-top:10px;font:900 19px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:1px}
+  .quick {display:flex;gap:9px;margin-top:22px}
+  .quick span {padding:10px 12px;border-radius:6px;background:#98361d;border:1px solid #e69165;font-size:10px;font-weight:800}
+  .footer {color:#527191;text-align:center;text-transform:uppercase;font-size:10px;font-weight:800;letter-spacing:1px;padding:20px 0}
+</style>
+</head>
+<body>
+  <header class="topbar"><div class="logo">PIXL SPORTS</div><div class="circle">♧</div><div class="circle account">D</div><div class="circle">☰</div></header>
+  <main>
+    <section class="summary">
+      <div class="summary-head">
+        <div class="tour"><span class="arrow">↗</span> Tour the dashboard</div>
+        <div class="athlete"><span class="avatar">MC</span><span class="athlete-copy"><small>ATHLETE</small><b>Maya Chen <span>#12</span></b><small>HARBOR HAWKS</small></span><span class="chevron">›</span></div>
+      </div>
+      <div class="tiles">
+        <article class="tile next"><div class="eyebrow"><i class="dot"></i>NEXT GAME</div><div class="caption">SAT · OCT 3 · 10:00 AM</div><h2 class="condensed">HAWKS VS<br>EASTSIDE</h2><div class="date">Volleyball · Up next</div><div class="place">⌖ Harbor Community Gym</div><div class="open">Open game card →</div></article>
+        <article class="tile shoutout"><div class="heading"><span class="bubble">◉</span>SHOUTOUTS &amp;<br>REPLIES · 1</div><div class="rule"></div><div class="reply"><span class="flame">🔥</span><div><span class="eyebrow">FAN SHOUTOUT · CASEY</span><p>Great game, Maya!</p></div></div><div class="view">VIEW ALL <span>→</span></div></article>
+      </div>
+      <div class="record"><div class="eyebrow">TRACKED GAMES</div><h2 class="condensed">RECORD</h2><div class="sub">VOLLEYBALL · COMPLETED GAMES</div><div class="numbers"><div><strong>7</strong><small>Wins</small></div><div><strong>1</strong><small>Losses</small></div><div><strong>0</strong><small>Ties</small></div></div><div class="foot">8 scored games tracked</div></div>
+    </section>
+    <section class="collection">
+      <div class="eyebrow">YOUR SEASON, ONE CARD AT A TIME</div>
+      <h2 class="condensed">GAME ON</h2>
+      <p class="intro">Everything for the next game or practice, right where you need it.</p>
+      <div class="add"><span>＋</span>ADD GAME ON CARD</div>
+      <div class="toolbar"><span>YOUR CARDS &nbsp; <b>Showing 4 of 4 cards</b></span><span class="search">⌕ &nbsp; Search cards</span></div>
+      <div class="cards">
+        <article class="card"><div class="stripe"></div><div class="tag">PUBLISHED</div><div class="month">OCTOBER</div><strong>03</strong><div class="kind">Game · Up next</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">PUBLISHED</div><div class="month">OCTOBER</div><strong>06</strong><div class="kind">Practice</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">DRAFT</div><div class="month">OCTOBER</div><strong>10</strong><div class="kind">Game</div></article>
+        <article class="card"><div class="stripe"></div><div class="tag">COMPLETE</div><div class="month">SEPTEMBER</div><strong>26</strong><div class="kind">Game</div></article>
+      </div>
+      <div class="quick"><span>⌁ &nbsp; VIEW STATS</span><span>✦ &nbsp; VIEW ATHLETE FAN CARD</span></div>
+    </section>
+    <div class="footer">Demo image · All names, events, and results are fictional</div>
+  </main>
+</body>
+</html>

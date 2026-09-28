@@ -3,8 +3,8 @@ name: Dashboard mockup boundary
 description: What a Pixl Sports supporter dashboard image must depict.
 ---
 
-For future supporter dashboard mockups, show a populated signed-in product workspace with the athlete's current context and usable game-management actions, not a promotional landing page that happens to mention dashboard features.
+For future supporter dashboard mockups, populate the user's existing dashboard layout with fictional athlete, event, record, and card data. Do not replace it with a newly designed signed-in workspace or a promotional landing page.
 
-**Why:** The user explicitly rejected a full-page concept that read as a landing page rather than a user's dashboard.
+**Why:** The user rejected both a landing-like concept and a separate app-shell redesign, then supplied a screenshot of the real mobile dashboard to clarify that they wanted false data added to that visual.
 
-**How to apply:** Start from the current live dashboard's information hierarchy and in-app navigation. Fictional personal data is fine in an image, but marketing slogans, oversized promotional hero treatments, and explanatory feature tours should not dominate it.
+**How to apply:** Treat the current dashboard or user-provided screenshot as the visual template. Use internally consistent, clearly fictional demo data; preserve the page's layout, styling, and real labels rather than inventing a different product screen. Do not alter real account data when making an image.
