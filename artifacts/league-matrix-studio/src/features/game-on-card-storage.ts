@@ -3,6 +3,7 @@ export type GameOnCardEvent = {
   type?: 'game' | 'practice';
   date: string;
   time: string;
+  timezone?: string;
   location: string;
   opponent: string;
   status: 'upcoming' | 'live' | 'final';
@@ -67,6 +68,7 @@ function validatedSavedGameOnCard(value: unknown): SavedGameOnCard | null {
       ...(parsed.event.type ? { type: parsed.event.type } : {}),
       date: parsed.event.date,
       time: parsed.event.time,
+      ...(typeof parsed.event.timezone === 'string' ? { timezone: parsed.event.timezone } : {}),
       location: parsed.event.location,
       opponent: parsed.event.opponent,
       status: parsed.event.status ?? 'upcoming',

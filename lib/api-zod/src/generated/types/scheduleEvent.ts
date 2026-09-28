@@ -20,6 +20,8 @@ export interface ScheduleEvent {
   date: string;
   /** @maxLength 30 */
   time: string;
+  /** Optional IANA time-zone identifier used to interpret the event's local date and start time. */
+  timezone?: string;
   /** @maxLength 300 */
   location: string;
   /** @maxLength 200 */

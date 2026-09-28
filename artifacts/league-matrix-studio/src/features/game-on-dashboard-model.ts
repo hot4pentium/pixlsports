@@ -5,6 +5,7 @@ export type GameOnDashboardEvent = {
   type: 'game' | 'practice' | 'meeting';
   date: string;
   time: string;
+  timezone?: string;
   location: string;
   opponent?: string;
   status?: 'upcoming' | 'live' | 'final';
@@ -26,6 +27,7 @@ export type GameOnDashboardEntry = {
   opponent: string;
   date: string;
   time: string;
+  timezone?: string;
   location: string;
   status: 'Draft' | 'Published' | 'Live' | 'Complete';
   isPublished: boolean;
@@ -88,6 +90,7 @@ function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice'
     opponent: event.type === 'game' ? event.opponent ?? '' : '',
     date: event.date,
     time: event.time,
+    timezone: event.timezone,
     location: event.location,
     status: stage === 'completed' ? 'Complete' : stage === 'live' ? 'Live' : shareToken ? 'Published' : 'Draft',
     isPublished: Boolean(shareToken),

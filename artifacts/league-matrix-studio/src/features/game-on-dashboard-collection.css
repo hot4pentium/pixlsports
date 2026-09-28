@@ -622,7 +622,7 @@
 .game-on-inline__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .game-on-inline label { display: grid; min-width: 0; gap: 5px; color: #355473; font-size: 11px; font-weight: 800; }
 .game-on-inline__wide { grid-column: 1 / -1; }
-.game-on-inline input:not([type="checkbox"]), .game-on-inline textarea {
+.game-on-inline input:not([type="checkbox"]), .game-on-inline select, .game-on-inline textarea {
   display: block; min-width: 0; width: 100%; min-height: 38px; padding: 8px;
   border: 1px solid #a9c5e0; border-radius: 6px; background: #fff; color: #102b4d;
   font: 600 13px/1.3 'DM Sans', sans-serif;

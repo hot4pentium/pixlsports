@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { athleteInvitesTable } from "./athleteInvites";
+import { scheduleSharesTable } from "./scheduleShares";
 
 export const cloudProjectsTable = pgTable("cloud_projects", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -80,15 +81,7 @@ export const supporterPhotoUploadClaimsTable = pgTable("supporter_photo_upload_c
   expiresAtIndex: index("supporter_photo_upload_claims_expires_at_index").on(table.expiresAt),
 }));
 
-export const scheduleSharesTable = pgTable("schedule_shares", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  ownerClerkUserId: text("owner_clerk_user_id").notNull(),
-  title: text("title").notNull(),
-  teamSeason: text("team_season").notNull(),
-  events: jsonb("events").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+export { scheduleSharesTable };
 
 export const athleteInviteEventLinksTable = pgTable("athlete_invite_event_links", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -310,6 +303,7 @@ export * from "./statTrackerShares";
 export * from "./athleteInvites";
 export * from "./athleteInviteFans";
 export * from "./supporterActiveGames";
+export * from "./gameOnReminders";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,

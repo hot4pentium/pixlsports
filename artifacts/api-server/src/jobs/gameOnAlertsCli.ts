@@ -1,11 +1,11 @@
 import { pool } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { runPlannerNotificationJob } from "./plannerNotifications";
+import { runScheduledGameOnReminders } from "./gameOnReminderQueue";
 
 async function main() {
   try {
-    await runPlannerNotificationJob();
-    logger.info("Game On alert check completed");
+    const result = await runScheduledGameOnReminders();
+    logger.info(result, "Game On alert check completed");
   } catch {
     logger.error("Game On alert check failed");
     process.exitCode = 1;

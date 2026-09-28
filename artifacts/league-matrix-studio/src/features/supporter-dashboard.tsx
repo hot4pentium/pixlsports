@@ -48,6 +48,7 @@ import {
 } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
 import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
+import { getBrowserTimeZone } from './game-on-timezone';
 import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
 import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { TrackerCompletionDialog } from './tracker-completion-dialog';
@@ -87,6 +88,7 @@ export interface SupporterEvent {
   type: 'game' | 'practice' | 'meeting';
   date: string;
   time: string;
+  timezone?: string;
   status?: ScheduleEventStatus;
   completedAt?: string;
   location: string;
@@ -501,6 +503,7 @@ export function SupporterDashboardView({
     type: 'game',
     date: recommendedGameCard.date,
     time: recommendedGameCard.time,
+    timezone: recommendedGameCard.timezone,
     location: recommendedGameCard.location,
     opponent: recommendedGameCard.opponent,
     status: recommendedGameCard.status === 'Live' ? 'live' : 'upcoming',
@@ -514,6 +517,7 @@ export function SupporterDashboardView({
     opponent: newCardDraft?.event.opponent ?? '',
     date: newCardDraft?.event.date ?? '',
     time: newCardDraft?.event.time ?? '',
+    timezone: newCardDraft?.event.timezone,
     location: newCardDraft?.event.location ?? '',
     status: 'Draft' as const,
     isPublished: false,
@@ -538,6 +542,7 @@ export function SupporterDashboardView({
         && previous.event.type === event.type
         && previous.event.date === event.date
         && previous.event.time === event.time
+        && previous.event.timezone === event.timezone
         && previous.event.location === event.location
         && previous.event.opponent === event.opponent) return previous;
       return { ...previous, event, sourceEventId };
@@ -558,6 +563,7 @@ export function SupporterDashboardView({
       type: 'game',
       date: '',
       time: '',
+      timezone: getBrowserTimeZone(),
       location: '',
       opponent: '',
       status: 'upcoming',

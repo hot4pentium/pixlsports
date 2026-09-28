@@ -2073,6 +2073,9 @@ components:
         status: { type: string, enum: [upcoming, live, final] }
         date: { type: string, maxLength: 30 }
         time: { type: string, maxLength: 30 }
+        timezone:
+          type: string
+          description: Optional IANA time-zone identifier used to interpret the event's local date and start time.
         location: { type: string, maxLength: 300 }
         opponent: { type: string, maxLength: 200 }
         snacks: { type: string, maxLength: 300 }
@@ -2118,6 +2121,9 @@ components:
         status: { type: string, enum: [upcoming, live, final] }
         date: { type: string }
         time: { type: string }
+        timezone:
+          type: string
+          description: Optional IANA time-zone identifier used to interpret the event's local date and start time.
         location: { type: string }
         opponent: { type: string }
     GameOnCard:

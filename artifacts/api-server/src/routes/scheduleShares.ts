@@ -19,6 +19,8 @@ import {
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isAccountActive } from "../lib/accountLifecycle";
+import { isIanaTimezone } from "../lib/timezone";
+import { reconcileGameOnShare } from "../jobs/gameOnReminderQueue";
 
 const router: IRouter = Router();
 // Stored in an existing non-card metadata field until the card has its own durable model.
@@ -30,6 +32,13 @@ function isSingleCardEvent(events: unknown) {
   const event: unknown = events[0];
   return Boolean(event && typeof event === "object" && "type" in event
     && (event.type === "game" || event.type === "practice"));
+}
+
+function hasValidEventTimezone(events: unknown) {
+  if (!Array.isArray(events) || events.length !== 1) return false;
+  const event: unknown = events[0];
+  return Boolean(event && typeof event === "object"
+    && (!("timezone" in event) || isIanaTimezone(event.timezone)));
 }
 
 function shareResponse(share: typeof scheduleSharesTable.$inferSelect) {
@@ -53,6 +62,10 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
     res.status(400).json({ error: "A Game On Card must contain one game or practice" });
     return;
   }
+  if (parsed.data.purpose === "game-on-card" && !hasValidEventTimezone(parsed.data.events)) {
+    res.status(400).json({ error: "Choose a valid event time zone." });
+    return;
+  }
   if (parsed.data.purpose !== "game-on-card") {
     res.status(410).json({ error: "Standalone Calendar sharing is no longer supported." });
     return;
@@ -68,6 +81,13 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
         events: parsed.data.events,
       })
       .returning();
+    try {
+      await reconcileGameOnShare(created);
+    } catch {
+      // A bounded background sweep will retry reconciliation. The card save
+      // itself succeeded; do not misreport it as a failed save to the owner.
+      req.log.warn("Game On card saved; reminder scheduling needs reconciliation");
+    }
     res.status(201).json(shareResponse(created));
   } catch (error) {
     req.log.error({ err: error }, "Unable to create schedule share");
@@ -90,6 +110,10 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
   }
   if (parsed.data.purpose === "game-on-card" && !isSingleCardEvent(parsed.data.events)) {
     res.status(400).json({ error: "A Game On Card must contain one game or practice" });
+    return;
+  }
+  if (parsed.data.purpose === "game-on-card" && !hasValidEventTimezone(parsed.data.events)) {
+    res.status(400).json({ error: "Choose a valid event time zone." });
     return;
   }
 
@@ -130,6 +154,11 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
       return;
     }
 
+    try {
+      await reconcileGameOnShare(updated);
+    } catch {
+      req.log.warn("Game On card updated; reminder scheduling needs reconciliation");
+    }
     res.json(UpdateScheduleShareResponse.parse(shareResponse(updated)));
   } catch (error) {
     req.log.error({ err: error }, "Unable to update schedule share");
@@ -295,6 +324,7 @@ router.get("/game-on-cards/:shareToken", async (req, res): Promise<void> => {
         status: eventStatus,
         date: sourceEvent.date,
         time: sourceEvent.time,
+        ...(sourceEvent.timezone ? { timezone: sourceEvent.timezone } : {}),
         location: sourceEvent.location,
         opponent: sourceEvent.opponent,
       },

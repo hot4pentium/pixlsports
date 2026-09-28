@@ -106,16 +106,17 @@ export async function sendPushNotificationToUser(ownerClerkUserId: string, paylo
 export async function sendPushNotificationToSubscription(
   subscription: { endpoint: string; p256dh: string; auth: string },
   payload: PushNotificationPayload,
+  timeoutMs = 15_000,
 ) {
   const sender = configuredWebPush();
-  if (!sender) return { configured: false, sent: false, stale: false };
+  if (!sender) return { configured: false, sent: false, stale: false, failure: "temporary" as const };
   if (!isAllowedPushEndpoint(subscription.endpoint)) return { configured: true, sent: false, stale: true };
   try {
     // web-push makes a single HTTPS request and rejects 3xx responses; it does not follow redirect targets.
     await sender.sendNotification({
       endpoint: subscription.endpoint,
       keys: { p256dh: subscription.p256dh, auth: subscription.auth },
-    }, validatePushNotificationPayload(payload), { timeout: 15_000 });
+    }, validatePushNotificationPayload(payload), { timeout: timeoutMs });
     return { configured: true, sent: true, stale: false };
   } catch (error: unknown) {
     const statusCode = typeof error === "object" && error !== null && "statusCode" in error
@@ -123,6 +124,15 @@ export async function sendPushNotificationToSubscription(
       : 0;
     if (statusCode === 404 || statusCode === 410) return { configured: true, sent: false, stale: true };
     logger.warn({ statusCode: Number.isInteger(statusCode) ? statusCode : 0 }, "Unable to send athlete invite fan push notification");
-    return { configured: true, sent: false, stale: false };
+    // An HTTP rejection is known not to have been accepted by the provider,
+    // so it can be retried. A transport error/timeout has an uncertain outcome.
+    return {
+      configured: true, sent: false, stale: false,
+      failure: statusCode > 0
+        ? statusCode >= 500 || statusCode === 429 || statusCode === 401 || statusCode === 403
+          ? "temporary" as const
+          : "permanent" as const
+        : "uncertain" as const,
+    };
   }
 }

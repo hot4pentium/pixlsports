@@ -14,6 +14,8 @@ export interface GameOnCardEvent {
   status?: GameOnCardEventStatus;
   date: string;
   time: string;
+  /** Optional IANA time-zone identifier used to interpret the event's local date and start time. */
+  timezone?: string;
   location: string;
   opponent: string;
 }

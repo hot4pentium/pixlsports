@@ -8,6 +8,7 @@ export type ScheduleEvent = {
   completedAt?: string;
   date: string;
   time: string;
+  timezone?: string;
   location: string;
   opponent: string;
   snacks: string;
@@ -118,6 +119,7 @@ export function normalizeScheduleEvent(
       : {}),
     date: stringValue(input.date),
     time: stringValue(input.time),
+    ...(typeof input.timezone === 'string' ? { timezone: input.timezone } : {}),
     location: stringValue(input.location),
     opponent: type === 'game' ? stringValue(input.opponent) : '',
     snacks: stringValue(input.snacks),

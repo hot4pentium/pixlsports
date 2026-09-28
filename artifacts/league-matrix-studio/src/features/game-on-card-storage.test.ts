@@ -180,6 +180,18 @@ test('a saved practice stays a practice after reload without changing legacy gam
   assert.equal(readSavedGameOnCards('parent-user', storage)[0]?.event.type, 'practice');
 });
 
+test('a saved event keeps its optional IANA timezone through local storage', () => {
+  const storage = createStorage();
+  const card = {
+    ...savedCard('timezone-event', 'timezone-share'),
+    event: { ...savedCard('timezone-event', 'timezone-share').event, timezone: 'America/Los_Angeles' },
+  };
+
+  upsertSavedGameOnCard('parent-user', card, storage);
+
+  assert.equal(readSavedGameOnCards('parent-user', storage)[0]?.event.timezone, 'America/Los_Angeles');
+});
+
 test('deleting an event revokes every linked list card and preserves independent cards', async () => {
   const storage = createStorage();
   const linkedOne = savedCard('calendar-game', 'linked-one');

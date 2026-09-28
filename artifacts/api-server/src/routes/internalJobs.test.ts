@@ -245,3 +245,41 @@ test("cron-job.org trigger stays off without a dedicated production token", asyn
     await server.close();
   }
 });
+
+test("protected cron status reports aggregate counts without running the delivery job", async () => {
+  const usedNonces = new Set<string>();
+  let runs = 0;
+  const server = await startServer(createInternalJobsRouter({
+    getCronToken: () => SECRET,
+    now: () => NOW,
+    claimNonce: async (nonce) => {
+      if (usedNonces.has(nonce)) return false;
+      usedNonces.add(nonce);
+      return true;
+    },
+    runGameOnAlerts: async () => { runs += 1; },
+    getStatus: async () => ({
+      lastSuccessAt: new Date(NOW - 5 * 60_000),
+      pending: 2, due: 1, sent: 3, failed: 1, uncertain: 0, cancelled: 0,
+    }),
+  }));
+  const url = `${server.url}/cron`;
+  const headers = {
+    "x-game-on-alerts-timestamp": String(Math.floor(NOW / 1000)),
+    "x-game-on-alerts-nonce": randomUUID(),
+    "x-game-on-alerts-token": SECRET,
+  };
+  try {
+    const response = await fetch(url, { method: "GET", headers });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      success: true, lastSuccessAt: new Date(NOW - 5 * 60_000).toISOString(),
+      pending: 2, due: 1, sent: 3, failed: 1, uncertain: 0, cancelled: 0,
+    });
+    assert.equal(runs, 0);
+    assert.equal((await fetch(url, { method: "GET", headers })).status, 409);
+    assert.equal((await fetch(url, { method: "GET", headers: { ...headers, "x-game-on-alerts-nonce": randomUUID(), "x-game-on-alerts-token": "wrong" } })).status, 401);
+  } finally {
+    await server.close();
+  }
+});

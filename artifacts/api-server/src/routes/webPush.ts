@@ -18,6 +18,7 @@ import {
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { getWebPushConfig, isAllowedPushEndpoint, sendPushNotificationToUser } from "../lib/webPush";
+import { queueGameOnOwnerSync } from "../jobs/gameOnReminderQueue";
 
 const router: IRouter = Router();
 
@@ -69,6 +70,11 @@ router.patch("/notifications/preferences", requireAuth, async (req, res): Promis
         oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
         dayOf: plannerNotificationPreferencesTable.dayOf,
       });
+    try {
+      await queueGameOnOwnerSync(ownerClerkUserId);
+    } catch {
+      req.log.warn("Notification preferences saved; reminder scheduling needs reconciliation");
+    }
     res.json(preferences);
   } catch (error) {
     req.log.error({ err: error }, "Unable to save notification preferences");
@@ -117,6 +123,11 @@ router.post("/notifications/subscriptions", requireAuth, async (req, res): Promi
         updatedAt: new Date(),
       },
     });
+    try {
+      await queueGameOnOwnerSync(ownerClerkUserId);
+    } catch {
+      req.log.warn("Push subscription saved; reminder scheduling needs reconciliation");
+    }
     res.status(204).end();
   } catch (error) {
     req.log.error({ err: error }, "Unable to save push subscription");
@@ -156,6 +167,11 @@ router.delete("/notifications/subscriptions", requireAuth, async (req, res): Pro
       eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId),
       eq(webPushSubscriptionsTable.endpoint, endpoint.toString()),
     ));
+    try {
+      await queueGameOnOwnerSync(ownerClerkUserId);
+    } catch {
+      req.log.warn("Push subscription removed; reminder scheduling needs reconciliation");
+    }
     res.status(204).end();
   } catch (error) {
     req.log.error({ err: error }, "Unable to remove push subscription");

@@ -33,6 +33,7 @@ import {
   type GameOnCardEvent as GameOnDraft,
   type SavedGameOnCard,
 } from './game-on-card-storage';
+import { getBrowserTimeZone, getGameOnTimeZoneOptions, resolveGameOnTimeZone } from './game-on-timezone';
 
 type GameOnEventType = 'game' | 'practice';
 type CardEvent = GameOnDraft & { type?: GameOnEventType };
@@ -68,6 +69,7 @@ function blankDraft(type: GameOnEventType = 'game'): CardEvent {
     id: createEventId(),
     date: '',
     time: '',
+    timezone: getBrowserTimeZone(),
     location: '',
     opponent: '',
     status: 'upcoming',
@@ -81,6 +83,7 @@ function draftFromEvent(event: SupporterEvent): CardEvent {
     id: event.id,
     date: event.date,
     time: event.time,
+    timezone: resolveGameOnTimeZone(event.timezone),
     location: event.location,
     opponent: type === 'practice' ? '' : event.opponent ?? '',
     status: event.status ?? 'upcoming',
@@ -91,7 +94,12 @@ function draftFromEvent(event: SupporterEvent): CardEvent {
 function eventFromSaved(saved: SavedGameOnCard): CardEvent {
   const event = saved.event as CardEvent;
   const type = event.type === 'practice' ? 'practice' : 'game';
-  return { ...event, type, opponent: type === 'practice' ? '' : event.opponent };
+  return {
+    ...event,
+    type,
+    timezone: resolveGameOnTimeZone(event.timezone),
+    opponent: type === 'practice' ? '' : event.opponent,
+  };
 }
 
 function appAbsoluteUrl(path: string) {
@@ -118,6 +126,7 @@ function publicEventPayload(event: CardEvent) {
     status: event.status,
     date: event.date,
     time: event.time,
+    timezone: resolveGameOnTimeZone(event.timezone),
     location: event.location,
     opponent: event.type === 'practice' ? '' : event.opponent.trim(),
     snacks: '',
@@ -281,6 +290,7 @@ export function GameOnCardPanel({
         opponent: isPractice ? '' : draft.opponent.trim(),
         location: draft.location.trim(),
         time: draft.time.trim(),
+        timezone: resolveGameOnTimeZone(draft.timezone),
       };
       if (sourceEventId !== 'new' && scheduledEvents.some((scheduled) => scheduled.id === event.id)) {
         if (!onSaveCalendarEvent) throw new Error('Calendar editing is unavailable. Refresh and try again.');
@@ -577,6 +587,19 @@ export function GameOnCardPanel({
                     className="min-h-11 w-full rounded-[10px] border border-white/20 bg-white/5 px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
                     data-testid="input-game-on-time"
                   />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Time zone</span>
+                  <select
+                    value={draft.timezone ?? getBrowserTimeZone()}
+                    onChange={(event) => setDraft((current) => ({ ...current, timezone: event.target.value }))}
+                    className="min-h-11 w-full rounded-[10px] border border-white/20 bg-[#0B1F3A] px-3 text-sm font-semibold text-white outline-none focus:border-[#55A4FF]"
+                    data-testid="select-game-on-timezone"
+                  >
+                    {getGameOnTimeZoneOptions(draft.timezone).map((timezone) => (
+                      <option key={timezone} value={timezone}>{timezone}</option>
+                    ))}
+                  </select>
                 </label>
                 <label className="block sm:col-span-2">
                   <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/55">Location</span>

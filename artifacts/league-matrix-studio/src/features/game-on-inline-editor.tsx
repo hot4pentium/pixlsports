@@ -16,8 +16,9 @@ import {
   type LocalGamedayChecklist,
 } from './gameday-checklist';
 import { removeSavedGameOnCard, upsertSavedGameOnCard } from './game-on-card-storage';
+import { getBrowserTimeZone, getGameOnTimeZoneOptions, resolveGameOnTimeZone } from './game-on-timezone';
 
-type EventFields = Pick<SupporterEvent, 'date' | 'time' | 'location' | 'opponent'>;
+type EventFields = Pick<SupporterEvent, 'date' | 'time' | 'timezone' | 'location' | 'opponent'>;
 
 type Props = {
   card: GameOnDashboardEntry;
@@ -53,7 +54,11 @@ export function GameOnInlineEditor({
   onChanged,
 }: Props) {
   const [fields, setFields] = useState<EventFields>({
-    date: card.date, time: card.time, location: card.location, opponent: card.opponent,
+    date: card.date,
+    time: card.time,
+    timezone: resolveGameOnTimeZone(scheduledEvent?.timezone ?? card.timezone),
+    location: card.location,
+    opponent: card.opponent,
   });
   const [prep, setPrep] = useState(() => initialChecklist(userId, card));
   const [busy, setBusy] = useState(false);
@@ -68,6 +73,7 @@ export function GameOnInlineEditor({
     type: card.type,
     date: fields.date,
     time: fields.time,
+    timezone: fields.timezone ?? getBrowserTimeZone(),
     location: fields.location.trim(),
     opponent: isPractice ? '' : (fields.opponent ?? '').trim(),
     status: scheduledEvent?.status ?? 'upcoming',
@@ -172,6 +178,13 @@ export function GameOnInlineEditor({
         </label>}
         <label>Date <input type="date" value={fields.date} onChange={(e) => setFields({ ...fields, date: e.target.value })} data-testid="input-inline-date" /></label>
         <label>Start time <input type="time" value={fields.time} onChange={(e) => setFields({ ...fields, time: e.target.value })} data-testid="input-inline-time" /></label>
+        <label className="game-on-inline__wide">Time zone
+          <select value={fields.timezone ?? getBrowserTimeZone()} onChange={(e) => setFields({ ...fields, timezone: e.target.value })} data-testid="select-inline-timezone">
+            {getGameOnTimeZoneOptions(fields.timezone).map((timezone) => (
+              <option key={timezone} value={timezone}>{timezone}</option>
+            ))}
+          </select>
+        </label>
         <label className="game-on-inline__wide">Location
           <input value={fields.location} maxLength={300} onChange={(e) => setFields({ ...fields, location: e.target.value })} data-testid="input-inline-location" />
         </label>
