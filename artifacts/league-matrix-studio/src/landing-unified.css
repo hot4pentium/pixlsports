@@ -77,8 +77,15 @@
 .new-landing .section-intro h2, .new-landing .athlete-copy h2, .new-landing .tools-section h2 { font-size: clamp(51px, 5.25vw, 80px); max-width: 540px; }
 .new-landing .section-intro > p { max-width: 420px; color: #506773; font-size: 15px; line-height: 1.8; padding-bottom: 7px; }
 .new-landing .week-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
-.new-landing .step-card { min-height: 232px; background: #fff; border: 1px solid #e2ebea; border-radius: 13px; padding: 23px 22px 26px; box-shadow: 0 13px 25px #18354508; transition: transform .25s ease, box-shadow .25s ease; }
-.new-landing .step-card:hover { transform: translateY(-5px); box-shadow: 0 18px 30px #18354516; }
+.new-landing .step-card { min-height: 232px; border: 1px solid #dce8e5; border-radius: 13px; padding: 23px 22px 26px; box-shadow: inset 0 1px 0 #fff, 0 13px 25px #1835450b; transition: transform .25s ease, box-shadow .25s ease; }
+.new-landing .step-card, .new-landing .step-card .plan-face--front {
+  background-color: #fbfdfa;
+  background-image:
+    radial-gradient(circle at 15% 12%, #c9f45a24, transparent 40%),
+    radial-gradient(circle at 92% 100%, #4d8e9d16, transparent 48%),
+    repeating-linear-gradient(135deg, #08233608 0 1px, transparent 1px 9px);
+}
+.new-landing .step-card:hover { transform: translateY(-5px); box-shadow: inset 0 1px 0 #fff, 0 18px 30px #18354516; }
 .new-landing .step-card .step-top { display: flex; align-items: start; justify-content: space-between; }
 .new-landing .step-card .step-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 8px; background: #dcebed; color: #235b70; }
 .new-landing .step-card:last-child .step-icon { background: var(--pixl-lime); color: var(--pixl-navy); }
