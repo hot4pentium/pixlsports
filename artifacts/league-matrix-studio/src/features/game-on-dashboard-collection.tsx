@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { Link } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Swords, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Swords, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
@@ -15,6 +15,7 @@ import './game-on-dashboard-collection.css';
 export type DashboardGameOnCard = {
   id: string;
   eventId?: string;
+  shareToken?: string;
   layoutId?: string;
   type: 'game' | 'practice';
   athleteName: string;
@@ -40,6 +41,7 @@ type GameOnDashboardCollectionProps = {
   createDisabled?: boolean;
   onOpen: (id: string, trigger?: HTMLButtonElement) => void;
   onCancelDraft?: () => void;
+  onDeleteCard?: (card: DashboardGameOnCard) => Promise<void>;
   selectedId?: string;
   isActiveShell?: boolean;
   featuredCardId?: string;
@@ -382,6 +384,7 @@ export function GameOnDashboardCollection({
   createDisabled = false,
   onOpen,
   onCancelDraft,
+  onDeleteCard,
   selectedId,
   isActiveShell = true,
   featuredCardId,
@@ -395,6 +398,10 @@ export function GameOnDashboardCollection({
 }: GameOnDashboardCollectionProps) {
   const [openPanel, setOpenPanel] = useState<{ cardId: string; panel: 'calendar' | 'prep' | 'tracker' } | null>(null);
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
+  const [deleteAnnouncement, setDeleteAnnouncement] = useState('');
+  const [deleteConfirmationCardId, setDeleteConfirmationCardId] = useState<string | null>(null);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const collectionRef = useRef<HTMLElement | null>(null);
@@ -426,6 +433,26 @@ export function GameOnDashboardCollection({
     const gameLabel = opponent ? `Game vs ${opponent}` : 'Game';
     setCompletionAnnouncement(`${gameLabel} is complete.`);
   };
+  const confirmDeleteCard = async () => {
+    if (!selectedCard || !onDeleteCard) return;
+    const card = selectedCard;
+    setDeletingCardId(card.id);
+    setDeleteError('');
+    try {
+      await onDeleteCard(card);
+      setDeleteConfirmationCardId(null);
+      setDeleteAnnouncement(`${card.type === 'practice' ? 'Practice' : 'Game'} On Card deleted. Its public link is no longer available.`);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Unable to delete this Game On card. Try again.');
+    } finally {
+      setDeletingCardId(null);
+    }
+  };
+
+  useEffect(() => {
+    setDeleteConfirmationCardId(null);
+    setDeleteError('');
+  }, [selectedCard?.id]);
 
   useLayoutEffect(() => {
     if (!openPanel && restorePanelFocusRef.current) {
@@ -500,6 +527,9 @@ export function GameOnDashboardCollection({
     <section ref={setCollectionRef} id={isActiveShell ? GAME_ON_COLLECTION_ID : undefined} className="game-on-collection" aria-labelledby={labelId} data-testid="game-on-dashboard-collection">
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="status-game-completion-announcement">
         {completionAnnouncement}
+      </p>
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="status-game-on-delete-announcement">
+        {deleteAnnouncement}
       </p>
       <div className="game-on-collection__inner">
         <div className="game-on-collection__header">
@@ -676,6 +706,51 @@ export function GameOnDashboardCollection({
                     renderSelectedCard={renderSelectedCard}
                   />
                 </div>
+                {onDeleteCard && selectedCard.shareToken && !selectedCard.isUnsavedDraft && (
+                  <div className="mt-4 border-t border-border/70 pt-4">
+                    {deleteConfirmationCardId === selectedCard.id ? (
+                      <div role="group" aria-labelledby={`delete-game-on-title-${dialogId}`} data-testid={`confirm-delete-game-on-card-${selectedCard.id}`}>
+                        <h3 id={`delete-game-on-title-${dialogId}`} className="text-sm font-bold uppercase tracking-wide text-destructive">
+                          Delete this Game On card?
+                        </h3>
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                          This deletes the Game On Card and the event details saved in its public link. A separate Calendar schedule is not changed here. This can’t be undone.
+                        </p>
+                        {deleteError && <p className="mt-3 text-sm font-medium text-destructive" role="alert">{deleteError}</p>}
+                        <div className="mt-4 flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            className="min-h-10 border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-50"
+                            onClick={() => { setDeleteConfirmationCardId(null); setDeleteError(''); }}
+                            disabled={deletingCardId === selectedCard.id}
+                            data-testid={`button-cancel-delete-game-on-card-${selectedCard.id}`}
+                          >
+                            Keep card
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex min-h-10 items-center gap-2 bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground disabled:cursor-wait disabled:opacity-50"
+                            onClick={() => void confirmDeleteCard()}
+                            disabled={deletingCardId === selectedCard.id}
+                            data-testid={`button-confirm-delete-game-on-card-${selectedCard.id}`}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            {deletingCardId === selectedCard.id ? 'Deleting…' : 'Delete Game On Card'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="inline-flex min-h-10 items-center gap-2 border border-destructive/40 px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive transition-colors hover:border-destructive hover:bg-destructive/5"
+                        onClick={() => { setDeleteError(''); setDeleteConfirmationCardId(selectedCard.id); }}
+                        data-testid={`button-delete-game-on-card-${selectedCard.id}`}
+                      >
+                        <Trash2 size={14} aria-hidden="true" /> Delete card
+                      </button>
+                    )}
+                  </div>
+                )}
               </DialogPrimitive.Content>
             </DialogPortal>
           )}

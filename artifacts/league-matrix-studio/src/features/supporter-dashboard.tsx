@@ -10,6 +10,7 @@ import {
   useListAthleteInvites,
   useListProjects,
   useListOwnedGameOnCards,
+  useDeleteScheduleShare,
   useUpdateSupporterActiveGame,
 } from '@workspace/api-client-react';
 import {
@@ -45,9 +46,10 @@ import { GameOnInlineEditor } from './game-on-inline-editor';
 import {
   GameOnDashboardCollection,
   type GameOnCardRenderOptions,
+  type DashboardGameOnCard,
 } from './game-on-dashboard-collection';
 import { buildGameOnDashboardEntries, getFeaturedGameOnCardId, getNextGameOnDashboardEntry, sortGameOnCardsByDate, type OwnedGameOnShare } from './game-on-dashboard-model';
-import { readSavedGameOnCards, type SavedGameOnCard } from './game-on-card-storage';
+import { readSavedGameOnCards, removeSavedGameOnCard, type SavedGameOnCard } from './game-on-card-storage';
 import { getBrowserTimeZone } from './game-on-timezone';
 import { combineTrackerReviewHistory, getTrackerStorageKeys, readStoredTrackerData, type GameSession, type Sport } from './stat-tracker';
 import { consumeCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
@@ -348,6 +350,7 @@ export function SupporterDashboardView({
   });
   const fanCardHref = getSupporterFanCardHref(athleteInvitesQuery.data ?? [], profile);
   const updateActiveGameSelection = useUpdateSupporterActiveGame();
+  const deleteScheduleShare = useDeleteScheduleShare();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -600,6 +603,16 @@ export function SupporterDashboardView({
     }
     setCardSelection(null);
   };
+  const deleteGameOnCard = useCallback(async (card: DashboardGameOnCard) => {
+    if (!userId) throw new Error('Sign in to delete this Game On card.');
+    if (!card.shareToken) throw new Error('This card is not saved yet.');
+
+    await deleteScheduleShare.mutateAsync({ shareToken: card.shareToken });
+    removeSavedGameOnCard(userId, card.shareToken);
+    setLocalGameOnCards((current) => current.filter((saved) => saved.shareToken !== card.shareToken));
+    setCardSelection(null);
+    void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
+  }, [deleteScheduleShare, queryClient, userId]);
   const renderSelectedGameOnCard = (
     card: (typeof collectionCards)[number],
     surface: 'mobile' | 'desktop',
@@ -1112,6 +1125,7 @@ export function SupporterDashboardView({
             createDisabled={Boolean(newCardDraft)}
             onOpen={selectCard}
             onCancelDraft={cancelNewCardDraft}
+            onDeleteCard={deleteGameOnCard}
             selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
             isActiveShell={!isDesktopDashboard}
             featuredCardId={featuredCardId}
@@ -1202,6 +1216,7 @@ export function SupporterDashboardView({
         createDisabled={Boolean(newCardDraft)}
         onOpen={selectCard}
         onCancelDraft={cancelNewCardDraft}
+        onDeleteCard={deleteGameOnCard}
         selectedId={newCardDraft?.editing ? newCardDraft.id : cardSelection?.id}
         isActiveShell={isDesktopDashboard}
         featuredCardId={featuredCardId}
