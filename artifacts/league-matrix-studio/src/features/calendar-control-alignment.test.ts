@@ -18,17 +18,21 @@ test('standalone Calendar routes show a clear retired notice and cannot reach th
   assert.match(appSource, /function PublicSchedulePage\(\)[\s\S]*?return <RetiredSchedulePage \/>/);
 });
 
-test('the supporter tour has four steps and omits Calendar', () => {
-  assert.equal((tourSource.match(/title: "/g) ?? []).length, 4);
+test('the supporter tour is an informational modal with optional phone install guidance', () => {
+  assert.equal((tourSource.match(/title: "/g) ?? []).length, 5);
   assert.doesNotMatch(tourSource, /title: "Calendar"|Open Calendar|supporterToolRoutes\.schedule/);
   assert.match(tourSource, /title: "Prep"/);
   assert.doesNotMatch(tourSource, /title: "Checklist"|supporterToolRoutes\.checklist|supporterToolRoutes\.statTracker/);
-  assert.match(tourSource, /Show compact tracker/);
-  assert.match(tourSource, /onOpenCardPanel\?\.\(step\.panel!/);
-  assert.match(supporterDashboard, /tourPanelRequest=\{tourPanelRequest\}/);
-  assert.match(gameOnCollection, /setOpenPanel\(\{ cardId: tourPanelRequest\.cardId, panel: tourPanelRequest\.panel \}\)/);
+  assert.match(tourSource, /title: "Stat Tracker"/);
+  assert.match(tourSource, /homeScreenGuide: true/);
+  assert.match(tourSource, /iPhone or iPad/);
+  assert.match(tourSource, /Android/);
+  assert.match(tourSource, /On desktop/);
+  assert.match(tourSource, /aria-modal="true"/);
+  assert.doesNotMatch(tourSource, /supporter-dashboard-tour-link|onOpenCardPanel|<a\b/);
+  assert.doesNotMatch(supporterDashboard, /tourPanelRequest|openTourCardPanel/);
+  assert.doesNotMatch(gameOnCollection, /tourPanelRequest|handledTourRequestRef/);
   assert.match(tourSource, /readDashboardTourProgress\(sessionStorageOrNull\(\), userId, steps\.length\)/);
-  assert.match(tourSource, /target="_blank" rel="noopener noreferrer"/);
 });
 
 test('the Game On card keeps list editing and link sharing in Prep without a second editor button', () => {

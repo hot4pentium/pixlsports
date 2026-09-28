@@ -366,8 +366,6 @@ export function SupporterDashboardView({
   });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
   const [cardSelection, setCardSelection] = useState<{ kind: 'event' | 'share'; id: string; nonce: number } | null>(null);
-  const [tourPanelRequest, setTourPanelRequest] = useState<{ cardId: string; panel: 'prep' | 'tracker'; nonce: number; trigger: HTMLButtonElement } | null>(null);
-  const nextTourPanelNonce = useRef(0);
   const [newCardDraft, setNewCardDraft] = useState<{
     id: string;
     nonce: number;
@@ -530,20 +528,6 @@ export function SupporterDashboardView({
        .map((card) => ({ ...card, layoutId: cardLayoutIds[card.id] ?? card.id, recordedGameId: recordedGameForCard(card)?.id })),
     ...(newDraftCollectionCard ? [newDraftCollectionCard] : []),
   ]);
-  const tourPrepCard = !newCardDraft ? collectionCards[0] : undefined;
-  const tourTrackerCard = !newCardDraft ? collectionCards.find((card) => (
-    card.type === 'game' && !('recordedGameId' in card && card.recordedGameId) && card.status !== 'Complete'
-  )) : undefined;
-  const openTourCardPanel = (panel: 'prep' | 'tracker', trigger: HTMLButtonElement) => {
-    const card = panel === 'prep' ? tourPrepCard : tourTrackerCard;
-    if (!card) return;
-    setCardSelection((previous) => ({
-      kind: card.id.startsWith('share:') ? 'share' : 'event',
-      id: card.id,
-      nonce: (previous?.nonce ?? 0) + 1,
-    }));
-    setTourPanelRequest({ cardId: card.id, panel, nonce: ++nextTourPanelNonce.current, trigger });
-  };
   const featuredCardId = getFeaturedGameOnCardId(collectionCards, currentTime);
   const updateNewCardDraft = useCallback((event: SupporterEvent, sourceEventId: string) => {
     setNewCardDraft((previous) => {
@@ -1111,7 +1095,7 @@ export function SupporterDashboardView({
             sport={recordSport}
             record={gameRecord}
             headerAction={!isDesktopDashboard && onTourDismiss ? (
-              <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
+              <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} />
             ) : undefined}
           >
             {renderGameOnEventContent('mobile')}
@@ -1132,7 +1116,6 @@ export function SupporterDashboardView({
             statTrackerAthleteName={profile.athleteName}
             statTrackerTeamName={profile.teamName}
             onCompleteScheduledGame={onCompleteScheduledGame}
-              tourPanelRequest={tourPanelRequest}
           />
           <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-mobile">
             <Link href={dashboardStatsHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-stats">
@@ -1202,7 +1185,7 @@ export function SupporterDashboardView({
         sport={recordSport}
         record={gameRecord}
         headerAction={isDesktopDashboard && onTourDismiss ? (
-          <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} canOpenPrep={Boolean(tourPrepCard)} canOpenCompactTracker={Boolean(tourTrackerCard)} onOpenCardPanel={openTourCardPanel} />
+          <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} />
         ) : undefined}
       >
         {renderGameOnEventContent('desktop')}
@@ -1223,7 +1206,6 @@ export function SupporterDashboardView({
         statTrackerAthleteName={profile.athleteName}
         statTrackerTeamName={profile.teamName}
         onCompleteScheduledGame={onCompleteScheduledGame}
-        tourPanelRequest={tourPanelRequest}
       />
       <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-desktop">
         <Link href={dashboardStatsHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-stats">

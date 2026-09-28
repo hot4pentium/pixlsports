@@ -1,6 +1,4 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import { GAME_ON_COLLECTION_ID } from "./game-on-navigation";
-import { supporterToolRoutes } from "./supporter-dashboard-model";
 import { clearDashboardTourProgress, readDashboardTourProgress, saveDashboardTourProgress } from "./supporter-dashboard-tour-state";
 import "./supporter-dashboard-tour.css";
 
@@ -11,48 +9,39 @@ export type SupporterDashboardTourProps = {
   userId?: string | null;
   autoStart: boolean;
   onDismiss: (kind: DismissKind) => Promise<void>;
-  canOpenPrep?: boolean;
-  canOpenCompactTracker?: boolean;
-  onOpenCardPanel?: (panel: "prep" | "tracker", trigger: HTMLButtonElement) => void;
 };
 
 const steps: ReadonlyArray<{
   title: string;
   phase: Phase;
   description: string;
-  linkLabel: string;
-  href: string;
-  panel?: "prep" | "tracker";
+  homeScreenGuide?: boolean;
 }> = [
   {
     title: "Game On cards",
     phase: "prepare",
-    description: "Create an event card for each game or practice to keep the details organized.",
-    linkLabel: "Explore Game On cards",
-    href: `#${GAME_ON_COLLECTION_ID}`,
+    description: "Keep each game or practice’s time, place, and details together on a shareable card, so everyone knows what to expect.",
   },
   {
     title: "Prep",
     phase: "prepare",
-    description: "Use Prep on a Game On card to make your list, add notes, and create an edit link for the people helping.",
-    linkLabel: "Show card Prep",
-    href: `#${GAME_ON_COLLECTION_ID}`,
-    panel: "prep",
+    description: "Use Prep on a Game On card to make a checklist, add notes, and share an edit link with the people helping.",
   },
   {
     title: "Stat Tracker",
     phase: "capture",
-    description: "Open the compact Stat Tracker on a game card to record plays without leaving your Game On card.",
-    linkLabel: "Show compact tracker",
-    href: `#${GAME_ON_COLLECTION_ID}`,
-    panel: "tracker",
+    description: "Record plays from a game card while you watch. The compact tracker keeps each play connected to the right game.",
   },
   {
     title: "Athlete fan card",
     phase: "celebrate",
-    description: "Create and manage one evolving card where fans can follow your athlete’s highlights and season.",
-    linkLabel: "Manage athlete fan card",
-    href: supporterToolRoutes.athletePage,
+    description: "Create one evolving card where fans can follow your athlete’s highlights and season.",
+  },
+  {
+    title: "Add Pixl Sports to your home screen",
+    phase: "celebrate",
+    description: "A home-screen shortcut makes it faster to get back to your athlete’s game-day details and fan card. This is optional; you can finish the tour without installing anything.",
+    homeScreenGuide: true,
   },
 ];
 
@@ -64,7 +53,7 @@ function sessionStorageOrNull(): Storage | null {
   }
 }
 
-export function SupporterDashboardTour({ userId, autoStart, onDismiss, canOpenPrep = false, canOpenCompactTracker = false, onOpenCardPanel }: SupporterDashboardTourProps) {
+export function SupporterDashboardTour({ userId, autoStart, onDismiss }: SupporterDashboardTourProps) {
   const [resumedStep] = useState(() => readDashboardTourProgress(sessionStorageOrNull(), userId, steps.length));
   const [open, setOpen] = useState(resumedStep !== null);
   const [stepIndex, setStepIndex] = useState(resumedStep ?? 0);
@@ -73,6 +62,7 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss, canOpenPr
   const hasStartedRef = useRef(resumedStep !== null);
   const pendingRef = useRef(false);
   const restoreFocusRef = useRef(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const replayRef = useRef<HTMLButtonElement>(null);
 
@@ -90,7 +80,14 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss, canOpenPr
   }, [open, stepIndex, userId]);
 
   useEffect(() => {
-    if (open) headingRef.current?.focus();
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open) {
+      if (!dialog.open) dialog.showModal();
+      headingRef.current?.focus();
+    } else if (dialog.open) {
+      dialog.close();
+    }
   }, [open, stepIndex]);
 
   useEffect(() => {
@@ -130,9 +127,6 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss, canOpenPr
   };
 
   const step = steps[stepIndex];
-  const canOpenPanel = Boolean(onOpenCardPanel && (
-    (step.panel === "prep" && canOpenPrep) || (step.panel === "tracker" && canOpenCompactTracker)
-  ));
 
   return (
     <div className="supporter-tour" data-testid="supporter-dashboard-tour">
@@ -150,128 +144,119 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss, canOpenPr
         {open ? "Start tour over" : "Tour the dashboard"}
       </button>
 
-      {open && (
-        <section
-          id="supporter-dashboard-tour-panel"
-          className="supporter-tour__card"
-          aria-labelledby="supporter-dashboard-tour-heading"
-          aria-describedby="supporter-dashboard-tour-description"
-          aria-busy={pending}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.stopPropagation();
-              event.preventDefault();
-              void dismiss("skip");
-            }
-          }}
-        >
-          <div className="supporter-tour__inner">
-            <div className="supporter-tour__topline">
-              <span>Your game-day route</span>
-              <span className="supporter-tour__count" aria-label={`Step ${stepIndex + 1} of ${steps.length}`}>
-                {String(stepIndex + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}
-              </span>
-            </div>
-
-            <div className="supporter-tour__path" role="group" aria-label="Prepare, then capture, then celebrate">
-              {(["prepare", "capture", "celebrate"] as const).map((phase, index) => (
-                <Fragment key={phase}>
-                  {index > 0 && <span className="supporter-tour__path-arrow" aria-hidden="true">→</span>}
-                  <span className="supporter-tour__phase" data-active={step.phase === phase}>{phase}</span>
-                </Fragment>
-              ))}
-            </div>
-
-            <div data-testid="supporter-dashboard-tour-step">
-              <h2
-                ref={headingRef}
-                id="supporter-dashboard-tour-heading"
-                className="supporter-tour__heading"
-                tabIndex={-1}
-              >
-                {step.title}
-              </h2>
-              <p id="supporter-dashboard-tour-description" className="supporter-tour__description">
-                {step.description}
-              </p>
-              {step.panel && canOpenPanel ? (
-                <button
-                  type="button"
-                  className="supporter-tour__visit"
-                  onClick={(event) => onOpenCardPanel?.(step.panel!, event.currentTarget)}
-                  data-testid="supporter-dashboard-tour-link"
-                >
-                  {step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
-                </button>
-              ) : step.href.startsWith("#") ? (
-                <a className="supporter-tour__visit" href={step.href} data-testid="supporter-dashboard-tour-link">
-                  {step.panel ? step.panel === "prep" ? "Add a Game On card for Prep" : "Add a game card for tracking" : step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
-                </a>
-              ) : (
-                <a className="supporter-tour__visit" href={step.href} target="_blank" rel="noopener noreferrer" data-testid="supporter-dashboard-tour-link">
-                  {step.linkLabel} <span className="supporter-tour__visit-arrow" aria-hidden="true">↗</span>
-                </a>
-              )}
-              {!step.panel && !step.href.startsWith("#") && (
-                <p className="supporter-tour__example-hint">Opens in a new tab. Return here to finish the tour.</p>
-              )}
-            </div>
-
-            <div className="supporter-tour__progress" aria-hidden="true">
-              {steps.map((item, index) => (
-                <span className="supporter-tour__progress-piece" data-complete={index <= stepIndex} key={item.title} />
-              ))}
-            </div>
-            {error && (
-              <p role="alert" className="supporter-tour__error" data-testid="supporter-dashboard-tour-error">
-                Your choice could not be saved. Try Finish or Skip again.
-              </p>
-            )}
-            {pending && <p role="status" className="supporter-tour__saving">Saving your choice…</p>}
-            <div className="supporter-tour__controls">
-              <button
-                type="button"
-                className="supporter-tour__control supporter-tour__control--skip"
-                onClick={() => void dismiss("skip")}
-                disabled={pending}
-                data-testid="supporter-dashboard-tour-skip"
-              >
-                Skip
-              </button>
-              <button
-                type="button"
-                className="supporter-tour__control"
-                onClick={() => { setError(false); setStepIndex((index) => Math.max(0, index - 1)); }}
-                disabled={stepIndex === 0 || pending}
-                data-testid="supporter-dashboard-tour-back"
-              >
-                Back
-              </button>
-              {stepIndex < steps.length - 1 ? (
-                <button
-                  type="button"
-                  className="supporter-tour__control supporter-tour__control--primary"
-                  onClick={() => { setError(false); setStepIndex((index) => index + 1); }}
-                  disabled={pending}
-                  data-testid="supporter-dashboard-tour-next"
-                >
-                  Next
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="supporter-tour__control supporter-tour__control--primary"
-                  onClick={() => void dismiss("finish")}
-                  disabled={pending}
-                  data-testid="supporter-dashboard-tour-finish"
-                >
-                  Finish
-                </button>
-              )}
-            </div>
+      <dialog
+        ref={dialogRef}
+        className="supporter-tour__dialog"
+        id="supporter-dashboard-tour-panel"
+        aria-modal="true"
+        aria-labelledby="supporter-dashboard-tour-heading"
+        aria-describedby="supporter-dashboard-tour-description"
+        aria-busy={pending}
+        onCancel={(event) => {
+          event.preventDefault();
+          void dismiss("skip");
+        }}
+      >
+        <div className="supporter-tour__inner">
+          <div className="supporter-tour__topline">
+            <span>{step.homeScreenGuide ? "Optional home-screen setup" : "Your game-day route"}</span>
+            <span className="supporter-tour__count" aria-label={`Step ${stepIndex + 1} of ${steps.length}`}>
+              {String(stepIndex + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}
+            </span>
           </div>
-        </section>
-      )}
+
+          <div className="supporter-tour__path" role="group" aria-label="Prepare, then capture, then celebrate">
+            {(["prepare", "capture", "celebrate"] as const).map((phase, index) => (
+              <Fragment key={phase}>
+                {index > 0 && <span className="supporter-tour__path-arrow" aria-hidden="true">→</span>}
+                <span className="supporter-tour__phase" data-active={step.phase === phase}>{phase}</span>
+              </Fragment>
+            ))}
+          </div>
+
+          <div data-testid="supporter-dashboard-tour-step">
+            <h2
+              ref={headingRef}
+              id="supporter-dashboard-tour-heading"
+              className="supporter-tour__heading"
+              tabIndex={-1}
+            >
+              {step.title}
+            </h2>
+            <p id="supporter-dashboard-tour-description" className="supporter-tour__description">
+              {step.description}
+            </p>
+            {step.homeScreenGuide && (
+              <div className="supporter-tour__install-guidance" data-testid="supporter-dashboard-tour-install-guidance">
+                <section aria-labelledby="supporter-tour-ios-heading">
+                  <h3 id="supporter-tour-ios-heading">iPhone or iPad</h3>
+                  <p>Open this page in Safari, tap Share, choose Add to Home Screen, then tap Add.</p>
+                </section>
+                <section aria-labelledby="supporter-tour-android-heading">
+                  <h3 id="supporter-tour-android-heading">Android</h3>
+                  <p>In Chrome, open the three-dot menu and choose Add to Home screen or Install app, then tap Add or Install.</p>
+                </section>
+                <p className="supporter-tour__desktop-note">
+                  On desktop, you can use Chrome’s Install Pixl Sports option if it’s available, or bookmark this page. Both phone guides above stay visible so you can follow them later.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="supporter-tour__progress" aria-hidden="true">
+            {steps.map((item, index) => (
+              <span className="supporter-tour__progress-piece" data-complete={index <= stepIndex} key={item.title} />
+            ))}
+          </div>
+          {error && (
+            <p role="alert" className="supporter-tour__error" data-testid="supporter-dashboard-tour-error">
+              Your choice could not be saved. Try Finish or Skip again.
+            </p>
+          )}
+          {pending && <p role="status" className="supporter-tour__saving">Saving your choice…</p>}
+          <div className="supporter-tour__controls">
+            <button
+              type="button"
+              className="supporter-tour__control supporter-tour__control--skip"
+              onClick={() => void dismiss("skip")}
+              disabled={pending}
+              data-testid="supporter-dashboard-tour-skip"
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              className="supporter-tour__control"
+              onClick={() => { setError(false); setStepIndex((index) => Math.max(0, index - 1)); }}
+              disabled={stepIndex === 0 || pending}
+              data-testid="supporter-dashboard-tour-back"
+            >
+              Back
+            </button>
+            {stepIndex < steps.length - 1 ? (
+              <button
+                type="button"
+                className="supporter-tour__control supporter-tour__control--primary"
+                onClick={() => { setError(false); setStepIndex((index) => index + 1); }}
+                disabled={pending}
+                data-testid="supporter-dashboard-tour-next"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="supporter-tour__control supporter-tour__control--primary"
+                onClick={() => void dismiss("finish")}
+                disabled={pending}
+                data-testid="supporter-dashboard-tour-finish"
+              >
+                Finish
+              </button>
+            )}
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }
