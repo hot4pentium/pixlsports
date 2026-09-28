@@ -21,7 +21,7 @@ test('legacy metadata always reaches the supporter studio', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'legacy' } })), 'supporter');
 });
 
-test('the Hype Card action opens the matching living athlete card', () => {
+test('the HYPE Card action opens the matching athlete page', () => {
   const invites = [
     { inviteToken: 'north-token', athleteName: 'Casey Rivera', teamName: 'North Stars', paused: false },
     { inviteToken: 'south-token', athleteName: 'Casey Rivera', teamName: 'South Stars', paused: false },
@@ -66,7 +66,7 @@ test('custom saved schedules are selected when available', () => {
   });
 });
 
-test('the athlete fan card manager is the studio card entrypoint', () => {
+test('the HYPE Card manager is the studio card entrypoint', () => {
   assert.equal(supporterToolRoutes.athletePage, '/studio/athlete-page');
 });
 

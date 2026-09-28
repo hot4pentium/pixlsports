@@ -1122,7 +1122,7 @@ export function SupporterDashboardView({
               <Activity size={16} aria-hidden="true" /> View stats
             </Link>
             <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-hype">
-              <Zap size={16} aria-hidden="true" /> View athlete fan card
+              <Zap size={16} aria-hidden="true" /> View HYPE Card
             </Link>
           </div>
           {selectionSyncError && <p role="status" className="text-sm text-red-700" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
@@ -1212,7 +1212,7 @@ export function SupporterDashboardView({
           <Activity size={16} aria-hidden="true" /> View stats
         </Link>
         <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-hype">
-          <Zap size={16} aria-hidden="true" /> View athlete fan card
+          <Zap size={16} aria-hidden="true" /> View HYPE Card
         </Link>
       </div>
       {selectionSyncError && <p role="status" className="text-sm text-red-300" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
@@ -1328,11 +1328,11 @@ export function SupporterDashboardView({
         </section>
 
         <section className="border border-border bg-card p-6 clip-angled-sm" data-testid="section-athlete-fan-card">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Athlete fan card</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">HYPE Card</p>
           <h3 className="mt-2 font-display text-3xl uppercase tracking-wide">One story. One stable link.</h3>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">Create or manage the evolving card fans use to follow your athlete’s highlights and season.</p>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">Create or manage the evolving HYPE Card fans use to follow your athlete’s highlights and season.</p>
           <Link href="/studio/athlete-page" className="mt-5 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-manage-athlete-fan-card">
-            Manage athlete fan card
+            Manage HYPE Card
           </Link>
         </section>
 

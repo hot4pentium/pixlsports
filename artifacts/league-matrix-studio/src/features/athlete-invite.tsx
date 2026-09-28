@@ -219,12 +219,12 @@ export function AthleteInviteManager() {
   const copy = async () => {
     if (!existing) return;
     await navigator.clipboard.writeText(fanCardUrl(existing.inviteToken));
-    setNotice('Fan Hype Card URL copied.');
+    setNotice('HYPE Card URL copied.');
   };
   const share = async () => {
     if (!existing) return;
     const url = fanCardUrl(existing.inviteToken);
-    if (navigator.share) await navigator.share({ title: `${existing.athleteName} Hype Card`, text: `Follow ${existing.athleteName}'s season.`, url });
+    if (navigator.share) await navigator.share({ title: `${existing.athleteName} HYPE Card`, text: `Follow ${existing.athleteName}'s season.`, url });
     else await copy();
   };
   const toggleAvailability = async () => {
@@ -303,9 +303,9 @@ export function AthleteInviteManager() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      setNotice('Hosted image Hype Card downloaded.');
+      setNotice('Hosted HYPE Card image downloaded.');
     } catch {
-      setNotice('The hosted image Hype Card could not be downloaded.');
+      setNotice('The hosted HYPE Card image could not be downloaded.');
     }
   };
   const removeHostedImage = async (image: { shareToken: string; title: string }) => {
@@ -319,9 +319,9 @@ export function AthleteInviteManager() {
           ? [queryClient.invalidateQueries({ queryKey: getGetAthleteInviteQueryKey(existing.inviteToken) })]
           : []),
       ]);
-      setNotice('Hosted image Hype Card removed. The Athlete Hype Page and its other content were not changed.');
+      setNotice('Hosted HYPE Card image removed. The Athlete Hype Page and its other content were not changed.');
     } catch {
-      setNotice('The hosted image Hype Card could not be removed.');
+      setNotice('The hosted HYPE Card image could not be removed.');
     }
   };
   const retryHostedMedia = async () => {
@@ -337,29 +337,29 @@ export function AthleteInviteManager() {
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-8">
         <div className="flex flex-col justify-between gap-5 border-l-4 border-primary pl-5 sm:flex-row sm:items-end">
           <div>
-           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Athlete fan card</p>
+           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">HYPE Card</p>
             <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
-              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving athlete card with a photo, highlights, finalized stats, and season results.</p>
+              <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving HYPE Card with a photo, highlights, finalized stats, and season results.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
         </div>
 
-        <section className="mt-8" aria-label="Athlete fan card">
+        <section className="mt-8" aria-label="HYPE Card">
           {existing ? (
             <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Share with fans</p>
-              <h2 className="mt-2 font-display text-3xl uppercase">Athlete fan card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable card for the athlete’s season. Existing invite links open this same card.</p>
+              <h2 className="mt-2 font-display text-3xl uppercase">HYPE Card</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable HYPE Card for the athlete’s season. Existing invite links open this same card.</p>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Link href={`/fan/${existing.inviteToken}`} className="inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-open-fan-hype-card">Open fan card</Link>
-                <Link href={`/player/${existing.inviteToken}/manage`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-manage-athlete-card">Manage athlete card</Link>
+                <Link href={`/fan/${existing.inviteToken}`} className="inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-open-fan-hype-card">Open HYPE Card</Link>
+                <Link href={`/player/${existing.inviteToken}/manage`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-manage-athlete-card">Manage HYPE Card</Link>
               </div>
             </div>
           ) : (
             <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
-              <h2 className="mt-2 font-display text-3xl uppercase">Create the athlete fan card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable fan card for the season. Existing invite links will open it too.</p>
+              <h2 className="mt-2 font-display text-3xl uppercase">Create the HYPE Card</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable HYPE Card for the season. Existing invite links will open it too.</p>
             </div>
           )}
         </section>
@@ -775,7 +775,7 @@ function OwnerVideoUpload({
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">New highlight</p>
           <h4 id="add-athlete-video" className="mt-1 font-display text-2xl uppercase">Add a video here</h4>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose, trim, and post a clip directly to this athlete’s fan card.</p>
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose, trim, and post a clip directly to this athlete’s HYPE Card.</p>
         </div>
         <label className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center justify-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground ${atLimit || uploading || !draftReady ? 'pointer-events-none opacity-50' : 'hover:bg-primary/90'}`}>
           <Upload className="h-4 w-4" /> Add video
@@ -977,11 +977,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   };
   const copyFanCard = async () => {
     await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
-    setNotice('Fan Hype Card URL copied.');
+    setNotice('HYPE Card URL copied.');
   };
   const shareFanCard = async () => {
     const url = fanCardUrl(invite.inviteToken);
-    if (navigator.share) await navigator.share({ title: `${invite.athleteName} Hype Card`, text: `Follow ${invite.athleteName}'s season.`, url });
+    if (navigator.share) await navigator.share({ title: `${invite.athleteName} HYPE Card`, text: `Follow ${invite.athleteName}'s season.`, url });
     else await copyFanCard();
   };
   const toggleAvailability = async () => {
@@ -1052,7 +1052,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       <div className="flex flex-col gap-3 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Owner only</p>
-          <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase sm:text-5xl">Hype Card Manager</h2>
+          <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase sm:text-5xl">HYPE Card Manager</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Build and share your athlete&apos;s story. Choose what you want to do next.</p>
         </div>
         <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Back to studio</Link>
@@ -1062,11 +1062,11 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       <div className="mt-5 space-y-3">
       <HypeManagerTaskCard id="share" title="Share Hype Card" description="Choose a card to share" Icon={Share2} active={activeTask === 'share'} onSelect={() => toggleTask('share')} badge={invite.paused ? 'Paused' : 'Live'} preview={invite.photoUrl ? <img src={invite.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <span className="grid h-14 w-14 place-items-center bg-[#dceaf4] text-lg font-black text-[#102a4c]">{invite.athleteName.trim().charAt(0).toUpperCase() || 'P'}</span>}>
       <div>
-        <h3 className="font-display text-2xl uppercase">Share the fan Hype Card</h3>
+        <h3 className="font-display text-2xl uppercase">Share the HYPE Card</h3>
         <p className="mt-1 text-xs text-white/55">This is the main link for family and fans. It stays with this athlete as their season updates.</p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Link2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-          <input readOnly value={fanCardUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="Fan Hype Card URL" data-testid="input-fan-hype-card-url" />
+          <input readOnly value={fanCardUrl(invite.inviteToken)} onFocus={(event) => event.currentTarget.select()} className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white" aria-label="HYPE Card URL" data-testid="input-fan-hype-card-url" />
           <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={copyFanCard} data-testid="button-copy-fan-hype-card"><Clipboard className="mr-2 h-4 w-4" />Copy</Button>
           <Button type="button" className="rounded-none" onClick={shareFanCard} data-testid="button-share-fan-hype-card"><Share2 className="mr-2 h-4 w-4" />Share</Button>
           <Link href={`/fan/${invite.inviteToken}`} className="inline-flex min-h-10 items-center border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-preview-fan-hype-card">Preview</Link>
@@ -1093,7 +1093,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <p className="mt-1 text-xs text-white/60">Section switches save as soon as you change them.</p>
         <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showHypeCard', value)} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showStats', value)} />
-        <OwnerToggle label="Fan Shoutouts" detail="Fans can send a short encouragement from the living card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
+        <OwnerToggle label="Fan Shoutouts" detail="Fans can send a short encouragement from the HYPE Card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
         {visibilityStatus !== 'idle' && (
           <p
             className={`mt-4 text-xs font-semibold ${visibilityStatus === 'error' || visibilityStatus === 'refresh-error' ? 'text-amber-200' : 'text-white/70'}`}
@@ -1110,7 +1110,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       <HypeManagerTaskCard id="hypes" title="Fan Shoutouts" description="See messages from fans" Icon={MessageCircle} active={activeTask === 'hypes'} onSelect={() => toggleTask('hypes')} badge={hypes?.length ? `${hypes.length} received` : undefined}>
       <section aria-labelledby="owner-fan-hypes" data-testid="section-owner-fan-hypes">
         <h3 id="owner-fan-hypes" tabIndex={-1} className="font-display text-2xl uppercase">Fan Shoutouts</h3>
-        <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Shoutouts are on for the living card.' : 'Shoutouts are off. Earlier messages remain available to you.'}</p>
+        <p className="mt-2 text-sm text-white/60">{hypesEnabled ? 'Shoutouts are on for the HYPE Card.' : 'Shoutouts are off. Earlier messages remain available to you.'}</p>
         <p className="mt-2 text-xs text-white/50">When browser alerts are enabled, new Shoutouts open directly here. Alert previews do not show fan messages.</p>
         {hypesLoading ? <p role="status" className="mt-4 text-sm">Loading Shoutouts…</p>
           : hypesError ? <p role="alert" className="mt-4 text-sm">Could not load Shoutouts. Refresh to try again.</p>

@@ -21,7 +21,7 @@ test('fan Shoutouts keep owner-only privacy wording distinct from media replies'
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
-test('the new fan card Videos side excludes photos inherited from old Hype Card shares', () => {
+test('the HYPE Card Videos side excludes photos inherited from older shares', () => {
   const videosSide = livingCardSource.slice(
     livingCardSource.indexOf("{side === 'videos' && ("),
     livingCardSource.indexOf('<div className="living-card-controls"'),
@@ -40,7 +40,7 @@ test('public Athlete Hype Pages keep replies on-page and update recent reactions
   assert.doesNotMatch(source, /Send your own reply →/);
 });
 
-test('the athlete manager supports the living fan card and retires the legacy editor route', () => {
+test('the HYPE Card manager retires the legacy editor route', () => {
   assert.match(
     hypeCardSource,
     /const athleteHypePage = athleteInvites\?\.\[0\] \?\? null;/,
@@ -66,7 +66,7 @@ test('the athlete manager supports the living fan card and retires the legacy ed
   assert.match(appSource, /path="\/fan\/:inviteToken" component=\{LivingAthleteCardRoute\}/);
   assert.match(appSource, /path="\/player\/:inviteToken" component=\{LegacyAthleteInviteRedirect\}/);
   assert.match(source, /\{!existing && \(/);
-  assert.match(source, /Create the athlete fan card/);
+  assert.match(source, /Create the HYPE Card/);
   assert.match(hypeCardSource, /shareMode === 'stats' && \([\s\S]*?Link Stats Project/);
   assert.match(hypeCardSource, /trackerProjectId: isStatsOnly && shareTrackerProjectId !== 'none'/);
   assert.match(source, /const hostedVideoQuery = \{ shareMode: 'card' as const, mediaType: 'video' as const, limit: 10 \}/);
@@ -187,7 +187,8 @@ test('shared card omits the intro headline while keeping the owner manage link',
   assert.ok(introIndex >= 0 && manageIndex > introIndex && manageIndex < layoutIndex);
   assert.match(livingCardSource, /\{ownerInvite && \(\s*<div className="living-card-intro">\s*<Link className="living-card-manage"/);
   assert.match(livingCardSource, /<span>Manage this athletic card<\/span><ArrowRight aria-hidden="true" \/>/);
-  assert.doesNotMatch(livingCardSource, /One card\.|Every chapter\.|The living athlete card \//);
+  assert.match(livingCardSource, /aria-label=\{`\$\{invite\.athleteName\}'s HYPE Card`\}/);
+  assert.doesNotMatch(livingCardSource, /One card\.|Every chapter\./);
   assert.match(livingCardStyles, /\.living-card-manage \{[^}]*flex-wrap: nowrap/);
   assert.doesNotMatch(livingCardSource, /The same athlete, a new story after every game\. Keep this link close\./);
   assert.doesNotMatch(

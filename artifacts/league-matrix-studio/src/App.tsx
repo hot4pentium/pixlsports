@@ -244,9 +244,9 @@ const toolData: Record<ToolKind, {
 }> = {
   hype: {
     slug: 'athlete-page',
-    label: 'Athlete Fan Card',
+    label: 'HYPE Card',
     kicker: 'One story. One stable link.',
-    description: 'Create and manage the athlete’s evolving fan card, then share its stable link with family and friends.',
+    description: 'Create and manage the athlete’s evolving HYPE Card, then share its stable link with family and friends.',
     icon: Zap,
     accent: 'bg-primary text-primary-foreground',
     soft: 'bg-[#181a1f] text-white',
@@ -475,7 +475,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4 sm:px-8 bg-background/80 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-4">
           <BrandMark />
-          <p className="text-xs font-medium leading-relaxed text-muted-foreground">Athlete fan cards, game-day tools, and stats <span className="mx-1 text-accent">·</span> Built for your team account.</p>
+          <p className="text-xs font-medium leading-relaxed text-muted-foreground">HYPE Cards, game-day tools, and stats <span className="mx-1 text-accent">·</span> Built for your team account.</p>
         </div>
         <div className="flex shrink-0 items-center gap-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
@@ -1209,7 +1209,7 @@ function Studio({ role }: { role: UserRole }) {
                FAN COMMAND<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
-              Manage your athlete’s fan card, game-day checklists, and stats in your Pixl Sports workspace.
+              Manage your athlete’s HYPE Card, game-day checklists, and stats in your Pixl Sports workspace.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 bg-card border border-border px-5 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground clip-angled-sm shadow-sm">
@@ -3147,12 +3147,12 @@ function Help() {
         <h1 className="font-display text-5xl leading-none tracking-wide text-foreground uppercase sm:text-7xl">Help & FAQ</h1>
         <div className="mt-12 space-y-10">
           <section>
-            <h2 className="font-display text-3xl uppercase tracking-wide">How do I create and share an athlete fan card?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Open the Athlete Fan Card tool in your studio to create or manage the stable card for your athlete. Share the public fan-card link from the manager; owners can return to the manager to update card details and highlights.</p>
+            <h2 className="font-display text-3xl uppercase tracking-wide">How do I create and share a HYPE Card?</h2>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Open the HYPE Card tool in your studio to create or manage your athlete’s card. Share its public link from the manager; owners can return to update card details and highlights.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where can owners manage a shared card?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Use the Hype Card Manager at the owner-only management link associated with your invite. Public fan cards stay viewable at their /fan/ link; managing the card requires signing in as its owner.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Use the HYPE Card Manager at the owner-only management link associated with your invite. The HYPE Card stays viewable at its /fan/ link; managing it requires signing in as its owner.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where do I find game-day tools?</h2>
@@ -3475,11 +3475,11 @@ function RoleSelectionPage() {
                 </span>
                 <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
                 <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">
-                  Manage your athlete’s fan card and keep game-day details close.<br />
+                  Manage your athlete’s HYPE Card and keep game-day details close.<br />
                   Celebrate your athlete.<br />
                   Keep friends and family in the loop.
                 </span>
-                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">Fan Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">HYPE Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </button>
              </div>
              {selectedRole && (

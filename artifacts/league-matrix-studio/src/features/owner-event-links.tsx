@@ -89,7 +89,7 @@ export function OwnerEventLinks({ invite }: { invite: OwnedAthleteInvite }) {
         queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetAthleteFanCardQueryKey(token) }),
       ]);
-      setFeedback('Events updated on the living card.');
+      setFeedback('Events updated on the HYPE Card.');
     } catch {
       setFeedbackError(true);
       setFeedback('Events could not be saved. Your selection is still here; try again.');
@@ -145,9 +145,9 @@ export function OwnerEventLinks({ invite }: { invite: OwnedAthleteInvite }) {
       <div className="flex items-start gap-3">
         <CalendarDays className="mt-1 h-6 w-6 shrink-0 text-[#ff7849]" aria-hidden="true" />
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-[#8ecbff]">The living card / Events</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-[#8ecbff]">HYPE Card / Events</p>
           <h2 id="owner-events-title" className="mt-2 font-display text-4xl uppercase leading-none">Link game days.</h2>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#b9cede]">Choose which of your shared Game On Cards appear on the athlete’s public card. Unchecking a card removes it from Events, not from its original share link.</p>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#b9cede]">Choose which of your shared Game On Cards appear on the HYPE Card. Unchecking a card removes it from Events, not from its original share link.</p>
         </div>
       </div>
       {links.isLoading || cards.isLoading ? (

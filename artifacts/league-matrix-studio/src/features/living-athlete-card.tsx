@@ -181,7 +181,7 @@ export function LivingAthleteCardPage({
   useEffect(() => {
     if (!invite) return;
     const previous = document.title;
-    document.title = `${invite.athleteName} · The living card | Pixl Sports`;
+    document.title = `${invite.athleteName} · HYPE Card | Pixl Sports`;
     return () => { document.title = previous; };
   }, [invite?.athleteName]);
   useEffect(() => {
@@ -292,7 +292,7 @@ export function LivingAthleteCardPage({
         )}
 
         <div className="living-card-layout living-card-layout-solo">
-          <section className="living-card-stage" aria-label={`${invite.athleteName}'s living athlete card`}>
+          <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
               <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
                 {side === 'front' && (

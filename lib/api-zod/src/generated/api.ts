@@ -1781,7 +1781,7 @@ export const DeleteAthleteInviteResponse = zod.void()
 
 /**
  * Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
- * @summary Get an athlete fan card with a sanitized live scoreboard
+ * @summary Get an HYPE Card with a sanitized live scoreboard
  */
 export const getAthleteFanCardPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 
@@ -2040,7 +2040,7 @@ export const GetAthleteInviteEventNotificationProgressResponse = zod.object({
 
 
 /**
- * @summary Send encouragement to an active living athlete card
+ * @summary Send encouragement to an active HYPE Card
  */
 export const sendAthleteInviteHypePathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
 

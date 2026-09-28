@@ -2241,7 +2241,7 @@ export const getGetAthleteFanCardUrl = (inviteToken: string,) => {
 
 /**
  * Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
- * @summary Get an athlete fan card with a sanitized live scoreboard
+ * @summary Get an HYPE Card with a sanitized live scoreboard
  */
 export const getAthleteFanCard = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicAthleteFanCard> => {
 
@@ -2288,7 +2288,7 @@ export type GetAthleteFanCardQueryError = ErrorType<NotFoundResponse>
 
 
 /**
- * @summary Get an athlete fan card with a sanitized live scoreboard
+ * @summary Get an HYPE Card with a sanitized live scoreboard
  */
 
 export function useGetAthleteFanCard<TData = Awaited<ReturnType<typeof getAthleteFanCard>>, TError = ErrorType<NotFoundResponse>>(
@@ -2643,7 +2643,7 @@ export const getSendAthleteInviteHypeUrl = (inviteToken: string,) => {
 }
 
 /**
- * @summary Send encouragement to an active living athlete card
+ * @summary Send encouragement to an active HYPE Card
  */
 export const sendAthleteInviteHype = async (inviteToken: string,
     athleteInviteHypeInput: AthleteInviteHypeInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteHypeAccepted> => {
@@ -2710,7 +2710,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SendAthleteInviteHypeMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteHypeInput>}
 
     /**
- * @summary Send encouragement to an active living athlete card
+ * @summary Send encouragement to an active HYPE Card
  */
 export const useSendAthleteInviteHype = <TError = ErrorType<BadRequestResponse | NotFoundResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAthleteInviteHype>>, TError,SendAthleteInviteHypeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

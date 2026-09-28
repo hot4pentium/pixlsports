@@ -33,14 +33,14 @@ const steps: ReadonlyArray<{
     description: "Record plays from a game card while you watch. The compact tracker keeps each play connected to the right game.",
   },
   {
-    title: "Athlete fan card",
+    title: "HYPE Card",
     phase: "celebrate",
-    description: "Create one evolving card where fans can follow your athlete’s highlights and season.",
+    description: "Create one evolving HYPE Card where fans can follow your athlete’s highlights and season.",
   },
   {
     title: "Add Pixl Sports to your home screen",
     phase: "celebrate",
-    description: "A home-screen shortcut makes it faster to get back to your athlete’s game-day details and fan card. This is optional; you can finish the tour without installing anything.",
+    description: "A home-screen shortcut makes it faster to get back to your athlete’s game-day details and HYPE Card. This is optional; you can finish the tour without installing anything.",
     homeScreenGuide: true,
   },
 ];

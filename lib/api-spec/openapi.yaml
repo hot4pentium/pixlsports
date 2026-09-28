@@ -525,11 +525,11 @@ paths:
     get:
       operationId: getAthleteFanCard
       tags: [athlete-invites]
-      summary: Get an athlete fan card with a sanitized live scoreboard
+      summary: Get an HYPE Card with a sanitized live scoreboard
       description: Returns the same safe card content as the public invite without a reusable live-session token or raw game events.
       responses:
         "200":
-          description: Public athlete fan card and optional sanitized live scoreboard
+          description: Public HYPE Card and optional sanitized live scoreboard
           content:
             application/json:
               schema:
@@ -630,7 +630,7 @@ paths:
     post:
       operationId: sendAthleteInviteHype
       tags: [athlete-invites]
-      summary: Send encouragement to an active living athlete card
+      summary: Send encouragement to an active HYPE Card
       requestBody:
         required: true
         content:

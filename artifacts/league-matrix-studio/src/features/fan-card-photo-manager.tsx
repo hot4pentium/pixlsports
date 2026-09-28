@@ -73,7 +73,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
       await confirm.mutateAsync({ inviteToken, data: { objectPath: claim.objectPath } });
       setSelected(null);
       await refresh();
-      setNotice('Athlete photo updated on the living Hype Card.');
+      setNotice('Athlete photo updated on the HYPE Card.');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'The athlete photo could not be uploaded.');
     } finally {
@@ -82,7 +82,7 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   }
 
   async function removePhoto() {
-    if (!window.confirm('Remove the athlete photo from the living Hype Card? Fans will see initials instead.')) return;
+    if (!window.confirm('Remove the athlete photo from the HYPE Card? Fans will see initials instead.')) return;
     setNotice('');
     try {
       await remove.mutateAsync({ inviteToken });
@@ -94,12 +94,12 @@ export function FanCardPhotoManager({ inviteToken, photoUrl }: { inviteToken: st
   }
 
   return (
-    <section className="mt-6 border-t border-white/15 pt-6" aria-label="Living Hype Card photo" data-testid="section-fan-card-photo">
+    <section className="mt-6 border-t border-white/15 pt-6" aria-label="HYPE Card photo" data-testid="section-fan-card-photo">
       <h3 className="font-display text-2xl uppercase">Athlete photo</h3>
-      <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose a photo of the athlete for the front of their fan card. Only this photo is used; your account picture is never shown. Photos are resized and stripped of device metadata before posting.</p>
+      <p className="mt-2 max-w-xl text-xs leading-relaxed text-white/60">Choose a photo of the athlete for the front of their HYPE Card. Only this photo is used; your account picture is never shown. Photos are resized and stripped of device metadata before posting.</p>
       <div className="mt-4 flex flex-wrap items-end gap-4">
         {photoUrl ? (
-          <img src={photoUrl} alt="Current athlete card photo" className="h-24 w-24 border border-white/20 object-cover" data-testid="img-owner-fan-card-photo" />
+          <img src={photoUrl} alt="Current HYPE Card athlete photo" className="h-24 w-24 border border-white/20 object-cover" data-testid="img-owner-fan-card-photo" />
         ) : (
           <div className="grid h-24 w-24 place-items-center border border-dashed border-white/30 text-white/50" aria-label="No athlete photo selected"><ImagePlus aria-hidden="true" /></div>
         )}

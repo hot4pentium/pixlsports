@@ -3235,7 +3235,7 @@ function ProfilePropagationHarness() {
   const fanToolNav = createElement('nav', { 'data-testid': 'fan-tool-nav', className: 'flex gap-3 p-4' },
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-dashboard', onClick: () => setRoute('dashboard') }, 'Dashboard'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-open-stat-tracker', onClick: () => setRoute('tracker') }, 'Stat Tracker'),
-    createElement('button', { type: 'button', 'data-testid': 'button-test-open-athlete-fan-card', onClick: () => setRoute('fan-card') }, 'Athlete Fan Card'),
+    createElement('button', { type: 'button', 'data-testid': 'button-test-open-athlete-fan-card', onClick: () => setRoute('fan-card') }, 'HYPE Card'),
     createElement('button', { type: 'button', 'data-testid': 'button-test-edit-profile', onClick: openProfile }, 'Profile'),
   );
 
@@ -3311,7 +3311,7 @@ function ProfilePropagationHarness() {
   if (route === 'fan-card') {
     return createElement('main', null,
       fanToolNav,
-      createElement('a', { 'data-testid': 'link-athlete-fan-card-manager', href: '/studio/athlete-page' }, 'Manage athlete fan card'),
+      createElement('a', { 'data-testid': 'link-athlete-fan-card-manager', href: '/studio/athlete-page' }, 'Manage HYPE Card'),
     );
   }
 
@@ -5776,12 +5776,12 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     assert.ok(hypeHref, 'the Hype Card action remains available from the dashboard');
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid=\\"link-desktop-independent-hype\\"]")?.textContent?.trim() || ""', session),
-      'View athlete fan card',
+      'View HYPE Card',
     );
     assert.equal(hypeHref, '/studio/athlete-page');
     assert.doesNotMatch(hypeHref, /[?&](?:source|eventId|eventType|date|opponent)=/);
     for (const secret of [privateNote, privateItem]) {
-      assert.ok(!(await selected()).includes(secret), 'private checklist content must not reach the athlete fan card manager');
+      assert.ok(!(await selected()).includes(secret), 'private checklist content must not reach the HYPE Card manager');
     }
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
@@ -5946,7 +5946,7 @@ test('deleting selected games and practices falls back across Calendar and works
   }
 });
 
-test('saved athlete profile names reach game tools and athlete fan card setup stays the entrypoint', { concurrency: false }, async () => {
+test('saved athlete profile names reach game tools and HYPE Card setup stays the entrypoint', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-profile-test');
   let devServer: ChildProcess | undefined;
