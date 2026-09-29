@@ -221,10 +221,10 @@ function reminderPayload(
     // Push notifications can outlive a browser sign-out on a shared device.
     // Keep private card details behind the authenticated app, not in the OS tray.
     body: reminderType === "day_of"
-      ? "You have a Game On Card today. Sign in to see the details."
+      ? "You have an Event Card today. Sign in to see the details."
       : reminderType === "one_hour"
         ? "Your event is in one hour. Open Pixl Sports to publish or share your Hype Card."
-        : "Open Pixl Sports to see your Game On Card.",
+        : "Open Pixl Sports to see your Event Card.",
     url: "/studio",
   };
 }

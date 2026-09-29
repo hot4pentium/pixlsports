@@ -67,8 +67,8 @@ const steps = [
 const stepPreviews: Record<string, { src: string; alt: string; description: string; width: number; height: number }> = {
   '01': {
     src: planEventDetails,
-    alt: 'Completed Game On Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions.',
-    description: 'Completed Game On Card',
+    alt: 'Completed Event Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions.',
+    description: 'Completed Event Card',
     width: 1250,
     height: 756,
   },
@@ -152,8 +152,8 @@ function DashboardPreview({ variant }: { variant: 'mobile' | 'landscape' }) {
         <img
           src={mobile ? dashboardMobile : dashboardLandscape}
           alt={mobile
-            ? 'Fictional supporter dashboard on a phone: Maya Chen’s next volleyball game, shoutout, tracked record, and Game On cards.'
-            : 'The same fictional supporter dashboard in a wide view, showing Maya Chen’s game details and six Game On cards in three columns.'}
+            ? 'Fictional supporter dashboard on a phone: Maya Chen’s next volleyball game, shoutout, tracked record, and Event Cards.'
+            : 'The same fictional supporter dashboard in a wide view, showing Maya Chen’s game details and six Event Cards in three columns.'}
           width={mobile ? 516 : 1600}
           height={mobile ? 1500 : 1100}
           decoding="async"
@@ -239,16 +239,16 @@ export function PublicLandingPage() {
           <div className="container">
             <div className="tools-intro section-intro">
               <div><span className="micro">A look inside your dashboard</span><h2 className="display" id="tools-heading">Your athlete’s week.<br />All in view.</h2></div>
-              <p>See the next game, Game On cards, tracked results, and supporter shoutouts together. These previews use fictional details.</p>
+              <p>See the next game, Event Cards, tracked results, and supporter shoutouts together. These previews use fictional details.</p>
             </div>
             <div className="tool-grid">
               <article className="tool-card">
                 <DashboardPreview variant="mobile" />
-                <div className="tool-card-body"><span className="micro">01 / On the go</span><h3 className="display">Your game week in one place</h3><p>Check the next matchup, catch new shoutouts, and find every Game On card from your phone.</p><Link href={destination} data-testid="link-landing-dashboard-mobile">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
+                <div className="tool-card-body"><span className="micro">01 / On the go</span><h3 className="display">Your game week in one place</h3><p>Check the next matchup, catch new shoutouts, and find every Event Card from your phone.</p><Link href={destination} data-testid="link-landing-dashboard-mobile">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
               </article>
               <article className="tool-card">
                 <DashboardPreview variant="landscape" />
-                <div className="tool-card-body"><span className="micro">02 / The wider view</span><h3 className="display">See the whole season</h3><p>On a larger screen, the same dashboard keeps game details, your record, and Game On cards in sight.</p><Link href={destination} data-testid="link-landing-dashboard-landscape">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
+                <div className="tool-card-body"><span className="micro">02 / The wider view</span><h3 className="display">See the whole season</h3><p>On a larger screen, the same dashboard keeps game details, your record, and Event Cards in sight.</p><Link href={destination} data-testid="link-landing-dashboard-landscape">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
               </article>
             </div>
           </div>

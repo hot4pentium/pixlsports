@@ -139,7 +139,7 @@ export function NotificationSettings() {
     <section className="space-y-4 border-t border-border/60 pt-6" data-testid="notification-settings">
       <h3 className="flex items-center gap-2 border-b border-border/50 pb-2 text-xs font-bold uppercase tracking-widest text-primary"><Bell className="h-4 w-4" /> Phone Alerts</h3>
        <div className="border border-primary/20 bg-primary/5 p-4">
-          <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to game day</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">You can save reminder preferences for Game On Cards, but automatic game-day alerts are not currently scheduled on this deployment. Use the in-app owner dashboard reminder on game day. When scheduled delivery is available, alerts will use the latest time zone saved to your account.</p></div></div>
+          <div className="flex items-start gap-3"><Smartphone className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><p className="font-bold uppercase tracking-wide">Stay close to game day</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">You can save reminder preferences for Event Cards, but automatic game-day alerts are not currently scheduled on this deployment. Use the in-app owner dashboard reminder on game day. When scheduled delivery is available, alerts will use the latest time zone saved to your account.</p></div></div>
         {config.isLoading && <p className="mt-3 text-sm font-medium text-muted-foreground" role="status">Checking phone alert availability…</p>}
         {configUnavailable && <p className="mt-3 text-sm font-medium text-muted-foreground">Phone alerts are not configured on this deployment yet.</p>}
         {config.isError && (
@@ -160,7 +160,7 @@ export function NotificationSettings() {
          {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
          {available && (
            <div className="mt-5 border-t border-border/60 pt-4" data-testid="notification-preferences">
-              <p className="text-xs font-bold uppercase tracking-widest text-foreground">Game On reminders</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-foreground">Event Card reminders</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">These preferences are saved for future scheduled delivery; they do not currently trigger automatic game-day alerts.</p>
              <div className="mt-3 space-y-2">
                <label className="flex items-start gap-3 text-sm">

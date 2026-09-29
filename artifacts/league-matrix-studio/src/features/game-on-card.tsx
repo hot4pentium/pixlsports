@@ -245,7 +245,7 @@ export function GameOnCardPanel({
   });
 
   function saveCard(next: LocalSavedGameOnCard) {
-    if (!userId) throw new Error('Sign in to save a Game On Card.');
+    if (!userId) throw new Error('Sign in to save an Event Card.');
     upsertSavedGameOnCard(userId, next);
     setSaved(next);
     setIsEditing(false);
@@ -264,18 +264,18 @@ export function GameOnCardPanel({
   async function copyShareLink(shareToken: string) {
     const url = publicCardUrl(shareToken);
     if (!navigator.clipboard?.writeText) {
-      setNotice(`Your Game On Card is ready: ${url}`);
+      setNotice(`Your Event Card is ready: ${url}`);
       return;
     }
     await navigator.clipboard.writeText(url);
-    setNotice('Game On Card link copied.');
+    setNotice('Event Card link copied.');
   }
 
   async function handleCreateOrUpdate() {
     setError('');
     setNotice('');
     if (!userId) {
-      setError('Sign in to create a shareable Game On Card.');
+      setError('Sign in to create a shareable Event Card.');
       return;
     }
     const isPractice = draft.type === 'practice';
@@ -314,11 +314,11 @@ export function GameOnCardPanel({
       try {
         await copyShareLink(share.shareToken);
       } catch {
-        setError('Game On Card saved, but the link could not be copied.');
+        setError('Event Card saved, but the link could not be copied.');
       }
       onChanged?.(`share:${share.shareToken}`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to save the Game On Card. Try again.');
+      setError(caught instanceof Error ? caught.message : 'Unable to save the Event Card. Try again.');
     } finally {
       setBusy(false);
     }
@@ -336,9 +336,9 @@ export function GameOnCardPanel({
       onChanged?.();
       setDraft(selectedEvent && selectedEvent.type !== 'meeting' ? draftFromEvent(selectedEvent) : blankDraft());
       setSourceEventId(selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new');
-      setNotice('Game On Card link revoked.');
+      setNotice('Event Card link revoked.');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to revoke the Game On Card. Try again.');
+      setError(caught instanceof Error ? caught.message : 'Unable to revoke the Event Card. Try again.');
     } finally {
       setBusy(false);
     }
@@ -381,7 +381,7 @@ export function GameOnCardPanel({
     <section
       id={embedded ? undefined : 'game-on-card-panel'}
       className={embedded ? 'w-full' : 'mx-auto w-full max-w-[1400px] scroll-mt-6 px-4 pb-5 sm:px-8'}
-      aria-label={embedded ? 'Create a Game On card' : undefined}
+      aria-label={embedded ? 'Create an Event Card' : undefined}
       aria-labelledby={embedded ? undefined : 'game-on-card-heading'}
       data-testid={embedded ? 'panel-game-on-card-draft' : 'game-on-card-panel'}
     >
@@ -395,7 +395,7 @@ export function GameOnCardPanel({
             </span>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">{isPractice ? 'On-demand practice sharing' : 'On-demand game day sharing'}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Game On Card</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Event Card</p>
             </div>
           </div>
           <h2 id="game-on-card-heading" className="mt-6 font-display text-4xl font-black leading-[.95] tracking-tight sm:text-5xl">
@@ -629,7 +629,7 @@ export function GameOnCardPanel({
                 data-testid="button-save-game-on-card"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
-                {busy ? 'Saving…' : saved ? 'Update Game On Card' : isPractice ? 'Create and share Practice Card' : 'Create and share Game On Card'}
+                {busy ? 'Saving…' : saved ? 'Update Event Card' : 'Create and share Event Card'}
                 {!busy && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>
@@ -695,7 +695,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
           <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
         </header>
         <main className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center px-5">
-          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading Game On Card…</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading Event Card…</p>
         </main>
       </div>
     );
@@ -709,7 +709,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
         </header>
         <main className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">
           <CalendarDays className="h-10 w-10 text-primary" />
-          <h1 className="mt-5 font-display text-4xl uppercase tracking-wide text-foreground">Game On Card unavailable</h1>
+          <h1 className="mt-5 font-display text-4xl uppercase tracking-wide text-foreground">Event Card unavailable</h1>
           <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">
             This card may have been revoked, or the event details are no longer available.
           </p>

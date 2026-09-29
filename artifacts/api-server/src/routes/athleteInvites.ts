@@ -489,7 +489,7 @@ router.get("/athlete-invites/:inviteToken/fan", async (req, res): Promise<void> 
 
 router.post("/athlete-invites/:inviteToken/events/:shareToken/notify", requireAuth, async (req, res): Promise<void> => {
   const params = NotifyAthleteInviteEventFollowersParams.safeParse(req.params);
-  if (!params.success) { res.status(404).json({ error: "Game On Card not found" }); return; }
+  if (!params.success) { res.status(404).json({ error: "Event Card not found" }); return; }
   const outcome = await notifyAthleteInviteEventFollowers(
     params.data.inviteToken,
     getRequiredClerkUserId(res),
@@ -497,7 +497,7 @@ router.post("/athlete-invites/:inviteToken/events/:shareToken/notify", requireAu
     { background: true },
   );
   if (outcome.status === "not-found") {
-    res.status(404).json({ error: "Athlete invite or Game On Card not found" });
+    res.status(404).json({ error: "Athlete invite or Event Card not found" });
     return;
   }
   if (outcome.status === "not-upcoming") {
@@ -515,12 +515,12 @@ router.post("/athlete-invites/:inviteToken/events/:shareToken/notify", requireAu
 
 router.get("/athlete-invites/:inviteToken/events/:shareToken/notify", requireAuth, async (req, res): Promise<void> => {
   const params = GetAthleteInviteEventNotificationProgressParams.safeParse(req.params);
-  if (!params.success) { res.status(404).json({ error: "Game On Card not found" }); return; }
+  if (!params.success) { res.status(404).json({ error: "Event Card not found" }); return; }
   const outcome = await getAthleteInviteEventNotificationProgress(
     params.data.inviteToken, getRequiredClerkUserId(res), params.data.shareToken,
   );
   if (outcome.status === "not-found") {
-    res.status(404).json({ error: "Athlete invite or Game On Card not found" });
+    res.status(404).json({ error: "Athlete invite or Event Card not found" });
     return;
   }
   if (outcome.status === "not-upcoming") {

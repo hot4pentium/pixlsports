@@ -533,11 +533,11 @@ export function LivingAthleteCardPage({
                     <h2 className="living-card-alt-title">Events.</h2>
                     <p className="living-card-alt-subtitle">
                       {invite.showEvents
-                        ? `All eligible Game On Cards shared by ${invite.athleteName}’s card owner appear here.`
+                        ? `All eligible Event Cards shared by ${invite.athleteName}’s card owner appear here.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
                     {invite.showEvents && linkedEvents.length > 0 ? (
-                      <ol className="living-card-events-list" aria-label="Game On Cards">
+                      <ol className="living-card-events-list" aria-label="Event Cards">
                         {linkedEvents.map((event) => (
                           <li className="living-card-event" data-status={event.status} key={`${event.shareToken}-${event.eventId}`} data-testid={`card-living-event-${event.shareToken}`}>
                             <div className="living-card-event-top"><span>{event.type} / {formatDate(event.date) || 'Date to come'}</span><span>{event.status}</span></div>
@@ -554,7 +554,7 @@ export function LivingAthleteCardPage({
                       <div className="living-card-empty" data-testid="living-card-events-empty">
                         <CalendarDays size={30} strokeWidth={1.5} aria-hidden="true" />
                         <h3>Game days will land here.</h3>
-                        <p>There are no eligible Game On Cards to show yet. Check back as the season moves.</p>
+                        <p>There are no eligible Event Cards to show yet. Check back as the season moves.</p>
                       </div>
                     ) : null}
                   </div>

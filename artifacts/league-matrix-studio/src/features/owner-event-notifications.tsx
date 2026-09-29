@@ -125,7 +125,7 @@ export function OwnerEventNotifications({
       </div>
       {!invite.showEvents ? (
         <p className="mt-5 border-l-2 border-[#ff7849] bg-[#071b31] p-4 text-sm text-[#b9cede]">
-          Turn on “Allow events” above to share Game On Cards and enable event announcements.
+          Turn on “Allow events” above to share Event Cards and enable event announcements.
         </p>
       ) : upcoming.length ? (
         <div className="mt-5">
@@ -162,7 +162,7 @@ export function OwnerEventNotifications({
           {progress.isError && <p role="alert" className="mt-2 text-sm text-[#ffcfbd]">The announcement report could not be loaded. Try refreshing this page before continuing.</p>}
         </div>
       ) : (
-        <p className="mt-5 text-sm text-[#b9cede]">There are no upcoming Game On games to announce.</p>
+        <p className="mt-5 text-sm text-[#b9cede]">There are no upcoming Event Cards to announce.</p>
       )}
       {notifyFeedback && (
         <p role={notifyError ? 'alert' : 'status'} aria-live="polite" className="mt-4 border-l-2 border-[#ff7849] bg-[#071b31] p-4 text-sm leading-relaxed" data-testid="status-owner-notify-followers">

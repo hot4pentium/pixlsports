@@ -20,7 +20,14 @@ test('standalone Calendar routes show a clear retired notice and cannot reach th
 });
 
 test('the supporter tour is an informational modal with optional phone install guidance', () => {
-  assert.equal((tourSource.match(/title: "/g) ?? []).length, 5);
+  assert.equal((tourSource.match(/title: "/g) ?? []).length, 6);
+  assert.match(tourSource, /title: "Welcome to Pixl Sports"[\s\S]*?Here's the gameplan/);
+  assert.match(tourSource, /title: "Event Cards"/);
+  assert.ok(
+    tourSource.indexOf('title: "Welcome to Pixl Sports"') < tourSource.indexOf('title: "Event Cards"'),
+    'the welcome slide comes before Event Cards',
+  );
+  assert.doesNotMatch(tourSource, /Game On cards?/);
   assert.doesNotMatch(tourSource, /title: "Calendar"|Open Calendar|supporterToolRoutes\.schedule/);
   assert.match(tourSource, /title: "Prep"/);
   assert.doesNotMatch(tourSource, /title: "Checklist"|supporterToolRoutes\.checklist|supporterToolRoutes\.statTracker/);
@@ -69,5 +76,5 @@ test('standalone schedule events are not exposed through supporter dashboard or 
   assert.doesNotMatch(supporterStudio, /getCloudScheduleProjects|getActiveCloudScheduleProject|getSupporterScheduleSelection|readScheduleDraft/);
   const checklistPage = appSource.slice(appSource.indexOf('export function ChecklistPage'), appSource.indexOf('function StudioPortal'));
   assert.doesNotMatch(checklistPage, /\/studio\/schedule|select-checklist-game|calendarEvents/);
-  assert.match(checklistPage, /Game On card details/);
+  assert.match(checklistPage, /Event Card details/);
 });

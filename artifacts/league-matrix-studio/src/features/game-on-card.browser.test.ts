@@ -193,7 +193,7 @@ test('public Game On Card flips by keyboard and limits links to the active face 
         width, height: width === 390 ? 844 : 900, deviceScaleFactor: 1, mobile: width === 390,
       }, page.sessionId);
       let state = await snapshot(connection, page);
-      assert.equal(state.face, 'Game On Card, event side');
+      assert.equal(state.face, 'Event Card, event side');
       assert.equal(state.pressed, 'false');
       assert.equal(state.controls, 'game-on-card-face');
       assert.match(state.label, /Show stats/);
@@ -209,7 +209,7 @@ test('public Game On Card flips by keyboard and limits links to the active face 
       await pressFlip(connection, page);
       await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-flip-control\\"]")?.getAttribute("aria-pressed")', (value) => value === 'true');
       state = await snapshot(connection, page);
-      assert.equal(state.face, 'Game On Card, stats side');
+      assert.equal(state.face, 'Event Card, stats side');
       assert.match(state.label, /Show event/);
       assert.equal(state.front, false);
       assert.equal(state.back, true);

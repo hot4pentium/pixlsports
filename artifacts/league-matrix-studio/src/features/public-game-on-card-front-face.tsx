@@ -41,7 +41,7 @@ export function PublicGameOnCardFrontFace({
   return (
     <section
       className="relative mx-auto w-full max-w-[600px] text-[#0B1F3A]"
-      aria-label={`Game On Card, ${showingAlternateFace ? 'stats side' : 'event side'}`}
+      aria-label={`Event Card, ${showingAlternateFace ? 'stats side' : 'event side'}`}
     >
       <img
         src={gameOnBadge}
@@ -54,7 +54,7 @@ export function PublicGameOnCardFrontFace({
       <div className="absolute inset-x-[12%] bottom-[8%] top-[12%] flex flex-col overflow-y-auto">
         <div className="flex items-center justify-between gap-2 border-b border-[#d9e2ed] pb-3 sm:pb-5">
           <span className="font-display text-lg uppercase leading-none tracking-wide text-[#0B1F3A] sm:text-2xl">Pixl Sports</span>
-          <span className="text-right text-[9px] font-black uppercase tracking-[.16em] text-[#2474F5] sm:text-[11px]">Game On Card</span>
+          <span className="text-right text-[9px] font-black uppercase tracking-[.16em] text-[#2474F5] sm:text-[11px]">Event Card</span>
         </div>
 
         <div id="game-on-card-face" className="flex min-h-0 flex-1 flex-col pt-4 sm:pt-8" aria-live="polite">

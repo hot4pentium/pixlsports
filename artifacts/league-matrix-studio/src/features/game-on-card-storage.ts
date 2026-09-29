@@ -126,7 +126,7 @@ export function writeSavedGameOnCard(
   saved: SavedGameOnCard,
   storage: StorageWriter | undefined = browserStorage(),
 ) {
-  if (!storage) throw new Error('Game On Card storage is unavailable.');
+  if (!storage) throw new Error('Event Card storage is unavailable.');
   storage.setItem(gameOnCardStorageKey(userId), JSON.stringify(saved));
 }
 
@@ -135,7 +135,7 @@ export function upsertSavedGameOnCard(
   saved: SavedGameOnCard,
   storage: GameOnCardStorage | undefined = browserStorage(),
 ) {
-  if (!storage) throw new Error('Game On Card storage is unavailable.');
+  if (!storage) throw new Error('Event Card storage is unavailable.');
   const cards = readSavedGameOnCards(userId, storage);
   const existingIndex = cards.findIndex((card) => card.shareToken === saved.shareToken);
   if (existingIndex === -1) cards.push(saved);

@@ -248,7 +248,7 @@ router.post("/notifications/test", requireAuth, async (req, res): Promise<void> 
   try {
     const result = await sendPushNotificationToUser(getRequiredClerkUserId(res), {
       title: "Pixl Sports test alert",
-      body: "This device can receive alerts. Game On reminders also need an upcoming card and saved preferences.",
+      body: "This device can receive alerts. Event Card reminders also need an upcoming Event Card and saved preferences.",
       url: "/studio/profile",
       tag: "pixl-test-notification",
     });

@@ -1,6 +1,7 @@
 export type DashboardTourState = 'pending' | 'done' | null;
 
 const tourProgressPrefix = 'pixlsports-dashboard-tour-progress:';
+const currentTourProgressVersion = 2;
 
 function tourProgressKey(userId: string) {
   return `${tourProgressPrefix}${encodeURIComponent(userId)}`;
@@ -17,8 +18,12 @@ export function readDashboardTourProgress(
     if (!raw) return null;
     const progress: unknown = JSON.parse(raw);
     if (typeof progress !== 'object' || progress === null || !('step' in progress)) return null;
+    const version = 'version' in progress ? progress.version : 1;
+    if (version !== 1 && version !== currentTourProgressVersion) return null;
     const step = progress.step;
-    return typeof step === 'number' && Number.isInteger(step) && step >= 0 && step < stepCount ? step : null;
+    if (typeof step !== 'number' || !Number.isInteger(step) || step < 0) return null;
+    const currentStep = version === 1 ? step + 1 : step;
+    return currentStep < stepCount ? currentStep : null;
   } catch {
     return null;
   }
@@ -31,7 +36,7 @@ export function saveDashboardTourProgress(
 ) {
   if (!storage || !userId) return;
   try {
-    storage.setItem(tourProgressKey(userId), JSON.stringify({ step }));
+    storage.setItem(tourProgressKey(userId), JSON.stringify({ version: currentTourProgressVersion, step }));
   } catch {
     // The tour still works while mounted if this browser blocks session storage.
   }

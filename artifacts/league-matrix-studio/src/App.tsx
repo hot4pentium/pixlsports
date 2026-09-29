@@ -858,7 +858,7 @@ function HomePage() {
               <small>FAN HUB / YOUR WEEK</small>
               <h2 id="landing-tools-heading">We guide the week. <em>{selectedRole === 'fan' ? 'You enjoy the moments.' : 'Lead the team.'}</em></h2>
             </div>
-            <p>Move from Game On cards to game day to celebration with one clear next step at every turn.</p>
+            <p>Move from Event Cards to game day to celebration with one clear next step at every turn.</p>
           </div>
           <div className="pixl-landing-tools-body">
             <div className="pixl-landing-tool-index">
@@ -1906,7 +1906,7 @@ export function ScheduleEditor() {
       void persistSchedule(
         nextEvents,
         cardRevoked
-          ? 'EVENT REMOVED — GAME ON CARD REVOKED'
+          ? 'EVENT REMOVED — EVENT CARD REVOKED'
           : 'EVENT REMOVED — SCHEDULE SAVED',
       );
     } catch {
@@ -2591,7 +2591,7 @@ function RetiredSchedulePage() {
       <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-[760px] flex-col items-center justify-center px-5 py-12 text-center">
         <h1 className="font-display text-4xl uppercase tracking-wide text-foreground sm:text-5xl">Schedule Maker retired</h1>
         <p className="mt-4 max-w-lg text-sm font-medium leading-relaxed text-muted-foreground">
-          Standalone Calendar schedules and shared schedule links are no longer available. Game On cards, your tracker, and your checklist are still here.
+          Standalone Calendar schedules and shared schedule links are no longer available. Event Cards, your tracker, and your checklist are still here.
         </p>
         <Link href="/studio" className="mt-7 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-retired-schedule-dashboard">
           Go to your dashboard
@@ -2962,7 +2962,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
             {displayedEvent ? (
               <>
                 <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary">
-                  <CalendarDays className="h-3.5 w-3.5" /> Game On card details
+                  <CalendarDays className="h-3.5 w-3.5" /> Event Card details
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-l-4 border-primary bg-primary/5 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground sm:gap-x-5 sm:gap-y-2 sm:py-3" data-testid="checklist-selected-event-summary">
                   <span>{formatScheduleDate(displayedEvent.date)}</span>
@@ -2973,7 +2973,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
               </>
             ) : (
               <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-                Open this checklist from a Game On card to keep its event details with your prep.
+                Open this checklist from an Event Card to keep its event details with your prep.
               </p>
             )}
           </div>

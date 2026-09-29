@@ -114,11 +114,11 @@ export function GameOnInlineEditor({
           shareToken: token, title: shareData.title, event, savedAt: new Date().toISOString(),
         });
       }
-      setNotice(token ? 'Event saved. Your Game On link keeps the same address.' : 'Calendar event saved.');
+      setNotice(token ? 'Event saved. Your Event Card link keeps the same address.' : 'Calendar event saved.');
       onChanged(token ? `share:${token}` : `draft:${card.eventId}`);
     } catch (caught) {
       setError(calendarSaved
-        ? 'Calendar saved, but the Game On link could not be updated. Retry to update the public card.'
+        ? 'Calendar saved, but the Event Card link could not be updated. Retry to update the public card.'
         : caught instanceof Error ? caught.message : 'Could not save this event. Try again.');
     } finally {
       setBusy(false);
@@ -150,7 +150,7 @@ export function GameOnInlineEditor({
       await deleteShare.mutateAsync({ shareToken: card.shareToken });
       removeSavedGameOnCard(userId, card.shareToken);
       onChanged(scheduledEvent ? `draft:${card.eventId}` : undefined);
-      setNotice('Game On link revoked.');
+      setNotice('Event Card link revoked.');
     } catch {
       setError('Could not revoke the link. Try again.');
     } finally {
@@ -163,7 +163,7 @@ export function GameOnInlineEditor({
     const path = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/game-on/${card.shareToken}`;
     try {
       await navigator.clipboard.writeText(`${window.location.origin}${path}`);
-      setNotice('Game On link copied.');
+      setNotice('Event Card link copied.');
     } catch {
       setError('Could not copy the link. Open the card and copy its address.');
     }
@@ -195,7 +195,7 @@ export function GameOnInlineEditor({
       </button>
       {view !== 'calendar' && !card.shareToken && scheduledEvent && (
         <button type="button" className="game-on-inline__secondary" disabled={busy} onClick={() => void saveEvent(true)} data-testid="button-publish-inline-card">
-          Create shareable Game On link
+          Create shareable Event Card link
         </button>
       )}
     </div>
@@ -252,7 +252,7 @@ export function GameOnInlineEditor({
       )}
       {card.shareToken && (
         <div className="game-on-inline__sharing">
-          <button type="button" onClick={() => void copyLink()}><Copy size={14} /> Copy Game On link</button>
+          <button type="button" onClick={() => void copyLink()}><Copy size={14} /> Copy Event Card link</button>
           <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/game-on/${card.shareToken}`} target="_blank" rel="noreferrer">View public card</a>
           <button type="button" disabled={busy} onClick={() => void revoke()}>Revoke link</button>
         </div>

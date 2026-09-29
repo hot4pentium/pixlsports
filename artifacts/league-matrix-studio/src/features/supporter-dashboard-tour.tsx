@@ -18,19 +18,24 @@ const steps: ReadonlyArray<{
   homeScreenGuide?: boolean;
 }> = [
   {
-    title: "Game On cards",
+    title: "Welcome to Pixl Sports",
     phase: "prepare",
-    description: "Keep each game or practice’s time, place, and details together on a shareable card, so everyone knows what to expect.",
+    description: "Here's the gameplan... Keep game and practice details on Event Cards, use Prep to get ready, track the action, then celebrate your athlete on a HYPE Card.",
+  },
+  {
+    title: "Event Cards",
+    phase: "prepare",
+    description: "Keep each game or practice’s time, place, and details together on a shareable Event Card, so everyone knows what to expect.",
   },
   {
     title: "Prep",
     phase: "prepare",
-    description: "Use Prep on a Game On card to make a checklist, add notes, and share an edit link with the people helping.",
+    description: "Use Prep on an Event Card to make a checklist, add notes, and share an edit link with the people helping.",
   },
   {
     title: "Stat Tracker",
     phase: "capture",
-    description: "Record plays from a game card while you watch. The compact tracker keeps each play connected to the right game.",
+    description: "Record plays from an Event Card while you watch. The compact tracker keeps each play connected to the right game.",
   },
   {
     title: "HYPE Card",

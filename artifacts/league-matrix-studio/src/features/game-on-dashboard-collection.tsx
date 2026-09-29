@@ -257,7 +257,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 type="button"
                 onClick={onCancelDraft}
                 className="game-on-collection__cancel-draft"
-                aria-label="Cancel this unsaved Game On card"
+                aria-label="Cancel this unsaved Event Card"
                 data-testid={`button-cancel-game-on-draft-${card.id}`}
               >
                 <X size={15} aria-hidden="true" /> Cancel draft
@@ -432,7 +432,7 @@ export function GameOnDashboardCollection({
   const hasSearchQuery = searchTerms.length > 0;
   const selectedCard = cards.find((card) => card.id === selectedId);
   const dialogOpen = Boolean(isActiveShell && selectedCard);
-  const cardCountLabel = (count: number) => `${count} ${count === 1 ? 'card' : 'cards'}`;
+  const cardCountLabel = (count: number) => `${count} ${count === 1 ? 'Event Card' : 'Event Cards'}`;
   const announceGameCompleted = (opponent: string) => {
     const gameLabel = opponent ? `Game vs ${opponent}` : 'Game';
     setCompletionAnnouncement(`${gameLabel} is complete.`);
@@ -445,7 +445,7 @@ export function GameOnDashboardCollection({
     try {
       const result = await onDeleteCard(card);
       setDeleteConfirmationCardId(null);
-      const cardLabel = `${card.type === 'practice' ? 'Practice' : 'Game'} On Card and its public link deleted.`;
+      const cardLabel = 'Event Card and its public link deleted.';
       const calendarResult = result.calendarEventStatus === 'deleted'
         ? ' Its linked Calendar event was deleted too.'
         : result.calendarEventStatus === 'not-linked'
@@ -457,7 +457,7 @@ export function GameOnDashboardCollection({
               : ' The Calendar was left unchanged because ownership or the event match could not be verified.';
       setDeleteAnnouncement(`${cardLabel}${calendarResult}`);
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Unable to delete this Game On card. Try again.');
+      setDeleteError(error instanceof Error ? error.message : 'Unable to delete this Event Card. Try again.');
     } finally {
       setDeletingCardId(null);
     }
@@ -549,7 +549,7 @@ export function GameOnDashboardCollection({
         <div className="game-on-collection__header">
           <div>
             <p className="game-on-collection__eyebrow"><span className="game-on-collection__eyebrow-line" aria-hidden="true" /> Your season, one card at a time</p>
-            <h2 className="game-on-collection__title" id={labelId}>Game On</h2>
+            <h2 className="game-on-collection__title" id={labelId}>Event Cards</h2>
             <p className="game-on-collection__intro">Everything for the next game or practice, right where you need it.</p>
           </div>
           <button
@@ -587,11 +587,11 @@ export function GameOnDashboardCollection({
                 Showing {visibleCards.length} of {cardCountLabel(cards.length)}
               </span>
             </div>
-            <div className="game-on-collection__search" role="search" aria-label="Search Game On cards">
+            <div className="game-on-collection__search" role="search" aria-label="Search Event Cards">
               <Search size={17} aria-hidden="true" />
               <input
                 type="search"
-                aria-label="Search Game On cards by opponent, location, or date"
+                aria-label="Search Event Cards by opponent, location, or date"
                 placeholder="Opponent, location, or date"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.currentTarget.value)}
@@ -634,7 +634,7 @@ export function GameOnDashboardCollection({
               ref={gridRef}
               className="game-on-collection__grid"
               role="list"
-              aria-label="Game On cards"
+              aria-label="Event Cards"
               data-testid="grid-game-on-cards"
               hidden={visibleCards.length === 0}
             >
@@ -691,9 +691,9 @@ export function GameOnDashboardCollection({
                       : `Game${selectedCard.opponent ? ` vs ${selectedCard.opponent}` : ''}`}
                   </DialogTitle>
                   <DialogDescription id={`game-on-card-dialog-description-${dialogId}`} className="sr-only">
-                    Review this Game On card and open its preparation, event details, or stat tracker.
+                    Review this Event Card and open its preparation, event details, or stat tracker.
                   </DialogDescription>
-                  <DialogClose className="game-on-collection__dialog-close" aria-label="Close Game On card">
+                  <DialogClose className="game-on-collection__dialog-close" aria-label="Close Event Card">
                     <X size={18} aria-hidden="true" />
                   </DialogClose>
                 </div>
@@ -725,10 +725,10 @@ export function GameOnDashboardCollection({
                     {deleteConfirmationCardId === selectedCard.id ? (
                       <div role="group" aria-labelledby={`delete-game-on-title-${dialogId}`} data-testid={`confirm-delete-game-on-card-${selectedCard.id}`}>
                         <h3 id={`delete-game-on-title-${dialogId}`} className="text-sm font-bold uppercase tracking-wide text-destructive">
-                          Delete this Game On card?
+                          Delete this Event Card?
                         </h3>
                         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                          This deletes the Game On Card and its public link. The Calendar event is removed only if its saved link uniquely matches an event in a Calendar you own; otherwise the Calendar is left unchanged. This can’t be undone.
+                          This deletes the Event Card and its public link. The Calendar event is removed only if its saved link uniquely matches an event in a Calendar you own; otherwise the Calendar is left unchanged. This can’t be undone.
                         </p>
                         {deleteError && <p className="mt-3 text-sm font-medium text-destructive" role="alert">{deleteError}</p>}
                         <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -749,7 +749,7 @@ export function GameOnDashboardCollection({
                             data-testid={`button-confirm-delete-game-on-card-${selectedCard.id}`}
                           >
                             <Trash2 size={14} aria-hidden="true" />
-                            {deletingCardId === selectedCard.id ? 'Deleting…' : 'Delete Game On Card'}
+                            {deletingCardId === selectedCard.id ? 'Deleting…' : 'Delete Event Card'}
                           </button>
                         </div>
                       </div>

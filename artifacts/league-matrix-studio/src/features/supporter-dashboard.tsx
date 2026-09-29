@@ -606,7 +606,7 @@ export function SupporterDashboardView({
     setCardSelection(null);
   };
   const deleteGameOnCard = useCallback(async (card: DashboardGameOnCard) => {
-    if (!userId) throw new Error('Sign in to delete this Game On card.');
+    if (!userId) throw new Error('Sign in to delete this Event Card.');
     if (!card.shareToken) throw new Error('This card is not saved yet.');
 
     const result = await deleteOwnedGameOnCard.mutateAsync({ shareToken: card.shareToken });
@@ -1289,8 +1289,8 @@ export function SupporterDashboardView({
             <div className="relative p-3 sm:p-4 flex-1 flex flex-col">
               {events.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 text-center">
-                  <p className="font-bold uppercase tracking-widest">Your Game On cards live here</p>
-                  <p className="text-sm max-w-xs text-balance">Add a Game On card to keep game details close.</p>
+                  <p className="font-bold uppercase tracking-widest">Your Event Cards live here</p>
+                  <p className="text-sm max-w-xs text-balance">Add an Event Card to keep game details close.</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">

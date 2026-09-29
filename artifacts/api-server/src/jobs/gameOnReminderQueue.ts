@@ -133,12 +133,12 @@ function payloadForReminder(row: ReminderRow, now: Date): PushNotificationPayloa
       ? `${label} · ${lateOneHour ? "COMING UP" : "IN 1 HOUR"}`
       : type === "capture_open" ? `${label} · CAPTURE OPEN` : `${label} · TODAY`,
     body: type === "day_of"
-      ? "You have a Game On Card today. Sign in to see the details."
+      ? "You have an Event Card today. Sign in to see the details."
       : type === "one_hour"
         ? lateOneHour
           ? "Your event is coming up soon. Open Pixl Sports to publish or share your Hype Card."
           : "Your event is in one hour. Open Pixl Sports to publish or share your Hype Card."
-        : "Open Pixl Sports to see your Game On Card.",
+        : "Open Pixl Sports to see your Event Card.",
     url: "/studio",
     tag: `planner-card-${row.shareId}-${row.eventId}-${type}-${row.eventDate}`,
   };

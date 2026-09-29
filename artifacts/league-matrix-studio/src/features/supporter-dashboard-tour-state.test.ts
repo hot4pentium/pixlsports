@@ -15,20 +15,27 @@ test('unfinished tour steps survive remounts in this tab and stay scoped to the 
     setItem: (key: string, value: string) => { values.set(key, value); },
     removeItem: (key: string) => { values.delete(key); },
   };
-  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 4), null);
+  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 6), null);
   saveDashboardTourProgress(storage, 'supporter-a', 2);
-  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 4), 2);
-  assert.equal(readDashboardTourProgress(storage, 'supporter-b', 4), null);
+  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 6), 2);
+  assert.equal(readDashboardTourProgress(storage, 'supporter-b', 6), null);
   clearDashboardTourProgress(storage, 'supporter-a');
-  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 4), null);
+  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 6), null);
+});
+
+test('saved pre-greeting tour progress resumes on the same original slide', () => {
+  const storage = {
+    getItem: () => '{"step":2}',
+  };
+  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 6), 3);
 });
 
 test('invalid saved tour steps cannot reopen the tour at a nonexistent step', () => {
   const storage = {
     getItem: () => '{"step":100}',
   };
-  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 4), null);
-  assert.equal(readDashboardTourProgress({ getItem: () => 'not JSON' }, 'supporter-a', 4), null);
+  assert.equal(readDashboardTourProgress(storage, 'supporter-a', 6), null);
+  assert.equal(readDashboardTourProgress({ getItem: () => 'not JSON' }, 'supporter-a', 6), null);
 });
 
 test('newly set-up supporters are eligible, but existing accounts without a marker are not', () => {

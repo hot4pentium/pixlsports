@@ -72,7 +72,7 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
     return;
   }
   if (parsed.data.purpose === "game-on-card" && !isSingleCardEvent(parsed.data.events)) {
-    res.status(400).json({ error: "A Game On Card must contain one game or practice" });
+    res.status(400).json({ error: "An Event Card must contain one game or practice" });
     return;
   }
   if (parsed.data.purpose === "game-on-card" && !hasValidEventTimezone(parsed.data.events)) {
@@ -149,7 +149,7 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
     return;
   }
   if (parsed.data.purpose === "game-on-card" && !isSingleCardEvent(parsed.data.events)) {
-    res.status(400).json({ error: "A Game On Card must contain one game or practice" });
+    res.status(400).json({ error: "An Event Card must contain one game or practice" });
     return;
   }
   if (parsed.data.purpose === "game-on-card" && !hasValidEventTimezone(parsed.data.events)) {
@@ -274,7 +274,7 @@ router.delete("/schedule-shares/:shareToken", requireAuth, async (req, res): Pro
 router.delete("/game-on-cards/owned/:shareToken", requireAuth, async (req, res): Promise<void> => {
   const params = GetScheduleShareParams.safeParse(req.params);
   if (!params.success) {
-    res.status(404).json({ error: "Game On Card not found" });
+    res.status(404).json({ error: "Event Card not found" });
     return;
   }
 
@@ -355,13 +355,13 @@ router.delete("/game-on-cards/owned/:shareToken", requireAuth, async (req, res):
     });
 
     if (!result) {
-      res.status(404).json({ error: "Game On Card not found" });
+      res.status(404).json({ error: "Event Card not found" });
       return;
     }
     res.json(DeleteOwnedGameOnCardResponse.parse(result));
   } catch (error) {
     req.log.error({ err: error }, "Unable to delete owned Game On Card");
-    res.status(500).json({ error: "Unable to delete Game On Card" });
+    res.status(500).json({ error: "Unable to delete Event Card" });
   }
 });
 
@@ -390,14 +390,14 @@ router.get("/game-on-cards/owned", requireAuth, async (req, res): Promise<void> 
     res.json(ListOwnedGameOnCardsResponse.parse(cards));
   } catch (error) {
     req.log.error({ err: error }, "Unable to list owned Game On Cards");
-    res.status(500).json({ error: "Unable to list owned Game On Cards" });
+    res.status(500).json({ error: "Unable to list owned Event Cards" });
   }
 });
 
 router.get("/game-on-cards/:shareToken", async (req, res): Promise<void> => {
   const params = GetGameOnCardParams.safeParse(req.params);
   if (!params.success) {
-    res.status(404).json({ error: "Game On Card not found" });
+    res.status(404).json({ error: "Event Card not found" });
     return;
   }
 
@@ -409,14 +409,14 @@ router.get("/game-on-cards/:shareToken", async (req, res): Promise<void> => {
     if (!share
       || (share.teamSeason !== GAME_ON_CARD_MARKER && !isSingleCardEvent(share.events))
       || !(await isAccountActive(share.ownerClerkUserId))) {
-      res.status(404).json({ error: "Game On Card not found" });
+      res.status(404).json({ error: "Event Card not found" });
       return;
     }
 
     const storedShare = shareResponse(share);
     if (storedShare.events.length !== 1
       || (storedShare.events[0]?.type !== "game" && storedShare.events[0]?.type !== "practice")) {
-      res.status(404).json({ error: "Game On Card not found" });
+      res.status(404).json({ error: "Event Card not found" });
       return;
     }
 
@@ -519,7 +519,7 @@ router.get("/game-on-cards/:shareToken", async (req, res): Promise<void> => {
     }));
   } catch (error) {
     req.log.error({ err: error }, "Unable to load Game On Card");
-    res.status(500).json({ error: "Unable to load Game On Card" });
+    res.status(500).json({ error: "Unable to load Event Card" });
   }
 });
 
