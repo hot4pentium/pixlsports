@@ -8,6 +8,9 @@ const styles = readFileSync(new URL('../landing-unified.css', import.meta.url), 
 test('landing shows the dashboard in mobile and landscape with fictional examples', () => {
   assert.match(source, /data-testid="text-landing-headline">ALL IN,<br \/><em>ALL SEASON\.<\/em><\/h1>/);
   assert.doesNotMatch(source, /For the people in their corner|Your front<br \/>row\./);
+  for (const tool of ['Schedule Maker', 'Gameday Checklist', 'Stat Tracker']) {
+    assert.ok(source.includes(tool), `landing should list ${tool}`);
+  }
   for (const section of ['hero', 'week-ribbon', 'week-section', 'athlete-section', 'tools-section', 'closing', 'site-footer']) {
     assert.match(source, new RegExp(`className="${section}"`));
   }

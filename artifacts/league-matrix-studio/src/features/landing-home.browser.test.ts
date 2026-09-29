@@ -66,6 +66,13 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       }))()`, page.sessionId);
       assert.equal(heroCopy.headline.replace(/\s+/g, ' ').trim(), 'ALL IN, ALL SEASON.');
       assert.equal(heroCopy.obsoleteLabel, false);
+      const additionalToolsText = await connection.evaluate<string>(
+        'document.querySelector("[data-testid=\\"landing-additional-tools\\"]")?.innerText || ""',
+        page.sessionId,
+      );
+      for (const tool of ['Schedule Maker', 'Gameday Checklist', 'Stat Tracker']) {
+        assert.ok(additionalToolsText.includes(tool), `${tool} should be listed at ${width}px`);
+      }
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; gameOnBadge: boolean; graphicSvg: boolean; sections: number;
         cta: string; help: string; privacy: string; explainer: string; menuVisible: boolean;

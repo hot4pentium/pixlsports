@@ -64,6 +64,24 @@ const steps = [
   { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
 ];
 
+const additionalLandingTools = [
+  {
+    name: 'Schedule Maker',
+    description: 'Turn the season’s fixtures into a clear schedule families can share.',
+    icon: CalendarDays,
+  },
+  {
+    name: 'Gameday Checklist',
+    description: 'Keep gear, arrival times, and game-day details in one shared checklist.',
+    icon: ClipboardCheck,
+  },
+  {
+    name: 'Stat Tracker',
+    description: 'Record plays and results, then review athlete totals across the season.',
+    icon: Activity,
+  },
+];
+
 const stepPreviews: Record<string, { src: string; alt: string; description: string; width: number; height: number }> = {
   '01': {
     src: planEventDetails,
@@ -249,6 +267,20 @@ export function PublicLandingPage() {
                 <DashboardPreview variant="landscape" />
                 <div className="tool-card-body"><span className="micro">02 / The wider view</span><h3 className="display">See the whole season</h3><p>On a larger screen, the same dashboard keeps game details, your record, and Event Cards in sight.</p><Link href={destination} data-testid="link-landing-dashboard-landscape">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
               </article>
+            </div>
+            <div className="additional-tools" data-testid="landing-additional-tools" aria-labelledby="additional-tools-heading">
+              <h3 className="display" id="additional-tools-heading">More tools for the season</h3>
+              <ul className="additional-tools-list">
+                {additionalLandingTools.map(({ name, description, icon: Icon }) => (
+                  <li className="additional-tool" key={name}>
+                    <span className="additional-tool-icon"><Icon size={18} aria-hidden="true" /></span>
+                    <div>
+                      <h4 className="display">{name}</h4>
+                      <p>{description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>
