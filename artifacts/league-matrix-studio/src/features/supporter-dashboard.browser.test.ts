@@ -437,7 +437,7 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
-test('dashboard empty game notice leaves creation in the Game On section', { concurrency: false }, async () => {
+test('dashboard empty game notice and install reminder work across screen sizes', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
   let devServer: ChildProcess | undefined;
@@ -505,6 +505,57 @@ test('dashboard empty game notice leaves creation in the Game On section', { con
     assert.equal(
       await connection.evaluate<boolean>('Boolean(document.querySelector(\'.supporter-dashboard-desktop-shell [data-testid="button-create-game-on-card"]\'))', page.sessionId),
       true,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\') && document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\'))',
+      Boolean,
+    );
+    const desktopReminderVisibility = await connection.evaluate<boolean>(
+      'document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')?.getBoundingClientRect().width > 0 && document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width === 0',
+      page.sessionId,
+    );
+    assert.equal(desktopReminderVisibility, true, 'desktop shows its reminder while the mobile shell stays hidden');
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width > 0 && document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')?.getBoundingClientRect().width === 0',
+      Boolean,
+    );
+
+    const installPromptPrevented = await connection.evaluate<boolean>(`(() => {
+      const event = new Event('beforeinstallprompt', { cancelable: true });
+      Object.defineProperties(event, {
+        prompt: { value: () => Promise.resolve() },
+        userChoice: { value: Promise.resolve({ outcome: 'accepted', platform: 'web' }) },
+      });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    })()`, page.sessionId);
+    assert.equal(installPromptPrevented, true, 'the shared install hook captures the browser prompt');
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.textContent?.includes("Install app")',
+      Boolean,
+    );
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      '!document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\') && !document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')',
+      Boolean,
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
