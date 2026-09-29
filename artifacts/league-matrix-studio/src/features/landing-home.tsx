@@ -173,8 +173,7 @@ export function PublicLandingPage() {
         <section className="hero" aria-labelledby="landing-headline">
           <div className="container hero-inner">
             <div className="hero-copy">
-              <span className="micro">For the people in their corner</span>
-              <h1 id="landing-headline" className="display" data-testid="text-landing-headline">Their<br />season.<br /><em>Your front<br />row.</em></h1>
+              <h1 id="landing-headline" className="display" data-testid="text-landing-headline">ALL IN,<br /><em>ALL SEASON.</em></h1>
               <p className="hero-description">Plan the week, follow the game, and celebrate the athlete you love—all in one place built for families and supporters.</p>
               <div className="hero-buttons">
                 <Link href={destination} className="pill pill-lime" data-testid="link-hero-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>

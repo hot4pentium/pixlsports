@@ -60,6 +60,12 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/` }, page.sessionId);
       await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', value => value === true);
       await connection.evaluate('document.fonts.ready', page.sessionId);
+      const heroCopy = await connection.evaluate<{ headline: string; obsoleteLabel: boolean }>(`(() => ({
+        headline: document.querySelector('[data-testid="text-landing-headline"]')?.innerText || '',
+        obsoleteLabel: document.body.innerText.includes('For the people in their corner'),
+      }))()`, page.sessionId);
+      assert.equal(heroCopy.headline.replace(/\s+/g, ' ').trim(), 'ALL IN, ALL SEASON.');
+      assert.equal(heroCopy.obsoleteLabel, false);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; gameOnBadge: boolean; graphicSvg: boolean; sections: number;
         cta: string; help: string; privacy: string; explainer: string; menuVisible: boolean;
