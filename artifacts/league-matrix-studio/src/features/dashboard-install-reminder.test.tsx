@@ -23,7 +23,7 @@ test('dashboard reminder offers quick access and keeps phone alerts separate', (
 
   assert.match(markup, /Install Pixl Sports for one-tap access/);
   assert.match(markup, /Profile → Phone Alerts/);
-  assert.match(markup, /delivery depends on availability/);
+  assert.match(markup, /Adding a shortcut does not enable alerts/);
   assert.match(markup, /Install app/);
   assert.match(markup, /aria-expanded="false"/);
 });

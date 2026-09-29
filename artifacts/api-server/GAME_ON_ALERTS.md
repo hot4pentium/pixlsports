@@ -7,20 +7,24 @@ and VAPID credentials. Only the scheduler token is shared with cron-job.org.
 
 ## Status and limits
 
-- The cron endpoint and database-backed, bounded reminder queue are prepared
-  in this repository, **not yet published or activated in production**. Do not
-  run a production POST as a test: it may send real phone alerts.
+- The published Autoscale deployment is receiving successful five-minute
+  checks from its configured cron caller. Do not run a production POST as a
+  test: it may send real phone alerts. Use the notification configuration's
+  scheduled-delivery status to confirm that a recent successful check is
+  still present.
 - Reminders are for opted-in **account owners** with a current push
   subscription. An absent one-hour preference is off. A published Hype Card
   does not disable the owner's one-hour prompt. Followers are never notified
   by this job. A successful one-hour prompt suppresses the later capture-open
   fallback; date-only events cannot have a one-hour prompt.
 - New Game On events retain an editable IANA event time zone. Older cards
-  without one use the most recently saved subscription time zone for
-  compatibility (or UTC if it is missing/invalid); editing them can set the
-  event zone explicitly. UTC database due times account for daylight-saving
-  changes. Nonexistent local times at a DST jump are not scheduled; an
-  ambiguous repeated local time uses its first occurrence.
+  without one use the account's selected alert time zone, then the most
+  recently saved subscription time zone for compatibility (or UTC if both
+  are missing/invalid). One-hour reminders follow the event's saved zone;
+  day-of reminders are scheduled for 7:00 a.m. in the selected alert zone.
+  UTC database due times account for daylight-saving changes. Nonexistent
+  local times at a DST jump are not scheduled; an ambiguous repeated local
+  time uses its first occurrence.
 - Five-minute polling can deliver a reminder several minutes after its due
   time. If a check is missed, later checks pick up overdue reminders while
   they remain relevant; after the event starts, the capture-open fallback can
@@ -94,6 +98,12 @@ and a **fresh nonce**. It reports the last completed check and aggregate
 pending/sent/failed counts without sending a push. Do not use `GET` as the
 cron-job.org method: only `POST` processes reminders. The Replit API health
 route alone does not prove the reminder job has run.
+
+The public notification configuration response reports scheduled delivery as
+active only when push is configured, a valid cron token is present, and the
+server recorded a successful reminder check within the last 15 minutes. This
+keeps the settings page from treating saved preferences or an installed app as
+proof that a scheduler is currently running.
 
 ## Other callers
 

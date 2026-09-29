@@ -78,7 +78,10 @@ export function scheduledGameOnTimes(
   timezone: string,
   preferences: { oneHourBefore: boolean; dayOf: boolean },
 ): ReminderTimes[] {
-  const start = localInstant(event.date, event.time, timezone);
+  const eventTimezone = event.timezone && isIanaTimezone(event.timezone)
+    ? event.timezone
+    : timezone;
+  const start = localInstant(event.date, event.time, eventTimezone);
   const result: ReminderTimes[] = [];
   if (preferences.dayOf) {
     const morning = localInstant(event.date, "07:00", timezone);

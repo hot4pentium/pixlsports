@@ -12,6 +12,7 @@ import {
   webPushSubscriptionsTable,
 } from "@workspace/db";
 import {
+  isGameOnAlertScheduleFresh,
   getScheduledGameOnStatus,
   reconcileGameOnShare,
   runScheduledGameOnReminders,
@@ -100,7 +101,7 @@ async function queueOneHour(fixture: Awaited<ReturnType<typeof setup>>, now = ON
   return rows[0]!;
 }
 
-test("reconciliation stores the event's local due time in UTC and legacy events use subscription zone", async () => {
+test("reconciliation stores UTC due times and keeps event and account time zones distinct", async () => {
   const west = await setup({ timezone: "America/Los_Angeles", eventTimezone: "America/New_York" });
   const legacy = await setup({ timezone: "America/Los_Angeles", eventTimezone: "" });
   try {
@@ -118,7 +119,7 @@ test("reconciliation stores the event's local due time in UTC and legacy events 
       eq(gameOnScheduledRemindersTable.shareId, legacy.share.id),
       eq(gameOnScheduledRemindersTable.reminderType, "one_hour"),
     ));
-    assert.equal(newYork?.timezone, "America/New_York");
+    assert.equal(newYork?.timezone, "America/Los_Angeles");
     assert.equal(newYork?.dueAt.toISOString(), "2026-09-28T21:00:00.000Z");
     assert.equal(losAngeles?.timezone, "America/Los_Angeles");
     assert.equal(losAngeles?.dueAt.toISOString(), "2026-09-29T00:00:00.000Z");
@@ -126,6 +127,84 @@ test("reconciliation stores the event's local due time in UTC and legacy events 
     await west.cleanup();
     await legacy.cleanup();
   }
+});
+
+test("day-of Event Card reminders use the account's saved alert time zone", async () => {
+  const fixture = await setup({ timezone: "America/New_York", eventTimezone: "America/New_York" });
+  try {
+    await db.update(plannerNotificationPreferencesTable).set({
+      oneHourBefore: false,
+      dayOf: true,
+      timezone: "America/Los_Angeles",
+    }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, fixture.ownerClerkUserId));
+
+    await reconcileGameOnShare(fixture.share, new Date("2026-09-20T00:00:00.000Z"));
+    const [dayOf] = await db.select().from(gameOnScheduledRemindersTable).where(and(
+      eq(gameOnScheduledRemindersTable.shareId, fixture.share.id),
+      eq(gameOnScheduledRemindersTable.reminderType, "day_of"),
+    ));
+
+    assert.equal(dayOf?.timezone, "America/Los_Angeles");
+    assert.equal(dayOf?.dueAt.toISOString(), "2026-09-28T14:00:00.000Z");
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("a changed alert time zone reschedules day-of delivery without sending at the old time", async () => {
+  const fixture = await setup({ timezone: "America/New_York", eventTimezone: "America/New_York" });
+  let sends = 0;
+  try {
+    await db.update(plannerNotificationPreferencesTable).set({
+      oneHourBefore: false,
+      dayOf: true,
+      timezone: "America/New_York",
+    }).where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, fixture.ownerClerkUserId));
+    await reconcileGameOnShare(fixture.share, new Date("2026-09-20T00:00:00.000Z"));
+
+    const [original] = await db.select().from(gameOnScheduledRemindersTable).where(and(
+      eq(gameOnScheduledRemindersTable.shareId, fixture.share.id),
+      eq(gameOnScheduledRemindersTable.reminderType, "day_of"),
+    ));
+    assert.equal(original?.dueAt.toISOString(), "2026-09-28T11:00:00.000Z");
+
+    await db.update(plannerNotificationPreferencesTable).set({ timezone: "America/Los_Angeles" })
+      .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, fixture.ownerClerkUserId));
+    await reconcileGameOnShare(fixture.share, new Date("2026-09-20T00:00:00.000Z"));
+
+    const [rescheduled] = await db.select().from(gameOnScheduledRemindersTable).where(and(
+      eq(gameOnScheduledRemindersTable.shareId, fixture.share.id),
+      eq(gameOnScheduledRemindersTable.reminderType, "day_of"),
+    ));
+    assert.equal(rescheduled?.timezone, "America/Los_Angeles");
+    assert.equal(rescheduled?.dueAt.toISOString(), "2026-09-28T14:00:00.000Z");
+
+    const dependencies = {
+      sendPushNotificationToSubscription: async () => {
+        sends += 1;
+        return { configured: true, sent: true, stale: false };
+      },
+      syncPageSize: 0,
+    };
+    await runScheduledGameOnReminders(new Date("2026-09-28T11:00:00.000Z"), dependencies);
+    assert.equal(sends, 0);
+    const [stillPending] = await db.select().from(gameOnScheduledRemindersTable)
+      .where(eq(gameOnScheduledRemindersTable.id, rescheduled!.id));
+    assert.equal(stillPending?.status, "pending");
+
+    await runScheduledGameOnReminders(new Date("2026-09-28T14:00:00.000Z"), dependencies);
+    assert.equal(sends, 1);
+  } finally {
+    await fixture.cleanup();
+  }
+});
+
+test("scheduled delivery only reports a recent successful server check as active", () => {
+  const now = new Date("2026-09-29T12:00:00.000Z");
+  assert.equal(isGameOnAlertScheduleFresh(null, now), false);
+  assert.equal(isGameOnAlertScheduleFresh(new Date("2026-09-29T11:44:00.000Z"), now), false);
+  assert.equal(isGameOnAlertScheduleFresh(new Date("2026-09-29T11:46:00.000Z"), now), true);
+  assert.equal(isGameOnAlertScheduleFresh(new Date("2026-09-29T12:01:00.000Z"), now), false);
 });
 
 test("ordinary schedule shares never enter the Game On reminder queue", async () => {

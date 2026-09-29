@@ -9,4 +9,9 @@
 export interface NotificationPreferencesUpdate {
   oneHourBefore: boolean;
   dayOf: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone: string;
 }

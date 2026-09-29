@@ -1643,7 +1643,7 @@ paths:
     get:
       operationId: getNotificationConfig
       tags: [notifications]
-      summary: Get browser push notification availability
+      summary: Get browser push and scheduled delivery availability
       responses:
         "200":
           description: Push configuration
@@ -1973,22 +1973,25 @@ components:
         cropZoom: { type: integer, minimum: 100, maximum: 250 }
     NotificationConfig:
       type: object
-      required: [available, publicKey]
+      required: [available, publicKey, scheduledDeliveryEnabled]
       properties:
         available: { type: boolean }
         publicKey: { type: ["string", "null"], maxLength: 300 }
+        scheduledDeliveryEnabled: { type: boolean }
     NotificationPreferences:
       type: object
-      required: [oneHourBefore, dayOf]
+      required: [oneHourBefore, dayOf, timezone]
       properties:
         oneHourBefore: { type: boolean }
         dayOf: { type: boolean }
+        timezone: { type: ["string", "null"], maxLength: 100 }
     NotificationPreferencesUpdate:
       type: object
-      required: [oneHourBefore, dayOf]
+      required: [oneHourBefore, dayOf, timezone]
       properties:
         oneHourBefore: { type: boolean }
         dayOf: { type: boolean }
+        timezone: { type: string, minLength: 1, maxLength: 100 }
     SupporterActiveGame:
       type: object
       additionalProperties: false

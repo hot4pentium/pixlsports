@@ -13,4 +13,5 @@ export interface NotificationConfig {
      * @nullable
      */
   publicKey: string | null;
+  scheduledDeliveryEnabled: boolean;
 }

@@ -78,16 +78,27 @@ export interface NotificationConfig {
      * @nullable
      */
   publicKey: string | null;
+  scheduledDeliveryEnabled: boolean;
 }
 
 export interface NotificationPreferences {
   oneHourBefore: boolean;
   dayOf: boolean;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  timezone: string | null;
 }
 
 export interface NotificationPreferencesUpdate {
   oneHourBefore: boolean;
   dayOf: boolean;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  timezone: string;
 }
 
 export interface SupporterActiveGame {
@@ -234,6 +245,21 @@ export interface ScheduleShare {
 }
 
 export type DeleteGameOnCardResponseCalendarEventStatus = typeof DeleteGameOnCardResponseCalendarEventStatus[keyof typeof DeleteGameOnCardResponseCalendarEventStatus];
+
+
+export const DeleteGameOnCardResponseCalendarEventStatus = {
+  deleted: 'deleted',
+  'not-linked': 'not-linked',
+  unverified: 'unverified',
+  'not-found': 'not-found',
+  ambiguous: 'ambiguous',
+} as const;
+
+export interface DeleteGameOnCardResponse {
+  calendarEventDeleted: boolean;
+  calendarEventStatus: DeleteGameOnCardResponseCalendarEventStatus;
+}
+
 export type GameOnCardEventType = typeof GameOnCardEventType[keyof typeof GameOnCardEventType];
 
 
@@ -1940,17 +1966,3 @@ export type GetNotificationSubscriptionStatusParams = {
  */
 endpoint: string;
 };
-
-
-export const DeleteGameOnCardResponseCalendarEventStatus = {
-  deleted: 'deleted',
-  'not-linked': 'not-linked',
-  unverified: 'unverified',
-  'not-found': 'not-found',
-  ambiguous: 'ambiguous',
-} as const;
-
-export interface DeleteGameOnCardResponse {
-  calendarEventDeleted: boolean;
-  calendarEventStatus: DeleteGameOnCardResponseCalendarEventStatus;
-}

@@ -54,8 +54,8 @@
 - [Hosted clip duration validation](hosted-clip-duration-validation.md) — a browser-recorded Hype Page MP4 can be much longer than the selected trim despite reporting the trim duration in its manifest.
 - [Hosted video poster capture](hosted-video-poster-capture.md) — generate thumbnails from the finished clip; saved black posters need a viewer fallback.
 - [Clerk appearance stability](clerk-appearance-stability.md) — prefer theme variables and element classes over structural Clerk CSS selectors.
-- [Planner reminder preferences](planner-reminder-preferences.md) — store alert choices per account while keeping local scheduling based on the push subscription time zone.
-- [Planner subscription time zones](planner-subscription-timezones.md) — never derive reminder timing from an arbitrary push subscription row when accounts have multiple devices.
+- [Planner reminder preferences](planner-reminder-preferences.md) — day-of alerts use the saved account zone; one-hour alerts use the event zone, with subscription zone only as a legacy fallback.
+- [Planner subscription time zones](planner-subscription-timezones.md) — use account/event zones first; choose the latest subscription zone only when older preferences lack one.
 - [Push display receipts](push-display-receipts.md) — service-worker receipts confirm OS display acceptance, not that a user saw or read the alert.
 - [Cached startup browser timing](cached-startup-browser-timing.md) — compare cached readiness with delayed refresh completion instead of timing Vite dev-server startup tightly.
 - [Hype Page media naming](hype-page-media-naming.md) — display names are separate metadata; public manifests must redact device filenames from video metadata.

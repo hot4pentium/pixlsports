@@ -31,3 +31,16 @@ test("day-of date-only reminders expire on the next local day", () => {
   assert.equal(reminders[0]?.dueAt.toISOString(), "2026-10-04T14:00:00.000Z");
   assert.equal(reminders[0]?.expiresAt.toISOString(), "2026-10-05T07:00:00.000Z");
 });
+
+test("one-hour alerts follow the event zone while day-of alerts follow the account's chosen zone", () => {
+  const reminders = scheduledGameOnTimes({
+    id: "match",
+    type: "game",
+    date: "2026-03-08",
+    time: "12:00",
+    timezone: "America/New_York",
+  }, "America/Los_Angeles", { oneHourBefore: true, dayOf: true });
+
+  assert.equal(reminders.find((item) => item.type === "one_hour")?.dueAt.toISOString(), "2026-03-08T15:00:00.000Z");
+  assert.equal(reminders.find((item) => item.type === "day_of")?.dueAt.toISOString(), "2026-03-08T14:00:00.000Z");
+});

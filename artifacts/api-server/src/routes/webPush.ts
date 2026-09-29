@@ -1,11 +1,14 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   AcknowledgeNotificationDisplayedBody,
   AcknowledgeNotificationDisplayedParams,
   DeleteNotificationSubscriptionBody,
+  GetNotificationConfigResponse,
+  GetNotificationPreferencesResponse,
   SaveNotificationSubscriptionBody,
   UpdateNotificationPreferencesBody,
+  UpdateNotificationPreferencesResponse,
 } from "@workspace/api-zod";
 import {
   cloudProjectsTable,
@@ -18,37 +21,58 @@ import {
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { getWebPushConfig, isAllowedPushEndpoint, sendPushNotificationToUser } from "../lib/webPush";
-import { queueGameOnOwnerSync } from "../jobs/gameOnReminderQueue";
+import { isGameOnAlertScheduleEnabled, queueGameOnOwnerSync } from "../jobs/gameOnReminderQueue";
+import { isIanaTimezone } from "../lib/timezone";
 
 const router: IRouter = Router();
 
 // The VAPID public key and availability are safe to read before Clerk finishes
 // initializing. Subscription changes and test alerts below remain authenticated.
-router.get("/notifications/config", (_req, res): void => {
+router.get("/notifications/config", async (req, res): Promise<void> => {
   const config = getWebPushConfig();
-  res.json({ available: config.available, publicKey: config.available ? config.publicKey : null });
+  try {
+    const scheduledDeliveryEnabled = config.available && await isGameOnAlertScheduleEnabled();
+    res.json(GetNotificationConfigResponse.parse({
+      available: config.available,
+      publicKey: config.available ? config.publicKey : null,
+      scheduledDeliveryEnabled,
+    }));
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to check scheduled Event Card delivery");
+    res.status(500).json({ error: "Unable to check scheduled alert availability." });
+  }
 });
 
 router.get("/notifications/preferences", requireAuth, async (_req, res): Promise<void> => {
   const ownerClerkUserId = getRequiredClerkUserId(res);
-  const [preferences] = await db
-    .select({
+  const [[preferences], [subscription]] = await Promise.all([
+    db.select({
       oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
       dayOf: plannerNotificationPreferencesTable.dayOf,
-    })
-    .from(plannerNotificationPreferencesTable)
-    .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId))
-    .limit(1);
+      timezone: plannerNotificationPreferencesTable.timezone,
+    }).from(plannerNotificationPreferencesTable)
+      .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId)).limit(1),
+    db.select({ timezone: webPushSubscriptionsTable.timezone })
+      .from(webPushSubscriptionsTable)
+      .where(eq(webPushSubscriptionsTable.ownerClerkUserId, ownerClerkUserId))
+      .orderBy(desc(webPushSubscriptionsTable.updatedAt))
+      .limit(1),
+  ]);
 
-  res.json({
+  res.json(GetNotificationPreferencesResponse.parse({
     oneHourBefore: preferences?.oneHourBefore ?? false,
     dayOf: preferences?.dayOf ?? false,
-  });
+    timezone: preferences?.timezone ?? subscription?.timezone ?? null,
+  }));
 });
 
 router.patch("/notifications/preferences", requireAuth, async (req, res): Promise<void> => {
   const parsed = UpdateNotificationPreferencesBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid notification preferences." }); return; }
+  if (!isIanaTimezone(parsed.data.timezone)) {
+    res.status(400).json({ error: "Choose a valid time zone." });
+    return;
+  }
   const ownerClerkUserId = getRequiredClerkUserId(res);
   try {
     const [preferences] = await db
@@ -57,25 +81,28 @@ router.patch("/notifications/preferences", requireAuth, async (req, res): Promis
         ownerClerkUserId,
         oneHourBefore: parsed.data.oneHourBefore,
         dayOf: parsed.data.dayOf,
+        timezone: parsed.data.timezone,
       })
       .onConflictDoUpdate({
         target: plannerNotificationPreferencesTable.ownerClerkUserId,
         set: {
           oneHourBefore: parsed.data.oneHourBefore,
           dayOf: parsed.data.dayOf,
+          timezone: parsed.data.timezone,
           updatedAt: new Date(),
         },
       })
       .returning({
         oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
         dayOf: plannerNotificationPreferencesTable.dayOf,
+        timezone: plannerNotificationPreferencesTable.timezone,
       });
     try {
       await queueGameOnOwnerSync(ownerClerkUserId);
     } catch {
       req.log.warn("Notification preferences saved; reminder scheduling needs reconciliation");
     }
-    res.json(preferences);
+    res.json(UpdateNotificationPreferencesResponse.parse(preferences));
   } catch (error) {
     req.log.error({ err: error }, "Unable to save notification preferences");
     res.status(500).json({ error: "Unable to save notification preferences." });

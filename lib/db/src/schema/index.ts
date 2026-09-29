@@ -231,6 +231,7 @@ export const plannerNotificationPreferencesTable = pgTable("planner_notification
   ownerClerkUserId: text("owner_clerk_user_id").primaryKey(),
   oneHourBefore: boolean("one_hour_before").notNull().default(false),
   dayOf: boolean("day_of").notNull().default(false),
+  timezone: text("timezone"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

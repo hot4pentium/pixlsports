@@ -4011,6 +4011,7 @@ export function mount() {
         return Promise.resolve(new Response(JSON.stringify({
           available: true,
           publicKey: 'BROWSER_TEST_PUBLIC_KEY',
+          scheduledDeliveryEnabled: window.localStorage.getItem('browser-test-scheduled-delivery-enabled') === 'true',
         }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -4031,7 +4032,7 @@ export function mount() {
             headers: { 'Content-Type': 'application/json' },
           }));
         }
-        const preferences = JSON.parse(window.localStorage.getItem(preferencesStorageKey) || '{"oneHourBefore":true,"dayOf":false}');
+        const preferences = JSON.parse(window.localStorage.getItem(preferencesStorageKey) || '{"oneHourBefore":true,"dayOf":false,"timezone":"UTC"}');
         return Promise.resolve(new Response(JSON.stringify(preferences), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -4462,10 +4463,13 @@ test('notification reminder choices persist after reload and use the preferences
     const preferencesExpression = `(() => {
       const oneHour = document.querySelector('[data-testid="checkbox-reminder-one-hour"]');
       const dayOf = document.querySelector('[data-testid="checkbox-reminder-day-of"]');
+      const timezone = document.querySelector('[data-testid="select-notification-timezone"]');
       return {
-        ready: oneHour instanceof HTMLInputElement && dayOf instanceof HTMLInputElement && !oneHour.disabled && !dayOf.disabled,
+        ready: oneHour instanceof HTMLInputElement && dayOf instanceof HTMLInputElement
+          && timezone instanceof HTMLSelectElement && !oneHour.disabled && !dayOf.disabled && !timezone.disabled,
         oneHourBefore: oneHour instanceof HTMLInputElement ? oneHour.checked : null,
         dayOf: dayOf instanceof HTMLInputElement ? dayOf.checked : null,
+        timezone: timezone instanceof HTMLSelectElement ? timezone.value : null,
       };
     })()`;
     await waitFor(
@@ -4476,7 +4480,25 @@ test('notification reminder choices persist after reload and use the preferences
     );
     assert.deepEqual(
       await connection.evaluate(preferencesExpression, page.sessionId),
-      { ready: true, oneHourBefore: true, dayOf: false },
+      { ready: true, oneHourBefore: true, dayOf: false, timezone: 'UTC' },
+    );
+    assert.equal(
+      await connection.evaluate<string>(
+        'document.querySelector(\'[data-testid="status-event-card-delivery"]\')?.textContent?.trim() || ""',
+        page.sessionId,
+      ),
+      'Scheduled Event Card delivery is not active on this deployment. Your choices can be saved, but automatic alerts will not be sent until the server schedule is enabled.',
+    );
+    await connection.evaluate(
+      `localStorage.setItem('browser-test-scheduled-delivery-enabled', 'true')`,
+      page.sessionId,
+    );
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(\'[data-testid="status-event-card-delivery"]\')?.textContent?.trim() || ""',
+      (value: string) => value === 'Scheduled Event Card delivery is active on this deployment. Choose at least one reminder below to opt in; app installation alone does not enable alerts.',
     );
 
     const clickPreference = async (testId: string, expectedRequestCount: number) => {
@@ -4493,7 +4515,20 @@ test('notification reminder choices persist after reload and use the preferences
     await clickPreference('checkbox-reminder-day-of', 2);
     assert.deepEqual(
       await connection.evaluate(preferencesExpression, page.sessionId),
-      { ready: true, oneHourBefore: false, dayOf: true },
+      { ready: true, oneHourBefore: false, dayOf: true, timezone: 'UTC' },
+    );
+
+    await connection.evaluate(`(() => {
+      const timezone = document.querySelector('[data-testid="select-notification-timezone"]');
+      if (!(timezone instanceof HTMLSelectElement)) throw new Error('Alert time zone selector is missing');
+      timezone.value = 'America/Los_Angeles';
+      timezone.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      `JSON.parse(localStorage.getItem('browser-test-notification-preference-requests') || '[]').length`,
+      (value: number) => value === 3,
     );
 
     await reloadPage(connection, page);
@@ -4501,20 +4536,20 @@ test('notification reminder choices persist after reload and use the preferences
       connection,
       page.sessionId,
       preferencesExpression,
-      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null }) => (
-        value.ready && value.oneHourBefore === false && value.dayOf === true
+      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null; timezone: string | null }) => (
+        value.ready && value.oneHourBefore === false && value.dayOf === true && value.timezone === 'America/Los_Angeles'
       ),
     );
 
-    await clickPreference('checkbox-reminder-one-hour', 3);
-    await clickPreference('checkbox-reminder-day-of', 4);
+    await clickPreference('checkbox-reminder-one-hour', 4);
+    await clickPreference('checkbox-reminder-day-of', 5);
     await reloadPage(connection, page);
     await waitFor(
       connection,
       page.sessionId,
       preferencesExpression,
-      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null }) => (
-        value.ready && value.oneHourBefore === true && value.dayOf === false
+      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null; timezone: string | null }) => (
+        value.ready && value.oneHourBefore === true && value.dayOf === false && value.timezone === 'America/Los_Angeles'
       ),
     );
 
@@ -4522,13 +4557,14 @@ test('notification reminder choices persist after reload and use the preferences
       await connection.evaluate<Array<{
         method: string;
         url: string;
-        body: { oneHourBefore: boolean; dayOf: boolean };
+        body: { oneHourBefore: boolean; dayOf: boolean; timezone: string };
       }>>(`JSON.parse(localStorage.getItem('browser-test-notification-preference-requests') || '[]')`, page.sessionId),
       [
-        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: false } },
-        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: true } },
-        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: true } },
-        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: false } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: false, timezone: 'UTC' } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: true, timezone: 'UTC' } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: false, dayOf: true, timezone: 'America/Los_Angeles' } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: true, timezone: 'America/Los_Angeles' } },
+        { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: false, timezone: 'America/Los_Angeles' } },
       ],
     );
   } finally {

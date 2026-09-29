@@ -84,6 +84,13 @@ type JobDependencies = {
 };
 
 const defaultSender = sendPushNotificationToSubscription as ReminderSender;
+const SCHEDULE_HEARTBEAT_MAX_AGE_MS = 15 * 60_000;
+
+export function isGameOnAlertScheduleFresh(lastSuccessAt: Date | null | undefined, now = new Date()) {
+  if (!lastSuccessAt) return false;
+  const age = now.getTime() - lastSuccessAt.getTime();
+  return age >= 0 && age <= SCHEDULE_HEARTBEAT_MAX_AGE_MS;
+}
 
 function validGameOnEvent(value: unknown): value is TimedGameOnEvent {
   if (!value || typeof value !== "object") return false;
@@ -169,6 +176,7 @@ async function getOwnerSettings(ownerClerkUserId: string) {
     db.select({
       oneHourBefore: plannerNotificationPreferencesTable.oneHourBefore,
       dayOf: plannerNotificationPreferencesTable.dayOf,
+      timezone: plannerNotificationPreferencesTable.timezone,
     })
       .from(plannerNotificationPreferencesTable)
       .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, ownerClerkUserId))
@@ -219,10 +227,10 @@ export async function reconcileGameOnShare(share: ShareInput, now = new Date()) 
   const candidate = share.teamSeason === GAME_ON_CARD_MARKER ? getCardEvent(share.events) : null;
   const event = candidate && await isAuthoritativeShare(share, candidate) ? candidate : null;
   const settings = await getOwnerSettings(share.ownerClerkUserId);
-  const timezone = event?.timezone && isIanaTimezone(event.timezone)
-    ? event.timezone
+  const preferences = settings.preferences ?? { oneHourBefore: false, dayOf: false, timezone: null };
+  const timezone = preferences.timezone && isIanaTimezone(preferences.timezone)
+    ? preferences.timezone
     : isIanaTimezone(settings.subscription?.timezone) ? settings.subscription!.timezone : "UTC";
-  const preferences = settings.preferences ?? { oneHourBefore: false, dayOf: false };
   const eligible = Boolean(event
     && event.status !== "final"
     && settings.subscription
@@ -527,13 +535,13 @@ async function recheckReminder(row: ReminderRow, now: Date) {
       ))
       : Promise.resolve([] as Array<{ game: unknown }>),
   ]);
-  const preferences = settings.preferences ?? { oneHourBefore: false, dayOf: false };
+  const preferences = settings.preferences ?? { oneHourBefore: false, dayOf: false, timezone: null };
   if (!settings.subscription || !accountIsEligible(settings.account, now)
     || trackerRows.some((shareRow) => (shareRow.game as { status?: unknown })?.status === "final")) {
     return { eligible: false as const };
   }
-  const timezone = event.timezone && isIanaTimezone(event.timezone)
-    ? event.timezone
+  const timezone = preferences.timezone && isIanaTimezone(preferences.timezone)
+    ? preferences.timezone
     : isIanaTimezone(settings.subscription.timezone) ? settings.subscription.timezone : "UTC";
   const enabled = row.reminderType === "day_of" ? preferences.dayOf : preferences.oneHourBefore;
   if (!enabled || timezone !== row.timezone) return { eligible: false as const };
@@ -824,6 +832,16 @@ export async function getScheduledGameOnStatus() {
   const [runner] = await db.select({ lastSuccessAt: gameOnReminderSyncTable.lastSuccessAt })
     .from(gameOnReminderSyncTable).where(eq(gameOnReminderSyncTable.key, RUNNER_STATE_KEY)).limit(1);
   return { lastSuccessAt: runner?.lastSuccessAt ?? null, ...(await queueCounts()) };
+}
+
+export async function isGameOnAlertScheduleEnabled(now = new Date()) {
+  const cronToken = process.env["GAME_ON_ALERTS_CRON_TOKEN"]?.trim();
+  if (!cronToken || cronToken.length < 32) return false;
+  const [runner] = await db.select({ lastSuccessAt: gameOnReminderSyncTable.lastSuccessAt })
+    .from(gameOnReminderSyncTable)
+    .where(eq(gameOnReminderSyncTable.key, RUNNER_STATE_KEY))
+    .limit(1);
+  return isGameOnAlertScheduleFresh(runner?.lastSuccessAt, now);
 }
 
 export async function runScheduledGameOnReminders(now = new Date(), dependencies: JobDependencies = {}) {

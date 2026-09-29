@@ -39,7 +39,7 @@ export function DashboardInstallReminder({
         <div className="dashboard-install-reminder__text">
           <p className="dashboard-install-reminder__eyebrow">QUICK ACCESS FOR GAME DAY</p>
           <p className="dashboard-install-reminder__message">
-            Install Pixl Sports for one-tap access. Phone alert options are separate under Profile → Phone Alerts, and delivery depends on availability.
+            Install Pixl Sports for one-tap access. Adding a shortcut does not enable alerts; choose them separately under Profile → Phone Alerts.
           </p>
         </div>
       </div>
