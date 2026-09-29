@@ -2,6 +2,11 @@ import type { SupporterProfile } from './supporter-dashboard';
 import { isSport, type Sport } from './stat-tracker';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { hypeCardProjectStorageKey, type HypeCardProject } from './hype-card-types';
+import {
+  getSupporterEventLocalDateKey,
+  getSupporterEventStart,
+  normalizeSupporterEventDateKey,
+} from './supporter-event-time';
 
 /** The studio is supporter-first. Legacy role metadata is intentionally normalized. */
 export type UserRole = 'fan';
@@ -168,6 +173,7 @@ export type SupporterGameLike = {
   id: string;
   date: string;
   time: string;
+  timezone?: string;
   status?: ScheduleEventStatus;
   completedAt?: string;
   type?: 'game' | 'practice' | 'meeting';
@@ -312,29 +318,55 @@ function parseSupporterEventTime(value: string): { hour: number; minute: number 
 }
 
 export function getSupporterGameStage(
-  game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type'>,
+  game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type' | 'timezone'>,
   now = new Date(),
+  options: { includePregameCaptureWindow?: boolean } = {},
 ): SupporterGameStage {
   if (game.status === 'final') return 'completed';
 
-  const todayKey = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('-');
+  const todayKey = getSupporterEventLocalDateKey(now, game.timezone)
+    ?? [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+  const eventDateKey = normalizeSupporterEventDateKey(game.date)
+    ?? game.date;
   // A saved status must not keep a previous day's event in the upcoming queue.
-  if (game.date < todayKey) return 'completed';
+  if (eventDateKey < todayKey) return 'completed';
   if (game.status === 'live') return 'live';
-  if (game.date > todayKey) return 'upcoming';
+  if (eventDateKey > todayKey) return 'upcoming';
 
   const eventTime = parseSupporterEventTime(game.time);
-  if (!eventTime) return game.type === 'game' || !game.type ? 'live' : 'upcoming';
-  const start = new Date(now);
-  start.setHours(eventTime.hour, eventTime.minute, 0, 0);
   const isGame = game.type === 'game' || !game.type;
-  const captureStart = isGame ? start.getTime() - 60 * 60 * 1000 : start.getTime();
+  if (!eventTime) return isGame && options.includePregameCaptureWindow !== false ? 'live' : 'upcoming';
+  const start = getSupporterEventStart(game.date, eventTime, game.timezone);
+  if (!start) {
+    const localStart = new Date(now);
+    localStart.setHours(eventTime.hour, eventTime.minute, 0, 0);
+    const captureStart = isGame && options.includePregameCaptureWindow !== false
+      ? localStart.getTime() - 60 * 60 * 1000
+      : localStart.getTime();
+    if (captureStart > now.getTime()) return 'upcoming';
+    return now.getTime() - localStart.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
+  }
+  const captureStart = isGame && options.includePregameCaptureWindow !== false
+    ? start.getTime() - 60 * 60 * 1000
+    : start.getTime();
   if (captureStart > now.getTime()) return 'upcoming';
   return now.getTime() - start.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
+}
+
+export function isSupporterGameInPregameCaptureWindow(
+  game: Pick<SupporterGameLike, 'date' | 'time' | 'status' | 'type' | 'timezone'>,
+  now = new Date(),
+): boolean {
+  if ((game.type !== undefined && game.type !== 'game') || game.status === 'live' || game.status === 'final') {
+    return false;
+  }
+  if (!parseSupporterEventTime(game.time)) return false;
+  return getSupporterGameStage(game, now) === 'live'
+    && getSupporterGameStage(game, now, { includePregameCaptureWindow: false }) === 'upcoming';
 }
 
 export function getVisibleSupporterSelection<T extends SupporterGameLike>(

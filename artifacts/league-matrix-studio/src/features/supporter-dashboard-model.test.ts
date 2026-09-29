@@ -257,6 +257,39 @@ test('the week path moves a game to Capture one hour before start', () => {
   assert.equal(getSupporterGameStage(event, new Date('2026-09-22T19:00:00')), 'live');
 });
 
+test('Event Card timing uses the event time zone and keeps pre-game capture distinct from Live', () => {
+  const event = {
+    type: 'game' as const,
+    date: '2026-01-15',
+    time: '10:22 PM',
+    timezone: 'America/New_York',
+    status: 'upcoming' as const,
+  };
+  const oneHourBefore = new Date('2026-01-16T02:22:00Z');
+  const oneMinuteBefore = new Date('2026-01-16T03:21:00Z');
+  const kickoff = new Date('2026-01-16T03:22:00Z');
+
+  assert.equal(getSupporterGameStage(event, oneHourBefore), 'live', 'pre-game capture remains available');
+  assert.equal(
+    getSupporterGameStage(event, oneHourBefore, { includePregameCaptureWindow: false }),
+    'upcoming',
+  );
+  assert.equal(
+    getSupporterGameStage(event, oneMinuteBefore, { includePregameCaptureWindow: false }),
+    'upcoming',
+  );
+  assert.equal(getSupporterGameStage(event, kickoff, { includePregameCaptureWindow: false }), 'live');
+  assert.equal(
+    getSupporterGameStage(
+      { ...event, status: 'live' },
+      oneHourBefore,
+      { includePregameCaptureWindow: false },
+    ),
+    'live',
+    'an explicitly live event remains Live before its scheduled time',
+  );
+});
+
 test('the week path handles imported AM/PM event times', () => {
   const event = { type: 'practice' as const, date: '2026-09-22', time: '10:00 AM' };
   assert.equal(getSupporterGameStage(event, new Date('2026-09-22T09:59:59')), 'upcoming');

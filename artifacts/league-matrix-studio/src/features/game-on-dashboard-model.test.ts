@@ -66,6 +66,40 @@ test('a standalone Game On card appears in the next-game summary before its 10 A
   assert.equal(getNextGameOnDashboardEntry(cards, new Date('2026-09-26T14:00:00'))?.eventId, 'tomorrow');
 });
 
+test('a game card stays pre-game through the hour before kickoff in its saved time zone', () => {
+  const easternGame = {
+    ...event('eastern-game', 'game', '2026-01-15'),
+    time: '10:22 PM',
+    timezone: 'America/New_York',
+  };
+  const publishedShare = {
+    shareToken: 'eastern-game-share',
+    title: 'Game On',
+    createdAt: now.toISOString(),
+    events: [easternGame],
+  };
+  const oneMinuteBeforeCapture = new Date('2026-01-16T02:21:00Z');
+  const oneHourBefore = new Date('2026-01-16T02:22:00Z');
+  const oneMinuteBeforeKickoff = new Date('2026-01-16T03:21:00Z');
+  const kickoff = new Date('2026-01-16T03:22:00Z');
+  const beforeCaptureCards = buildGameOnDashboardEntries([easternGame], [publishedShare], 'Alex', oneMinuteBeforeCapture);
+  const preGameCards = buildGameOnDashboardEntries([easternGame], [publishedShare], 'Alex', oneHourBefore);
+  const oneMinuteBeforeCards = buildGameOnDashboardEntries([easternGame], [publishedShare], 'Alex', oneMinuteBeforeKickoff);
+  const liveCards = buildGameOnDashboardEntries([easternGame], [publishedShare], 'Alex', kickoff);
+
+  assert.equal(beforeCaptureCards[0].status, 'Published');
+  assert.equal(preGameCards[0].status, 'Starting Soon');
+  assert.equal(oneMinuteBeforeCards[0].status, 'Starting Soon');
+  assert.equal(getFeaturedGameOnCardId(preGameCards, oneHourBefore), 'share:eastern-game-share');
+  assert.equal(getNextGameOnDashboardEntry(preGameCards, oneHourBefore)?.id, 'share:eastern-game-share');
+  assert.equal(liveCards[0].status, 'Live');
+
+  const explicitlyLiveCards = buildGameOnDashboardEntries([
+    { ...easternGame, status: 'live' },
+  ], [], 'Alex', oneHourBefore);
+  assert.equal(explicitlyLiveCards[0].status, 'Live');
+});
+
 test('a finalized card is not announced as an upcoming game', () => {
   const morning = new Date('2026-09-26T07:30:00');
   const todayGame = { ...event('done', 'game', '2026-09-26'), time: '10:00', status: 'final' as const };

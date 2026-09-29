@@ -465,6 +465,7 @@
 }
 .game-on-collection__status--published { background: #dbeeff; border-color: #acd1f6; color: #155496; }
 .game-on-collection__status--live { background: #fff0e9; border-color: #ffb792; color: #a43f19; }
+.game-on-collection__status--starting-soon { background: #fff5d9; border-color: #efd17c; color: #745409; }
 .game-on-collection__status--complete { background: #e2f3e9; border-color: #add8bc; color: #17633b; }
 .game-on-collection__status--draft { background: #e7f0f8; border-color: #c4d8e8; color: #345573; }
 .game-on-collection__status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }

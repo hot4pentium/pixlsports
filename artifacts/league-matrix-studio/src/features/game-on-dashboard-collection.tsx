@@ -23,7 +23,7 @@ export type DashboardGameOnCard = {
   date: string;
   time: string;
   location: string;
-  status: 'Draft' | 'Published' | 'Live' | 'Complete';
+  status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Complete';
   isPublished: boolean;
   isUnsavedDraft?: boolean;
   recordedGameId?: string;
@@ -150,6 +150,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   const isFeatured = card.id === featuredCardId;
   const isUpNext = isFeatured && card.status !== 'Live';
   const isActive = isFeatured && card.status === 'Live';
+  const isStartingSoon = isFeatured && card.status === 'Starting Soon';
   const title = practice ? (card.opponent || 'Practice') : (card.opponent ? `vs ${card.opponent}` : 'Game day');
   const calendarEventId = card.eventId;
   const eventId = card.eventId ?? card.id.replace(/^(?:share|draft):/, '');
@@ -168,6 +169,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     }
     : undefined;
   const statusLabel = getCardStatus(card);
+  const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
@@ -207,7 +209,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
             type="button"
             className="game-on-collection__summary"
             onClick={(event) => onOpen(card.id, event.currentTarget)}
-            aria-label={`${isUpNext ? 'Up next: ' : isActive ? 'Active now: ' : ''}${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
+            aria-label={`${isStartingSoon ? 'Starting soon: ' : isUpNext ? 'Up next: ' : isActive ? 'Active now: ' : ''}${selected ? 'Collapse' : 'Open'} ${card.athleteName ? `${card.athleteName}'s ` : ''}${practice ? 'practice' : 'game'} badge${card.opponent ? `, ${practice ? '' : 'versus '}${card.opponent}` : ''}, ${card.date || 'date to be determined'}, ${displayTime(card.time)}, ${card.location || 'Location TBD'}, ${statusLabel}`}
             aria-haspopup={isDialogCard ? undefined : 'dialog'}
             aria-expanded={renderSelectedCard ? (isDialogCard ? selected : triggerSelected) : undefined}
             aria-controls={isDialogCard ? (hasEditor ? editorId : undefined) : triggerSelected ? dialogId : undefined}
@@ -216,14 +218,14 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
             <span className="game-on-collection__card-top">
               {isFeatured && !isDialogCard && (
                 <span className={`game-on-collection__featured-label${isActive ? ' game-on-collection__featured-label--active' : ''}`}>
-                  {isActive ? 'Happening now' : 'Up next'}
+                  {isActive ? 'Happening now' : isStartingSoon ? 'Starting soon' : 'Up next'}
                 </span>
               )}
               <span className="game-on-collection__kind">
                 {practice ? <CalendarDays size={14} aria-hidden="true" /> : <Swords size={14} aria-hidden="true" />}
                 {practice ? 'Practice' : 'Game'}
               </span>
-              <span className={`game-on-collection__status game-on-collection__status--${statusLabel.toLowerCase()}`} data-status={statusLabel.toLowerCase()} data-testid={`status-game-on-card-${card.id}`}>
+              <span className={`game-on-collection__status game-on-collection__status--${statusKey}`} data-status={statusKey} data-testid={`status-game-on-card-${card.id}`}>
                 <span className="game-on-collection__status-dot" aria-hidden="true" />
                 {statusLabel}
               </span>

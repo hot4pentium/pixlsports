@@ -1,4 +1,4 @@
-import { getSupporterGameStage } from './supporter-dashboard-model';
+import { getSupporterGameStage, isSupporterGameInPregameCaptureWindow } from './supporter-dashboard-model';
 
 export type GameOnDashboardEvent = {
   id: string;
@@ -31,7 +31,7 @@ export type GameOnDashboardEntry = {
   time: string;
   timezone?: string;
   location: string;
-  status: 'Draft' | 'Published' | 'Live' | 'Complete';
+  status: 'Draft' | 'Published' | 'Starting Soon' | 'Live' | 'Complete';
   isPublished: boolean;
 };
 
@@ -48,13 +48,14 @@ export function sortGameOnCardsByDate<T extends { date: string; time: string }>(
 }
 
 export function getFeaturedGameOnCardId(
-  cards: readonly Pick<GameOnDashboardEntry, 'id' | 'date' | 'time' | 'type' | 'status'>[],
+  cards: readonly Pick<GameOnDashboardEntry, 'id' | 'date' | 'time' | 'timezone' | 'type' | 'status'>[],
   now = new Date(),
 ): string | undefined {
   const dated = sortGameOnCardsByDate(cards).filter((card) => card.date.trim());
   const stage = (card: typeof dated[number]) => getSupporterGameStage({
     date: card.date,
     time: card.time,
+    timezone: card.timezone,
     type: card.type,
     status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
   }, now);
@@ -70,6 +71,7 @@ export function getNextGameOnDashboardEntry(
   const stage = (card: GameOnDashboardEntry) => getSupporterGameStage({
     date: card.date,
     time: card.time,
+    timezone: card.timezone,
     type: card.type,
     status: card.status === 'Complete' ? 'final' : card.status === 'Live' ? 'live' : 'upcoming',
   }, now);
@@ -82,7 +84,10 @@ function isCardEvent(event: GameOnDashboardEvent | undefined): event is GameOnDa
 }
 
 function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice' }, athleteName: string, now: Date, shareToken?: string): GameOnDashboardEntry {
-  const stage = event.date ? getSupporterGameStage(event, now) : 'upcoming';
+  const stage = event.date
+    ? getSupporterGameStage(event, now, { includePregameCaptureWindow: false })
+    : 'upcoming';
+  const startingSoon = event.date && isSupporterGameInPregameCaptureWindow(event, now);
   return {
     id: shareToken ? `share:${shareToken}` : `draft:${event.id}`,
     eventId: event.id,
@@ -95,7 +100,13 @@ function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice'
     time: event.time,
     ...(event.timezone ? { timezone: event.timezone } : {}),
     location: event.location,
-    status: stage === 'completed' ? 'Complete' : stage === 'live' ? 'Live' : shareToken ? 'Published' : 'Draft',
+    status: stage === 'completed'
+      ? 'Complete'
+      : stage === 'live'
+        ? 'Live'
+        : startingSoon
+          ? 'Starting Soon'
+          : shareToken ? 'Published' : 'Draft',
     isPublished: Boolean(shareToken),
   };
 }
