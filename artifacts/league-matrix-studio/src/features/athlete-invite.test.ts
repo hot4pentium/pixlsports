@@ -11,6 +11,14 @@ const apiSource = readFileSync(new URL('../../../api-server/src/routes/hypeCardS
 const athleteApiSource = readFileSync(new URL('../../../api-server/src/routes/athleteInvites.ts', import.meta.url), 'utf8');
 const livingCardSource = readFileSync(new URL('./living-athlete-card.tsx', import.meta.url), 'utf8');
 const eventNotificationsSource = readFileSync(new URL('./owner-event-notifications.tsx', import.meta.url), 'utf8');
+const supporterDashboardSource = readFileSync(new URL('./supporter-dashboard.tsx', import.meta.url), 'utf8');
+
+test('HYPE Card sharing copy does not call links or pages stable', () => {
+  assert.doesNotMatch(
+    [source, hypeCardSource, appSource, supporterDashboardSource].join('\n'),
+    /\bstable\b/i,
+  );
+});
 
 test('HYPE Card events use one persistent all-or-none setting', () => {
   assert.match(source, /title="Allow Events"/);

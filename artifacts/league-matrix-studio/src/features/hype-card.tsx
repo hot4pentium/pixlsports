@@ -3301,8 +3301,8 @@ export function HypeCardEditor() {
               {shareMode === 'stats'
                 ? 'Keep your video on this phone and send a separate finalized stats link with it.'
                 : project.mediaType === 'video'
-                  ? 'Add a prepared, playable video to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that stable page.'
-                  : 'Add this playable Hype Card to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that stable page.'}
+                  ? 'Add a prepared, playable video to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that same page.'
+                  : 'Add this playable Hype Card to the Athlete Hype Page. Finalized stats, Game Day Live, and events are managed on that same page.'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePublishShare} className="space-y-4 pt-4">
@@ -3335,7 +3335,7 @@ export function HypeCardEditor() {
                  className="border border-primary bg-primary/10 p-3 text-left transition-colors"
               >
                   <span className="block text-xs font-bold uppercase tracking-widest text-primary">{project.mediaType === 'video' ? 'Add video to Athlete Hype Page' : 'Add to Athlete Hype Page'}</span>
-                  <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">{project.mediaType === 'video' ? 'Prepare a smaller web copy for reliable recipient playback. The original video stays on this device.' : 'Keep this playable card with finalized stats, Game Day Live, and event cards on the athlete’s stable page.'}</span>
+                  <span className="mt-1 block text-xs font-medium leading-relaxed text-muted-foreground">{project.mediaType === 'video' ? 'Prepare a smaller web copy for reliable recipient playback. The original video stays on this device.' : 'Keep this playable card with finalized stats, Game Day Live, and event cards on the athlete’s HYPE Card page.'}</span>
               </button>
              </div>
             )}

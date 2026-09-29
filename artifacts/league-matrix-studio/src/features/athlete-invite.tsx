@@ -341,7 +341,7 @@ export function AthleteInviteManager() {
         <div className="flex flex-col justify-between gap-5 border-l-4 border-primary pl-5 sm:flex-row sm:items-end">
           <div>
            <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">HYPE Card</p>
-            <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One stable link.</h1>
+            <h1 className="mt-2 font-display text-5xl uppercase leading-none sm:text-6xl">One story. One HYPE Card link.</h1>
               <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">Give fans one evolving HYPE Card with a photo, highlights, finalized stats, and season results.</p>
           </div>
           <Link href="/studio/profile" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Profile settings</Link>
@@ -352,7 +352,7 @@ export function AthleteInviteManager() {
             <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Share with fans</p>
               <h2 className="mt-2 font-display text-3xl uppercase">HYPE Card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One stable HYPE Card for the athlete’s season. Existing invite links open this same card.</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">One HYPE Card for the athlete’s season. Existing invite links open this same card.</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link href={`/fan/${existing.inviteToken}`} className="inline-flex min-h-10 items-center bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground" data-testid="link-open-fan-hype-card">Open HYPE Card</Link>
                 <Link href={`/player/${existing.inviteToken}/manage`} className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-bold uppercase tracking-widest" data-testid="link-manage-athlete-card">Manage HYPE Card</Link>
@@ -362,7 +362,7 @@ export function AthleteInviteManager() {
             <div className="border border-primary bg-primary/10 p-5" data-testid="card-create-hype-page">
               <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Evolving share</p>
               <h2 className="mt-2 font-display text-3xl uppercase">Create the HYPE Card</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one stable HYPE Card for the season. Existing invite links will open it too.</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Create one HYPE Card for the season. Existing invite links will open it too.</p>
             </div>
           )}
         </section>
@@ -1087,7 +1087,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <Link href={`/fan/${invite.inviteToken}`} className="inline-flex min-h-10 items-center border border-primary px-4 text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary hover:text-primary-foreground" data-testid="link-preview-fan-hype-card">Preview</Link>
         </div>
       </div>
-      <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — fans cannot open this card until you resume it.' : 'Live — this stable season URL stays with the athlete.'}</p>
+      <p className="mt-3 text-xs font-medium text-white/55">{invite.paused ? 'Paused — fans cannot open this card until you resume it.' : 'Live — fans can open this HYPE Card page.'}</p>
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
         <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending || visibilitySaving} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
           <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
@@ -1697,7 +1697,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
               <li className="flex gap-3"><span className="text-primary">2</span>Choose Add to Home Screen</li>
               <li className="flex gap-3"><span className="text-primary">3</span>Open the saved icon anytime</li>
             </ol>
-            <p className="mt-6 border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-widest text-white/30">Stable page URL · season context {new Date(invite.seasonEndsAt).toLocaleDateString()}</p>
+            <p className="mt-6 border-t border-white/10 pt-4 text-[10px] font-bold uppercase tracking-widest text-white/30">HYPE Card page · season context {new Date(invite.seasonEndsAt).toLocaleDateString()}</p>
           </aside>
         </div>
       </main>

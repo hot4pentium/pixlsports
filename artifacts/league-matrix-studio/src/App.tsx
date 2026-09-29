@@ -240,8 +240,8 @@ const toolData: Record<ToolKind, {
   hype: {
     slug: 'athlete-page',
     label: 'HYPE Card',
-    kicker: 'One story. One stable link.',
-    description: 'Create and manage the athlete’s evolving HYPE Card, then share its stable link with family and friends.',
+    kicker: 'One story. One HYPE Card link.',
+    description: 'Create and manage the athlete’s evolving HYPE Card, then share it with family and friends.',
     icon: Zap,
     accent: 'bg-primary text-primary-foreground',
     soft: 'bg-[#181a1f] text-white',
