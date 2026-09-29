@@ -38,6 +38,7 @@
 - [Planner push notifications](planner-push-notifications.md) — server-side planner reminders use the device time zone and durable delivery keys.
 - [Owner event-day announcements](owner-event-day-announcements.md) — Autoscale event-day sharing uses an in-app owner reminder and confirmable manual follower push, never an owner timer.
 - [Planner alert labels](planner-alert-labels.md) — visible push titles should identify both the schedule item type and reminder timing.
+- [iPhone push preview settings](iphone-push-previews.md) — if alerts show generic copy, check iOS Show Previews before changing valid push payloads.
 - [Athlete identity visuals](athlete-identity-visuals.md) — never present a supporter account photo as the named athlete; use athlete-owned media or initials.
 - [Supporter photo query cache](supporter-photo-query-cache.md) — photo mutations must refresh account-scoped tracker query entries, not only the generated base key.
 - [Active route verification](active-route-verification.md) — trace the rendered route before styling similarly named legacy components.
