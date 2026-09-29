@@ -2490,7 +2490,7 @@ function ScheduleInstallPrompt() {
     isIOS,
     showInstructions,
     handleInstall,
-  } = useAppInstallPrompt();
+  } = useAppInstallPrompt('shared_schedule');
 
   return (
     <div
@@ -2516,7 +2516,10 @@ function ScheduleInstallPrompt() {
         ) : (
           <button
             type="button"
-            onClick={() => { void handleInstall(); }}
+            onClick={() => {
+              const deviceClass = window.matchMedia('(max-width: 639px)').matches ? 'mobile' : 'desktop';
+              void handleInstall(deviceClass);
+            }}
             className="inline-flex shrink-0 items-center justify-center gap-2 self-start border border-[#16B981]/70 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#16B981] transition-colors hover:bg-[#16B981] hover:text-[#102B4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F3F6FA] sm:self-auto"
             aria-expanded={showInstructions}
             aria-controls="schedule-install-instructions"

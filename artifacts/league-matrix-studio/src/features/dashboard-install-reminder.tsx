@@ -5,12 +5,14 @@ import {
   type ScheduleInstallAction,
 } from './schedule-install';
 
+type InstallDeviceClass = 'mobile' | 'desktop';
+
 type DashboardInstallReminderProps = {
   action: ScheduleInstallAction;
   isIOS: boolean;
   showInstructions: boolean;
-  onInstall: () => void;
-  variant: 'mobile' | 'desktop';
+  onInstall: (deviceClass: InstallDeviceClass) => void;
+  variant: InstallDeviceClass;
 };
 
 export function DashboardInstallReminder({
@@ -44,7 +46,7 @@ export function DashboardInstallReminder({
       <button
         type="button"
         className="dashboard-install-reminder__button"
-        onClick={() => { void onInstall(); }}
+        onClick={() => { void onInstall(variant); }}
         aria-expanded={showInstructions}
         aria-controls={instructionsId}
         aria-label={action === 'install' ? 'Install Pixl Sports' : 'Show Pixl Sports installation instructions'}

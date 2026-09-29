@@ -494,6 +494,16 @@ test('dashboard empty game notice and install reminder work across screen sizes'
     }, page.sessionId);
     await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=\\"game-on-dashboard-collection\\"]"))', Boolean);
     await connection.evaluate('window.__setSupporterDashboardEvents([])', page.sessionId);
+    await connection.evaluate(`(() => {
+      window.__installAnalyticsEvents = [];
+      window.__installAnalyticsThrows = false;
+      window.umami = {
+        track(name, data) {
+          window.__installAnalyticsEvents.push({ name, data });
+          if (window.__installAnalyticsThrows) throw new Error('analytics unavailable');
+        },
+      };
+    })()`, page.sessionId);
     assert.match(
       await connection.evaluate<string>('document.querySelector(\'[data-testid="section-next-game-context"]\')?.textContent || ""', page.sessionId),
       /No upcoming game/,
@@ -530,12 +540,38 @@ test('dashboard empty game notice and install reminder work across screen sizes'
       'document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\')?.getBoundingClientRect().width > 0 && document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')?.getBoundingClientRect().width === 0',
       Boolean,
     );
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(\'[data-testid="dashboard-install-instructions-mobile"]\')?.textContent ?? ""',
+      (text) => text.includes('Open your browser menu'),
+    );
+    const fallbackEvent = await connection.evaluate<boolean>(`window.__installAnalyticsEvents.some(({ name, data }) =>
+      name === 'app_install_instructions_viewed'
+      && data?.device_class === 'mobile'
+      && data?.prompt_type === 'browser_instructions'
+      && data?.entry_point === 'fallback'
+      && data?.surface === 'dashboard'
+    )`, page.sessionId);
+    assert.equal(fallbackEvent, true, 'fallback instructions record the visible mobile route');
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.click()',
+      page.sessionId,
+    );
+    await connection.evaluate('window.__installAnalyticsThrows = true', page.sessionId);
 
     const installPromptPrevented = await connection.evaluate<boolean>(`(() => {
       const event = new Event('beforeinstallprompt', { cancelable: true });
       Object.defineProperties(event, {
-        prompt: { value: () => Promise.resolve() },
-        userChoice: { value: Promise.resolve({ outcome: 'accepted', platform: 'web' }) },
+        prompt: { value: () => {
+          window.__dashboardInstallPromptCalls = (window.__dashboardInstallPromptCalls || 0) + 1;
+          return Promise.resolve();
+        } },
+        userChoice: { value: Promise.resolve({ outcome: 'dismissed', platform: 'web' }) },
       });
       window.dispatchEvent(event);
       return event.defaultPrevented;
@@ -554,8 +590,92 @@ test('dashboard empty game notice and install reminder work across screen sizes'
     await waitFor(
       connection,
       page.sessionId,
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.textContent ?? ""',
+      (text) => text.includes('How to install'),
+    );
+    const dismissedEvent = await connection.evaluate<boolean>(`window.__installAnalyticsEvents.some(({ name, data }) =>
+      name === 'app_install_prompt_outcome'
+      && data?.outcome === 'dismissed'
+      && data?.device_class === 'mobile'
+      && data?.prompt_type === 'native_prompt'
+        && data?.surface === 'dashboard'
+    )`, page.sessionId);
+    assert.equal(dismissedEvent, true, 'native prompt dismissal is recorded');
+
+    await connection.evaluate(`(() => {
+      const event = new Event('beforeinstallprompt', { cancelable: true });
+      Object.defineProperties(event, {
+        prompt: { value: () => {
+          window.__dashboardInstallPromptCalls = (window.__dashboardInstallPromptCalls || 0) + 1;
+          return Promise.resolve();
+        } },
+        userChoice: { value: Promise.resolve({ outcome: 'accepted', platform: 'web' }) },
+      });
+      window.dispatchEvent(event);
+    })()`, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.textContent?.includes("Install app")',
+      Boolean,
+    );
+    await connection.evaluate(
+      'document.querySelector(\'[data-testid="button-dashboard-install-mobile"]\')?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
       '!document.querySelector(\'[data-testid="dashboard-install-reminder-mobile"]\') && !document.querySelector(\'[data-testid="dashboard-install-reminder-desktop"]\')',
       Boolean,
+    );
+    await connection.evaluate('window.dispatchEvent(new Event("appinstalled"))', page.sessionId);
+    const installAnalytics = await connection.evaluate<Array<{ name: string; data?: Record<string, unknown> }>>(
+      'window.__installAnalyticsEvents',
+      page.sessionId,
+    );
+    assert.equal(
+      installAnalytics.some(({ name, data }) =>
+        name === 'app_install_prompt_shown'
+        && data?.device_class === 'mobile'
+        && data?.prompt_type === 'native_prompt',
+      ),
+      true,
+      'native prompt display is recorded before opening the browser prompt',
+    );
+    assert.equal(
+      installAnalytics.some(({ name, data }) =>
+        name === 'app_install_prompt_outcome'
+        && data?.outcome === 'accepted'
+        && data?.device_class === 'mobile'
+        && data?.prompt_type === 'native_prompt'
+        && data?.surface === 'dashboard',
+      ),
+      true,
+      'native prompt acceptance is recorded',
+    );
+    assert.equal(
+      installAnalytics.some(({ name, data }) =>
+        name === 'app_install_confirmed'
+        && data?.device_class === 'mobile'
+        && data?.prompt_type === 'native_prompt',
+      ),
+      true,
+      'the browser installation confirmation is recorded',
+    );
+    for (const event of installAnalytics) {
+      const keys = Object.keys(event.data ?? {});
+      assert.ok(
+        keys.every((key) => ['device_class', 'entry_point', 'outcome', 'prompt_type', 'surface'].includes(key)),
+        `unexpected analytics property: ${keys.join(', ')}`,
+      );
+      assert.equal('user_id' in (event.data ?? {}), false);
+      assert.equal('athlete_name' in (event.data ?? {}), false);
+    }
+    assert.equal(
+      await connection.evaluate<number>('window.__dashboardInstallPromptCalls || 0', page.sessionId),
+      2,
+      'the install prompt still runs when analytics throws',
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
