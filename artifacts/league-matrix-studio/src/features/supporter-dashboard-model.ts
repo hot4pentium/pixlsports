@@ -341,15 +341,7 @@ export function getSupporterGameStage(
   const isGame = game.type === 'game' || !game.type;
   if (!eventTime) return isGame && options.includePregameCaptureWindow !== false ? 'live' : 'upcoming';
   const start = getSupporterEventStart(game.date, eventTime, game.timezone);
-  if (!start) {
-    const localStart = new Date(now);
-    localStart.setHours(eventTime.hour, eventTime.minute, 0, 0);
-    const captureStart = isGame && options.includePregameCaptureWindow !== false
-      ? localStart.getTime() - 60 * 60 * 1000
-      : localStart.getTime();
-    if (captureStart > now.getTime()) return 'upcoming';
-    return now.getTime() - localStart.getTime() <= 3 * 60 * 60 * 1000 ? 'live' : 'completed';
-  }
+  if (!start) return 'upcoming';
   const captureStart = isGame && options.includePregameCaptureWindow !== false
     ? start.getTime() - 60 * 60 * 1000
     : start.getTime();

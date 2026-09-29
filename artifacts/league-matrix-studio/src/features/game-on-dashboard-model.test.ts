@@ -100,6 +100,57 @@ test('a game card stays pre-game through the hour before kickoff in its saved ti
   assert.equal(explicitlyLiveCards[0].status, 'Live');
 });
 
+test('Event Card badges use the forward-resolved spring clock-change start', () => {
+  const springGame = {
+    ...event('spring-forward', 'game', '2026-03-08'),
+    time: '2:30 AM',
+    timezone: 'America/New_York',
+  };
+  const share = {
+    shareToken: 'spring-forward-share',
+    title: 'Game On',
+    createdAt: now.toISOString(),
+    events: [springGame],
+  };
+  const statusAt = (instant: string) => buildGameOnDashboardEntries(
+    [springGame],
+    [share],
+    'Alex',
+    new Date(instant),
+  )[0].status;
+
+  assert.equal(statusAt('2026-03-08T06:29:59Z'), 'Published');
+  assert.equal(statusAt('2026-03-08T06:30:00Z'), 'Starting Soon');
+  assert.equal(statusAt('2026-03-08T07:29:59Z'), 'Starting Soon');
+  assert.equal(statusAt('2026-03-08T07:30:00Z'), 'Live');
+});
+
+test('Event Card badges use the earlier occurrence of a repeated fall clock-change start', () => {
+  const fallGame = {
+    ...event('fall-back', 'game', '2026-11-01'),
+    time: '1:30 AM',
+    timezone: 'America/New_York',
+  };
+  const share = {
+    shareToken: 'fall-back-share',
+    title: 'Game On',
+    createdAt: now.toISOString(),
+    events: [fallGame],
+  };
+  const statusAt = (instant: string) => buildGameOnDashboardEntries(
+    [fallGame],
+    [share],
+    'Alex',
+    new Date(instant),
+  )[0].status;
+
+  assert.equal(statusAt('2026-11-01T04:29:59Z'), 'Published');
+  assert.equal(statusAt('2026-11-01T04:30:00Z'), 'Starting Soon');
+  assert.equal(statusAt('2026-11-01T05:29:59Z'), 'Starting Soon');
+  assert.equal(statusAt('2026-11-01T05:30:00Z'), 'Live');
+  assert.equal(statusAt('2026-11-01T06:30:00Z'), 'Live', 'the repeated 1:30 AM does not restart the card');
+});
+
 test('a finalized card is not announced as an upcoming game', () => {
   const morning = new Date('2026-09-26T07:30:00');
   const todayGame = { ...event('done', 'game', '2026-09-26'), time: '10:00', status: 'final' as const };

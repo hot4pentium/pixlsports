@@ -5,6 +5,7 @@ import {
   getActiveSupporterGame,
   getVisibleSupporterSelection,
   getSupporterGameStage,
+  isSupporterGameInPregameCaptureWindow,
   getNextUpcomingSupporterEvent,
   getSupporterPreparationContext,
   getSupporterScheduleSelection,
@@ -19,6 +20,7 @@ import {
   createSupporterProfileSavePlan,
   supporterToolRoutes,
 } from './supporter-dashboard-model';
+import { getSupporterEventStart } from './supporter-event-time';
 
 test('legacy metadata always reaches the supporter studio', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'fan' } })), 'supporter');
@@ -287,6 +289,62 @@ test('Event Card timing uses the event time zone and keeps pre-game capture dist
     ),
     'live',
     'an explicitly live event remains Live before its scheduled time',
+  );
+});
+
+test('spring-forward Event Card capture and Live timing share the forward-resolved instant', () => {
+  const event = {
+    type: 'game' as const,
+    date: '2026-03-08',
+    time: '2:30 AM',
+    timezone: 'America/New_York',
+    status: 'upcoming' as const,
+  };
+  const start = getSupporterEventStart(event.date, { hour: 2, minute: 30 }, event.timezone);
+  assert.equal(start?.toISOString(), '2026-03-08T07:30:00.000Z', '02:30 is shifted forward to 03:30 EDT');
+
+  assert.equal(getSupporterGameStage(event, new Date('2026-03-08T06:29:59Z')), 'upcoming');
+  assert.equal(getSupporterGameStage(event, new Date('2026-03-08T06:30:00Z')), 'live');
+  assert.equal(
+    getSupporterGameStage(event, new Date('2026-03-08T06:30:00Z'), { includePregameCaptureWindow: false }),
+    'upcoming',
+  );
+  assert.equal(getSupporterGameStage(event, new Date('2026-03-08T07:29:59Z')), 'live');
+  assert.equal(isSupporterGameInPregameCaptureWindow(event, new Date('2026-03-08T07:29:59Z')), true);
+  assert.equal(
+    getSupporterGameStage(event, new Date('2026-03-08T07:30:00Z'), { includePregameCaptureWindow: false }),
+    'live',
+  );
+  assert.equal(isSupporterGameInPregameCaptureWindow(event, new Date('2026-03-08T07:30:00Z')), false);
+});
+
+test('fall-back Event Card capture and Live timing use the earlier repeated instant', () => {
+  const event = {
+    type: 'game' as const,
+    date: '2026-11-01',
+    time: '1:30 AM',
+    timezone: 'America/New_York',
+    status: 'upcoming' as const,
+  };
+  const start = getSupporterEventStart(event.date, { hour: 1, minute: 30 }, event.timezone);
+  assert.equal(start?.toISOString(), '2026-11-01T05:30:00.000Z', 'the first 01:30 occurs in EDT');
+
+  assert.equal(getSupporterGameStage(event, new Date('2026-11-01T04:29:59Z')), 'upcoming');
+  assert.equal(getSupporterGameStage(event, new Date('2026-11-01T04:30:00Z')), 'live');
+  assert.equal(
+    getSupporterGameStage(event, new Date('2026-11-01T04:30:00Z'), { includePregameCaptureWindow: false }),
+    'upcoming',
+  );
+  assert.equal(isSupporterGameInPregameCaptureWindow(event, new Date('2026-11-01T04:30:00Z')), true);
+  assert.equal(
+    getSupporterGameStage(event, new Date('2026-11-01T05:30:00Z'), { includePregameCaptureWindow: false }),
+    'live',
+  );
+  assert.equal(isSupporterGameInPregameCaptureWindow(event, new Date('2026-11-01T05:30:00Z')), false);
+  assert.equal(
+    getSupporterGameStage(event, new Date('2026-11-01T06:30:00Z'), { includePregameCaptureWindow: false }),
+    'live',
+    'the second 01:30 does not change the selected start',
   );
 });
 

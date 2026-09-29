@@ -59,6 +59,10 @@ function formatSupporterDateKey(parts: Pick<SupporterZonedDateTime, 'year' | 'mo
   return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 }
 
+function getSupporterWallTimestamp(parts: SupporterZonedDateTime): number {
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+}
+
 export function normalizeSupporterEventDateKey(value: string): string | null {
   const date = parseSupporterEventDate(value);
   return date ? formatSupporterDateKey(date) : null;
@@ -76,7 +80,15 @@ export function getSupporterEventStart(
   timezone?: string,
 ): Date | null {
   const eventDate = parseSupporterEventDate(date);
-  if (!eventDate) return null;
+  if (
+    !eventDate
+    || !Number.isInteger(eventTime.hour)
+    || eventTime.hour < 0
+    || eventTime.hour > 23
+    || !Number.isInteger(eventTime.minute)
+    || eventTime.minute < 0
+    || eventTime.minute > 59
+  ) return null;
 
   const resolvedTimeZone = resolveGameOnTimeZone(timezone);
   const targetWallTime = Date.UTC(
@@ -86,21 +98,40 @@ export function getSupporterEventStart(
     eventTime.hour,
     eventTime.minute,
   );
-  let timestamp = targetWallTime;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+
+  // Gather the offsets around this wall time so both sides of a clock change
+  // are considered. This gives repeated times a deterministic earlier instant
+  // and lets nonexistent times move forward by the size of the clock gap.
+  const offsets = new Set<number>();
+  const searchRadius = 36 * 60 * 60 * 1000;
+  const searchStep = 6 * 60 * 60 * 1000;
+  for (let delta = -searchRadius; delta <= searchRadius; delta += searchStep) {
+    const timestamp = targetWallTime + delta;
     const zoned = getSupporterZonedDateTime(new Date(timestamp), resolvedTimeZone);
     if (!zoned) return null;
-    const observedWallTime = Date.UTC(
-      zoned.year,
-      zoned.month - 1,
-      zoned.day,
-      zoned.hour,
-      zoned.minute,
-      zoned.second,
-    );
-    const adjustment = targetWallTime - observedWallTime;
-    if (adjustment === 0) return new Date(timestamp);
-    timestamp += adjustment;
+    offsets.add(getSupporterWallTimestamp(zoned) - timestamp);
   }
-  return new Date(timestamp);
+
+  const exactStarts: number[] = [];
+  const forwardCandidates: Array<{ timestamp: number; wallDelta: number }> = [];
+  for (const offset of offsets) {
+    const timestamp = targetWallTime - offset;
+    const zoned = getSupporterZonedDateTime(new Date(timestamp), resolvedTimeZone);
+    if (!zoned) return null;
+    const observedWallTime = getSupporterWallTimestamp(zoned);
+    if (observedWallTime === targetWallTime) {
+      exactStarts.push(timestamp);
+    } else if (observedWallTime > targetWallTime) {
+      forwardCandidates.push({ timestamp, wallDelta: observedWallTime - targetWallTime });
+    }
+  }
+
+  if (exactStarts.length > 0) {
+    return new Date(Math.min(...exactStarts));
+  }
+
+  // A wall time inside a spring-forward gap is interpreted using the offset
+  // from before the jump, preserving its minutes while shifting it forward.
+  forwardCandidates.sort((left, right) => left.wallDelta - right.wallDelta || left.timestamp - right.timestamp);
+  return forwardCandidates.length > 0 ? new Date(forwardCandidates[0].timestamp) : null;
 }
