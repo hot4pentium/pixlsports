@@ -546,7 +546,7 @@ export function GameOnDashboardCollection({
             title={createDisabled ? 'Finish or cancel your current draft before adding another.' : undefined}
             data-testid="button-create-game-on-card"
           >
-            <Plus size={19} strokeWidth={2.5} aria-hidden="true" /> Add Game On Card
+            <Plus size={19} strokeWidth={2.5} aria-hidden="true" /> Add an Event Card
           </button>
         </div>
 
