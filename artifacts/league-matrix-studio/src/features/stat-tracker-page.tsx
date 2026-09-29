@@ -1771,6 +1771,15 @@ export function StatTrackerPage() {
     }
   };
 
+  useEffect(() => {
+    if (!retryAvailable || revisionConflict || saving) return;
+    const retryAfterReconnect = () => {
+      if (navigator.onLine && !saving) void retryCloudSync();
+    };
+    window.addEventListener('online', retryAfterReconnect);
+    return () => window.removeEventListener('online', retryAfterReconnect);
+  }, [retryAvailable, revisionConflict, saving]);
+
   const chooseConflictResolution = (resolution: TrackerConflictResolution) => {
     if (!trackerConflict || !accountId || saving) return;
     if (resolution === 'merge' && hasDivergentCorrectedFinalHistory(trackerConflict.localData, trackerConflict.cloudData)) return;

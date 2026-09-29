@@ -7,4 +7,4 @@ Private dashboard snapshots are device conveniences, not server authority. Keep 
 
 **Why:** Offline access must not let stale cached permissions, lifecycle, quota, or ownership claims silently replace current server decisions, and private data must not cross an account change.
 
-**How to apply:** Persist only the data needed to restore local work, never service-worker-cache authenticated API responses, keep offline mutations explicitly pending until acknowledged, and remove the previous account's private device data on sign-out or account switching.
+**How to apply:** Persist only the data needed to restore local work, never service-worker-cache authenticated API responses, retry ordinary pending tracker saves when connectivity returns, keep revision conflicts under explicit user control, and remove the previous account's private device data on sign-out or account switching.

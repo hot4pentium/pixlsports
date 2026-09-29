@@ -36,7 +36,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
     'Check off prep items on your device, even without service.',
     'Record game stats locally and sync your saved result when you’re back online.',
     'Saved on this device',
-    'Sync when connected',
+    'Will sync when connected',
     'Sharing Event Cards, receiving new replies, and sending alerts still need a connection.',
   ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
   assert.match(styles, /offline-grid \{[^}]*grid-template-columns/);

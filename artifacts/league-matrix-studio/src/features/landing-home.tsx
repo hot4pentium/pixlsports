@@ -248,7 +248,7 @@ export function PublicLandingPage() {
               <p>When you’ve loaded the details, PIXL keeps key game-day work on your device, so a dropped connection doesn’t have to stop the plan.</p>
               <div className="offline-sync-status" role="status" data-testid="offline-sync-status">
                 <span className="offline-sync-icon"><CloudUpload size={17} aria-hidden="true" /></span>
-                <span><strong>Saved on this device</strong><small>Sync when connected</small></span>
+                <span><strong>Saved on this device</strong><small>Will sync when connected</small></span>
                 <Check className="offline-sync-check" size={17} aria-hidden="true" />
               </div>
             </div>
