@@ -604,6 +604,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         collectionFits: boolean;
         squareCard: boolean;
         collapsedTileMinimal: boolean;
+        collapsedTileChecks: Record<string, boolean>;
         removedPanels: boolean;
         titleAtBottom: boolean;
         titleReadable: boolean;
@@ -652,6 +653,26 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         const scrolledHeaderRect = header.getBoundingClientRect();
         scroller.scrollTop = 0;
         const rootRect = root.getBoundingClientRect();
+        const collapsedTileChecks = {
+          unselected: !card.classList.contains('game-on-collection__card--selected'),
+          kindVisible: Boolean(kind?.getClientRects().length),
+          dateVisible: Boolean(date?.getClientRects().length),
+          statusVisible: Boolean(status?.getClientRects().length),
+          statusNotHidden: status?.hidden === false,
+          statusComplete: status?.getAttribute('data-status') === 'complete',
+          statusInsideCard: Boolean(statusRect
+            && statusRect.left >= cardRect.left - 1
+            && statusRect.right <= cardRect.right + 1),
+          statusAboveDate: Boolean(statusRect && dateRect && statusRect.bottom <= dateRect.top + 1),
+          summaryIncludesStatus: Boolean(summary?.getAttribute('aria-label')?.endsWith(status?.textContent?.trim() || '')),
+          kindBelowDate: Boolean(kindRect && dateRect && kindRect.top > dateRect.bottom),
+          kindNearSummaryBottom: Boolean(kindRect && summaryRect && kindRect.bottom >= summaryRect.bottom - 18),
+          kindReadable: Boolean(kind && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12),
+          detailsHidden: details?.hidden === true,
+          footerHidden: footer?.hidden === true,
+          actionsHidden: actions?.hidden === true,
+          actionButtonsHidden: cardActions.every((action) => action.getClientRects().length === 0),
+        };
         return {
           dashboardVisible: getComputedStyle(root).display !== 'none',
           viewportOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -676,27 +697,8 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           collectionFits: collection.getBoundingClientRect().left >= -1
             && collection.getBoundingClientRect().right <= innerWidth + 1,
           squareCard: Math.abs(cardRect.width / cardRect.height - 1) < 0.05,
-          collapsedTileMinimal: !card.classList.contains('game-on-collection__card--selected')
-            && kind?.getClientRects().length > 0
-            && date?.getClientRects().length > 0
-            && status?.getClientRects().length > 0
-            && status?.hidden === false
-            && status?.getAttribute('data-status') === 'complete'
-            && kindRect !== undefined
-            && dateRect !== undefined
-            && statusRect !== undefined
-            && statusRect.left >= cardRect.left - 1
-            && statusRect.right <= cardRect.right + 1
-            && statusRect.bottom <= dateRect.top + 1
-            && summary?.getAttribute('aria-label')?.endsWith(status?.textContent?.trim() || '')
-            && summaryRect !== undefined
-            && kindRect.top > dateRect.bottom
-            && kindRect.bottom >= summaryRect.bottom - 18
-            && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12
-            && details?.hidden === true
-            && footer?.hidden === true
-            && actions?.hidden === true
-            && cardActions.every((action) => action.getClientRects().length === 0),
+          collapsedTileMinimal: Object.values(collapsedTileChecks).every(Boolean),
+          collapsedTileChecks,
           titleAtBottom: Boolean(kindRect && dateRect && summaryRect && kindRect.top > dateRect.bottom && kindRect.bottom >= summaryRect.bottom - 18),
           titleReadable: Boolean(kind && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12),
           removedPanels: !document.querySelector('[data-testid="section-mobile-workspace"], [data-testid="section-desktop-workspace"], [data-testid="card-mobile-recommendation"], [data-testid="workspace-recommendation"]'),
@@ -723,6 +725,24 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         collectionFits: true,
         squareCard: true,
         collapsedTileMinimal: true,
+        collapsedTileChecks: {
+          unselected: true,
+          kindVisible: true,
+          dateVisible: true,
+          statusVisible: true,
+          statusNotHidden: true,
+          statusComplete: true,
+          statusInsideCard: true,
+          statusAboveDate: true,
+          summaryIncludesStatus: true,
+          kindBelowDate: true,
+          kindNearSummaryBottom: true,
+          kindReadable: true,
+          detailsHidden: true,
+          footerHidden: true,
+          actionsHidden: true,
+          actionButtonsHidden: true,
+        },
         titleAtBottom: true,
         titleReadable: true,
         removedPanels: true,
