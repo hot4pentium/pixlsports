@@ -12,13 +12,43 @@ import {
   getSupporterWeekRecommendation,
   getSupporterFanCardHref,
   getStudioDestination,
+  getUserProfile,
   getUserRole,
+  isSupporterSetupComplete,
+  supporterProfileFromUser,
+  createSupporterProfileSavePlan,
   supporterToolRoutes,
 } from './supporter-dashboard-model';
 
 test('legacy metadata always reaches the supporter studio', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'fan' } })), 'supporter');
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'legacy' } })), 'supporter');
+});
+
+test('supporter setup requires athlete and season details and carries the season into saved profiles', () => {
+  const user = {
+    unsafeMetadata: {
+      role: 'fan',
+      displayName: 'Jamie Smith',
+      teamName: 'Eastside Falcons',
+      athleteName: 'Avery Smith',
+      seasonName: ' 2026–27 ',
+    },
+  };
+  const profile = getUserProfile(user);
+
+  assert.equal(profile.seasonName, '2026–27');
+  assert.equal(isSupporterSetupComplete(profile), true);
+  assert.equal(isSupporterSetupComplete({ ...profile, athleteName: '' }), false);
+  assert.equal(isSupporterSetupComplete({ ...profile, seasonName: '' }), false);
+
+  const supportProfile = supporterProfileFromUser(user);
+  const savePlan = createSupporterProfileSavePlan({ retainedMetadata: true }, {
+    ...supportProfile,
+    seasonName: ' 2026–27 ',
+  });
+  assert.equal(savePlan.unsafeMetadata.seasonName, '2026–27');
+  assert.equal(savePlan.unsafeMetadata.retainedMetadata, true);
 });
 
 test('the HYPE Card action opens the matching athlete page', () => {

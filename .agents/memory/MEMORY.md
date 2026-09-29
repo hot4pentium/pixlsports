@@ -81,3 +81,4 @@
 - [New-account tour eligibility](new-account-tour-eligibility.md) — onboarding requires an explicit pending marker from setup; an absent completion marker must not enroll established accounts.
 - [Game On scheduled caller](game-on-scheduled-caller.md) — choose one free two-minute caller (Cloudflare or cron-job.org), keeping the API on Autoscale and paid add-ons off.
 - [Owner alert idempotency](owner-alert-idempotency.md) — keep one-hour prompts unique across replaced Game On Cards; uncertain sends must not repeat.
+- [Season profile seeding](season-profile-seeding.md) — use one free-text `seasonName` profile value for onboarding and new athlete-page defaults.

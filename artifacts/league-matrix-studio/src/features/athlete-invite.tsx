@@ -129,7 +129,7 @@ export function AthleteInviteManager() {
   const defaultSport = profile.sport && profile.sport !== 'softball' ? profile.sport : 'basketball';
   const [athleteName, setAthleteName] = useState(profile.athleteName);
   const [teamName, setTeamName] = useState(profile.teamName);
-  const [seasonName, setSeasonName] = useState(() => `Season ${new Date().getFullYear()}`);
+  const [seasonName, setSeasonName] = useState(() => profile.seasonName || `Season ${new Date().getFullYear()}`);
   const [seasonEndsAt, setSeasonEndsAt] = useState(defaultSeasonEnd);
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || '');
   const [sport, setSport] = useState<Exclude<Sport, 'softball'>>(defaultSport);

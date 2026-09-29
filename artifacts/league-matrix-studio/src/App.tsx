@@ -93,6 +93,7 @@ import {
   createSupporterProfileSavePlan,
   getUserProfile,
   getUserRole,
+  isSupporterSetupComplete,
   supporterProfileFromUser,
   type AccessMode,
   type UserRole,
@@ -1139,7 +1140,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
   const { user } = useUser();
   const activeRole = role ?? getUserRole(user) ?? 'fan';
   const visibleTools = roleToolKinds[activeRole];
-  const homeLabel = activeRole === 'fan' ? 'Game Day Hub' : 'Command Center';
+  const homeLabel = activeRole === 'fan' ? 'Supporter Hub' : 'Command Center';
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
   const isChecklistPage = location === '/studio/checklist' || location.startsWith('/checklist/');
   const isEditorPage = location === '/studio/checklist'
@@ -1206,7 +1207,7 @@ function Studio({ role }: { role: UserRole }) {
               <Maximize className="h-4 w-4" /> Command Center
             </div>
             <h1 className="font-display text-5xl leading-[0.9] tracking-tight text-foreground sm:text-7xl uppercase">
-               FAN COMMAND<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
+               SUPPORTER COMMAND<br /><span className="text-primary studio-textured-heading-accent">CENTER.</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg font-medium leading-relaxed text-muted-foreground">
               Manage your athlete’s HYPE Card, game-day checklists, and stats in your Pixl Sports workspace.
@@ -1350,8 +1351,8 @@ function SupporterProfilePage() {
 
   const saveProfile = async () => {
     const cleanProfile = cleanSupporterProfile(profile);
-    if (!cleanProfile.displayName || !cleanProfile.teamName) {
-      setError('Add your name and team before saving.');
+    if (!cleanProfile.displayName || !cleanProfile.teamName || !cleanProfile.athleteName || !cleanProfile.seasonName) {
+      setError('Add your name, team, athlete name, and season before saving.');
       return;
     }
 
@@ -3366,10 +3367,11 @@ function RoleSelectionPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded } = useUser();
   const existingProfile = getUserProfile(user);
-  const [selectedRole] = useState<UserRole>('fan');
   const selectedAccessMode: AccessMode = existingProfile.accessMode ?? 'full';
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
   const [teamName, setTeamName] = useState(existingProfile.teamName);
+  const [athleteName, setAthleteName] = useState(existingProfile.athleteName);
+  const [seasonName, setSeasonName] = useState(existingProfile.seasonName);
   const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState('');
   const updateAccountAccess = useUpdateAccountAccess();
@@ -3378,15 +3380,17 @@ function RoleSelectionPage() {
     return <AccountLoadingScreen />;
   }
   if (!user) return <Redirect to="/sign-in" />;
-  if (existingProfile.role === 'fan' && existingProfile.teamName && existingProfile.displayName) {
+  if (isSupporterSetupComplete(existingProfile)) {
     return <Redirect to="/studio" />;
   }
 
   const saveProfile = async () => {
     const cleanName = displayName.trim();
     const cleanTeam = teamName.trim();
-    if (!cleanName || !cleanTeam) {
-      setError('Add your name and team to continue.');
+    const cleanAthleteName = athleteName.trim();
+    const cleanSeasonName = seasonName.trim();
+    if (!cleanName || !cleanTeam || !cleanAthleteName || !cleanSeasonName) {
+      setError('Add your name, team, athlete name, and season to continue.');
       return;
     }
 
@@ -3394,15 +3398,17 @@ function RoleSelectionPage() {
     setError('');
     try {
       await updateAccountAccess.mutateAsync({
-        data: { role: selectedRole, accessMode: selectedAccessMode },
+        data: { role: 'fan', accessMode: selectedAccessMode },
       });
       await user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata ?? {}),
-          role: selectedRole,
+          role: 'fan',
           accessMode: selectedAccessMode,
           displayName: cleanName,
           teamName: cleanTeam,
+          athleteName: cleanAthleteName,
+          seasonName: cleanSeasonName,
            ...(tourStateAfterSetup(
              user.unsafeMetadata,
              Boolean(existingProfile.role && existingProfile.teamName && existingProfile.displayName),
@@ -3423,77 +3429,86 @@ function RoleSelectionPage() {
         <div className="grid w-full gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 bg-muted px-3 py-1 text-xs font-bold uppercase tracking-widest clip-angled-sm">
-              <UsersRound className="h-4 w-4 text-primary" /> One quick setup
+              <UsersRound className="h-4 w-4 text-primary" /> Supporter setup
             </div>
             <h1 className="font-display text-6xl leading-[0.88] tracking-tight sm:text-8xl">
-              PICK YOUR<br /><span className="text-primary">PLAYBOOK.</span>
+              YOUR ATHLETE’S<br /><span className="text-primary">SEASON.</span>
             </h1>
             <p className="mt-6 max-w-lg text-lg font-medium leading-relaxed text-muted-foreground">
-              Tell us who you are and which team matters to you so your Command Center starts with the right tools.
+              Tell us about your athlete and season so your supporter dashboard starts with the right details.
             </p>
           </div>
 
-          <section className="border border-border bg-card p-6 shadow-sm clip-angled-sm sm:p-8" aria-labelledby="role-heading">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">Account setup</p>
-            <h2 id="role-heading" className="mt-2 font-display text-4xl uppercase tracking-wide">YOUR PLAYBOOK</h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Your name
-                <input
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="e.g. Jordan Smith"
-                  autoComplete="name"
-                  className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
-                  data-testid="input-profile-name"
-                />
-              </label>
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Team
-                <input
-                  value={teamName}
-                  onChange={(event) => setTeamName(event.target.value)}
-                  placeholder="e.g. Eastside Falcons"
-                  autoComplete="organization"
-                  className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
-                  data-testid="input-profile-team"
-                />
-              </label>
-            </div>
-             <div className="mt-7">
-              <button
-                type="button"
-                disabled={savingProfile}
-                className={`group relative border-2 p-6 text-left transition-all hover:-translate-y-1 hover:border-primary hover:shadow-lg disabled:cursor-wait disabled:opacity-60 clip-angled-sm ${selectedRole === 'fan' ? 'border-primary bg-card text-card-foreground shadow-[0_0_0_4px_rgba(0,247,118,0.2)]' : 'border-white/15 bg-card text-card-foreground'}`}
-                data-testid="button-role-fan"
-              >
-                <span className={`absolute right-4 top-4 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest clip-angled-sm ${selectedRole === 'fan' ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white/60'}`}>
-                  {selectedRole === 'fan' && <Check className="h-3 w-3" />} {selectedRole === 'fan' ? 'Selected' : 'Choose'}
-                </span>
-                <span className="grid h-14 w-14 place-items-center bg-primary text-primary-foreground clip-angled-sm">
-                  <Star className="h-7 w-7" />
-                </span>
-                <span className="mt-8 block font-display text-3xl uppercase tracking-wide">Fan</span>
-                <span className="mt-3 block text-sm font-medium leading-relaxed text-white/65">
-                  Manage your athlete’s HYPE Card and keep game-day details close.<br />
-                  Celebrate your athlete.<br />
-                  Keep friends and family in the loop.
-                </span>
-                <span className="mt-6 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">HYPE Card + Schedule <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+          <section className="border border-border bg-card p-6 shadow-sm clip-angled-sm sm:p-8" aria-labelledby="supporter-heading">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Supporter account</p>
+            <h2 id="supporter-heading" className="mt-2 font-display text-4xl uppercase tracking-wide">SET UP YOUR DASHBOARD</h2>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveProfile();
+              }}
+            >
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Your name
+                  <input
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    placeholder="e.g. Jordan Smith"
+                    autoComplete="name"
+                    required
+                    className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                    data-testid="input-profile-name"
+                  />
+                </label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Team
+                  <input
+                    value={teamName}
+                    onChange={(event) => setTeamName(event.target.value)}
+                    placeholder="e.g. Eastside Falcons"
+                    autoComplete="organization"
+                    required
+                    className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                    data-testid="input-profile-team"
+                  />
+                </label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Athlete name
+                  <input
+                    value={athleteName}
+                    onChange={(event) => setAthleteName(event.target.value)}
+                    placeholder="e.g. Avery Smith"
+                    autoComplete="off"
+                    required
+                    className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                    data-testid="input-profile-athlete"
+                  />
+                </label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Season
+                  <input
+                    value={seasonName}
+                    onChange={(event) => setSeasonName(event.target.value)}
+                    placeholder="e.g. Fall 2026 or 2026–27"
+                    autoComplete="off"
+                    required
+                    className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                    data-testid="input-profile-season"
+                  />
+                </label>
+              </div>
+              <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">
+                <p className="text-xs font-bold uppercase tracking-widest text-primary">One supporter account</p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
+                  Manage your athlete’s HYPE Card, game-day prep, and stats from one dashboard.
+                </p>
+              </div>
+              <button type="submit" disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
+                {savingProfile ? 'Saving your dashboard…' : 'Build my dashboard'}
               </button>
-             </div>
-             {selectedRole && (
-               <div className="mt-7 border-l-4 border-primary bg-primary/10 px-4 py-3 clip-angled-sm">
-                 <p className="text-xs font-bold uppercase tracking-widest text-primary">Full team account</p>
-                 <p className="mt-1 text-sm font-medium leading-relaxed text-muted-foreground">
-                    Your account includes athlete card management, publishing, checklists, and stats.
-                 </p>
-               </div>
-             )}
-             <button type="button" onClick={() => void saveProfile()} disabled={savingProfile} className="mt-6 w-full bg-primary px-5 py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 clip-angled-sm" data-testid="button-save-profile">
-              {savingProfile ? 'Saving your playbook…' : 'Enter my Command Center'}
-            </button>
-            {error && <p className="mt-5 text-sm font-bold text-destructive" role="alert">{error}</p>}
+              {error && <p className="mt-5 text-sm font-bold text-destructive" role="alert">{error}</p>}
+            </form>
           </section>
         </div>
       </main>

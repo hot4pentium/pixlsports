@@ -77,6 +77,7 @@ import './supporter-profile-wallet.css';
 export interface SupporterProfile {
   displayName: string;
   teamName: string;
+  seasonName?: string;
   athleteName: string;
   jerseyNumber: string;
   position: string;
@@ -1604,7 +1605,7 @@ export function SupporterProfileView({
                   value={profile.relationship}
                   onChange={(e) => onChange('relationship', e.target.value)}
                   className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                  placeholder="e.g. Parent, Fan, Supporter"
+                  placeholder="e.g. Parent, Guardian, Family friend"
                 />
               </div>
             </div>
@@ -1629,6 +1630,23 @@ export function SupporterProfileView({
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
                 This is the name shown on the athlete card and in sports content.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="seasonName" className="text-xs font-bold uppercase tracking-widest text-muted-foreground block">
+                Season
+              </label>
+              <input
+                id="seasonName"
+                type="text"
+                value={profile.seasonName ?? ''}
+                onChange={(e) => onChange('seasonName', e.target.value)}
+                className="w-full bg-background border border-border px-4 py-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                placeholder="e.g. Fall 2026 or 2026–27"
+              />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Used to prepare new HYPE Card pages for this athlete.
               </p>
             </div>
 

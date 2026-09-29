@@ -11,6 +11,7 @@ export interface UserProfile {
   role: UserRole | null;
   displayName: string;
   teamName: string;
+  seasonName: string;
   accessMode: AccessMode | null;
   athleteName: string;
   jerseyNumber: string;
@@ -45,6 +46,7 @@ export function getUserProfile(user: UserLike): UserProfile {
       ? metadata.displayName.trim()
       : clerkName,
     teamName: typeof metadata.teamName === 'string' ? metadata.teamName.trim() : '',
+    seasonName: typeof metadata.seasonName === 'string' ? metadata.seasonName.trim() : '',
     accessMode: metadata.accessMode === 'guest' || metadata.accessMode === 'full'
       ? metadata.accessMode
       : role ? 'full' : null,
@@ -54,6 +56,13 @@ export function getUserProfile(user: UserLike): UserProfile {
     relationship: typeof metadata.relationship === 'string' ? metadata.relationship.trim() : '',
     sport: isSport(metadata.sport) ? metadata.sport : null,
   };
+}
+
+export function isSupporterSetupComplete(
+  profile: Pick<UserProfile, 'role' | 'displayName' | 'teamName' | 'athleteName' | 'seasonName'>,
+) {
+  return profile.role === 'fan'
+    && Boolean(profile.displayName && profile.teamName && profile.athleteName && profile.seasonName);
 }
 
 type FanCardDestinationCandidate = {
@@ -86,6 +95,7 @@ export function supporterProfileFromUser(user: UserLike): SupporterProfile {
   return {
     displayName: profile.displayName,
     teamName: profile.teamName,
+    seasonName: profile.seasonName,
     athleteName: profile.athleteName,
     jerseyNumber: profile.jerseyNumber,
     position: profile.position,
@@ -101,10 +111,13 @@ export type ProfileSeededHypeCard = {
   position: string;
   teamName: string;
 };
-export function cleanSupporterProfile(profile: SupporterProfile): Omit<SupporterProfile, 'accessMode'> {
+export function cleanSupporterProfile(
+  profile: SupporterProfile,
+): Omit<SupporterProfile, 'accessMode' | 'seasonName'> & { seasonName: string } {
   return {
     displayName: profile.displayName.trim(),
     teamName: profile.teamName.trim(),
+    seasonName: profile.seasonName?.trim() ?? '',
     athleteName: profile.athleteName.trim(),
     jerseyNumber: profile.jerseyNumber.trim().replace(/^#/, '').trim(),
     position: profile.position.trim(),
