@@ -39,7 +39,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
     'Retry cloud sync when you’re back online if prompted',
     'On iPhone, tap Share, then Add to Home Screen.',
     'On Android, open your browser menu and choose Install app or Add to Home screen.',
-    'Open PIXL online and load each game and checklist you’ll need.',
+    'Open PIXL online and load each game and checklist you’ll need. This will give you the full benefit of PIXL Sports, with offline content saved on this device.',
     'Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.',
   ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
   assert.doesNotMatch(source, /Will sync when connected/);
