@@ -339,9 +339,11 @@ test('player-page owner tools remain private across account changes and pause', 
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
     assert.equal(await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage), changedSetting);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-share\"]').click()", ownerManage);
-    for (const label of ['Pause Hype Page', 'Start Game Day Live']) {
-      assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).includes(label), label);
-    }
+    assert.ok((await connection.evaluate<string>("document.querySelector('#hype-manager-panel-share')?.innerText || ''", ownerManage)).includes('Pause Hype Page'));
+    assert.equal(await connection.evaluate(
+      "Array.from(document.querySelectorAll('#hype-manager-panel-share button')).some(button => /(?:Start|Stop) Game Day Live/.test(button.textContent || ''))",
+      ownerManage,
+    ), false, 'Game Day Live is not controlled from the Share Hype Card panel');
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Pause Hype Page')).click()", ownerManage);
     await waitFor(connection, ownerManage, "Boolean(document.body?.innerText.toLowerCase().includes('resume hype page'))", Boolean, 12_000);
     assert.equal(paused, true);

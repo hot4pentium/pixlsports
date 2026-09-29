@@ -847,8 +847,6 @@ function OwnerVideoUpload({
 function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const queryClient = useQueryClient();
   const updateInvite = useUpdateAthleteInvite();
-  const startLive = useStartAthleteInviteLive();
-  const stopLive = useStopAthleteInviteLive();
   const deleteHypeCard = useDeleteHypeCardShare();
   const [showHypeCard, setShowHypeCard] = useState(invite.showHypeCard);
   const [showStats, setShowStats] = useState(invite.showStats);
@@ -1009,17 +1007,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       setNotice('The Hype Page availability could not be changed.');
     }
   };
-  const toggleLive = async () => {
-    setNotice('');
-    try {
-      if (invite.liveTrackerShareToken) await stopLive.mutateAsync({ inviteToken: invite.inviteToken });
-      else await startLive.mutateAsync({ inviteToken: invite.inviteToken });
-      await refreshPage();
-      setNotice(invite.liveTrackerShareToken ? 'Game Day Live stopped.' : 'Game Day Live started.');
-    } catch {
-      setNotice('Game Day Live could not be changed. Start a live game in Stat Tracker first.');
-    }
-  };
   const downloadMedia = async (media: { shareToken: string; slug: string }, kind: 'video' | 'image') => {
     setNotice('');
     try {
@@ -1091,9 +1078,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       <div className="mt-5 flex flex-wrap gap-3 border-t border-white/15 pt-5">
         <Button type="button" variant="outline" onClick={toggleAvailability} disabled={updateInvite.isPending || visibilitySaving} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
           <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
-        </Button>
-        <Button type="button" variant="outline" onClick={toggleLive} disabled={startLive.isPending || stopLive.isPending || invite.paused} className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
-          <Radio className="mr-2 h-4 w-4" />{invite.liveTrackerShareToken ? 'Stop Game Day Live' : 'Start Game Day Live'}
         </Button>
       </div>
       </HypeManagerTaskCard>
