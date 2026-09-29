@@ -1427,6 +1427,7 @@ export function SupporterDashboardView({
 export interface SupporterProfileViewProps {
   accountInformation?: ReactNode;
   initialSection?: 'athlete' | 'alerts' | 'account' | null;
+  userId?: string | null;
   profile: SupporterProfile;
   saving: boolean;
   error: string;
@@ -1448,6 +1449,7 @@ export interface SupporterProfileViewProps {
 export function SupporterProfileView({
   accountInformation,
   initialSection = null,
+  userId,
   profile,
   saving,
   error,
@@ -1743,7 +1745,7 @@ export function SupporterProfileView({
       </HypeManagerTaskCard>
       <HypeManagerTaskCard id="phone-alerts" title="Phone Alerts" description="Stay ready for games and practices" Icon={Bell} active={activeSection === 'alerts'} onSelect={() => toggleSection('alerts')}>
         <div className="supporter-profile-content bg-card border border-border p-5 sm:p-8">
-          <NotificationSettings />
+          <NotificationSettings userId={userId} />
         </div>
       </HypeManagerTaskCard>
       {accountInformation && (

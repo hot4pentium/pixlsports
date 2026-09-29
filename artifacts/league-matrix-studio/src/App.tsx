@@ -1465,6 +1465,7 @@ function SupporterProfilePage() {
       <main className="flex-1">
         <SupporterProfileView
           profile={profile}
+          userId={user?.id}
           saving={saving}
           error={error}
           onChange={(field, value) => {

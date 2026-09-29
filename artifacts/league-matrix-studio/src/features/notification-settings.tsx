@@ -29,7 +29,8 @@ function getSubscriptionData(subscription: PushSubscription) {
   };
 }
 
-export function NotificationSettings() {
+export function NotificationSettings({ userId }: { userId?: string | null }) {
+  const accountId = userId ?? null;
   const config = useGetNotificationConfig({
     query: {
       retry: 2,
@@ -45,55 +46,84 @@ export function NotificationSettings() {
   const available = Boolean(config.data?.available && config.data.publicKey && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
   const preferences = useGetNotificationPreferences({
     query: {
-      enabled: available,
+      enabled: Boolean(available && accountId),
       refetchOnWindowFocus: true,
-      queryKey: getGetNotificationPreferencesQueryKey(),
+      queryKey: [...getGetNotificationPreferencesQueryKey(), accountId ?? 'signed-out'],
     },
   });
   const updatePreferences = useUpdateNotificationPreferences();
   const [enabled, setEnabled] = useState(false);
+  const [subscriptionChecking, setSubscriptionChecking] = useState(false);
   const [oneHourBefore, setOneHourBefore] = useState(false);
   const [dayOf, setDayOf] = useState(false);
   const [timezone, setTimezone] = useState(getBrowserTimeZone);
   const [message, setMessage] = useState('');
+  const saveSubscription = save.mutateAsync;
 
   useEffect(() => {
-    if (!preferences.data) return;
+    if (!accountId || !preferences.data) {
+      setOneHourBefore(false);
+      setDayOf(false);
+      setTimezone(getBrowserTimeZone());
+      return;
+    }
     setOneHourBefore(preferences.data.oneHourBefore);
     setDayOf(preferences.data.dayOf);
     setTimezone(preferences.data.timezone || getBrowserTimeZone());
-  }, [preferences.data]);
+  }, [accountId, preferences.data]);
 
   useEffect(() => {
-    if (!available) return;
-    void navigator.serviceWorker.ready
-      .then((registration) => registration.pushManager.getSubscription())
-      .then(async (subscription) => {
+    let cancelled = false;
+    setEnabled(false);
+    setMessage('');
+    if (!available || !accountId) {
+      setSubscriptionChecking(false);
+      return () => { cancelled = true; };
+    }
+
+    setSubscriptionChecking(true);
+    void (async () => {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (cancelled) return;
         if (!subscription?.endpoint) {
           setEnabled(false);
           return;
         }
+
         const status = await getNotificationSubscriptionStatus({ endpoint: subscription.endpoint });
+        if (cancelled) return;
         if (status.owned) {
           setEnabled(true);
           const data = getSubscriptionData(subscription);
-          if (data) void save.mutateAsync({ data }).catch(() => undefined);
+          if (data) void saveSubscription({ data }).catch(() => undefined);
           return;
         }
+
         // A browser subscription can outlive a Clerk session. Never show it as
         // enabled for a new account; detach it before allowing a new opt-in.
         if (status.ownedByAnotherAccount) {
           await subscription.unsubscribe();
+          if (cancelled) return;
           setMessage('This device was linked to another Pixl Sports account. Alerts were detached; enable them again for this account.');
         }
         setEnabled(false);
-      })
-      .catch(() => setEnabled(false));
-  }, [available]);
+      } catch {
+        if (cancelled) return;
+        setEnabled(false);
+        setMessage('Unable to confirm this device’s phone alert connection. Try again in a moment.');
+      } finally {
+        if (!cancelled) setSubscriptionChecking(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [accountId, available, saveSubscription]);
 
   async function enableNotifications() {
     setMessage('');
-    if (!available || !config.data?.publicKey) return;
+    if (!accountId || !available || !config.data?.publicKey) return;
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') { setMessage(permission === 'denied' ? 'Notifications are blocked. Enable them in your phone settings.' : 'Notification permission was not granted.'); return; }
@@ -108,6 +138,7 @@ export function NotificationSettings() {
 
   async function disableNotifications() {
     setMessage('');
+    if (!accountId) return;
     try {
       const subscription = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
       if (subscription?.endpoint) { await remove.mutateAsync({ data: { endpoint: subscription.endpoint } }); await subscription.unsubscribe(); }
@@ -125,6 +156,7 @@ export function NotificationSettings() {
     next: { oneHourBefore: boolean; dayOf: boolean },
     nextTimezone = timezone,
   ) {
+    if (!accountId) return;
     const previous = { oneHourBefore, dayOf, timezone };
     setOneHourBefore(next.oneHourBefore);
     setDayOf(next.dayOf);
@@ -166,7 +198,7 @@ export function NotificationSettings() {
             </button>
           </div>
         )}
-          {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
+          {available && <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={enabled ? disableNotifications : enableNotifications} disabled={!accountId || subscriptionChecking || save.isPending || remove.isPending} className="inline-flex items-center justify-center gap-2 bg-primary px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-50" data-testid="button-toggle-notifications">{(subscriptionChecking || save.isPending || remove.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}{subscriptionChecking ? 'Checking Alerts…' : enabled ? 'Turn Off Alerts' : 'Enable Phone Alerts'}</button>{enabled && <button type="button" onClick={sendTest} disabled={!accountId || test.isPending} className="inline-flex items-center justify-center gap-2 border border-border px-4 py-2.5 text-xs font-bold uppercase tracking-widest disabled:opacity-50" data-testid="button-test-notification">{test.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Send Test Alert</button>}</div>}
          {config.data?.available && !config.isError && (
            <p
              className="mt-3 border-l-2 border-primary/40 bg-background/50 p-3 text-sm leading-relaxed text-muted-foreground"
@@ -188,7 +220,7 @@ export function NotificationSettings() {
                 <select
                   value={timezone}
                   onChange={(event) => void updateReminderPreferences({ oneHourBefore, dayOf }, event.target.value)}
-                  disabled={preferences.isLoading || updatePreferences.isPending}
+                  disabled={!accountId || preferences.isLoading || updatePreferences.isPending}
                   className="min-h-10 w-full border border-border bg-background px-3 py-2 text-sm sm:max-w-sm"
                   data-testid="select-notification-timezone"
                 >
@@ -203,7 +235,7 @@ export function NotificationSettings() {
                    type="checkbox"
                    checked={oneHourBefore}
                    onChange={(event) => void updateReminderPreferences({ oneHourBefore: event.target.checked, dayOf })}
-                   disabled={preferences.isLoading || updatePreferences.isPending}
+                    disabled={!accountId || preferences.isLoading || updatePreferences.isPending}
                    className="mt-0.5 h-4 w-4 accent-primary"
                    data-testid="checkbox-reminder-one-hour"
                  />
@@ -214,7 +246,7 @@ export function NotificationSettings() {
                    type="checkbox"
                    checked={dayOf}
                    onChange={(event) => void updateReminderPreferences({ oneHourBefore, dayOf: event.target.checked })}
-                   disabled={preferences.isLoading || updatePreferences.isPending}
+                    disabled={!accountId || preferences.isLoading || updatePreferences.isPending}
                    className="mt-0.5 h-4 w-4 accent-primary"
                    data-testid="checkbox-reminder-day-of"
                  />

@@ -3739,6 +3739,7 @@ function ProfilePropagationHarness() {
     return createElement('main', null,
       createElement(SupporterProfileView, {
         profile: draft,
+        userId: 'browser-test-profile-user',
         saving: false,
         error: '',
         onChange: (field, value) => setDraft((current) => ({ ...current, [field]: value })),
@@ -4040,6 +4041,19 @@ export function mount() {
       }
     }
     if (window.location.search.includes('notification-preferences')) {
+      if (requestUrl.includes('/api/notifications/subscriptions/status')) {
+        const signedOut = window.localStorage.getItem('browser-test-notification-user') === 'signed-out';
+        return Promise.resolve(new Response(JSON.stringify({
+          owned: !signedOut,
+          ownedByAnotherAccount: false,
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      if (requestUrl.endsWith('/api/notifications/subscriptions')) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
       if (requestUrl.endsWith('/api/notifications/config')) {
         return Promise.resolve(new Response(JSON.stringify({
           available: true,
@@ -4100,10 +4114,27 @@ export function mount() {
     }
     return originalFetch(input, init);
   };
+  let notificationUserId = null;
   if (window.location.search.includes('notification-preferences')) {
+    const storedNotificationUser = window.localStorage.getItem('browser-test-notification-user');
+    notificationUserId = storedNotificationUser === 'signed-out'
+      ? null
+      : storedNotificationUser || 'browser-test-notification-owner';
+    const testSubscription = {
+      endpoint: 'https://fcm.googleapis.com/wp/browser-test-notification-endpoint',
+      toJSON: () => ({
+        endpoint: 'https://fcm.googleapis.com/wp/browser-test-notification-endpoint',
+        keys: { p256dh: 'BROWSER_TEST_P256DH', auth: 'BROWSER_TEST_AUTH' },
+      }),
+      unsubscribe: async () => true,
+    };
     Object.defineProperty(navigator, 'serviceWorker', {
       configurable: true,
-      value: { ready: Promise.resolve({}) },
+      value: {
+        ready: Promise.resolve({
+          pushManager: { getSubscription: async () => testSubscription },
+        }),
+      },
     });
     Object.defineProperty(window, 'PushManager', { configurable: true, value: function PushManager() {} });
     Object.defineProperty(window, 'Notification', { configurable: true, value: { requestPermission: async () => 'denied' } });
@@ -4195,7 +4226,7 @@ export function mount() {
   }
   if (window.location.search.includes('notification-preferences')) {
     root.render(createElement(QueryClientProvider, { client: queryClient },
-      createElement(NotificationSettings),
+      createElement(NotificationSettings, { userId: notificationUserId }),
     ));
     return;
   }
@@ -4509,12 +4540,20 @@ test('notification reminder choices persist after reload and use the preferences
         timezone: timezone instanceof HTMLSelectElement ? timezone.value : null,
       };
     })()`;
+    const connectedExpression = `(() => {
+      const toggle = document.querySelector('[data-testid="button-toggle-notifications"]');
+      return toggle instanceof HTMLButtonElement
+        && !toggle.disabled
+        && toggle.textContent?.includes('Turn Off Alerts') === true
+        && document.body.textContent?.includes('This device is connected') === true;
+    })()`;
     await waitFor(
       connection,
       page.sessionId,
       preferencesExpression,
       (value: { ready: boolean }) => value.ready,
     );
+    await waitFor(connection, page.sessionId, connectedExpression, Boolean);
     assert.deepEqual(
       await connection.evaluate(preferencesExpression, page.sessionId),
       { ready: true, oneHourBefore: true, dayOf: false, timezone: 'UTC' },
@@ -4537,6 +4576,7 @@ test('notification reminder choices persist after reload and use the preferences
       'document.querySelector(\'[data-testid="status-event-card-delivery"]\')?.textContent?.trim() || ""',
       (value: string) => value === 'Scheduled Event Card delivery is active on this deployment. Choose at least one reminder below to opt in; app installation alone does not enable alerts.',
     );
+    await waitFor(connection, page.sessionId, connectedExpression, Boolean);
 
     const clickPreference = async (testId: string, expectedRequestCount: number) => {
       await connection!.evaluate(`document.querySelector('[data-testid="${testId}"]')?.click()`, page!.sessionId);
@@ -4577,6 +4617,7 @@ test('notification reminder choices persist after reload and use the preferences
         value.ready && value.oneHourBefore === false && value.dayOf === true && value.timezone === 'America/Los_Angeles'
       ),
     );
+    await waitFor(connection, page.sessionId, connectedExpression, Boolean);
 
     await clickPreference('checkbox-reminder-one-hour', 4);
     await clickPreference('checkbox-reminder-day-of', 5);
@@ -4589,6 +4630,7 @@ test('notification reminder choices persist after reload and use the preferences
         value.ready && value.oneHourBefore === true && value.dayOf === false && value.timezone === 'America/Los_Angeles'
       ),
     );
+    await waitFor(connection, page.sessionId, connectedExpression, Boolean);
 
     assert.deepEqual(
       await connection.evaluate<Array<{
@@ -4604,6 +4646,40 @@ test('notification reminder choices persist after reload and use the preferences
         { method: 'PATCH', url: '/api/notifications/preferences', body: { oneHourBefore: true, dayOf: false, timezone: 'America/Los_Angeles' } },
       ],
     );
+
+    await connection.evaluate(
+      `localStorage.setItem('browser-test-notification-user', 'signed-out')`,
+      page.sessionId,
+    );
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      `(() => {
+        const oneHour = document.querySelector('[data-testid="checkbox-reminder-one-hour"]');
+        const dayOf = document.querySelector('[data-testid="checkbox-reminder-day-of"]');
+        const toggle = document.querySelector('[data-testid="button-toggle-notifications"]');
+        return oneHour instanceof HTMLInputElement && dayOf instanceof HTMLInputElement
+          && toggle instanceof HTMLButtonElement && oneHour.disabled && dayOf.disabled && toggle.disabled
+          && !document.body.textContent?.includes('This device is connected');
+      })()`,
+      Boolean,
+    );
+
+    await connection.evaluate(
+      `localStorage.setItem('browser-test-notification-user', 'browser-test-notification-owner')`,
+      page.sessionId,
+    );
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      preferencesExpression,
+      (value: { ready: boolean; oneHourBefore: boolean | null; dayOf: boolean | null; timezone: string | null }) => (
+        value.ready && value.oneHourBefore === true && value.dayOf === false && value.timezone === 'America/Los_Angeles'
+      ),
+    );
+    await waitFor(connection, page.sessionId, connectedExpression, Boolean);
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();
