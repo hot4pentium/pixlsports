@@ -78,10 +78,9 @@ import {
 import { revokeGameOnCardForScheduleEvent } from '@/features/game-on-card-storage';
 import { getGuestUsageKey } from '@/features/guest-access';
 import {
-  getScheduleInstallAction,
   getScheduleInstallInstructions,
-  isIosDevice,
 } from '@/features/schedule-install';
+import { useAppInstallPrompt } from '@/features/app-install-prompt';
 import {
   updateSupporterPhotoCache,
   useCachedSupporterPhoto,
@@ -201,11 +200,6 @@ const SupporterProfileView = lazy(() =>
  const queryClient = new QueryClient();
 
  type CloudProjectPayload = Record<string, unknown>;
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-};
 
 function isCloudToolProject(value: unknown, tool: 'schedule'): value is CloudProjectPayload {
   return typeof value === 'object'
@@ -2491,50 +2485,12 @@ function buildScheduleGraphicSvg({
 }
 
 function ScheduleInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
-
-  useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches
-      || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    setIsStandalone(standalone);
-    setIsIOS(isIosDevice(navigator.userAgent, navigator.platform, navigator.maxTouchPoints));
-
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-    };
-    const handleAppInstalled = () => {
-      setDeferredPrompt(null);
-      setIsStandalone(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
-
-  const action = getScheduleInstallAction({
-    isStandalone,
-    canPrompt: Boolean(deferredPrompt),
-  });
-
-  const handleInstall = async () => {
-    if (action !== 'install' || !deferredPrompt) {
-      setShowInstructions((current) => !current);
-      return;
-    }
-
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-    if (choice.outcome === 'accepted') setIsStandalone(true);
-  };
+  const {
+    action,
+    isIOS,
+    showInstructions,
+    handleInstall,
+  } = useAppInstallPrompt();
 
   return (
     <div

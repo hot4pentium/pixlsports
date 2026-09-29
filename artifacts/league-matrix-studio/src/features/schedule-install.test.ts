@@ -7,6 +7,7 @@ import {
   getScheduleInstallInstructions,
   IOS_SCHEDULE_INSTALL_INSTRUCTIONS,
   isIosDevice,
+  isStandaloneInstallMode,
 } from './schedule-install';
 
 test('recognizes iPhone and iPad user agents, including iPad desktop mode', () => {
@@ -19,6 +20,13 @@ test('chooses install prompt, fallback instructions, or installed state', () => 
   assert.equal(getScheduleInstallAction({ isStandalone: false, canPrompt: true }), 'install');
   assert.equal(getScheduleInstallAction({ isStandalone: false, canPrompt: false }), 'instructions');
   assert.equal(getScheduleInstallAction({ isStandalone: true, canPrompt: true }), 'installed');
+});
+
+test('recognizes standalone launches using either display mode or iOS standalone state', () => {
+  assert.equal(isStandaloneInstallMode(true, false), true);
+  assert.equal(isStandaloneInstallMode(false, true), true);
+  assert.equal(isStandaloneInstallMode(false, false), false);
+  assert.equal(isStandaloneInstallMode(false, undefined), false);
 });
 
 test('gives iPhone and iPad users the Share-menu path, while other browsers get a usable fallback', () => {

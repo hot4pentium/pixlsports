@@ -1,5 +1,12 @@
 export type ScheduleInstallAction = 'installed' | 'install' | 'instructions';
 
+export function isStandaloneInstallMode(
+  displayModeStandalone: boolean,
+  navigatorStandalone?: boolean,
+): boolean {
+  return displayModeStandalone || navigatorStandalone === true;
+}
+
 export const IOS_SCHEDULE_INSTALL_INSTRUCTIONS =
   'On iPhone or iPad, tap Share, choose Add to Home Screen, then tap Add.';
 export const BROWSER_SCHEDULE_INSTALL_INSTRUCTIONS =

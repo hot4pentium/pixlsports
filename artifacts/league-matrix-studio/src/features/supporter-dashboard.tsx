@@ -57,6 +57,8 @@ import { TrackerCompletionDialog } from './tracker-completion-dialog';
 import { buildSupporterGameRecord } from './supporter-game-record-model';
 import { SupporterGameOnSummary } from './supporter-game-on-summary';
 import { NotificationSettings } from './notification-settings';
+import { DashboardInstallReminder } from './dashboard-install-reminder';
+import { useAppInstallPrompt } from './app-install-prompt';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
 import {
   dismissEventDaySharing,
@@ -356,6 +358,12 @@ export function SupporterDashboardView({
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const {
+    action: installAction,
+    isIOS: installIsIOS,
+    showInstructions: showInstallInstructions,
+    handleInstall: handleInstallPrompt,
+  } = useAppInstallPrompt();
   const ownedGameOnCardsQuery = useListOwnedGameOnCards({
     query: {
       enabled: Boolean(userId),
@@ -910,6 +918,13 @@ export function SupporterDashboardView({
 
   const renderGameOnEventContent = (variant: 'mobile' | 'desktop') => (
     <>
+      <DashboardInstallReminder
+        action={installAction}
+        isIOS={installIsIOS}
+        showInstructions={showInstallInstructions}
+        onInstall={handleInstallPrompt}
+        variant={variant}
+      />
       <div className="supporter-game-on-summary__event-top">
         <div className="supporter-game-on-summary__event-kicker">
           <span className="supporter-game-on-summary__event-dot" aria-hidden="true" />
