@@ -69,11 +69,12 @@ test('Game On cards remain the active event-card workspace', () => {
   assert.match(gameOnNavigation, /scrollIntoView/);
 });
 
-test('standalone schedule events are not exposed through supporter dashboard or checklist links', () => {
+test('saved Calendar events support the private dashboard without restoring retired schedule links', () => {
   assert.doesNotMatch(supporterDashboard, /\/studio\/schedule|View Calendar|Schedule Maker/);
   const supporterStudio = appSource.slice(appSource.indexOf('function SupporterStudio'), appSource.indexOf('function SupporterProfilePage'));
-  assert.match(supporterStudio, /const events: SupporterEvent\[\] = \[\]/);
-  assert.doesNotMatch(supporterStudio, /getCloudScheduleProjects|getActiveCloudScheduleProject|getSupporterScheduleSelection|readScheduleDraft/);
+  assert.match(supporterStudio, /normalizeScheduleDraft\(project\.project\)/);
+  assert.match(supporterStudio, /calendarProjectId: project\.id/);
+  assert.doesNotMatch(supporterStudio, /getActiveCloudScheduleProject|getSupporterScheduleSelection|readScheduleDraft/);
   const checklistPage = appSource.slice(appSource.indexOf('export function ChecklistPage'), appSource.indexOf('function StudioPortal'));
   assert.doesNotMatch(checklistPage, /\/studio\/schedule|select-checklist-game|calendarEvents/);
   assert.match(checklistPage, /Event Card details/);

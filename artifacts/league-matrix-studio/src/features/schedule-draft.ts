@@ -36,6 +36,26 @@ export const scheduleStorageKey = 'leaguematrix-schedule-draft';
 export const scheduleLegacyDefaultsMigrationKey = 'leaguematrix-schedule-defaults-migrated';
 export const supporterScheduleSelectionStorageKey = 'leaguematrix-supporter-schedule-selection';
 
+function accountScheduleStorageKey(accountId?: string | null) {
+  return accountId ? `${scheduleStorageKey}:${encodeURIComponent(accountId)}` : scheduleStorageKey;
+}
+
+function pendingScheduleStorageKey(accountId: string) {
+  return `${scheduleStorageKey}:pending:${encodeURIComponent(accountId)}`;
+}
+
+export function hasPendingScheduleSync(storage: Pick<Storage, 'getItem'>, accountId: string) {
+  return storage.getItem(pendingScheduleStorageKey(accountId)) === '1';
+}
+
+export function markPendingScheduleSync(storage: Pick<Storage, 'setItem'>, accountId: string) {
+  storage.setItem(pendingScheduleStorageKey(accountId), '1');
+}
+
+export function clearPendingScheduleSync(storage: Pick<Storage, 'removeItem'>, accountId: string) {
+  storage.removeItem(pendingScheduleStorageKey(accountId));
+}
+
 let scheduleEventCounter = 0;
 
 export function createScheduleEvent(type: ScheduleEventType = 'game'): ScheduleEvent {
@@ -285,15 +305,19 @@ export function clearRetiredStandaloneScheduleStorage(
   }
 }
 
-export function readScheduleDraft(storage: Storage = window.localStorage): ScheduleDraft | null {
+export function readScheduleDraft(
+  storage: Storage = window.localStorage,
+  accountId?: string | null,
+): ScheduleDraft | null {
   try {
-    const stored = storage.getItem(scheduleStorageKey);
+    const storageKey = accountScheduleStorageKey(accountId);
+    const stored = storage.getItem(storageKey);
     if (storage.getItem(scheduleLegacyDefaultsMigrationKey) !== '1') {
       storage.setItem(scheduleLegacyDefaultsMigrationKey, '1');
       if (stored) {
         const draft = normalizeScheduleDraft(JSON.parse(stored));
         if (draft && isLegacyDefaultScheduleDraft(draft)) {
-          storage.removeItem(scheduleStorageKey);
+          storage.removeItem(storageKey);
           return null;
         }
         return draft;
@@ -332,8 +356,8 @@ function isLegacyDefaultScheduleDraft(draft: ScheduleDraft) {
   });
 }
 
-export function saveScheduleDraft(storage: Storage, draft: ScheduleDraft) {
-  storage.setItem(scheduleStorageKey, JSON.stringify(draft));
+export function saveScheduleDraft(storage: Storage, draft: ScheduleDraft, accountId?: string | null) {
+  storage.setItem(accountScheduleStorageKey(accountId), JSON.stringify(draft));
 }
 
 export function createScheduleAutosaveQueue() {

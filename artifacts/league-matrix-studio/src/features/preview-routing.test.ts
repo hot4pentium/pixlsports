@@ -16,7 +16,7 @@ test('the HTML entrypoint loads the app through the artifact base path', async (
 test('the offline shell rotates caches for new builds and removes superseded versions', async () => {
   const serviceWorker = await readFile(resolve(artifactDirectory, 'public/sw.js'), 'utf8');
 
-  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v11`;/);
+  assert.match(serviceWorker, /const CACHE_NAME = `\$\{CACHE_PREFIX\}-v12`;/);
   assert.match(
     serviceWorker,
     /\.filter\(\(key\) => key\.startsWith\(CACHE_PREFIX\) && key !== CACHE_NAME\)[\s\S]*\.map\(\(key\) => caches\.delete\(key\)\)/,
@@ -24,4 +24,6 @@ test('the offline shell rotates caches for new builds and removes superseded ver
   assert.match(serviceWorker, /if \(!isAppRoute\(url\)\) return;/);
   assert.match(serviceWorker, /cache\.match\(getScopePath\(\)\)/);
   assert.doesNotMatch(serviceWorker, /cache\.put\(getScopePath\(\), copy\)/, 'old workers must not overwrite their shell with new HTML before its assets are precached');
+  assert.match(serviceWorker, /\/api\/__clerk\/npm\//, 'the installed shell should retain Clerk static code for offline session restoration');
+  assert.match(serviceWorker, /if \(url\.pathname\.includes\('\/api\/'\)\) return;/, 'private API responses must stay out of the service-worker cache');
 });

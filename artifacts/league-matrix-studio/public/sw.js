@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'pixl-sports-shell';
-const CACHE_NAME = `${CACHE_PREFIX}-v11`;
+const CACHE_NAME = `${CACHE_PREFIX}-v12`;
 const PRECACHE_URLS = __PIXL_PRECACHE_MANIFEST__;
 const SCHEDULE_CACHE_HEADER = 'X-Pixl-Schedule-Cache';
 
@@ -125,6 +125,29 @@ self.addEventListener('fetch', (event) => {
             headers,
           });
         }),
+    );
+    return;
+  }
+
+  // Clerk's versioned browser bundles are public static code. Cache those so
+  // an installed app can restore its already-known local session offline, but
+  // never cache Clerk session, environment, or other authenticated API data.
+  if (url.pathname.includes('/api/__clerk/npm/') && request.destination === 'script') {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const refreshed = fetch(request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
+          }
+          return response;
+        });
+        if (cached) {
+          event.waitUntil(refreshed.catch(() => undefined));
+          return cached;
+        }
+        return refreshed;
+      }),
     );
     return;
   }

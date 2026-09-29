@@ -237,6 +237,8 @@ test('installed production shell starts, navigates warm, and reopens offline on 
       coldPage.sessionId,
     );
     assert.ok(controlledScope.endsWith('/sw.js'), `Expected the production service worker to control the warm page: ${controlledScope}`);
+    const studioHtmlRequestsBeforeWarmNavigation = productionServer.studioHtmlRequests;
+    const studioHtmlResponsesBeforeWarmNavigation = productionServer.studioHtmlResponses;
 
     const warmStudioPage = await openPage(connection, 'about:blank', { viewport: phoneViewport });
     pages.push(warmStudioPage);
@@ -273,12 +275,12 @@ test('installed production shell starts, navigates warm, and reopens offline on 
     const warmStudioHtmlResponsesBeforeContent = productionServer.studioHtmlResponses;
     assert.equal(
       warmStudioHtmlResponsesBeforeContent,
-      0,
+      studioHtmlResponsesBeforeWarmNavigation,
       'The warmed /studio shell must render before the deliberately delayed HTML response',
     );
     assert.equal(
       warmStudioHtmlRequestsBeforeContent,
-      0,
+      studioHtmlRequestsBeforeWarmNavigation,
       'The ideal cached navigation serves the warmed /studio shell without making an HTML request',
     );
     assert.ok(

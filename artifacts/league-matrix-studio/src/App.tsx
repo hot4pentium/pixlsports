@@ -74,6 +74,9 @@ import {
   type ScheduleEvent,
   type ScheduleEventType,
   clearRetiredStandaloneScheduleStorage,
+  clearPendingScheduleSync,
+  hasPendingScheduleSync,
+  markPendingScheduleSync,
 } from '@/features/schedule-draft';
 import { revokeGameOnCardForScheduleEvent } from '@/features/game-on-card-storage';
 import { getGuestUsageKey } from '@/features/guest-access';
@@ -97,6 +100,11 @@ import {
   type AccessMode,
   type UserRole,
 } from '@/features/supporter-dashboard-model';
+import {
+  clearPrivateOfflineAccountData,
+  readOfflineDashboardSnapshot,
+  updateOfflineDashboardSnapshot,
+} from '@/features/offline-dashboard-cache';
 import {
   buildWorkspaceToolHref,
   readWorkspaceEventContext,
@@ -1255,27 +1263,72 @@ function SupporterStudio() {
   const profile = supporterProfileFromUser(user);
   const tourPending = getDashboardTourState(user?.unsafeMetadata) === 'pending';
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
+  const cachedDashboard = user?.id
+    ? readOfflineDashboardSnapshot(window.localStorage, user.id)
+    : null;
   const accountAccessQuery = useGetAccountAccess({
     query: {
       enabled: Boolean(isSignedIn),
       staleTime: 15000,
       queryKey: getGetAccountAccessQueryKey(),
+      initialData: cachedDashboard?.accountAccess,
     },
   });
   const accountAccess = accountAccessQuery.data;
   const cloudProjectsQuery = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
-      queryKey: getListProjectsQueryKey(),
+      queryKey: [...getListProjectsQueryKey(), user?.id],
+      initialData: cachedDashboard?.projects,
     },
   });
   const [dashboardRefresh, setDashboardRefresh] = useState(0);
   void dashboardRefresh;
-  const events: SupporterEvent[] = [];
+  const events: SupporterEvent[] = (cloudProjectsQuery.data ?? []).flatMap((project) => {
+    if (!isCloudToolProject(project.project, 'schedule')) return [];
+    const draft = normalizeScheduleDraft(project.project);
+    if (!draft) return [];
+    return draft.events.map((event): SupporterEvent => ({
+      id: event.id,
+      calendarProjectId: project.id,
+      type: event.type,
+      date: event.date,
+      time: event.time,
+      ...(event.timezone ? { timezone: event.timezone } : {}),
+      ...(event.status ? { status: event.status } : {}),
+      ...(event.completedAt ? { completedAt: event.completedAt } : {}),
+      location: event.location,
+      ...(event.opponent ? { opponent: event.opponent } : {}),
+      ...(event.notes ? { notes: event.notes } : {}),
+    }));
+  });
+  const [offline, setOffline] = useState(() => navigator.onLine === false);
+
+  useEffect(() => {
+    if (!user?.id || !accountAccessQuery.data || !cloudProjectsQuery.data) return;
+    updateOfflineDashboardSnapshot(window.localStorage, user.id, {
+      accountAccess: accountAccessQuery.data,
+      projects: cloudProjectsQuery.data,
+    });
+  }, [user?.id, accountAccessQuery.data, cloudProjectsQuery.data]);
+  useEffect(() => {
+    const updateConnection = () => setOffline(navigator.onLine === false);
+    window.addEventListener('online', updateConnection);
+    window.addEventListener('offline', updateConnection);
+    return () => {
+      window.removeEventListener('online', updateConnection);
+      window.removeEventListener('offline', updateConnection);
+    };
+  }, []);
 
   return (
     <StudioLayout role="fan">
       <main className="flex-1 bg-background">
+        {(offline || (cachedDashboard && (accountAccessQuery.isError || cloudProjectsQuery.isError))) && (
+          <div className="border-b border-amber-400/40 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-950" role="status" data-testid="offline-dashboard-status">
+            Offline mode — showing this device’s saved dashboard. Tracker, Calendar, and checklist work stays on this device until you reconnect. Sharing and uploads need a connection.
+          </div>
+        )}
         <SupporterDashboardView
           key={user?.id}
           profile={profile}
@@ -1299,7 +1352,11 @@ function SupporterStudio() {
               && !cloudProjectsQuery.isFetching
             ),
           )}
-           onSignOut={() => signOut({ redirectUrl: basePath || "/" })}
+           onSignOut={() => {
+             if (user?.id) clearPrivateOfflineAccountData(window.localStorage, user.id);
+             athletePhoto.clearLocalCache();
+             return signOut({ redirectUrl: basePath || "/" });
+           }}
            athletePhotoUrl={athletePhoto.imageUrl}
            athletePhotoCrop={athletePhoto.data ? { x: athletePhoto.data.cropX, y: athletePhoto.data.cropY, zoom: athletePhoto.data.cropZoom } : undefined}
         />
@@ -1673,10 +1730,23 @@ export function ScheduleEditor() {
   const cloudProjectId = params.id;
   const { user, isSignedIn, isLoaded } = useUser();
   const profileTeamName = getUserProfile(user).teamName;
-  const { data: accountAccess } = useGetAccountAccess({ query: { enabled: Boolean(isSignedIn), staleTime: 15000, queryKey: getGetAccountAccessQueryKey() } });
+  const cachedDashboard = user?.id
+    ? readOfflineDashboardSnapshot(window.localStorage, user.id)
+    : null;
+  const { data: accountAccess } = useGetAccountAccess({
+    query: {
+      enabled: Boolean(isSignedIn),
+      staleTime: 15000,
+      queryKey: getGetAccountAccessQueryKey(),
+      initialData: cachedDashboard?.accountAccess,
+    },
+  });
   const consumeAccountUsage = useConsumeAccountUsage();
   const queryClient = useQueryClient();
-  const [storedDraft] = useState(() => readScheduleDraft());
+  const [storedDraft] = useState(() => readScheduleDraft(window.localStorage, user?.id));
+  const [pendingDeviceSync, setPendingDeviceSync] = useState(() => (
+    Boolean(user?.id && hasPendingScheduleSync(window.localStorage, user.id))
+  ));
   const [saved, setSaved] = useState(Boolean(storedDraft));
   const [saveStatus, setSaveStatus] = useState<'cloud' | 'device' | null>(
     storedDraft ? 'device' : null,
@@ -1725,12 +1795,14 @@ export function ScheduleEditor() {
     query: {
       enabled: Boolean(cloudProjectId && isSignedIn),
       queryKey: getGetProjectQueryKey(cloudProjectId ?? ''),
+      initialData: cachedDashboard?.projects?.find((project) => project.id === cloudProjectId),
     },
   });
   const { data: cloudProjects } = useListProjects({
     query: {
       enabled: Boolean(isSignedIn && accountAccess),
-      queryKey: getListProjectsQueryKey(),
+      queryKey: [...getListProjectsQueryKey(), user?.id],
+      initialData: cachedDashboard?.projects,
     },
   });
   const createCloudProject = useCreateProject();
@@ -1787,6 +1859,8 @@ export function ScheduleEditor() {
     const loadedDraft = normalizeScheduleDraft(selectedCloudProject.project);
     if (!loadedDraft) return;
     initializedCloudId.current = selectedCloudProject.id;
+    cloudRevision.current = selectedCloudProject.revision;
+    if (pendingDeviceSync && storedDraft) return;
     setTeamName(loadedDraft.teamName || profileTeamName);
     setSeason(loadedDraft.season);
     setEvents(loadedDraft.events);
@@ -1800,8 +1874,7 @@ export function ScheduleEditor() {
     setSelectedEventId(selectedEvent?.id ?? '');
     setSelectedWeekKey(getScheduleWeekKey(selectedEvent?.date ?? ''));
     setSaved(true);
-    cloudRevision.current = selectedCloudProject.revision;
-  }, [selectedCloudProject, profileTeamName]);
+  }, [selectedCloudProject, profileTeamName, pendingDeviceSync, storedDraft]);
 
   useEffect(() => {
     if (events.length === 0) {
@@ -1927,7 +2000,7 @@ export function ScheduleEditor() {
       events: nextEvents,
       template: 0,
       ...(nextShareToken ? { shareToken: nextShareToken } : {}),
-    });
+    }, user?.id);
   };
 
   const cloudSchedule = (nextEvents = events): CloudProjectPayload => ({
@@ -1968,6 +2041,10 @@ export function ScheduleEditor() {
         setLocation(`/studio/schedule/${created.id}`);
       }
       await queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+      if (user?.id) {
+        clearPendingScheduleSync(window.localStorage, user.id);
+        setPendingDeviceSync(false);
+      }
       return true;
     } catch (error: any) {
       setNoticeFor(error?.status === 409 ? 'WORKSPACE SCHEDULE LIMIT REACHED — SAVED ON THIS DEVICE' : 'CLOUD SAVE FAILED — SAVED ON THIS DEVICE', 'error');
@@ -1977,6 +2054,10 @@ export function ScheduleEditor() {
 
   const persistSchedule = async (nextEvents: ScheduleEvent[], successNotice: string) => {
     saveCurrentDraft(nextEvents);
+    if (user?.id) {
+      markPendingScheduleSync(window.localStorage, user.id);
+      setPendingDeviceSync(true);
+    }
     setSaveStatus('device');
     const cloudSaved = isSignedIn
       ? await autosaveQueue.enqueue(() => saveToCloud(nextEvents))
@@ -1985,6 +2066,25 @@ export function ScheduleEditor() {
     setSaveStatus(isSignedIn && cloudSaved ? 'cloud' : 'device');
     setNoticeFor(isSignedIn && cloudSaved ? `${successNotice} TO CLOUD` : `${successNotice} ON THIS DEVICE`);
   };
+
+  useEffect(() => {
+    if (!pendingDeviceSync || !user?.id) return;
+    const syncPendingDraft = () => {
+      if (navigator.onLine === false) return;
+      void autosaveQueue.enqueue(() => saveToCloud(events)).then((savedToCloud) => {
+        if (!savedToCloud) return;
+        setSaveStatus('cloud');
+        setSaved(true);
+        setNoticeFor('SAVED DEVICE CHANGES TO CLOUD');
+      });
+    };
+    window.addEventListener('online', syncPendingDraft);
+    const initialSync = window.setTimeout(syncPendingDraft, 0);
+    return () => {
+      window.clearTimeout(initialSync);
+      window.removeEventListener('online', syncPendingDraft);
+    };
+  }, [pendingDeviceSync, user?.id, events, autosaveQueue]);
 
   const publishSchedule = async () => {
     if (!isSignedIn) {
@@ -3578,7 +3678,11 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     || location.startsWith('/player/')
     || location.startsWith('/sign-in')
     || location.startsWith('/sign-up');
-  const { data: lifecycle, isLoading, isError, refetch } = useGetAccountLifecycle({
+  const cachedDashboard = user?.id
+    ? readOfflineDashboardSnapshot(window.localStorage, user.id)
+    : null;
+  const [allowSlowCache, setAllowSlowCache] = useState(false);
+  const lifecycleQuery = useGetAccountLifecycle({
     query: {
       enabled: Boolean(isLoaded && isSignedIn && !bypassLifecycle),
       staleTime: 0,
@@ -3586,13 +3690,44 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
       refetchOnWindowFocus: 'always',
       refetchInterval: (query) => query.state.data?.status === 'paused' ? 30_000 : false,
       queryKey: [...getGetAccountLifecycleQueryKey(), user?.id],
+      initialData: cachedDashboard?.lifecycle,
     },
   });
+  const { data: lifecycle, isLoading, isError, refetch } = lifecycleQuery;
+  useEffect(() => {
+    setAllowSlowCache(false);
+    if (!cachedDashboard || !isSignedIn) return;
+    const timer = window.setTimeout(() => setAllowSlowCache(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, [user?.id, isSignedIn, Boolean(cachedDashboard)]);
+  useEffect(() => {
+    if (!user?.id || !lifecycle || isError || !lifecycleQuery.isFetchedAfterMount) return;
+    updateOfflineDashboardSnapshot(window.localStorage, user.id, {
+      lifecycle,
+      verifiedAt: new Date().toISOString(),
+    });
+  }, [user?.id, lifecycle, isError, lifecycleQuery.isFetchedAfterMount]);
+  const canUseCachedLifecycle = Boolean(
+    isSignedIn
+    && cachedDashboard
+    && (navigator.onLine === false || isError || allowSlowCache),
+  );
+  const waitingForFreshLifecycle = Boolean(
+    isSignedIn
+    && cachedDashboard
+    && navigator.onLine !== false
+    && !lifecycleQuery.isFetchedAfterMount
+    && !allowSlowCache,
+  );
 
-  if (!bypassLifecycle && (!isLoaded || (isSignedIn && isLoading))) {
+  if (!bypassLifecycle && (
+    !isLoaded
+    || waitingForFreshLifecycle
+    || (isSignedIn && isLoading && !canUseCachedLifecycle)
+  )) {
     return <AccountLoadingScreen onRetry={isLoaded && isSignedIn ? () => void refetch() : undefined} />;
   }
-  if (isSignedIn && !bypassLifecycle && (isError || !lifecycle)) {
+  if (isSignedIn && !bypassLifecycle && (isError || !lifecycle) && !canUseCachedLifecycle) {
     return <AccountLoadingScreen error onRetry={() => void refetch()} />;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
@@ -3627,6 +3762,9 @@ function ClerkQueryClientCacheInvalidator() {
         prevUserIdRef.current !== userId
       ) {
         queryClient.clear();
+        if (prevUserIdRef.current) {
+          clearPrivateOfflineAccountData(window.localStorage, prevUserIdRef.current);
+        }
       }
       prevUserIdRef.current = userId;
     });
