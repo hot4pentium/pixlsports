@@ -29,6 +29,10 @@ export type DashboardGameOnCard = {
   recordedGameId?: string;
 };
 
+export type GameOnCardDeleteResult = {
+  calendarEventDeleted: boolean;
+  calendarEventStatus: 'deleted' | 'not-linked' | 'unverified' | 'not-found' | 'ambiguous';
+};
 export type GameOnCardRenderOptions = {
   view: 'details' | 'calendar';
   onOpenPrep: (trigger: HTMLButtonElement) => void;
@@ -41,7 +45,7 @@ type GameOnDashboardCollectionProps = {
   createDisabled?: boolean;
   onOpen: (id: string, trigger?: HTMLButtonElement) => void;
   onCancelDraft?: () => void;
-  onDeleteCard?: (card: DashboardGameOnCard) => Promise<void>;
+  onDeleteCard?: (card: DashboardGameOnCard) => Promise<GameOnCardDeleteResult>;
   selectedId?: string;
   isActiveShell?: boolean;
   featuredCardId?: string;
@@ -439,9 +443,19 @@ export function GameOnDashboardCollection({
     setDeletingCardId(card.id);
     setDeleteError('');
     try {
-      await onDeleteCard(card);
+      const result = await onDeleteCard(card);
       setDeleteConfirmationCardId(null);
-      setDeleteAnnouncement(`${card.type === 'practice' ? 'Practice' : 'Game'} On Card deleted. Its public link is no longer available.`);
+      const cardLabel = `${card.type === 'practice' ? 'Practice' : 'Game'} On Card and its public link deleted.`;
+      const calendarResult = result.calendarEventStatus === 'deleted'
+        ? ' Its linked Calendar event was deleted too.'
+        : result.calendarEventStatus === 'not-linked'
+          ? ' No Calendar event was linked, so the Calendar was left unchanged.'
+          : result.calendarEventStatus === 'ambiguous'
+            ? ' The Calendar event was left in place because its match was not unique.'
+            : result.calendarEventStatus === 'not-found'
+              ? ' The Calendar was left unchanged because the linked event was no longer there.'
+              : ' The Calendar was left unchanged because ownership or the event match could not be verified.';
+      setDeleteAnnouncement(`${cardLabel}${calendarResult}`);
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'Unable to delete this Game On card. Try again.');
     } finally {
@@ -714,7 +728,7 @@ export function GameOnDashboardCollection({
                           Delete this Game On card?
                         </h3>
                         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                          This deletes the Game On Card and the event details saved in its public link. A separate Calendar schedule is not changed here. This can’t be undone.
+                          This deletes the Game On Card and its public link. The Calendar event is removed only if its saved link uniquely matches an event in a Calendar you own; otherwise the Calendar is left unchanged. This can’t be undone.
                         </p>
                         {deleteError && <p className="mt-3 text-sm font-medium text-destructive" role="alert">{deleteError}</p>}
                         <div className="mt-4 flex flex-wrap justify-end gap-2">

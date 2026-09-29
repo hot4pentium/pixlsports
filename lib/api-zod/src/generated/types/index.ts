@@ -66,6 +66,8 @@ export * from './checklistShare';
 export * from './checklistShareInput';
 export * from './checklistShareInputMode';
 export * from './checklistShareUpdate';
+export * from './deleteGameOnCardResponse';
+export * from './deleteGameOnCardResponseCalendarEventStatus';
 export * from './error';
 export * from './gameOnCard';
 export * from './gameOnCardAthletePageState';

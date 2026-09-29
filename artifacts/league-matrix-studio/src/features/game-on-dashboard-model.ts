@@ -2,6 +2,7 @@ import { getSupporterGameStage } from './supporter-dashboard-model';
 
 export type GameOnDashboardEvent = {
   id: string;
+  calendarProjectId?: string;
   type: 'game' | 'practice' | 'meeting';
   date: string;
   time: string;
@@ -21,6 +22,7 @@ export type OwnedGameOnShare = {
 export type GameOnDashboardEntry = {
   id: string;
   eventId: string;
+  calendarProjectId?: string;
   shareToken?: string;
   type: 'game' | 'practice';
   athleteName: string;
@@ -84,13 +86,14 @@ function entryForEvent(event: GameOnDashboardEvent & { type: 'game' | 'practice'
   return {
     id: shareToken ? `share:${shareToken}` : `draft:${event.id}`,
     eventId: event.id,
+    ...(event.calendarProjectId ? { calendarProjectId: event.calendarProjectId } : {}),
     ...(shareToken ? { shareToken } : {}),
     type: event.type,
     athleteName: athleteName || 'Your athlete',
     opponent: event.type === 'game' ? event.opponent ?? '' : '',
     date: event.date,
     time: event.time,
-    timezone: event.timezone,
+    ...(event.timezone ? { timezone: event.timezone } : {}),
     location: event.location,
     status: stage === 'completed' ? 'Complete' : stage === 'live' ? 'Live' : shareToken ? 'Published' : 'Draft',
     isPublished: Boolean(shareToken),

@@ -143,6 +143,25 @@ paths:
                   $ref: "#/components/schemas/ScheduleShare"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /game-on-cards/owned/{shareToken}:
+    parameters:
+      - $ref: "#/components/parameters/ScheduleShareToken"
+    delete:
+      operationId: deleteOwnedGameOnCard
+      tags: [game-on-cards]
+      summary: Delete an owned Game On Card and its verified Calendar event
+      description: Deletes the card. Its linked Calendar event is also deleted only when the saved association uniquely identifies an event in a Calendar project owned by the caller.
+      responses:
+        "200":
+          description: Card deletion result, including whether its Calendar event was removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteGameOnCardResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /game-on-cards/{shareToken}:
     parameters:
       - $ref: "#/components/parameters/ScheduleShareToken"
@@ -2050,6 +2069,10 @@ components:
           type: string
           enum: [game-on-card]
           description: Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response.
+        calendarProjectId:
+          type: string
+          format: uuid
+          description: Optional source Calendar project. The server verifies the caller owns it and that the event ID occurs exactly once before linking.
         events:
           type: array
           maxItems: 50
@@ -2071,6 +2094,14 @@ components:
         createdAt:
           type: string
           format: date-time
+    DeleteGameOnCardResponse:
+      type: object
+      required: [calendarEventDeleted, calendarEventStatus]
+      properties:
+        calendarEventDeleted: { type: boolean }
+        calendarEventStatus:
+          type: string
+          enum: [deleted, not-linked, unverified, not-found, ambiguous]
     GameOnCardEvent:
       type: object
       required: [id, type, date, time, location, opponent]
@@ -3275,4 +3306,3 @@ components:
       required: [objectPath]
       properties:
         objectPath: { type: string, minLength: 10 }
-

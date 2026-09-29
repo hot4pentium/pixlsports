@@ -18,6 +18,8 @@ export interface ScheduleShareInput {
   teamSeason: string;
   /** Omit for Calendar sharing. Marks an event-specific Game On Card without changing its public response. */
   purpose?: ScheduleShareInputPurpose;
+  /** Optional source Calendar project. The server verifies the caller owns it and that the event ID occurs exactly once before linking. */
+  calendarProjectId?: string;
   /** @maxItems 50 */
   events: ScheduleEvent[];
 }

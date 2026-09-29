@@ -6,6 +6,7 @@ import {
   accountAccessTable,
   athleteInvitesTable,
   checklistSharesTable,
+  cloudProjectsTable,
   db,
   scheduleSharesTable,
   statTrackerSharesTable,
@@ -538,5 +539,185 @@ test("public practice Game On Card links shared prep and Hype Page but never gam
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+  }
+});
+
+test("deleting a Game On Card removes only its uniquely linked Calendar event owned by the caller", async () => {
+  const ownerId = `delete-game-on-owner-${crypto.randomUUID()}`;
+  const otherOwnerId = `delete-game-on-other-${crypto.randomUUID()}`;
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    next();
+  });
+  app.use("/api", scheduleSharesRouter);
+  const server = app.listen(0);
+  const projectIds: string[] = [];
+  const shareIds: string[] = [];
+
+  const event = (id: string) => ({
+    id,
+    type: "game",
+    date: "2026-10-03",
+    time: "09:30",
+    location: "North Field",
+    opponent: "Ravens",
+  });
+  const createProject = async (ownerClerkUserId: string, eventId: string, duplicateEvent = false) => {
+    const [project] = await db.insert(cloudProjectsTable).values({
+      ownerClerkUserId,
+      name: "Fall Calendar",
+      project: {
+        tool: "schedule",
+        teamName: "Tigers",
+        events: [event(eventId), ...(duplicateEvent ? [event(eventId)] : [])],
+      },
+    }).returning({ id: cloudProjectsTable.id });
+    projectIds.push(project!.id);
+    return project!.id;
+  };
+  const createCard = async (eventId: string, calendarProjectId?: string) => {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/schedule-shares`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        title: "Tigers",
+        teamSeason: "Fall 2026",
+        purpose: "game-on-card",
+        ...(calendarProjectId ? { calendarProjectId } : {}),
+        events: [{
+          ...event(eventId),
+          snacks: "",
+          drinks: "",
+          notes: "",
+        }],
+      }),
+    });
+    const responseText = await response.text();
+    assert.equal(response.status, 201, responseText);
+    const share = JSON.parse(responseText) as { shareToken: string };
+    shareIds.push(share.shareToken);
+    return share.shareToken;
+  };
+  const deleteCard = async (shareToken: string) => {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    return fetch(`http://127.0.0.1:${address.port}/api/game-on-cards/owned/${shareToken}`, {
+      method: "DELETE",
+      headers: { "x-test-user": ownerId },
+    });
+  };
+
+  try {
+    const matchingEventId = `matching-${crypto.randomUUID()}`;
+    const matchingProjectId = await createProject(ownerId, matchingEventId);
+    const matchingShareId = await createCard(matchingEventId, matchingProjectId);
+    const [linkedShare] = await db.select().from(scheduleSharesTable)
+      .where(eq(scheduleSharesTable.id, matchingShareId));
+    assert.equal(linkedShare!.calendarProjectId, matchingProjectId);
+    assert.equal(linkedShare!.calendarEventId, matchingEventId);
+    assert.equal(linkedShare!.calendarOwnerClerkUserId, ownerId);
+    const matchingResponse = await deleteCard(matchingShareId);
+    assert.equal(matchingResponse.status, 200);
+    const matchingResult = await matchingResponse.json() as {
+      calendarEventDeleted: boolean;
+      calendarEventStatus: string;
+    };
+    assert.deepEqual(matchingResult, { calendarEventDeleted: true, calendarEventStatus: "deleted" });
+    const [matchingProject] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, matchingProjectId));
+    assert.deepEqual((matchingProject!.project as { events: unknown[] }).events, []);
+    assert.equal((await db.select().from(scheduleSharesTable)
+      .where(eq(scheduleSharesTable.id, matchingShareId))).length, 0);
+
+    const unassociatedEventId = `unassociated-${crypto.randomUUID()}`;
+    const unassociatedProjectId = await createProject(ownerId, unassociatedEventId);
+    const unassociatedShareId = await createCard(unassociatedEventId);
+    const unassociatedResponse = await deleteCard(unassociatedShareId);
+    assert.equal(unassociatedResponse.status, 200);
+    assert.deepEqual(await unassociatedResponse.json(), {
+      calendarEventDeleted: false,
+      calendarEventStatus: "not-linked",
+    });
+    const [unassociatedProject] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, unassociatedProjectId));
+    assert.equal((unassociatedProject!.project as { events: unknown[] }).events.length, 1);
+
+    const foreignEventId = `foreign-${crypto.randomUUID()}`;
+    const foreignProjectId = await createProject(otherOwnerId, foreignEventId);
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const rejectedLinkResponse = await fetch(`http://127.0.0.1:${address.port}/api/schedule-shares`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        title: "Tigers",
+        teamSeason: "Fall 2026",
+        purpose: "game-on-card",
+        calendarProjectId: foreignProjectId,
+        events: [{ ...event(foreignEventId), snacks: "", drinks: "", notes: "" }],
+      }),
+    });
+    assert.equal(rejectedLinkResponse.status, 400);
+    const [wrongOwnerShare] = await db.insert(scheduleSharesTable).values({
+      ownerClerkUserId: ownerId,
+      title: "Tigers",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [event(foreignEventId)],
+      calendarProjectId: foreignProjectId,
+      calendarEventId: foreignEventId,
+      calendarOwnerClerkUserId: ownerId,
+    }).returning({ id: scheduleSharesTable.id });
+    const wrongOwnerShareId = wrongOwnerShare!.id;
+    shareIds.push(wrongOwnerShareId);
+    const wrongOwnerResponse = await deleteCard(wrongOwnerShareId);
+    assert.equal(wrongOwnerResponse.status, 200);
+    assert.deepEqual(await wrongOwnerResponse.json(), {
+      calendarEventDeleted: false,
+      calendarEventStatus: "unverified",
+    });
+    const [foreignProject] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, foreignProjectId));
+    assert.equal((foreignProject!.project as { events: unknown[] }).events.length, 1);
+
+    const ambiguousEventId = `ambiguous-${crypto.randomUUID()}`;
+    const ambiguousProjectId = await createProject(ownerId, ambiguousEventId, true);
+    const [ambiguousShare] = await db.insert(scheduleSharesTable).values({
+      ownerClerkUserId: ownerId,
+      title: "Tigers",
+      teamSeason: GAME_ON_CARD_MARKER,
+      events: [event(ambiguousEventId)],
+      calendarProjectId: ambiguousProjectId,
+      calendarEventId: ambiguousEventId,
+      calendarOwnerClerkUserId: ownerId,
+    }).returning({ id: scheduleSharesTable.id });
+    const ambiguousShareId = ambiguousShare!.id;
+    shareIds.push(ambiguousShareId);
+    const ambiguousResponse = await deleteCard(ambiguousShareId);
+    assert.equal(ambiguousResponse.status, 200);
+    assert.deepEqual(await ambiguousResponse.json(), {
+      calendarEventDeleted: false,
+      calendarEventStatus: "ambiguous",
+    });
+    const [ambiguousProject] = await db.select().from(cloudProjectsTable)
+      .where(eq(cloudProjectsTable.id, ambiguousProjectId));
+    assert.equal((ambiguousProject!.project as { events: unknown[] }).events.length, 2);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+    for (const id of shareIds) {
+      await db.delete(scheduleSharesTable).where(eq(scheduleSharesTable.id, id));
+    }
+    for (const id of projectIds) {
+      await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.id, id));
+    }
   }
 });

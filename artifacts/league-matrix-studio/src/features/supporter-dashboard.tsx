@@ -10,7 +10,7 @@ import {
   useListAthleteInvites,
   useListProjects,
   useListOwnedGameOnCards,
-  useDeleteScheduleShare,
+  useDeleteOwnedGameOnCard,
   useUpdateSupporterActiveGame,
 } from '@workspace/api-client-react';
 import {
@@ -88,6 +88,7 @@ export interface SupporterProfile {
 
 export interface SupporterEvent {
   id: string;
+  calendarProjectId?: string;
   type: 'game' | 'practice' | 'meeting';
   date: string;
   time: string;
@@ -351,7 +352,7 @@ export function SupporterDashboardView({
   });
   const fanCardHref = getSupporterFanCardHref(athleteInvitesQuery.data ?? [], profile);
   const updateActiveGameSelection = useUpdateSupporterActiveGame();
-  const deleteScheduleShare = useDeleteScheduleShare();
+  const deleteOwnedGameOnCard = useDeleteOwnedGameOnCard();
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -608,12 +609,14 @@ export function SupporterDashboardView({
     if (!userId) throw new Error('Sign in to delete this Game On card.');
     if (!card.shareToken) throw new Error('This card is not saved yet.');
 
-    await deleteScheduleShare.mutateAsync({ shareToken: card.shareToken });
+    const result = await deleteOwnedGameOnCard.mutateAsync({ shareToken: card.shareToken });
     removeSavedGameOnCard(userId, card.shareToken);
     setLocalGameOnCards((current) => current.filter((saved) => saved.shareToken !== card.shareToken));
     setCardSelection(null);
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
-  }, [deleteScheduleShare, queryClient, userId]);
+    void queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+    return result;
+  }, [deleteOwnedGameOnCard, queryClient, userId]);
   const renderSelectedGameOnCard = (
     card: (typeof collectionCards)[number],
     surface: 'mobile' | 'desktop',

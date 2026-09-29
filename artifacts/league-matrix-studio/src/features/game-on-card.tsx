@@ -36,7 +36,7 @@ import {
 import { getBrowserTimeZone, getGameOnTimeZoneOptions, resolveGameOnTimeZone } from './game-on-timezone';
 
 type GameOnEventType = 'game' | 'practice';
-type CardEvent = GameOnDraft & { type?: GameOnEventType };
+type CardEvent = GameOnDraft & { type?: GameOnEventType; calendarProjectId?: string };
 type LocalSavedGameOnCard = Omit<SavedGameOnCard, 'event'> & { event: CardEvent };
 
 type GameOnCardPanelProps = {
@@ -81,6 +81,7 @@ function draftFromEvent(event: SupporterEvent): CardEvent {
   const type = event.type === 'practice' ? 'practice' : 'game';
   return {
     id: event.id,
+    ...(event.calendarProjectId ? { calendarProjectId: event.calendarProjectId } : {}),
     date: event.date,
     time: event.time,
     timezone: resolveGameOnTimeZone(event.timezone),
@@ -255,6 +256,7 @@ export function GameOnCardPanel({
       title: profile.teamName.trim() || 'Game On',
       teamSeason: '',
       purpose: 'game-on-card' as const,
+      ...(event.calendarProjectId ? { calendarProjectId: event.calendarProjectId } : {}),
       events: [publicEventPayload(event)],
     };
   }

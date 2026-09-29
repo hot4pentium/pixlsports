@@ -82,6 +82,7 @@ export function GameOnInlineEditor({
     title: teamName.trim() || 'Game On',
     teamSeason: '',
     purpose: 'game-on-card' as const,
+    ...(card.calendarProjectId ? { calendarProjectId: card.calendarProjectId } : {}),
     events: [{
       ...event, snacks: '', drinks: '', notes: '',
     }],

@@ -6,6 +6,9 @@ export const scheduleSharesTable = pgTable("schedule_shares", {
   title: text("title").notNull(),
   teamSeason: text("team_season").notNull(),
   events: jsonb("events").notNull(),
+  calendarProjectId: uuid("calendar_project_id"),
+  calendarEventId: text("calendar_event_id"),
+  calendarOwnerClerkUserId: text("calendar_owner_clerk_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({

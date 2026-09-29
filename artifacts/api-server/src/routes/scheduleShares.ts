@@ -3,6 +3,7 @@ import { Router, type IRouter } from "express";
 import {
   CreateScheduleShareBody,
   CreateScheduleShareResponse,
+  DeleteOwnedGameOnCardResponse,
   GetGameOnCardParams,
   GetGameOnCardResponse,
   ListOwnedGameOnCardsResponse,
@@ -13,6 +14,7 @@ import {
 import {
   athleteInvitesTable,
   checklistSharesTable,
+  cloudProjectsTable,
   db,
   scheduleSharesTable,
   statTrackerSharesTable,
@@ -27,11 +29,22 @@ const router: IRouter = Router();
 // Never return this internal value in a public or owned share response.
 export const GAME_ON_CARD_MARKER = "@pixlsports:game-on-card:v1";
 
+class InvalidCalendarAssociationError extends Error {}
+
 function isSingleCardEvent(events: unknown) {
   if (!Array.isArray(events) || events.length !== 1) return false;
   const event: unknown = events[0];
   return Boolean(event && typeof event === "object" && "type" in event
     && (event.type === "game" || event.type === "practice"));
+}
+
+function hasUniqueCalendarEvent(project: unknown, eventId: string) {
+  if (!project || typeof project !== "object") return false;
+  const payload = project as { tool?: unknown; events?: unknown };
+  if (payload.tool !== "schedule" || !Array.isArray(payload.events)) return false;
+  return payload.events.filter((event) => (
+    event && typeof event === "object" && "id" in event && event.id === eventId
+  )).length === 1;
 }
 
 function hasValidEventTimezone(events: unknown) {
@@ -72,15 +85,38 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
   }
 
   try {
-    const [created] = await db
-      .insert(scheduleSharesTable)
-      .values({
-        ownerClerkUserId: getRequiredClerkUserId(res),
-        title: parsed.data.title,
-        teamSeason: parsed.data.purpose === "game-on-card" ? GAME_ON_CARD_MARKER : parsed.data.teamSeason,
-        events: parsed.data.events,
-      })
-      .returning();
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const created = await db.transaction(async (tx) => {
+      const event = parsed.data.events[0];
+      if (parsed.data.calendarProjectId) {
+        const [calendarProject] = await tx.select()
+          .from(cloudProjectsTable)
+          .where(and(
+            eq(cloudProjectsTable.id, parsed.data.calendarProjectId),
+            eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+          ))
+          .for("update");
+        if (!event || !calendarProject || !hasUniqueCalendarEvent(calendarProject.project, event.id)) {
+          throw new InvalidCalendarAssociationError();
+        }
+      }
+      const [row] = await tx.insert(scheduleSharesTable)
+        .values({
+          ownerClerkUserId,
+          title: parsed.data.title,
+          teamSeason: GAME_ON_CARD_MARKER,
+          events: parsed.data.events,
+          ...(parsed.data.calendarProjectId
+            ? {
+              calendarProjectId: parsed.data.calendarProjectId,
+              calendarEventId: event!.id,
+              calendarOwnerClerkUserId: ownerClerkUserId,
+            }
+            : {}),
+        })
+        .returning();
+      return row;
+    });
     try {
       await reconcileGameOnShare(created);
     } catch {
@@ -90,6 +126,10 @@ router.post("/schedule-shares", requireAuth, async (req, res): Promise<void> => 
     }
     res.status(201).json(shareResponse(created));
   } catch (error) {
+    if (error instanceof InvalidCalendarAssociationError) {
+      res.status(400).json({ error: "The linked Calendar event could not be verified. Refresh and try again." });
+      return;
+    }
     req.log.error({ err: error }, "Unable to create schedule share");
     res.status(500).json({ error: "Unable to create schedule share" });
   }
@@ -119,40 +159,73 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
 
   try {
     const ownerClerkUserId = getRequiredClerkUserId(res);
-    const [current] = await db
-      .select()
-      .from(scheduleSharesTable)
-      .where(and(
-        eq(scheduleSharesTable.id, params.data.shareToken),
-        eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
-      ));
-    if (!current) {
+    const result = await db.transaction(async (tx) => {
+      const [current] = await tx.select()
+        .from(scheduleSharesTable)
+        .where(and(
+          eq(scheduleSharesTable.id, params.data.shareToken),
+          eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+        ))
+        .for("update");
+      if (!current) return { kind: "not-found" as const };
+      if (current.teamSeason !== GAME_ON_CARD_MARKER || parsed.data.purpose !== "game-on-card") {
+        return { kind: "retired" as const };
+      }
+
+      const nextEvent = parsed.data.events[0];
+      let associationUpdate: {
+        calendarProjectId: string | null;
+        calendarEventId: string | null;
+        calendarOwnerClerkUserId: string | null;
+      } | undefined;
+      if (parsed.data.calendarProjectId) {
+        const [calendarProject] = await tx.select()
+          .from(cloudProjectsTable)
+          .where(and(
+            eq(cloudProjectsTable.id, parsed.data.calendarProjectId),
+            eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+          ))
+          .for("update");
+        if (!nextEvent || !calendarProject || !hasUniqueCalendarEvent(calendarProject.project, nextEvent.id)) {
+          throw new InvalidCalendarAssociationError();
+        }
+        associationUpdate = {
+          calendarProjectId: parsed.data.calendarProjectId,
+          calendarEventId: nextEvent.id,
+          calendarOwnerClerkUserId: ownerClerkUserId,
+        };
+      } else if (current.calendarEventId !== nextEvent?.id) {
+        associationUpdate = {
+          calendarProjectId: null,
+          calendarEventId: null,
+          calendarOwnerClerkUserId: null,
+        };
+      }
+
+      const [updated] = await tx.update(scheduleSharesTable)
+        .set({
+          title: parsed.data.title,
+          teamSeason: GAME_ON_CARD_MARKER,
+          events: parsed.data.events,
+          ...(associationUpdate ?? {}),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(scheduleSharesTable.id, params.data.shareToken),
+          eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+        ))
+        .returning();
+      return updated ? { kind: "updated" as const, updated } : { kind: "not-found" as const };
+    });
+    if (result.kind === "not-found") {
       res.status(404).json({ error: "Schedule share not found" });
       return;
     }
-    if (current.teamSeason !== GAME_ON_CARD_MARKER || parsed.data.purpose !== "game-on-card") {
+    if (result.kind === "retired") {
       res.status(410).json({ error: "Standalone Calendar sharing is no longer supported." });
       return;
     }
-
-    const [updated] = await db
-      .update(scheduleSharesTable)
-      .set({
-        title: parsed.data.title,
-        teamSeason: parsed.data.purpose === "game-on-card" ? GAME_ON_CARD_MARKER : parsed.data.teamSeason,
-        events: parsed.data.events,
-        updatedAt: new Date(),
-      })
-      .where(and(
-        eq(scheduleSharesTable.id, params.data.shareToken),
-        eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
-      ))
-      .returning();
-
-    if (!updated) {
-      res.status(404).json({ error: "Schedule share not found" });
-      return;
-    }
+    const updated = result.updated;
 
     try {
       await reconcileGameOnShare(updated);
@@ -161,6 +234,10 @@ router.patch("/schedule-shares/:shareToken", requireAuth, async (req, res): Prom
     }
     res.json(UpdateScheduleShareResponse.parse(shareResponse(updated)));
   } catch (error) {
+    if (error instanceof InvalidCalendarAssociationError) {
+      res.status(400).json({ error: "The linked Calendar event could not be verified. Refresh and try again." });
+      return;
+    }
     req.log.error({ err: error }, "Unable to update schedule share");
     res.status(500).json({ error: "Unable to update schedule share" });
   }
@@ -191,6 +268,100 @@ router.delete("/schedule-shares/:shareToken", requireAuth, async (req, res): Pro
   } catch (error) {
     req.log.error({ err: error }, "Unable to revoke schedule share");
     res.status(500).json({ error: "Unable to revoke schedule share" });
+  }
+});
+
+router.delete("/game-on-cards/owned/:shareToken", requireAuth, async (req, res): Promise<void> => {
+  const params = GetScheduleShareParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(404).json({ error: "Game On Card not found" });
+    return;
+  }
+
+  try {
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const result = await db.transaction(async (tx) => {
+      const [share] = await tx.select()
+        .from(scheduleSharesTable)
+        .where(and(
+          eq(scheduleSharesTable.id, params.data.shareToken),
+          eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+        ))
+        .for("update");
+      if (!share || (share.teamSeason !== GAME_ON_CARD_MARKER && !isSingleCardEvent(share.events))) {
+        return null;
+      }
+
+      let calendarEventStatus: "deleted" | "not-linked" | "unverified" | "not-found" | "ambiguous" = "not-linked";
+      const hasAnyAssociation = Boolean(
+        share.calendarProjectId || share.calendarEventId || share.calendarOwnerClerkUserId,
+      );
+      if (hasAnyAssociation) {
+        calendarEventStatus = "unverified";
+        const cardEvent = Array.isArray(share.events) ? share.events[0] as { id?: unknown } | undefined : undefined;
+        if (share.calendarProjectId && share.calendarEventId
+          && cardEvent?.id === share.calendarEventId
+          && share.calendarOwnerClerkUserId === ownerClerkUserId) {
+          const [calendarProject] = await tx.select()
+            .from(cloudProjectsTable)
+            .where(eq(cloudProjectsTable.id, share.calendarProjectId))
+            .for("update");
+          if (calendarProject?.ownerClerkUserId === ownerClerkUserId) {
+            const project = calendarProject.project as { tool?: unknown; events?: unknown };
+            if (project?.tool === "schedule" && Array.isArray(project.events)) {
+              const eventMatches = project.events.filter((event) => (
+                event && typeof event === "object" && "id" in event && event.id === share.calendarEventId
+              ));
+              const linkedShares = await tx.select({ id: scheduleSharesTable.id })
+                .from(scheduleSharesTable)
+                .where(and(
+                  eq(scheduleSharesTable.calendarProjectId, share.calendarProjectId),
+                  eq(scheduleSharesTable.calendarEventId, share.calendarEventId),
+                ));
+              if (eventMatches.length === 0) {
+                calendarEventStatus = "not-found";
+              } else if (eventMatches.length !== 1 || linkedShares.length !== 1) {
+                calendarEventStatus = "ambiguous";
+              } else {
+                const events = project.events.filter((event) => !(
+                  event && typeof event === "object" && "id" in event && event.id === share.calendarEventId
+                ));
+                await tx.update(cloudProjectsTable)
+                  .set({
+                    project: { ...project, events },
+                    revision: sql`${cloudProjectsTable.revision} + 1`,
+                    updatedAt: new Date(),
+                  })
+                  .where(and(
+                    eq(cloudProjectsTable.id, calendarProject.id),
+                    eq(cloudProjectsTable.ownerClerkUserId, ownerClerkUserId),
+                  ));
+                calendarEventStatus = "deleted";
+              }
+            }
+          }
+        }
+      }
+
+      const [deleted] = await tx.delete(scheduleSharesTable)
+        .where(and(
+          eq(scheduleSharesTable.id, share.id),
+          eq(scheduleSharesTable.ownerClerkUserId, ownerClerkUserId),
+        ))
+        .returning({ id: scheduleSharesTable.id });
+      return deleted
+        ? { calendarEventStatus, calendarEventDeleted: calendarEventStatus === "deleted" }
+        : null;
+    });
+
+    if (!result) {
+      res.status(404).json({ error: "Game On Card not found" });
+      return;
+    }
+    res.json(DeleteOwnedGameOnCardResponse.parse(result));
+  } catch (error) {
+    req.log.error({ err: error }, "Unable to delete owned Game On Card");
+    res.status(500).json({ error: "Unable to delete Game On Card" });
   }
 });
 

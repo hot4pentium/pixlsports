@@ -1,5 +1,6 @@
 export type GameOnCardEvent = {
   id: string;
+  calendarProjectId?: string;
   type?: 'game' | 'practice';
   date: string;
   time: string;
