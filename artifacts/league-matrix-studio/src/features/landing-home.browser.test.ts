@@ -66,13 +66,20 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       }))()`, page.sessionId);
       assert.equal(heroCopy.headline.replace(/\s+/g, ' ').trim(), 'ALL IN, ALL SEASON.');
       assert.equal(heroCopy.obsoleteLabel, false);
-      const additionalToolsText = await connection.evaluate<string>(
-        `document.querySelector('[data-testid="landing-additional-tools"]')?.innerText || ''`,
+      const capabilityHighlightsText = await connection.evaluate<string>(
+        `document.querySelector('[data-testid="landing-capability-highlights"]')?.innerText || ''`,
         page.sessionId,
       );
-      for (const tool of ['Schedule Maker', 'Gameday Checklist', 'Stat Tracker']) {
-        assert.ok(additionalToolsText.toUpperCase().includes(tool.toUpperCase()), `${tool} should be listed at ${width}px`);
+      for (const capability of [
+        'One link for the season',
+        'Share game details',
+        'Get ready together',
+        'Opt in to Event Card reminders',
+        'manual follower announcements',
+      ]) {
+        assert.ok(capabilityHighlightsText.toUpperCase().includes(capability.toUpperCase()), `${capability} should be explained at ${width}px`);
       }
+      assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=landing-capability-highlights] li").length', page.sessionId), 4);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number;
         cta: string; help: string; privacy: string; explainer: string; menuVisible: boolean;

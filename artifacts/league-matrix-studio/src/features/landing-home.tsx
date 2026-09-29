@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Check, Menu, X, Play } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
@@ -64,21 +64,26 @@ const steps = [
   { number: '04', title: 'Celebrate', description: 'Turn the best moments into something worth sharing.', icon: Heart },
 ];
 
-const additionalLandingTools = [
+const landingCapabilityHighlights = [
   {
-    name: 'Schedule Maker',
-    description: 'Turn the season’s fixtures into a clear schedule families can share.',
-    icon: CalendarDays,
+    name: 'One link for the season',
+    description: 'Share the athlete’s stable HYPE Card with family and fans. Photos, highlights, finalized stats, and season results stay together.',
+    icon: Heart,
   },
   {
-    name: 'Gameday Checklist',
-    description: 'Keep gear, arrival times, and game-day details in one shared checklist.',
+    name: 'Share game details',
+    description: 'Send supporters a public Event Card link for the game’s key details and updates.',
+    icon: Share2,
+  },
+  {
+    name: 'Get ready together',
+    description: 'Create a checklist edit link so trusted collaborators can help with game-day prep and shared notes.',
     icon: ClipboardCheck,
   },
   {
-    name: 'Stat Tracker',
-    description: 'Record plays and results, then review athlete totals across the season.',
-    icon: Activity,
+    name: 'Opt in to Event Card reminders',
+    description: 'Choose owner phone alerts when scheduled delivery is active. These reminders are separate from manual follower announcements.',
+    icon: Bell,
   },
 ];
 
@@ -268,12 +273,12 @@ export function PublicLandingPage() {
                 <div className="tool-card-body"><span className="micro">02 / The wider view</span><h3 className="display">See the whole season</h3><p>On a larger screen, the same dashboard keeps game details, your record, and Event Cards in sight.</p><Link href={destination} data-testid="link-landing-dashboard-landscape">{isSignedIn ? 'Open your dashboard' : 'Create your dashboard'} <ArrowUpRight className="arrow" aria-hidden="true" /></Link></div>
               </article>
             </div>
-            <div className="additional-tools" data-testid="landing-additional-tools" aria-labelledby="additional-tools-heading">
-              <h3 className="display" id="additional-tools-heading">More tools for the season</h3>
-              <ul className="additional-tools-list">
-                {additionalLandingTools.map(({ name, description, icon: Icon }) => (
-                  <li className="additional-tool" key={name}>
-                    <span className="additional-tool-icon"><Icon size={18} aria-hidden="true" /></span>
+            <div className="capability-highlights" data-testid="landing-capability-highlights" aria-labelledby="capability-highlights-heading">
+              <h3 className="display" id="capability-highlights-heading">Share the season. Stay connected.</h3>
+              <ul className="capability-highlight-list">
+                {landingCapabilityHighlights.map(({ name, description, icon: Icon }) => (
+                  <li className="capability-highlight" key={name}>
+                    <span className="capability-highlight-icon"><Icon size={18} aria-hidden="true" /></span>
                     <div>
                       <h4 className="display">{name}</h4>
                       <p>{description}</p>
