@@ -75,6 +75,26 @@ test('player-page owner tools remain private across account changes and pause', 
     stats: { assist: 6, rebound: 9 },
     updatedAt: new Date().toISOString(),
   };
+  const fanCard = {
+    inviteToken: token,
+    hypesEnabled: true,
+    athleteName: 'Jordan',
+    teamName: 'City Hoops',
+    seasonName: 'Fall 2026',
+    seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+    timezone: 'America/New_York',
+    sport: 'basketball',
+    photoUrl: null,
+    hypeCard: null,
+    videos: [],
+    stats: null,
+    scheduleEvents: [],
+    showEvents: false,
+    events: [],
+    replies: [],
+    liveScoreboard: null,
+    updatedAt: new Date().toISOString(),
+  };
   const apiServer = createServer(async (request, response) => {
     const viewer = request.headers['x-test-viewer'] as string || 'visitor';
     const path = new URL(request.url || '/', 'http://localhost').pathname;
@@ -88,6 +108,8 @@ test('player-page owner tools remain private across account changes and pause', 
     const json = (status: number, body: unknown) => response.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body));
     if (path === '/api/athlete-invites' && method === 'GET') {
       json(viewer === 'visitor' ? 401 : 200, viewer === 'owner' ? [{ ...owned, paused }] : []);
+    } else if (path === `/api/athlete-invites/${token}/fan` && method === 'GET') {
+      json(paused ? 404 : 200, paused ? { error: 'Athlete invite not found' } : fanCard);
     } else if (path === `/api/athlete-invites/${token}` && method === 'GET') {
       json(paused && viewer !== 'owner' ? 404 : 200, paused && viewer !== 'owner'
         ? { error: 'Athlete invite not found' }
@@ -152,7 +174,7 @@ test('player-page owner tools remain private across account changes and pause', 
 
     const open = async (
       viewer: 'owner' | 'other' | 'visitor',
-      view: 'public' | 'manage',
+      view: 'public' | 'manage' | 'fan',
       imageHighlight = false,
       hash = '',
     ) => {
@@ -190,6 +212,17 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, visitor, element('[data-testid="public-athlete-invite"]'), Boolean, 30_000);
     await waitFor(connection, visitor, element('[data-testid="select-athlete-game"]'), Boolean, 30_000);
     await waitFor(connection, visitor, element('[data-testid="athlete-video-empty-state"]'), Boolean, 30_000);
+    const ownerFanCard = await open('owner', 'fan');
+    await waitFor(connection, ownerFanCard, element('.living-card-controls'), Boolean, 30_000);
+    await waitFor(connection, ownerFanCard, element('[data-testid="link-manage-living-card"]'), Boolean, 30_000);
+    assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-follow"]'), ownerFanCard), false);
+    assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), ownerFanCard), false);
+    const otherFanCard = await open('other', 'fan');
+    await waitFor(connection, otherFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
+    assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), otherFanCard), true);
+    const visitorFanCard = await open('visitor', 'fan');
+    await waitFor(connection, visitorFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
+    assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), visitorFanCard), true);
     assert.equal(await connection.evaluate(element('[data-testid="athlete-highlights-heading"]'), visitor), false);
     assert.match(
       await connection.evaluate<string>(

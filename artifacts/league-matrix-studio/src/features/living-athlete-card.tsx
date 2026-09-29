@@ -138,14 +138,15 @@ export function LivingAthleteCardPage({
   const [hypeFeedback, setHypeFeedback] = useState('');
   const [followDialogOpen, setFollowDialogOpen] = useState(false);
   const [hypeDialogOpen, setHypeDialogOpen] = useState(false);
-  const { isSignedIn } = useUser();
-  const { data: ownedInvites } = useListAthleteInvites({
+  const { isLoaded: clerkLoaded, isSignedIn } = useUser();
+  const ownedInvitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(isSignedIn),
       queryKey: getListAthleteInvitesQueryKey(),
       retry: false,
     },
   });
+  const ownedInvites = ownedInvitesQuery.data;
   const sendHype = useSendAthleteInviteHype();
   const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
@@ -221,6 +222,10 @@ export function LivingAthleteCardPage({
   const eventToday = hasEventToday(linkedEvents, invite.timezone, new Date(todayTick));
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+  const showSupportActions = clerkLoaded && (
+    !isSignedIn
+    || (ownedInvitesQuery.isSuccess && !ownedInvitesQuery.isFetching && !ownerInvite)
+  );
   const orderedGames = (invite.stats?.games ?? [])
     .map((game, index) => ({ game, index }))
     .sort((a, b) => a.game.date.localeCompare(b.game.date) || a.index - b.index);
@@ -568,7 +573,7 @@ export function LivingAthleteCardPage({
               </div>
             </div>
 
-             <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
+             {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
                <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>
                  <DialogTrigger asChild>
                    <button type="button" className="living-card-support-action living-card-support-action-follow" data-testid="button-open-fan-card-follow">
@@ -587,7 +592,7 @@ export function LivingAthleteCardPage({
                    </DialogHeader>
                    <div className="living-card-dialog-body">
                      {followControls}
-                   </div>
+                    </div>
                  </DialogContent>
                </Dialog>
 
@@ -639,7 +644,7 @@ export function LivingAthleteCardPage({
                    </div>
                  </DialogContent>
                </Dialog>
-             </div>
+              </div>}
             <p className="living-card-instruction">Choose a side to turn the card. Videos play only when you press play.</p>
           </section>
 
