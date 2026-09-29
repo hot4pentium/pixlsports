@@ -419,6 +419,12 @@
 }
 
 .game-on-quick-tracker__message p { margin: 0; }
+.game-on-quick-tracker__sport-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+  gap: 8px;
+}
+.game-on-quick-tracker__sport-choice { width: 100%; }
 .game-on-quick-tracker__finishing {
   margin: 0;
   padding: 16px;

@@ -23,6 +23,7 @@ import {
   getGamePhaseLabel,
   getPreferredTrackerSport,
   getTrackerSportForProfile,
+  getTrackerSportForSession,
   getTrackerConflict,
   hasDivergentCorrectedFinalHistory,
   getTrackerSyncRecovery,
@@ -1304,6 +1305,9 @@ test('profile sport controls the tracker while accounts without one resume their
 
   assert.equal(getTrackerSportForProfile(history, 'soccer'), 'soccer');
   assert.equal(getTrackerSportForProfile(history, null), 'volleyball');
+  assert.equal(getTrackerSportForProfile({ version: 1, games: [] }, null), null);
+  assert.equal(getTrackerSportForProfile({ version: 1, games: [] }, null, 'baseball'), 'baseball');
+  assert.equal(getTrackerSportForSession({ version: 1, games: [] }, null, 'baseball'), 'baseball');
   assert.equal(getPreferredTrackerSport({ version: 1, games: [] }, 'baseball'), 'baseball');
 });
 

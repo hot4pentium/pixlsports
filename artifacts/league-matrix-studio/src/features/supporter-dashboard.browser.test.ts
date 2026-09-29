@@ -2173,8 +2173,41 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       gameStats: true,
     });
     await connection.evaluate(`(() => {
-      localStorage.removeItem('leaguematrix-stat-tracker-active-game:dashboard-inline-stat-test');
-      localStorage.removeItem('leaguematrix-stat-tracker:dashboard-inline-stat-test');
+      localStorage.removeItem('leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test');
+      localStorage.removeItem('leaguematrix-stat-tracker:dashboard-inline-no-sport-test');
+      window.__setSupporterDashboardSport(null);
+      window.__setSupporterDashboardTrackerUserId('dashboard-inline-no-sport-test');
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"button-open-stat-tracker-\\"]") !== null', Boolean);
+    await connection.evaluate(`(() => {
+      const game = Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+        .find((card) => card.getClientRects().length > 0
+          && card.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
+      if (game && !game.classList.contains('game-on-collection__card--selected')) {
+        game.querySelector('.game-on-collection__summary')?.click();
+      }
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell .game-on-collection__card'))
+      .some((card) => card.classList.contains('game-on-collection__card--selected')
+        && card.querySelector('[data-testid^="button-open-stat-tracker-"]')?.getClientRects().length)`, Boolean);
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-open-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"inline-tracker-sport-choice\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      'localStorage.getItem("leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test") === null',
+      page.sessionId,
+    ), true, 'the Event Card must not create a game before the supporter chooses a sport');
+    await connection.evaluate(`document.querySelector('[data-testid="button-inline-start-sport-volleyball"]')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
+    assert.equal(await connection.evaluate<string>(
+      'JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test") || "null")?.sport || ""',
+      page.sessionId,
+    ), 'volleyball', 'the inline game must retain the sport the supporter selected');
+    await connection.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-close-stat-tracker-"]')).find((button) => button.getClientRects().length > 0)?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector(".supporter-dashboard-desktop-shell .game-on-collection__dialog-card")?.getAttribute("data-tracker-open") === "false"', Boolean);
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('leaguematrix-stat-tracker-active-game:dashboard-inline-no-sport-test');
+      localStorage.removeItem('leaguematrix-stat-tracker:dashboard-inline-no-sport-test');
+      window.__setSupporterDashboardSport('basketball');
       window.__setSupporterDashboardTrackerUserId('dashboard-inline-stat-test');
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"button-open-stat-tracker-\\"]") !== null', Boolean);
@@ -4250,6 +4283,10 @@ export function mount() {
     renderDashboard();
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   };
+  window.__setSupporterDashboardSport = (sport) => {
+    profile.sport = sport;
+    renderDashboard();
+  };
   renderDashboard();
 }
 `;
@@ -6275,6 +6312,23 @@ test('a signed-in supporter keeps a chosen Calendar game through Prep and Stats 
     );
     assert.match(statsHref, /eventId=game-selected/);
     await connection.evaluate(`document.querySelector('.game-on-collection__dialog-card [data-testid^="link-card-stats-"][href*="game-selected"]')?.click()`, session);
+    await waitFor(
+      connection,
+      session,
+      'document.querySelector("[data-testid=\\"stat-tracker-sport-choice\\"]") !== null || document.querySelector("[data-testid=\\"stat-tracker-setup\\"]") !== null',
+      Boolean,
+    );
+    if (await connection.evaluate<boolean>(
+      'document.querySelector("[data-testid=\\"stat-tracker-sport-choice\\"]") !== null',
+      session,
+    )) {
+      await connection.evaluate(`document.querySelector('[data-testid="button-choose-tracker-sport-volleyball"]')?.click()`, session);
+      await waitFor(connection, session, 'document.querySelector("[data-testid=\\"stat-tracker-setup\\"]") !== null', Boolean);
+      assert.equal(await connection.evaluate<boolean>(
+        'Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) || "").some((key) => key.includes("stat-tracker-active-game") && localStorage.getItem(key))',
+        session,
+      ), false, 'choosing a sport on the full tracker must not start a game by itself');
+    }
     await waitFor(connection, session, 'Boolean(document.querySelector("[data-testid=\\"stat-tracker-setup\\"]"))', Boolean);
     assert.equal(await path(), '/studio/stat-tracker');
     await waitFor(connection, session, 'document.querySelector("[data-testid=\\"input-athlete-result-opponent\\"]")?.value === "Tigers"', Boolean);

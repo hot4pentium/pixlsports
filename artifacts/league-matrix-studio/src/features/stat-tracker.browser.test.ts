@@ -38,6 +38,7 @@ function harnessSource() {
   return `
 import { createElement, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Router } from 'wouter';
 import {
   LiveTrackerGame,
   StatTrackerSaveRecoveryAlert,
@@ -46,6 +47,7 @@ import {
   StatTrackerUpcomingNotice,
   type ScheduledGame,
 } from './src/features/stat-tracker-page';
+import { GameOnInlineStatTracker } from './src/features/game-on-inline-stat-tracker';
 import { GameReportView } from './src/features/stat-tracker-game-report';
 import { TrackerCompletionDialog } from './src/features/tracker-completion-dialog';
 import { buildGameReport, createGameSession, endGame, getSportRule, normalizeTrackerData, trackerSaveErrorMessage } from './src/features/stat-tracker';
@@ -282,7 +284,24 @@ function CompletionHarness() {
 }
 
 export function mount() {
-  createRoot(document.getElementById('test-root')).render(createElement(TrackerHarness));
+  const root = createRoot(document.getElementById('test-root'));
+  if (new URLSearchParams(window.location.search).get('inlineSportChoice') === '1') {
+    root.render(createElement(Router, null,
+      createElement(GameOnInlineStatTracker, {
+        userId: 'inline-sport-choice-user',
+        sport: null,
+        athleteName: 'Maya',
+        teamName: 'Falcons',
+        eventId: 'inline-choice-game',
+        date: '2026-09-21',
+        time: '18:30',
+        location: 'Northside Gym',
+        opponent: 'Northside',
+      }),
+    ));
+    return;
+  }
+  root.render(createElement(TrackerHarness));
 }
 `;
 }
@@ -740,6 +759,31 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     assert.equal(
       await connection.evaluate<boolean>('!document.body.textContent.includes("Cloud sync active")', page.sessionId),
       true,
+    );
+
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('leaguematrix-stat-tracker-active-game:inline-sport-choice-user');
+      localStorage.removeItem('leaguematrix-stat-tracker:inline-sport-choice-user');
+      window.location.href = '/stat-tracker-test.html?inlineSportChoice=1';
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"inline-tracker-sport-choice\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-sport-choice-user") === null',
+        page.sessionId,
+      ),
+      true,
+      'a sportless Event Card must ask before creating its local game',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-inline-start-sport-volleyball\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<string>(
+        'JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-sport-choice-user") || "null")?.sport || ""',
+        page.sessionId,
+      ),
+      'volleyball',
+      'the inline game must use the sport the supporter chose',
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);

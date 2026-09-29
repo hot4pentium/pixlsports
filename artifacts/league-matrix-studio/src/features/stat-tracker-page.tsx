@@ -49,7 +49,7 @@ import {
   footballYardMetricDefinitions,
   getFootballYardMetricId,
   getSportRule,
-  getTrackerSportForProfile,
+  getTrackerSportForSession,
   hasDivergentCorrectedFinalHistory,
   getTrackerConflict,
   getTrackerStorageKeys,
@@ -1214,6 +1214,7 @@ export function StatTrackerPage() {
     [selectedScheduleEventId],
   );
   const [sport, setSport] = useState<Sport>(profile.sport ?? 'basketball');
+  const [requiresSportSelection, setRequiresSportSelection] = useState(!profile.sport);
   const [soccerPeriodFormat, setSoccerPeriodFormat] = useState<SoccerPeriodFormat | null>(null);
   const [storageAccountId, setStorageAccountId] = useState<string | null>(null);
   const [data, setData] = useState<StatTrackerData>(() => normalizeTrackerData(null));
@@ -1369,13 +1370,17 @@ export function StatTrackerPage() {
     if (!accountId) {
       setData(normalizeTrackerData(null));
       setCurrentGame(null);
+      setSport(profile.sport ?? 'basketball');
+      setRequiresSportSelection(!profile.sport);
       return;
     }
 
     const restored = readLocalTrackerSession(window.localStorage, accountId);
     setData(restored.data);
     setCurrentGame(restored.currentGame);
-    setSport(getTrackerSportForProfile(restored.data, profile.sport));
+    const resolvedSport = getTrackerSportForSession(restored.data, profile.sport, restored.currentGame?.sport);
+    setSport(resolvedSport ?? 'basketball');
+    setRequiresSportSelection(!resolvedSport);
     setStorageAccountId(accountId);
   }, [accountId]);
 
@@ -1396,7 +1401,13 @@ export function StatTrackerPage() {
         cloudProject: currentCloudProject,
       };
       setData(pendingConflict.data);
-      setSport(getTrackerSportForProfile(pendingConflict.data, profile.sport));
+      const resolvedSport = getTrackerSportForSession(
+        pendingConflict.data,
+        profile.sport,
+        readStoredActiveGame(window.localStorage, accountId)?.sport,
+      );
+      setSport(resolvedSport ?? 'basketball');
+      setRequiresSportSelection(!resolvedSport);
       setCloudProject(currentCloudProject);
       setTrackerConflict(restoredConflict);
       setSelectedConflictResolution(pendingConflict.resolution);
@@ -1422,7 +1433,13 @@ export function StatTrackerPage() {
       setError('This device has recorded plays missing from a corrected cloud game. Your local stats are safe; choose which game history to keep before syncing.');
     }
     setData(mergedData);
-    setSport(getTrackerSportForProfile(mergedData, profile.sport));
+    const resolvedSport = getTrackerSportForSession(
+      mergedData,
+      profile.sport,
+      readStoredActiveGame(window.localStorage, accountId)?.sport,
+    );
+    setSport(resolvedSport ?? 'basketball');
+    setRequiresSportSelection(!resolvedSport);
     setCloudProject({ id: existing.id, revision: existing.revision });
     saveLocalTracker(mergedData, accountId);
   }, [accountId, projects, storageAccountId]);
@@ -1528,6 +1545,7 @@ export function StatTrackerPage() {
   }
 
   const beginGame = () => {
+    if (requiresSportSelection) return;
     if (sport === 'soccer' && !soccerPeriodFormat) return;
     setError('');
     setRetryAvailable(false);
@@ -1873,6 +1891,42 @@ export function StatTrackerPage() {
       setShareNotice('Clipboard unavailable — select the link above to copy it.');
     }
   };
+
+  if (requiresSportSelection && !currentGame) {
+    return (
+      <main className="studio-editor-page-background stat-tracker-editor-page min-h-dvh">
+        <section className="mx-auto w-full max-w-[900px] px-5 py-8 sm:px-8 sm:py-12" data-testid="stat-tracker-sport-choice">
+          <Link href="/studio" className="mb-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
+          </Link>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Tracker setup</p>
+          <h1 className="mt-2 font-display text-4xl uppercase tracking-tight sm:text-6xl">Choose a sport before tracking</h1>
+          <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">
+            Your profile and saved tracker history do not identify a sport yet. Choose the sport for this tracker; this will not change your profile or start a game.
+          </p>
+          <fieldset className="mt-8">
+            <legend className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available sports</legend>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {sports.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    setSport(option);
+                    setRequiresSportSelection(false);
+                  }}
+                  data-testid={`button-choose-tracker-sport-${option}`}
+                  className="min-h-14 border border-primary/50 bg-primary/10 px-5 py-4 text-left text-sm font-bold uppercase tracking-widest text-foreground hover:border-primary hover:bg-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {getSportRule(option).label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className="studio-editor-page-background stat-tracker-editor-page min-h-dvh">

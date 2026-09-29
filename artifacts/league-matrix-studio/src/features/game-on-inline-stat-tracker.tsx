@@ -15,6 +15,7 @@ import {
   readStoredActiveGame,
   readStoredTrackerData,
   saveStoredActiveGame,
+  sports,
   undoLastStatEvent,
   type GameSession,
   type GameOutcome,
@@ -90,6 +91,7 @@ export function GameOnInlineStatTracker({
   const [completedGame, setCompletedGame] = useState<GameSession | null>(null);
   const [otherActiveGame, setOtherActiveGame] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sportChoiceRequired, setSportChoiceRequired] = useState(false);
   const [error, setError] = useState('');
   const [calendarStatusSyncing, setCalendarStatusSyncing] = useState(false);
   const [calendarStatusSyncError, setCalendarStatusSyncError] = useState('');
@@ -132,11 +134,15 @@ export function GameOnInlineStatTracker({
     setConfirmEndGame(false);
   }, [game?.id]);
 
-  const createEventGame = () => {
+  const createEventGame = (chosenSport?: Sport) => {
     if (!userId) return;
     try {
       const storedData = readStoredTrackerData(window.localStorage, userId);
-      const nextSport = getTrackerSportForProfile(storedData, sport);
+      const nextSport = chosenSport ?? getTrackerSportForProfile(storedData, sport);
+      if (!nextSport) {
+        setSportChoiceRequired(true);
+        return;
+      }
       const next = createGameSession(nextSport, {
         date,
         opponent,
@@ -148,6 +154,7 @@ export function GameOnInlineStatTracker({
       setCompletedGame(null);
       setEndedElsewhere(false);
       setCurrentGame(next);
+      setSportChoiceRequired(false);
       setError('');
     } catch {
       setError('This game could not be saved on this device. Check storage access and try again.');
@@ -386,6 +393,24 @@ export function GameOnInlineStatTracker({
             </div>
           )}
           <Link href={trackerHref} className="game-on-quick-tracker__primary">Open full tracker</Link>
+        </div>
+      ) : sportChoiceRequired && !game ? (
+        <div className="game-on-quick-tracker__message" role="group" aria-label="Choose a sport before tracking" data-testid="inline-tracker-sport-choice">
+          <p>Choose a sport to start tracking this game.</p>
+          {error && <p className="game-on-quick-tracker__save-warning" role="alert">{error}</p>}
+          <div className="game-on-quick-tracker__sport-choices">
+            {sports.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="game-on-quick-tracker__primary game-on-quick-tracker__sport-choice"
+                onClick={() => createEventGame(option)}
+                data-testid={`button-inline-start-sport-${option}`}
+              >
+                Start {getSportRule(option).label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : error && !game ? (
         <p className="game-on-quick-tracker__message game-on-quick-tracker__message--error" role="alert">{error}</p>

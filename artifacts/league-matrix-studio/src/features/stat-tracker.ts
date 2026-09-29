@@ -910,9 +910,9 @@ export function combineTrackerReviewHistory(localValue: unknown, cloudValue: unk
   return { version: 1, games: [...merged.values()] };
 }
 
-export function getPreferredTrackerSport(value: unknown, fallback: Sport): Sport {
+export function getPreferredTrackerSport(value: unknown, fallback?: Sport): Sport | null {
   const games = normalizeTrackerData(value).games;
-  let preferredSport = fallback;
+  let preferredSport: Sport | null = fallback ?? null;
   let latestTime = Number.NEGATIVE_INFINITY;
 
   games.forEach((game, index) => {
@@ -930,9 +930,17 @@ export function getPreferredTrackerSport(value: unknown, fallback: Sport): Sport
 export function getTrackerSportForProfile(
   value: unknown,
   profileSport: Sport | null,
-  fallback: Sport = 'basketball',
-): Sport {
+  fallback?: Sport,
+): Sport | null {
   return profileSport ?? getPreferredTrackerSport(value, fallback);
+}
+
+export function getTrackerSportForSession(
+  value: unknown,
+  profileSport: Sport | null,
+  activeGameSport?: Sport | null,
+): Sport | null {
+  return profileSport ?? activeGameSport ?? getPreferredTrackerSport(value);
 }
 
 export function trackerPayload(data: StatTrackerData): TrackerPayload {
