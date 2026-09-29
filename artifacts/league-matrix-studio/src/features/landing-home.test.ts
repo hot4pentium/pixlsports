@@ -32,15 +32,19 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   assert.ok(offline >= 0 && hypeCard > offline, 'offline guidance should appear above the HYPE Card section');
   for (const message of [
     'Game details, ready',
-    'Reopen game details and checklists you’ve already loaded.',
-    'Check off prep items on your device, even without service.',
-    'Record game stats locally and sync your saved result when you’re back online.',
+    'Reopen game details and checklists you’ve already loaded on this device.',
+    'Check off prep items offline. Shared checklist edits stay here and may need Retry to sync to collaborators.',
+    'Record game stats locally. Completed results stay here and can be retried when service returns.',
     'Saved on this device',
-    'Will sync when connected',
-    'Sharing Event Cards, receiving new replies, and sending alerts still need a connection.',
+    'Retry cloud sync when you’re back online if prompted',
+    'Install PIXL as an app for the full PWA experience.',
+    'Open it online first and load each game and checklist you’ll need.',
+    'Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.',
   ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
+  assert.doesNotMatch(source, /Will sync when connected/);
   assert.match(styles, /offline-grid \{[^}]*grid-template-columns/);
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*offline-grid \{grid-template-columns:1fr/);
+  assert.match(styles, /offline-install-note \{[^}]*border-left/);
   for (const step of ['Plan', 'Prep', 'Follow', 'Celebrate']) {
     assert.match(source, new RegExp(`title: '${step}'`));
   }

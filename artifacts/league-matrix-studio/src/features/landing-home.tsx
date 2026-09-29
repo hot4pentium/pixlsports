@@ -248,7 +248,7 @@ export function PublicLandingPage() {
               <p>When you’ve loaded the details, PIXL keeps key game-day work on your device, so a dropped connection doesn’t have to stop the plan.</p>
               <div className="offline-sync-status" role="status" data-testid="offline-sync-status">
                 <span className="offline-sync-icon"><CloudUpload size={17} aria-hidden="true" /></span>
-                <span><strong>Saved on this device</strong><small>Will sync when connected</small></span>
+                <span><strong>Saved on this device</strong><small>Retry cloud sync when you’re back online if prompted</small></span>
                 <Check className="offline-sync-check" size={17} aria-hidden="true" />
               </div>
             </div>
@@ -256,18 +256,19 @@ export function PublicLandingPage() {
               <ul className="offline-feature-list">
                 <li>
                   <span className="offline-feature-icon"><CalendarDays size={19} aria-hidden="true" /></span>
-                  <div><h3 className="display">Game details, ready</h3><p>Reopen game details and checklists you’ve already loaded.</p></div>
+                  <div><h3 className="display">Game details, ready</h3><p>Reopen game details and checklists you’ve already loaded on this device.</p></div>
                 </li>
                 <li>
                   <span className="offline-feature-icon"><ClipboardCheck size={19} aria-hidden="true" /></span>
-                  <div><h3 className="display">Prep keeps moving</h3><p>Check off prep items on your device, even without service.</p></div>
+                  <div><h3 className="display">Prep keeps moving</h3><p>Check off prep items offline. Shared checklist edits stay here and may need Retry to sync to collaborators.</p></div>
                 </li>
                 <li>
                   <span className="offline-feature-icon"><Activity size={19} aria-hidden="true" /></span>
-                  <div><h3 className="display">Track the action</h3><p>Record game stats locally and sync your saved result when you’re back online.</p></div>
+                  <div><h3 className="display">Track the action</h3><p>Record game stats locally. Completed results stay here and can be retried when service returns.</p></div>
                 </li>
               </ul>
-              <p className="offline-connection-note">Sharing Event Cards, receiving new replies, and sending alerts still need a connection.</p>
+              <p className="offline-install-note"><strong>Before game day:</strong> Install PIXL as an app for the full PWA experience. Open it online first and load each game and checklist you’ll need. Offline content is saved on this device.</p>
+              <p className="offline-connection-note">Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.</p>
             </div>
           </div>
         </section>
