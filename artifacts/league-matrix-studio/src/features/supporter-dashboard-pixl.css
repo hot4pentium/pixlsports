@@ -1058,7 +1058,7 @@
   letter-spacing: .14em;
   line-height: 1.2;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .pixl-dashboard-mobile .mobile-featured-event-kicker-dot {

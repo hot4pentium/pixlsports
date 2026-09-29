@@ -524,6 +524,127 @@ test('dashboard empty game notice leaves creation in the Game On section', { con
   }
 });
 
+test('Game On card stays compact and opens cleanly at 320px and 375px', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-compact-game-on-card-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-compact-game-on-card-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`);
+
+    for (const width of [320, 375]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 844, deviceScaleFactor: 1, mobile: true }, page.sessionId);
+      await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"]'))`, Boolean);
+      assert.deepEqual(await connection.evaluate<{
+        square: boolean; contained: boolean; noOverflow: boolean; statusDraft: boolean;
+        dateVisible: boolean; statusVisible: boolean; titleVisible: boolean;
+        detailsHidden: boolean; actionsHidden: boolean;
+      }>(`(() => {
+        const card = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"]');
+        if (!(card instanceof HTMLElement)) throw new Error('Missing collapsed Game On card');
+        const rect = card.getBoundingClientRect();
+        const status = card.querySelector('.game-on-collection__status');
+        const title = card.querySelector('.game-on-collection__kind');
+        const statusRect = status?.getBoundingClientRect();
+        const titleRect = title?.getBoundingClientRect();
+        return {
+          square: Math.abs(rect.width / rect.height - 1) < 0.05,
+          contained: rect.left >= -1 && rect.right <= innerWidth + 1,
+          noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+          statusDraft: status?.getAttribute('data-status') === 'draft',
+          dateVisible: Boolean(card.querySelector('.game-on-collection__date')?.getClientRects().length),
+          statusVisible: Boolean(status?.getClientRects().length && statusRect && statusRect.left >= rect.left - 1
+            && statusRect.right <= rect.right + 1 && status.scrollWidth <= status.clientWidth),
+          titleVisible: Boolean(title?.getClientRects().length && titleRect && titleRect.left >= rect.left - 1
+            && titleRect.right <= rect.right + 1 && title.scrollWidth <= title.clientWidth),
+          detailsHidden: card.querySelector('.game-on-collection__card-content')?.hidden === true
+            && card.querySelector('.game-on-collection__card-footer')?.hidden === true,
+          actionsHidden: card.querySelector('.game-on-collection__actions')?.hidden === true,
+        };
+      })()`, page.sessionId), {
+        square: true, contained: true, noOverflow: true, statusDraft: true,
+        dateVisible: true, statusVisible: true, titleVisible: true, detailsHidden: true, actionsHidden: true,
+      }, `collapsed Game On card at ${width}px`);
+      await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:game-1"] .game-on-collection__summary')?.click()`, page.sessionId);
+      await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] .game-on-collection__card--selected'))`, Boolean);
+      assert.deepEqual(await connection.evaluate<{
+        contained: boolean; noOverflow: boolean; detailsVisible: boolean; actionsVisible: boolean; tileStayedCompact: boolean;
+      }>(`(() => {
+        const shell = document.querySelector('.supporter-dashboard-mobile-shell');
+        const dialog = shell?.querySelector('[role="dialog"][data-testid^="dialog-game-on-card-"]');
+        const selected = dialog?.querySelector('.game-on-collection__card--selected');
+        const tile = shell?.querySelector('[data-testid="card-game-on-draft:game-1"]');
+        if (!(dialog instanceof HTMLElement) || !(selected instanceof HTMLElement) || !(tile instanceof HTMLElement)) {
+          throw new Error('Missing expanded Game On card');
+        }
+        const rect = dialog.getBoundingClientRect();
+        return {
+          contained: rect.left >= -1 && rect.right <= innerWidth + 1 && dialog.scrollWidth <= dialog.clientWidth + 1,
+          noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+          detailsVisible: Boolean(selected.querySelector('.game-on-collection__card-content:not([hidden])')?.getClientRects().length),
+          actionsVisible: Boolean(selected.querySelector('.game-on-collection__actions:not([hidden]) button')?.getClientRects().length),
+          tileStayedCompact: tile.querySelector('.game-on-collection__card-content')?.hidden === true
+            && tile.querySelector('.game-on-collection__actions')?.hidden === true,
+        };
+      })()`, page.sessionId), {
+        contained: true, noOverflow: true, detailsVisible: true, actionsVisible: true, tileStayedCompact: true,
+      }, `expanded Game On card at ${width}px`);
+      await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+      await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]')`, Boolean);
+    }
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
 test('supporter dashboard keeps Game On Card prominent and the mobile menu accessible', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-mobile-header-test');
@@ -659,7 +780,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           dateVisible: Boolean(date?.getClientRects().length),
           statusVisible: Boolean(status?.getClientRects().length),
           statusNotHidden: status?.hidden === false,
-          statusComplete: status?.getAttribute('data-status') === 'complete',
+          statusDraft: status?.getAttribute('data-status') === 'draft',
           statusInsideCard: Boolean(statusRect
             && statusRect.left >= cardRect.left - 1
             && statusRect.right <= cardRect.right + 1),
@@ -731,7 +852,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           dateVisible: true,
           statusVisible: true,
           statusNotHidden: true,
-          statusComplete: true,
+          statusDraft: true,
           statusInsideCard: true,
           statusAboveDate: true,
           summaryIncludesStatus: true,
@@ -749,6 +870,131 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       }, `mobile header behavior at ${width}px`);
     }
 
+    await waitFor(connection, page.sessionId, 'typeof window.__setSupporterDashboardEvents === "function"', Boolean);
+    await connection.evaluate(`window.__setSupporterDashboardEvents([
+      {
+        id: 'compact-complete',
+        type: 'game',
+        date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        time: '18:30',
+        location: 'Northside Gym',
+        opponent: 'Falcons',
+        status: 'final',
+      },
+      ...window.__getSupporterDashboardEvents(),
+    ])`, page.sessionId);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="grid-game-on-cards"] .game-on-collection__card:first-child .game-on-collection__status')?.getAttribute('data-status') === 'complete'`, Boolean);
+
+    for (const width of [320, 375]) {
+        await connection.send('Emulation.setDeviceMetricsOverride', {
+          width,
+          height: 844,
+          deviceScaleFactor: 1,
+          mobile: true,
+        }, page.sessionId);
+        assert.deepEqual(await connection.evaluate<{
+          square: boolean;
+          contained: boolean;
+          noOverflow: boolean;
+          statusComplete: boolean;
+          dateVisible: boolean;
+          statusVisibleAndContained: boolean;
+          titleVisibleAndContained: boolean;
+          detailsHidden: boolean;
+          actionsHidden: boolean;
+        }>(`(() => {
+          const card = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:compact-complete"]');
+          if (!(card instanceof HTMLElement)) throw new Error('The completed card is missing from the mobile grid');
+          const rect = card.getBoundingClientRect();
+          const status = card.querySelector('.game-on-collection__status');
+          const date = card.querySelector('.game-on-collection__date');
+          const kind = card.querySelector('.game-on-collection__kind');
+          const statusRect = status?.getBoundingClientRect();
+          const kindRect = kind?.getBoundingClientRect();
+          return {
+            square: Math.abs(rect.width / rect.height - 1) < 0.05,
+            contained: rect.left >= -1 && rect.right <= innerWidth + 1,
+            noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+            statusComplete: status?.getAttribute('data-status') === 'complete',
+            dateVisible: Boolean(date?.getClientRects().length),
+            statusVisibleAndContained: Boolean(status?.getClientRects().length && statusRect
+              && statusRect.left >= rect.left - 1 && statusRect.right <= rect.right + 1
+              && status.scrollWidth <= status.clientWidth),
+            titleVisibleAndContained: Boolean(kind?.getClientRects().length && kindRect
+              && kindRect.left >= rect.left - 1 && kindRect.right <= rect.right + 1
+              && kind.scrollWidth <= kind.clientWidth
+              && Number.parseFloat(getComputedStyle(kind).fontSize) >= 12),
+            detailsHidden: card.querySelector('.game-on-collection__card-content')?.hidden === true
+              && card.querySelector('.game-on-collection__card-footer')?.hidden === true,
+            actionsHidden: card.querySelector('.game-on-collection__actions')?.hidden === true,
+          };
+        })()`, page.sessionId), {
+          square: true,
+          contained: true,
+          noOverflow: true,
+          statusComplete: true,
+          dateVisible: true,
+          statusVisibleAndContained: true,
+          titleVisibleAndContained: true,
+          detailsHidden: true,
+          actionsHidden: true,
+        }, `compact completed card behavior at ${width}px`);
+        await connection.evaluate(`document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:compact-complete"] .game-on-collection__summary')?.click()`, page.sessionId);
+        await waitFor(connection, page.sessionId, `Boolean(document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"] .game-on-collection__dialog-card.game-on-collection__card--selected'))`, Boolean);
+        assert.deepEqual(await connection.evaluate<{
+          dialogContained: boolean;
+          noOverflow: boolean;
+          dateVisible: boolean;
+          statusVisible: boolean;
+          titleVisible: boolean;
+          detailsVisible: boolean;
+          actionsVisible: boolean;
+          tileStayedCompact: boolean;
+        }>(`(() => {
+          const shell = document.querySelector('.supporter-dashboard-mobile-shell');
+          const dialog = shell?.querySelector('[role="dialog"][data-testid^="dialog-game-on-card-"]');
+          const content = dialog;
+          const card = dialog?.querySelector('.game-on-collection__card--selected');
+          const tile = shell?.querySelector('[data-testid="card-game-on-draft:compact-complete"]');
+          if (!(content instanceof HTMLElement) || !(card instanceof HTMLElement) || !(tile instanceof HTMLElement)) {
+            throw new Error('The completed card did not open in the mobile dialog');
+          }
+          const bounds = content.getBoundingClientRect();
+          const tileBounds = tile.getBoundingClientRect();
+          const visible = (selector) => Boolean(card.querySelector(selector)?.getClientRects().length);
+          return {
+            dialogContained: bounds.left >= -1 && bounds.right <= innerWidth + 1
+              && content.scrollWidth <= content.clientWidth + 1,
+            noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+            dateVisible: visible('.game-on-collection__date'),
+            statusVisible: visible('.game-on-collection__status'),
+            titleVisible: visible('.game-on-collection__kind'),
+            detailsVisible: visible('.game-on-collection__card-content:not([hidden])')
+              && visible('.game-on-collection__card-footer:not([hidden])'),
+            actionsVisible: visible('.game-on-collection__actions:not([hidden]) button'),
+            tileStayedCompact: Math.abs(tileBounds.width / tileBounds.height - 1) < 0.05
+              && !tile.classList.contains('game-on-collection__card--selected')
+              && tile.querySelector('.game-on-collection__card-content')?.hidden === true
+              && tile.querySelector('.game-on-collection__actions')?.hidden === true,
+          };
+        })()`, page.sessionId), {
+          dialogContained: true,
+          noOverflow: true,
+          dateVisible: true,
+          statusVisible: true,
+          titleVisible: true,
+          detailsVisible: true,
+          actionsVisible: true,
+          tileStayedCompact: true,
+        }, `expanded completed card behavior at ${width}px`);
+        await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+        await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell [role="dialog"][data-testid^="dialog-game-on-card-"]')`, Boolean);
+    }
+
+    await connection.evaluate(`window.__setSupporterDashboardEvents(
+      window.__getSupporterDashboardEvents().filter((event) => event.id !== 'compact-complete')
+    )`, page.sessionId);
+    await waitFor(connection, page.sessionId, `!document.querySelector('.supporter-dashboard-mobile-shell [data-testid="card-game-on-draft:compact-complete"]')`, Boolean);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
@@ -1714,14 +1960,14 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     })()`, page.sessionId), {
       profileTag: 'A',
       profileHref: '/studio/profile',
-      statsPath: '/studio/stat-tracker',
-      statsEventId: 'game-1',
-      statsEventType: 'game',
+      statsPath: '/studio/season-stats',
+      statsEventId: '',
+      statsEventType: '',
       statsLabel: 'View stats',
       prepHref: '/studio/checklist?gameId=game-1&eventType=game',
       trackerAction: 'Open Stat Tracker',
       hypeHref: '/fan/browser-test-fan-card',
-      hypeLabel: 'View Hype Card',
+      hypeLabel: 'View HYPE Card',
       oldPanelsRemoved: true,
     });
     await connection.evaluate(`(() => {

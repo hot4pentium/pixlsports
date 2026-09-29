@@ -44,3 +44,9 @@ Standalone dashboard fixtures must wrap `SupporterDashboardView` in `ClerkProvid
 **Why:** Without the provider React unmounts the dashboard during render; without deterministic project data, ambient API responses can have a different shape and fail before the layout assertions run.
 
 **How to apply:** Keep fixture auth context aligned with the mounted component tree and mock every enabled query that is irrelevant to the browser assertion.
+
+Keep narrow card-state checks in a focused browser test, separate from the dashboard's longer tracker journey. Give each status-specific case an explicit fixture instead of assuming the shared fixture has a particular status.
+
+**Why:** A broad dashboard check first failed because its default upcoming game was asserted as Complete, then reached an unrelated tracker-completion timeout after the card layout was already correct. A focused viewport check can give a trustworthy result for the card without hiding the separate failure.
+
+**How to apply:** Test collapsed and expanded containment at the target widths in an isolated Chromium fixture; exercise Draft and Complete deliberately, and keep failures from later flows separately diagnosable.
