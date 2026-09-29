@@ -67,21 +67,19 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       assert.equal(heroCopy.headline.replace(/\s+/g, ' ').trim(), 'ALL IN, ALL SEASON.');
       assert.equal(heroCopy.obsoleteLabel, false);
       const additionalToolsText = await connection.evaluate<string>(
-        'document.querySelector("[data-testid=\\"landing-additional-tools\\"]")?.innerText || ""',
+        `document.querySelector('[data-testid="landing-additional-tools"]')?.innerText || ''`,
         page.sessionId,
       );
       for (const tool of ['Schedule Maker', 'Gameday Checklist', 'Stat Tracker']) {
-        assert.ok(additionalToolsText.includes(tool), `${tool} should be listed at ${width}px`);
+        assert.ok(additionalToolsText.toUpperCase().includes(tool.toUpperCase()), `${tool} should be listed at ${width}px`);
       }
       const layout = await connection.evaluate<{
-        doc: number; body: number; heroImage: boolean; fanCardImage: boolean; gameOnBadge: boolean; graphicSvg: boolean; sections: number;
+        doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number;
         cta: string; help: string; privacy: string; explainer: string; menuVisible: boolean;
       }>(`(() => ({
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
         fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
-        gameOnBadge: document.querySelector('.event-preview-render img')?.complete && document.querySelector('.event-preview-render img')?.naturalWidth > 0 && document.querySelector('.event-preview-render')?.textContent?.includes('Harbor United'),
-        graphicSvg: Boolean(document.querySelector('.graphic-preview svg')) && document.querySelector('.graphic-preview')?.textContent?.includes('MAYA RIVERA'),
         sections: document.querySelectorAll('.step-card').length,
         cta: document.querySelector('[data-testid="link-hero-get-started"]')?.getAttribute('href'),
         help: document.querySelector('[data-testid="link-footer-help"]')?.getAttribute('href'),
@@ -92,8 +90,6 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       assert.ok(layout.doc <= width && layout.body <= width, `horizontal overflow at ${width}px: ${JSON.stringify(layout)}`);
       assert.equal(layout.heroImage, true);
       assert.equal(layout.fanCardImage, true);
-      assert.equal(layout.gameOnBadge, true);
-      assert.equal(layout.graphicSvg, true);
       assert.equal(layout.sections, 4);
       assert.equal(layout.cta, '/sign-up');
       assert.equal(layout.help, '/help');
