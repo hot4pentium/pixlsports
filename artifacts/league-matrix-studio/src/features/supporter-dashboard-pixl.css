@@ -4,23 +4,134 @@
  */
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=DM+Sans:wght@500;600;700&display=swap");
 
-:is(.pixl-dashboard, .pixl-dashboard-mobile) .dashboard-quick-action {
-  border: 1px solid #ef9b68;
-  background: linear-gradient(115deg, #b94a16 0%, #933317 55%, #67291e 100%);
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(142, 203, 255, .25);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(20, 52, 84, .98), rgba(11, 31, 58, .98));
+  box-shadow: 0 18px 42px rgba(2, 12, 27, .32), inset 0 1px rgba(243, 246, 250, .06);
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 15px 16px 12px;
+  color: #9fb0c8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .19em;
+  text-transform: uppercase;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__heading-mark {
+  width: 20px;
+  height: 2px;
+  border-radius: 99px;
+  background: #55a4ff;
+  box-shadow: 0 0 12px rgba(85, 164, 255, .65);
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 12px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(159, 176, 200, .17);
+  border-radius: 12px;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link {
+  display: flex;
+  min-width: 0;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 12px;
   color: #f3f6fa;
-  box-shadow: 0 6px 16px rgba(80, 30, 16, .18);
   text-decoration: none;
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: background-color .18s ease, color .18s ease;
 }
 
-:is(.pixl-dashboard, .pixl-dashboard-mobile) .dashboard-quick-action:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 9px 20px rgba(80, 30, 16, .28);
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link + .combined-actions-card__link {
+  border-left: 1px solid rgba(159, 176, 200, .17);
 }
 
-:is(.pixl-dashboard, .pixl-dashboard-mobile) .dashboard-quick-action:focus-visible {
-  outline: 3px solid #ffb581;
-  outline-offset: 3px;
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link:hover {
+  background: rgba(85, 164, 255, .1);
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid #8ecbff;
+  outline-offset: -3px;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link-content {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(85, 164, 255, .26);
+  border-radius: 10px;
+  background: rgba(40, 120, 245, .16);
+  color: #8ecbff;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__icon--hype {
+  border-color: rgba(255, 120, 73, .25);
+  background: rgba(255, 100, 51, .12);
+  color: #ffad8b;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__label {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__arrow {
+  flex: 0 0 auto;
+  color: #9fb0c8;
+  transition: color .18s ease, transform .18s ease;
+}
+
+:is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link:hover .combined-actions-card__arrow {
+  color: #8ecbff;
+  transform: translateX(2px);
+}
+
+@media (max-width: 420px) {
+  :is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link {
+    gap: 5px;
+    padding: 10px 8px;
+  }
+
+  :is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__link-content {
+    gap: 7px;
+  }
+
+  :is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  :is(.pixl-dashboard, .pixl-dashboard-mobile) .combined-actions-card__label {
+    font-size: 11px;
+  }
 }
 
 .pixl-dashboard {

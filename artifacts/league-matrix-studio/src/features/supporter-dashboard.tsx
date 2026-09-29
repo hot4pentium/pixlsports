@@ -16,7 +16,7 @@ import {
 import {
   CalendarDays, Zap, MapPin, Trophy, ChevronRight, User,
   Users, Activity,
-  ArrowRight, PenSquare, Loader2, AlertTriangle, Camera, X,
+  ArrowRight, ArrowUpRight, PenSquare, Loader2, AlertTriangle, Camera, X,
   Menu, RotateCcw, Bell, ShieldCheck
 } from 'lucide-react';
 import { differenceInCalendarDays, format, parseISO, isValid } from 'date-fns';
@@ -1137,14 +1137,28 @@ export function SupporterDashboardView({
             statTrackerTeamName={profile.teamName}
             onCompleteScheduledGame={onCompleteScheduledGame}
           />
-          <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-mobile">
-            <Link href={dashboardStatsHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-stats">
-              <Activity size={16} aria-hidden="true" /> View stats
-            </Link>
-            <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-mobile-independent-hype">
-              <Zap size={16} aria-hidden="true" /> View HYPE Card
-            </Link>
-          </div>
+          <section className="combined-actions-card" aria-label="Quick links" data-testid="dashboard-primary-actions-mobile">
+            <div className="combined-actions-card__heading">
+              <span className="combined-actions-card__heading-mark" aria-hidden="true" />
+              <span>Quick links</span>
+            </div>
+            <div className="combined-actions-card__grid" data-testid="dashboard-primary-actions-grid">
+              <Link href={dashboardStatsHref} className="combined-actions-card__link" data-testid="link-mobile-independent-stats">
+                <span className="combined-actions-card__link-content">
+                  <span className="combined-actions-card__icon" aria-hidden="true"><Activity size={17} strokeWidth={2.2} /></span>
+                  <span className="combined-actions-card__label">View stats</span>
+                </span>
+                <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
+              </Link>
+              <Link href={fanCardHref} className="combined-actions-card__link" data-testid="link-mobile-independent-hype">
+                <span className="combined-actions-card__link-content">
+                  <span className="combined-actions-card__icon combined-actions-card__icon--hype" aria-hidden="true"><Zap size={17} strokeWidth={2.2} /></span>
+                  <span className="combined-actions-card__label">View HYPE Card</span>
+                </span>
+                <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
+              </Link>
+            </div>
+          </section>
           {selectionSyncError && <p role="status" className="text-sm text-red-700" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
           {ownedGameOnCardsQuery.isError && userId && (
             <p role="alert" className="text-sm text-red-700">Published cards could not be refreshed. Showing cards saved on this device.</p>
@@ -1228,14 +1242,28 @@ export function SupporterDashboardView({
         statTrackerTeamName={profile.teamName}
         onCompleteScheduledGame={onCompleteScheduledGame}
       />
-      <div className="flex flex-wrap items-center gap-3" data-testid="dashboard-primary-actions-desktop">
-        <Link href={dashboardStatsHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-stats">
-          <Activity size={16} aria-hidden="true" /> View stats
-        </Link>
-        <Link href={fanCardHref} className="dashboard-quick-action inline-flex min-h-11 items-center gap-2 rounded-md px-4 py-2 text-xs font-bold" data-testid="link-desktop-independent-hype">
-          <Zap size={16} aria-hidden="true" /> View HYPE Card
-        </Link>
-      </div>
+      <section className="combined-actions-card" aria-label="Quick links" data-testid="dashboard-primary-actions-desktop">
+        <div className="combined-actions-card__heading">
+          <span className="combined-actions-card__heading-mark" aria-hidden="true" />
+          <span>Quick links</span>
+        </div>
+        <div className="combined-actions-card__grid" data-testid="dashboard-primary-actions-grid">
+          <Link href={dashboardStatsHref} className="combined-actions-card__link" data-testid="link-desktop-independent-stats">
+            <span className="combined-actions-card__link-content">
+              <span className="combined-actions-card__icon" aria-hidden="true"><Activity size={17} strokeWidth={2.2} /></span>
+              <span className="combined-actions-card__label">View stats</span>
+            </span>
+            <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
+          </Link>
+          <Link href={fanCardHref} className="combined-actions-card__link" data-testid="link-desktop-independent-hype">
+            <span className="combined-actions-card__link-content">
+              <span className="combined-actions-card__icon combined-actions-card__icon--hype" aria-hidden="true"><Zap size={17} strokeWidth={2.2} /></span>
+              <span className="combined-actions-card__label">View HYPE Card</span>
+            </span>
+            <ArrowUpRight className="combined-actions-card__arrow" size={15} aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
       {selectionSyncError && <p role="status" className="text-sm text-red-300" data-testid="active-game-sync-error">Your game is saved on this device, but could not sync to your account.</p>}
       {ownedGameOnCardsQuery.isError && userId && (
         <p role="alert" className="text-sm text-red-300">Published cards could not be refreshed. Showing cards saved on this device.</p>

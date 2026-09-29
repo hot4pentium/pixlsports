@@ -38,3 +38,9 @@ At extreme effective zoom widths, page-level horizontal overflow can come from f
 **Why:** A narrow Chromium viewport exposed a fixed mobile navigation row wider than the viewport even when card content remained contained.
 
 **How to apply:** When a page overflow assertion fails, include element-level bounds in the diagnostic and separately measure the tested collection before changing its layout.
+
+Standalone dashboard fixtures must wrap `SupporterDashboardView` in `ClerkProvider`, because the shared reply-inbox control calls `useUser` even when the test does not exercise authentication. When a synthetic user ID enables project queries, mock `/api/projects` with the generated response shape as well as the reply-inbox endpoint.
+
+**Why:** Without the provider React unmounts the dashboard during render; without deterministic project data, ambient API responses can have a different shape and fail before the layout assertions run.
+
+**How to apply:** Keep fixture auth context aligned with the mounted component tree and mock every enabled query that is irrelevant to the browser assertion.

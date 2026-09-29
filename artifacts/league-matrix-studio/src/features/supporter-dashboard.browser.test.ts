@@ -2564,7 +2564,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await connection.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 }, page.sessionId);
     for (const [testId, destination] of [
       ['btn-mobile-open-profile', '/studio/profile'],
-      ['link-mobile-independent-stats', '/studio/stat-tracker'],
+      ['link-mobile-independent-stats', '/studio/season-stats'],
       ['link-mobile-independent-hype', '/fan/browser-test-fan-card'],
     ]) {
       const target = await connection.evaluate<{ x: number; y: number; hit: boolean }>(`(() => {
@@ -2938,13 +2938,21 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         statsEventId: string;
         hypeVisible: boolean;
         hypeLabel: string;
-        actionsShareGroup: boolean;
+        hypePath: string;
+        actionsUseTwoColumnGrid: boolean;
       }>(`(() => {
         const shell = document.querySelector('.supporter-dashboard-mobile-shell');
         const stats = shell?.querySelector('[data-testid="link-mobile-independent-stats"]');
         const hype = shell?.querySelector('[data-testid="link-mobile-independent-hype"]');
         const group = shell?.querySelector('[data-testid="dashboard-primary-actions-mobile"]');
+        const grid = group?.querySelector('[data-testid="dashboard-primary-actions-grid"]');
         const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
+        const hypeUrl = hype instanceof HTMLAnchorElement ? new URL(hype.href) : null;
+        const statsRect = stats instanceof HTMLElement ? stats.getBoundingClientRect() : null;
+        const hypeRect = hype instanceof HTMLElement ? hype.getBoundingClientRect() : null;
+        const gridColumns = grid instanceof HTMLElement
+          ? getComputedStyle(grid).gridTemplateColumns.trim().split(' ').length
+          : 0;
         const visible = (element) => element instanceof HTMLElement
           && getComputedStyle(element).display !== 'none'
           && element.getBoundingClientRect().width > 0
@@ -2958,7 +2966,11 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
           statsEventId: statsUrl?.searchParams.get('eventId') || '',
           hypeVisible: visible(hype),
           hypeLabel: hype?.textContent?.trim() || '',
-          actionsShareGroup: Boolean(group && stats?.parentElement === group && hype?.parentElement === group),
+          hypePath: hypeUrl?.pathname || '',
+          actionsUseTwoColumnGrid: Boolean(
+            group && grid && stats?.parentElement === grid && hype?.parentElement === grid
+            && gridColumns === 2 && statsRect && hypeRect && statsRect.left < hypeRect.left,
+          ),
         };
       })()`, session);
       assert.deepEqual(mobileActions, {
@@ -2966,11 +2978,12 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         shellPaddingBottom: '0px',
         statsVisible: true,
         statsLabel: 'View stats',
-        statsPath: '/studio/stat-tracker',
-        statsEventId: 'game-1',
+        statsPath: '/studio/season-stats',
+        statsEventId: '',
         hypeVisible: true,
-        hypeLabel: 'View Hype Card',
-        actionsShareGroup: true,
+        hypeLabel: 'View HYPE Card',
+        hypePath: '/fan/browser-test-fan-card',
+        actionsUseTwoColumnGrid: true,
       }, `mobile dashboard actions at ${width}px`);
     }
 
@@ -3053,14 +3066,22 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
       statsEventId: string;
       hypeVisible: boolean;
       hypeLabel: string;
-      actionsShareGroup: boolean;
+      hypePath: string;
+      actionsUseTwoColumnGrid: boolean;
     }>(`(() => {
       const mobile = document.querySelector('.supporter-dashboard-mobile-shell');
       const shell = document.querySelector('.supporter-dashboard-desktop-shell');
       const stats = shell?.querySelector('[data-testid="link-desktop-independent-stats"]');
       const hype = shell?.querySelector('[data-testid="link-desktop-independent-hype"]');
       const group = shell?.querySelector('[data-testid="dashboard-primary-actions-desktop"]');
+      const grid = group?.querySelector('[data-testid="dashboard-primary-actions-grid"]');
       const statsUrl = stats instanceof HTMLAnchorElement ? new URL(stats.href) : null;
+      const hypeUrl = hype instanceof HTMLAnchorElement ? new URL(hype.href) : null;
+      const statsRect = stats instanceof HTMLElement ? stats.getBoundingClientRect() : null;
+      const hypeRect = hype instanceof HTMLElement ? hype.getBoundingClientRect() : null;
+      const gridColumns = grid instanceof HTMLElement
+        ? getComputedStyle(grid).gridTemplateColumns.trim().split(' ').length
+        : 0;
       const visible = (element) => element instanceof HTMLElement
         && getComputedStyle(element).display !== 'none'
         && element.getBoundingClientRect().width > 0
@@ -3073,18 +3094,23 @@ test('dashboard actions replace mobile navigation while event cards retain Calen
         statsEventId: statsUrl?.searchParams.get('eventId') || '',
         hypeVisible: visible(hype),
         hypeLabel: hype?.textContent?.trim() || '',
-        actionsShareGroup: Boolean(group && stats?.parentElement === group && hype?.parentElement === group),
+        hypePath: hypeUrl?.pathname || '',
+        actionsUseTwoColumnGrid: Boolean(
+          group && grid && stats?.parentElement === grid && hype?.parentElement === grid
+          && gridColumns === 2 && statsRect && hypeRect && statsRect.left < hypeRect.left,
+        ),
       };
     })()`, session);
     assert.deepEqual(desktopActions, {
       mobileHidden: true,
       statsVisible: true,
       statsLabel: 'View stats',
-      statsPath: '/studio/stat-tracker',
-      statsEventId: 'game-1',
+      statsPath: '/studio/season-stats',
+      statsEventId: '',
       hypeVisible: true,
-      hypeLabel: 'View Hype Card',
-      actionsShareGroup: true,
+      hypeLabel: 'View HYPE Card',
+      hypePath: '/fan/browser-test-fan-card',
+      actionsUseTwoColumnGrid: true,
     });
     assert.deepEqual(await connection.evaluate<{
       profilePath: string;
@@ -3719,6 +3745,15 @@ export function mount() {
         if (pathname.endsWith('/api/game-on-cards/owned')) {
           return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
+        if (pathname === '/api/projects') {
+          return new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (pathname.endsWith('/api/hype-card-shares/reply-inbox')) {
+          return new Response(JSON.stringify({ groups: [], unreadCount: 0, totalCount: 0 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         if (pathname.endsWith('/api/schedule-shares') && method === 'POST') {
           window.__gameOnCardMockSaveRequests += 1;
           return new Response(JSON.stringify({ shareToken: 'mock-game-on-card-token' }), {
@@ -3731,6 +3766,9 @@ export function mount() {
     };
   }
   const renderDashboard = () => root.render(
+    createElement(ClerkProvider, {
+      publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    },
     createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
         createElement(SupporterDashboardView, {
@@ -3752,7 +3790,7 @@ export function mount() {
           onOpenChecklist: () => navigate('/studio/checklist'),
         }),
       ),
-    ),
+    )),
   );
   window.__setSupporterDashboardEvents = (nextEvents) => {
     dashboardEvents = nextEvents;
@@ -3784,7 +3822,17 @@ function htmlSource(harnessFilename: string) {
 <!doctype html>
 <html>
   <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Supporter dashboard browser test</title></head>
-  <body><div id="test-root"></div><script type="module">import('/${harnessFilename}?browser-test=' + Date.now()).then(({ mount }) => mount()).catch((error) => { document.body.dataset.testError = String(error); });</script></body>
+  <body><div id="test-root"></div><script type="module">
+    window.addEventListener('error', (event) => {
+      document.body.dataset.testError = String(event.error?.stack || event.message);
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      document.body.dataset.testError = String(event.reason?.stack || event.reason);
+    });
+    import('/${harnessFilename}?browser-test=' + Date.now()).then(({ mount }) => mount()).catch((error) => {
+      document.body.dataset.testError = String(error?.stack || error);
+    });
+  </script></body>
 </html>
 `;
 }

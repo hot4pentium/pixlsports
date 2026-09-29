@@ -11,7 +11,7 @@ import {
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
 } from '@workspace/api-client-react';
-import { gameOnHref, hasEventToday } from './athlete-event-links';
+import { hasEventToday } from './athlete-event-links';
 
 import {
   Dialog,
@@ -533,7 +533,7 @@ export function LivingAthleteCardPage({
                     <h2 className="living-card-alt-title">Events.</h2>
                     <p className="living-card-alt-subtitle">
                       {invite.showEvents
-                        ? `All eligible Game On Cards shared by ${invite.athleteName}’s card owner appear here. Open one for its full details.`
+                        ? `All eligible Game On Cards shared by ${invite.athleteName}’s card owner appear here.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
                     {invite.showEvents && linkedEvents.length > 0 ? (
@@ -547,7 +547,6 @@ export function LivingAthleteCardPage({
                               <div><dt>Time</dt><dd>{event.time || 'To be announced'}</dd></div>
                               <div><dt>Location</dt><dd>{event.location || 'To be announced'}</dd></div>
                             </dl>
-                            <Link href={gameOnHref(event.shareToken)} data-testid={`link-living-event-${event.shareToken}`}>Full Game On Card <ArrowRight aria-hidden="true" /></Link>
                           </li>
                         ))}
                       </ol>

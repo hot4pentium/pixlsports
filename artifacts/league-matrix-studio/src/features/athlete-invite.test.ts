@@ -26,6 +26,16 @@ test('HYPE Card events use one persistent all-or-none setting', () => {
   assert.match(eventNotificationsSource, /Turn on “Allow events” above/);
 });
 
+test('HYPE Card event details do not repeat the full Game On Card link', () => {
+  const eventsSide = livingCardSource.slice(
+    livingCardSource.indexOf("{side === 'events' && ("),
+    livingCardSource.indexOf('<div className="living-card-controls"'),
+  );
+  assert.match(eventsSide, /All eligible Game On Cards shared by/);
+  assert.doesNotMatch(eventsSide, /Full Game On Card|gameOnHref|link-living-event-/);
+  assert.doesNotMatch(eventsSide, /Open one for its full details/);
+});
+
 test('fan Shoutouts keep owner-only privacy wording distinct from media replies', () => {
   assert.match(livingCardSource, /Send a Shoutout/);
   assert.match(livingCardSource, /Only the card owner can read your message/);
