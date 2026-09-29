@@ -131,6 +131,8 @@ export type StoredTrackerConflict = {
   cloudProject: TrackerCloudProject;
 };
 
+export type StoredTrackerSyncFailure = 'retry' | 'revision-conflict';
+
 export type TrackerPayload = StatTrackerData & {
   tool: 'stat-tracker';
 };
@@ -163,6 +165,7 @@ export function getTrackerStorageKeys(accountId: string) {
     history: `${trackerLocalStorageKey}:${suffix}`,
     activeGame: `${activeGameStorageKey}:${suffix}`,
     pendingConflict: `${trackerLocalStorageKey}:pending-conflict:${suffix}`,
+    pendingSyncFailure: `${trackerLocalStorageKey}:pending-sync-failure:${suffix}`,
   };
 }
 
@@ -249,6 +252,26 @@ export function saveStoredTrackerConflict(storage: TrackerStorage, accountId: st
 
 export function clearStoredTrackerConflict(storage: TrackerStorage, accountId: string) {
   storage.removeItem(getTrackerStorageKeys(accountId).pendingConflict);
+}
+
+export function readStoredTrackerSyncFailure(
+  storage: TrackerStorage,
+  accountId: string,
+): StoredTrackerSyncFailure | null {
+  const value = storage.getItem(getTrackerStorageKeys(accountId).pendingSyncFailure);
+  return value === 'retry' || value === 'revision-conflict' ? value : null;
+}
+
+export function saveStoredTrackerSyncFailure(
+  storage: TrackerStorage,
+  accountId: string,
+  failure: StoredTrackerSyncFailure,
+) {
+  storage.setItem(getTrackerStorageKeys(accountId).pendingSyncFailure, failure);
+}
+
+export function clearStoredTrackerSyncFailure(storage: TrackerStorage, accountId: string) {
+  storage.removeItem(getTrackerStorageKeys(accountId).pendingSyncFailure);
 }
 
 const stat = (

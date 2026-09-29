@@ -14,6 +14,7 @@ import {
   adjustYardValue,
   adjustScore,
   buildGameReport,
+  clearStoredTrackerSyncFailure,
   clearStoredTrackerConflict,
   countStatEventsByAttribution,
   createAthleteResultGame,
@@ -37,9 +38,11 @@ import {
   reconcileTrackerDataForSync,
   readStoredActiveGame,
   readStoredTrackerConflict,
+  readStoredTrackerSyncFailure,
   readStoredTrackerData,
   saveStoredActiveGame,
   saveStoredTrackerConflict,
+  saveStoredTrackerSyncFailure,
   seasonTotals,
   seasonYardTotals,
   syncTrackerDataToCloud,
@@ -56,6 +59,7 @@ import {
   LiveTrackerGame,
   persistScheduledGameStatus,
   readLocalTrackerSession,
+  subscribeToTrackerOnlineRetry,
 } from './stat-tracker-page';
 import { GameReportView } from './stat-tracker-game-report';
 import { readScheduleDraft, scheduleStorageKey, type ScheduleDraft } from './schedule-draft';
@@ -1951,6 +1955,57 @@ test('selected conflict history survives reload until cloud sync succeeds', () =
 
   clearStoredTrackerConflict(storage, 'user_a');
   assert.equal(readStoredTrackerConflict(storage, 'user_a'), null);
+});
+
+test('retryable cloud failures survive reload per account and clear after confirmation', () => {
+  const storage = createMemoryStorage();
+
+  saveStoredTrackerSyncFailure(storage, 'user_a', 'retry');
+  saveStoredTrackerSyncFailure(storage, 'user_b', 'revision-conflict');
+
+  assert.equal(readStoredTrackerSyncFailure(storage, 'user_a'), 'retry');
+  assert.equal(readStoredTrackerSyncFailure(storage, 'user_b'), 'revision-conflict');
+  assert.equal(readStoredTrackerSyncFailure(storage, 'user_c'), null);
+
+  clearStoredTrackerSyncFailure(storage, 'user_a');
+  assert.equal(readStoredTrackerSyncFailure(storage, 'user_a'), null);
+  assert.equal(readStoredTrackerSyncFailure(storage, 'user_b'), 'revision-conflict');
+});
+
+test('reconnect retries ordinary failures only while online and never retries a revision conflict', () => {
+  const ordinaryTarget = new EventTarget() as unknown as Pick<Window, 'addEventListener' | 'removeEventListener'>;
+  let online = false;
+  let retryCount = 0;
+  const removeOrdinaryListener = subscribeToTrackerOnlineRetry({
+    retryAvailable: true,
+    revisionConflict: false,
+    saving: false,
+    isOnline: () => online,
+    targetWindow: ordinaryTarget,
+    onRetry: () => { retryCount += 1; },
+  });
+
+  ordinaryTarget.dispatchEvent(new Event('online'));
+  assert.equal(retryCount, 0);
+  online = true;
+  ordinaryTarget.dispatchEvent(new Event('online'));
+  assert.equal(retryCount, 1);
+  removeOrdinaryListener();
+  ordinaryTarget.dispatchEvent(new Event('online'));
+  assert.equal(retryCount, 1);
+
+  const conflictTarget = new EventTarget() as unknown as Pick<Window, 'addEventListener' | 'removeEventListener'>;
+  const removeConflictListener = subscribeToTrackerOnlineRetry({
+    retryAvailable: true,
+    revisionConflict: true,
+    saving: false,
+    isOnline: () => true,
+    targetWindow: conflictTarget,
+    onRetry: () => { retryCount += 1; },
+  });
+  conflictTarget.dispatchEvent(new Event('online'));
+  assert.equal(retryCount, 1);
+  removeConflictListener();
 });
 
 test('switching accounts and reloading never reads or merges the previous account history', () => {

@@ -248,7 +248,7 @@ export function PublicLandingPage() {
               <p>When you’ve loaded the details, PIXL keeps key game-day work on your device, so a dropped connection doesn’t have to stop the plan.</p>
               <div className="offline-sync-status" role="status" data-testid="offline-sync-status">
                 <span className="offline-sync-icon"><CloudUpload size={17} aria-hidden="true" /></span>
-                <span><strong>Saved on this device</strong><small>Retry cloud sync when you’re back online if prompted</small></span>
+                <span><strong>Saved on this device</strong><small>Will sync when connected</small></span>
                 <Check className="offline-sync-check" size={17} aria-hidden="true" />
               </div>
             </div>
@@ -260,15 +260,15 @@ export function PublicLandingPage() {
                 </li>
                 <li>
                   <span className="offline-feature-icon"><ClipboardCheck size={19} aria-hidden="true" /></span>
-                  <div><h3 className="display">Prep keeps moving</h3><p>Check off prep items offline. Shared checklist edits stay here and may need Retry to sync to collaborators.</p></div>
+                  <div><h3 className="display">Prep keeps moving</h3><p>Check off prep items on your device, even without service. Shared checklist edits stay here and may need Retry to sync to collaborators.</p></div>
                 </li>
                 <li>
                   <span className="offline-feature-icon"><Activity size={19} aria-hidden="true" /></span>
-                  <div><h3 className="display">Track the action</h3><p>Record game stats locally. Completed results stay here and can be retried when service returns.</p></div>
+                  <div><h3 className="display">Track the action</h3><p>Record game stats locally and sync your saved result when you’re back online.</p></div>
                 </li>
               </ul>
               <p className="offline-install-note"><strong>Before game day:</strong> On iPhone, tap Share, then Add to Home Screen. On Android, open your browser menu and choose Install app or Add to Home screen. Open PIXL online and load each game and checklist you’ll need. This will give you the full benefit of PIXL Sports, with offline content saved on this device.</p>
-              <p className="offline-connection-note">Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.</p>
+              <p className="offline-connection-note">Creating or updating Event Card shares, receiving new replies, and sending alerts still need a connection.</p>
             </div>
           </div>
         </section>

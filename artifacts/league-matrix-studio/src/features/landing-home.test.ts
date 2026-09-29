@@ -33,16 +33,15 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   for (const message of [
     'Game details, ready',
     'Reopen game details and checklists you’ve already loaded on this device.',
-    'Check off prep items offline. Shared checklist edits stay here and may need Retry to sync to collaborators.',
-    'Record game stats locally. Completed results stay here and can be retried when service returns.',
+    'Check off prep items on your device, even without service. Shared checklist edits stay here and may need Retry to sync to collaborators.',
+    'Record game stats locally and sync your saved result when you’re back online.',
     'Saved on this device',
-    'Retry cloud sync when you’re back online if prompted',
+    'Will sync when connected',
     'On iPhone, tap Share, then Add to Home Screen.',
     'On Android, open your browser menu and choose Install app or Add to Home screen.',
-    'Open PIXL online and load each game and checklist you’ll need. This will give you the full benefit of PIXL Sports, with offline content saved on this device.',
-    'Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.',
+    'Open PIXL online and load each game and checklist you’ll need.',
+    'Creating or updating Event Card shares, receiving new replies, and sending alerts still need a connection.',
   ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
-  assert.doesNotMatch(source, /Will sync when connected/);
   assert.match(styles, /offline-grid \{[^}]*grid-template-columns/);
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*offline-grid \{grid-template-columns:1fr/);
   assert.match(styles, /offline-install-note \{[^}]*border-left/);

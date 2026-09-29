@@ -34,6 +34,12 @@ function listen(server: Server) {
   });
 }
 
+async function reloadPage(connection: DevToolsConnection, sessionId: string) {
+  const loadComplete = connection.waitForEvent('Page.loadEventFired', sessionId);
+  await connection.send('Page.reload', { ignoreCache: false }, sessionId);
+  await loadComplete;
+}
+
 function harnessSource() {
   return `
 import { createElement, useEffect, useRef, useState } from 'react';
@@ -45,12 +51,25 @@ import {
   StatTrackerSaveStatus,
   StatTrackerStartPanel,
   StatTrackerUpcomingNotice,
+  subscribeToTrackerOnlineRetry,
   type ScheduledGame,
 } from './src/features/stat-tracker-page';
 import { GameOnInlineStatTracker } from './src/features/game-on-inline-stat-tracker';
 import { GameReportView } from './src/features/stat-tracker-game-report';
 import { TrackerCompletionDialog } from './src/features/tracker-completion-dialog';
-import { buildGameReport, createGameSession, endGame, getSportRule, normalizeTrackerData, trackerSaveErrorMessage } from './src/features/stat-tracker';
+import {
+  buildGameReport,
+  clearStoredTrackerSyncFailure,
+  createGameSession,
+  endGame,
+  getSportRule,
+  getTrackerStorageKeys,
+  normalizeTrackerData,
+  readStoredTrackerData,
+  readStoredTrackerSyncFailure,
+  saveStoredTrackerSyncFailure,
+  trackerSaveErrorMessage,
+} from './src/features/stat-tracker';
 import './src/index.css';
 import './src/features/tracker-completion-dialog.css';
 
@@ -129,8 +148,156 @@ function SaveFeedbackHarness() {
   );
 }
 
+function ReconnectRecoveryHarness() {
+  const accountId = 'browser-reconnect-user';
+  const keys = getTrackerStorageKeys(accountId);
+  const cloudHistoryKey = 'stat-tracker-browser-cloud-history';
+  const attemptsKey = 'stat-tracker-browser-cloud-attempts';
+  const storedFailure = readStoredTrackerSyncFailure(window.localStorage, accountId);
+  const [games, setGames] = useState(() => readStoredTrackerData(window.localStorage, accountId).games);
+  const [cloudGames, setCloudGames] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem(cloudHistoryKey) || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [status, setStatus] = useState(storedFailure ? 'local-saved' : null);
+  const [message, setMessage] = useState(storedFailure
+    ? trackerSaveErrorMessage(storedFailure === 'revision-conflict' ? { status: 409 } : { status: 503 })
+    : '');
+  const [retryAvailable, setRetryAvailable] = useState(storedFailure === 'retry');
+  const [revisionConflict, setRevisionConflict] = useState(storedFailure === 'revision-conflict');
+  const [saving, setSaving] = useState(false);
+  const [ackPending, setAckPending] = useState(false);
+  const [attempts, setAttempts] = useState(() => Number(window.localStorage.getItem(attemptsKey) || '0'));
+  const pendingAck = useRef(null);
+
+  const saveLocalGames = (nextGames) => {
+    window.localStorage.setItem(keys.history, JSON.stringify({ version: 1, games: nextGames }));
+    setGames(nextGames);
+  };
+
+  const saveToMockCloud = async (nextGames, shouldConflict = false) => {
+    const nextAttempt = Number(window.localStorage.getItem(attemptsKey) || '0') + 1;
+    window.localStorage.setItem(attemptsKey, String(nextAttempt));
+    setAttempts(nextAttempt);
+    if (!navigator.onLine) throw { status: 503 };
+    if (shouldConflict) throw { status: 409 };
+    if (window.__trackerHoldNextCloudAck) {
+      window.__trackerHoldNextCloudAck = false;
+      setAckPending(true);
+      await new Promise((resolve) => { pendingAck.current = resolve; });
+      setAckPending(false);
+    }
+    window.localStorage.setItem(cloudHistoryKey, JSON.stringify(nextGames));
+    setCloudGames(nextGames);
+  };
+
+  const persistFailure = (error) => {
+    const conflict = error && error.status === 409;
+    saveStoredTrackerSyncFailure(window.localStorage, accountId, conflict ? 'revision-conflict' : 'retry');
+    setRetryAvailable(!conflict);
+    setRevisionConflict(conflict);
+    setStatus('local-saved');
+    setMessage(trackerSaveErrorMessage(conflict ? { status: 409 } : { status: 503 }));
+  };
+
+  const saveResult = async (opponent, shouldConflict = false) => {
+    if (saving) return;
+    const completed = endGame(createGameSession('football', { opponent }));
+    const nextGames = [...games, completed];
+    saveLocalGames(nextGames);
+    setStatus('saving');
+    setMessage('');
+    setRetryAvailable(false);
+    setRevisionConflict(false);
+    setSaving(true);
+    try {
+      await saveToMockCloud(nextGames, shouldConflict);
+      clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      setStatus('cloud-saved');
+    } catch (error) {
+      persistFailure(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const retryCloudSync = async () => {
+    if (saving || !retryAvailable) return;
+    setSaving(true);
+    setStatus('saving');
+    setMessage('');
+    try {
+      await saveToMockCloud(games);
+      clearStoredTrackerSyncFailure(window.localStorage, accountId);
+      setRetryAvailable(false);
+      setStatus('cloud-saved');
+    } catch (error) {
+      persistFailure(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => subscribeToTrackerOnlineRetry({
+    retryAvailable,
+    revisionConflict,
+    saving,
+    onRetry: retryCloudSync,
+  }), [retryAvailable, revisionConflict, saving]);
+
+  return createElement('main', { className: 'mx-auto w-full max-w-[390px] px-5 py-6' },
+    createElement('div', { className: 'flex flex-wrap gap-2' },
+      createElement('button', {
+        type: 'button',
+        'data-testid': 'browser-save-completed-result',
+        onClick: () => void saveResult('Northside'),
+      }, 'Save completed result'),
+      createElement('button', {
+        type: 'button',
+        'data-testid': 'browser-save-conflicting-result',
+        onClick: () => void saveResult('Westview', true),
+      }, 'Simulate revision conflict'),
+      ackPending && createElement('button', {
+        type: 'button',
+        'data-testid': 'browser-release-cloud-ack',
+        onClick: () => {
+          const resolve = pendingAck.current;
+          pendingAck.current = null;
+          if (resolve) resolve();
+        },
+      }, 'Release cloud acknowledgement'),
+    ),
+    status && createElement('div', { className: 'mt-5 flex min-w-0 justify-start' },
+      createElement(StatTrackerSaveStatus, { status }),
+    ),
+    createElement('div', { className: 'mt-5' },
+      createElement(StatTrackerSaveRecoveryAlert, {
+        message,
+        retryAvailable,
+        revisionConflict,
+        hasConflict: revisionConflict,
+        saving,
+        onRetry: () => void retryCloudSync(),
+        onRefresh: () => window.location.reload(),
+      }),
+    ),
+    revisionConflict && createElement('section', {
+      'data-testid': 'browser-tracker-conflict',
+      role: 'alert',
+    }, 'Local history: ' + games.map((game) => game.opponent).join(', ')
+      + ' | Cloud history: ' + cloudGames.map((game) => game.opponent).join(', ')),
+    createElement('output', { 'data-testid': 'browser-local-game-count' }, String(games.length)),
+    createElement('output', { 'data-testid': 'browser-cloud-game-count' }, String(cloudGames.length)),
+    createElement('output', { 'data-testid': 'browser-cloud-attempt-count' }, String(attempts)),
+  );
+}
+
 function TrackerHarness() {
   const saveFeedbackMode = new URLSearchParams(window.location.search).get('saveFeedback') === '1';
+  const reconnectRecoveryMode = new URLSearchParams(window.location.search).get('reconnectRecovery') === '1';
   const completionMode = new URLSearchParams(window.location.search).get('completion') === '1';
   const footballMode = new URLSearchParams(window.location.search).get('sport') === 'football';
   const persistenceMode = new URLSearchParams(window.location.search).get('persistence') === '1';
@@ -181,6 +348,7 @@ function TrackerHarness() {
     : null;
 
   if (saveFeedbackMode) return createElement(SaveFeedbackHarness);
+  if (reconnectRecoveryMode) return createElement(ReconnectRecoveryHarness);
   if (completionMode) return createElement(CompletionHarness);
 
   return createElement('main', null,
@@ -759,6 +927,149 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     assert.equal(
       await connection.evaluate<boolean>('!document.body.textContent.includes("Cloud sync active")', page.sessionId),
       true,
+    );
+
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('leaguematrix-stat-tracker:browser-reconnect-user');
+      localStorage.removeItem('leaguematrix-stat-tracker:pending-sync-failure:browser-reconnect-user');
+      localStorage.removeItem('leaguematrix-stat-tracker:pending-conflict:browser-reconnect-user');
+      localStorage.removeItem('stat-tracker-browser-cloud-history');
+      localStorage.removeItem('stat-tracker-browser-cloud-attempts');
+      window.location.href = '/stat-tracker-test.html?reconnectRecovery=1';
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"browser-save-completed-result\\"]") !== null', Boolean);
+    await connection.evaluate(
+      'Object.defineProperty(navigator, "onLine", { configurable: true, value: false })',
+      page.sessionId,
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"browser-save-completed-result\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saved on this device") && document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]") !== null',
+      Boolean,
+    );
+    assert.deepEqual(
+      await connection.evaluate<{ local: string; cloud: string; attempts: string }>(
+        `({
+          local: document.querySelector('[data-testid="browser-local-game-count"]')?.textContent || '',
+          cloud: document.querySelector('[data-testid="browser-cloud-game-count"]')?.textContent || '',
+          attempts: document.querySelector('[data-testid="browser-cloud-attempt-count"]')?.textContent || '',
+        })`,
+        page.sessionId,
+      ),
+      { local: '1', cloud: '0', attempts: '1' },
+      'a failed offline save must leave the completed game on this device without claiming cloud success',
+    );
+    await connection.evaluate('delete navigator.onLine', page.sessionId);
+    await reloadPage(connection, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"browser-local-game-count\\"]")?.textContent === "1" && document.querySelector("[data-testid=\\"browser-cloud-attempt-count\\"]")?.textContent === "1" && document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]") !== null',
+      Boolean,
+    );
+    const reloadRecoveryState = await connection.evaluate<{
+      attemptsText: string | null;
+      attemptStorage: string | null;
+      bodyText: string;
+    }>(`({
+      attemptsText: document.querySelector('[data-testid="browser-cloud-attempt-count"]')?.textContent ?? null,
+      attemptStorage: localStorage.getItem('stat-tracker-browser-cloud-attempts'),
+      bodyText: document.body?.textContent || '',
+    })`, page.sessionId);
+    assert.equal(
+      reloadRecoveryState.attemptsText,
+      '1',
+      'reloading must restore the local result and recovery action without falsely retrying: '
+        + JSON.stringify(reloadRecoveryState),
+    );
+    await connection.evaluate('window.__trackerHoldNextCloudAck = true', page.sessionId);
+    await connection.send('Network.enable', {}, page.sessionId);
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: 0,
+      uploadThroughput: 0,
+      connectionType: 'none',
+    }, page.sessionId);
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 0,
+      downloadThroughput: -1,
+      uploadThroughput: -1,
+      connectionType: 'wifi',
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"browser-release-cloud-ack\\"]") !== null && document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Saving game to cloud")',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("[data-testid=\\"browser-local-game-count\\"]")?.textContent === "1" && document.querySelector("[data-testid=\\"browser-cloud-game-count\\"]")?.textContent === "0"',
+        page.sessionId,
+      ),
+      true,
+      'the result must not appear synced before the service acknowledges the retry',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"browser-release-cloud-ack\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"stat-tracker-save-status\\"]")?.textContent.includes("Game saved to cloud") && document.querySelector("[data-testid=\\"stat-tracker-save-recovery\\"]") === null',
+      Boolean,
+    );
+    assert.deepEqual(
+      await connection.evaluate<{ local: string; cloud: string; attempts: string }>(
+        `({
+          local: document.querySelector('[data-testid="browser-local-game-count"]')?.textContent || '',
+          cloud: document.querySelector('[data-testid="browser-cloud-game-count"]')?.textContent || '',
+          attempts: document.querySelector('[data-testid="browser-cloud-attempt-count"]')?.textContent || '',
+        })`,
+        page.sessionId,
+      ),
+      { local: '1', cloud: '1', attempts: '2' },
+    );
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"browser-save-conflicting-result\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"browser-tracker-conflict\\"]")?.textContent.includes("Northside, Westview") && document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]") === null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("[data-testid=\\"browser-local-game-count\\"]")?.textContent === "2" && document.querySelector("[data-testid=\\"browser-cloud-game-count\\"]")?.textContent === "1"',
+        page.sessionId,
+      ),
+      true,
+      'revision conflicts must preserve both the local and cloud histories',
+    );
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: 0,
+      uploadThroughput: 0,
+      connectionType: 'none',
+    }, page.sessionId);
+    await connection.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 0,
+      downloadThroughput: -1,
+      uploadThroughput: -1,
+      connectionType: 'wifi',
+    }, page.sessionId);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(
+      await connection.evaluate<string>('document.querySelector("[data-testid=\\"browser-cloud-attempt-count\\"]")?.textContent || ""', page.sessionId),
+      '3',
+      'a revision conflict must not retry automatically when the browser reports reconnection',
+    );
+    await reloadPage(connection, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      'document.querySelector("[data-testid=\\"browser-tracker-conflict\\"]")?.textContent.includes("Northside, Westview") && document.querySelector("[data-testid=\\"button-retry-stat-tracker-save\\"]") === null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
+        'document.querySelector("[data-testid=\\"browser-local-game-count\\"]")?.textContent === "2" && document.querySelector("[data-testid=\\"browser-cloud-game-count\\"]")?.textContent === "1"',
+        page.sessionId,
+      ),
+      true,
+      'conflicting local and cloud copies must still be available after a reload',
     );
 
     await connection.evaluate(`(() => {
