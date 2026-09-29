@@ -67,7 +67,7 @@ const steps = [
 const landingCapabilityHighlights = [
   {
     name: 'One link for the season',
-    description: 'Share the athlete’s stable HYPE Card with family and fans. Photos, highlights, finalized stats, and season results stay together.',
+    description: "Share your athlete's HYPE Card with fans! Send a link for everyone to follow. That's all they need to stay in the game.",
     icon: Heart,
   },
   {

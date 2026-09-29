@@ -10,6 +10,8 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   assert.doesNotMatch(source, /For the people in their corner|Your front<br \/>row\./);
   for (const capability of [
     'One link for the season',
+    "Share your athlete's HYPE Card with fans!",
+    "That's all they need to stay in the game.",
     'Share game details',
     'Get ready together',
     'Opt in to Event Card reminders',
