@@ -514,3 +514,17 @@ mtime_ms = 1790562881089
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/7e24c74f-664d-4aed-830d-0ce13787d63b/52395f98-9ae3-4811-a4c8-cd0aa6d928c2"
 storage_version_token = "1790562896962782"
 content_type = "image/png"
+
+[[outputs]]
+id = "iFbTuMtRiReATjlpD2KbQ"
+uri = "file://attached_assets/image_all_in_all_season.png"
+type = "image"
+title = "All In, All Season"
+description = "Replacement tagline strip matching the original dark background and lime uppercase type. The uploaded source image remains unchanged."
+logical_id = "e76ea2ae-7e01-4cf1-94ec-1f6ba665ee58"
+content_hash = "sha256:14267c39b39e04cd97a79df7cc7a0fbfa1e9eb6e227bad3667e73b4b9166a7af"
+size = 1576
+mtime_ms = 1790705736442
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:067741b0-8975-4f70-823f-bd2db055b983/e76ea2ae-7e01-4cf1-94ec-1f6ba665ee58/6bbbcf56-5371-4aab-80ed-71b5c0c8e241"
+storage_version_token = "1790705746576793"
+content_type = "image/png"
