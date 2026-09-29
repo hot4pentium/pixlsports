@@ -24,9 +24,23 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   }
   assert.doesNotMatch(source, /name: 'Schedule Maker'|name: 'Gameday Checklist'|name: 'Stat Tracker'/);
   assert.match(source, /data-testid="landing-capability-highlights"/);
-  for (const section of ['hero', 'week-ribbon', 'week-section', 'athlete-section', 'tools-section', 'closing', 'site-footer']) {
+  for (const section of ['hero', 'week-ribbon', 'week-section', 'offline-section', 'athlete-section', 'tools-section', 'closing', 'site-footer']) {
     assert.match(source, new RegExp(`className="${section}"`));
   }
+  const offline = source.indexOf('data-testid="landing-offline-section"');
+  const hypeCard = source.indexOf('id="athlete-cards"');
+  assert.ok(offline >= 0 && hypeCard > offline, 'offline guidance should appear above the HYPE Card section');
+  for (const message of [
+    'Game details, ready',
+    'Reopen game details and checklists you’ve already loaded.',
+    'Check off prep items on your device, even without service.',
+    'Record game stats locally and sync your saved result when you’re back online.',
+    'Saved on this device',
+    'Sync when connected',
+    'Sharing Event Cards, receiving new replies, and sending alerts still need a connection.',
+  ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
+  assert.match(styles, /offline-grid \{[^}]*grid-template-columns/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*offline-grid \{grid-template-columns:1fr/);
   for (const step of ['Plan', 'Prep', 'Follow', 'Celebrate']) {
     assert.match(source, new RegExp(`title: '${step}'`));
   }

@@ -105,6 +105,26 @@
 .new-landing .week-video-link { display: inline-flex; align-items: center; gap: 8px; color: var(--pixl-navy); font-weight: 800; font-size: 12px; border-bottom: 1px solid #849ca0; padding-block: 8px; margin-top: 26px; }
 .new-landing .week-video-link:hover { border-color: var(--pixl-navy); }
 
+.new-landing .offline-section { position: relative; overflow: hidden; padding: 94px 0 100px; color: #f2f7f4; background: radial-gradient(circle at 82% 8%, #174a62 0, var(--pixl-navy) 42%, var(--pixl-deep) 100%); }
+.new-landing .offline-section::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .08; background-image: linear-gradient(#c3effa 1px, transparent 1px), linear-gradient(90deg,#c3effa 1px,transparent 1px); background-size: 54px 54px; mask-image: linear-gradient(120deg,transparent 15%,black); }
+.new-landing .offline-grid { position: relative; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: clamp(44px, 8vw, 110px); }
+.new-landing .offline-copy .micro { display: inline-flex; align-items: center; gap: 8px; color: var(--pixl-lime); margin-bottom: 23px; }
+.new-landing .offline-copy h2 { max-width: 530px; font-size: clamp(56px, 6.5vw, 91px); }
+.new-landing .offline-copy h2 em { color: var(--pixl-lime); font-style: normal; }
+.new-landing .offline-copy > p { max-width: 450px; margin-top: 21px; color: #c8d9dc; font-size: 14px; line-height: 1.75; }
+.new-landing .offline-sync-status { display: flex; align-items: center; gap: 12px; width: fit-content; max-width: 100%; margin-top: 27px; border: 1px solid #c9f45a70; border-radius: 10px; background: #c9f45a12; padding: 13px 16px; }
+.new-landing .offline-sync-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 50%; color: var(--pixl-navy); background: var(--pixl-lime); }
+.new-landing .offline-sync-status strong, .new-landing .offline-sync-status small { display: block; }
+.new-landing .offline-sync-status strong { font-size: 12px; line-height: 1.3; }
+.new-landing .offline-sync-status small { margin-top: 3px; color: #cbdcdd; font-size: 11px; }
+.new-landing .offline-sync-check { margin-left: 8px; color: var(--pixl-lime); }
+.new-landing .offline-feature-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.new-landing .offline-feature-list li { display: flex; align-items: flex-start; gap: 16px; border: 1px solid #ffffff24; border-radius: 12px; background: #ffffff09; padding: 19px 20px; }
+.new-landing .offline-feature-icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 9px; color: var(--pixl-navy); background: var(--pixl-lime); }
+.new-landing .offline-feature-list h3 { font-size: 24px; line-height: 1; }
+.new-landing .offline-feature-list p { margin-top: 6px; color: #c6d8dc; font-size: 12px; line-height: 1.6; }
+.new-landing .offline-connection-note { margin: 14px 2px 0; color: #b4c9cf; font-size: 11px; line-height: 1.6; }
+
 .new-landing .athlete-section { background: var(--pixl-mist); padding: 106px 0; }
 .new-landing .athlete-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "preview copy"; align-items: center; gap: clamp(50px, 9vw, 145px); }
 .new-landing .athlete-showcase { grid-area: preview; min-height: 505px; border-radius: 17px; background: radial-gradient(circle at 60% 22%,#347c99,#17445b 45%,#092739); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px #ffffff24; }
@@ -170,6 +190,7 @@
   .new-landing .athlete-grid {gap:45px;}
   .new-landing .athlete-showcase {min-height:410px;}
   .new-landing .landing-athlete-render {width:min(70%,230px);}
+  .new-landing .offline-grid {gap:38px;}
 }
 @media (max-width: 700px) {
   .new-landing .container {width:min(100% - 38px,540px);}
@@ -192,6 +213,10 @@
   .new-landing .ribbon-inner {gap:9px;font-size:8px;letter-spacing:.06em;min-height:44px;}
   .new-landing .ribbon-star {width:5px;height:5px;}
   .new-landing .week-section,.new-landing .athlete-section,.new-landing .tools-section {padding-block:75px;}
+  .new-landing .offline-section {padding-block:72px;}
+  .new-landing .offline-grid {grid-template-columns:1fr;gap:32px;}
+  .new-landing .offline-copy h2 {font-size:clamp(56px,13vw,76px);}
+  .new-landing .offline-feature-list li {padding:17px;}
   .new-landing .section-intro {display:block;margin-bottom:27px;}
   .new-landing .section-intro h2,.new-landing .athlete-copy h2,.new-landing .tools-section h2 {font-size:clamp(54px,12vw,75px);}
   .new-landing .section-intro > p {padding:0;margin-top:18px;font-size:14px;}

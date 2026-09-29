@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, Play } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, Play, WifiOff, CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import planEventDetails from '@/assets/landing-plan-event-details.png';
@@ -237,6 +237,38 @@ export function PublicLandingPage() {
                 </div>)}
             </div>
             <a href={WEEK_VIDEO} target="_blank" rel="noopener noreferrer" className="week-video-link" data-testid="link-landing-week-path-video"><Play size={14} fill="currentColor" aria-hidden="true" /> Watch the week path explainer <ArrowUpRight size={14} aria-hidden="true" /></a>
+          </div>
+        </section>
+
+        <section className="offline-section" aria-labelledby="offline-heading" data-testid="landing-offline-section">
+          <div className="container offline-grid">
+            <div className="offline-copy">
+              <span className="micro"><WifiOff size={14} aria-hidden="true" /> Game day, even with a weak signal</span>
+              <h2 className="display" id="offline-heading">No service?<br /><em>Keep going.</em></h2>
+              <p>When you’ve loaded the details, PIXL keeps key game-day work on your device, so a dropped connection doesn’t have to stop the plan.</p>
+              <div className="offline-sync-status" role="status" data-testid="offline-sync-status">
+                <span className="offline-sync-icon"><CloudUpload size={17} aria-hidden="true" /></span>
+                <span><strong>Saved on this device</strong><small>Sync when connected</small></span>
+                <Check className="offline-sync-check" size={17} aria-hidden="true" />
+              </div>
+            </div>
+            <div className="offline-details">
+              <ul className="offline-feature-list">
+                <li>
+                  <span className="offline-feature-icon"><CalendarDays size={19} aria-hidden="true" /></span>
+                  <div><h3 className="display">Game details, ready</h3><p>Reopen game details and checklists you’ve already loaded.</p></div>
+                </li>
+                <li>
+                  <span className="offline-feature-icon"><ClipboardCheck size={19} aria-hidden="true" /></span>
+                  <div><h3 className="display">Prep keeps moving</h3><p>Check off prep items on your device, even without service.</p></div>
+                </li>
+                <li>
+                  <span className="offline-feature-icon"><Activity size={19} aria-hidden="true" /></span>
+                  <div><h3 className="display">Track the action</h3><p>Record game stats locally and sync your saved result when you’re back online.</p></div>
+                </li>
+              </ul>
+              <p className="offline-connection-note">Sharing Event Cards, receiving new replies, and sending alerts still need a connection.</p>
+            </div>
           </div>
         </section>
 
