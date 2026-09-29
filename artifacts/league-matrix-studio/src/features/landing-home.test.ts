@@ -37,8 +37,9 @@ test('landing shows the dashboard in mobile and landscape with fictional example
     'Record game stats locally. Completed results stay here and can be retried when service returns.',
     'Saved on this device',
     'Retry cloud sync when you’re back online if prompted',
-    'Install PIXL as an app for the full PWA experience.',
-    'Open it online first and load each game and checklist you’ll need.',
+    'On iPhone, tap Share, then Add to Home Screen.',
+    'On Android, open your browser menu and choose Install app or Add to Home screen.',
+    'Open PIXL online and load each game and checklist you’ll need.',
     'Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.',
   ]) assert.ok(source.includes(message), `offline section should explain ${message}`);
   assert.doesNotMatch(source, /Will sync when connected/);

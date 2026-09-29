@@ -267,7 +267,7 @@ export function PublicLandingPage() {
                   <div><h3 className="display">Track the action</h3><p>Record game stats locally. Completed results stay here and can be retried when service returns.</p></div>
                 </li>
               </ul>
-              <p className="offline-install-note"><strong>Before game day:</strong> Install PIXL as an app for the full PWA experience. Open it online first and load each game and checklist you’ll need. Offline content is saved on this device.</p>
+              <p className="offline-install-note"><strong>Before game day:</strong> On iPhone, tap Share, then Add to Home Screen. On Android, open your browser menu and choose Install app or Add to Home screen. Open PIXL online and load each game and checklist you’ll need. Offline content is saved on this device.</p>
               <p className="offline-connection-note">Creating or updating Event Card shares, fetching new replies, and sending alerts need a connection.</p>
             </div>
           </div>
