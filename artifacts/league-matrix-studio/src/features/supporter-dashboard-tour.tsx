@@ -36,7 +36,7 @@ const steps: ReadonlyArray<{
   {
     title: "Stat Tracker",
     phase: "capture",
-    description: "Record plays from an Event Card while you watch. The compact tracker keeps each play connected to the right game.",
+    description: "Track stats from an Event Card while you watch. The compact tracker keeps each play connected to the right game.",
   },
   {
     title: "HYPE Card",
