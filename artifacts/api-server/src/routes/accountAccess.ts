@@ -192,103 +192,116 @@ export async function consumeGuestUsageBatch(
   };
 }
 
-router.get("/account/access", requireAuth, async (_req, res): Promise<void> => {
-  const ownerClerkUserId = getRequiredClerkUserId(res);
-  res.json(GetAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
-});
+type AccountProvisioning = {
+  canProvisionInitialAccount: typeof canProvisionInitialAccount;
+  markAccountProvisioned: typeof markAccountProvisioned;
+};
 
-router.put("/account/access", requireAuthenticatedIdentity, async (req, res): Promise<void> => {
-  const parsed = UpdateAccountAccessBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+export function createAccountAccessRouter(
+  provisioning: AccountProvisioning = { canProvisionInitialAccount, markAccountProvisioned },
+) {
+  const router: IRouter = Router();
 
-  const ownerClerkUserId = getRequiredClerkUserId(res);
-  const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
-  if (lifecycle.status === "not_provisioned") {
-    let eligible = false;
-    try {
-      eligible = await canProvisionInitialAccount(ownerClerkUserId);
-    } catch (error) {
-      req.log.warn({ error, ownerClerkUserId }, "Could not verify first-time account setup");
-      res.status(503).json({ error: "Account setup could not be verified. Please try again." });
+  router.get("/account/access", requireAuth, async (_req, res): Promise<void> => {
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    res.json(GetAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
+  });
+
+  router.put("/account/access", requireAuthenticatedIdentity, async (req, res): Promise<void> => {
+    const parsed = UpdateAccountAccessBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
       return;
     }
-    if (!eligible) {
+
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
+    if (lifecycle.status === "not_provisioned") {
+      let eligible = false;
+      try {
+        eligible = await provisioning.canProvisionInitialAccount(ownerClerkUserId);
+      } catch (error) {
+        req.log.warn({ error, ownerClerkUserId }, "Could not verify first-time account setup");
+        res.status(503).json({ error: "Account setup could not be verified. Please try again." });
+        return;
+      }
+      if (!eligible) {
+        res.status(423).json({
+          error: "This sign-in cannot create a new app account.",
+          code: "ACCOUNT_NOT_PROVISIONED",
+        });
+        return;
+      }
+    } else if (lifecycle.status !== "active") {
       res.status(423).json({
-        error: "This sign-in cannot create a new app account.",
-        code: "ACCOUNT_NOT_PROVISIONED",
+        error: lifecycle.expired
+          ? "Account recovery window has expired."
+          : lifecycle.status === "paused" ? "Account is paused." : "Account is cancelled and locked.",
+        code: lifecycle.expired ? "ACCOUNT_EXPIRED" : lifecycle.status === "paused" ? "ACCOUNT_PAUSED" : "ACCOUNT_LOCKED",
       });
       return;
     }
-  } else if (lifecycle.status !== "active") {
-    res.status(423).json({
-      error: lifecycle.expired
-        ? "Account recovery window has expired."
-        : lifecycle.status === "paused" ? "Account is paused." : "Account is cancelled and locked.",
-      code: lifecycle.expired ? "ACCOUNT_EXPIRED" : lifecycle.status === "paused" ? "ACCOUNT_PAUSED" : "ACCOUNT_LOCKED",
-    });
-    return;
-  }
 
-  const [existingAccess] = await db
-    .select()
-    .from(accountAccessTable)
-    .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
-    .limit(1);
-  if (existingAccess && existingAccess.accessMode !== parsed.data.accessMode) {
-    res.status(409).json({
-      error: "Account mode cannot be changed after setup.",
-    });
-    return;
-  }
-  await db
-    .insert(accountAccessTable)
-    .values({
-      ownerClerkUserId,
-      role: parsed.data.role,
-      accessMode: parsed.data.accessMode,
-    })
-    .onConflictDoUpdate({
-      target: accountAccessTable.ownerClerkUserId,
-      set: {
+    const [existingAccess] = await db
+      .select()
+      .from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
+      .limit(1);
+    if (existingAccess && existingAccess.accessMode !== parsed.data.accessMode) {
+      res.status(409).json({
+        error: "Account mode cannot be changed after setup.",
+      });
+      return;
+    }
+    await db
+      .insert(accountAccessTable)
+      .values({
+        ownerClerkUserId,
         role: parsed.data.role,
         accessMode: parsed.data.accessMode,
-        updatedAt: new Date(),
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: accountAccessTable.ownerClerkUserId,
+        set: {
+          role: parsed.data.role,
+          accessMode: parsed.data.accessMode,
+          updatedAt: new Date(),
+        },
+      });
 
-  try {
-    await markAccountProvisioned(ownerClerkUserId);
-  } catch (error) {
-    req.log.warn({ error, ownerClerkUserId }, "Could not persist account provisioning marker");
-  }
+    try {
+      await provisioning.markAccountProvisioned(ownerClerkUserId);
+    } catch (error) {
+      req.log.warn({ error, ownerClerkUserId }, "Could not persist account provisioning marker");
+    }
 
-  res.json(UpdateAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
-});
+    res.json(UpdateAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
+  });
 
-router.post("/account/usage", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ConsumeAccountUsageBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  router.post("/account/usage", requireAuth, async (req, res): Promise<void> => {
+    const parsed = ConsumeAccountUsageBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  const ownerClerkUserId = getRequiredClerkUserId(res);
-  const result = await consumeGuestUsage(
-    ownerClerkUserId,
-    parsed.data.category,
-    parsed.data.usageKey,
-  );
-  if (!result.allowed) {
-    res.status(409).json({
-      error: "Workspace allowance reached. Use existing work or contact support.",
-    });
-    return;
-  }
+    const ownerClerkUserId = getRequiredClerkUserId(res);
+    const result = await consumeGuestUsage(
+      ownerClerkUserId,
+      parsed.data.category,
+      parsed.data.usageKey,
+    );
+    if (!result.allowed) {
+      res.status(409).json({
+        error: "Workspace allowance reached. Use existing work or contact support.",
+      });
+      return;
+    }
 
-  res.json(ConsumeAccountUsageResponse.parse(result.snapshot));
-});
+    res.json(ConsumeAccountUsageResponse.parse(result.snapshot));
+  });
 
-export default router;
+  return router;
+}
+
+export default createAccountAccessRouter();

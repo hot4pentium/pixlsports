@@ -6,6 +6,7 @@
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "test:account-lifecycle": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/accountLifecycle.test.ts",
+    "test:account-provisioning": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/lib/accountProvisioning.test.ts ../api-server/src/accountProvisioning.integration.test.ts src/features/initial-account-setup.test.ts",
     "test:projects": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/projects.test.ts",
     "test:supporter-photo-policy": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/supporterPhotoPolicy.test.ts",
     "test:supporter-active-game": "pnpm --filter @workspace/league-matrix-studio exec tsx --test ../api-server/src/supporterActiveGame.test.ts",

@@ -56,27 +56,38 @@ function isClerkNotFound(error: unknown) {
     && (error as { status?: unknown }).status === 404;
 }
 
-export async function canProvisionInitialAccount(ownerClerkUserId: string) {
-  const clerk = getClerkClient();
-  try {
-    const identity = await clerk.users.getUser(ownerClerkUserId);
-    return isEligibleForInitialAccountSetup(identity);
-  } catch (error) {
-    if (isClerkNotFound(error)) return false;
-    throw error;
-  }
-}
+export type AccountProvisioningClerkClient = ReturnType<typeof createClerkClient>;
 
-export async function markAccountProvisioned(ownerClerkUserId: string) {
-  const clerk = getClerkClient();
-  const user = await clerk.users.getUser(ownerClerkUserId);
-  const publicMetadata = asRecord(user.publicMetadata);
-  if (publicMetadata[PROVISIONED_MARKER] === true) return;
-
-  await clerk.users.updateUserMetadata(ownerClerkUserId, {
-    publicMetadata: {
-      ...publicMetadata,
-      [PROVISIONED_MARKER]: true,
+export function createAccountProvisioning(getClient: () => AccountProvisioningClerkClient) {
+  return {
+    async canProvisionInitialAccount(ownerClerkUserId: string) {
+      const clerk = getClient();
+      try {
+        const identity = await clerk.users.getUser(ownerClerkUserId);
+        return isEligibleForInitialAccountSetup(identity);
+      } catch (error) {
+        if (isClerkNotFound(error)) return false;
+        throw error;
+      }
     },
-  });
+
+    async markAccountProvisioned(ownerClerkUserId: string) {
+      const clerk = getClient();
+      const user = await clerk.users.getUser(ownerClerkUserId);
+      const publicMetadata = asRecord(user.publicMetadata);
+      if (publicMetadata[PROVISIONED_MARKER] === true) return;
+
+      await clerk.users.updateUserMetadata(ownerClerkUserId, {
+        publicMetadata: {
+          ...publicMetadata,
+          [PROVISIONED_MARKER]: true,
+        },
+      });
+    },
+  };
 }
+
+const accountProvisioning = createAccountProvisioning(getClerkClient);
+
+export const canProvisionInitialAccount = accountProvisioning.canProvisionInitialAccount;
+export const markAccountProvisioned = accountProvisioning.markAccountProvisioned;

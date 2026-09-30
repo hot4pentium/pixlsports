@@ -8,18 +8,27 @@ function currentUser() {
   if (!id) return null;
   const first = id.includes('-first-');
   const workspaceJourney = id === 'workspace-journey';
+  const firstSave = id === 'first-save-supporter';
   return {
     id,
+    createdAt: firstSave ? Date.now() - 60_000 : Date.now() - 86_400_000,
     firstName: first ? 'Morgan' : 'Taylor',
     lastName: 'Supporter',
     primaryEmailAddress: { emailAddress: first ? 'morgan@example.test' : 'taylor@example.test' },
-    unsafeMetadata: {
+    publicMetadata: firstSave ? {} : { pixlSportsAccountProvisioned: true },
+    unsafeMetadata: firstSave ? {} : {
       role: 'fan', displayName: first ? 'Morgan' : 'Taylor',
       teamName: workspaceJourney ? 'Northside Comets' : first ? 'Falcons' : 'Otters',
       accessMode: 'full',
       ...(workspaceJourney ? { athleteName: 'Alexandria Montgomery-Williams', sport: 'basketball' } : {}),
     },
-    update: async () => undefined,
+    update: async (data: { unsafeMetadata?: Record<string, unknown> }) => {
+      if (!userSnapshot || !data.unsafeMetadata) return;
+      userSnapshot = { ...userSnapshot, unsafeMetadata: data.unsafeMetadata };
+      const state = { user: userSnapshot };
+      for (const listener of clerkListeners) listener(state);
+      for (const listener of listeners) listener();
+    },
   };
 }
 

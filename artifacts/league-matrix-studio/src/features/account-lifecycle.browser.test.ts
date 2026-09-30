@@ -52,7 +52,11 @@ test('signed-in account controls survive phone and desktop transitions against r
       assert.equal(response.status, 204, `${path}: ${await response.text()}`);
     };
     const state = async (viewer: string) => fetch(`${apiOrigin}/__fixture/state?viewer=${encodeURIComponent(viewer)}`)
-      .then((response) => response.json() as Promise<{ status: string; pauseEndsAt: string | null }>);
+      .then((response) => response.json() as Promise<{
+        status: string;
+        pauseEndsAt: string | null;
+        provisionedMarker: boolean | null;
+      }>);
 
     vite = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
       cwd: appDirectory,
@@ -72,10 +76,10 @@ test('signed-in account controls survive phone and desktop transitions against r
     const { webSocketDebuggerUrl } = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
       .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
-    const appUrl = (viewer: string) =>
-      `http://127.0.0.1:${vitePort}/account-lifecycle-browser-test.html?api=${encodeURIComponent(apiOrigin)}&viewer=${encodeURIComponent(viewer)}`;
-    const open = async (viewer: string, width: number, height: number) => {
-      const page = await openPage(connection!, appUrl(viewer), { viewport: { width, height, mobile: width < 600 } });
+    const appUrl = (viewer: string, route = '/studio/profile') =>
+      `http://127.0.0.1:${vitePort}/account-lifecycle-browser-test.html?api=${encodeURIComponent(apiOrigin)}&viewer=${encodeURIComponent(viewer)}&route=${encodeURIComponent(route)}`;
+    const open = async (viewer: string, width: number, height: number, route = '/studio/profile') => {
+      const page = await openPage(connection!, appUrl(viewer, route), { viewport: { width, height, mobile: width < 600 } });
       pages.push(page);
       return page.sessionId;
     };
@@ -118,6 +122,65 @@ test('signed-in account controls survive phone and desktop transitions against r
       assert.ok(details.left >= -2 && details.right <= details.viewport + 2, `Dialog overflows phone: ${JSON.stringify(details)}`);
       await fit(session);
     };
+
+    const firstSaveOwner = 'first-save-supporter';
+    const firstSaveCache = await open(firstSaveOwner, 390, 844, '/studio/setup');
+    await waitVisible(firstSaveCache, 'button-save-profile');
+    await waitFor(connection, firstSaveCache, `(
+      localStorage.getItem('pixl-sports:private-dashboard:v1:first-save-supporter') === null
+      && localStorage.getItem('leaguematrix-stat-tracker:first-save-supporter') === null
+    )`, Boolean, 30_000);
+    const privateDataBeforeRetry = await connection.evaluate<{ dashboard: string | null; tracker: string | null }>(
+      `({
+        dashboard: localStorage.getItem('pixl-sports:private-dashboard:v1:first-save-supporter'),
+        tracker: localStorage.getItem('leaguematrix-stat-tracker:first-save-supporter'),
+      })`,
+      firstSaveCache,
+    );
+    assert.deepEqual(privateDataBeforeRetry, { dashboard: null, tracker: null },
+      'a confirmed unprovisioned identity must not restore another private dashboard snapshot');
+
+    await connection.evaluate(`(() => {
+      const values = {
+        'input-profile-name': 'Morgan Supporter',
+        'input-profile-team': 'Northside Comets',
+        'input-profile-athlete': 'Alex Morgan',
+        'input-profile-season': 'Fall 2026',
+      };
+      for (const [id, value] of Object.entries(values)) {
+        const input = document.querySelector('[data-testid="' + id + '"]');
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+        setter.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    })()`, firstSaveCache);
+    await admin('fail-clerk-once', { viewer: firstSaveOwner });
+    await click(firstSaveCache, 'button-save-profile');
+    await waitFor(connection, firstSaveCache,
+      "Boolean(document.querySelector('[role=\"alert\"]')?.textContent.includes('could not save your profile'))",
+      Boolean, 30_000);
+    assert.equal((await state(firstSaveOwner)).status, 'not_provisioned');
+    assert.equal((await state(firstSaveOwner)).provisionedMarker, false);
+    assert.deepEqual(await connection.evaluate<{ dashboard: string | null; tracker: string | null }>(
+      `({
+        dashboard: localStorage.getItem('pixl-sports:private-dashboard:v1:first-save-supporter'),
+        tracker: localStorage.getItem('leaguematrix-stat-tracker:first-save-supporter'),
+      })`,
+      firstSaveCache,
+    ), { dashboard: null, tracker: null });
+
+    await click(firstSaveCache, 'button-save-profile');
+    await waitVisible(firstSaveCache, 'studio-restored');
+    assert.equal(await connection.evaluate<string>('location.pathname', firstSaveCache), '/studio');
+    assert.deepEqual(await state(firstSaveOwner), {
+      status: 'active',
+      pauseEndsAt: null,
+      provisionedMarker: true,
+    });
+    assert.equal(await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"studio-restored\"]')?.textContent.trim() || ''",
+      firstSaveCache,
+    ), 'Studio access restored');
 
     await admin('fail', { viewer: owner, method: 'GET', path: '/account/lifecycle' });
     const phone = await open(owner, 390, 844);

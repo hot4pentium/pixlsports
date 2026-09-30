@@ -3478,7 +3478,7 @@ function SignUpPage() {
   );
 }
 
-function RoleSelectionPage() {
+export function RoleSelectionPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded } = useUser();
   const queryClient = useQueryClient();
