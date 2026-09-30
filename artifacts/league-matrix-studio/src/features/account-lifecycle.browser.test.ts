@@ -57,6 +57,9 @@ test('signed-in account controls survive phone and desktop transitions against r
         pauseEndsAt: string | null;
         provisionedMarker: boolean | null;
       }>);
+    const profile = async (viewer: string) => fetch(
+      `${apiOrigin}/__fixture/profile?viewer=${encodeURIComponent(viewer)}`,
+    ).then((response) => response.json() as Promise<{ unsafeMetadata: Record<string, unknown> }>);
 
     vite = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
       cwd: appDirectory,
@@ -181,6 +184,36 @@ test('signed-in account controls survive phone and desktop transitions against r
       "document.querySelector('[data-testid=\"studio-restored\"]')?.textContent.trim() || ''",
       firstSaveCache,
     ), 'Studio access restored');
+    const savedProfile = await profile(firstSaveOwner);
+    assert.deepEqual({
+      role: savedProfile.unsafeMetadata.role,
+      displayName: savedProfile.unsafeMetadata.displayName,
+      teamName: savedProfile.unsafeMetadata.teamName,
+      athleteName: savedProfile.unsafeMetadata.athleteName,
+      seasonName: savedProfile.unsafeMetadata.seasonName,
+    }, {
+      role: 'fan',
+      displayName: 'Morgan Supporter',
+      teamName: 'Northside Comets',
+      athleteName: 'Alex Morgan',
+      seasonName: 'Fall 2026',
+    }, 'supporter and athlete details must be persisted in the Clerk profile source');
+
+    const reloadComplete = connection.waitForEvent('Page.loadEventFired', firstSaveCache);
+    await connection.send('Page.navigate', {
+      url: appUrl(firstSaveOwner, '/studio/setup'),
+    }, firstSaveCache);
+    await reloadComplete;
+    await waitVisible(firstSaveCache, 'studio-restored');
+    assert.equal(await connection.evaluate<string>('location.pathname', firstSaveCache), '/studio',
+      'the persisted supporter profile must send a refreshed setup visit back to the studio');
+    assert.deepEqual(await state(firstSaveOwner), {
+      status: 'active',
+      pauseEndsAt: null,
+      provisionedMarker: true,
+    }, 'the supporter account must remain active after a full document reload');
+    assert.deepEqual((await profile(firstSaveOwner)).unsafeMetadata, savedProfile.unsafeMetadata,
+      'supporter and athlete details must be restored from the persisted profile after reload');
 
     await admin('fail', { viewer: owner, method: 'GET', path: '/account/lifecycle' });
     const phone = await open(owner, 390, 844);

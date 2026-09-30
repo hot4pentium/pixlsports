@@ -22,7 +22,11 @@ declare global {
 const apiOrigin = new URLSearchParams(location.search).get('api');
 if (!apiOrigin) throw new Error('The lifecycle browser test needs its API server');
 const initialRoute = new URLSearchParams(location.search).get('route') || '/studio/profile';
-if (currentAccountId() === 'first-save-supporter') {
+if (
+  currentAccountId() === 'first-save-supporter'
+  && sessionStorage.getItem('lifecycle-first-save-cache-seeded') !== 'true'
+) {
+  sessionStorage.setItem('lifecycle-first-save-cache-seeded', 'true');
   const cachedLifecycle = {
     status: 'active',
     pauseEndsAt: null,

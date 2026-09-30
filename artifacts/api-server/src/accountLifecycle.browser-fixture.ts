@@ -15,6 +15,7 @@ const firstSaveOwner = "first-save-supporter";
 const users = new Set([owner, other, firstSaveOwner]);
 let failNextFirstSaveClerkRead = false;
 let firstSavePublicMetadata: Record<string, unknown> = {};
+let firstSaveUnsafeMetadata: Record<string, unknown> = {};
 const firstSaveClerk = {
   users: {
     async getUser(userId: string) {
@@ -65,6 +66,18 @@ async function main() {
   app.post("/__fixture/fail-clerk-once", (req, res) => {
     if (req.body?.viewer !== firstSaveOwner) { res.status(400).end(); return; }
     failNextFirstSaveClerkRead = true;
+    res.status(204).end();
+  });
+  app.get("/__fixture/profile", (req, res) => {
+    if (req.query.viewer !== firstSaveOwner) { res.status(400).end(); return; }
+    res.json({ unsafeMetadata: firstSaveUnsafeMetadata });
+  });
+  app.post("/__fixture/profile", (req, res) => {
+    if (req.body?.viewer !== firstSaveOwner || typeof req.body?.unsafeMetadata !== "object" || !req.body.unsafeMetadata) {
+      res.status(400).end();
+      return;
+    }
+    firstSaveUnsafeMetadata = { ...req.body.unsafeMetadata };
     res.status(204).end();
   });
   app.post("/__fixture/fail", (req, res) => {
