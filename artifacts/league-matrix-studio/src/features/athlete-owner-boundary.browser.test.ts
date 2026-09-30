@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -29,6 +29,43 @@ async function availablePort() {
   const port = await listen(server);
   await new Promise<void>((resolveClose, reject) => server.close((error) => error ? reject(error) : resolveClose()));
   return port;
+}
+
+function commandExists(command: string) {
+  return spawnSync('sh', ['-lc', `command -v ${command}`], { stdio: 'ignore' }).status === 0;
+}
+
+async function webDriverCommand<T>(
+  origin: string,
+  method: string,
+  path: string,
+  body?: Record<string, unknown>,
+): Promise<T> {
+  const response = await fetch(`${origin}${path}`, {
+    method,
+    headers: body ? { 'content-type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const payload = await response.json() as { value?: T & { error?: string; message?: string } };
+  if (!response.ok || payload.value?.error) {
+    throw new Error(`WebDriver ${method} ${path} failed: ${payload.value?.message || response.statusText}`);
+  }
+  return payload.value as T;
+}
+
+async function waitForWebDriverValue<T>(
+  evaluate: () => Promise<T>,
+  isReady: (value: T) => boolean,
+  description: string,
+) {
+  const deadline = Date.now() + 15_000;
+  let lastValue: T | undefined;
+  while (Date.now() < deadline) {
+    lastValue = await evaluate();
+    if (isReady(lastValue)) return lastValue;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 80));
+  }
+  throw new Error(`Timed out waiting for ${description}; last value: ${JSON.stringify(lastValue)}`);
 }
 
 test('player-page owner tools remain private across account changes and pause', async () => {
@@ -544,5 +581,199 @@ test('player-page owner tools remain private across account changes and pause', 
     await viteMonitor.waitForExit();
     await new Promise<void>((resolveClose, reject) => apiServer.close((error) => error ? reject(error) : resolveClose()));
     if (directory) await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  }
+});
+
+test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop widths', async (context) => {
+  const missingDrivers = ['geckodriver', 'WebKitWebDriver'].filter((command) => !commandExists(command));
+  if (missingDrivers.length > 0) {
+    context.skip(`Missing cross-browser test drivers: ${missingDrivers.join(', ')}`);
+    return;
+  }
+
+  const fanCard = {
+    inviteToken: token,
+    hypesEnabled: true,
+    athleteName: 'Jordan',
+    teamName: 'City Hoops',
+    seasonName: 'Fall 2026',
+    seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+    timezone: 'America/New_York',
+    sport: 'basketball',
+    photoUrl: null,
+    hypeCard: null,
+    videos: [],
+    stats: {
+      athleteName: 'Jordan',
+      sport: 'basketball',
+      gamesPlayed: 1,
+      score: 42,
+      games: [],
+      stats: {},
+      record: { wins: 1, losses: 0, ties: 0 },
+      updatedAt: new Date().toISOString(),
+    },
+    scheduleEvents: [],
+    showEvents: false,
+    events: [],
+    replies: [],
+    liveScoreboard: null,
+    updatedAt: new Date().toISOString(),
+  };
+  const apiServer = createServer((request, response) => {
+    const path = new URL(request.url || '/', 'http://localhost').pathname;
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    if (request.method === 'OPTIONS') { response.writeHead(204).end(); return; }
+    if (request.method === 'GET' && path === `/api/athlete-invites/${token}/fan`) {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(fanCard));
+      return;
+    }
+    response.writeHead(404, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'Not found' }));
+  });
+  const apiPort = await listen(apiServer);
+  const vitePort = await availablePort();
+  const vite = spawn('pnpm', ['exec', 'vite', '--config', 'vite.athlete-owner-boundary.config.ts', '--host', '127.0.0.1'], {
+    cwd: appDirectory,
+    env: { ...process.env, PORT: String(vitePort), BASE_PATH: '/', REPL_ID: '' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const viteMonitor = monitorProcess(vite, 'Hype Card cross-browser Vite');
+  const drivers: Array<{
+    process: ChildProcess;
+    monitor: ReturnType<typeof monitorProcess>;
+    origin: string;
+    sessionId?: string;
+  }> = [];
+
+  try {
+    await waitForUrl(`http://127.0.0.1:${vitePort}/athlete-owner-boundary-test.html`, 30_000, viteMonitor);
+    for (const browser of [
+      { name: 'Firefox', command: 'geckodriver', args: (port: number) => ['--host', '127.0.0.1', '--port', String(port)] },
+      { name: 'WebKit', command: 'WebKitWebDriver', args: (port: number) => [`--port=${port}`, '--host=127.0.0.1'] },
+    ]) {
+      const driverPort = await availablePort();
+      const origin = `http://127.0.0.1:${driverPort}`;
+      const driverProcess = spawn(browser.command, browser.args(driverPort), { stdio: ['ignore', 'pipe', 'pipe'] });
+      const monitor = monitorProcess(driverProcess, `${browser.name} WebDriver`);
+      const driver = { process: driverProcess, monitor, origin };
+      drivers.push(driver);
+      await waitForUrl(`${origin}/status`, 30_000, monitor);
+
+      const capabilities = browser.name === 'Firefox'
+        ? { alwaysMatch: { browserName: 'firefox', 'moz:firefoxOptions': { args: ['-headless'] } } }
+        : { alwaysMatch: { browserName: 'MiniBrowser' } };
+      const session = await webDriverCommand<{ sessionId: string }>(origin, 'POST', '/session', { capabilities });
+      driver.sessionId = session.sessionId;
+
+      for (const viewport of [
+        { name: 'phone', width: 320, height: 800 },
+        { name: 'desktop', width: 1365, height: 1000 },
+      ]) {
+        const sessionPath = `/session/${session.sessionId}`;
+        await webDriverCommand(origin, 'POST', `${sessionPath}/window/rect`, {
+          x: 0, y: 0, width: viewport.width, height: viewport.height,
+        });
+        const pageUrl = new URL(`http://127.0.0.1:${vitePort}/athlete-owner-boundary-test.html`);
+        pageUrl.searchParams.set('viewer', 'visitor');
+        pageUrl.searchParams.set('view', 'fan');
+        pageUrl.searchParams.set('testApiOrigin', `http://127.0.0.1:${apiPort}`);
+        await webDriverCommand(origin, 'POST', `${sessionPath}/url`, { url: pageUrl.toString() });
+
+        const inspect = () => webDriverCommand<{
+          side: string;
+          matrixM11: number;
+          fallback: boolean;
+          heading: string;
+          headingVisible: boolean;
+          controlsFit: boolean;
+          statsPressed: boolean;
+          frontPressed: boolean;
+        }>(origin, 'POST', `${sessionPath}/execute/sync`, {
+          script: `return (() => {
+            const card = document.querySelector('#living-card-display');
+            const inner = document.querySelector('.living-card-flip-inner');
+            const side = card?.dataset.side || '';
+            const heading = side === 'front'
+              ? card?.querySelector('.living-card-front-identity .living-card-athlete-name')
+              : card?.querySelector('.living-card-flip-back .living-card-alt-title');
+            const headingStyle = heading ? getComputedStyle(heading) : null;
+            const headingBounds = heading?.getBoundingClientRect();
+            const controlsFit = [...document.querySelectorAll('.living-card-controls button')].every((button) => {
+              const buttonBounds = button.getBoundingClientRect();
+              const range = document.createRange();
+              range.selectNodeContents(button);
+              const textBounds = range.getBoundingClientRect();
+              return textBounds.left >= buttonBounds.left - 1 && textBounds.right <= buttonBounds.right + 1;
+            });
+            return {
+              side,
+              matrixM11: inner ? new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 : NaN,
+              fallback: !CSS.supports('transform-style', 'preserve-3d'),
+              heading: heading?.textContent?.trim() || '',
+              headingVisible: Boolean(heading && headingBounds?.width && headingBounds.height
+                && headingStyle?.display !== 'none' && headingStyle?.visibility !== 'hidden'
+                && headingStyle?.color !== 'rgba(0, 0, 0, 0)'),
+              controlsFit,
+              statsPressed: document.querySelector('[data-testid="button-living-card-stats"]')?.getAttribute('aria-pressed') === 'true',
+              frontPressed: document.querySelector('[data-testid="button-living-card-front"]')?.getAttribute('aria-pressed') === 'true',
+            };
+          })();`,
+          args: [],
+        });
+        const waitForSide = (side: 'front' | 'stats') => waitForWebDriverValue(
+          inspect,
+          (state) => state.side === side
+            && state.headingVisible
+            && (state.fallback || Math.abs(state.matrixM11 - (side === 'front' ? 1 : -1)) < 0.001),
+          `${browser.name} ${viewport.name} ${side} face`,
+        );
+
+        const front = await waitForSide('front');
+        assert.equal(front.heading, 'Jordan');
+        assert.equal(front.frontPressed, true);
+        assert.equal(front.controlsFit, true, `${browser.name} controls fit at ${viewport.width}px`);
+
+        const statsButton = await webDriverCommand<Record<string, string>>(
+          origin,
+          'POST',
+          `${sessionPath}/element`,
+          { using: 'css selector', value: '[data-testid="button-living-card-stats"]' },
+        );
+        const statsButtonId = statsButton['element-6066-11e4-a52e-4f735466cecf'] || statsButton.ELEMENT;
+        assert.ok(statsButtonId, `${browser.name} exposes the Stats control`);
+        await webDriverCommand(origin, 'POST', `${sessionPath}/element/${statsButtonId}/click`, {});
+        const back = await waitForSide('stats');
+        assert.match(back.heading, /Season stats\./);
+        assert.equal(back.statsPressed, true);
+        assert.equal(back.controlsFit, true);
+        if (!back.fallback) assert.ok(Math.abs(back.matrixM11 + 1) < 0.001, `${browser.name} rotates the back toward the viewer`);
+
+        const frontButton = await webDriverCommand<Record<string, string>>(
+          origin,
+          'POST',
+          `${sessionPath}/element`,
+          { using: 'css selector', value: '[data-testid="button-living-card-front"]' },
+        );
+        const frontButtonId = frontButton['element-6066-11e4-a52e-4f735466cecf'] || frontButton.ELEMENT;
+        assert.ok(frontButtonId, `${browser.name} exposes the return-to-front control`);
+        await webDriverCommand(origin, 'POST', `${sessionPath}/element/${frontButtonId}/click`, {});
+        const returnedFront = await waitForSide('front');
+        assert.equal(returnedFront.heading, 'Jordan');
+        assert.equal(returnedFront.frontPressed, true);
+        if (!returnedFront.fallback) assert.ok(Math.abs(returnedFront.matrixM11 - 1) < 0.001, `${browser.name} returns the front toward the viewer`);
+      }
+    }
+  } finally {
+    for (const driver of drivers) {
+      if (driver.sessionId) {
+        await webDriverCommand(driver.origin, 'DELETE', `/session/${driver.sessionId}`).catch(() => undefined);
+      }
+      if (!driver.monitor.hasExited()) driver.process.kill('SIGTERM');
+      await driver.monitor.waitForExit();
+    }
+    if (!viteMonitor.hasExited()) vite.kill('SIGTERM');
+    await viteMonitor.waitForExit();
+    await new Promise<void>((resolveClose, reject) => apiServer.close((error) => error ? reject(error) : resolveClose()));
   }
 });

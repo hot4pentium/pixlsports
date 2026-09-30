@@ -49,13 +49,13 @@
 .living-card-stage { min-width: 0; }
 .living-card-frame-outer { position: relative; padding: 9px; border: 1px solid #9fcaef62; border-radius: 25px; background: linear-gradient(130deg, #a4cdeb6b, #152c49 23%, #0b2039 77%, #ff784977); box-shadow: 0 31px 75px #010811aa, 0 0 0 7px #91c8f40a; }
 .living-card-frame-outer::after { content: ''; position: absolute; top: 16px; bottom: 16px; right: -18px; width: 1px; background: linear-gradient(transparent, #80bcf594, transparent); }
-.living-card-frame { position: relative; height: clamp(580px, 66vw, 790px); border: 1px solid #ffffff35; border-radius: 17px; overflow: hidden; background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); perspective: 1400px; }
-.living-card-flip-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .72s cubic-bezier(.2,.75,.2,1); }
-.living-card-frame[data-side="front"] .living-card-flip-inner { transform: rotateY(0deg); }
-.living-card-frame:not([data-side="front"]) .living-card-flip-inner { transform: rotateY(180deg); }
-.living-card-flip-face { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; }
+.living-card-frame { position: relative; height: clamp(580px, 66vw, 790px); border: 1px solid #ffffff35; border-radius: 17px; overflow: hidden; background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); -webkit-perspective: 1400px; perspective: 1400px; }
+.living-card-flip-inner { position: absolute; inset: 0; -webkit-transform-style: preserve-3d; transform-style: preserve-3d; -webkit-transition: -webkit-transform .72s cubic-bezier(.2,.75,.2,1); transition: transform .72s cubic-bezier(.2,.75,.2,1); }
+.living-card-frame[data-side="front"] .living-card-flip-inner { -webkit-transform: rotateY(0deg); transform: rotateY(0deg); }
+.living-card-frame:not([data-side="front"]) .living-card-flip-inner { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); }
+.living-card-flip-face { position: absolute; inset: 0; overflow: hidden; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .living-card-flip-front { background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); }
-.living-card-flip-back { transform: rotateY(180deg); background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); }
+.living-card-flip-back { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); background: radial-gradient(circle at 90% 0%, #2354869c, transparent 50%), linear-gradient(155deg, #113458, #081a30 75%); }
 .living-card-face { position: absolute; inset: 0; overflow: hidden; transform-origin: center; }
 .living-card-photo { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; display: block; }
 .living-card-photo-fallback { height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 50% 35%, #2e6093, transparent 53%), repeating-linear-gradient(110deg, transparent 0 48px, #a2caff0d 49px 50px), #0b2544; }
@@ -336,6 +336,14 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .living-card-control-today::after { animation: none; opacity: 1; transform: none; }
-  .living-card-page *, .living-card-page *::before, .living-card-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .living-card-page *, .living-card-page *::before, .living-card-page *::after { -webkit-animation-duration: .01ms !important; animation-duration: .01ms !important; -webkit-transition-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   [data-radix-dialog-overlay], .living-card-dialog, .living-card-dialog::before { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+@supports not (transform-style: preserve-3d) {
+  .living-card-frame { -webkit-perspective: none; perspective: none; }
+  .living-card-flip-inner { -webkit-transform: none !important; transform: none !important; -webkit-transition: none !important; transition: none !important; }
+  .living-card-flip-face { display: none; -webkit-backface-visibility: visible; backface-visibility: visible; }
+  .living-card-frame[data-side="front"] .living-card-flip-front { display: block; }
+  .living-card-frame:not([data-side="front"]) .living-card-flip-back { display: block; -webkit-transform: none; transform: none; }
 }

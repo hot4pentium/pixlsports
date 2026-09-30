@@ -80,10 +80,13 @@ test('the real HYPE Card flips paired 3D faces and respects reduced motion', () 
   assert.match(livingCardSource, /living-card-flip-face living-card-flip-front/);
   assert.match(livingCardSource, /living-card-flip-face living-card-flip-back/);
   assert.match(livingCardStyles, /transform-style:\s*preserve-3d/);
-  assert.match(livingCardStyles, /\.living-card-flip-back\s*\{\s*transform:\s*rotateY\(180deg\)/);
+  assert.match(livingCardStyles, /\.living-card-flip-back\s*\{\s*-webkit-transform:\s*rotateY\(180deg\);\s*transform:\s*rotateY\(180deg\)/);
   assert.match(livingCardStyles, /backface-visibility:\s*hidden/);
   assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\).*rotateY\(180deg\)/);
   assert.match(livingCardStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(livingCardStyles, /@supports not \(transform-style: preserve-3d\)/);
+  assert.match(livingCardStyles, /\.living-card-frame\[data-side="front"\]\s+\.living-card-flip-front\s*\{\s*display:\s*block/);
+  assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\)\s+\.living-card-flip-back\s*\{\s*display:\s*block/);
 });
 
 test('the HYPE Card Videos side excludes photos inherited from older shares', () => {

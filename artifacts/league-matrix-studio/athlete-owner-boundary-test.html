@@ -1,3 +1,17 @@
 <!doctype html>
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
-<body><div id="root"></div><script type="module" src="./src/features/athlete-owner-boundary-test.tsx"></script></body></html>
+<body>
+<div id="root"></div>
+<script>
+  const testApiOrigin = new URLSearchParams(location.search).get('testApiOrigin');
+  if (testApiOrigin) {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (!url.startsWith('/api/')) return originalFetch(input, init);
+      return originalFetch(`${testApiOrigin}${url}`, init);
+    };
+  }
+</script>
+<script type="module" src="./src/features/athlete-owner-boundary-test.tsx"></script>
+</body></html>

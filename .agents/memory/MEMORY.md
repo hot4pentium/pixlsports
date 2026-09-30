@@ -90,3 +90,4 @@
 - [Event Card pregame state](event-card-pregame-state.md) — badges switch to Live at one deterministic kickoff instant; DST gaps shift forward and repeats choose the earlier instant.
 - [Private dashboard offline authority](private-dashboard-offline-authority.md) — cache private dashboard data per account, but require fast online lifecycle revalidation and clear it on account exit.
 - [Landing Celebrate card parity](landing-celebrate-card-parity.md) — the signed-out Celebrate demo must use the Hype Card's Front, Stats, Videos, Events sides, not a message back.
+- [Safari engine test boundary](webkit-safari-coverage.md) — Linux WebKitGTK validates Safari’s engine, not Apple’s Safari app; report the distinction clearly.
