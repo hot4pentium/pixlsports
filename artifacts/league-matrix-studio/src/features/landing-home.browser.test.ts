@@ -235,8 +235,14 @@ test('Help contact actions remain visible without overflow on phone and desktop 
         docWidth: number;
         bodyWidth: number;
         viewportWidth: number;
-        support: { href: string | null; visible: boolean; withinViewport: boolean } | null;
-        contactTeam: { href: string | null; visible: boolean; withinViewport: boolean } | null;
+        support: {
+          href: string | null; visible: boolean; withinViewport: boolean;
+          left: number; right: number; top: number; bottom: number; width: number; height: number;
+        } | null;
+        contactTeam: {
+          href: string | null; visible: boolean; withinViewport: boolean;
+          left: number; right: number; top: number; bottom: number; width: number; height: number;
+        } | null;
       }>(`(() => {
         const support = document.querySelector('[data-testid="link-help-support-email"]');
         const contactTeam = document.querySelector('[data-testid="link-help-contact-team"]');
@@ -256,6 +262,12 @@ test('Help contact actions remain visible without overflow on phone and desktop 
               && rect.right <= document.documentElement.clientWidth
               && rect.top >= 0
               && rect.bottom <= window.innerHeight,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height,
           };
         };
         return {
@@ -271,16 +283,48 @@ test('Help contact actions remain visible without overflow on phone and desktop 
         `Help page has horizontal overflow at ${width}px: ${JSON.stringify(helpPage)}`,
       );
       assert.equal(helpPage.viewportWidth, width);
-      assert.deepEqual(helpPage.support, {
-        href: 'mailto:support@pixlsports.com',
-        visible: true,
-        withinViewport: true,
-      });
-      assert.deepEqual(helpPage.contactTeam, {
-        href: 'mailto:hello@pixlsports.com',
-        visible: true,
-        withinViewport: true,
-      });
+      assert.ok(helpPage.support, `Support email should be present at ${width}px`);
+      assert.ok(helpPage.contactTeam, `Contact Team email should be present at ${width}px`);
+      assert.equal(helpPage.support.href, 'mailto:support@pixlsports.com');
+      assert.equal(helpPage.support.visible, true);
+      assert.equal(helpPage.support.withinViewport, true);
+      assert.equal(helpPage.contactTeam.href, 'mailto:hello@pixlsports.com');
+      assert.equal(helpPage.contactTeam.visible, true);
+      assert.equal(helpPage.contactTeam.withinViewport, true);
+      for (const [label, link] of [
+        ['Support email', helpPage.support],
+        ['Contact Team email', helpPage.contactTeam],
+      ] as const) {
+        assert.ok(link.width >= 44, `${label} target is narrower than 44px at ${width}px: ${link.width}`);
+        assert.ok(link.height >= 44, `${label} target is shorter than 44px at ${width}px: ${link.height}`);
+      }
+      const horizontalOverlap = Math.min(helpPage.support.right, helpPage.contactTeam.right)
+        > Math.max(helpPage.support.left, helpPage.contactTeam.left);
+      const verticalOverlap = Math.min(helpPage.support.bottom, helpPage.contactTeam.bottom)
+        > Math.max(helpPage.support.top, helpPage.contactTeam.top);
+      assert.ok(
+        !(horizontalOverlap && verticalOverlap),
+        `Help email actions overlap at ${width}px: ${JSON.stringify({ support: helpPage.support, contactTeam: helpPage.contactTeam })}`,
+      );
+      const horizontalGap = Math.max(
+        0,
+        helpPage.support.left - helpPage.contactTeam.right,
+        helpPage.contactTeam.left - helpPage.support.right,
+      );
+      const verticalGap = Math.max(
+        0,
+        helpPage.support.top - helpPage.contactTeam.bottom,
+        helpPage.contactTeam.top - helpPage.support.bottom,
+      );
+      const separation = horizontalOverlap
+        ? verticalGap
+        : verticalOverlap
+          ? horizontalGap
+          : Math.hypot(horizontalGap, verticalGap);
+      assert.ok(
+        separation >= 8,
+        `Help email actions are too close at ${width}px: ${separation}px`,
+      );
     }
   } finally {
     if (connection) {

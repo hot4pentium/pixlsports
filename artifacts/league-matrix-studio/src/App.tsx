@@ -3230,8 +3230,8 @@ function Help() {
             </div>
           </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <a href="mailto:support@pixlsports.com" className="bg-card text-card-foreground font-bold tracking-wide px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-support-email">support@pixlsports.com</a>
-              <a href="mailto:hello@pixlsports.com" className="border border-primary-foreground/40 text-primary-foreground font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-contact-team">Contact Team</a>
+              <a href="mailto:support@pixlsports.com" className="inline-flex min-h-11 items-center justify-center bg-card text-card-foreground font-bold tracking-wide px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-support-email">support@pixlsports.com</a>
+              <a href="mailto:hello@pixlsports.com" className="inline-flex min-h-11 items-center justify-center border border-primary-foreground/40 text-primary-foreground font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-contact-team">Contact Team</a>
             </div>
         </div>
       </main>
