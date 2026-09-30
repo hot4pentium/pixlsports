@@ -1,15 +1,12 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, Play, WifiOff, CloudUpload } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, WifiOff, CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
 import { LandingToolDemo } from './landing-tool-demo';
-
-const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
-const WEEK_VIDEO = `${BASE_PATH}/week-path-explainer.mp4`;
 
 function Brand() {
   return <span className="brand" aria-label="Pixl Sports">PIXL<span>SPORTS</span></span>;
@@ -179,7 +176,23 @@ export function PublicLandingPage() {
               {steps.map(step => <DemoStepCard key={step.number} step={step} onOpen={() => setActiveDemo(step.number as '01' | '02' | '03' | '04')} />)}
             </div>
             {activeDemo && <LandingToolDemo step={activeDemo} open destination={destination} onOpenChange={open => { if (!open) setActiveDemo(null); }} />}
-            <a href={WEEK_VIDEO} target="_blank" rel="noopener noreferrer" className="week-video-link" data-testid="link-landing-week-path-video"><Play size={14} fill="currentColor" aria-hidden="true" /> Watch the week path explainer <ArrowUpRight size={14} aria-hidden="true" /></a>
+          </div>
+        </section>
+
+        <section className="athlete-section" id="athlete-cards" aria-labelledby="athlete-heading">
+          <div className="container athlete-grid">
+            <div className="athlete-copy">
+              <span className="micro">More than a profile</span>
+              <h2 className="display" id="athlete-heading">Their moments.<br />Their <span className="hype-word">Hype</span> Card.</h2>
+              <p>Make a Hype Card they’ll want to show off. Add photos and videos, share it with family, and let supporters send a shoutout.</p>
+              <ul className="check-list">
+                <li><Check size={16} aria-hidden="true" /> Make it theirs</li>
+                <li><Check size={16} aria-hidden="true" /> Share it easily</li>
+                <li><Check size={16} aria-hidden="true" /> Collect the encouragement</li>
+              </ul>
+              <Link href={destination} className="pill pill-navy" data-testid="link-landing-athlete-cards-cta">Explore Hype Cards <ArrowUpRight size={16} aria-hidden="true" /></Link>
+            </div>
+            <AthletePreview />
           </div>
         </section>
 
@@ -213,23 +226,6 @@ export function PublicLandingPage() {
               <p className="offline-install-note"><strong>Before game day:</strong> On iPhone, tap Share, then Add to Home Screen. On Android, open your browser menu and choose Install app or Add to Home screen. Open PIXL online and load each game and checklist you’ll need. This will give you the full benefit of PIXL Sports, with offline content saved on this device.</p>
               <p className="offline-connection-note">Creating or updating Event Card shares, receiving new replies, and sending alerts still need a connection.</p>
             </div>
-          </div>
-        </section>
-
-        <section className="athlete-section" id="athlete-cards" aria-labelledby="athlete-heading">
-          <div className="container athlete-grid">
-            <div className="athlete-copy">
-              <span className="micro">More than a profile</span>
-              <h2 className="display" id="athlete-heading">Their moments.<br />Their <span className="hype-word">Hype</span> Card.</h2>
-              <p>Make a Hype Card they’ll want to show off. Add photos and videos, share it with family, and let supporters send a shoutout.</p>
-              <ul className="check-list">
-                <li><Check size={16} aria-hidden="true" /> Make it theirs</li>
-                <li><Check size={16} aria-hidden="true" /> Share it easily</li>
-                <li><Check size={16} aria-hidden="true" /> Collect the encouragement</li>
-              </ul>
-              <Link href={destination} className="pill pill-navy" data-testid="link-landing-athlete-cards-cta">Explore Hype Cards <ArrowUpRight size={16} aria-hidden="true" /></Link>
-            </div>
-            <AthletePreview />
           </div>
         </section>
 

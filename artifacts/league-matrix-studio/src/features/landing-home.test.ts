@@ -32,7 +32,7 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   }
   const offline = source.indexOf('data-testid="landing-offline-section"');
   const hypeCard = source.indexOf('id="athlete-cards"');
-  assert.ok(offline >= 0 && hypeCard > offline, 'offline guidance should appear above the HYPE Card section');
+  assert.ok(hypeCard >= 0 && offline > hypeCard, 'HYPE Card section should appear above offline guidance');
   for (const message of [
     'Game details, ready',
     'Reopen game details and checklists you’ve already loaded on this device.',
@@ -72,7 +72,7 @@ test('Hype Card copy comes before its preview on phones without changing the des
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*capability-highlight-list \{ grid-template-columns: 1fr/);
 });
 
-test('visitor actions use real destinations and preserve the explainer', () => {
+test('visitor actions use real destinations without the week-path video link', () => {
   assert.match(source, /isSignedIn \? '\/studio' : '\/sign-up'/);
   assert.match(source, /isSignedIn \? '\/studio' : '\/auth'/);
   for (const anchor of ['how-it-works', 'athlete-cards', 'tools']) {
@@ -80,7 +80,7 @@ test('visitor actions use real destinations and preserve the explainer', () => {
     assert.match(source, new RegExp(`href="#${anchor}"`));
   }
   for (const path of ['/help', '/privacy']) assert.ok(source.includes(`href="${path}"`));
-  assert.match(source, /week-path-explainer\.mp4/);
+  assert.doesNotMatch(source, /week-path-explainer\.mp4|link-landing-week-path-video|Watch the week path explainer/);
   assert.doesNotMatch(source, /pricing|#pricing/i);
 });
 

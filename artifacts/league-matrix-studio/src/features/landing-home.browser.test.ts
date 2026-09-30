@@ -83,29 +83,35 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=landing-capability-highlights] li").length', page.sessionId), 4);
       await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{
-        doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number;
-        cta: string; help: string; support: string; privacy: string; explainer: string; menuVisible: boolean;
+        doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number; hypeCardBeforeOffline: boolean;
+        cta: string; help: string; support: string; privacy: string; explainer: boolean; menuVisible: boolean;
       }>(`(() => ({
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
         fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
         sections: document.querySelectorAll('.step-card').length,
+        hypeCardBeforeOffline: Boolean(
+          document.querySelector('#athlete-cards')
+          && document.querySelector('[data-testid="landing-offline-section"]')
+          && (document.querySelector('#athlete-cards').compareDocumentPosition(document.querySelector('[data-testid="landing-offline-section"]')) & Node.DOCUMENT_POSITION_FOLLOWING)
+        ),
         cta: document.querySelector('[data-testid="link-hero-get-started"]')?.getAttribute('href'),
         help: document.querySelector('[data-testid="link-footer-help"]')?.getAttribute('href'),
         support: document.querySelector('[data-testid="link-footer-support"]')?.getAttribute('href'),
         privacy: document.querySelector('[data-testid="link-footer-privacy"]')?.getAttribute('href'),
-        explainer: document.querySelector('[data-testid="link-landing-week-path-video"]')?.getAttribute('href'),
+        explainer: Boolean(document.querySelector('[data-testid="link-landing-week-path-video"]')),
         menuVisible: getComputedStyle(document.querySelector('[data-testid="button-landing-mobile-menu"]')).display !== 'none',
       }))()`, page.sessionId);
       assert.ok(layout.doc <= width && layout.body <= width, `horizontal overflow at ${width}px: ${JSON.stringify(layout)}`);
       assert.equal(layout.heroImage, true);
       assert.equal(layout.fanCardImage, true);
       assert.equal(layout.sections, 4);
+      assert.equal(layout.hypeCardBeforeOffline, true);
       assert.equal(layout.cta, '/sign-up');
       assert.equal(layout.help, '/help');
       assert.equal(layout.support, 'mailto:support@pixlsports.com');
       assert.equal(layout.privacy, '/privacy');
-      assert.match(layout.explainer, /week-path-explainer\.mp4$/);
+      assert.equal(layout.explainer, false);
       assert.equal(layout.menuVisible, width < 700);
        for (const step of ['plan', 'prep', 'follow', 'celebrate']) {
          const trigger = `[data-testid=button-landing-${step}-try]`;
