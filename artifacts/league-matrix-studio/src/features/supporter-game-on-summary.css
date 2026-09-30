@@ -70,11 +70,6 @@
   max-width: 560px;
 }
 
-.supporter-game-on-summary__header-action .supporter-tour {
-  margin: 0;
-  padding-inline: 0;
-}
-
 .supporter-game-on-summary__header--with-action .supporter-game-on-summary__athlete-link {
   flex: 0 1 auto;
   max-width: min(48%, 320px);

@@ -40,7 +40,11 @@ import {
 } from './supporter-dashboard-model';
 import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
-import { SupporterDashboardTour } from './supporter-dashboard-tour';
+import {
+  SupporterDashboardChecklist,
+  type SupporterDashboardChecklistProps,
+} from './supporter-dashboard-checklist';
+import type { DashboardChecklistItemId } from './supporter-dashboard-checklist-state';
 import { GameOnCardPanel } from './game-on-card';
 import { GameOnInlineEditor } from './game-on-inline-editor';
 import {
@@ -231,8 +235,10 @@ function AthleteCardPreview({
 export interface SupporterDashboardViewProps {
   profile: SupporterProfile;
   userId?: string | null;
-  autoStartTour?: boolean;
-  onTourDismiss?: (kind: 'finish' | 'skip') => Promise<void>;
+  showDashboardChecklist?: boolean;
+  dashboardChecklistCheckedItemIds?: DashboardChecklistItemId[];
+  onSaveDashboardChecklistProgress?: (checkedItemIds: DashboardChecklistItemId[]) => Promise<void>;
+  onDismissDashboardChecklist?: (checkedItemIds: DashboardChecklistItemId[]) => Promise<void>;
   prepUserId?: string | null;
   events: SupporterEvent[];
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
@@ -320,8 +326,10 @@ const stageCopy: Record<SupporterGameStage, {
 export function SupporterDashboardView({
   profile,
   userId,
-  autoStartTour = false,
-  onTourDismiss,
+  showDashboardChecklist = false,
+  dashboardChecklistCheckedItemIds = [],
+  onSaveDashboardChecklistProgress,
+  onDismissDashboardChecklist,
   prepUserId,
   events,
   onSaveCalendarEvent,
@@ -613,6 +621,32 @@ export function SupporterDashboardView({
     }
     setCardSelection(null);
   };
+  const dashboardChecklistProps: SupporterDashboardChecklistProps | undefined = showDashboardChecklist
+    && userId
+    && onSaveDashboardChecklistProgress
+    && onDismissDashboardChecklist
+    ? {
+        userId,
+        profileHref: supporterToolRoutes.profile,
+        hypeCardHref: fanCardHref,
+        checkedItemIds: dashboardChecklistCheckedItemIds,
+        installAction,
+        installInstructionsOpen: showInstallInstructions,
+        installDeviceClass: isDesktopDashboard ? 'desktop' : 'mobile',
+        onInstall: () => handleInstallPrompt(isDesktopDashboard ? 'desktop' : 'mobile'),
+        onCreateEventCard: openCardWorkspace,
+        onSaveProgress: onSaveDashboardChecklistProgress,
+        onDismiss: onDismissDashboardChecklist,
+      }
+    : undefined;
+  const dashboardChecklist = dashboardChecklistProps
+    ? (
+      <SupporterDashboardChecklist
+        key={`${userId}-${isDesktopDashboard ? 'desktop' : 'mobile'}`}
+        {...dashboardChecklistProps}
+      />
+    )
+    : undefined;
   const deleteGameOnCard = useCallback(async (card: DashboardGameOnCard) => {
     if (!userId) throw new Error('Sign in to delete this Event Card.');
     if (!card.shareToken) throw new Error('This card is not saved yet.');
@@ -1132,15 +1166,7 @@ export function SupporterDashboardView({
             profileHref={supporterToolRoutes.profile}
             sport={recordSport}
             record={gameRecord}
-            headerAction={!isDesktopDashboard && onTourDismiss ? (
-              <SupporterDashboardTour
-                key={`${userId ?? 'guest'}-mobile`}
-                userId={userId}
-                autoStart={autoStartTour}
-                onDismiss={onTourDismiss}
-                onCreateFirstEventCard={openCardWorkspace}
-              />
-            ) : undefined}
+            headerAction={!isDesktopDashboard ? dashboardChecklist : undefined}
           >
             {renderGameOnEventContent('mobile')}
           </SupporterGameOnSummary>
@@ -1243,15 +1269,7 @@ export function SupporterDashboardView({
         profileHref={supporterToolRoutes.profile}
         sport={recordSport}
         record={gameRecord}
-        headerAction={isDesktopDashboard && onTourDismiss ? (
-          <SupporterDashboardTour
-            key={`${userId ?? 'guest'}-desktop`}
-            userId={userId}
-            autoStart={autoStartTour}
-            onDismiss={onTourDismiss}
-            onCreateFirstEventCard={openCardWorkspace}
-          />
-        ) : undefined}
+        headerAction={isDesktopDashboard ? dashboardChecklist : undefined}
       >
         {renderGameOnEventContent('desktop')}
       </SupporterGameOnSummary>

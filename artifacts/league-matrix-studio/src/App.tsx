@@ -115,7 +115,14 @@ import {
 } from '@/features/workspace-context';
 import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
-import { getDashboardTourState, tourStateAfterSetup } from '@/features/supporter-dashboard-tour-state';
+import {
+  dashboardChecklistStateAfterSetup,
+  getDashboardChecklistItemIds,
+  getDashboardChecklistStatus,
+  isDashboardChecklistComplete,
+  normalizeDashboardChecklistItemIds,
+  type DashboardChecklistItemId,
+} from '@/features/supporter-dashboard-checklist-state';
 import {
   completedChecklistCount,
   applyChecklistEventType,
@@ -1265,7 +1272,9 @@ function SupporterStudio() {
   const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const profile = supporterProfileFromUser(user);
-  const tourPending = getDashboardTourState(user?.unsafeMetadata) === 'pending';
+  const dashboardChecklistCheckedItemIds = getDashboardChecklistItemIds(user?.unsafeMetadata);
+  const dashboardChecklistPending = getDashboardChecklistStatus(user?.unsafeMetadata) === 'pending'
+    && !isDashboardChecklistComplete(dashboardChecklistCheckedItemIds);
   const athletePhoto = useCachedSupporterPhoto(user?.id, Boolean(isSignedIn));
   const cachedDashboard = user?.id
     ? readOfflineDashboardSnapshot(window.localStorage, user.id)
@@ -1308,6 +1317,25 @@ function SupporterStudio() {
   });
   const [offline, setOffline] = useState(() => navigator.onLine === false);
 
+  const saveDashboardChecklist = async (
+    checkedItemIds: DashboardChecklistItemId[],
+    dismissed: boolean,
+  ) => {
+    if (!user) throw new Error('Sign in to save your checklist progress.');
+    const normalizedItemIds = normalizeDashboardChecklistItemIds(checkedItemIds);
+    const complete = dismissed || isDashboardChecklistComplete(normalizedItemIds);
+    await user.updateMetadata({
+      unsafeMetadata: {
+        ...(user.unsafeMetadata ?? {}),
+        dashboardChecklist: {
+          checkedItemIds: normalizedItemIds,
+          dismissed,
+        },
+        dashboardTour: complete ? 'done' : 'pending',
+      },
+    });
+  };
+
   useEffect(() => {
     if (!user?.id || !accountAccessQuery.data || !cloudProjectsQuery.data) return;
     updateOfflineDashboardSnapshot(window.localStorage, user.id, {
@@ -1337,15 +1365,14 @@ function SupporterStudio() {
           key={user?.id}
           profile={profile}
           userId={user?.id}
-          autoStartTour={tourPending && Boolean(
+          showDashboardChecklist={dashboardChecklistPending && Boolean(
             accountAccessQuery.isSuccess
             && cloudProjectsQuery.isSuccess
             && !cloudProjectsQuery.isFetching
           )}
-          onTourDismiss={async () => {
-            if (!user) throw new Error('Sign in to save your tour choice.');
-            await user.updateMetadata({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), dashboardTour: 'done' } });
-          }}
+          dashboardChecklistCheckedItemIds={dashboardChecklistCheckedItemIds}
+          onSaveDashboardChecklistProgress={(checkedItemIds) => saveDashboardChecklist(checkedItemIds, false)}
+          onDismissDashboardChecklist={(checkedItemIds) => saveDashboardChecklist(checkedItemIds, true)}
           events={events}
           onCompleteScheduledGame={async () => setDashboardRefresh((value) => value + 1)}
           selectionSyncReady={Boolean(
@@ -3530,10 +3557,10 @@ export function RoleSelectionPage() {
           teamName: cleanTeam,
           athleteName: cleanAthleteName,
           seasonName: cleanSeasonName,
-           ...(tourStateAfterSetup(
+            ...(dashboardChecklistStateAfterSetup(
              user.unsafeMetadata,
              Boolean(existingProfile.role && existingProfile.teamName && existingProfile.displayName),
-           ) === 'pending' ? { dashboardTour: 'pending' } : {}),
+            ) === 'pending' ? { dashboardTour: 'pending' } : {}),
         },
       });
       setLocation('/studio');

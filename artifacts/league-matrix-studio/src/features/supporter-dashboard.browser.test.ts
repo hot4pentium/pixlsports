@@ -437,9 +437,9 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
-test('finishing the dashboard tour offers the first Event Card without prompting after skip or save failure', { concurrency: false }, async () => {
+test('supporter dashboard checklist is self-paced, persistent, and responsive', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
-  const fixtures = fixturePaths('supporter-first-event-card-prompt-test');
+  const fixtures = fixturePaths('supporter-dashboard-checklist-test');
   let devServer: ChildProcess | undefined;
   let devServerMonitor: ProcessMonitor | undefined;
   let tempDirectory: string | undefined;
@@ -448,35 +448,13 @@ test('finishing the dashboard tour offers the first Event Card without prompting
   let connection: DevToolsConnection | undefined;
   let page: { sessionId: string; targetId: string } | undefined;
 
-  const finishTour = async () => {
+  const waitForChecklist = async () => {
     if (!connection || !page) throw new Error('Browser page is not ready');
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"] > dialog")?.open === true',
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
       Boolean,
-    );
-    for (let index = 0; index < 5; index += 1) {
-      await connection.evaluate(
-        'document.querySelector("[data-testid=\\"supporter-dashboard-tour-next\\"]")?.click()',
-        page.sessionId,
-      );
-      await waitFor(
-        connection,
-        page.sessionId,
-        `document.querySelector(".supporter-tour__count")?.getAttribute("aria-label") === "Step ${index + 2} of 6"`,
-        Boolean,
-      );
-    }
-    await waitFor(
-      connection,
-      page.sessionId,
-      'Boolean(document.querySelector("[data-testid=\\"supporter-dashboard-tour-finish\\"]"))',
-      Boolean,
-    );
-    await connection.evaluate(
-      'document.querySelector("[data-testid=\\"supporter-dashboard-tour-finish\\"]")?.click()',
-      page.sessionId,
     );
   };
 
@@ -498,7 +476,7 @@ test('finishing the dashboard tour offers the first Event Card without prompting
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     devServerMonitor = monitorProcess(devServer, 'Vite dev server');
-    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-first-event-card-prompt-'));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-dashboard-checklist-'));
     await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
 
     const debugProbe = createServer();
@@ -518,7 +496,7 @@ test('finishing the dashboard tour offers the first Event Card without prompting
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
     const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`;
-    page = await openPage(connection, `${fixtureUrl}?tour-prompt=defer`);
+    page = await openPage(connection, `${fixtureUrl}?dashboard-checklist=eligible`);
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
@@ -526,81 +504,124 @@ test('finishing the dashboard tour offers the first Event Card without prompting
       deviceScaleFactor: 1,
       mobile: false,
     }, page.sessionId);
-    await finishTour();
+    await waitForChecklist();
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
       Boolean,
     );
     assert.equal(
       await connection.evaluate(
-        'document.activeElement?.id',
+        'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"] h2")?.textContent?.trim()',
         page.sessionId,
       ),
-      'supporter-dashboard-first-card-heading',
-      'the follow-up prompt should announce its heading when it opens',
-    );
-    await connection.evaluate(
-      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-later\\"]")?.click()',
-      page.sessionId,
-    );
-    await waitFor(
-      connection,
-      page.sessionId,
-      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === false',
-      Boolean,
+      'Get to know your Dashboard',
+      'the getting-started checklist should be visible inline',
     );
     assert.equal(
       await connection.evaluate(
-        'document.querySelector("[data-testid^=\\"card-game-on-new-card-\\"]") === null',
+        'document.querySelectorAll("[data-testid^=\\"dashboard-checklist-checkbox-\\"]").length',
+        page.sessionId,
+      ),
+      5,
+      'all five checklist items should use manual checkboxes',
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"]") === null',
         page.sessionId,
       ),
       true,
-      'Maybe later should not start an Event Card draft',
+      'the old blocking tour should not render',
     );
-
-    await navigatePage(connection, page, `${fixtureUrl}?tour-prompt=skip`);
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dashboard-checklist-action-profile\\"]")?.getAttribute("href")?.length > 0 && document.querySelector("[data-testid=\\"dashboard-checklist-action-hype-card\\"]")?.getAttribute("href")?.length > 0',
+        page.sessionId,
+      ),
+      true,
+      'Profile and Hype Card actions should link to their existing destinations',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.click()',
+      page.sessionId,
+    );
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"] > dialog")?.open === true',
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked === true && window.__dashboardChecklistSaves?.length === 1',
       Boolean,
     );
     await connection.evaluate(
-      'document.querySelector("[data-testid=\\"supporter-dashboard-tour-skip\\"]")?.click()',
+      'document.querySelector("[data-testid=\\"dashboard-checklist-action-shoutouts\\"]")?.click()',
       page.sessionId,
     );
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"] > dialog")?.open === false',
+      'Array.from(document.querySelectorAll("[role=\\"dialog\\"]")).some((dialog) => dialog.textContent?.includes("Shoutouts & Replies"))',
       Boolean,
-    );
-    assert.equal(
-      await connection.evaluate(
-        'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
-        page.sessionId,
-      ),
-      false,
-      'skipping the tour should not show the first-card prompt',
     );
 
-    await navigatePage(connection, page, `${fixtureUrl}?tour-prompt=failure`);
-    await finishTour();
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=skip`);
     await waitFor(
       connection,
       page.sessionId,
-      'Boolean(document.querySelector("[data-testid=\\"supporter-dashboard-tour-error\\"]"))',
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
+      Boolean,
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"dashboard-checklist-dismiss\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null && window.__dashboardChecklistDismissals?.length === 1',
       Boolean,
     );
     assert.equal(
       await connection.evaluate(
-        'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+        'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null',
         page.sessionId,
       ),
-      false,
-      'a failed completion save should keep the tour open and suppress the prompt',
+      true,
+      'a dismissed checklist should not return during the same account session',
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=install`);
+    await waitForChecklist();
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"dashboard-checklist-action-install\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"dashboard-checklist-action-install\\"]")?.getAttribute("aria-expanded") === "true"',
+      Boolean,
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=failure`);
+    await waitForChecklist();
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector("[data-testid=\\"dashboard-checklist-error\\"]"))',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked === false && document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
+        page.sessionId,
+      ),
+      true,
+      'a failed save should keep the item unchecked and leave the checklist retryable',
     );
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
@@ -609,26 +630,26 @@ test('finishing the dashboard tour offers the first Event Card without prompting
       deviceScaleFactor: 1,
       mobile: true,
     }, page.sessionId);
-    await navigatePage(connection, page, `${fixtureUrl}?tour-prompt=create`);
-    await finishTour();
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=create`);
+    await waitForChecklist();
     await waitFor(
       connection,
       page.sessionId,
-      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
       Boolean,
     );
     assert.equal(
       await connection.evaluate(`(() => {
-        const dialog = document.querySelector('[data-testid="supporter-dashboard-first-card-prompt"]');
-        if (!(dialog instanceof HTMLDialogElement)) return false;
-        const rect = dialog.getBoundingClientRect();
+        const checklist = document.querySelector('[data-testid="supporter-dashboard-checklist"]');
+        if (!(checklist instanceof HTMLElement)) return false;
+        const rect = checklist.getBoundingClientRect();
         return rect.left >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
       })()`, page.sessionId),
       true,
-      'the prompt should fit within a phone viewport',
+      'the checklist should fit within a phone viewport',
     );
     await connection.evaluate(
-      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-create\\"]")?.click()',
+      'document.querySelector("[data-testid=\\"dashboard-checklist-action-event-card\\"]")?.click()',
       page.sessionId,
     );
     await waitFor(
@@ -639,11 +660,42 @@ test('finishing the dashboard tour offers the first Event Card without prompting
     );
     assert.equal(
       await connection.evaluate(
-        'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === false',
+        'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
         page.sessionId,
       ),
       true,
-      'the create action should close the prompt after opening the existing draft workspace',
+      'the Event Card action should open the existing editor without dismissing the checklist',
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=complete`);
+    await waitForChecklist();
+    for (const itemId of ['profile', 'shoutouts', 'hype-card', 'event-card', 'install-app']) {
+      await connection.evaluate(
+        `document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-${itemId}\\"]")?.click()`,
+        page.sessionId,
+      );
+      await waitFor(
+        connection,
+        page.sessionId,
+        `window.__dashboardChecklistSaves?.some((items) => items.includes("${itemId}"))`,
+        Boolean,
+      );
+    }
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null',
+      Boolean,
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=existing`);
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'supporters without explicit new-account eligibility should not see the checklist',
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
@@ -4420,11 +4472,14 @@ export function mount() {
     return;
   }
   if (window.location.search.includes('profile-propagation')) {
-    root.render(createElement(Router, null,
+    root.render(createElement(ClerkProvider, {
+      publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    },
+    createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
         createElement(ProfilePropagationHarness),
       ),
-    ));
+    )));
     return;
   }
   if (window.location.search.includes('cached-photo-startup')) {
@@ -4438,11 +4493,14 @@ export function mount() {
       updatedAt: '2026-09-23T12:00:00.000Z',
     }));
     window.__pixlSupporterPhotoMetadataResolved = false;
-    root.render(createElement(Router, null,
+    root.render(createElement(ClerkProvider, {
+      publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    },
+    createElement(Router, null,
       createElement(QueryClientProvider, { client: queryClient },
         createElement(CachedPhotoStartupHarness),
       ),
-    ));
+    )));
     return;
   }
   if (window.location.search.includes('meeting-capture')) {
@@ -4475,9 +4533,13 @@ export function mount() {
     ));
     return;
   }
-  const tourPromptScenario = new URLSearchParams(window.location.search).get('tour-prompt');
-  let dashboardUserId = tourPromptScenario
-    ? 'supporter-tour-' + tourPromptScenario
+  const dashboardChecklistScenario = new URLSearchParams(window.location.search).get('dashboard-checklist');
+  let dashboardChecklistItemIds = [];
+  let dashboardChecklistDismissed = false;
+  window.__dashboardChecklistSaves = [];
+  window.__dashboardChecklistDismissals = [];
+  let dashboardUserId = dashboardChecklistScenario
+    ? 'supporter-checklist-' + dashboardChecklistScenario
     : window.location.search.includes('supporter-game-record')
     ? 'supporter-game-record-user'
     : window.location.search.includes('supporter-active-game-sync')
@@ -4515,6 +4577,19 @@ export function mount() {
       return originalFetch(input, init);
     };
   }
+  const saveDashboardChecklistProgress = async (checkedItemIds) => {
+    if (dashboardChecklistScenario === 'failure') throw new Error('Checklist progress could not be saved');
+    dashboardChecklistItemIds = [...checkedItemIds];
+    window.__dashboardChecklistSaves = [...window.__dashboardChecklistSaves, [...checkedItemIds]];
+    renderDashboard();
+  };
+  const dismissDashboardChecklist = async (checkedItemIds) => {
+    if (dashboardChecklistScenario === 'failure') throw new Error('Checklist dismissal could not be saved');
+    dashboardChecklistItemIds = [...checkedItemIds];
+    dashboardChecklistDismissed = true;
+    window.__dashboardChecklistDismissals = [...window.__dashboardChecklistDismissals, [...checkedItemIds]];
+    renderDashboard();
+  };
   const renderDashboard = () => root.render(
     createElement(ClerkProvider, {
       publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
@@ -4524,11 +4599,15 @@ export function mount() {
         createElement(SupporterDashboardView, {
           profile,
           userId: dashboardUserId,
-           autoStartTour: Boolean(tourPromptScenario),
-           onTourDismiss: tourPromptScenario ? async (kind) => {
-             window.__tourDismissals = [...(window.__tourDismissals || []), kind];
-             if (tourPromptScenario === 'failure') throw new Error('Tour completion could not be saved');
-           } : undefined,
+          showDashboardChecklist: Boolean(
+            dashboardChecklistScenario
+            && dashboardChecklistScenario !== 'existing'
+            && !dashboardChecklistDismissed
+            && dashboardChecklistItemIds.length < 5,
+          ),
+          dashboardChecklistCheckedItemIds: dashboardChecklistItemIds,
+          onSaveDashboardChecklistProgress: dashboardChecklistScenario ? saveDashboardChecklistProgress : undefined,
+          onDismissDashboardChecklist: dashboardChecklistScenario ? dismissDashboardChecklist : undefined,
           events: dashboardEvents,
           nextGameIsUpcoming: true,
           scheduleSource: 'custom',

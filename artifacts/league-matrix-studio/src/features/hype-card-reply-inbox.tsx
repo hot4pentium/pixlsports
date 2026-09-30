@@ -22,7 +22,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from '@/hooks/use-toast';
 import { getLatestFanActivity } from './fan-activity-model';
 
-export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter' }: { className?: string, variant?: 'supporter' | 'dashboard' }) {
+export function HypeCardReplyInboxTrigger({
+  className = '',
+  variant = 'supporter',
+  ariaLabel,
+  testId,
+}: {
+  className?: string;
+  variant?: 'supporter' | 'dashboard';
+  ariaLabel?: string;
+  testId?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [targetToken, setTargetToken] = useState<string | null>(null);
   const { isSignedIn } = useUser();
@@ -120,8 +130,8 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
     <button
       type="button"
       className={`reply-inbox-summary-trigger ${className}`}
-      aria-label={`Open Shoutouts and replies, ${totalCount} ${totalCount === 1 ? 'message' : 'messages'}`}
-      data-testid="btn-reply-inbox"
+      aria-label={ariaLabel ?? `Open Shoutouts and replies, ${totalCount} ${totalCount === 1 ? 'message' : 'messages'}`}
+      data-testid={testId ?? 'btn-reply-inbox'}
     >
       <span className="reply-inbox-summary-trigger__header">
         <span className="reply-inbox-summary-trigger__label">
@@ -161,7 +171,8 @@ export function HypeCardReplyInboxTrigger({ className = '', variant = 'supporter
       className={`group flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         'text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-3 clip-angled-sm w-full justify-between'
       } ${className}`}
-      data-testid="btn-reply-inbox"
+      aria-label={ariaLabel}
+      data-testid={testId ?? 'btn-reply-inbox'}
     >
       <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
         <MessageCircleHeart className={`h-4 w-4 ${unreadCount > 0 ? 'text-primary animate-pulse' : ''}`} />
