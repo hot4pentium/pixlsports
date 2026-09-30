@@ -8,6 +8,7 @@ import { getDimensions, normalizeHypeCardProject } from './hype-card-types';
 import { getSportRule, isSport } from './stat-tracker';
 import { trackEvent } from '../lib/analytics';
 import { PublicSupportLink } from './public-support-link';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const reactions = ['🔥', '👏', '💪', '⭐', '❤️'] as const;
@@ -86,7 +87,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
           <Zap className="mx-auto h-12 w-12 text-primary" />
           <h1 className="mt-5 font-display text-5xl uppercase text-white">Hype Card not found</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This link may have expired, been revoked, or been copied incorrectly.</p>
-          <Link href="/" className="mt-7 inline-flex items-center gap-2 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Go to Pixl Sports <ArrowUpRight className="h-4 w-4" /></Link>
+           <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" className="mx-auto mt-7" />
         </div>
       </PublicShell>
     );
@@ -125,6 +126,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
         <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
           <Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" /></Link>
           <div className="flex items-center gap-2 sm:gap-4">
+            <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
             <PublicSupportLink variant="dark" placement="header" />
             <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white">Create yours <ArrowUpRight className="ml-1 inline h-4 w-4" /></Link>
           </div>
@@ -367,6 +369,7 @@ function PublicHypeCardStatsPage({ share }: { share: HypeCardShare }) {
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
+            <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
             <PublicSupportLink variant="dark" placement="header" />
             <span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/40">Finalized stats</span>
           </div>
@@ -471,7 +474,7 @@ function formatHypeCardGameDate(value: string) {
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white">
-      <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><PublicSupportLink variant="dark" placement="header" /></div></header>
+      <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex min-h-[72px] max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><div className="flex items-center gap-2"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" /><PublicSupportLink variant="dark" placement="header" /></div></div></header>
       <main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main>
       <PublicSupportLink variant="dark" />
     </div>

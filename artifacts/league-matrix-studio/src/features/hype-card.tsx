@@ -8,7 +8,7 @@ type MediaSyncState = {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
-  ArrowLeft, Check, Download, Eye, FlipHorizontal2, FolderOpen, ImagePlus,
+  Check, Download, Eye, FlipHorizontal2, FolderOpen, ImagePlus,
   LayoutGrid, Lightbulb, MessageCircle, Move, RotateCw, Save, SlidersHorizontal, Upload, X, ZoomIn, Play, Pause, Volume2, VolumeX, RotateCcw, Share2, Link2, Link2Off, Clipboard, Trash2
 } from 'lucide-react';
 import { Link } from 'wouter';
@@ -47,6 +47,7 @@ import {
 } from '@workspace/api-client-react';
 
 import { Button } from '@/components/ui/button';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -2786,9 +2787,7 @@ export function HypeCardEditor() {
     <div className="moment-studio flex min-h-[100dvh] flex-col bg-muted sm:fixed sm:inset-0 sm:h-auto sm:min-h-0 sm:overflow-hidden">
       <header className="sticky top-0 z-40 flex min-h-14 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-background px-3 py-2 sm:static sm:px-4">
         <div className="flex min-w-0 basis-full items-center gap-2 sm:gap-3 xl:basis-auto xl:flex-1">
-          <Link href="/studio" className="grid h-9 w-9 shrink-0 place-items-center border border-border bg-background hover:border-primary hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+          <BackNavigationLink href="/studio" label="Back to studio" testId="link-hype-card-studio" className="shrink-0" />
            <h1 className="min-w-0 truncate font-display text-lg tracking-wide text-foreground sm:text-xl">Hype Cards</h1>
            <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-4">
              <div className={`hidden items-center gap-2 whitespace-nowrap px-3 py-1.5 text-xs font-bold uppercase tracking-widest clip-angled-sm border sm:flex ${saveStatus === 'Saving' ? 'bg-primary/10 text-primary border-primary/20' : saveStatus === 'Save failed' ? 'bg-destructive/10 text-destructive border-destructive/20' : saveStatus === 'Conflict' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' : saveStatus === 'Offline' || saveStatus === 'Waiting to sync' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'bg-muted text-muted-foreground border-border'}`}>

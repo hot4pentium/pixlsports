@@ -1,5 +1,6 @@
 import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetSupporterActiveGameQueryKey,
@@ -1513,9 +1514,7 @@ export function SupporterProfileView({
           <h1 className="font-display text-4xl sm:text-5xl uppercase tracking-wide">Supporter Profile</h1>
           <p className="mt-2 text-sm sm:text-base">Everything for the athlete you follow, all in one place.</p>
         </div>
-        <button type="button" onClick={onCancel} className="supporter-profile-back text-xs font-bold uppercase tracking-widest flex items-center gap-2" data-testid="btn-back">
-          Back to Dashboard <ChevronRight className="w-4 h-4" aria-hidden="true" />
-        </button>
+        <BackNavigationLink href="/studio" label="Back to Supporter Hub" testId="btn-back" />
       </div>
 
       <div className="supporter-profile-stack">

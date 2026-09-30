@@ -26,6 +26,7 @@ import type { SupporterEvent } from './supporter-dashboard';
 import { buildWorkspaceToolHref } from './workspace-context';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
 import { PublicSupportLink } from './public-support-link';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import {
   readSavedGameOnCard,
   readSavedGameOnCards,
@@ -694,8 +695,8 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
       <div className="noise min-h-dvh bg-background">
         <header className="border-b border-border bg-card px-5 py-4">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-            <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
-            <PublicSupportLink variant="light" placement="header" />
+             <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
+             <div className="flex items-center gap-2"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" /><PublicSupportLink variant="light" placement="header" /></div>
           </div>
         </header>
         <main className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center px-5">
@@ -711,8 +712,8 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
       <div className="noise min-h-dvh bg-background">
         <header className="border-b border-border bg-card px-5 py-4">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-            <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
-            <PublicSupportLink variant="light" placement="header" />
+             <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
+             <div className="flex items-center gap-2"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" /><PublicSupportLink variant="light" placement="header" /></div>
           </div>
         </header>
         <main className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">
@@ -721,7 +722,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
           <p className="mt-3 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">
             This card may have been revoked, or the event details are no longer available.
           </p>
-          <Link href="/" className="mt-7 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Go to Pixl Sports</Link>
+           <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" className="mx-auto mt-7" />
         </main>
         <PublicSupportLink variant="light" />
       </div>
@@ -757,7 +758,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/" className="font-display text-2xl uppercase tracking-wide text-[#0B1F3A]">Pixl Sports</Link>
           <div className="flex items-center gap-2 sm:gap-4">
-            <PublicSupportLink variant="light" placement="header" />
+           <div className="flex items-center gap-2"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" /><PublicSupportLink variant="light" placement="header" /></div>
             <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[#52657a]">{isPractice ? 'Shared practice' : 'Shared game day'}</span>
           </div>
         </div>

@@ -54,6 +54,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import { HypeCardReplyComposer } from './public-hype-card';
 import { FanCardPhotoManager } from './fan-card-photo-manager';
 import { HypeManagerTaskCard } from './hype-manager-wallet';
@@ -1057,7 +1058,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <h2 id="owner-hype-page-management" className="mt-2 font-display text-4xl uppercase sm:text-5xl">HYPE Card Manager</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">Build and share your athlete&apos;s story. Choose what you want to do next.</p>
         </div>
-        <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline">Back to studio</Link>
+        <BackNavigationLink href="/studio" label="Back to Studio" testId="link-hype-manager-studio" />
       </div>
       {notice && <p role="status" className="my-3 border-l-2 border-primary bg-primary/10 px-3 py-3 text-xs font-bold leading-relaxed" data-testid="status-hype-manager">{notice}</p>}
 
@@ -1230,7 +1231,7 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
 
   if (!isLoaded || (isSignedIn && isLoading)) {
-    return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading management tools…</p></PublicShell>;
+    return <PublicShell><div className="flex flex-col items-center gap-5"><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading management tools…</p><BackNavigationLink href="/" label="Return to Pixl Sports" testId="link-management-loading-home" variant="public" /></div></PublicShell>;
   }
   if (!isSignedIn) {
     const ownerDeepLink = window.location.hash === '#owner-notify-followers';
@@ -1241,21 +1242,20 @@ export function OwnerAthleteInviteManagePage({ params }: { params: { inviteToken
         <div className="max-w-md text-center">
           <h1 className="font-display text-5xl uppercase">Sign in to manage this Hype Page</h1>
           <Link href={`${basePath}/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`} className="mt-6 inline-flex min-h-11 items-center bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground">Sign in</Link>
+          <BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-management-sign-in-athlete" variant="public" className="mx-auto mt-3" />
         </div>
       </PublicShell>
     );
   }
   if (!ownerInvite) {
-    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p></div></PublicShell>;
+    return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Management unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">Only the account that owns this Hype Page can open these controls.</p><BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-management-unavailable-athlete" variant="public" className="mx-auto mt-6" /></div></PublicShell>;
   }
 
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white" data-testid="owner-athlete-invite-management-page">
       <PublicHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-9 sm:px-8 sm:py-12">
-        <Link href={`/player/${inviteToken}`} className="inline-flex min-h-10 items-center text-xs font-bold uppercase tracking-widest text-primary hover:underline" data-testid="link-back-to-athlete-hype-page">
-          <ChevronLeft className="mr-2 h-4 w-4" />Back to Hype Page
-        </Link>
+        <BackNavigationLink href={`/fan/${inviteToken}`} label="Back to athlete Hype Card" testId="link-back-to-athlete-hype-page" variant="public" />
         <OwnerHypePageManage invite={ownerInvite} />
       </main>
     </div>
@@ -1300,8 +1300,8 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
       return 'score';
     });
   }, [invite]);
-  if (isLoading) return <PublicShell><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading athlete page…</p></PublicShell>;
-  if (isError || !invite) return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Athlete page unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This invite may have ended, been revoked, or been copied incorrectly.</p></div></PublicShell>;
+  if (isLoading) return <PublicShell><div className="flex flex-col items-center gap-5"><p role="status" className="text-sm font-bold uppercase tracking-widest text-white/60">Loading athlete page…</p><BackNavigationLink href="/" label="Return to Pixl Sports" testId="link-athlete-loading-home" variant="public" /></div></PublicShell>;
+  if (isError || !invite) return <PublicShell><div className="max-w-md text-center"><Zap className="mx-auto h-12 w-12 text-primary" /><h1 className="mt-5 font-display text-5xl uppercase">Athlete page unavailable</h1><p className="mt-3 text-sm font-medium leading-relaxed text-white/60">This invite may have ended, been revoked, or been copied incorrectly.</p><BackNavigationLink href="/" label="Return to Pixl Sports" testId="link-athlete-unavailable-home" variant="public" className="mx-auto mt-6" /></div></PublicShell>;
   const rule = getSportRule(invite.sport);
   const replies = [...localReplies, ...invite.replies];
   const trendOptions = invite.stats
@@ -1701,7 +1701,7 @@ function OwnerToggle({ label, detail, checked, disabled, onChange }: { label: st
   return <div className="mt-5 flex items-start justify-between gap-4 border-t border-white/15 pt-4"><div><p className="text-sm font-bold text-white">{label}</p><p className="mt-1 text-xs leading-relaxed text-white/50">{detail}</p></div><Switch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={label} /></div>;
 }
 function InviteShell({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/studio"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">Back to studio</Link></div></header>{children}</div>;
+  return <div className="min-h-dvh bg-background text-foreground"><header className="border-b border-border bg-card"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-3 px-5 sm:px-8"><Link href="/studio"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><BackNavigationLink href="/studio" label="Back to Studio" testId="link-invite-shell-studio" className="shrink-0" /></div></header>{children}</div>;
 }
 function PublicHeader() {
   return <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/35">Athlete Hype Page</span></div></header>;

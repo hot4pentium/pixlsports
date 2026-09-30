@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation } from 'wouter';
-import { ArrowLeft, Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Trophy, Video, X } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { Camera, Check, ChevronDown, CircleStop, Clock3, CloudUpload, Copy, ExternalLink, FileText, GitMerge, History, Loader2, Minus, Plus, RotateCcw, Save, Share2, Trophy, Video, X } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import {
   useCreateProject,
@@ -19,6 +19,7 @@ import {
   type StatTrackerShare,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 
 import { getGuestUsageKey } from './guest-access';
 import { getUserProfile } from './supporter-dashboard-model';
@@ -2037,9 +2038,7 @@ export function StatTrackerPage() {
     return (
       <main className="studio-editor-page-background stat-tracker-editor-page min-h-dvh">
         <section className="mx-auto w-full max-w-[900px] px-5 py-8 sm:px-8 sm:py-12" data-testid="stat-tracker-sport-choice">
-          <Link href="/studio" className="mb-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
-          </Link>
+          <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-choice-studio" className="mb-8" />
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Tracker setup</p>
           <h1 className="mt-2 font-display text-4xl uppercase tracking-tight sm:text-6xl">Choose a sport before tracking</h1>
           <p className="mt-4 max-w-2xl text-sm font-medium leading-relaxed text-muted-foreground">
@@ -2074,9 +2073,7 @@ export function StatTrackerPage() {
       <div className="pixl-editor-main mx-auto w-full max-w-[1400px] px-5 py-6 sm:px-8 lg:py-10">
       <div className="pixl-editor-header mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Link href="/studio" className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Back to Game Day Hub
-          </Link>
+          <BackNavigationLink href="/studio" label="Back to Game Day Hub" testId="link-stat-tracker-studio" className="mb-5" />
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Athlete game log</p>
           <h1 className="mt-2 font-display text-5xl uppercase tracking-tight sm:text-7xl">ATHLETE <span className="text-primary-ink studio-textured-heading-accent">STATS.</span></h1>
           <p className="mt-3 max-w-2xl text-sm font-medium text-muted-foreground sm:text-base">Save the result, optional athlete stats, and the moments you want to remember. Use Advanced team stats when you want live play-by-play.</p>

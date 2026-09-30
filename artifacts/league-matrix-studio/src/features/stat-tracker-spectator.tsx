@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "wouter";
+import { useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
-  ArrowLeft,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -23,6 +22,7 @@ import {
 } from "@workspace/api-client-react";
 import { isYardageTrackingAvailable } from "./stat-tracker";
 import { PublicSupportLink } from "./public-support-link";
+import { BackNavigationLink } from "@/components/back-navigation-link";
 
 function formatDate(value: string) {
   if (!value) return "";
@@ -218,6 +218,7 @@ export function PublicStatTrackerPage() {
             <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-primary" role="status">
               Loading live scoreboard
             </p>
+            <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" className="mx-auto mt-5" />
             <div className="mt-4 space-y-2" aria-hidden="true">
               <div className="mx-auto h-2 w-3/4 animate-pulse bg-muted" />
               <div className="mx-auto h-12 w-1/2 animate-pulse bg-muted" />
@@ -243,12 +244,7 @@ export function PublicStatTrackerPage() {
             <p className="mx-auto mt-4 max-w-md text-sm font-medium leading-relaxed text-muted-foreground">
               This live link has expired, was revoked, or the game has been removed.
             </p>
-            <Link
-              href="/"
-              className="mt-8 inline-flex items-center gap-2 bg-foreground px-5 py-3 text-xs font-bold uppercase tracking-widest text-background clip-angled-sm hover:bg-primary hover:text-primary-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" /> Return to Home
-            </Link>
+            <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" className="mx-auto mt-8" />
             <div className="mt-3">
               <PublicSupportLink variant="dark" placement="header" />
             </div>
@@ -282,12 +278,7 @@ export function PublicStatTrackerPage() {
       <div className="pointer-events-none fixed inset-0 bg-tech-grid opacity-30" aria-hidden="true" />
       <div className="stat-tracker-public-main relative mx-auto w-full max-w-[1180px] px-4 pb-16 pt-4 sm:px-8 sm:pt-7 lg:px-10">
         <header className="flex items-center justify-between border-b border-foreground/10 pb-4 sm:pb-5">
-          <Link
-            href="/"
-            className="group inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> Home
-          </Link>
+          <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.17em]" data-testid="connection-status">
               <span className="hidden text-muted-foreground sm:inline">Pixl Sports / Live board</span>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'wouter';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import {
   getListProjectsQueryKey,
   useCreateProject,
@@ -160,10 +160,10 @@ export function SeasonStatsPage() {
   };
 
   if (isLoaded && !accountId) {
-    return <main className="min-h-screen bg-background p-6" role="status">Sign in to review your season stats. <Link href="/studio">Return to studio</Link></main>;
+    return <main className="min-h-screen bg-background p-6" role="status"><p>Sign in to review your season stats.</p><BackNavigationLink href="/studio" label="Return to studio" testId="link-season-stats-sign-in-studio" className="mt-5" /></main>;
   }
   if (!isLoaded || loadedAccountId !== accountId) {
-    return <main className="min-h-screen bg-background p-6" role="status">Loading your season stats…</main>;
+    return <main className="min-h-screen bg-background p-6" role="status"><p>Loading your season stats…</p><BackNavigationLink href="/studio" label="Back to studio" testId="link-season-stats-loading-studio" className="mt-5" /></main>;
   }
   return (
     <>

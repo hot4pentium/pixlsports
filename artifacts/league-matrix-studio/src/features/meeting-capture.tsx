@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -18,6 +17,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import { useUser } from '@clerk/react';
 import {
   getGetMeetingWorkspaceQueryKey,
@@ -172,27 +172,17 @@ function MeetingHeader({
   ended,
   recap,
   prep = false,
-  onBack,
 }: {
   context: MeetingContext;
   ended: boolean;
   recap: boolean;
   prep?: boolean;
-  onBack: () => void;
 }) {
   return (
     <header className="border-b border-white/10 bg-[#102b4d]/90 backdrop-blur-md">
       <div className="mx-auto max-w-6xl px-5 py-5 sm:px-8 sm:py-7">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex min-h-11 -mx-2 items-center gap-2 px-2 text-xs font-bold uppercase tracking-[0.15em] text-[#9ebbd1] touch-manipulation transition-colors hover:text-[#f7c97a]"
-            data-testid="button-back-to-dashboard"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to dashboard
-          </button>
+          <BackNavigationLink href="/studio" label="Back to studio" testId="button-back-to-dashboard" variant="public" />
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#6e94b2]" data-testid="text-meeting-mode">
             <span className={`h-2 w-2 rounded-full ${ended ? 'bg-[#8b9aad]' : 'animate-pulse bg-[#f7c97a]'}`} />
             {recap ? 'Recap' : ended ? 'Meeting ended' : prep ? 'Prep' : 'Live capture'}
@@ -546,13 +536,6 @@ export function MeetingCapture() {
     }
   };
 
-  const handleBack = () => {
-    // Preserve the artifact base path while returning to the studio dashboard.
-    window.location.assign(
-      `${window.location.pathname.replace(/\/studio\/checklist$/, '/studio')}${window.location.hash}`,
-    );
-  };
-
   const cloudStatusLabel = {
     local: user?.id ? 'Local draft · not saved to team workspace' : 'Local-only · sign in to save across devices',
     loading: 'Checking team workspace…',
@@ -591,7 +574,7 @@ export function MeetingCapture() {
   if (showRecapView) {
     return (
       <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
-        <MeetingHeader context={meetingContext} ended={ended} recap onBack={handleBack} />
+        <MeetingHeader context={meetingContext} ended={ended} recap />
         <main className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div>
@@ -646,7 +629,7 @@ export function MeetingCapture() {
   if (phase === 'prep') {
     return (
       <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
-        <MeetingHeader context={meetingContext} ended={false} recap={false} prep onBack={handleBack} />
+        <MeetingHeader context={meetingContext} ended={false} recap={false} prep />
         <main className="mx-auto max-w-4xl px-5 py-7 sm:px-8 sm:py-10">
           <div className="mb-8 border-b border-white/10 pb-6">
             <SectionLabel>Before the room</SectionLabel>
@@ -765,7 +748,7 @@ export function MeetingCapture() {
 
   return (
     <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
-      <MeetingHeader context={meetingContext} ended={ended} recap={false} onBack={handleBack} />
+      <MeetingHeader context={meetingContext} ended={ended} recap={false} />
       <main className="mx-auto max-w-6xl px-5 py-7 sm:px-8 sm:py-10">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
           <div>

@@ -606,7 +606,6 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("#manual-game-setup") !== null', Boolean);
     await connection.evaluate('document.querySelector("[data-testid=\\"button-confirm-start-game\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-tracker-layout\\"]") !== null', Boolean);
-
     await connection.evaluate(`(() => {
       const input = document.querySelector('[data-testid="input-stat-tracker-capture-photo"]');
       input?.focus();

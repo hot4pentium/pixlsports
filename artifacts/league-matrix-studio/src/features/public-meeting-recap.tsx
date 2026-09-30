@@ -5,6 +5,7 @@ import { useGetMeetingRecap } from '@workspace/api-client-react';
 import { recapText } from './meeting-capture';
 import { downloadMeetingRecapPdf } from './meeting-recap-pdf';
 import type { MeetingContext, MeetingState } from './meeting-capture-model';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 
 export function PublicMeetingRecapPage({ params }: { params: { shareToken?: string } }) {
   const shareToken = params.shareToken ?? '';
@@ -14,7 +15,7 @@ export function PublicMeetingRecapPage({ params }: { params: { shareToken?: stri
   const [status, setStatus] = useState('');
 
   if (recap.isLoading) {
-    return <div className="grid min-h-dvh place-items-center bg-[#0b2039] text-sm font-bold uppercase tracking-widest text-[#f7c97a]" data-testid="status-public-meeting-recap">Loading shared meeting recap…</div>;
+    return <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-[#0b2039] px-5 text-sm font-bold uppercase tracking-widest text-[#f7c97a]" data-testid="status-public-meeting-recap"><BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />Loading shared meeting recap…</div>;
   }
   if (recap.isError || !recap.data) {
     return (
@@ -23,6 +24,7 @@ export function PublicMeetingRecapPage({ params }: { params: { shareToken?: stri
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#f7c97a]">Shared meeting recap</p>
           <h1 className="mt-4 font-display text-5xl uppercase">Recap unavailable</h1>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-[#aec5d3]">This link may have been revoked or is no longer available.</p>
+          <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" className="mx-auto mt-7" />
         </div>
       </main>
     );
@@ -51,6 +53,7 @@ export function PublicMeetingRecapPage({ params }: { params: { shareToken?: stri
     <div className="min-h-dvh bg-[#0b2039] text-[#f6f2e9]">
       <header className="border-b border-white/10 bg-[#102b4d]/90">
         <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
+          <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" className="mb-6" />
           <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[#8fb9d8]"><LockKeyhole className="h-4 w-4 text-[#e8a45c]" /> Shared meeting recap · read-only</p>
           <h1 className="mt-4 font-display text-5xl uppercase leading-[0.86] sm:text-7xl" data-testid="text-public-meeting-title">{context.title}</h1>
           <p className="mt-5 text-sm text-[#aec5d3]" data-testid="text-public-meeting-ownership">A durable recap link shared by the meeting owner.</p>

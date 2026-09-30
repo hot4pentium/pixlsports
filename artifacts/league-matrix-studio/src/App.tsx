@@ -30,6 +30,7 @@ import { Trash2 } from 'lucide-react';
 import { lazy, Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { ErrorBoundary } from '@/components/error-boundary';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 import { AccountLoadingScreen } from '@/features/account-loading-screen';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -37,7 +38,7 @@ import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Clipboard, ClipboardCheck,
+  ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Clipboard, ClipboardCheck,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, Grid2X2,
   Heart, Lightbulb, LogIn, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
@@ -1651,9 +1652,7 @@ function EditorPage({ kind }: { kind: ToolKind }) {
       <main className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-8 lg:py-10 flex-1 flex flex-col">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Link href="/studio" className="grid h-10 w-10 place-items-center bg-card border border-border text-foreground hover:bg-muted clip-angled-sm transition-colors" aria-label="Back to studio" data-testid="button-back-studio">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+            <BackNavigationLink href="/studio" label="Back to Studio" testId="button-back-studio" className="shrink-0" />
             <div>
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary">
                 <Icon className="h-4 w-4" /> {tool.label}
@@ -2248,9 +2247,7 @@ export function ScheduleEditor() {
       <main className="pixl-editor-main mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-4 py-6 sm:px-8 lg:py-10">
         <div className="pixl-editor-header mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
-            <Link href="/studio" className="grid h-10 w-10 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio" data-testid="button-back-studio">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+            <BackNavigationLink href="/studio" label="Back to Studio" testId="button-back-studio" className="shrink-0" />
             <div>
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
                 <CalendarDays className="h-4 w-4" /> Schedule Maker
@@ -2675,7 +2672,8 @@ function ScheduleInstallPrompt() {
   );
 }
 
-function RetiredSchedulePage() {
+function RetiredSchedulePage({ publicShare = false }: { publicShare?: boolean }) {
+  const backHref = publicShare ? '/' : '/studio';
   return (
     <div className="noise min-h-dvh bg-background">
       <SiteNav />
@@ -2684,16 +2682,19 @@ function RetiredSchedulePage() {
         <p className="mt-4 max-w-lg text-sm font-medium leading-relaxed text-muted-foreground">
           Standalone Calendar schedules and shared schedule links are no longer available. Event Cards, your tracker, and your checklist are still here.
         </p>
-        <Link href="/studio" className="mt-7 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm" data-testid="link-retired-schedule-dashboard">
-          Go to your dashboard
-        </Link>
+        <BackNavigationLink
+          href={backHref}
+          label={publicShare ? 'Back to Pixl Sports' : 'Back to Studio'}
+          testId="link-retired-schedule-dashboard"
+          className="mt-7 border-primary/60 bg-primary px-5 py-3 text-primary-foreground hover:bg-primary/90"
+        />
       </main>
     </div>
   );
 }
 
 function PublicSchedulePage() {
-  return <RetiredSchedulePage />;
+  return <RetiredSchedulePage publicShare />;
 }
 
 function ChecklistRoutePage() {
@@ -2980,6 +2981,7 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
       <div className="noise studio-editor-fallback min-h-dvh bg-background">
         <SiteNav />
         <main className="mx-auto flex min-h-[calc(100dvh-72px)] max-w-xl flex-col items-center justify-center px-5 py-12 text-center">
+          <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" />
           <Link2Off className="h-11 w-11 text-primary" />
           <h1 className="mt-5 font-display text-4xl uppercase tracking-wide">Checklist link unavailable</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-muted-foreground">This edit link may have been revoked or copied incorrectly. Ask the owner to create a fresh link.</p>
@@ -3010,9 +3012,12 @@ export function ChecklistPage({ shared = false }: { shared?: boolean }) {
       <main className="pixl-editor-main mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-3 sm:px-8 sm:py-8" data-testid="checklist-page">
         <div className="pixl-editor-header mb-4 flex items-start justify-between gap-3 sm:mb-6 sm:items-end sm:gap-5">
           <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-            <Link href={shared ? '/studio/checklist' : '/studio'} className="grid h-10 w-10 shrink-0 place-items-center border border-border bg-card text-foreground transition-colors hover:bg-muted clip-angled-sm" aria-label="Back to studio">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+            <BackNavigationLink
+              href={shared ? '/studio/checklist' : '/studio'}
+              label={shared ? 'Back to Checklist Setup' : 'Back to Studio'}
+              testId="button-back-checklist"
+              className="shrink-0"
+            />
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-primary"><ClipboardCheck className="h-4 w-4" /> {shared ? 'Shared workspace' : eventCopy.hubLabel}</p>
               <h1 className="mt-1 font-display text-4xl uppercase leading-[.88] tracking-tight sm:mt-2 sm:text-7xl">{eventCopy.heading.split(' ')[0]}<br /><span className="text-primary studio-textured-heading-accent">{eventCopy.heading.split(' ').slice(1).join(' ')}</span></h1>
@@ -3233,6 +3238,7 @@ function Help() {
   return (
     <StudioLayout>
       <main className="mx-auto w-full max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
+        <BackNavigationLink href="/studio" label="Back to Studio" testId="link-back-studio" className="mb-8" />
         <div className="mb-10 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
           <CircleHelp className="h-4 w-4" /> Support Manual
         </div>
@@ -3273,6 +3279,7 @@ function Privacy() {
   return (
     <StudioLayout>
       <main className="mx-auto max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
+        <BackNavigationLink href="/studio" label="Back to Studio" testId="link-back-studio" className="mb-8" />
         <div className="mb-10 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
           <ShieldCheck className="h-4 w-4" /> Data Security
         </div>
@@ -3301,9 +3308,12 @@ function NotFound() {
         <div className="font-display text-[12rem] leading-none text-accent/20">404</div>
         <h1 className="mt-4 font-display text-5xl uppercase tracking-wide text-foreground sm:text-6xl">Out of bounds.</h1>
         <p className="mt-4 max-w-md text-lg font-medium text-muted-foreground">The page you're looking for doesn't exist or has been moved off the page.</p>
-        <Link href="/" className="mt-10 inline-flex items-center gap-2 bg-primary px-8 py-4 text-sm font-bold uppercase tracking-wider text-primary-foreground clip-angled-sm transition-transform hover:scale-105">
-          <ArrowLeft className="h-5 w-5" /> Return to Home
-        </Link>
+        <BackNavigationLink
+          href="/"
+          label="Return to Home"
+          testId="link-back-home"
+          className="mt-10 border-primary/60 bg-primary px-8 py-4 text-sm text-primary-foreground hover:bg-primary/90"
+        />
       </main>
     </div>
   );
@@ -3408,7 +3418,12 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
         <Link href="/" className="auth-home" data-testid="link-auth-home">
           <BrandMark inverse />
         </Link>
-        <Link href="/" className="auth-back"><ArrowLeft size={16} aria-hidden="true" /> Back to Pixl Sports</Link>
+        <BackNavigationLink
+          href="/"
+          label="Back to Pixl Sports"
+          testId="link-auth-back"
+          className="auth-back min-h-0 border-0 px-0 py-0 text-xs normal-case tracking-normal"
+        />
       </header>
       <main className="auth-shell">
         <section className="auth-story" aria-label="About Pixl Sports">
@@ -3979,7 +3994,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/studio/setup" component={RoleSelectionPage} />
-              <Route path="/schedule/:shareToken" component={RetiredSchedulePage} />
+              <Route path="/schedule/:shareToken"><RetiredSchedulePage publicShare /></Route>
               <Route path="/game-on/:shareToken" component={PublicGameOnCardPage} />
                <Route path="/checklist/:shareToken"><ChecklistPage shared /></Route>
                <Route path="/meeting/:shareToken" component={PublicMeetingRecapPage} />
@@ -3992,7 +4007,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/profile" component={SupporterProfilePage} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />
               <Route path="/studio" component={StudioPortal} />
-               <Route path="/studio/schedule/:id?" component={RetiredSchedulePage} />
+                <Route path="/studio/schedule/:id?" component={() => <RetiredSchedulePage />} />
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>
                <Route path="/studio/season-stats"><ProtectedEditor kind="stat-tracker"><SeasonStatsPage /></ProtectedEditor></Route>
                 <Route path="/studio/checklist"><ChecklistRoutePage /></Route>

@@ -103,6 +103,17 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
     await waitFor(connection,page.sessionId,'document.querySelector("[data-testid=\\"stat-tracker-scores\\"]") !== null || document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null',Boolean);
     await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const link = document.querySelector('[data-testid="link-back-public-home"]');
+        return link instanceof HTMLAnchorElement
+          && link.getAttribute('href') === '/'
+          && link.textContent?.replace(/\\s+/g, ' ').trim() === 'Back to Pixl Sports'
+          && link.getBoundingClientRect().height >= 44;
+      })()`, page.sessionId),
+      true,
+      'public scoreboard exposes a labeled, touch-sized return link',
+    );
     const firstBody = await connection.evaluate<string>('document.body.textContent || ""', page.sessionId);
     assert.match(firstBody, /Loading live scoreboard|Scoreboard Unavailable|Falcons/);
     assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-public-support-email\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.left >= -1 && rect.right <= innerWidth + 1 && getComputedStyle(link).visibility === "visible"; })()', page.sessionId), true);
@@ -130,6 +141,16 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     assert.equal(await connection.evaluate<boolean>('!document.body.textContent.includes("private note") && !document.body.textContent.includes("Game notes") && !document.body.textContent.includes("Revoke link") && !document.body.textContent.includes("Play-by-play editor")',page.sessionId),true);
     await connection.evaluate('window.__poll404(); window.__poll()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"public-stat-tracker-unavailable\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const link = document.querySelector('[data-testid="link-back-public-home"]');
+        return link instanceof HTMLAnchorElement
+          && link.getAttribute('href') === '/'
+          && link.textContent?.replace(/\\s+/g, ' ').trim() === 'Back to Pixl Sports';
+      })()`, page.sessionId),
+      true,
+      'unavailable scoreboard keeps the same public return destination',
+    );
     await connection.evaluate('window.__pollOk(); window.__poll()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"stat-tracker-scores\\"]") !== null', Boolean);
     await connection.evaluate('window.__setShortExpiry(); window.__poll()', page.sessionId);

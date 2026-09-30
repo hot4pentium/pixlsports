@@ -30,6 +30,7 @@ import {
 import { HypeCardReplyComposer } from './public-hype-card';
 import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import { BackNavigationLink } from '@/components/back-navigation-link';
 
 type CardSide = 'front' | 'responses' | 'stats' | 'videos' | 'events';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
@@ -65,6 +66,7 @@ function Shell({ children }: { children: ReactNode }) {
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports home" />
           </Link>
           <span className="living-card-header-label">A season worth keeping / Pixl Sports</span>
+          <BackNavigationLink href="/" label="Back to Pixl Sports" testId="link-back-public-home" variant="public" />
         </div>
       </header>
       {children}

@@ -288,9 +288,13 @@ test('Help contact actions remain visible without overflow on phone and desktop 
           href: string | null; visible: boolean; withinViewport: boolean;
           left: number; right: number; top: number; bottom: number; width: number; height: number;
         } | null;
+        backNavigation: {
+          href: string | null; text: string; visible: boolean; height: number;
+        } | null;
       }>(`(() => {
         const support = document.querySelector('[data-testid="link-help-support-email"]');
         const contactTeam = document.querySelector('[data-testid="link-help-contact-team"]');
+        const backNavigation = document.querySelector('[data-testid="link-back-studio"]');
         support?.scrollIntoView({ block: 'center', inline: 'nearest' });
         const inspectLink = (element) => {
           if (!(element instanceof HTMLAnchorElement)) return null;
@@ -321,6 +325,13 @@ test('Help contact actions remain visible without overflow on phone and desktop 
           viewportWidth: window.innerWidth,
           support: inspectLink(support),
           contactTeam: inspectLink(contactTeam),
+          backNavigation: backNavigation instanceof HTMLAnchorElement ? {
+            href: backNavigation.getAttribute('href'),
+            text: backNavigation.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+            visible: backNavigation.getClientRects().length > 0
+              && getComputedStyle(backNavigation).visibility === 'visible',
+            height: backNavigation.getBoundingClientRect().height,
+          } : null,
         };
       })()`, page.sessionId);
       assert.ok(
@@ -336,6 +347,14 @@ test('Help contact actions remain visible without overflow on phone and desktop 
       assert.equal(helpPage.contactTeam.href, 'mailto:hello@pixlsports.com');
       assert.equal(helpPage.contactTeam.visible, true);
       assert.equal(helpPage.contactTeam.withinViewport, true);
+      assert.ok(helpPage.backNavigation, `Studio return link should be present at ${width}px`);
+      assert.equal(helpPage.backNavigation.href, '/studio');
+      assert.equal(helpPage.backNavigation.text, 'Back to Studio');
+      assert.equal(helpPage.backNavigation.visible, true);
+      assert.ok(
+        helpPage.backNavigation.height >= 44,
+        `Studio return target is shorter than 44px at ${width}px: ${helpPage.backNavigation.height}`,
+      );
       for (const [label, link] of [
         ['Support email', helpPage.support],
         ['Contact Team email', helpPage.contactTeam],
@@ -371,6 +390,24 @@ test('Help contact actions remain visible without overflow on phone and desktop 
         `Help email actions are too close at ${width}px: ${separation}px`,
       );
     }
+
+    await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/sign-in` }, page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector("[data-testid=link-auth-back]"))',
+      value => value === true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(`(() => {
+        const link = document.querySelector('[data-testid="link-auth-back"]');
+        return link instanceof HTMLAnchorElement
+          && link.getAttribute('href') === '/'
+          && link.textContent?.replace(/\\s+/g, ' ').trim() === 'Back to Pixl Sports';
+      })()`, page.sessionId),
+      true,
+      'sign-in provides a labeled return to public Pixl Sports',
+    );
   } finally {
     if (connection) {
       if (page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
