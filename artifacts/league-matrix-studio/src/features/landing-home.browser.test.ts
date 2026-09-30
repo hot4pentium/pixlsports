@@ -186,3 +186,111 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
     await rm(profile, { recursive: true, force: true });
   }
 });
+
+
+test('Help contact actions remain visible without overflow on phone and desktop widths', async () => {
+  const port = await freePort();
+  const debugPort = await freePort();
+  const profile = await mkdtemp(resolve(tmpdir(), 'pixl-help-browser-'));
+  const server = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+    cwd: appDirectory,
+    env: { ...process.env, PORT: String(port), BASE_PATH: '/', VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const serverMonitor = monitorProcess(server, 'Vite');
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: BrowserPage | undefined;
+  try {
+    await waitForUrl(`http://127.0.0.1:${port}/`, 30_000, serverMonitor);
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(res => res.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
+    page = { targetId: target.targetId, sessionId: attached.sessionId };
+    connection.registerTarget(page.targetId, page.sessionId);
+    await connection.send('Page.enable', {}, page.sessionId);
+    await connection.send('Runtime.enable', {}, page.sessionId);
+
+    for (const width of [320, 393, 1440]) {
+      await connection.send('Emulation.setDeviceMetricsOverride', {
+        width, height: 900, deviceScaleFactor: 1, mobile: width < 600,
+      }, page.sessionId);
+      await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/help` }, page.sessionId);
+      await waitFor(
+        connection,
+        page.sessionId,
+        'Boolean(document.querySelector("[data-testid=link-help-support-email]"))',
+        value => value === true,
+      );
+      await connection.evaluate('document.fonts.ready', page.sessionId);
+      const helpPage = await connection.evaluate<{
+        docWidth: number;
+        bodyWidth: number;
+        viewportWidth: number;
+        support: { href: string | null; visible: boolean; withinViewport: boolean } | null;
+        contactTeam: { href: string | null; visible: boolean; withinViewport: boolean } | null;
+      }>(`(() => {
+        const support = document.querySelector('[data-testid="link-help-support-email"]');
+        const contactTeam = document.querySelector('[data-testid="link-help-contact-team"]');
+        support?.scrollIntoView({ block: 'center', inline: 'nearest' });
+        const inspectLink = (element) => {
+          if (!(element instanceof HTMLAnchorElement)) return null;
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            href: element.getAttribute('href'),
+            visible: element.getClientRects().length > 0
+              && style.display !== 'none'
+              && style.visibility === 'visible'
+              && rect.width > 0
+              && rect.height > 0,
+            withinViewport: rect.left >= 0
+              && rect.right <= document.documentElement.clientWidth
+              && rect.top >= 0
+              && rect.bottom <= window.innerHeight,
+          };
+        };
+        return {
+          docWidth: document.documentElement.scrollWidth,
+          bodyWidth: document.body.scrollWidth,
+          viewportWidth: window.innerWidth,
+          support: inspectLink(support),
+          contactTeam: inspectLink(contactTeam),
+        };
+      })()`, page.sessionId);
+      assert.ok(
+        helpPage.docWidth <= width && helpPage.bodyWidth <= width,
+        `Help page has horizontal overflow at ${width}px: ${JSON.stringify(helpPage)}`,
+      );
+      assert.equal(helpPage.viewportWidth, width);
+      assert.deepEqual(helpPage.support, {
+        href: 'mailto:support@pixlsports.com',
+        visible: true,
+        withinViewport: true,
+      });
+      assert.deepEqual(helpPage.contactTeam, {
+        href: 'mailto:hello@pixlsports.com',
+        visible: true,
+        withinViewport: true,
+      });
+    }
+  } finally {
+    if (connection) {
+      if (page) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+      connection.close();
+    }
+    if (browser && browserMonitor && !browserMonitor.hasExited()) browser.kill('SIGTERM');
+    if (browserMonitor) await browserMonitor.waitForExit();
+    if (!serverMonitor.hasExited()) server.kill('SIGTERM');
+    await serverMonitor.waitForExit();
+    await rm(profile, { recursive: true, force: true });
+  }
+});

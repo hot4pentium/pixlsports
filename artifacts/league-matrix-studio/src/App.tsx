@@ -3202,7 +3202,7 @@ function IconForPreview({ kind }: { kind: ToolKind }) {
 function Help() {
   return (
     <StudioLayout>
-      <main className="mx-auto max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
+      <main className="mx-auto w-full max-w-[800px] px-5 py-12 sm:px-8 lg:py-24">
         <div className="mb-10 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent clip-angled-sm">
           <CircleHelp className="h-4 w-4" /> Support Manual
         </div>
