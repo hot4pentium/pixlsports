@@ -44,6 +44,23 @@
   -webkit-backdrop-filter: blur(7px);
 }
 
+.supporter-tour__dialog--first-card {
+  width: min(calc(100vw - 32px), 520px);
+}
+
+.supporter-tour__first-card-inner {
+  padding-block: 28px 26px;
+}
+
+.supporter-tour__first-card-inner .supporter-tour__heading {
+  margin-top: 18px;
+}
+
+.supporter-tour__first-card-controls {
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
 .supporter-tour__inner {
   position: relative;
   padding: 24px 26px 22px;
@@ -188,6 +205,8 @@
   .supporter-tour__install-guidance section { padding: 9px 10px; }
   .supporter-tour__install-guidance section p { margin-top: 5px; font-size: 11px; line-height: 1.38; }
   .supporter-tour__desktop-note { grid-column: auto; }
+  .supporter-tour__first-card-controls { align-items: stretch; flex-direction: column-reverse; }
+  .supporter-tour__first-card-controls .supporter-tour__control { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

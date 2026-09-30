@@ -437,6 +437,232 @@ test('supporter browser assertion failures still clean up Chromium and generated
   assert.equal(await pathExists(fixtures.htmlPath), false, 'the generated HTML fixture must be removed');
 });
 
+test('finishing the dashboard tour offers the first Event Card without prompting after skip or save failure', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-first-event-card-prompt-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  const finishTour = async () => {
+    if (!connection || !page) throw new Error('Browser page is not ready');
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"] > dialog")?.open === true',
+      Boolean,
+    );
+    for (let index = 0; index < 5; index += 1) {
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-tour-next\\"]")?.click()',
+        page.sessionId,
+      );
+      await waitFor(
+        connection,
+        page.sessionId,
+        `document.querySelector(".supporter-tour__count")?.getAttribute("aria-label") === "Step ${index + 2} of 6"`,
+        Boolean,
+      );
+    }
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector("[data-testid=\\"supporter-dashboard-tour-finish\\"]"))',
+      Boolean,
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"supporter-dashboard-tour-finish\\"]")?.click()',
+      page.sessionId,
+    );
+  };
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-first-event-card-prompt-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`,
+      `--user-data-dir=${tempDirectory}`,
+      'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    const fixtureUrl = `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}`;
+    page = await openPage(connection, `${fixtureUrl}?tour-prompt=defer`);
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await finishTour();
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.activeElement?.id',
+        page.sessionId,
+      ),
+      'supporter-dashboard-first-card-heading',
+      'the follow-up prompt should announce its heading when it opens',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-later\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === false',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid^=\\"card-game-on-new-card-\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'Maybe later should not start an Event Card draft',
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?tour-prompt=skip`);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"] > dialog")?.open === true',
+      Boolean,
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"supporter-dashboard-tour-skip\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-tour\\"] > dialog")?.open === false',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+        page.sessionId,
+      ),
+      false,
+      'skipping the tour should not show the first-card prompt',
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?tour-prompt=failure`);
+    await finishTour();
+    await waitFor(
+      connection,
+      page.sessionId,
+      'Boolean(document.querySelector("[data-testid=\\"supporter-dashboard-tour-error\\"]"))',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+        page.sessionId,
+      ),
+      false,
+      'a failed completion save should keep the tour open and suppress the prompt',
+    );
+
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+    await navigatePage(connection, page, `${fixtureUrl}?tour-prompt=create`);
+    await finishTour();
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === true',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(`(() => {
+        const dialog = document.querySelector('[data-testid="supporter-dashboard-first-card-prompt"]');
+        if (!(dialog instanceof HTMLDialogElement)) return false;
+        const rect = dialog.getBoundingClientRect();
+        return rect.left >= 0 && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
+      })()`, page.sessionId),
+      true,
+      'the prompt should fit within a phone viewport',
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-create\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector(".supporter-dashboard-mobile-shell [data-testid^=\\"card-game-on-new-card-\\"]") !== null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-first-card-prompt\\"]")?.open === false',
+        page.sessionId,
+      ),
+      true,
+      'the create action should close the prompt after opening the existing draft workspace',
+    );
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit().catch(() => undefined);
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit().catch(() => undefined);
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
 test('dashboard empty game notice and install reminder work across screen sizes', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-add-event-navigation-test');
@@ -3964,7 +4190,11 @@ function WorkspaceJourneyHarness() {
 export function mount() {
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
-    const requestUrl = typeof input === 'string' ? input : input.url;
+    const requestUrl = typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input?.url || String(input || '');
     if (
       window.location.search.includes('game-on-card-save-transition')
       && new URL(requestUrl, window.location.href).pathname === '/api/athlete-invites'
@@ -3980,6 +4210,21 @@ export function mount() {
     }
     if (new URL(requestUrl, window.location.href).pathname === '/api/game-on-cards/owned') {
       return Promise.resolve(new Response('[]', {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
+    if (new URL(requestUrl, window.location.href).pathname === '/api/athlete-invites') {
+      return Promise.resolve(new Response('[]', {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
+    if (new URL(requestUrl, window.location.href).pathname === '/api/projects') {
+      return Promise.resolve(new Response('[]', {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    }
+    if (new URL(requestUrl, window.location.href).pathname === '/api/supporter/active-game') {
+      return Promise.resolve(new Response(JSON.stringify({ gameId: null }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       }));
     }
@@ -4230,7 +4475,10 @@ export function mount() {
     ));
     return;
   }
-  let dashboardUserId = window.location.search.includes('supporter-game-record')
+  const tourPromptScenario = new URLSearchParams(window.location.search).get('tour-prompt');
+  let dashboardUserId = tourPromptScenario
+    ? 'supporter-tour-' + tourPromptScenario
+    : window.location.search.includes('supporter-game-record')
     ? 'supporter-game-record-user'
     : window.location.search.includes('supporter-active-game-sync')
       ? 'supporter-sync-user'
@@ -4276,6 +4524,11 @@ export function mount() {
         createElement(SupporterDashboardView, {
           profile,
           userId: dashboardUserId,
+           autoStartTour: Boolean(tourPromptScenario),
+           onTourDismiss: tourPromptScenario ? async (kind) => {
+             window.__tourDismissals = [...(window.__tourDismissals || []), kind];
+             if (tourPromptScenario === 'failure') throw new Error('Tour completion could not be saved');
+           } : undefined,
           events: dashboardEvents,
           nextGameIsUpcoming: true,
           scheduleSource: 'custom',

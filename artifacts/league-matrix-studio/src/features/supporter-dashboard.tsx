@@ -1133,7 +1133,13 @@ export function SupporterDashboardView({
             sport={recordSport}
             record={gameRecord}
             headerAction={!isDesktopDashboard && onTourDismiss ? (
-              <SupporterDashboardTour key={`${userId ?? 'guest'}-mobile`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} />
+              <SupporterDashboardTour
+                key={`${userId ?? 'guest'}-mobile`}
+                userId={userId}
+                autoStart={autoStartTour}
+                onDismiss={onTourDismiss}
+                onCreateFirstEventCard={openCardWorkspace}
+              />
             ) : undefined}
           >
             {renderGameOnEventContent('mobile')}
@@ -1238,7 +1244,13 @@ export function SupporterDashboardView({
         sport={recordSport}
         record={gameRecord}
         headerAction={isDesktopDashboard && onTourDismiss ? (
-          <SupporterDashboardTour key={`${userId ?? 'guest'}-desktop`} userId={userId} autoStart={autoStartTour} onDismiss={onTourDismiss} />
+          <SupporterDashboardTour
+            key={`${userId ?? 'guest'}-desktop`}
+            userId={userId}
+            autoStart={autoStartTour}
+            onDismiss={onTourDismiss}
+            onCreateFirstEventCard={openCardWorkspace}
+          />
         ) : undefined}
       >
         {renderGameOnEventContent('desktop')}

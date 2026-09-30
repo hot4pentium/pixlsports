@@ -9,6 +9,7 @@ export type SupporterDashboardTourProps = {
   userId?: string | null;
   autoStart: boolean;
   onDismiss: (kind: DismissKind) => Promise<void>;
+  onCreateFirstEventCard: () => void;
 };
 
 const steps: ReadonlyArray<{
@@ -58,9 +59,15 @@ function sessionStorageOrNull(): Storage | null {
   }
 }
 
-export function SupporterDashboardTour({ userId, autoStart, onDismiss }: SupporterDashboardTourProps) {
+export function SupporterDashboardTour({
+  userId,
+  autoStart,
+  onDismiss,
+  onCreateFirstEventCard,
+}: SupporterDashboardTourProps) {
   const [resumedStep] = useState(() => readDashboardTourProgress(sessionStorageOrNull(), userId, steps.length));
   const [open, setOpen] = useState(resumedStep !== null);
+  const [firstCardPromptOpen, setFirstCardPromptOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(resumedStep ?? 0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -68,6 +75,8 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
   const pendingRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const firstCardDialogRef = useRef<HTMLDialogElement>(null);
+  const firstCardHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     if (autoStart && !hasStartedRef.current) {
@@ -93,6 +102,17 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
     }
   }, [open, stepIndex]);
 
+  useEffect(() => {
+    const dialog = firstCardDialogRef.current;
+    if (!dialog) return;
+    if (firstCardPromptOpen) {
+      if (!dialog.open) dialog.showModal();
+      firstCardHeadingRef.current?.focus();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [firstCardPromptOpen]);
+
   const dismiss = async (kind: DismissKind) => {
     if (pendingRef.current) return;
     pendingRef.current = true;
@@ -103,6 +123,7 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
       clearDashboardTourProgress(sessionStorageOrNull(), userId);
       hasStartedRef.current = true;
       setOpen(false);
+      if (kind === "finish") setFirstCardPromptOpen(true);
     } catch {
       setError(true);
     } finally {
@@ -112,6 +133,10 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
   };
 
   const step = steps[stepIndex];
+  const createFirstEventCard = () => {
+    setFirstCardPromptOpen(false);
+    onCreateFirstEventCard();
+  };
 
   return (
     <div className="supporter-tour" data-testid="supporter-dashboard-tour">
@@ -234,6 +259,53 @@ export function SupporterDashboardTour({ userId, autoStart, onDismiss }: Support
                 Finish
               </button>
             )}
+          </div>
+        </div>
+      </dialog>
+      <dialog
+        ref={firstCardDialogRef}
+        className="supporter-tour__dialog supporter-tour__dialog--first-card"
+        aria-modal="true"
+        aria-labelledby="supporter-dashboard-first-card-heading"
+        aria-describedby="supporter-dashboard-first-card-description"
+        onCancel={(event) => {
+          event.preventDefault();
+          setFirstCardPromptOpen(false);
+        }}
+        data-testid="supporter-dashboard-first-card-prompt"
+      >
+        <div className="supporter-tour__inner supporter-tour__first-card-inner">
+          <div className="supporter-tour__topline">
+            <span>Your first step</span>
+          </div>
+          <h2
+            ref={firstCardHeadingRef}
+            id="supporter-dashboard-first-card-heading"
+            className="supporter-tour__heading"
+            tabIndex={-1}
+          >
+            Create your first Event Card
+          </h2>
+          <p id="supporter-dashboard-first-card-description" className="supporter-tour__description">
+            Add your next game or practice so the details, Prep, and game-day tools are ready when you need them.
+          </p>
+          <div className="supporter-tour__controls supporter-tour__first-card-controls">
+            <button
+              type="button"
+              className="supporter-tour__control"
+              onClick={() => setFirstCardPromptOpen(false)}
+              data-testid="supporter-dashboard-first-card-later"
+            >
+              Maybe later
+            </button>
+            <button
+              type="button"
+              className="supporter-tour__control supporter-tour__control--primary"
+              onClick={createFirstEventCard}
+              data-testid="supporter-dashboard-first-card-create"
+            >
+              Create your first Event Card
+            </button>
           </div>
         </div>
       </dialog>
