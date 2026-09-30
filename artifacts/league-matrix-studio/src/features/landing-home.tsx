@@ -3,13 +3,10 @@ import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, Play, WifiOff, CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
-import planEventDetails from '@/assets/landing-plan-event-details.png';
-import prepChecklist from '@/assets/landing-prep-checklist.png';
-import followStatTracker from '@/assets/landing-follow-stat-tracker.png';
-import celebrateVideoReply from '@/assets/landing-celebrate-video-reply.png';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
 import dashboardMobile from '@/assets/landing-dashboard-mobile.png';
 import dashboardLandscape from '@/assets/landing-dashboard-landscape.png';
+import { LandingToolDemo } from './landing-tool-demo';
 
 const BASE_PATH = import.meta.env.BASE_URL.replace(/\/$/, '');
 const WEEK_VIDEO = `${BASE_PATH}/week-path-explainer.mp4`;
@@ -87,67 +84,16 @@ const landingCapabilityHighlights = [
   },
 ];
 
-const stepPreviews: Record<string, { src: string; alt: string; description: string; width: number; height: number }> = {
-  '01': {
-    src: planEventDetails,
-    alt: 'Completed Event Card for Jessica vs Tigers on September 23, 2026 at 10:15 PM, Upper Park, with Prep, Stat Tracker, and Details actions.',
-    description: 'Completed Event Card',
-    width: 1250,
-    height: 756,
-  },
-  '02': {
-    src: prepChecklist,
-    alt: 'Game vs Tigers prep checklist with six items, private notes, an add prep item button, and a create edit link button.',
-    description: 'game-day checklist',
-    width: 1160,
-    height: 1096,
-  },
-  '03': {
-    src: followStatTracker,
-    alt: 'Live Game vs Tigers stat tracker showing Warriors and Tigers tied at zero, set one, and six athlete stat categories.',
-    description: 'live stat tracker',
-    width: 1160,
-    height: 1254,
-  },
-  '04': {
-    src: celebrateVideoReply,
-    alt: 'Shared Good Save highlight video with a reply panel, reaction choices, and Card Front, Stats, Videos, and Events navigation.',
-    description: 'shared video and reply',
-    width: 680,
-    height: 824,
-  },
-};
-
-function FlippableStepCard({
-  step: { number, title, description, icon: Icon },
-  preview,
-}: {
+function DemoStepCard({ step: { number, title, description, icon: Icon }, onOpen }: {
   step: (typeof steps)[number];
-  preview: { src: string; alt: string; description: string; width: number; height: number };
+  onOpen: () => void;
 }) {
-  const [flipped, setFlipped] = useState(false);
   return (
-    <div className="step-card step-card--flippable" data-flipped={flipped} data-testid={`card-landing-step-${number}`}>
-      <div className="plan-flip-inner">
-        <div className="plan-face plan-face--front" aria-hidden={flipped}>
-          <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
-          <h3 className="display">{title}</h3><p>{description}</p>
-          <span className="plan-face-cue">Flip for a preview <ArrowRight size={12} aria-hidden="true" /></span>
-        </div>
-        <div className="plan-face plan-face--back" aria-hidden={!flipped}>
-          <img src={preview.src} alt={preview.alt} width={preview.width} height={preview.height} />
-          <span className="plan-face-cue">Tap to return to {title} <ArrowRight size={12} aria-hidden="true" /></span>
-        </div>
-      </div>
-      <button
-        type="button"
-        className="plan-card-toggle"
-        aria-pressed={flipped}
-        aria-label={flipped ? `${preview.description} preview shown. Return to ${title} card.` : `${title}: ${description} Flip to see a ${preview.description} preview.`}
-        onClick={() => setFlipped(value => !value)}
-        data-testid={`button-landing-${title.toLowerCase()}-flip`}
-      />
-    </div>
+    <button type="button" className="step-card step-card--demo" onClick={onOpen} aria-label={`Try ${title}: ${description}`} data-testid={`button-landing-${title.toLowerCase()}-try`}>
+      <div className="step-top"><span className="step-icon"><Icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{number}</span></div>
+      <h3 className="display">{title}</h3><p>{description}</p>
+      <span className="step-demo-launch" aria-hidden="true">Try {title} <ArrowRight size={14} /></span>
+    </button>
   );
 }
 
@@ -189,6 +135,7 @@ function DashboardPreview({ variant }: { variant: 'mobile' | 'landscape' }) {
 export function PublicLandingPage() {
   const { isSignedIn } = useUser();
   const destination = isSignedIn ? '/studio' : '/sign-up';
+  const [activeDemo, setActiveDemo] = useState<'01' | '02' | '03' | '04' | null>(null);
   return (
     <div className="new-landing">
       <LandingNav isSignedIn={Boolean(isSignedIn)} />
@@ -229,13 +176,9 @@ export function PublicLandingPage() {
               <p>PIXL gives you a clear next step, from putting a game on the calendar to sharing the moments afterward.</p>
             </div>
             <div className="week-grid">
-              {steps.map(step => stepPreviews[step.number]
-                ? <FlippableStepCard key={step.number} step={step} preview={stepPreviews[step.number]} />
-                : <div className="step-card" key={step.number} data-testid={`card-landing-step-${step.number}`}>
-                  <div className="step-top"><span className="step-icon"><step.icon size={18} strokeWidth={2} aria-hidden="true" /></span><span className="step-number">{step.number}</span></div>
-                  <h3 className="display">{step.title}</h3><p>{step.description}</p>
-                </div>)}
+              {steps.map(step => <DemoStepCard key={step.number} step={step} onOpen={() => setActiveDemo(step.number as '01' | '02' | '03' | '04')} />)}
             </div>
+            {activeDemo && <LandingToolDemo step={activeDemo} open destination={destination} onOpenChange={open => { if (!open) setActiveDemo(null); }} />}
             <a href={WEEK_VIDEO} target="_blank" rel="noopener noreferrer" className="week-video-link" data-testid="link-landing-week-path-video"><Play size={14} fill="currentColor" aria-hidden="true" /> Watch the week path explainer <ArrowUpRight size={14} aria-hidden="true" /></a>
           </div>
         </section>
