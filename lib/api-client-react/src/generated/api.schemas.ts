@@ -1564,6 +1564,7 @@ export const AccountLifecycleStatus = {
   paused: 'paused',
   cancelled: 'cancelled',
   deletion_pending: 'deletion_pending',
+  not_provisioned: 'not_provisioned',
 } as const;
 
 export type AccountLifecyclePlanTier = typeof AccountLifecyclePlanTier[keyof typeof AccountLifecyclePlanTier];

@@ -88,6 +88,6 @@
 - [Owner alert idempotency](owner-alert-idempotency.md) — keep one-hour prompts unique across replaced Game On Cards; uncertain sends must not repeat.
 - [Season profile seeding](season-profile-seeding.md) — use one free-text `seasonName` profile value for onboarding and new athlete-page defaults.
 - [Event Card pregame state](event-card-pregame-state.md) — badges switch to Live at one deterministic kickoff instant; DST gaps shift forward and repeats choose the earlier instant.
-- [Private dashboard offline authority](private-dashboard-offline-authority.md) — cache private dashboard data per account, but require fast online lifecycle revalidation and clear it on account exit.
+- [Private dashboard offline authority](private-dashboard-offline-authority.md) — clear caches on confirmed account absence; allow first setup only under the server-checked eligibility rule.
 - [Landing Celebrate card parity](landing-celebrate-card-parity.md) — the signed-out Celebrate demo must use the Hype Card's Front, Stats, Videos, Events sides, not a message back.
 - [Safari engine test boundary](webkit-safari-coverage.md) — Linux WebKitGTK validates Safari’s engine, not Apple’s Safari app; report the distinction clearly.

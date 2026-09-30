@@ -5,7 +5,7 @@ export const ACCOUNT_RETENTION_DAYS = 90;
 export const PROJECT_MEDIA_QUOTA_BYTES = 1024 * 1024 * 1024;
 const ACCOUNT_RETENTION_MS = ACCOUNT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
-export type AccountLifecycleStatus = "active" | "paused" | "cancelled" | "deletion_pending";
+export type AccountLifecycleStatus = "active" | "paused" | "cancelled" | "deletion_pending" | "not_provisioned";
 
 export type PaidEntitlement = {
   providerEventId: string;
@@ -15,6 +15,7 @@ export type PaidEntitlement = {
 };
 
 function asStatus(value: string | null | undefined): AccountLifecycleStatus {
+  if (value === null || value === undefined) return "not_provisioned";
   if (value === "paused" || value === "cancelled" || value === "deletion_pending") return value;
   return "active";
 }
@@ -34,6 +35,19 @@ export async function getAccountLifecycleSnapshot(
     .limit(1);
 
   const now = new Date();
+  if (!access) {
+    return {
+      status: "not_provisioned" as const,
+      pauseEndsAt: null,
+      planTier: "free" as const,
+      cancelledAt: null,
+      lastActivityAt: null,
+      deletionEligibleAt: null,
+      retentionDays: ACCOUNT_RETENTION_DAYS,
+      expired: false,
+    };
+  }
+
   if (access?.lifecycleStatus === "paused" && access.pauseEndsAt && access.pauseEndsAt <= now) {
     const [resumed] = await db.update(accountAccessTable)
       .set({ lifecycleStatus: "active", pauseEndsAt: null, updatedAt: now })

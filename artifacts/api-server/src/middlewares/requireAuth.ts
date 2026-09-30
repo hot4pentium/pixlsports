@@ -39,6 +39,13 @@ export const requireAuth: RequestHandler = async (req, res, next): Promise<void>
   try {
     const lifecycle = await getAccountLifecycleSnapshot(userId, { touchCancelledActivity: true });
     if (lifecycle.status !== "active") {
+      if (lifecycle.status === "not_provisioned") {
+        res.status(423).json({
+          error: "No app account is provisioned for this sign-in.",
+          code: "ACCOUNT_NOT_PROVISIONED",
+        });
+        return;
+      }
       res.status(423).json({
         error: lifecycle.expired
           ? "Account recovery window has expired."

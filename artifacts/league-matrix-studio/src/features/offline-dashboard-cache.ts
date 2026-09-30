@@ -22,7 +22,8 @@ function isLifecycle(value: unknown): value is AccountLifecycle {
   return lifecycle.status === 'active'
     || lifecycle.status === 'paused'
     || lifecycle.status === 'cancelled'
-    || lifecycle.status === 'deletion_pending';
+    || lifecycle.status === 'deletion_pending'
+    || lifecycle.status === 'not_provisioned';
 }
 
 export function readOfflineDashboardSnapshot(
@@ -54,7 +55,7 @@ export function updateOfflineDashboardSnapshot(
 ): OfflineDashboardSnapshot | null {
   const existing = readOfflineDashboardSnapshot(storage, accountId);
   const lifecycle = patch.lifecycle ?? existing?.lifecycle;
-  if (!lifecycle) return null;
+  if (!lifecycle || lifecycle.status === 'not_provisioned') return null;
   const snapshot: OfflineDashboardSnapshot = {
     version: 1,
     accountId,

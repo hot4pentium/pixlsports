@@ -51,6 +51,15 @@ async function deleteTestAccount(ownerClerkUserId: string) {
   await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
 }
 
+test("a missing account row is not treated as an active account", async () => {
+  const ownerClerkUserId = `missing-account-test-${randomUUID()}`;
+  const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
+
+  assert.equal(lifecycle.status, "not_provisioned");
+  assert.equal(lifecycle.planTier, "free");
+  assert.equal(lifecycle.expired, false);
+});
+
 test("paid eligibility requires active lifecycle and an unexpired entitlement", async () => {
   const ownerClerkUserId = `paid-test-${randomUUID()}`;
   try {

@@ -86,6 +86,7 @@ import {
 } from '@/features/schedule-install';
 import { useAppInstallPrompt } from '@/features/app-install-prompt';
 import { shouldRequireSupporterSetup } from '@/features/supporter-setup-routing';
+import { canShowInitialAccountSetup } from '@/features/initial-account-setup';
 import {
   updateSupporterPhotoCache,
   useCachedSupporterPhoto,
@@ -3480,6 +3481,7 @@ function SignUpPage() {
 function RoleSelectionPage() {
   const [, setLocation] = useLocation();
   const { user, isLoaded } = useUser();
+  const queryClient = useQueryClient();
   const existingProfile = getUserProfile(user);
   const selectedAccessMode: AccessMode = existingProfile.accessMode ?? 'full';
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
@@ -3514,6 +3516,11 @@ function RoleSelectionPage() {
       await updateAccountAccess.mutateAsync({
         data: { role: 'fan', accessMode: selectedAccessMode },
       });
+      const lifecycleQueryKey = [...getGetAccountLifecycleQueryKey(), user.id];
+      await queryClient.invalidateQueries({ queryKey: lifecycleQueryKey });
+      if (queryClient.getQueryData<{ status?: string }>(lifecycleQueryKey)?.status !== 'active') {
+        throw new Error('Account setup could not be confirmed.');
+      }
       await user.update({
         unsafeMetadata: {
           ...(user.unsafeMetadata ?? {}),
@@ -3722,9 +3729,42 @@ function LockedAccountPage({ status, pauseEndsAt, deletionEligibleAt, expired, u
   );
 }
 
+function AccountUnavailablePage() {
+  const { signOut } = useClerk();
+
+  return (
+    <div className="noise min-h-dvh bg-background">
+      <SiteNav dark />
+      <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-5xl items-center px-5 py-12 sm:px-8">
+        <section className="relative w-full overflow-hidden border-l-4 border-primary bg-card p-7 text-white clip-angled-sm sm:p-10" data-testid="account-unavailable-page">
+          <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
+          <div className="relative z-10 max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-widest text-primary">Account unavailable</p>
+            <h1 className="mt-4 font-display text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl">
+              THIS STUDIO<br /><span className="text-primary">IS UNAVAILABLE.</span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/70 sm:text-lg">
+              There is no active Pixl Sports account for this sign-in. Private dashboard access and saved account data are unavailable.
+            </p>
+            <button
+              type="button"
+              onClick={() => void signOut({ redirectUrl: `${basePath}/sign-in` })}
+              className="mt-8 inline-flex items-center justify-center gap-2 bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm"
+              data-testid="button-sign-out-unavailable-account"
+            >
+              Sign out <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
+  const queryClient = useQueryClient();
   const bypassLifecycle = location.startsWith('/schedule/')
     || location.startsWith('/checklist/')
     || location.startsWith('/watch/')
@@ -3750,13 +3790,22 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   });
   const { data: lifecycle, isLoading, isError, refetch } = lifecycleQuery;
   useEffect(() => {
+    if (!user?.id || lifecycle?.status !== 'not_provisioned') return;
+    clearPrivateOfflineAccountData(window.localStorage, user.id);
+    const lifecycleQueryKey = [...getGetAccountLifecycleQueryKey(), user.id];
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey.length !== lifecycleQueryKey.length
+        || query.queryKey.some((part, index) => part !== lifecycleQueryKey[index]),
+    });
+  }, [user?.id, lifecycle?.status, queryClient]);
+  useEffect(() => {
     setAllowSlowCache(false);
     if (!cachedDashboard || !isSignedIn) return;
     const timer = window.setTimeout(() => setAllowSlowCache(true), 1800);
     return () => window.clearTimeout(timer);
   }, [user?.id, isSignedIn, Boolean(cachedDashboard)]);
   useEffect(() => {
-    if (!user?.id || !lifecycle || isError || !lifecycleQuery.isFetchedAfterMount) return;
+    if (!user?.id || !lifecycle || lifecycle.status === 'not_provisioned' || isError || !lifecycleQuery.isFetchedAfterMount) return;
     updateOfflineDashboardSnapshot(window.localStorage, user.id, {
       lifecycle,
       verifiedAt: new Date().toISOString(),
@@ -3785,7 +3834,11 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   if (isSignedIn && !bypassLifecycle && (isError || !lifecycle) && !canUseCachedLifecycle) {
     return <AccountLoadingScreen error onRetry={() => void refetch()} />;
   }
-  if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active') {
+  if (isSignedIn && !bypassLifecycle && lifecycle?.status === 'not_provisioned') {
+    if (location.startsWith('/studio/setup') && canShowInitialAccountSetup(user)) return <>{children}</>;
+    return <AccountUnavailablePage />;
+  }
+  if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active' && lifecycle.status !== 'not_provisioned') {
     return <LockedAccountPage status={lifecycle.status} pauseEndsAt={lifecycle.pauseEndsAt} deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} userId={user!.id} />;
   }
   return <>{children}</>;

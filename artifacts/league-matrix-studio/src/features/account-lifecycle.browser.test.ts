@@ -211,6 +211,55 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.equal((await state(other)).status, 'active');
     assert.equal(await connection.evaluate(visible('locked-account-page'), afterExpiry), false);
     await fit(afterExpiry);
+
+    const dashboardCacheKey = `pixl-sports:private-dashboard:v1:${encodeURIComponent(owner)}`;
+    const trackerCacheKey = `leaguematrix-stat-tracker:${owner}`;
+    const cachedLifecycle = {
+      status: 'active',
+      pauseEndsAt: null,
+      planTier: 'free',
+      cancelledAt: null,
+      lastActivityAt: null,
+      deletionEligibleAt: null,
+      retentionDays: 90,
+      expired: false,
+    };
+    const cachedSnapshot = {
+      version: 1,
+      accountId: owner,
+      verifiedAt: new Date().toISOString(),
+      lifecycle: cachedLifecycle,
+    };
+    await connection.evaluate(
+      `localStorage.setItem(${JSON.stringify(dashboardCacheKey)}, ${JSON.stringify(JSON.stringify(cachedSnapshot))})`,
+      phone,
+    );
+    await connection.evaluate(
+      `localStorage.setItem(${JSON.stringify(trackerCacheKey)}, 'private tracker data')`,
+      phone,
+    );
+    const cachedBeforeDeletion = await connection.evaluate<string | null>(
+      `localStorage.getItem(${JSON.stringify(dashboardCacheKey)})`,
+      phone,
+    );
+    assert.ok(cachedBeforeDeletion, 'the owner should have a previously verified offline snapshot');
+
+    await admin('delete-account', { viewer: owner });
+    const afterDeletion = await open(owner, 390, 844);
+    await waitVisible(afterDeletion, 'account-unavailable-page');
+    const protectedApiStatus = await connection.evaluate<number>(
+      "fetch('/api/account/access').then(response => response.status)",
+      afterDeletion,
+    );
+    assert.equal(protectedApiStatus, 423);
+    const privateCache = await connection.evaluate<{ dashboard: string | null; tracker: string | null }>(
+      `({
+        dashboard: localStorage.getItem(${JSON.stringify(dashboardCacheKey)}),
+        tracker: localStorage.getItem(${JSON.stringify(trackerCacheKey)}),
+      })`,
+      afterDeletion,
+    );
+    assert.deepEqual(privateCache, { dashboard: null, tracker: null });
   } finally {
     if (connection) for (const page of pages) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

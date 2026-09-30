@@ -1222,6 +1222,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "423":
+          description: Account is locked or this identity is not eligible for initial setup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /account/lifecycle:
     get:
       operationId: getAccountLifecycle
@@ -3049,7 +3055,7 @@ components:
       properties:
         status:
           type: string
-          enum: [active, paused, cancelled, deletion_pending]
+          enum: [active, paused, cancelled, deletion_pending, not_provisioned]
         pauseEndsAt:
           type: ["string", "null"]
           format: date-time

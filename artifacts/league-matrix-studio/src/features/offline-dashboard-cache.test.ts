@@ -55,6 +55,19 @@ test('expired and malformed snapshots never unlock the dashboard', () => {
   assert.equal(readOfflineDashboardSnapshot(target, 'user-a'), null);
 });
 
+test('confirmed missing accounts clear private offline data and are never saved as dashboard snapshots', () => {
+  const target = storage();
+  updateOfflineDashboardSnapshot(target, 'user-a', { lifecycle, verifiedAt: '2026-09-29T12:00:00.000Z' });
+  target.setItem('leaguematrix-stat-tracker:user-a', 'private');
+
+  const missingLifecycle = { ...lifecycle, status: 'not_provisioned' as const };
+  assert.equal(updateOfflineDashboardSnapshot(target, 'user-a', { lifecycle: missingLifecycle }), null);
+  clearPrivateOfflineAccountData(target as Storage, 'user-a');
+
+  assert.equal(readOfflineDashboardSnapshot(target, 'user-a'), null);
+  assert.equal(target.getItem('leaguematrix-stat-tracker:user-a'), null);
+});
+
 test('schedule drafts and pending sync markers stay account-scoped', () => {
   const target = storage();
   const draft = { teamName: 'Falcons', season: 'Fall', events: [], template: 0 };

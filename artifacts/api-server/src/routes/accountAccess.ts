@@ -13,8 +13,9 @@ import {
   guestUsageEventsTable,
   projectMediaTable,
 } from "@workspace/db";
-import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
-import { hasActivePaidEntitlement, PROJECT_MEDIA_QUOTA_BYTES } from "../lib/accountLifecycle";
+import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
+import { getAccountLifecycleSnapshot, hasActivePaidEntitlement, PROJECT_MEDIA_QUOTA_BYTES } from "../lib/accountLifecycle";
+import { canProvisionInitialAccount, markAccountProvisioned } from "../lib/accountProvisioning";
 
 const router: IRouter = Router();
 
@@ -196,7 +197,7 @@ router.get("/account/access", requireAuth, async (_req, res): Promise<void> => {
   res.json(GetAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
 });
 
-router.put("/account/access", requireAuth, async (req, res): Promise<void> => {
+router.put("/account/access", requireAuthenticatedIdentity, async (req, res): Promise<void> => {
   const parsed = UpdateAccountAccessBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -204,6 +205,33 @@ router.put("/account/access", requireAuth, async (req, res): Promise<void> => {
   }
 
   const ownerClerkUserId = getRequiredClerkUserId(res);
+  const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
+  if (lifecycle.status === "not_provisioned") {
+    let eligible = false;
+    try {
+      eligible = await canProvisionInitialAccount(ownerClerkUserId);
+    } catch (error) {
+      req.log.warn({ error, ownerClerkUserId }, "Could not verify first-time account setup");
+      res.status(503).json({ error: "Account setup could not be verified. Please try again." });
+      return;
+    }
+    if (!eligible) {
+      res.status(423).json({
+        error: "This sign-in cannot create a new app account.",
+        code: "ACCOUNT_NOT_PROVISIONED",
+      });
+      return;
+    }
+  } else if (lifecycle.status !== "active") {
+    res.status(423).json({
+      error: lifecycle.expired
+        ? "Account recovery window has expired."
+        : lifecycle.status === "paused" ? "Account is paused." : "Account is cancelled and locked.",
+      code: lifecycle.expired ? "ACCOUNT_EXPIRED" : lifecycle.status === "paused" ? "ACCOUNT_PAUSED" : "ACCOUNT_LOCKED",
+    });
+    return;
+  }
+
   const [existingAccess] = await db
     .select()
     .from(accountAccessTable)
@@ -230,6 +258,12 @@ router.put("/account/access", requireAuth, async (req, res): Promise<void> => {
         updatedAt: new Date(),
       },
     });
+
+  try {
+    await markAccountProvisioned(ownerClerkUserId);
+  } catch (error) {
+    req.log.warn({ error, ownerClerkUserId }, "Could not persist account provisioning marker");
+  }
 
   res.json(UpdateAccountAccessResponse.parse(await getAccountAccessSnapshot(ownerClerkUserId)));
 });

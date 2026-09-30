@@ -2963,7 +2963,7 @@ export const UpdateAccountAccessResponse = zod.object({
 
 
 export const GetAccountLifecycleResponse = zod.object({
-  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
   "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
@@ -2981,7 +2981,7 @@ export const GetAccountLifecycleResponse = zod.object({
 
 
 export const CancelAccountResponse = zod.object({
-  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
   "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
@@ -2999,7 +2999,7 @@ export const CancelAccountResponse = zod.object({
 
 
 export const PauseAccountResponse = zod.object({
-  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
   "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
@@ -3017,7 +3017,7 @@ export const PauseAccountResponse = zod.object({
 
 
 export const ResumeAccountResponse = zod.object({
-  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
   "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),
@@ -3035,7 +3035,7 @@ export const ResumeAccountResponse = zod.object({
 
 
 export const ReactivateAccountResponse = zod.object({
-  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending']),
+  "status": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
   "pauseEndsAt": zod.coerce.date().nullable(),
   "planTier": zod.enum(['free', 'plus', 'pro']),
   "cancelledAt": zod.coerce.date().nullable(),

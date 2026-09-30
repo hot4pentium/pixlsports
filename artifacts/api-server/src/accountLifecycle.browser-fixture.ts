@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { eq } from "drizzle-orm";
 import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
+import accountAccessRouter from "./routes/accountAccess";
 import lifecycleRouter from "./routes/accountLifecycle";
 
 const owner = `lifecycle-browser-first-${randomUUID()}`;
@@ -42,6 +43,12 @@ async function main() {
       .where(eq(accountAccessTable.ownerClerkUserId, viewer));
     res.status(204).end();
   });
+  app.post("/__fixture/delete-account", async (req, res) => {
+    const viewer = req.body?.viewer;
+    if (!users.has(viewer)) { res.status(400).end(); return; }
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, viewer));
+    res.status(204).end();
+  });
   app.get("/__fixture/state", async (req, res) => {
     const viewer = String(req.query.viewer);
     if (!users.has(viewer)) { res.status(400).end(); return; }
@@ -63,6 +70,7 @@ async function main() {
     req.log = { error: () => {}, warn: () => {} } as unknown as typeof req.log;
     next();
   });
+  app.use("/api", accountAccessRouter);
   app.use("/api", lifecycleRouter);
   app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
   const server = app.listen(Number(process.env.PORT), "127.0.0.1");
