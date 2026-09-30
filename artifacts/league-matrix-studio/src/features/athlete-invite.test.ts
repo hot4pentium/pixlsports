@@ -74,6 +74,18 @@ test('real Hype Card replaces the front slot with responses and moves flip under
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 
+test('the real HYPE Card flips paired 3D faces and respects reduced motion', () => {
+  assert.match(livingCardSource, /className="living-card-frame" data-side=\{side\}/);
+  assert.match(livingCardSource, /className="living-card-flip-inner"/);
+  assert.match(livingCardSource, /living-card-flip-face living-card-flip-front/);
+  assert.match(livingCardSource, /living-card-flip-face living-card-flip-back/);
+  assert.match(livingCardStyles, /transform-style:\s*preserve-3d/);
+  assert.match(livingCardStyles, /\.living-card-flip-back\s*\{\s*transform:\s*rotateY\(180deg\)/);
+  assert.match(livingCardStyles, /backface-visibility:\s*hidden/);
+  assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\).*rotateY\(180deg\)/);
+  assert.match(livingCardStyles, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
 test('the HYPE Card Videos side excludes photos inherited from older shares', () => {
   const videosSide = livingCardSource.slice(
     livingCardSource.indexOf("{side === 'videos' && ("),

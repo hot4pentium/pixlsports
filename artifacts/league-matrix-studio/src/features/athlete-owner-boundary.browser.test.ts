@@ -262,9 +262,33 @@ test('player-page owner tools remain private across account changes and pause', 
     const visitorFanCard = await open('visitor', 'fan');
     await waitFor(connection, visitorFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), visitorFanCard), true);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: true }, visitorFanCard);
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", visitorFanCard);
     await waitFor(connection, visitorFanCard, element('[data-testid="living-card-responses-side"]'), Boolean, 12_000);
     await waitFor(connection, visitorFanCard, "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('Amazing hustle, Jordan!')", Boolean, 12_000);
+    await waitFor(connection, visitorFanCard, `(() => {
+      const inner = document.querySelector('.living-card-flip-inner');
+      const m11 = new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11;
+      return m11 < 0.9 && m11 > -0.9;
+    })()`, Boolean, 12_000);
+    await waitFor(connection, visitorFanCard, `(() => {
+      const card = document.querySelector('#living-card-display');
+      const inner = document.querySelector('.living-card-flip-inner');
+      return card?.dataset.side === 'responses'
+        && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001;
+    })()`, Boolean, 12_000);
+    const backFaceMotion = await connection.evaluate<{ duration: string; backface: string; backM11: number }>(`(() => {
+      const inner = document.querySelector('.living-card-flip-inner');
+      const back = document.querySelector('.living-card-flip-back');
+      return {
+        duration: getComputedStyle(inner).transitionDuration,
+        backface: getComputedStyle(back).backfaceVisibility,
+        backM11: new DOMMatrixReadOnly(getComputedStyle(back).transform).m11,
+      };
+    })()`, visitorFanCard);
+    assert.equal(backFaceMotion.duration, '0.72s');
+    assert.equal(backFaceMotion.backface, 'hidden');
+    assert.ok(Math.abs(backFaceMotion.backM11 + 1) < 0.001);
     const visitorResponses = await connection.evaluate<string>(
       "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText || ''",
       visitorFanCard,
@@ -274,13 +298,20 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.ok(requests.some(({ viewer, method, path }) => (
       viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/public-shoutouts`
     )), 'visitors load the public-shoutouts endpoint');
+    for (const side of ['stats', 'videos', 'events']) {
+      await connection.evaluate(`document.querySelector('[data-testid="button-living-card-${side}"]').click()`, visitorFanCard);
+    }
+    await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.dataset.side === 'events' && Boolean(document.querySelector('[data-testid=\"living-card-events-side\"]'))", Boolean, 12_000);
     assert.equal(await connection.evaluate(
       "document.querySelector('[data-testid=\"button-living-card-front\"]')?.getBoundingClientRect().top > document.querySelector('#living-card-display')?.getBoundingClientRect().bottom",
       visitorFanCard,
     ), true, 'the return-to-front control is below the card');
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-front\"]').click()", visitorFanCard);
     await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.getAttribute('aria-label') === 'Jordan — card front'", Boolean, 12_000);
-    await connection.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: true }, visitorFanCard);
+    await waitFor(connection, visitorFanCard, `(() => {
+      const inner = document.querySelector('.living-card-flip-inner');
+      return Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 - 1) < 0.001;
+    })()`, Boolean, 12_000);
     assert.equal(await connection.evaluate(`[...document.querySelectorAll('.living-card-controls button')].every(button => {
       const bounds = button.getBoundingClientRect();
       const content = document.createRange();
@@ -288,6 +319,20 @@ test('player-page owner tools remain private across account changes and pause', 
       const contentBounds = content.getBoundingClientRect();
       return contentBounds.left >= bounds.left - 1 && contentBounds.right <= bounds.right + 1;
     })`, visitorFanCard), true, 'all four card controls fit at narrow phone width');
+    await connection.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, visitorFanCard);
+    const reducedMotionDuration = await connection.evaluate<string>(
+      "getComputedStyle(document.querySelector('.living-card-flip-inner')).transitionDuration",
+      visitorFanCard,
+    );
+    const durationInSeconds = Number.parseFloat(reducedMotionDuration) * (reducedMotionDuration.endsWith('ms') ? 0.001 : 1);
+    assert.ok(durationInSeconds < 0.001, 'reduced motion shortens the card turn to an effectively instant transition');
+    await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", visitorFanCard);
+    await waitFor(connection, visitorFanCard, `(() => {
+      const card = document.querySelector('#living-card-display');
+      const inner = document.querySelector('.living-card-flip-inner');
+      return card?.dataset.side === 'responses'
+        && Math.abs(new DOMMatrixReadOnly(getComputedStyle(inner).transform).m11 + 1) < 0.001;
+    })()`, Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", ownerFanCard);
     await waitFor(connection, ownerFanCard, element('[data-testid="living-card-responses-side"]'), Boolean, 12_000);
     await waitFor(connection, ownerFanCard, "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('A private note for Jordan.')", Boolean, 12_000);
