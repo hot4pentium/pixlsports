@@ -281,6 +281,71 @@ test("a verified email blocks a new identity for every retained account lifecycl
   }
 });
 
+test("an existing identity keeps its account after its verified email changes, while a different identity stays blocked", async () => {
+  const changedOwnerId = `changed-email-owner-${crypto.randomUUID()}`;
+  const existingEmailOwnerId = `existing-email-owner-${crypto.randomUUID()}`;
+  const newIdentityId = `new-changed-email-${crypto.randomUUID()}`;
+  const oldEmail = `old-${crypto.randomUUID()}@example.test`;
+  const sharedEmail = `shared-${crypto.randomUUID()}@example.test`;
+  const identities = new Map<string, TestClerkIdentity>([
+    [changedOwnerId, createTestIdentity(changedOwnerId, oldEmail)],
+    [existingEmailOwnerId, createTestIdentity(existingEmailOwnerId, sharedEmail)],
+    [newIdentityId, createTestIdentity(newIdentityId, sharedEmail)],
+  ]);
+  const changedOwner = identities.get(changedOwnerId);
+  assert.ok(changedOwner);
+  changedOwner.emailAddresses = [{ emailAddress: sharedEmail, verification: { status: "verified" } }];
+
+  const provisioning = createAccountProvisioning(() => createTestClerk(identities));
+  const app = createAuthenticatedTestApp(provisioning);
+  const server = app.listen(0);
+  const existingOwnerIds = [changedOwnerId, existingEmailOwnerId];
+
+  try {
+    await db.insert(accountAccessTable).values(existingOwnerIds.map((ownerClerkUserId) => ({
+      ownerClerkUserId,
+      role: "fan" as const,
+      accessMode: "full" as const,
+    })));
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}/api/account/access`;
+    const saveAs = (ownerClerkUserId: string) => fetch(baseUrl, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user": ownerClerkUserId,
+      },
+      body: JSON.stringify({ role: "fan", accessMode: "full" }),
+    });
+
+    const changedOwnerSave = await saveAs(changedOwnerId);
+    assert.equal(changedOwnerSave.status, 200, "the changed email does not detach the original Clerk identity from its account");
+
+    const existingEmailOwnerSave = await saveAs(existingEmailOwnerId);
+    assert.equal(existingEmailOwnerSave.status, 200, "the account already linked to that email remains usable by its owner");
+
+    const newIdentitySave = await saveAs(newIdentityId);
+    assert.equal(newIdentitySave.status, 409, "a different identity cannot create an account using an already-linked verified email");
+    assert.equal((await newIdentitySave.json()).code, "ACCOUNT_EMAIL_ALREADY_IN_USE");
+    assert.deepEqual(
+      await db.select().from(accountAccessTable)
+        .where(inArray(accountAccessTable.ownerClerkUserId, [...existingOwnerIds, newIdentityId]))
+        .then((rows) => rows.map((row) => row.ownerClerkUserId).sort()),
+      [...existingOwnerIds].sort(),
+      "both existing accounts remain attached to their original Clerk user IDs",
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    for (const ownerClerkUserId of [...existingOwnerIds, newIdentityId]) {
+      await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+    }
+  }
+});
+
 test("initial account setup requires a Clerk-verified email", async () => {
   const ownerClerkUserId = `unverified-${crypto.randomUUID()}`;
   const identities = new Map<string, TestClerkIdentity>([
