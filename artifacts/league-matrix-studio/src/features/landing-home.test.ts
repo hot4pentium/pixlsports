@@ -4,6 +4,8 @@ import test from 'node:test';
 
 const source = readFileSync(new URL('./landing-home.tsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../landing-unified.css', import.meta.url), 'utf8');
+const demoSource = readFileSync(new URL('./landing-tool-demo.tsx', import.meta.url), 'utf8');
+const demoStyles = readFileSync(new URL('./landing-tool-demo.css', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 test('landing shows the dashboard in mobile and landscape with fictional examples', () => {
@@ -100,14 +102,14 @@ test('mobile navigation and accessibility basics are built in', () => {
   assert.match(styles, /@media \(max-width: 700px\)/);
 });
 
-test('week steps offer reversible, accessible image previews', () => {
-  assert.match(source, /stepPreviews\[step\.number\]\s*\?\s*<FlippableStepCard/);
-  assert.match(source, /type="button"[\s\S]*aria-pressed=\{flipped\}/);
-  assert.match(source, /aria-hidden=\{flipped\}/);
-  assert.match(source, /aria-hidden=\{!flipped\}/);
-  assert.match(source, /planEventDetails/);
-  assert.ok(existsSync(new URL('../assets/landing-plan-event-details.png', import.meta.url)));
-  assert.match(styles, /rotateY\(180deg\)/);
-  assert.match(styles, /plan-face--back img[\s\S]*object-fit:\s*fill/);
-  assert.match(styles, /prefers-reduced-motion: reduce[\s\S]*plan-face--back/);
+test('week steps open temporary demos and Celebrate flips a real Hype Card front', () => {
+  assert.match(source, /steps\.map\(step => <DemoStepCard/);
+  assert.match(source, /activeDemo && <LandingToolDemo/);
+  assert.match(demoSource, /<LivingAthleteCardFront/);
+  assert.match(demoSource, /aria-pressed=\{side === 'front'\}/);
+  assert.match(demoSource, /aria-pressed=\{side === 'back'\}/);
+  assert.match(demoSource, /aria-hidden=\{side !== 'front'\}/);
+  assert.match(demoSource, /aria-hidden=\{side !== 'back'\}/);
+  assert.match(demoStyles, /pixl-demo-hype\[data-side="back"\][^{]*\{ transform: rotateY\(180deg\)/);
+  assert.match(demoStyles, /prefers-reduced-motion: reduce[\s\S]*pixl-demo-hype-inner/);
 });

@@ -137,8 +137,18 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
              await connection.evaluate(`document.querySelector('[data-testid=button-demo-increase-points]').click()`, page.sessionId);
              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-stat-points]')?.textContent === '1'`, Boolean);
            } else {
+             await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=face-demo-hype-front] img')?.naturalWidth > 0`, Boolean);
+             assert.equal(await connection.evaluate(`document.querySelector('[data-testid=face-demo-hype-front]')?.getAttribute('aria-hidden')`, page.sessionId), 'false');
+             await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-back]').focus()`, page.sessionId);
+             await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
+             await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
+             await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=button-demo-hype-back]')?.getAttribute('aria-pressed') === 'true'`, Boolean);
+             assert.equal(await connection.evaluate(`document.querySelector('[data-testid=face-demo-hype-front]')?.getAttribute('aria-hidden')`, page.sessionId), 'true');
+             assert.equal(await connection.evaluate(`document.querySelector('[data-testid=face-demo-hype-back]')?.textContent.includes('That’s our MVP.')`, page.sessionId), true);
              await connection.evaluate(`document.querySelector('[data-testid=button-demo-theme-coral]').click()`, page.sessionId);
              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=card-demo-hype-preview]')?.getAttribute('data-theme') === 'coral'`, Boolean);
+             await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-front]').click()`, page.sessionId);
+             await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=button-demo-hype-front]')?.getAttribute('aria-pressed') === 'true'`, Boolean);
            }
          }
          await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 }, page.sessionId);
@@ -154,7 +164,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
                ? `document.querySelector('[data-testid=text-demo-prep-count]')?.textContent.includes('0 of 3')`
                : step === 'follow'
                  ? `document.querySelector('[data-testid=text-demo-stat-points]')?.textContent === '0'`
-                 : `document.querySelector('[data-testid=card-demo-hype-preview]')?.getAttribute('data-theme') === 'navy'`, page.sessionId);
+                 : `document.querySelector('[data-testid=card-demo-hype-preview]')?.getAttribute('data-theme') === 'navy' && document.querySelector('[data-testid=card-demo-hype-preview]')?.getAttribute('data-side') === 'front'`, page.sessionId);
            assert.equal(reset, true, `${step} changes should reset when reopened`);
            await connection.evaluate(`document.querySelector('.pixl-demo-close').click()`, page.sessionId);
            await waitFor(connection, page.sessionId, '!document.querySelector("[data-testid=landing-tool-demo]")', Boolean);

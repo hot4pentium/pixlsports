@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'wouter';
 import { ArrowUpRight, CalendarDays, Check, Clock3, MapPin, Minus, Plus, X } from 'lucide-react';
+import { LivingAthleteCardFront } from './living-athlete-card-front';
+import samplePlayerPhoto from '@/assets/hypecard-player-photo-640.webp';
 import './landing-tool-demo.css';
 
 type DemoStep = '01' | '02' | '03' | '04';
@@ -137,10 +139,11 @@ function FollowDemo() {
 type HypeTheme = 'navy' | 'sky' | 'coral' | 'lime';
 const themes: { id: HypeTheme; label: string }[] = [{ id: 'navy', label: 'Night game' }, { id: 'sky', label: 'Open sky' }, { id: 'coral', label: 'Big energy' }, { id: 'lime', label: 'Spotlight' }];
 function CelebrateDemo() {
-  const [athlete, setAthlete] = useState('Maya');
+  const [athlete, setAthlete] = useState('Player 24');
   const [headline, setHeadline] = useState('That’s our MVP.');
   const [message, setMessage] = useState('Proud of the way you showed up today.');
   const [theme, setTheme] = useState<HypeTheme>('navy');
+  const [side, setSide] = useState<'front' | 'back'>('front');
   return <div className="pixl-demo-content">
     <div className="pixl-demo-editor">
       <span className="pixl-demo-section-label">04 / Hype Card</span>
@@ -149,14 +152,26 @@ function CelebrateDemo() {
       <label className="pixl-demo-field"><span>Your message</span><textarea className="pixl-demo-textarea" maxLength={160} value={message} onChange={e => setMessage(e.target.value)} placeholder="What made you proud?" data-testid="textarea-demo-hype-message" /></label>
       <span className="pixl-demo-section-label" id="pixl-demo-theme-label" style={{ marginBottom: 10 }}>Pick the energy</span>
       <div className="pixl-demo-theme-row" role="group" aria-labelledby="pixl-demo-theme-label">{themes.map(option => <button className="pixl-demo-theme" key={option.id} type="button" aria-pressed={theme === option.id} onClick={() => setTheme(option.id)} data-testid={`button-demo-theme-${option.id}`}>{option.label}</button>)}</div>
+      <p className="pixl-demo-muted">Flip the card to see your headline, message, and colors on the other side.</p>
     </div>
     <div className="pixl-demo-preview-area">
       <span className="pixl-demo-preview-label">Your Hype Card / live preview</span>
-      <article className="pixl-demo-hype" data-theme={theme} aria-label="Hype Card preview" data-testid="card-demo-hype-preview">
-        <div><span className="pixl-demo-eyebrow">PIXL SPORTS / ALL IN</span><h3>{headline.trim() || 'Their moment.'}</h3><p>{message.trim() || 'Your words go here.'}</p></div>
-        <div className="pixl-demo-hype-footer"><span>For {athlete.trim() || 'your athlete'}</span><span>Keep showing up.</span></div>
-      </article>
-      <p className="pixl-demo-muted">The best highlight is knowing someone saw you give it your all.</p>
+      <div className="pixl-demo-hype" data-theme={theme} data-side={side} aria-label="Hype Card preview" data-testid="card-demo-hype-preview">
+        <div className="pixl-demo-hype-inner" id="pixl-demo-hype-card">
+          <div className="pixl-demo-hype-face pixl-demo-hype-front" aria-hidden={side !== 'front'} data-testid="face-demo-hype-front">
+            <LivingAthleteCardFront athleteName={athlete.trim() || 'Your athlete'} teamName="PIXL ALL STARS" photoUrl={samplePlayerPhoto} photoAlt="Fictional sample football player" />
+          </div>
+          <div className="pixl-demo-hype-face pixl-demo-hype-back" aria-hidden={side !== 'back'} data-testid="face-demo-hype-back">
+            <div><span className="pixl-demo-eyebrow">PIXL SPORTS / ALL IN</span><h3>{headline.trim() || 'Their moment.'}</h3><p>{message.trim() || 'Your words go here.'}</p></div>
+            <div className="pixl-demo-hype-footer"><span>For {athlete.trim() || 'your athlete'}</span><span>Keep showing up.</span></div>
+          </div>
+        </div>
+        <div className="pixl-demo-hype-controls" role="group" aria-label="Hype Card sides">
+          <button type="button" aria-pressed={side === 'front'} aria-controls="pixl-demo-hype-card" onClick={() => setSide('front')} data-testid="button-demo-hype-front">Card front</button>
+          <button type="button" aria-pressed={side === 'back'} aria-controls="pixl-demo-hype-card" onClick={() => setSide('back')} data-testid="button-demo-hype-back">Flip to message</button>
+        </div>
+      </div>
+      <p className="pixl-demo-muted">Sample player photo · Your name and message are only for this preview.</p>
     </div>
   </div>;
 }

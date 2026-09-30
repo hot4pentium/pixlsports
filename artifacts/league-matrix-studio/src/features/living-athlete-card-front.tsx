@@ -4,6 +4,7 @@ export type LivingAthleteCardFrontProps = {
   athleteName: string;
   teamName?: string | null;
   photoUrl?: string | null;
+  photoAlt?: string;
   onPhotoError?: () => void;
 };
 
@@ -11,12 +12,13 @@ export function LivingAthleteCardFront({
   athleteName,
   teamName,
   photoUrl,
+  photoAlt,
   onPhotoError,
 }: LivingAthleteCardFrontProps) {
   return (
     <div className="living-card-face" key="front">
       {photoUrl ? (
-        <img className="living-card-photo" src={photoUrl} alt={`Portrait of ${athleteName}`} onError={onPhotoError} data-testid="img-living-card-athlete" />
+        <img className="living-card-photo" src={photoUrl} alt={photoAlt ?? `Portrait of ${athleteName}`} onError={onPhotoError} data-testid="img-living-card-athlete" />
       ) : (
         <div className="living-card-photo-fallback" aria-label="No athlete portrait selected yet">
           <span aria-hidden="true">{athleteName.trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'P'}</span>
