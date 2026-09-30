@@ -3458,7 +3458,7 @@ function SignInPage() {
         <p><strong>New to Pixl Sports?</strong> Create your account first, then add your athlete and season details.</p>
         <Link href={signUpUrl}>Create account <ArrowRight size={15} aria-hidden="true" /></Link>
       </div>
-      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={signUpUrl} fallbackRedirectUrl={redirectUrl || `${basePath}/studio/setup`} />
+      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={signUpUrl} fallbackRedirectUrl={redirectUrl || `${basePath}/studio/setup`} oidcPrompt="select_account" />
     </AuthLayout>
   );
 }
@@ -3473,7 +3473,7 @@ function SignUpPage() {
       title={<>Start their<br/><span>season here.</span></>}
       subtitle="Plan each week, share game day, and cheer on your athlete together."
     >
-      <SignUp appearance={authFormAppearance} routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={redirectUrl || roleRedirect} />
+      <SignUp appearance={authFormAppearance} routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={redirectUrl || roleRedirect} oidcPrompt="select_account" />
     </AuthLayout>
   );
 }

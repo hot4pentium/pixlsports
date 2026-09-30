@@ -20,3 +20,8 @@ test('generic account entry points show the choice before Google sign-in', () =>
   assert.match(landingSource, /isSignedIn \? '\/studio' : '\/auth'/);
   assert.match(landingSource, /isSignedIn \? 'Studio' : 'Sign up \/ sign in'/);
 });
+
+test('Google sign-in and sign-up ask the provider to show the account chooser', () => {
+  assert.match(appSource, /<SignIn\b[^>]*oidcPrompt="select_account"[^>]*\/>/);
+  assert.match(appSource, /<SignUp\b[^>]*oidcPrompt="select_account"[^>]*\/>/);
+});
