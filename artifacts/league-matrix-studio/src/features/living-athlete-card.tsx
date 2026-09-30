@@ -353,17 +353,20 @@ export function LivingAthleteCardPage({
         <div className="living-card-layout living-card-layout-solo">
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
-                {side === 'front' && (
-                  <LivingAthleteCardFront
-                    key="front"
-                    athleteName={invite.athleteName}
-                    teamName={invite.teamName}
-                    photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
-                    onPhotoError={() => setBrokenPhoto(true)}
-                  />
-                )}
-
+              <div className="living-card-frame" data-side={side} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
+                <div className="living-card-flip-inner">
+                  <div className="living-card-flip-face living-card-flip-front">
+                    {side === 'front' && (
+                      <LivingAthleteCardFront
+                        key="front"
+                        athleteName={invite.athleteName}
+                        teamName={invite.teamName}
+                        photoUrl={photoUrl && !brokenPhoto ? photoUrl : null}
+                        onPhotoError={() => setBrokenPhoto(true)}
+                      />
+                    )}
+                  </div>
+                  <div className="living-card-flip-face living-card-flip-back">
                 {side === 'stats' && (
                   <div className="living-card-face living-card-face-alt" key="stats">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / The record</span><span>{invite.seasonName}</span></div>
@@ -644,6 +647,8 @@ export function LivingAthleteCardPage({
                     {ownerInvite && <p role={responseFeedback.includes('could not') ? 'alert' : 'status'} aria-live="polite" className="living-card-response-feedback">{responseFeedback}</p>}
                   </div>
                 )}
+                  </div>
+                </div>
                 <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
                   <button type="button" className="living-card-control" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => selectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Responses</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
