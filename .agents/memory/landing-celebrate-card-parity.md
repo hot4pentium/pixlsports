@@ -5,6 +5,6 @@ description: User-corrected boundary for the signed-out Celebrate demo's card be
 
 The signed-out Celebrate demo should show a photo-front Hype Card with the same four side choices as the real athlete card: Card front, Stats, Videos, Events. Do not replace those choices with a generic greeting or message side.
 
-**Why:** The user rejected a front/message flip as unlike the actual Hype Card and supplied a visual reference showing the four controls along the bottom edge.
+**Why:** The user rejected a front/message flip as unlike the actual Hype Card and supplied a visual reference showing the four controls along the bottom edge. A simplified stats summary and an empty Videos view also did not communicate how the populated card should look.
 
-**How to apply:** When iterating on this landing demo, keep those four controls functional within the card, use clearly fictional content, and avoid account-backed data or saving/sharing from the demo.
+**How to apply:** When iterating on this landing demo, keep those four controls functional within the card and demonstrate populated stats, video thumbnails, and events with clearly fictional content. Avoid account-backed data or saving/sharing from the demo.

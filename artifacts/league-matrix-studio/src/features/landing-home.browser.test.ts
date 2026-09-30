@@ -81,6 +81,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
         assert.ok(capabilityHighlightsText.toUpperCase().includes(capability.toUpperCase()), `${capability} should be explained at ${width}px`);
       }
       assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=landing-capability-highlights] li").length', page.sessionId), 4);
+      await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number;
         cta: string; help: string; support: string; privacy: string; explainer: string; menuVisible: boolean;
@@ -150,11 +151,19 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
              await connection.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
              await connection.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 }, page.sessionId);
               await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=face-demo-hype-stats]')?.textContent.includes('Finalized games')`, Boolean);
+              assert.equal(await connection.evaluate(`document.querySelector('[data-testid=face-demo-hype-stats]')?.textContent.includes('2–0–0') && document.querySelectorAll('.pixl-demo-hype-stat-grid > div').length === 8`, page.sessionId), true);
               for (const side of ['videos', 'events', 'front']) {
                 await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-${side}]').click()`, page.sessionId);
                 await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=card-demo-hype-preview]')?.getAttribute('data-side') === '${side}'`, Boolean);
                 assert.equal(await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-${side}]')?.getAttribute('aria-pressed')`, page.sessionId), 'true');
                 assert.equal(await connection.evaluate(`Boolean(document.querySelector('[data-testid=face-demo-hype-${side}]'))`, page.sessionId), true);
+                if (side === 'videos') {
+                  await waitFor(connection, page.sessionId, `[...document.querySelectorAll('.pixl-demo-hype-video-thumb img')].length === 3 && [...document.querySelectorAll('.pixl-demo-hype-video-thumb img')].every(img => img.naturalWidth > 0)`, Boolean);
+                  assert.equal(await connection.evaluate(`document.querySelectorAll('[data-testid=face-demo-hype-videos] video, [data-testid=face-demo-hype-videos] button').length`, page.sessionId), 0);
+                }
+                if (side === 'events') {
+                  assert.equal(await connection.evaluate(`document.querySelectorAll('.pixl-demo-hype-event-list > li').length === 2 && document.querySelector('[data-testid=face-demo-hype-events]')?.textContent.includes('vs Falcons') && document.querySelectorAll('.pixl-demo-hype-event-list time[datetime]').length === 2`, page.sessionId), true);
+                }
               }
               assert.equal(await connection.evaluate(`document.querySelector('[data-testid=face-demo-hype-videos]')`, page.sessionId), null);
               await connection.evaluate(`document.querySelector('[data-testid=button-demo-hype-events]').click()`, page.sessionId);

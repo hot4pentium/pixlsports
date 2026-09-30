@@ -4,6 +4,7 @@ import { Link } from 'wouter';
 import { ArrowUpRight, CalendarDays, ChartNoAxesCombined, Check, Clock3, Images, MapPin, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import samplePlayerPhoto from '@/assets/hypecard-player-photo-640.webp';
+import sampleFootballMoment from '@/assets/landing-youth-football-hero.jpg';
 import './landing-tool-demo.css';
 
 type DemoStep = '01' | '02' | '03' | '04';
@@ -143,6 +144,25 @@ const hypeSides = [
   { id: 'videos', label: 'Videos', icon: Images },
   { id: 'events', label: 'Events', icon: CalendarDays },
 ] as const;
+const sampleStats = [
+  { label: 'Passing yards', value: '184' },
+  { label: 'Touchdowns', value: '3' },
+  { label: 'Catches', value: '7' },
+  { label: 'Tackles', value: '5' },
+  { label: 'Interceptions', value: '1' },
+  { label: 'Sacks', value: '0' },
+  { label: 'Extra points', value: '2' },
+  { label: 'Fumbles', value: '0' },
+];
+const sampleVideos = [
+  { title: 'The breakaway', description: 'Sample highlight · Game 01', photo: samplePlayerPhoto, position: 'center 55%' },
+  { title: 'After the whistle', description: 'Sample highlight · Game 02', photo: sampleFootballMoment, position: 'center 35%' },
+  { title: 'One more run', description: 'Sample highlight · Game 03', photo: samplePlayerPhoto, position: 'center 75%' },
+];
+const sampleEvents = [
+  { day: 'Saturday', date: 'Oct 10', dateTime: '2026-10-10', opponent: 'Tigers', time: '10:00 AM', location: 'Upper Field' },
+  { day: 'Sunday', date: 'Oct 18', dateTime: '2026-10-18', opponent: 'Falcons', time: '2:30 PM', location: 'Riverside Stadium' },
+];
 function CelebrateDemo() {
   const [athlete, setAthlete] = useState('Player 24');
   const [team, setTeam] = useState('PIXL ALL STARS');
@@ -166,29 +186,44 @@ function CelebrateDemo() {
             <div className="pixl-demo-hype-panel-top"><span>PIXL / THE RECORD</span><span>EXAMPLE SEASON</span></div>
             <h3>Season stats.</h3>
             <p>{athleteName} / {team.trim() || 'Your team'} / Finalized games only</p>
-            <div className="pixl-demo-hype-record"><strong>4</strong><span>Finalized games</span></div>
-            <div className="pixl-demo-hype-stat-list"><div><strong>3</strong><span>Touchdowns</span></div><div><strong>184</strong><span>Yards</span></div><div><strong>7</strong><span>Catches</span></div></div>
+            <div className="pixl-demo-hype-stats-lead">
+              <div><strong>2–0–0</strong><span>W – L – T · scored games</span></div>
+              <div><strong>3</strong><span>Finalized games</span></div>
+              <div><strong>28</strong><span>Team points / runs</span></div>
+            </div>
+            <div className="pixl-demo-hype-stat-grid">{sampleStats.map(({ label, value }) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
             <small>Fictional sample stats · A real card shows finalized games.</small>
           </div>}
           {side === 'videos' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-videos">
             <div className="pixl-demo-hype-panel-top"><span>PIXL / THE MOMENTS</span><span>EXAMPLE SEASON</span></div>
             <h3>Season moments.</h3>
-            <p>Highlights and reactions stay together with {athleteName}’s season.</p>
-            <div className="pixl-demo-hype-empty"><Images size={30} strokeWidth={1.5} aria-hidden="true" /><strong>Moments on the way.</strong><span>Videos shared to a real Hype Card appear here. This demo does not upload or play media.</span></div>
+            <p>Highlights shared to a real Hype Card live here.</p>
+            <ol className="pixl-demo-hype-video-list" aria-label="Sample video thumbnails">
+              {sampleVideos.map(({ title, description, photo, position }, index) => <li key={title} data-testid={`card-demo-hype-video-${index + 1}`}>
+                <div className="pixl-demo-hype-video-thumb"><img src={photo} alt={`Fictional football moment ${index + 1}`} style={{ objectPosition: position }} /><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span></div>
+                <div><strong>{title}</strong><span>{description}</span></div>
+              </li>)}
+            </ol>
+            <small>Mock thumbnails only · No videos play or upload in this demo.</small>
           </div>}
           {side === 'events' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-events">
             <div className="pixl-demo-hype-panel-top"><span>PIXL / GAME DAYS</span><span>EXAMPLE SEASON</span></div>
             <h3>Events.</h3>
             <p>Event Cards shared for {athleteName} appear here.</p>
-            <div className="pixl-demo-hype-event"><span>GAME / SATURDAY · SAMPLE EVENT</span><strong>vs Tigers</strong><dl><div><dt>Time</dt><dd>10:00 AM</dd></div><div><dt>Location</dt><dd>Upper Field</dd></div></dl></div>
-            <small>Fictional event · A real card links to shared Event Cards.</small>
+            <ol className="pixl-demo-hype-event-list" aria-label="Sample events">
+              {sampleEvents.map(({ day, date, dateTime, opponent, time, location }, index) => <li className="pixl-demo-hype-event" key={opponent} data-testid={`card-demo-hype-event-${index + 1}`}>
+                <span>GAME / <time dateTime={dateTime}>{day.toUpperCase()} · {date.toUpperCase()}</time> · SAMPLE EVENT</span><strong>vs {opponent}</strong>
+                <dl><div><dt>Time</dt><dd>{time}</dd></div><div><dt>Location</dt><dd>{location}</dd></div></dl>
+              </li>)}
+            </ol>
+            <small>Fictional events · A real card links to shared Event Cards.</small>
           </div>}
         </div>
         <div className="pixl-demo-hype-controls" role="group" aria-label="Choose a side of the Hype Card">
           {hypeSides.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={side === id} aria-controls="pixl-demo-hype-card" onClick={() => setSide(id)} data-testid={`button-demo-hype-${id}`}><Icon size={15} aria-hidden="true" /><span>{label}</span></button>)}
         </div>
       </div>
-      <p className="pixl-demo-muted">Sample player photo and fictional season details · Nothing is saved or shared.</p>
+      <p className="pixl-demo-muted">Fictional stats and events · Mock video thumbnails do not play. Nothing is saved or shared.</p>
     </div>
   </div>;
 }
