@@ -61,6 +61,16 @@ test('landing shows the dashboard in mobile and landscape with fictional example
   assert.doesNotMatch(source, /Hero athlete photo|Replace with a real PIXL|screenshot containing|\.pdf['"]|ADD PLAYER MEDIA/);
 });
 
+test('hero photo has no text overlay and keeps its descriptive alt text', () => {
+  assert.doesNotMatch(source, /photo-caption|The moments that make a season/);
+  assert.match(source, /alt="Black youth football player smiling on the field while carrying a helmet"/);
+});
+
+test('hero message omits the numbered athlete-card label', () => {
+  assert.doesNotMatch(source, /PIXL athlete card \/ 07/);
+  assert.match(source, /Every player has a story worth sharing\./);
+});
+
 test('Hype Card copy comes before its preview on phones without changing the desktop columns', () => {
   const copy = source.indexOf('<div className="athlete-copy">');
   const preview = source.indexOf('<AthletePreview />');

@@ -61,12 +61,16 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', value => value === true);
       await connection.evaluate('document.fonts.ready', page.sessionId);
        await waitFor(connection, page.sessionId, 'document.querySelector(".landing-athlete-render")?.naturalWidth === 1228', Boolean);
-      const heroCopy = await connection.evaluate<{ headline: string; obsoleteLabel: boolean }>(`(() => ({
+      const heroCopy = await connection.evaluate<{ headline: string; obsoleteLabel: boolean; photoCaption: boolean; heroCardLabel: boolean }>(`(() => ({
         headline: document.querySelector('[data-testid="text-landing-headline"]')?.innerText || '',
         obsoleteLabel: document.body.innerText.includes('For the people in their corner'),
+        photoCaption: Boolean(document.querySelector('.photo-caption')),
+        heroCardLabel: document.body.innerText.includes('PIXL athlete card / 07'),
       }))()`, page.sessionId);
       assert.equal(heroCopy.headline.replace(/\s+/g, ' ').trim(), 'ALL IN, ALL SEASON.');
       assert.equal(heroCopy.obsoleteLabel, false);
+      assert.equal(heroCopy.photoCaption, false);
+      assert.equal(heroCopy.heroCardLabel, false);
       const capabilityHighlightsText = await connection.evaluate<string>(
         `document.querySelector('[data-testid="landing-capability-highlights"]')?.innerText || ''`,
         page.sessionId,

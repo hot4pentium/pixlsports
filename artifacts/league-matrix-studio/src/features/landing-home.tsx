@@ -151,9 +151,7 @@ export function PublicLandingPage() {
               <div className="hero-image-frame">
                 <img src={youthFootballHero} alt="Black youth football player smiling on the field while carrying a helmet" width="1024" height="1024" fetchPriority="high" decoding="async" />
               </div>
-              <span className="photo-caption">The moments that make a season</span>
               <div className="hero-message">
-                <span className="micro">PIXL athlete card / 07</span>
                 <strong>Every player has a story worth sharing.</strong>
                 <p>One place for the highlights, photos, and shoutouts.</p>
                 <div className="message-line" aria-hidden="true" />
