@@ -34,7 +34,7 @@ import { PublicStatTrackerPage } from './src/features/stat-tracker-spectator';
 import { StatTrackerSharePanel } from './src/features/stat-tracker-page';
 import './src/index.css';
 
-const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:'2026-09-25T18:00:00.000Z', canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
+const initial = { shareToken:'token-one', athleteName:'Maya', teamName:'Falcons', revision:1, createdAt:'2026-09-21T18:00:00.000Z', updatedAt:'2026-09-21T18:01:00.000Z', expiresAt:new Date(Date.now() + 60000).toISOString(), canManage:false, game:{ id:'game-1', sport:'football', status:'live', date:'2026-09-21', opponent:'Northside', period:2, score:14, opponentScore:7, stats:{touchdown:2,'pass-yard':1,reception:1,tackle:1}, trackYards:true, yardStats:{'pass-yard':20,'receiving-yard':20}, events:[{id:'event-legacy',statId:'tackle',createdAt:'2026-09-21T18:00:00.000Z',period:2,attribution:'athlete',yards:null},{id:'event-pass',statId:'pass-yard',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20},{id:'event-reception',statId:'reception',playId:'play-1',createdAt:'2026-09-21T18:01:00.000Z',period:2,attribution:'team',yards:20}] } };
 let current = initial;
 let revoked = false;
 let poll404 = false;
@@ -105,6 +105,8 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
     await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
     const firstBody = await connection.evaluate<string>('document.body.textContent || ""', page.sessionId);
     assert.match(firstBody, /Loading live scoreboard|Scoreboard Unavailable|Falcons/);
+    assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-public-support-email\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.left >= -1 && rect.right <= innerWidth + 1 && getComputedStyle(link).visibility === "visible"; })()', page.sessionId), true);
+    assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-public-support-header\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.top >= -1 && rect.bottom <= innerHeight + 1; })()', page.sessionId), true);
     const initial = await connection.evaluate<string>('document.body.textContent || ""',page.sessionId);
     assert.match(initial,/14/); assert.match(initial,/LIVE/); assert.match(initial,/Pass yard/);
     assert.match(initial,/Game day \/ live feed/);
@@ -122,6 +124,8 @@ test('public stat tracker viewer stays private, live, final, and revocable on mo
       ),
       true,
     );
+    assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-public-support-email\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.left >= -1 && rect.right <= innerWidth + 1 && getComputedStyle(link).visibility === "visible"; })()', page.sessionId), true);
+    assert.equal(await connection.evaluate<boolean>('(() => { const link = document.querySelector("[data-testid=\\"link-public-support-header\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.top >= -1 && rect.bottom <= innerHeight + 1; })()', page.sessionId), true);
     await connection.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},page.sessionId);
     assert.equal(await connection.evaluate<boolean>('!document.body.textContent.includes("private note") && !document.body.textContent.includes("Game notes") && !document.body.textContent.includes("Revoke link") && !document.body.textContent.includes("Play-by-play editor")',page.sessionId),true);
     await connection.evaluate('window.__poll404(); window.__poll()', page.sessionId);

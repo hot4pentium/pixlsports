@@ -192,6 +192,22 @@ test('public Game On Card flips by keyboard and limits links to the active face 
       await connection.send('Emulation.setDeviceMetricsOverride', {
         width, height: width === 390 ? 844 : 900, deviceScaleFactor: 1, mobile: width === 390,
       }, page.sessionId);
+      assert.equal(
+        await connection.evaluate<boolean>(
+          '(() => { const link = document.querySelector("[data-testid=\\"link-public-support-email\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.left >= -1 && rect.right <= innerWidth + 1 && getComputedStyle(link).visibility === "visible"; })()',
+          page.sessionId,
+        ),
+        true,
+        `support link should be visible and tappable at ${width}px`,
+      );
+      assert.equal(
+        await connection.evaluate<boolean>(
+          '(() => { const link = document.querySelector("[data-testid=\\"link-public-support-header\\"]"); const rect = link?.getBoundingClientRect(); return link?.getAttribute("href") === "mailto:support@pixlsports.com" && !!rect && rect.width > 0 && rect.height >= 44 && rect.top >= -1 && rect.bottom <= innerHeight + 1; })()',
+          page.sessionId,
+        ),
+        true,
+        `header support shortcut should be visible at ${width}px`,
+      );
       let state = await snapshot(connection, page);
       assert.equal(state.face, 'Event Card, event side');
       assert.equal(state.pressed, 'false');

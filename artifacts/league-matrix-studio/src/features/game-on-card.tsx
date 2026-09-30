@@ -25,6 +25,7 @@ import { format, isValid, parseISO } from 'date-fns';
 import type { SupporterEvent } from './supporter-dashboard';
 import { buildWorkspaceToolHref } from './workspace-context';
 import { PublicGameOnCardFrontFace } from './public-game-on-card-front-face';
+import { PublicSupportLink } from './public-support-link';
 import {
   readSavedGameOnCard,
   readSavedGameOnCards,
@@ -692,11 +693,15 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
     return (
       <div className="noise min-h-dvh bg-background">
         <header className="border-b border-border bg-card px-5 py-4">
-          <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+            <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
+            <PublicSupportLink variant="light" placement="header" />
+          </div>
         </header>
         <main className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center px-5">
           <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground" role="status">Loading Event Card…</p>
         </main>
+        <PublicSupportLink variant="light" />
       </div>
     );
   }
@@ -705,7 +710,10 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
     return (
       <div className="noise min-h-dvh bg-background">
         <header className="border-b border-border bg-card px-5 py-4">
-          <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+            <Link href="/" className="font-display text-2xl uppercase tracking-wide text-foreground">Pixl Sports</Link>
+            <PublicSupportLink variant="light" placement="header" />
+          </div>
         </header>
         <main className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-5 py-16 text-center">
           <CalendarDays className="h-10 w-10 text-primary" />
@@ -715,6 +723,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
           </p>
           <Link href="/" className="mt-7 bg-primary px-5 py-3 text-xs font-bold uppercase tracking-widest text-primary-foreground">Go to Pixl Sports</Link>
         </main>
+        <PublicSupportLink variant="light" />
       </div>
     );
   }
@@ -747,7 +756,10 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
       <header className="border-b border-[#e6ebf2] bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-8">
           <Link href="/" className="font-display text-2xl uppercase tracking-wide text-[#0B1F3A]">Pixl Sports</Link>
-          <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[#52657a]">{isPractice ? 'Shared practice' : 'Shared game day'}</span>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <PublicSupportLink variant="light" placement="header" />
+            <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[#52657a]">{isPractice ? 'Shared practice' : 'Shared game day'}</span>
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-3xl px-1 pb-10 pt-4 sm:px-8 sm:pt-8" data-testid="public-game-on-card">
@@ -820,6 +832,7 @@ export function PublicGameOnCardPage({ params }: { params: { shareToken?: string
         </section>
         <p className="mt-8 text-center text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground">Shared from Pixl Sports</p>
       </main>
+      <PublicSupportLink variant="light" />
     </div>
   );
 }

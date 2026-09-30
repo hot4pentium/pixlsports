@@ -7,6 +7,7 @@ import { PreviewArtwork } from './hype-card-preview';
 import { getDimensions, normalizeHypeCardProject } from './hype-card-types';
 import { getSportRule, isSport } from './stat-tracker';
 import { trackEvent } from '../lib/analytics';
+import { PublicSupportLink } from './public-support-link';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const reactions = ['🔥', '👏', '💪', '⭐', '❤️'] as const;
@@ -123,7 +124,10 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       <header className="border-b border-white/10 bg-[#11141b]">
         <div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8">
           <Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" /></Link>
-          <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white">Create yours <ArrowUpRight className="ml-1 inline h-4 w-4" /></Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <PublicSupportLink variant="dark" placement="header" />
+            <Link href="/studio" className="text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white">Create yours <ArrowUpRight className="ml-1 inline h-4 w-4" /></Link>
+          </div>
         </div>
       </header>
       <main className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1280px] items-center gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
@@ -269,6 +273,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
           <p className="mt-6 text-[10px] font-bold uppercase tracking-[.18em] text-white/40">Available until {new Date(share.expiresAt).toLocaleDateString()}</p>
         </aside>
       </main>
+      <PublicSupportLink variant="dark" />
     </div>
   );
 }
@@ -361,7 +366,10 @@ function PublicHypeCardStatsPage({ share }: { share: HypeCardShare }) {
           <Link href="/">
             <img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto max-w-[176px] object-contain" />
           </Link>
-          <span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/40">Finalized stats</span>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <PublicSupportLink variant="dark" placement="header" />
+            <span className="text-[10px] font-bold uppercase tracking-[.2em] text-white/40">Finalized stats</span>
+          </div>
         </div>
       </header>
       <main className="mx-auto min-h-[calc(100dvh-72px)] w-full max-w-[900px] px-4 py-10 sm:px-8">
@@ -448,6 +456,7 @@ function PublicHypeCardStatsPage({ share }: { share: HypeCardShare }) {
           </>
         )}
       </main>
+      <PublicSupportLink variant="dark" />
     </div>
   );
 }
@@ -462,8 +471,9 @@ function formatHypeCardGameDate(value: string) {
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="noise min-h-dvh bg-[#0B1F3A] text-white">
-      <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link></div></header>
+      <header className="border-b border-white/10 bg-[#11141b]"><div className="mx-auto flex h-[72px] max-w-[1400px] items-center justify-between px-5 sm:px-8"><Link href="/"><img src={`${basePath}/pixlsports-logo.png`} alt="Pixl Sports" className="h-11 w-auto" /></Link><PublicSupportLink variant="dark" placement="header" /></div></header>
       <main className="grid min-h-[calc(100dvh-72px)] place-items-center px-5 py-12">{children}</main>
+      <PublicSupportLink variant="dark" />
     </div>
   );
 }

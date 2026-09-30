@@ -22,6 +22,7 @@ import {
   type StatTrackerEvent,
 } from "@workspace/api-client-react";
 import { isYardageTrackingAvailable } from "./stat-tracker";
+import { PublicSupportLink } from "./public-support-link";
 
 function formatDate(value: string) {
   if (!value) return "";
@@ -221,8 +222,12 @@ export function PublicStatTrackerPage() {
               <div className="mx-auto h-2 w-3/4 animate-pulse bg-muted" />
               <div className="mx-auto h-12 w-1/2 animate-pulse bg-muted" />
             </div>
+            <div className="mt-4 flex justify-center">
+              <PublicSupportLink variant="dark" placement="header" />
+            </div>
           </div>
         </div>
+        <PublicSupportLink variant="dark" />
       </div>
     );
   }
@@ -244,8 +249,12 @@ export function PublicStatTrackerPage() {
             >
               <ArrowLeft className="h-4 w-4" /> Return to Home
             </Link>
+            <div className="mt-3">
+              <PublicSupportLink variant="dark" placement="header" />
+            </div>
           </div>
         </div>
+        <PublicSupportLink variant="dark" />
       </div>
     );
   }
@@ -279,24 +288,27 @@ export function PublicStatTrackerPage() {
           >
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" /> Home
           </Link>
-          <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.17em]" data-testid="connection-status">
-            <span className="hidden text-muted-foreground sm:inline">Pixl Sports / Live board</span>
-            <span className="h-3 w-px bg-foreground/20" aria-hidden="true" />
-            {hasEventSource ? (
-              connectionStatus === "connected" ? (
-                <span className="inline-flex items-center gap-1.5 text-primary">
-                  <Wifi className="h-3.5 w-3.5" /> Live Sync
-                </span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.17em]" data-testid="connection-status">
+              <span className="hidden text-muted-foreground sm:inline">Pixl Sports / Live board</span>
+              <span className="h-3 w-px bg-foreground/20" aria-hidden="true" />
+              {hasEventSource ? (
+                connectionStatus === "connected" ? (
+                  <span className="inline-flex items-center gap-1.5 text-primary">
+                    <Wifi className="h-3.5 w-3.5" /> Live Sync
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Reconnecting
+                  </span>
+                )
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Reconnecting
+                <span className="inline-flex items-center gap-1.5 text-primary">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Live Polling
                 </span>
-              )
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-primary">
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Live Polling
-              </span>
-            )}
+              )}
+            </div>
+            <PublicSupportLink variant="dark" placement="header" />
           </div>
         </header>
 
@@ -442,6 +454,7 @@ export function PublicStatTrackerPage() {
           </aside>
         </main>
       </div>
+      <PublicSupportLink variant="dark" />
     </div>
   );
 }

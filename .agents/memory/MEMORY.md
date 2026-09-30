@@ -46,6 +46,7 @@
 - [Installed startup checks](installed-startup-browser-check.md) — delay worker installation and measure first content/tap separately so shell regressions are visible before offline assertions run.
 - [Versioned offline HTML](versioned-offline-html.md) — serve the installed app's shell from its current worker cache without refreshing that HTML independently of its assets.
 - [Browser fixture reloads](browser-fixture-reloads.md) — reload generated browser-test HTML through its direct fixture URL after route changes to avoid SPA fallback to the production shell.
+- [Time-relative browser expiries](time-relative-browser-expiries.md) — use future-relative expiry timestamps so live-share fixtures do not age into unavailable states.
 - [CDP keyboard button activation](cdp-keyboard-button-activation.md) — native button activation in headless Chromium is reliably exercised with Space key-down and key-up events.
 - [Standalone Vite builds](standalone-vite-builds.md) — ad-hoc shell builds need routing environment supplied explicitly; managed workflows inject them automatically.
 - [Stale Vite preview processes](stale-vite-preview-processes.md) — a failed managed workflow may still have its previous Vite server listening, blocking a clean restart.
