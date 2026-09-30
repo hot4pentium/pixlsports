@@ -74,7 +74,7 @@ test('Hype Card copy comes before its preview on phones without changing the des
 
 test('visitor actions use real destinations and preserve the explainer', () => {
   assert.match(source, /isSignedIn \? '\/studio' : '\/sign-up'/);
-  assert.match(source, /isSignedIn \? '\/studio' : '\/sign-in'/);
+  assert.match(source, /isSignedIn \? '\/studio' : '\/auth'/);
   for (const anchor of ['how-it-works', 'athlete-cards', 'tools']) {
     assert.match(source, new RegExp(`id="${anchor}"`));
     assert.match(source, new RegExp(`href="#${anchor}"`));

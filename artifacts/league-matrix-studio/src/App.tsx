@@ -39,10 +39,10 @@ import {
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, Bell, CalendarDays, Check, Clipboard, ClipboardCheck,
   ChevronDown, ChevronUp, CircleHelp, CupSoda, FileImage, Grid2X2,
-  Heart, Lightbulb, Menu, MessageCircleQuestion, Minus,
+  Heart, Lightbulb, LogIn, Menu, MessageCircleQuestion, Minus,
   MapPin, NotebookPen, Palette, Plus, RotateCcw, Save, Share2, CloudUpload, ShieldCheck, Sparkles,
   SquarePen, X, Zap, Maximize, Activity, Link2Off, UsersRound, GripVertical,
-  Download, Star, Link2
+  Download, Star, Link2, UserRoundPlus
 } from 'lucide-react';
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
@@ -56,6 +56,7 @@ import type {
   SupporterEvent,
   SupporterProfile,
 } from '@/features/supporter-dashboard';
+import { buildAuthEntryHref } from '@/features/auth-entry-routing';
 import { navigateToGameOnSection } from '@/features/game-on-navigation';
 import {
   createScheduleAutosaveQueue,
@@ -434,7 +435,7 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
           <BrandMark inverse={dark} />
         </Link>
         <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
-          <Link href="/studio" className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-studio">Studio</Link>
+          <Link href={isSignedIn ? '/studio' : '/auth'} className={`text-sm font-bold uppercase tracking-wider transition-colors ${navText}`} data-testid="link-nav-studio">Studio</Link>
 
           {isSignedIn ? (
             <div className="flex items-center gap-4">
@@ -444,8 +445,8 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
               </button>
             </div>
           ) : (
-            <Link href="/sign-in" className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-primary/90 ${dark ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground'}`} data-testid="link-nav-sign-in">
-              Sign In <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            <Link href="/auth" className={`group flex items-center gap-2 clip-angled-sm px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all hover:bg-primary/90 ${dark ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground'}`} data-testid="link-nav-sign-in">
+              Sign up / Sign in <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           )}
         </nav>
@@ -457,14 +458,14 @@ function SiteNav({ dark = true }: { dark?: boolean }) {
       {menuOpen && (
         <div className={`absolute inset-x-0 top-[72px] border-b p-5 shadow-2xl md:hidden clip-angled-sm ${dark ? 'border-white/10 bg-[#0B1F3A]' : 'border-border bg-card'}`} data-testid="menu-mobile">
           <nav className="flex flex-col gap-2">
-            <Link href="/studio" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
+            <Link href={isSignedIn ? '/studio' : '/auth'} className={`flex items-center justify-between p-4 text-lg font-display tracking-wide ${dark ? 'text-white bg-white/5' : 'text-foreground bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-studio">STUDIO <ArrowRight className="h-5 w-5 text-primary" /></Link>
             {isSignedIn ? (
               <>
                 <div className={`p-4 text-sm font-bold tracking-wider ${dark ? 'text-white/50' : 'text-muted-foreground'}`}>{user?.primaryEmailAddress?.emailAddress}</div>
                 <button onClick={() => { setMenuOpen(false); signOut({ redirectUrl: basePath || "/" }); }} className={`flex w-full items-center justify-between p-4 text-lg font-display tracking-wide text-destructive ${dark ? 'bg-white/5' : 'bg-muted'}`} data-testid="btn-mobile-sign-out">SIGN OUT <ArrowRight className="h-5 w-5" /></button>
               </>
             ) : (
-              <Link href="/sign-in" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide text-primary ${dark ? 'bg-white/5' : 'bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-sign-in">SIGN IN <ArrowRight className="h-5 w-5" /></Link>
+              <Link href="/auth" className={`flex items-center justify-between p-4 text-lg font-display tracking-wide text-primary ${dark ? 'bg-white/5' : 'bg-muted'}`} onClick={() => setMenuOpen(false)} data-testid="link-mobile-sign-in">SIGN UP / SIGN IN <ArrowRight className="h-5 w-5" /></Link>
             )}
           </nav>
         </div>
@@ -3402,28 +3403,76 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode, title:
   );
 }
 
+function AuthChoicePage() {
+  const { isLoaded, isSignedIn } = useUser();
+  const signUpHref = buildAuthEntryHref('sign-up', window.location.search);
+  const signInHref = buildAuthEntryHref('sign-in', window.location.search);
+
+  if (isLoaded && isSignedIn) return <Redirect to="/studio" />;
+
+  return (
+    <AuthLayout
+      title={<>Every season<br/><span>starts here.</span></>}
+      subtitle="One home for the schedules, stories, and game-day moments your family shares."
+    >
+      <section className="auth-choice-card" aria-labelledby="auth-choice-heading" data-testid="auth-choice-card">
+        <div className="auth-choice-heading">
+          <p className="auth-choice-kicker"><span>01</span> ACCOUNT TYPE <i aria-hidden="true" /> CHOOSE ONE</p>
+          <h2 className="auth-choice-title" id="auth-choice-heading">First time here, or coming back?</h2>
+          <p className="auth-choice-copy">Choose your account path before continuing with Google or email.</p>
+        </div>
+        <div className="auth-choice-options">
+          <Link className="auth-choice-option auth-choice-option--new" href={signUpHref} data-testid="link-auth-choice-sign-up">
+            <span className="auth-choice-option__top">
+              <span className="auth-choice-option__title"><UserRoundPlus size={18} aria-hidden="true" /> Create a new account</span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </span>
+            <span className="auth-choice-option__description">New to Pixl? Set up your family profile and add an athlete.</span>
+            <span className="auth-choice-option__meta">FIRST TIME ON PIXL</span>
+          </Link>
+          <Link className="auth-choice-option auth-choice-option--returning" href={signInHref} data-testid="link-auth-choice-sign-in">
+            <span className="auth-choice-option__top">
+              <span className="auth-choice-option__title"><LogIn size={18} aria-hidden="true" /> I already have an account</span>
+              <ArrowRight size={18} aria-hidden="true" />
+            </span>
+            <span className="auth-choice-option__description">Sign in to return to your athlete’s season.</span>
+            <span className="auth-choice-option__meta">RETURNING MEMBER</span>
+          </Link>
+        </div>
+        <p className="auth-choice-footnote"><ShieldCheck size={15} aria-hidden="true" /> New to Pixl? Choose Create a new account. Google and email options appear after you choose.</p>
+      </section>
+    </AuthLayout>
+  );
+}
+
 function SignInPage() {
   const redirectUrl = new URLSearchParams(window.location.search).get('redirect_url');
+  const signUpUrl = buildAuthEntryHref('sign-up', window.location.search);
   return (
     <AuthLayout
       title={<>Pick up<br/><span>the season.</span></>}
       subtitle="Your athlete’s season, all in one place. Pick up where you left off."
     >
-      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio/setup`} />
+      <div className="auth-entry-note" role="note" data-testid="auth-signup-first-note">
+        <p><strong>New to Pixl Sports?</strong> Create your account first, then add your athlete and season details.</p>
+        <Link href={signUpUrl}>Create account <ArrowRight size={15} aria-hidden="true" /></Link>
+      </div>
+      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={signUpUrl} fallbackRedirectUrl={redirectUrl || `${basePath}/studio/setup`} />
     </AuthLayout>
   );
 }
 
 function SignUpPage() {
   const roleRedirect = `${basePath}/studio/setup`;
-  const signInUrl = `${basePath}/sign-in`;
+  const redirectUrl = new URLSearchParams(window.location.search).get('redirect_url');
+  const signInUrl = buildAuthEntryHref('sign-in', window.location.search);
 
   return (
     <AuthLayout
       title={<>Start their<br/><span>season here.</span></>}
       subtitle="Plan each week, share game day, and cheer on your athlete together."
     >
-      <SignUp appearance={authFormAppearance} routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={roleRedirect} />
+      <SignUp appearance={authFormAppearance} routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={redirectUrl || roleRedirect} />
     </AuthLayout>
   );
 }
@@ -3834,6 +3883,7 @@ function ClerkProviderWithRoutes() {
                 <SupporterSetupGate>
                 <Switch>
               <Route path="/" component={HomeRedirect} />
+              <Route path="/auth" component={AuthChoicePage} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
               <Route path="/studio/setup" component={RoleSelectionPage} />

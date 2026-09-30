@@ -35,7 +35,7 @@ function LandingNav({ isSignedIn }: { isSignedIn: boolean }) {
           <a href="#tools" data-testid="link-landing-tools">The dashboard</a>
         </nav>
         <div className="header-actions">
-          <Link href={isSignedIn ? '/studio' : '/sign-in'} className="desktop-account-link" style={{ color: '#d4e0e2', fontSize: 12, fontWeight: 700 }} data-testid={isSignedIn ? 'link-landing-dashboard' : 'link-landing-sign-in'}>{isSignedIn ? 'Studio' : 'Sign in'}</Link>
+          <Link href={isSignedIn ? '/studio' : '/auth'} className="desktop-account-link" style={{ color: '#d4e0e2', fontSize: 12, fontWeight: 700 }} data-testid={isSignedIn ? 'link-landing-dashboard' : 'link-landing-sign-in'}>{isSignedIn ? 'Studio' : 'Sign up / sign in'}</Link>
           <Link href={destination} className="pill pill-lime" data-testid="link-landing-get-started-nav">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={15} aria-hidden="true" /></Link>
           <button type="button" className="menu-button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} aria-controls="landing-mobile-menu" onClick={() => setMenuOpen(value => !value)} data-testid="button-landing-mobile-menu">
             {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
@@ -47,7 +47,7 @@ function LandingNav({ isSignedIn }: { isSignedIn: boolean }) {
         <a href="#athlete-cards" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-athlete-cards">Athlete cards</a>
         <a href="#tools" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-tools">The dashboard</a>
         <Link href="/help" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-help">Help</Link>
-        <Link href={isSignedIn ? '/studio' : '/sign-in'} onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-sign-in">{isSignedIn ? 'Studio' : 'Sign in'}</Link>
+        <Link href={isSignedIn ? '/studio' : '/auth'} onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-sign-in">{isSignedIn ? 'Studio' : 'Sign up / sign in'}</Link>
         <Link href={destination} className="pill pill-lime" onClick={() => setMenuOpen(false)} data-testid="link-mobile-landing-get-started">{isSignedIn ? 'Open studio' : 'Get started'} <ArrowUpRight size={16} aria-hidden="true" /></Link>
       </nav>}
     </header>
@@ -280,11 +280,11 @@ export function PublicLandingPage() {
           <Link href="/" data-testid="link-footer-home"><Brand /></Link>
           <p>Built for the people who show up.</p>
           <nav className="footer-links" aria-label="Footer navigation">
-            <Link href="/studio" data-testid="link-footer-tools">Studio</Link>
+            <Link href={isSignedIn ? '/studio' : '/auth'} data-testid="link-footer-tools">Studio</Link>
             <Link href="/help" data-testid="link-footer-help">Help / FAQ</Link>
              <a href="mailto:support@pixlsports.com" data-testid="link-footer-support">support@pixlsports.com</a>
             <Link href="/privacy" data-testid="link-footer-privacy">Privacy</Link>
-             <Link href={isSignedIn ? '/studio' : '/sign-in'} data-testid="link-footer-sign-in">{isSignedIn ? 'Studio' : 'Sign in'}</Link>
+             <Link href={isSignedIn ? '/studio' : '/auth'} data-testid="link-footer-sign-in">{isSignedIn ? 'Studio' : 'Sign up / sign in'}</Link>
           </nav>
         </div>
         <div className="container footer-bottom">© {new Date().getFullYear()} PIXL Sports. Illustrative previews feature fictional athletes and events.</div>

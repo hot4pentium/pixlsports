@@ -2,6 +2,8 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/live-tracker/RecipientView.tsx": () => import("../components/mockups/live-tracker/RecipientView.tsx"),
+  "./components/mockups/pixl-auth-path/AccountChoice.tsx": () => import("../components/mockups/pixl-auth-path/AccountChoice.tsx"),
+  "./components/mockups/pixl-auth-path/Current.tsx": () => import("../components/mockups/pixl-auth-path/Current.tsx"),
   "./components/mockups/pixl/PixlSportsMatchdayCommandVariant.tsx": () => import("../components/mockups/pixl/PixlSportsMatchdayCommandVariant.tsx"),
   "./components/mockups/pixl/PixlSportsResponsiveUnified.tsx": () => import("../components/mockups/pixl/PixlSportsResponsiveUnified.tsx"),
   "./components/mockups/pixl/PixlSportsSplitVariant.tsx": () => import("../components/mockups/pixl/PixlSportsSplitVariant.tsx"),
