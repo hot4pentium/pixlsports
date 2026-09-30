@@ -102,14 +102,14 @@ test('mobile navigation and accessibility basics are built in', () => {
   assert.match(styles, /@media \(max-width: 700px\)/);
 });
 
-test('week steps open temporary demos and Celebrate flips a real Hype Card front', () => {
+test('week steps open temporary demos and Celebrate has the real Hype Card sides', () => {
   assert.match(source, /steps\.map\(step => <DemoStepCard/);
   assert.match(source, /activeDemo && <LandingToolDemo/);
   assert.match(demoSource, /<LivingAthleteCardFront/);
-  assert.match(demoSource, /aria-pressed=\{side === 'front'\}/);
-  assert.match(demoSource, /aria-pressed=\{side === 'back'\}/);
-  assert.match(demoSource, /aria-hidden=\{side !== 'front'\}/);
-  assert.match(demoSource, /aria-hidden=\{side !== 'back'\}/);
-  assert.match(demoStyles, /pixl-demo-hype\[data-side="back"\][^{]*\{ transform: rotateY\(180deg\)/);
-  assert.match(demoStyles, /prefers-reduced-motion: reduce[\s\S]*pixl-demo-hype-inner/);
+  for (const side of ['front', 'stats', 'videos', 'events']) {
+    assert.match(demoSource, new RegExp(`id: '${side}'`));
+    assert.match(demoSource, new RegExp(`side === '${side}' && <div`));
+  }
+  assert.match(demoSource, /aria-pressed=\{side === id\}/);
+  assert.match(demoStyles, /pixl-demo-hype-controls \{[^}]*grid-template-columns: repeat\(4/);
 });

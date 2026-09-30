@@ -89,3 +89,4 @@
 - [Season profile seeding](season-profile-seeding.md) — use one free-text `seasonName` profile value for onboarding and new athlete-page defaults.
 - [Event Card pregame state](event-card-pregame-state.md) — badges switch to Live at one deterministic kickoff instant; DST gaps shift forward and repeats choose the earlier instant.
 - [Private dashboard offline authority](private-dashboard-offline-authority.md) — cache private dashboard data per account, but require fast online lifecycle revalidation and clear it on account exit.
+- [Landing Celebrate card parity](landing-celebrate-card-parity.md) — the signed-out Celebrate demo must use the Hype Card's Front, Stats, Videos, Events sides, not a message back.

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'wouter';
-import { ArrowUpRight, CalendarDays, Check, Clock3, MapPin, Minus, Plus, X } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, ChartNoAxesCombined, Check, Clock3, Images, MapPin, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import samplePlayerPhoto from '@/assets/hypecard-player-photo-640.webp';
 import './landing-tool-demo.css';
@@ -18,7 +18,7 @@ const copy: Record<DemoStep, { title: string; description: string }> = {
   '01': { title: 'Plan the next event.', description: 'Try filling out an Event Card. The details take shape as you type.' },
   '02': { title: 'Show up ready.', description: 'Check off the essentials, add your own, and leave a note for game day.' },
   '03': { title: 'Follow their game.', description: 'The little moments add up. Track an athlete’s stats one play at a time.' },
-  '04': { title: 'Make their moment.', description: 'Write a little encouragement and find a Hype Card look that feels like them.' },
+  '04': { title: 'Their season, one card.', description: 'Explore a Hype Card with its athlete photo, stats, videos, and events.' },
 };
 
 function PlanDemo() {
@@ -136,42 +136,59 @@ function FollowDemo() {
   </div>;
 }
 
-type HypeTheme = 'navy' | 'sky' | 'coral' | 'lime';
-const themes: { id: HypeTheme; label: string }[] = [{ id: 'navy', label: 'Night game' }, { id: 'sky', label: 'Open sky' }, { id: 'coral', label: 'Big energy' }, { id: 'lime', label: 'Spotlight' }];
+type HypeSide = 'front' | 'stats' | 'videos' | 'events';
+const hypeSides = [
+  { id: 'front', label: 'Card front', icon: RotateCcw },
+  { id: 'stats', label: 'Stats', icon: ChartNoAxesCombined },
+  { id: 'videos', label: 'Videos', icon: Images },
+  { id: 'events', label: 'Events', icon: CalendarDays },
+] as const;
 function CelebrateDemo() {
   const [athlete, setAthlete] = useState('Player 24');
-  const [headline, setHeadline] = useState('That’s our MVP.');
-  const [message, setMessage] = useState('Proud of the way you showed up today.');
-  const [theme, setTheme] = useState<HypeTheme>('navy');
-  const [side, setSide] = useState<'front' | 'back'>('front');
+  const [team, setTeam] = useState('PIXL ALL STARS');
+  const [side, setSide] = useState<HypeSide>('front');
+  const athleteName = athlete.trim() || 'Your athlete';
   return <div className="pixl-demo-content">
     <div className="pixl-demo-editor">
       <span className="pixl-demo-section-label">04 / Hype Card</span>
       <label className="pixl-demo-field"><span>Athlete</span><input className="pixl-demo-input" maxLength={35} value={athlete} onChange={e => setAthlete(e.target.value)} placeholder="Athlete's first name" data-testid="input-demo-hype-athlete" /></label>
-      <label className="pixl-demo-field"><span>Big headline</span><input className="pixl-demo-input" maxLength={55} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Say it with feeling" data-testid="input-demo-hype-headline" /></label>
-      <label className="pixl-demo-field"><span>Your message</span><textarea className="pixl-demo-textarea" maxLength={160} value={message} onChange={e => setMessage(e.target.value)} placeholder="What made you proud?" data-testid="textarea-demo-hype-message" /></label>
-      <span className="pixl-demo-section-label" id="pixl-demo-theme-label" style={{ marginBottom: 10 }}>Pick the energy</span>
-      <div className="pixl-demo-theme-row" role="group" aria-labelledby="pixl-demo-theme-label">{themes.map(option => <button className="pixl-demo-theme" key={option.id} type="button" aria-pressed={theme === option.id} onClick={() => setTheme(option.id)} data-testid={`button-demo-theme-${option.id}`}>{option.label}</button>)}</div>
-      <p className="pixl-demo-muted">Flip the card to see your headline, message, and colors on the other side.</p>
+      <label className="pixl-demo-field"><span>Team</span><input className="pixl-demo-input" maxLength={45} value={team} onChange={e => setTeam(e.target.value)} placeholder="Team name" data-testid="input-demo-hype-team" /></label>
+      <p className="pixl-demo-muted">Tap the four buttons on the card to see what fans can follow. The photo and season examples are fictional; only your athlete and team names change here.</p>
     </div>
     <div className="pixl-demo-preview-area">
-      <span className="pixl-demo-preview-label">Your Hype Card / live preview</span>
-      <div className="pixl-demo-hype" data-theme={theme} data-side={side} aria-label="Hype Card preview" data-testid="card-demo-hype-preview">
-        <div className="pixl-demo-hype-inner" id="pixl-demo-hype-card">
-          <div className="pixl-demo-hype-face pixl-demo-hype-front" aria-hidden={side !== 'front'} data-testid="face-demo-hype-front">
-            <LivingAthleteCardFront athleteName={athlete.trim() || 'Your athlete'} teamName="PIXL ALL STARS" photoUrl={samplePlayerPhoto} photoAlt="Fictional sample football player" />
-          </div>
-          <div className="pixl-demo-hype-face pixl-demo-hype-back" aria-hidden={side !== 'back'} data-testid="face-demo-hype-back">
-            <div><span className="pixl-demo-eyebrow">PIXL SPORTS / ALL IN</span><h3>{headline.trim() || 'Their moment.'}</h3><p>{message.trim() || 'Your words go here.'}</p></div>
-            <div className="pixl-demo-hype-footer"><span>For {athlete.trim() || 'your athlete'}</span><span>Keep showing up.</span></div>
-          </div>
+      <span className="pixl-demo-preview-label">Hype Card / interactive sample</span>
+      <div className="pixl-demo-hype" data-side={side} data-testid="card-demo-hype-preview">
+        <div className="pixl-demo-hype-display" id="pixl-demo-hype-card" role="region" aria-live="polite" aria-label={`${athleteName} — ${side === 'front' ? 'card front' : side}`}>
+          {side === 'front' && <div className="pixl-demo-hype-front" data-testid="face-demo-hype-front">
+            <LivingAthleteCardFront athleteName={athleteName} teamName={team.trim()} photoUrl={samplePlayerPhoto} photoAlt="Fictional sample football player" />
+          </div>}
+          {side === 'stats' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-stats">
+            <div className="pixl-demo-hype-panel-top"><span>PIXL / THE RECORD</span><span>EXAMPLE SEASON</span></div>
+            <h3>Season stats.</h3>
+            <p>{athleteName} / {team.trim() || 'Your team'} / Finalized games only</p>
+            <div className="pixl-demo-hype-record"><strong>4</strong><span>Finalized games</span></div>
+            <div className="pixl-demo-hype-stat-list"><div><strong>3</strong><span>Touchdowns</span></div><div><strong>184</strong><span>Yards</span></div><div><strong>7</strong><span>Catches</span></div></div>
+            <small>Fictional sample stats · A real card shows finalized games.</small>
+          </div>}
+          {side === 'videos' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-videos">
+            <div className="pixl-demo-hype-panel-top"><span>PIXL / THE MOMENTS</span><span>EXAMPLE SEASON</span></div>
+            <h3>Season moments.</h3>
+            <p>Highlights and reactions stay together with {athleteName}’s season.</p>
+            <div className="pixl-demo-hype-empty"><Images size={30} strokeWidth={1.5} aria-hidden="true" /><strong>Moments on the way.</strong><span>Videos shared to a real Hype Card appear here. This demo does not upload or play media.</span></div>
+          </div>}
+          {side === 'events' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-events">
+            <div className="pixl-demo-hype-panel-top"><span>PIXL / GAME DAYS</span><span>EXAMPLE SEASON</span></div>
+            <h3>Events.</h3>
+            <p>Event Cards shared for {athleteName} appear here.</p>
+            <div className="pixl-demo-hype-event"><span>GAME / SATURDAY · SAMPLE EVENT</span><strong>vs Tigers</strong><dl><div><dt>Time</dt><dd>10:00 AM</dd></div><div><dt>Location</dt><dd>Upper Field</dd></div></dl></div>
+            <small>Fictional event · A real card links to shared Event Cards.</small>
+          </div>}
         </div>
-        <div className="pixl-demo-hype-controls" role="group" aria-label="Hype Card sides">
-          <button type="button" aria-pressed={side === 'front'} aria-controls="pixl-demo-hype-card" onClick={() => setSide('front')} data-testid="button-demo-hype-front">Card front</button>
-          <button type="button" aria-pressed={side === 'back'} aria-controls="pixl-demo-hype-card" onClick={() => setSide('back')} data-testid="button-demo-hype-back">Flip to message</button>
+        <div className="pixl-demo-hype-controls" role="group" aria-label="Choose a side of the Hype Card">
+          {hypeSides.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={side === id} aria-controls="pixl-demo-hype-card" onClick={() => setSide(id)} data-testid={`button-demo-hype-${id}`}><Icon size={15} aria-hidden="true" /><span>{label}</span></button>)}
         </div>
       </div>
-      <p className="pixl-demo-muted">Sample player photo · Your name and message are only for this preview.</p>
+      <p className="pixl-demo-muted">Sample player photo and fictional season details · Nothing is saved or shared.</p>
     </div>
   </div>;
 }
