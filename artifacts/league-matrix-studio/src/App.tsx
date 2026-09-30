@@ -84,6 +84,7 @@ import {
   getScheduleInstallInstructions,
 } from '@/features/schedule-install';
 import { useAppInstallPrompt } from '@/features/app-install-prompt';
+import { shouldRequireSupporterSetup } from '@/features/supporter-setup-routing';
 import {
   updateSupporterPhotoCache,
   useCachedSupporterPhoto,
@@ -3408,7 +3409,7 @@ function SignInPage() {
       title={<>Pick up<br/><span>the season.</span></>}
       subtitle="Your athlete’s season, all in one place. Pick up where you left off."
     >
-      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio`} />
+      <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={redirectUrl || `${basePath}/studio/setup`} />
     </AuthLayout>
   );
 }
@@ -3741,6 +3742,19 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function SupporterSetupGate({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  if (!shouldRequireSupporterSetup(location)) return <>{children}</>;
+  if (!isLoaded) return <AccountLoadingScreen />;
+  if (!isSignedIn || !user) return <>{children}</>;
+  if (!isSupporterSetupComplete(getUserProfile(user))) {
+    return <Redirect to="/studio/setup" />;
+  }
+  return <>{children}</>;
+}
+
 function HomeRedirect() {
   return (
     <>
@@ -3817,6 +3831,7 @@ function ClerkProviderWithRoutes() {
           <AccountLifecycleGate>
             <ErrorBoundary resetKey={useLocation()[0]}>
               <Suspense fallback={<RouteLoadingState />}>
+                <SupporterSetupGate>
                 <Switch>
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
@@ -3843,6 +3858,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/privacy" component={Privacy} />
                  <Route component={NotFound} />
                 </Switch>
+                </SupporterSetupGate>
               </Suspense>
             </ErrorBoundary>
           </AccountLifecycleGate>
