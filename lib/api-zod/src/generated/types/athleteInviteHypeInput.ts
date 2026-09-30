@@ -13,4 +13,5 @@ export interface AthleteInviteHypeInput {
   senderName?: string;
   /** @maxLength 240 */
   message?: string;
+  publiclyVisible?: boolean;
 }

@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
 import { useUser } from '@clerk/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import {
   getGetAthleteFanCardQueryKey,
+  getListAthleteInviteHypesQueryKey,
   getListAthleteInvitesQueryKey,
+  getListPublicAthleteInviteHypesQueryKey,
+  useDeleteAthleteInviteHype,
   useGetAthleteFanCard,
+  useListAthleteInviteHypes,
   useListAthleteInvites,
+  useListPublicAthleteInviteHypes,
   useSendAthleteInviteHype,
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
@@ -25,7 +31,7 @@ import { HypeCardReplyComposer } from './public-hype-card';
 import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 
-type CardSide = 'front' | 'stats' | 'videos' | 'events';
+type CardSide = 'front' | 'responses' | 'stats' | 'videos' | 'events';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
 type FanVideo = PublicAthleteFanCard['videos'][number];
 const hypeReactions = [
@@ -135,10 +141,13 @@ export function LivingAthleteCardPage({
   const [reaction, setReaction] = useState<AthleteInviteHypeInput['reaction']>('👏');
   const [senderName, setSenderName] = useState('');
   const [message, setMessage] = useState('');
+  const [publicConsent, setPublicConsent] = useState(false);
   const [hypeFeedback, setHypeFeedback] = useState('');
+  const [responseFeedback, setResponseFeedback] = useState('');
   const [followDialogOpen, setFollowDialogOpen] = useState(false);
   const [hypeDialogOpen, setHypeDialogOpen] = useState(false);
   const { isLoaded: clerkLoaded, isSignedIn } = useUser();
+  const queryClient = useQueryClient();
   const ownedInvitesQuery = useListAthleteInvites({
     query: {
       enabled: Boolean(isSignedIn),
@@ -148,6 +157,7 @@ export function LivingAthleteCardPage({
   });
   const ownedInvites = ownedInvitesQuery.data;
   const sendHype = useSendAthleteInviteHype();
+  const deleteHype = useDeleteAthleteInviteHype();
   const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
     query: {
@@ -158,6 +168,25 @@ export function LivingAthleteCardPage({
       refetchInterval: 60_000,
     },
   });
+  const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+  const publicShoutouts = useListPublicAthleteInviteHypes(inviteToken, {
+    query: {
+      enabled: !!inviteToken && side === 'responses',
+      queryKey: getListPublicAthleteInviteHypesQueryKey(inviteToken),
+      refetchOnWindowFocus: true,
+      refetchInterval: 30_000,
+      retry: false,
+    },
+  });
+  const ownerShoutouts = useListAthleteInviteHypes(inviteToken, {
+    query: {
+      enabled: !!inviteToken && side === 'responses' && Boolean(ownerInvite),
+      queryKey: getListAthleteInviteHypesQueryKey(inviteToken),
+      refetchOnWindowFocus: true,
+      refetchInterval: 30_000,
+      retry: false,
+    },
+  });
 
   const photoUrl = invite?.photoUrl ?? null;
 
@@ -166,6 +195,8 @@ export function LivingAthleteCardPage({
     setHypeFeedback('');
     setSenderName('');
     setMessage('');
+    setPublicConsent(false);
+    setResponseFeedback('');
     setSelectedGameKey('');
     setTrendStatId('score');
     setLocalReplies([]);
@@ -221,7 +252,9 @@ export function LivingAthleteCardPage({
   const linkedEvents = invite.events ?? [];
   const eventToday = hasEventToday(linkedEvents, invite.timezone, new Date(todayTick));
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
-  const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
+  const shoutouts = ownerInvite ? ownerShoutouts.data : publicShoutouts.data;
+  const shoutoutsLoading = ownerInvite ? ownerShoutouts.isPending : publicShoutouts.isPending;
+  const shoutoutsError = ownerInvite ? ownerShoutouts.isError : publicShoutouts.isError;
   const showSupportActions = clerkLoaded && (
     !isSignedIn
     || (ownedInvitesQuery.isSuccess && !ownedInvitesQuery.isFetching && !ownerInvite)
@@ -267,21 +300,42 @@ export function LivingAthleteCardPage({
   };
   const submitHype = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!publicConsent) return;
     setHypeFeedback('');
     try {
       await sendHype.mutateAsync({ inviteToken, data: {
         reaction,
+        publiclyVisible: true,
         ...(senderName.trim() ? { senderName: senderName.trim() } : {}),
         ...(message.trim() ? { message: message.trim() } : {}),
       } });
       setSenderName('');
       setMessage('');
-      setHypeFeedback(`Your ${reaction} shoutout was sent to the card owner. Thanks for cheering ${invite.athleteName} on!`);
+      setPublicConsent(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListPublicAthleteInviteHypesQueryKey(inviteToken) }),
+        queryClient.invalidateQueries({ queryKey: getListAthleteInviteHypesQueryKey(inviteToken) }),
+      ]);
+      setHypeFeedback(`Your ${reaction} Shoutout is now visible on the Responses side. Thanks for cheering ${invite.athleteName} on!`);
     } catch (error) {
       const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
       setHypeFeedback(status === 429 ? 'You have sent several shoutouts. Please try again in an hour.'
         : status === 404 ? 'This card is no longer accepting shoutouts. Refresh to check its status.'
         : 'Your shoutout could not be sent. Please try again.');
+    }
+  };
+  const removeShoutout = async (hypeId: string) => {
+    if (!ownerInvite || !window.confirm('Remove this Shoutout from the card? This cannot be undone.')) return;
+    setResponseFeedback('');
+    try {
+      await deleteHype.mutateAsync({ inviteToken, hypeId });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListPublicAthleteInviteHypesQueryKey(inviteToken) }),
+        queryClient.invalidateQueries({ queryKey: getListAthleteInviteHypesQueryKey(inviteToken) }),
+      ]);
+      setResponseFeedback('Shoutout removed.');
+    } catch {
+      setResponseFeedback('The Shoutout could not be removed. Please try again.');
     }
   };
 
@@ -299,7 +353,7 @@ export function LivingAthleteCardPage({
         <div className="living-card-layout living-card-layout-solo">
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
+              <div className="living-card-frame" id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
                 {side === 'front' && (
                   <LivingAthleteCardFront
                     key="front"
@@ -564,14 +618,41 @@ export function LivingAthleteCardPage({
                     ) : null}
                   </div>
                 )}
+                {side === 'responses' && (
+                  <div className="living-card-face living-card-face-alt" key="responses" data-testid="living-card-responses-side">
+                    <div className="living-card-alt-top"><span className="living-card-overline">Pixl / From the stands</span><span>{invite.seasonName}</span></div>
+                    <h2 className="living-card-alt-title">Responses.</h2>
+                    <p className="living-card-alt-subtitle">Cheers shared for {invite.athleteName}. Names stay private; older owner-only messages are not shown to other viewers.</p>
+                    {shoutoutsLoading ? <p className="living-card-note" role="status">Loading responses…</p>
+                      : shoutoutsError ? <div className="living-card-empty" role="alert"><h3>Responses are unavailable.</h3><button type="button" onClick={() => void (ownerInvite ? ownerShoutouts.refetch() : publicShoutouts.refetch())}>Try again</button></div>
+                      : shoutouts && shoutouts.length > 0 ? (
+                        <ol className="living-card-response-list" aria-label="Viewer responses">
+                          {shoutouts.map((item) => (
+                            <li key={item.id} data-testid="living-card-response">
+                              <span className="living-card-response-emoji" aria-hidden="true">{item.reaction}</span>
+                              <div className="living-card-response-content">
+                                <small>{new Date(item.createdAt).toLocaleDateString()}{ownerInvite && 'publiclyVisible' in item && !item.publiclyVisible ? ' · Private · Owner only' : ''}</small>
+                                {item.message ? <p>{item.message}</p> : <p className="living-card-response-cheer">Cheering {invite.athleteName} on!</p>}
+                              </div>
+                              {ownerInvite && <button type="button" className="living-card-response-remove" disabled={deleteHype.isPending} onClick={() => void removeShoutout(item.id)} aria-label={`Remove response from ${new Date(item.createdAt).toLocaleDateString()}`}>Remove</button>}
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <div className="living-card-empty"><h3>Be the first to cheer.</h3><p>New public Shoutouts will appear here.</p></div>
+                      )}
+                    {ownerInvite && <p role={responseFeedback.includes('could not') ? 'alert' : 'status'} aria-live="polite" className="living-card-response-feedback">{responseFeedback}</p>}
+                  </div>
+                )}
                 <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
-                  <button type="button" className="living-card-control" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Card front</button>
+                  <button type="button" className="living-card-control" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => selectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Responses</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 && <span className="living-card-control-count">({recentVideos.length})</span>}</button>
                   <button type="button" className={`living-card-control${eventToday ? ' living-card-control-today' : ''}`} aria-pressed={side === 'events'} aria-controls="living-card-display" onClick={() => selectSide('events')} data-testid="button-living-card-events"><CalendarDays aria-hidden="true" /> Events{linkedEvents.length > 0 && <span className="living-card-control-count">({linkedEvents.length})</span>}{eventToday && <span className="sr-only"> · Event today</span>}</button>
                 </div>
               </div>
             </div>
+            <button type="button" className="living-card-return-front" aria-pressed={side === 'front'} aria-controls="living-card-display" onClick={() => selectSide('front')} data-testid="button-living-card-front"><RotateCcw aria-hidden="true" /> Flip to card front</button>
 
              {showSupportActions && <div className="living-card-support-actions" role="group" aria-label="Support this athlete">
                <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>
@@ -601,7 +682,7 @@ export function LivingAthleteCardPage({
                    <button type="button" className="living-card-support-action living-card-support-action-hype" data-testid="button-open-fan-card-hypes">
                      <Send aria-hidden="true" />
                       <span>Send a Shoutout</span>
-                     <small>A note for the owner</small>
+                      <small>Share a public cheer</small>
                    </button>
                  </DialogTrigger>
                  <DialogContent className="living-card-dialog living-card-hype-dialog" data-testid="dialog-hypes-fan-card">
@@ -609,7 +690,7 @@ export function LivingAthleteCardPage({
                      <span className="living-card-dialog-kicker">From the stands</span>
                       <DialogTitle>Send a Shoutout.</DialogTitle>
                      <DialogDescription>
-                       Pick a cheer and add a short message for {invite.athleteName}. Only the card owner can read your message.
+                        Pick a cheer and add a short message for {invite.athleteName}. Your emoji and message will appear publicly on this card; your name is only visible to the owner.
                      </DialogDescription>
                    </DialogHeader>
                    <div className="living-card-dialog-body">
@@ -625,12 +706,13 @@ export function LivingAthleteCardPage({
                           </fieldset>
                           <label htmlFor="fan-card-sender-name">Your name (optional)</label>
                           <input id="fan-card-sender-name" type="text" value={senderName} onChange={(event) => setSenderName(event.target.value)} maxLength={60} autoComplete="name" placeholder="How should we credit you?" data-testid="input-fan-card-sender-name" />
-                          <p className="living-card-name-note">Leave blank to send anonymously. Only the card owner sees your name.</p>
+                          <p className="living-card-name-note">Leave blank to send anonymously. Your name is never shown to other viewers.</p>
                          <label htmlFor="fan-card-message">Short message (optional)</label>
                          <textarea id="fan-card-message" value={message} onChange={(event) => setMessage(event.target.value)} maxLength={240} rows={4} placeholder="A few words of encouragement" data-testid="input-fan-card-message" />
+                          <label className="living-card-public-consent"><input type="checkbox" checked={publicConsent} onChange={(event) => setPublicConsent(event.target.checked)} required data-testid="checkbox-fan-card-public-consent" /><span>I understand my emoji and message will be visible to everyone viewing this card.</span></label>
                          <div className="living-card-dialog-form-footer">
                            <span>{message.length}/240</span>
-                            <button type="submit" disabled={sendHype.isPending} data-testid="button-submit-fan-card-hype">{sendHype.isPending ? 'Sending shoutout…' : 'Send a Shoutout'}</button>
+                             <button type="submit" disabled={sendHype.isPending || !publicConsent} data-testid="button-submit-fan-card-hype">{sendHype.isPending ? 'Sending shoutout…' : 'Share Shoutout'}</button>
                          </div>
                        </form>
                      ) : (

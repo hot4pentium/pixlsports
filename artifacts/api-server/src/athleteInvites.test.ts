@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import {
   accountAccessTable,
   athleteInvitesTable,
+  athleteInviteHypesTable,
   cloudProjectsTable,
   db,
   hypeCardSharesTable,
@@ -351,6 +352,135 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
     await db.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, ownerId));
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
+  }
+});
+
+test("public athlete invite shoutouts exclude legacy private rows and remain owner-manageable", async () => {
+  const ownerId = `athlete-shoutouts-${randomUUID()}`;
+  const otherId = `athlete-shoutouts-other-${randomUUID()}`;
+  const inviteToken = randomBytes(24).toString("base64url");
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { error: () => undefined, warn: () => undefined };
+    next();
+  });
+  app.use("/api", athleteInvitesRouter);
+  const server = app.listen(0);
+
+  try {
+    await db.insert(accountAccessTable).values([
+      { ownerClerkUserId: ownerId, role: "fan", accessMode: "full" },
+      { ownerClerkUserId: otherId, role: "fan", accessMode: "full" },
+    ]);
+    const [invite] = await db.insert(athleteInvitesTable).values({
+      ownerClerkUserId: ownerId,
+      publicToken: inviteToken,
+      athleteName: "Jordan",
+      teamName: "City Hoops",
+      seasonName: "Fall 2026",
+      seasonEndsAt: new Date(Date.now() + 90 * 86_400_000),
+      sport: "basketball",
+      showHypeCard: true,
+      showStats: false,
+      showSchedule: false,
+    }).returning();
+    assert.ok(invite);
+    const [legacyPrivate] = await db.insert(athleteInviteHypesTable).values({
+      inviteId: invite.id,
+      reaction: "Great job!",
+      senderName: "Private sender",
+      message: "This old response stays private.",
+      rateLimitKey: `legacy-${randomUUID()}`,
+    }).returning();
+    assert.ok(legacyPrivate);
+    assert.equal(legacyPrivate.publiclyVisible, false);
+
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}/api/athlete-invites/${inviteToken}`;
+    const publicClientPost = await fetch(`${baseUrl}/hypes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        reaction: "Let's go!",
+        senderName: "Public sender",
+        message: "Approved for everyone.",
+        publiclyVisible: true,
+      }),
+    });
+    assert.equal(publicClientPost.status, 201);
+    const approvedPublic = (await db.select().from(athleteInviteHypesTable)
+      .where(eq(athleteInviteHypesTable.inviteId, invite.id)))
+      .find((row) => row.senderName === "Public sender");
+    assert.ok(approvedPublic);
+
+    const publicResponse = await fetch(`${baseUrl}/public-shoutouts`);
+    assert.equal(publicResponse.status, 200);
+    const publicRows = await publicResponse.json() as Array<Record<string, unknown>>;
+    assert.equal(publicRows.length, 1);
+    assert.equal(publicRows[0]?.id, approvedPublic.id);
+    assert.deepEqual(Object.keys(publicRows[0] ?? {}).sort(), ["createdAt", "id", "message", "reaction"]);
+    assert.equal(JSON.stringify(publicRows).includes("senderName"), false);
+    assert.equal(JSON.stringify(publicRows).includes("rateLimitKey"), false);
+    assert.equal(JSON.stringify(publicRows).includes("Private sender"), false);
+
+    const legacyClientPost = await fetch(`${baseUrl}/hypes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        reaction: "Proud of you!",
+        senderName: "Legacy client",
+        message: "No visibility field was sent.",
+      }),
+    });
+    assert.equal(legacyClientPost.status, 201);
+    const legacyClientRow = (await db.select().from(athleteInviteHypesTable)
+      .where(eq(athleteInviteHypesTable.inviteId, invite.id)))
+      .find((row) => row.senderName === "Legacy client");
+    assert.equal(legacyClientRow?.publiclyVisible, false);
+
+    assert.equal((await fetch(`${baseUrl}/hypes`)).status, 401);
+    assert.equal((await fetch(`${baseUrl}/hypes/${approvedPublic.id}`, { method: "DELETE" })).status, 401);
+    const otherHeaders = { "x-test-user": otherId };
+    assert.equal((await fetch(`${baseUrl}/hypes`, { headers: otherHeaders })).status, 404);
+    assert.equal((await fetch(`${baseUrl}/hypes/${approvedPublic.id}`, {
+      method: "DELETE",
+      headers: otherHeaders,
+    })).status, 404);
+
+    const ownerHeaders = { "x-test-user": ownerId };
+    const ownerRowsResponse = await fetch(`${baseUrl}/hypes`, { headers: ownerHeaders });
+    assert.equal(ownerRowsResponse.status, 200);
+    const ownerRows = await ownerRowsResponse.json() as Array<Record<string, unknown>>;
+    assert.equal(ownerRows.length, 3);
+    assert.equal(ownerRows.find((row) => row.id === approvedPublic.id)?.publiclyVisible, true);
+    assert.equal(ownerRows.find((row) => row.id === legacyPrivate.id)?.publiclyVisible, false);
+    assert.equal(ownerRows.find((row) => row.message === "No visibility field was sent.")?.publiclyVisible, false);
+    assert.equal((await fetch(`${baseUrl}/hypes/${approvedPublic.id}`, {
+      method: "DELETE",
+      headers: ownerHeaders,
+    })).status, 204);
+    assert.deepEqual(await (await fetch(`${baseUrl}/public-shoutouts`)).json(), []);
+
+    await db.update(athleteInvitesTable).set({ paused: true }).where(eq(athleteInvitesTable.id, invite.id));
+    assert.equal((await fetch(`${baseUrl}/public-shoutouts`)).status, 404);
+    await db.update(athleteInvitesTable).set({ paused: false }).where(eq(athleteInvitesTable.id, invite.id));
+    await db.update(accountAccessTable).set({ lifecycleStatus: "paused" })
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    assert.equal((await fetch(`${baseUrl}/public-shoutouts`)).status, 404);
+    assert.equal((await fetch(
+      `http://127.0.0.1:${address.port}/api/athlete-invites/${randomBytes(24).toString("base64url")}/public-shoutouts`,
+    )).status, 404);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
   }

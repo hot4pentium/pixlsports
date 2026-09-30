@@ -2045,12 +2045,13 @@ export const sendAthleteInviteHypeBodySenderNameMax = 60;
 
 export const sendAthleteInviteHypeBodyMessageMax = 240;
 
-
+export const sendAthleteInviteHypeBodyPubliclyVisibleDefault = false;
 
 export const SendAthleteInviteHypeBody = zod.object({
   "reaction": zod.enum(['Let\'s go!', 'Great job!', 'Proud of you!', '🔥', '👏', '💪', '⭐', '❤️']),
   "senderName": zod.string().max(sendAthleteInviteHypeBodySenderNameMax).optional(),
-  "message": zod.string().max(sendAthleteInviteHypeBodyMessageMax).optional()
+  "message": zod.string().max(sendAthleteInviteHypeBodyMessageMax).optional(),
+  "publiclyVisible": zod.boolean().default(sendAthleteInviteHypeBodyPubliclyVisibleDefault)
 })
 
 export const SendAthleteInviteHypeResponse = zod.object({
@@ -2073,9 +2074,29 @@ export const ListAthleteInviteHypesResponseItem = zod.object({
   "reaction": zod.string(),
   "senderName": zod.string().nullable(),
   "message": zod.string().nullable(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "publiclyVisible": zod.boolean()
 })
 export const ListAthleteInviteHypesResponse = zod.array(ListAthleteInviteHypesResponseItem)
+
+
+/**
+ * @summary List public Hype Card shoutouts
+ */
+export const listPublicAthleteInviteHypesPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ListPublicAthleteInviteHypesParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(listPublicAthleteInviteHypesPathInviteTokenRegExp)
+})
+
+export const ListPublicAthleteInviteHypesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "reaction": zod.string(),
+  "message": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPublicAthleteInviteHypesResponse = zod.array(ListPublicAthleteInviteHypesResponseItem)
 
 
 /**

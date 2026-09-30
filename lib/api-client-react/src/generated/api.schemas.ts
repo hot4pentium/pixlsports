@@ -1112,6 +1112,7 @@ export interface AthleteInviteHypeInput {
   senderName?: string;
   /** @maxLength 240 */
   message?: string;
+  publiclyVisible?: boolean;
 }
 
 export interface AthleteInviteHypeAccepted {
@@ -1123,6 +1124,15 @@ export interface AthleteInviteHype {
   reaction: string;
   /** @nullable */
   senderName: string | null;
+  /** @nullable */
+  message: string | null;
+  createdAt: string;
+  publiclyVisible: boolean;
+}
+
+export interface PublicAthleteInviteHype {
+  id: string;
+  reaction: string;
   /** @nullable */
   message: string | null;
   createdAt: string;

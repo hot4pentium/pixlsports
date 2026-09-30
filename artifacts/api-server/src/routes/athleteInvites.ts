@@ -9,6 +9,8 @@ import {
   SendAthleteInviteHypeResponse,
   ListAthleteInviteHypesParams,
   ListAthleteInviteHypesResponse,
+  ListPublicAthleteInviteHypesParams,
+  ListPublicAthleteInviteHypesResponse,
   DeleteAthleteInviteHypeParams,
   DeleteAthleteInviteParams,
   GetAthleteInviteParams,
@@ -563,6 +565,7 @@ router.post("/athlete-invites/:inviteToken/hypes", async (req, res): Promise<voi
       reaction: body.data.reaction,
       senderName,
       message: body.data.message?.trim() || null,
+      publiclyVisible: body.data.publiclyVisible,
       rateLimitKey,
     }).returning({ id: athleteInviteHypesTable.id });
     return hype?.id ?? false;
@@ -594,10 +597,35 @@ router.get("/athlete-invites/:inviteToken/hypes", requireAuth, async (req, res):
     reaction: athleteInviteHypesTable.reaction,
     senderName: athleteInviteHypesTable.senderName,
     message: athleteInviteHypesTable.message,
+    publiclyVisible: athleteInviteHypesTable.publiclyVisible,
     createdAt: athleteInviteHypesTable.createdAt,
   }).from(athleteInviteHypesTable).where(eq(athleteInviteHypesTable.inviteId, invite.id))
     .orderBy(desc(athleteInviteHypesTable.createdAt)).limit(100);
   res.json(ListAthleteInviteHypesResponse.parse(hypes));
+});
+
+router.get("/athlete-invites/:inviteToken/public-shoutouts", async (req, res): Promise<void> => {
+  const params = ListPublicAthleteInviteHypesParams.safeParse(req.params);
+  if (!params.success) { res.status(404).json({ error: "Card not found" }); return; }
+  const [invite] = await db.select({
+    id: athleteInvitesTable.id,
+    ownerClerkUserId: athleteInvitesTable.ownerClerkUserId,
+    paused: athleteInvitesTable.paused,
+  }).from(athleteInvitesTable).where(eq(athleteInvitesTable.publicToken, params.data.inviteToken));
+  if (!invite || invite.paused || !(await isAccountActive(invite.ownerClerkUserId))) {
+    res.status(404).json({ error: "Card not found" });
+    return;
+  }
+  const hypes = await db.select({
+    id: athleteInviteHypesTable.id,
+    reaction: athleteInviteHypesTable.reaction,
+    message: athleteInviteHypesTable.message,
+    createdAt: athleteInviteHypesTable.createdAt,
+  }).from(athleteInviteHypesTable).where(and(
+    eq(athleteInviteHypesTable.inviteId, invite.id),
+    eq(athleteInviteHypesTable.publiclyVisible, true),
+  )).orderBy(desc(athleteInviteHypesTable.createdAt)).limit(100);
+  res.json(ListPublicAthleteInviteHypesResponse.parse(hypes));
 });
 
 router.delete("/athlete-invites/:inviteToken/hypes/:hypeId", requireAuth, async (req, res): Promise<void> => {

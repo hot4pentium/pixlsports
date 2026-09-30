@@ -3,7 +3,7 @@ name: Landing Celebrate card parity
 description: User-corrected boundary for the signed-out Celebrate demo's card behavior.
 ---
 
-The signed-out Celebrate demo should show a photo-front Hype Card with the same four side choices as the real athlete card: Card front, Stats, Videos, Events. Do not replace those choices with a generic greeting or message side.
+The signed-out Celebrate demo should show a photo-front Hype Card with the four approved demo choices: Card front, Stats, Videos, Events. Do not replace those choices with a generic greeting or message side. The user approved the populated fictional stats, three video thumbnails, and two events; this demo has its own scope and need not automatically mirror later changes to the real card.
 
 **Why:** The user rejected a front/message flip as unlike the actual Hype Card and supplied a visual reference showing the four controls along the bottom edge. A simplified stats summary and an empty Videos view also did not communicate how the populated card should look.
 

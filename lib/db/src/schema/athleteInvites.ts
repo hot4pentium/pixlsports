@@ -43,6 +43,7 @@ export const athleteInviteHypesTable = pgTable("athlete_invite_hypes", {
   reaction: text("reaction").notNull(),
   senderName: text("sender_name"),
   message: text("message"),
+  publiclyVisible: boolean("publicly_visible").notNull().default(false),
   rateLimitKey: text("rate_limit_key").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

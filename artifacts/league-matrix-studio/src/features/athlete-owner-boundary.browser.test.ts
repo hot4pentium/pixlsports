@@ -11,6 +11,7 @@ import { DevToolsConnection, monitorProcess, waitFor, waitForUrl, type BrowserPa
 const appDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const chromiumPath = process.env.CHROMIUM_PATH || '/repl/tools/bin/chromium';
 const token = 'owner-boundary-test-token';
+const publicShoutoutId = '123e4567-e89b-42d3-a456-426614174000';
 
 async function listen(server: Server) {
   return new Promise<number>((resolvePort, reject) => {
@@ -33,6 +34,27 @@ async function availablePort() {
 test('player-page owner tools remain private across account changes and pause', async () => {
   let paused = false;
   const requests: Array<{ viewer: string; method: string; path: string }> = [];
+  const publicShoutouts = [{
+    id: publicShoutoutId,
+    reaction: '🔥',
+    message: 'Amazing hustle, Jordan!',
+    createdAt: new Date().toISOString(),
+  }];
+  const ownerShoutouts = [
+    {
+      ...publicShoutouts[0],
+      senderName: null,
+      publiclyVisible: true,
+    },
+    {
+      id: '123e4567-e89b-42d3-a456-426614174001',
+      reaction: '👏',
+      senderName: 'Private sender',
+      message: 'A private note for Jordan.',
+      publiclyVisible: false,
+      createdAt: new Date(Date.now() - 60_000).toISOString(),
+    },
+  ];
   const owned = {
     inviteToken: token, athleteName: 'Jordan', teamName: 'City Hoops',
     seasonName: 'Fall 2026', seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
@@ -139,6 +161,22 @@ test('player-page owner tools remain private across account changes and pause', 
       Object.assign(owned, changes);
       paused = Boolean(owned.paused);
       json(200, { ...owned, paused });
+    } else if (path === `/api/athlete-invites/${token}/public-shoutouts` && method === 'GET') {
+      json(200, publicShoutouts);
+    } else if (path === `/api/athlete-invites/${token}/hypes` && method === 'GET' && viewer === 'owner') {
+      json(200, ownerShoutouts);
+    } else if (path.startsWith(`/api/athlete-invites/${token}/hypes/`) && method === 'DELETE' && viewer === 'owner') {
+      const hypeId = path.split('/').at(-1);
+      const index = ownerShoutouts.findIndex((item) => item.id === hypeId);
+      if (index < 0) {
+        response.writeHead(404).end();
+        return;
+      }
+      ownerShoutouts.splice(index, 1);
+      for (let publicIndex = publicShoutouts.length - 1; publicIndex >= 0; publicIndex -= 1) {
+        if (publicShoutouts[publicIndex]?.id === hypeId) publicShoutouts.splice(publicIndex, 1);
+      }
+      response.writeHead(204).end();
     } else if (path === '/api/hype-card-shares' && method === 'GET') {
       json(viewer === 'owner' ? 200 : 401, viewer === 'owner' ? [] : { error: 'Unauthorized' });
     } else {
@@ -188,6 +226,7 @@ test('player-page owner tools remain private across account changes and pause', 
       await connection!.send('Page.addScriptToEvaluateOnNewDocument', { source: `
         (() => {
           const originalFetch = window.fetch.bind(window);
+          if (${JSON.stringify(viewer)} === 'owner') window.confirm = () => true;
           window.fetch = (input, init) => {
             const url = typeof input === 'string' ? input : input.url;
             if (!url.startsWith('/api/')) return originalFetch(input, init);
@@ -223,6 +262,62 @@ test('player-page owner tools remain private across account changes and pause', 
     const visitorFanCard = await open('visitor', 'fan');
     await waitFor(connection, visitorFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), visitorFanCard), true);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", visitorFanCard);
+    await waitFor(connection, visitorFanCard, element('[data-testid="living-card-responses-side"]'), Boolean, 12_000);
+    await waitFor(connection, visitorFanCard, "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('Amazing hustle, Jordan!')", Boolean, 12_000);
+    const visitorResponses = await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText || ''",
+      visitorFanCard,
+    );
+    assert.match(visitorResponses, /Amazing hustle, Jordan!/);
+    assert.doesNotMatch(visitorResponses, /A private note for Jordan|Private sender/);
+    assert.ok(requests.some(({ viewer, method, path }) => (
+      viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/public-shoutouts`
+    )), 'visitors load the public-shoutouts endpoint');
+    assert.equal(await connection.evaluate(
+      "document.querySelector('[data-testid=\"button-living-card-front\"]')?.getBoundingClientRect().top > document.querySelector('#living-card-display')?.getBoundingClientRect().bottom",
+      visitorFanCard,
+    ), true, 'the return-to-front control is below the card');
+    await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-front\"]').click()", visitorFanCard);
+    await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.getAttribute('aria-label') === 'Jordan — card front'", Boolean, 12_000);
+    await connection.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 800, deviceScaleFactor: 1, mobile: true }, visitorFanCard);
+    assert.equal(await connection.evaluate(`[...document.querySelectorAll('.living-card-controls button')].every(button => {
+      const bounds = button.getBoundingClientRect();
+      const content = document.createRange();
+      content.selectNodeContents(button);
+      const contentBounds = content.getBoundingClientRect();
+      return contentBounds.left >= bounds.left - 1 && contentBounds.right <= bounds.right + 1;
+    })`, visitorFanCard), true, 'all four card controls fit at narrow phone width');
+    await connection.evaluate("document.querySelector('[data-testid=\"button-living-card-responses\"]').click()", ownerFanCard);
+    await waitFor(connection, ownerFanCard, element('[data-testid="living-card-responses-side"]'), Boolean, 12_000);
+    await waitFor(connection, ownerFanCard, "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('A private note for Jordan.')", Boolean, 12_000);
+    const ownerResponseText = await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText || ''",
+      ownerFanCard,
+    );
+    assert.match(ownerResponseText, /Amazing hustle, Jordan!/);
+    assert.match(ownerResponseText, /A private note for Jordan/);
+    assert.match(ownerResponseText, /Private · Owner only/);
+    assert.ok(requests.some(({ viewer, method, path }) => (
+      viewer === 'owner' && method === 'GET' && path === `/api/athlete-invites/${token}/hypes`
+    )), 'the owner loads the owner-only Hypes endpoint');
+    await connection.evaluate(`(() => {
+      const response = Array.from(document.querySelectorAll('[data-testid="living-card-response"]'))
+        .find((item) => item.innerText.includes('Amazing hustle, Jordan!'));
+      response?.querySelector('button[aria-label^="Remove response"]')?.click();
+    })()`, ownerFanCard);
+    await waitFor(connection, ownerFanCard, "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('Shoutout removed.')", Boolean, 12_000);
+    await waitFor(connection, ownerFanCard, "!document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText.includes('Amazing hustle, Jordan!')", Boolean, 12_000);
+    const remainingOwnerResponses = await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"living-card-responses-side\"]')?.innerText || ''",
+      ownerFanCard,
+    );
+    assert.doesNotMatch(remainingOwnerResponses, /Amazing hustle, Jordan!/);
+    assert.match(remainingOwnerResponses, /A private note for Jordan/);
+    assert.ok(requests.some(({ viewer, method, path }) => (
+      viewer === 'owner' && method === 'DELETE' && path === `/api/athlete-invites/${token}/hypes/${publicShoutoutId}`
+    )), 'the owner can remove a public shoutout by hype ID');
+    assert.equal(publicShoutouts.length, 0, 'the public shoutout fixture is mutated by the owner delete');
     assert.equal(await connection.evaluate(element('[data-testid="athlete-highlights-heading"]'), visitor), false);
     assert.match(
       await connection.evaluate<string>(

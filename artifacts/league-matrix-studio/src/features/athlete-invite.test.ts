@@ -44,12 +44,32 @@ test('HYPE Card event details do not repeat the full Game On Card link', () => {
   assert.doesNotMatch(eventsSide, /Open one for its full details/);
 });
 
-test('fan Shoutouts keep owner-only privacy wording distinct from media replies', () => {
+test('new fan Shoutouts require public disclosure while older private responses stay owner-only', () => {
   assert.match(livingCardSource, /Send a Shoutout/);
-  assert.match(livingCardSource, /Only the card owner can read your message/);
+  assert.match(livingCardSource, /Your emoji and message will appear publicly on this card/);
+  assert.match(livingCardSource, /I understand my emoji and message will be visible to everyone/);
+  assert.match(livingCardSource, /publiclyVisible: true/);
+  assert.match(livingCardSource, /Names stay private; older owner-only messages are not shown to other viewers/);
+  assert.match(livingCardSource, /useListPublicAthleteInviteHypes/);
+  assert.match(livingCardSource, /useListAthleteInviteHypes/);
+  assert.match(livingCardSource, /ownerInvite && 'publiclyVisible' in item/);
   assert.match(livingCardSource, /Your shoutout could not be sent/);
   assert.match(source, /Fan Shoutouts/);
   assert.match(source, /Leave a reply/);
+});
+test('real Hype Card replaces the front slot with responses and moves flip under the card', () => {
+  const controls = livingCardSource.slice(
+    livingCardSource.indexOf('<div className="living-card-controls"'),
+    livingCardSource.indexOf('{showSupportActions &&'),
+  );
+  assert.match(controls, /button-living-card-responses/);
+  assert.match(controls, /👍/);
+  assert.match(controls, /button-living-card-front/);
+  assert.ok(controls.indexOf('button-living-card-front') > controls.indexOf('</div>\n              </div>'));
+  assert.match(livingCardSource, /living-card-responses-side/);
+  assert.match(livingCardSource, /ownerInvite && <button/);
+  assert.match(livingCardSource, /onClick=\{\(\) => void removeShoutout\(item\.id\)\}/);
+  assert.match(livingCardSource, /window\.confirm\('Remove this Shoutout/);
 });
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));

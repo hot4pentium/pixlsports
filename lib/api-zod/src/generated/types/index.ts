@@ -169,6 +169,7 @@ export * from './projectVisibility';
 export * from './publicAthleteFanCard';
 export * from './publicAthleteFanCardSport';
 export * from './publicAthleteInvite';
+export * from './publicAthleteInviteHype';
 export * from './publicAthleteInviteSport';
 export * from './scheduleEvent';
 export * from './scheduleEventStatus';

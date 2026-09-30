@@ -14,4 +14,5 @@ export interface AthleteInviteHype {
   /** @nullable */
   message: string | null;
   createdAt: Date;
+  publiclyVisible: boolean;
 }

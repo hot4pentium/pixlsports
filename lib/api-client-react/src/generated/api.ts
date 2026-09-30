@@ -86,6 +86,7 @@ import type {
   ProjectUpdate,
   PublicAthleteFanCard,
   PublicAthleteInvite,
+  PublicAthleteInviteHype,
   ScheduleShare,
   ScheduleShareInput,
   StatTrackerConflict,
@@ -2696,6 +2697,83 @@ export function useListAthleteInviteHypes<TData = Awaited<ReturnType<typeof list
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAthleteInviteHypesQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPublicAthleteInviteHypesUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/public-shoutouts`
+}
+
+/**
+ * @summary List public Hype Card shoutouts
+ */
+export const listPublicAthleteInviteHypes = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicAthleteInviteHype[]> => {
+
+  return customFetch<PublicAthleteInviteHype[]>(getListPublicAthleteInviteHypesUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPublicAthleteInviteHypesQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/public-shoutouts`
+    ] as const;
+    }
+
+
+export const getListPublicAthleteInviteHypesQueryOptions = <TData = Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>, TError = ErrorType<NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPublicAthleteInviteHypesQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>> = ({ signal }) => listPublicAthleteInviteHypes(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPublicAthleteInviteHypesQueryResult = NonNullable<Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>>
+export type ListPublicAthleteInviteHypesQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary List public Hype Card shoutouts
+ */
+
+export function useListPublicAthleteInviteHypes<TData = Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>, TError = ErrorType<NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPublicAthleteInviteHypes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPublicAthleteInviteHypesQueryOptions(inviteToken,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

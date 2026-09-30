@@ -649,6 +649,24 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/public-shoutouts:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: listPublicAthleteInviteHypes
+      tags: [athlete-invites]
+      summary: List public Hype Card shoutouts
+      responses:
+        "200":
+          description: Most recent shoutouts explicitly approved for public display
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicAthleteInviteHype"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/hypes/{hypeId}:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -2729,6 +2747,7 @@ components:
         reaction: { type: string, enum: ["Let's go!", "Great job!", "Proud of you!", "🔥", "👏", "💪", "⭐", "❤️"] }
         senderName: { type: string, maxLength: 60 }
         message: { type: string, maxLength: 240 }
+        publiclyVisible: { type: boolean, default: false }
     AthleteInviteHypeAccepted:
       type: object
       required: [accepted]
@@ -2736,11 +2755,20 @@ components:
         accepted: { type: boolean }
     AthleteInviteHype:
       type: object
-      required: [id, reaction, senderName, message, createdAt]
+      required: [id, reaction, senderName, message, createdAt, publiclyVisible]
       properties:
         id: { type: string, format: uuid }
         reaction: { type: string }
         senderName: { type: ["string", "null"] }
+        message: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        publiclyVisible: { type: boolean }
+    PublicAthleteInviteHype:
+      type: object
+      required: [id, reaction, message, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reaction: { type: string }
         message: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
     OwnedAthleteInviteList:
