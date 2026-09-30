@@ -82,7 +82,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       assert.equal(await connection.evaluate('document.querySelectorAll("[data-testid=landing-capability-highlights] li").length', page.sessionId), 4);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number;
-        cta: string; help: string; privacy: string; explainer: string; menuVisible: boolean;
+        cta: string; help: string; support: string; privacy: string; explainer: string; menuVisible: boolean;
       }>(`(() => ({
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
@@ -90,6 +90,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
         sections: document.querySelectorAll('.step-card').length,
         cta: document.querySelector('[data-testid="link-hero-get-started"]')?.getAttribute('href'),
         help: document.querySelector('[data-testid="link-footer-help"]')?.getAttribute('href'),
+        support: document.querySelector('[data-testid="link-footer-support"]')?.getAttribute('href'),
         privacy: document.querySelector('[data-testid="link-footer-privacy"]')?.getAttribute('href'),
         explainer: document.querySelector('[data-testid="link-landing-week-path-video"]')?.getAttribute('href'),
         menuVisible: getComputedStyle(document.querySelector('[data-testid="button-landing-mobile-menu"]')).display !== 'none',
@@ -100,6 +101,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       assert.equal(layout.sections, 4);
       assert.equal(layout.cta, '/sign-up');
       assert.equal(layout.help, '/help');
+      assert.equal(layout.support, 'mailto:support@pixlsports.com');
       assert.equal(layout.privacy, '/privacy');
       assert.match(layout.explainer, /week-path-explainer\.mp4$/);
       assert.equal(layout.menuVisible, width < 700);

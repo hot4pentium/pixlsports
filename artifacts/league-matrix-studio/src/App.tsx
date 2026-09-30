@@ -480,8 +480,9 @@ function Footer() {
           <BrandMark />
           <p className="text-xs font-medium leading-relaxed text-muted-foreground">HYPE Cards, game-day tools, and stats <span className="mx-1 text-accent">·</span> Built for your team account.</p>
         </div>
-        <div className="flex shrink-0 items-center gap-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <Link href="/help" className="transition-colors hover:text-foreground" data-testid="link-footer-help">Help / FAQ</Link>
+          <a href="mailto:support@pixlsports.com" className="transition-colors hover:text-foreground" data-testid="link-footer-support">support@pixlsports.com</a>
           <Link href="/privacy" className="transition-colors hover:text-foreground" data-testid="link-footer-privacy">Privacy</Link>
         </div>
       </div>
@@ -3228,7 +3229,10 @@ function Help() {
               <p className="text-sm font-bold uppercase tracking-widest opacity-80 mt-1">Reach out for tactical support</p>
             </div>
           </div>
-           <a href="mailto:hello@pixlsports.com" className="bg-card text-card-foreground font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap">Contact Team</a>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a href="mailto:support@pixlsports.com" className="bg-card text-card-foreground font-bold tracking-wide px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-support-email">support@pixlsports.com</a>
+              <a href="mailto:hello@pixlsports.com" className="border border-primary-foreground/40 text-primary-foreground font-bold uppercase tracking-wider px-6 py-3 clip-angled-sm hover:scale-105 transition-transform whitespace-nowrap" data-testid="link-help-contact-team">Contact Team</a>
+            </div>
         </div>
       </main>
     </StudioLayout>

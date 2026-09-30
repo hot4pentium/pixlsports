@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const source = readFileSync(new URL('./landing-home.tsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../landing-unified.css', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
 
 test('landing shows the dashboard in mobile and landscape with fictional examples', () => {
   assert.match(source, /data-testid="text-landing-headline">ALL IN,<br \/><em>ALL SEASON\.<\/em><\/h1>/);
@@ -79,6 +80,13 @@ test('visitor actions use real destinations and preserve the explainer', () => {
   for (const path of ['/help', '/privacy']) assert.ok(source.includes(`href="${path}"`));
   assert.match(source, /week-path-explainer\.mp4/);
   assert.doesNotMatch(source, /pricing|#pricing/i);
+});
+
+test('support email is available from public contact points without replacing existing contact options', () => {
+  assert.match(source, /<a href="mailto:support@pixlsports\.com"[^>]*>support@pixlsports\.com<\/a>/);
+  assert.match(appSource, /<a href="mailto:support@pixlsports\.com"[^>]*data-testid="link-footer-support">support@pixlsports\.com<\/a>/);
+  assert.match(appSource, /<a href="mailto:support@pixlsports\.com"[^>]*data-testid="link-help-support-email">support@pixlsports\.com<\/a>/);
+  assert.match(appSource, /href="mailto:hello@pixlsports\.com"[^>]*data-testid="link-help-contact-team">Contact Team<\/a>/);
 });
 
 test('mobile navigation and accessibility basics are built in', () => {

@@ -339,6 +339,7 @@ export function PublicLandingPage() {
           <nav className="footer-links" aria-label="Footer navigation">
             <Link href="/studio" data-testid="link-footer-tools">Studio</Link>
             <Link href="/help" data-testid="link-footer-help">Help / FAQ</Link>
+             <a href="mailto:support@pixlsports.com" data-testid="link-footer-support">support@pixlsports.com</a>
             <Link href="/privacy" data-testid="link-footer-privacy">Privacy</Link>
              <Link href={isSignedIn ? '/studio' : '/sign-in'} data-testid="link-footer-sign-in">{isSignedIn ? 'Studio' : 'Sign in'}</Link>
           </nav>
