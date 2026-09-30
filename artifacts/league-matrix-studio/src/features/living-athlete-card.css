@@ -334,6 +334,10 @@
   .living-card-dialog-header h2 { font-size: 49px; }
   .living-card-footer { margin-top: 58px; }
 }
+@media (min-width: 521px) {
+  .living-card-layout-solo { grid-template-columns: minmax(0, min(660px, calc(56dvh + 20px))); }
+  .living-card-frame { height: min(68.5dvh, 790px); min-height: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .living-card-control-today::after { animation: none; opacity: 1; transform: none; }
   .living-card-page *, .living-card-page *::before, .living-card-page *::after { -webkit-animation-duration: .01ms !important; animation-duration: .01ms !important; -webkit-transition-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }

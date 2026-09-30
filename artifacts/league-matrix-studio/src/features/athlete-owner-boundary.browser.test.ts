@@ -356,6 +356,37 @@ test('player-page owner tools remain private across account changes and pause', 
       const contentBounds = content.getBoundingClientRect();
       return contentBounds.left >= bounds.left - 1 && contentBounds.right <= bounds.right + 1;
     })`, visitorFanCard), true, 'all four card controls fit at narrow phone width');
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1024,
+      height: 768,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, visitorFanCard);
+    await connection.evaluate('window.scrollTo(0, 0)', visitorFanCard);
+    const desktopCardBounds = await connection.evaluate<{
+      top: number;
+      bottom: number;
+      height: number;
+      viewportHeight: number;
+    }>(`(() => {
+      const card = document.querySelector('.living-card-frame-outer');
+      if (!(card instanceof HTMLElement)) throw new Error('Hype Card frame is missing');
+      const rect = card.getBoundingClientRect();
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        height: rect.height,
+        viewportHeight: window.innerHeight,
+      };
+    })()`, visitorFanCard);
+    assert.ok(
+      desktopCardBounds.top >= 0 && desktopCardBounds.bottom <= desktopCardBounds.viewportHeight,
+      'the Hype Card should fit in a typical desktop viewport without cropping',
+    );
+    assert.ok(
+      desktopCardBounds.height <= desktopCardBounds.viewportHeight * 0.75,
+      'the desktop card should leave room for the page header and surrounding content',
+    );
     await connection.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] }, visitorFanCard);
     const reducedMotionDuration = await connection.evaluate<string>(
       "getComputedStyle(document.querySelector('.living-card-flip-inner')).transitionDuration",
