@@ -7546,3 +7546,4 @@ export const useAcknowledgeNotificationDisplayed = <TError = ErrorType<BadReques
       > => {
       return useMutation(getAcknowledgeNotificationDisplayedMutationOptions(options));
     }
+

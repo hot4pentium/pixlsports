@@ -3537,9 +3537,21 @@ export function RoleSelectionPage() {
         },
       });
       setLocation('/studio');
-    } catch {
+    } catch (saveError) {
       setSavingProfile(false);
-      setError('We could not save your profile. Please try again.');
+      const errorData = saveError && typeof saveError === 'object' && 'data' in saveError
+        ? saveError.data
+        : null;
+      const errorCode = errorData && typeof errorData === 'object' && 'code' in errorData
+        ? errorData.code
+        : null;
+      if (errorCode === 'ACCOUNT_EMAIL_ALREADY_IN_USE') {
+        setError('This verified email is already connected to an app account. Sign in with that account or recover its password to continue.');
+      } else if (errorCode === 'EMAIL_VERIFICATION_REQUIRED') {
+        setError('Verify an email address with your sign-in provider, then try setting up your account again.');
+      } else {
+        setError('We could not save your profile. Please try again.');
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import express from "express";
 import test from "node:test";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { accountAccessTable, db } from "@workspace/db";
 import accountLifecycleRouter from "./routes/accountLifecycle";
 import { createAccountAccessRouter } from "./routes/accountAccess";
@@ -10,12 +10,86 @@ import {
   type AccountProvisioningClerkClient,
 } from "./lib/accountProvisioning";
 
+type TestClerkIdentity = {
+  id: string;
+  createdAt: number;
+  publicMetadata: Record<string, unknown>;
+  unsafeMetadata: Record<string, unknown>;
+  emailAddresses: Array<{
+    emailAddress: string;
+    verification: { status: string };
+  }>;
+};
+
+function createTestIdentity(
+  id: string,
+  emailAddress: string,
+  verificationStatus = "verified",
+): TestClerkIdentity {
+  return {
+    id,
+    createdAt: Date.now() - 60_000,
+    publicMetadata: {},
+    unsafeMetadata: {},
+    emailAddresses: [{ emailAddress, verification: { status: verificationStatus } }],
+  };
+}
+
+function createTestClerk(identities: Map<string, TestClerkIdentity>) {
+  return {
+    users: {
+      async getUser(userId: string) {
+        const identity = identities.get(userId);
+        if (!identity) throw Object.assign(new Error("Clerk user not found"), { status: 404 });
+        return structuredClone(identity);
+      },
+      async getUserList({ emailAddress }: { emailAddress?: string[] }) {
+        const requested = new Set((emailAddress ?? []).map((address) => address.trim().toLowerCase()));
+        const matches = [...identities.values()].filter((identity) => identity.emailAddresses.some(
+          (entry) => entry.verification.status === "verified"
+            && requested.has(entry.emailAddress.trim().toLowerCase()),
+        ));
+        return { data: structuredClone(matches), totalCount: matches.length };
+      },
+      async updateUserMetadata(
+        userId: string,
+        metadata: { publicMetadata?: Record<string, unknown> },
+      ) {
+        const identity = identities.get(userId);
+        assert.ok(identity);
+        identity.publicMetadata = { ...identity.publicMetadata, ...metadata.publicMetadata };
+        return structuredClone(identity);
+      },
+    },
+  } as unknown as AccountProvisioningClerkClient;
+}
+
+function createAuthenticatedTestApp(
+  provisioning: ReturnType<typeof createAccountProvisioning>,
+) {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    const userId = req.header("x-test-user");
+    const auth = () => ({ userId: userId || undefined, tokenType: "session_token" });
+    (auth as any)[Symbol.for("@clerk/express.auth")] = true;
+    (req as any).auth = auth;
+    (req as any).log = { warn: () => undefined, error: () => undefined };
+    next();
+  });
+  app.use("/api", createAccountAccessRouter(provisioning));
+  return app;
+}
+
 test("first supporter save creates the account and Clerk-owned provisioning marker; transient Clerk failures can retry", async () => {
   const ownerClerkUserId = `first-save-${crypto.randomUUID()}`;
+  const verifiedEmail = `first-save-${crypto.randomUUID()}@example.test`;
   let identity = {
+    id: ownerClerkUserId,
     createdAt: Date.now() - 60_000,
     publicMetadata: {} as Record<string, unknown>,
     unsafeMetadata: {} as Record<string, unknown>,
+    emailAddresses: [{ emailAddress: verifiedEmail, verification: { status: "verified" } }],
   };
   let failNextIdentityRead = true;
   let metadataUpdates = 0;
@@ -28,6 +102,12 @@ test("first supporter save creates the account and Clerk-owned provisioning mark
           throw new Error("Temporary Clerk outage");
         }
         return structuredClone(identity);
+      },
+      async getUserList({ emailAddress }: { emailAddress?: string[] }) {
+        const matches = emailAddress?.some((address) => address.toLowerCase() === verifiedEmail.toLowerCase())
+          ? [structuredClone(identity)]
+          : [];
+        return { data: matches, totalCount: matches.length };
       },
       async updateUserMetadata(
         userId: string,
@@ -105,5 +185,175 @@ test("first supporter save creates the account and Clerk-owned provisioning mark
       server.close((error) => error ? reject(error) : resolve());
     });
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+  }
+});
+
+test("a verified email blocks a new identity for every retained account lifecycle state", async () => {
+  const identities = new Map<string, TestClerkIdentity>();
+  const controlledClerk = createTestClerk(identities);
+  const provisioning = createAccountProvisioning(() => controlledClerk);
+  const app = createAuthenticatedTestApp(provisioning);
+  const server = app.listen(0);
+  const ownerClerkUserIds: string[] = [];
+  const now = new Date();
+  const in90Days = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const lifecycleCases = [
+    { label: "active", lifecycleStatus: "active", lifecycleFields: {} },
+    { label: "paused", lifecycleStatus: "paused", lifecycleFields: { pauseEndsAt: in90Days } },
+    {
+      label: "cancelled-in-recovery",
+      lifecycleStatus: "cancelled",
+      lifecycleFields: { cancelledAt: now, lastActivityAt: now, deletionEligibleAt: in90Days },
+    },
+    {
+      label: "deletion-pending",
+      lifecycleStatus: "deletion_pending",
+      lifecycleFields: {
+        cancelledAt: now,
+        lastActivityAt: now,
+        deletionEligibleAt: new Date(now.getTime() - 1),
+        purgeStartedAt: now,
+      },
+    },
+  ];
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}/api`;
+
+    for (const lifecycleCase of lifecycleCases) {
+      const emailAddress = `${lifecycleCase.label}-${crypto.randomUUID()}@example.test`;
+      const existingOwnerId = `retained-${lifecycleCase.label}-${crypto.randomUUID()}`;
+      const newOwnerId = `new-${lifecycleCase.label}-${crypto.randomUUID()}`;
+      ownerClerkUserIds.push(existingOwnerId, newOwnerId);
+      identities.set(existingOwnerId, createTestIdentity(existingOwnerId, emailAddress));
+      identities.set(newOwnerId, createTestIdentity(newOwnerId, emailAddress));
+
+      await db.insert(accountAccessTable).values({
+        ownerClerkUserId: existingOwnerId,
+        role: "fan",
+        accessMode: "full",
+        lifecycleStatus: lifecycleCase.lifecycleStatus,
+        ...lifecycleCase.lifecycleFields,
+      });
+
+      const blockedAttempt = await fetch(`${baseUrl}/account/access`, {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          "x-test-user": newOwnerId,
+        },
+        body: JSON.stringify({ role: "fan", accessMode: "full" }),
+      });
+      assert.equal(blockedAttempt.status, 409, `${lifecycleCase.label} account blocks duplicate provisioning`);
+      const blockedBody = await blockedAttempt.json();
+      assert.equal(blockedBody.code, "ACCOUNT_EMAIL_ALREADY_IN_USE");
+      assert.equal(blockedBody.error.includes(emailAddress), false, "responses do not disclose the matched email");
+      assert.deepEqual(
+        await db.select().from(accountAccessTable)
+          .where(eq(accountAccessTable.ownerClerkUserId, newOwnerId)),
+        [],
+      );
+
+      if (lifecycleCase.lifecycleStatus === "active") {
+        const sameIdentitySave = await fetch(`${baseUrl}/account/access`, {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "x-test-user": existingOwnerId,
+          },
+          body: JSON.stringify({ role: "fan", accessMode: "full" }),
+        });
+        assert.equal(sameIdentitySave.status, 200, "the retained account owner can continue their normal sign-in path");
+      }
+
+      await db.delete(accountAccessTable)
+        .where(eq(accountAccessTable.ownerClerkUserId, existingOwnerId));
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    for (const ownerClerkUserId of ownerClerkUserIds) {
+      await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+    }
+  }
+});
+
+test("initial account setup requires a Clerk-verified email", async () => {
+  const ownerClerkUserId = `unverified-${crypto.randomUUID()}`;
+  const identities = new Map<string, TestClerkIdentity>([
+    [ownerClerkUserId, createTestIdentity(
+      ownerClerkUserId,
+      `unverified-${crypto.randomUUID()}@example.test`,
+      "unverified",
+    )],
+  ]);
+  const provisioning = createAccountProvisioning(() => createTestClerk(identities));
+  const app = createAuthenticatedTestApp(provisioning);
+  const server = app.listen(0);
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/account/access`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user": ownerClerkUserId,
+      },
+      body: JSON.stringify({ role: "fan", accessMode: "full" }),
+    });
+    assert.equal(response.status, 423);
+    assert.equal((await response.json()).code, "EMAIL_VERIFICATION_REQUIRED");
+    assert.deepEqual(await db.select().from(accountAccessTable)
+      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId)), []);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+  }
+});
+
+test("concurrent first saves with the same verified email create only one app account", async () => {
+  const sharedEmail = `concurrent-${crypto.randomUUID()}@example.test`;
+  const ownerClerkUserIds = [
+    `concurrent-first-${crypto.randomUUID()}`,
+    `concurrent-second-${crypto.randomUUID()}`,
+  ];
+  const identities = new Map(ownerClerkUserIds.map(
+    (ownerClerkUserId) => [ownerClerkUserId, createTestIdentity(ownerClerkUserId, sharedEmail)] as const,
+  ));
+  const provisioning = createAccountProvisioning(() => createTestClerk(identities));
+  const app = createAuthenticatedTestApp(provisioning);
+  const server = app.listen(0);
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}/api/account/access`;
+    const save = (ownerClerkUserId: string) => fetch(baseUrl, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-test-user": ownerClerkUserId,
+      },
+      body: JSON.stringify({ role: "fan", accessMode: "full" }),
+    });
+
+    const responses = await Promise.all(ownerClerkUserIds.map(save));
+    assert.deepEqual(responses.map((response) => response.status).sort(), [200, 409]);
+    const concurrentAccounts = await db.select().from(accountAccessTable)
+      .where(inArray(accountAccessTable.ownerClerkUserId, ownerClerkUserIds));
+    assert.equal(concurrentAccounts.length, 1);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+    for (const ownerClerkUserId of ownerClerkUserIds) {
+      await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId));
+    }
   }
 });

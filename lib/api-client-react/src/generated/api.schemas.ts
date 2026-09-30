@@ -164,6 +164,7 @@ export interface HealthStatus {
 
 export interface Error {
   error: string;
+  code?: string;
 }
 
 export type ScheduleEventType = typeof ScheduleEventType[keyof typeof ScheduleEventType];
@@ -1977,3 +1978,4 @@ export type GetNotificationSubscriptionStatusParams = {
  */
 endpoint: string;
 };
+

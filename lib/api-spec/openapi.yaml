@@ -1217,13 +1217,13 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "409":
-          description: Account mode is already set
+          description: Account mode is already set or the verified email belongs to another app account
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "423":
-          description: Account is locked or this identity is not eligible for initial setup
+          description: Account is locked, this identity is not eligible, or its email is not verified
           content:
             application/json:
               schema:
@@ -2067,6 +2067,8 @@ components:
       type: object
       properties:
         error:
+          type: string
+        code:
           type: string
       required: [error]
     ScheduleEvent:

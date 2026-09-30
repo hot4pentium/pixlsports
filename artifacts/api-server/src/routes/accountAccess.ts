@@ -1,4 +1,5 @@
-import { and, count, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Router, type IRouter } from "express";
 import {
   ConsumeAccountUsageBody,
@@ -11,11 +12,16 @@ import {
   accountAccessTable,
   db,
   guestUsageEventsTable,
+  pool,
   projectMediaTable,
 } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
 import { getAccountLifecycleSnapshot, hasActivePaidEntitlement, PROJECT_MEDIA_QUOTA_BYTES } from "../lib/accountLifecycle";
-import { canProvisionInitialAccount, markAccountProvisioned } from "../lib/accountProvisioning";
+import {
+  getClerkUserIdsByVerifiedEmails,
+  getInitialAccountSetup,
+  markAccountProvisioned,
+} from "../lib/accountProvisioning";
 
 const router: IRouter = Router();
 
@@ -193,12 +199,17 @@ export async function consumeGuestUsageBatch(
 }
 
 type AccountProvisioning = {
-  canProvisionInitialAccount: typeof canProvisionInitialAccount;
+  getInitialAccountSetup: typeof getInitialAccountSetup;
+  getClerkUserIdsByVerifiedEmails: typeof getClerkUserIdsByVerifiedEmails;
   markAccountProvisioned: typeof markAccountProvisioned;
 };
 
 export function createAccountAccessRouter(
-  provisioning: AccountProvisioning = { canProvisionInitialAccount, markAccountProvisioned },
+  provisioning: AccountProvisioning = {
+    getInitialAccountSetup,
+    getClerkUserIdsByVerifiedEmails,
+    markAccountProvisioned,
+  },
 ) {
   const router: IRouter = Router();
 
@@ -216,19 +227,26 @@ export function createAccountAccessRouter(
 
     const ownerClerkUserId = getRequiredClerkUserId(res);
     const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
+    let initialSetup: Awaited<ReturnType<AccountProvisioning["getInitialAccountSetup"]>> | null = null;
     if (lifecycle.status === "not_provisioned") {
-      let eligible = false;
       try {
-        eligible = await provisioning.canProvisionInitialAccount(ownerClerkUserId);
+        initialSetup = await provisioning.getInitialAccountSetup(ownerClerkUserId);
       } catch (error) {
         req.log.warn({ error, ownerClerkUserId }, "Could not verify first-time account setup");
         res.status(503).json({ error: "Account setup could not be verified. Please try again." });
         return;
       }
-      if (!eligible) {
+      if (!initialSetup.eligible) {
         res.status(423).json({
           error: "This sign-in cannot create a new app account.",
           code: "ACCOUNT_NOT_PROVISIONED",
+        });
+        return;
+      }
+      if (initialSetup.verifiedEmails.length === 0) {
+        res.status(423).json({
+          error: "Verify an email address with your sign-in provider before setting up your account.",
+          code: "EMAIL_VERIFICATION_REQUIRED",
         });
         return;
       }
@@ -242,32 +260,112 @@ export function createAccountAccessRouter(
       return;
     }
 
-    const [existingAccess] = await db
-      .select()
-      .from(accountAccessTable)
-      .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
-      .limit(1);
-    if (existingAccess && existingAccess.accessMode !== parsed.data.accessMode) {
+    const lockClient = await pool.connect();
+    const lockDb = drizzle(lockClient);
+    const acquiredLocks: string[] = [];
+    let saveResult: "saved" | "email_already_in_use" | "account_mode_fixed";
+
+    try {
+      const lockNames = [
+        `account-access-owner:${ownerClerkUserId}`,
+        ...(initialSetup?.verifiedEmails.map((email) => `account-provision-email:${email}`) ?? []),
+      ].sort();
+      for (const lockName of lockNames) {
+        await lockClient.query(
+          "SELECT pg_advisory_lock(hashtextextended($1, 0))",
+          [lockName],
+        );
+        acquiredLocks.push(lockName);
+      }
+
+      let matchingClerkUserIds: string[] = [];
+      if (initialSetup) {
+        try {
+          matchingClerkUserIds = await provisioning.getClerkUserIdsByVerifiedEmails(initialSetup.verifiedEmails);
+        } catch (error) {
+          req.log.warn(
+            {
+              ownerClerkUserId,
+              errorType: error instanceof Error ? error.name : "UnknownError",
+            },
+            "Could not check existing verified email ownership",
+          );
+          res.status(503).json({ error: "Account setup could not be verified. Please try again." });
+          return;
+        }
+      }
+
+      const otherMatchingUserIds = matchingClerkUserIds.filter((userId) => userId !== ownerClerkUserId);
+      saveResult = await lockDb.transaction(async (tx) => {
+        if (otherMatchingUserIds.length > 0) {
+          const [existingOwner] = await tx
+            .select({ ownerClerkUserId: accountAccessTable.ownerClerkUserId })
+            .from(accountAccessTable)
+            .where(inArray(accountAccessTable.ownerClerkUserId, otherMatchingUserIds))
+            .limit(1);
+          if (existingOwner) return "email_already_in_use";
+        }
+
+        const [existingAccess] = await tx
+          .select()
+          .from(accountAccessTable)
+          .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
+          .limit(1);
+        if (existingAccess && existingAccess.accessMode !== parsed.data.accessMode) {
+          return "account_mode_fixed";
+        }
+
+        await tx
+          .insert(accountAccessTable)
+          .values({
+            ownerClerkUserId,
+            role: parsed.data.role,
+            accessMode: parsed.data.accessMode,
+          })
+          .onConflictDoUpdate({
+            target: accountAccessTable.ownerClerkUserId,
+            set: {
+              role: parsed.data.role,
+              accessMode: parsed.data.accessMode,
+              updatedAt: new Date(),
+            },
+          });
+        return "saved";
+      });
+    } finally {
+      let unlockError: Error | undefined;
+      for (const lockName of acquiredLocks.reverse()) {
+        try {
+          await lockClient.query(
+            "SELECT pg_advisory_unlock(hashtextextended($1, 0))",
+            [lockName],
+          );
+        } catch (error) {
+          unlockError = error instanceof Error ? error : new Error("Failed to release account setup lock");
+          req.log.warn(
+            { errorType: unlockError.name, lockCount: acquiredLocks.length },
+            "Could not release account setup lock cleanly",
+          );
+          break;
+        }
+      }
+      lockClient.release(unlockError);
+    }
+
+    if (saveResult === "email_already_in_use") {
       res.status(409).json({
-        error: "Account mode cannot be changed after setup.",
+        error: "This verified email is already linked to an app account. Sign in or recover that account instead.",
+        code: "ACCOUNT_EMAIL_ALREADY_IN_USE",
       });
       return;
     }
-    await db
-      .insert(accountAccessTable)
-      .values({
-        ownerClerkUserId,
-        role: parsed.data.role,
-        accessMode: parsed.data.accessMode,
-      })
-      .onConflictDoUpdate({
-        target: accountAccessTable.ownerClerkUserId,
-        set: {
-          role: parsed.data.role,
-          accessMode: parsed.data.accessMode,
-          updatedAt: new Date(),
-        },
+    if (saveResult === "account_mode_fixed") {
+      res.status(409).json({
+        error: "Account mode cannot be changed after setup.",
+        code: "ACCOUNT_MODE_FIXED",
       });
+      return;
+    }
 
     try {
       await provisioning.markAccountProvisioned(ownerClerkUserId);
