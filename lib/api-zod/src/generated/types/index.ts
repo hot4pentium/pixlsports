@@ -28,6 +28,7 @@ export * from './adminMemberAccessMode';
 export * from './adminMemberActionResult';
 export * from './adminMemberActionResultAction';
 export * from './adminMemberActionResultStatus';
+export * from './adminMemberAdministratorUpdate';
 export * from './adminMemberDeleteInput';
 export * from './adminMemberLifecycleStatus';
 export * from './adminMemberList';

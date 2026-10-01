@@ -13,6 +13,9 @@ import {
   UpdateAdminMemberProfileBody,
   UpdateAdminMemberProfileParams,
   UpdateAdminMemberProfileResponse,
+  UpdateAdminMemberAdministratorBody,
+  UpdateAdminMemberAdministratorParams,
+  UpdateAdminMemberAdministratorResponse,
   UpdateAdminMemberSuspensionBody,
   UpdateAdminMemberSuspensionParams,
   UpdateAdminMemberSuspensionResponse,
@@ -27,6 +30,7 @@ import {
   listAdminMembers,
   requestAdminMemberDeletion,
   updateAdminMemberProfile,
+  updateAdminMemberAdministrator,
   updateAdminMemberSuspension,
 } from "../lib/memberAdmin";
 
@@ -128,6 +132,38 @@ router.patch("/admin/members/:userId/suspension", requireAdmin, async (req, res,
       body.data.reason,
     );
     res.json(UpdateAdminMemberSuspensionResponse.parse(action));
+  } catch (error) {
+    if (error instanceof AdminRequestError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.patch("/admin/members/:userId/administrator", requireAdmin, async (req, res, next): Promise<void> => {
+  const params = UpdateAdminMemberAdministratorParams.safeParse(req.params);
+  const body = UpdateAdminMemberAdministratorBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  try {
+    const action = await updateAdminMemberAdministrator(
+      getRequiredClerkUserId(res),
+      params.data.userId,
+      body.data.administrator,
+      body.data.reason,
+    );
+    if (!action) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    res.json(UpdateAdminMemberAdministratorResponse.parse(action));
   } catch (error) {
     if (error instanceof AdminRequestError) {
       res.status(error.statusCode).json({ error: error.message });

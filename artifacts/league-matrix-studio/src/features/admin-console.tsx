@@ -9,6 +9,7 @@ import {
   useListAdminAudit,
   useListAdminMembers,
   useUpdateAdminMemberProfile,
+  useUpdateAdminMemberAdministrator,
   useUpdateAdminMemberSuspension,
   type AdminMember,
   type AdminMemberProfileUpdate,
@@ -116,11 +117,14 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
     query: { enabled: Boolean(userId), queryKey: getGetAdminMemberQueryKey(userId), staleTime: 0, refetchOnMount: 'always' },
   });
   const profileMutation = useUpdateAdminMemberProfile();
+  const administratorMutation = useUpdateAdminMemberAdministrator();
   const suspensionMutation = useUpdateAdminMemberSuspension();
   const deleteMutation = useDeleteAdminMember();
   const member = detail.data;
   const [profile, setProfile] = useState<AdminMemberProfileUpdate>({});
   const [reason, setReason] = useState('');
+  const [administratorReason, setAdministratorReason] = useState('');
+  const [administratorMessage, setAdministratorMessage] = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [actionError, setActionError] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
@@ -169,6 +173,24 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
     suspensionMutation.mutate({ userId, data: { suspended, reason: reason.trim() || null } }, {
       onSuccess: () => { setReason(''); refreshAfterMutation(); },
       onError: () => setActionError(`Could not ${suspended ? 'suspend' : 'reactivate'} this member. Their current access has not been changed.`),
+    });
+  };
+
+  const setAdministratorAccess = (administrator: boolean) => {
+    if (!member || member.clerkUserId === user?.id) return;
+    if (!administrator && !window.confirm(`Remove administrator access from ${fullName(member)}? They will no longer be able to manage member records.`)) return;
+    setActionError('');
+    setAdministratorMessage('');
+    administratorMutation.mutate({ userId, data: { administrator, reason: administratorReason.trim() || null } }, {
+      onSuccess: (result) => {
+        setAdministratorMessage(result.message);
+        setAdministratorReason('');
+        refreshAfterMutation();
+      },
+      onError: () => {
+        setActionError(`Could not ${administrator ? 'grant' : 'remove'} administrator access. No confirmed change was saved; refresh the member and audit history before retrying.`);
+        refreshAfterMutation();
+      },
     });
   };
 
@@ -243,6 +265,29 @@ function MemberDetail({ userId, onClose, onMutated }: { userId: string; onClose:
         </div>
         {profileSaved && <p className="mt-3 flex items-center gap-2 text-xs font-bold text-[#2868a0]" role="status"><Check className="h-4 w-4" />Profile saved and refreshed from the server.</p>}
       </form>
+
+      <section className="mt-8 border-t border-[#d5dfda] pt-6" aria-labelledby="administrator-access-heading">
+        <p className="admin-eyebrow">Administrator controls</p>
+        <h3 id="administrator-access-heading" className="admin-display mt-1 text-2xl uppercase">Administrator access</h3>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#60778a]">Administrators can review and manage member records. Changes are recorded in the accountability log and are available only in Production.</p>
+        {member.clerkUserId === user?.id ? (
+          <p className="mt-3 border border-[#ead2b7] bg-[#fff9ef] p-3 text-sm text-[#795327]">You cannot change your own administrator access. Ask another administrator to manage your role.</p>
+        ) : (
+          <>
+            <label className="mt-4 block"><span className="admin-label">Reason (optional)</span><textarea className="admin-input min-h-20 resize-y" maxLength={500} value={administratorReason} onChange={(event) => setAdministratorReason(event.target.value)} /></label>
+            <button
+              type="button"
+              className={`admin-button mt-3 ${member.isAdministrator ? 'admin-button-danger' : 'admin-button-primary'}`}
+              disabled={administratorMutation.isPending}
+              onClick={() => setAdministratorAccess(!member.isAdministrator)}
+            >
+              {member.isAdministrator ? <ShieldOff className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+              {administratorMutation.isPending ? 'Updating administrator access…' : member.isAdministrator ? 'Remove administrator access' : 'Grant administrator access'}
+            </button>
+          </>
+        )}
+        {administratorMessage && <p className="mt-3 text-xs font-bold text-[#2868a0]" role="status">{administratorMessage}</p>}
+      </section>
 
       <div className="mt-8 border-t border-[#d5dfda] pt-6">
         <p className="admin-eyebrow">Access controls</p>

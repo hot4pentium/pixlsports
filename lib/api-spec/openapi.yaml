@@ -1331,6 +1331,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /admin/members/{userId}/administrator:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberAdministrator
+      tags: [member-admin]
+      summary: Grant or revoke administrator access for a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberAdministratorUpdate"
+      responses:
+        "200":
+          description: Updated administrator access and action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The requested administrator change is not allowed in the current environment or account state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /admin/members/{userId}/delete:
     parameters:
       - name: userId
@@ -3380,6 +3421,12 @@ components:
       properties:
         suspended: { type: boolean }
         reason: { type: ["string", "null"], maxLength: 500 }
+    AdminMemberAdministratorUpdate:
+      type: object
+      required: [administrator]
+      properties:
+        administrator: { type: boolean }
+        reason: { type: ["string", "null"], maxLength: 500 }
     AdminMemberDeleteInput:
       type: object
       required: [confirmationText, reason]
@@ -3391,7 +3438,7 @@ components:
       required: [actionId, action, status, targetClerkUserId, message]
       properties:
         actionId: { type: string, format: uuid }
-        action: { type: string, enum: [account_suspended, account_reactivated, account_deleted] }
+        action: { type: string, enum: [account_suspended, account_reactivated, account_deleted, administrator_granted, administrator_revoked] }
         status: { type: string, enum: [pending, failed, completed] }
         targetClerkUserId: { type: string, minLength: 1, maxLength: 200 }
         message: { type: string, maxLength: 500 }
@@ -3402,7 +3449,7 @@ components:
         id: { type: string, format: uuid }
         actorClerkUserId: { type: string, minLength: 1, maxLength: 200 }
         targetClerkUserId: { type: string, minLength: 1, maxLength: 200 }
-        action: { type: string, enum: [initial_admin_bootstrapped, profile_updated, account_suspended, account_reactivated, account_deleted] }
+        action: { type: string, enum: [initial_admin_bootstrapped, profile_updated, account_suspended, account_reactivated, account_deleted, administrator_granted, administrator_revoked] }
         status: { type: string, enum: [pending, failed, completed] }
         changedFields:
           type: array

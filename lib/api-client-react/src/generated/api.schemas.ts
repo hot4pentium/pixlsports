@@ -1794,6 +1794,15 @@ export interface AdminMemberSuspensionInput {
   reason?: string | null;
 }
 
+export interface AdminMemberAdministratorUpdate {
+  administrator: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  reason?: string | null;
+}
+
 export interface AdminMemberDeleteInput {
   /**
      * @minLength 1
@@ -1814,6 +1823,8 @@ export const AdminMemberActionResultAction = {
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
   account_deleted: 'account_deleted',
+  administrator_granted: 'administrator_granted',
+  administrator_revoked: 'administrator_revoked',
 } as const;
 
 export type AdminMemberActionResultStatus = typeof AdminMemberActionResultStatus[keyof typeof AdminMemberActionResultStatus];
@@ -1847,6 +1858,8 @@ export const AdminAuditEntryAction = {
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
   account_deleted: 'account_deleted',
+  administrator_granted: 'administrator_granted',
+  administrator_revoked: 'administrator_revoked',
 } as const;
 
 export type AdminAuditEntryStatus = typeof AdminAuditEntryStatus[keyof typeof AdminAuditEntryStatus];

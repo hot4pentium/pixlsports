@@ -15,7 +15,7 @@ import {
   adminUsersTable,
   db,
 } from "@workspace/db";
-import { getAdminClerkClient, isAdminUser } from "./adminAccess";
+import { ADMIN_MEMBERSHIP_LOCK_KEY, getAdminClerkClient, isAdminUser } from "./adminAccess";
 import { runExpiredAccountPurge } from "../jobs/purgeCancelledAccounts";
 
 const PROFILE_FIELDS = [
@@ -48,6 +48,8 @@ const AUDIT_ACTIONS = new Set([
   "account_suspended",
   "account_reactivated",
   "account_deleted",
+  "administrator_granted",
+  "administrator_revoked",
 ]);
 
 export class AdminRequestError extends Error {
@@ -279,6 +281,7 @@ export async function updateAdminMemberSuspension(
   const now = new Date();
   const action = suspended ? "account_suspended" : "account_reactivated";
   const audit = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetClerkUserId}, 0))`);
     const [administrator] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
       .from(adminUsersTable)
@@ -340,6 +343,89 @@ export async function updateAdminMemberSuspension(
   };
 }
 
+export async function updateAdminMemberAdministrator(
+  actorClerkUserId: string,
+  targetClerkUserId: string,
+  administrator: boolean,
+  reason?: string | null,
+  dependencies: {
+    getUser: typeof getClerkUser;
+  } = {
+    getUser: getClerkUser,
+  },
+) {
+  if (process.env.NODE_ENV !== "production") {
+    throw new AdminRequestError(409, "Administrator access can only be changed in Production.");
+  }
+  if (actorClerkUserId === targetClerkUserId) {
+    throw new AdminRequestError(409, "You cannot change your own administrator access.");
+  }
+  if (administrator && !await dependencies.getUser(targetClerkUserId)) return null;
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
+    const [actor] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.clerkUserId, actorClerkUserId))
+      .limit(1);
+    if (!actor) {
+      throw new AdminRequestError(409, "Your administrator access changed. Refresh the page before trying again.");
+    }
+
+    const [target] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.clerkUserId, targetClerkUserId))
+      .limit(1);
+    const now = new Date();
+    const action = administrator ? "administrator_granted" : "administrator_revoked";
+
+    if (administrator) {
+      if (target) {
+        throw new AdminRequestError(409, "This member is already an administrator.");
+      }
+      const [access] = await tx.select({
+        lifecycleStatus: accountAccessTable.lifecycleStatus,
+        adminSuspendedAt: accountAccessTable.adminSuspendedAt,
+      }).from(accountAccessTable)
+        .where(eq(accountAccessTable.ownerClerkUserId, targetClerkUserId))
+        .limit(1);
+      if (access?.lifecycleStatus === "deletion_pending" || access?.adminSuspendedAt) {
+        throw new AdminRequestError(409, "An account being deleted or suspended cannot become an administrator.");
+      }
+      await tx.insert(adminUsersTable).values({ clerkUserId: targetClerkUserId });
+    } else {
+      if (!target) {
+        throw new AdminRequestError(409, "This member is not currently an administrator.");
+      }
+      const [adminCount] = await tx.select({ value: count() }).from(adminUsersTable);
+      if (Number(adminCount.value) <= 1) {
+        throw new AdminRequestError(409, "The last administrator cannot be removed.");
+      }
+      await tx.delete(adminUsersTable)
+        .where(eq(adminUsersTable.clerkUserId, targetClerkUserId));
+    }
+
+    const [audit] = await tx.insert(adminActionAuditTable).values({
+      actorClerkUserId,
+      targetClerkUserId,
+      action,
+      status: "completed",
+      changedFields: ["isAdministrator"],
+      reason: reason?.trim() || null,
+      completedAt: now,
+    }).returning();
+    return {
+      actionId: audit.id,
+      action,
+      status: "completed" as const,
+      targetClerkUserId,
+      message: administrator
+        ? "Administrator access granted."
+        : "Administrator access removed.",
+    };
+  });
+}
+
 export async function requestAdminMemberDeletion(
   actorClerkUserId: string,
   targetClerkUserId: string,
@@ -370,6 +456,7 @@ export async function requestAdminMemberDeletion(
   }
 
   const action = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetClerkUserId}, 0))`);
     const [administrator] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
       .from(adminUsersTable)
@@ -480,7 +567,9 @@ export async function getAdminMemberActionResult(actionId: string, targetClerkUs
     actionId: action.id,
     action: action.action === "account_deleted"
       ? "account_deleted"
-      : action.action === "account_suspended" ? "account_suspended" : "account_reactivated",
+      : action.action === "account_suspended" ? "account_suspended"
+        : action.action === "administrator_granted" ? "administrator_granted"
+          : action.action === "administrator_revoked" ? "administrator_revoked" : "account_reactivated",
     status,
     targetClerkUserId,
     message: status === "completed"

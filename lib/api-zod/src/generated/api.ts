@@ -3106,10 +3106,45 @@ export const updateAdminMemberSuspensionResponseMessageMax = 500;
 
 export const UpdateAdminMemberSuspensionResponse = zod.object({
   "actionId": zod.string().uuid(),
-  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted']),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "targetClerkUserId": zod.string().min(1).max(updateAdminMemberSuspensionResponseTargetClerkUserIdMax),
   "message": zod.string().max(updateAdminMemberSuspensionResponseMessageMax)
+})
+
+
+/**
+ * @summary Grant or revoke administrator access for a member
+ */
+export const updateAdminMemberAdministratorPathUserIdMax = 200;
+
+
+
+export const UpdateAdminMemberAdministratorParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(updateAdminMemberAdministratorPathUserIdMax)
+})
+
+export const updateAdminMemberAdministratorBodyReasonMax = 500;
+
+
+
+export const UpdateAdminMemberAdministratorBody = zod.object({
+  "administrator": zod.boolean(),
+  "reason": zod.string().max(updateAdminMemberAdministratorBodyReasonMax).nullish()
+})
+
+export const updateAdminMemberAdministratorResponseTargetClerkUserIdMax = 200;
+
+export const updateAdminMemberAdministratorResponseMessageMax = 500;
+
+
+
+export const UpdateAdminMemberAdministratorResponse = zod.object({
+  "actionId": zod.string().uuid(),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
+  "status": zod.enum(['pending', 'failed', 'completed']),
+  "targetClerkUserId": zod.string().min(1).max(updateAdminMemberAdministratorResponseTargetClerkUserIdMax),
+  "message": zod.string().max(updateAdminMemberAdministratorResponseMessageMax)
 })
 
 
@@ -3144,7 +3179,7 @@ export const deleteAdminMemberResponseMessageMax = 500;
 
 export const DeleteAdminMemberResponse = zod.object({
   "actionId": zod.string().uuid(),
-  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted']),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "targetClerkUserId": zod.string().min(1).max(deleteAdminMemberResponseTargetClerkUserIdMax),
   "message": zod.string().max(deleteAdminMemberResponseMessageMax)
@@ -3190,7 +3225,7 @@ export const ListAdminAuditResponse = zod.object({
   "id": zod.string().uuid(),
   "actorClerkUserId": zod.string().min(1).max(listAdminAuditResponseItemsItemActorClerkUserIdMax),
   "targetClerkUserId": zod.string().min(1).max(listAdminAuditResponseItemsItemTargetClerkUserIdMax),
-  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_deleted']),
+  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']),
   "status": zod.enum(['pending', 'failed', 'completed']),
   "changedFields": zod.array(zod.string().max(listAdminAuditResponseItemsItemChangedFieldsItemMax)),
   "reason": zod.string().max(listAdminAuditResponseItemsItemReasonMax).nullable(),

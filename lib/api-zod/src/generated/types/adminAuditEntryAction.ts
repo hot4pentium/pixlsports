@@ -15,4 +15,6 @@ export const AdminAuditEntryAction = {
   account_suspended: 'account_suspended',
   account_reactivated: 'account_reactivated',
   account_deleted: 'account_deleted',
+  administrator_granted: 'administrator_granted',
+  administrator_revoked: 'administrator_revoked',
 } as const;

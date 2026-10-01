@@ -27,6 +27,7 @@ import type {
   AdminAuditList,
   AdminMember,
   AdminMemberActionResult,
+  AdminMemberAdministratorUpdate,
   AdminMemberDeleteInput,
   AdminMemberList,
   AdminMemberProfileUpdate,
@@ -5293,6 +5294,95 @@ export const useUpdateAdminMemberSuspension = <TError = ErrorType<BadRequestResp
         TContext
       > => {
       return useMutation(getUpdateAdminMemberSuspensionMutationOptions(options));
+    }
+
+export const getUpdateAdminMemberAdministratorUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}/administrator`
+}
+
+/**
+ * @summary Grant or revoke administrator access for a member
+ */
+export const updateAdminMemberAdministrator = async (userId: string,
+    adminMemberAdministratorUpdate: AdminMemberAdministratorUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMemberActionResult>(getUpdateAdminMemberAdministratorUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMemberAdministratorUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminMemberAdministratorMutationKey = () => ['updateAdminMemberAdministrator'] as const;
+
+export const getUpdateAdminMemberAdministratorMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberAdministrator>>, TError,UpdateAdminMemberAdministratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberAdministrator>>, TError,UpdateAdminMemberAdministratorMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminMemberAdministratorMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminMemberAdministrator>>, UpdateAdminMemberAdministratorMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateAdminMemberAdministrator(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminMemberAdministratorMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminMemberAdministrator>>>
+    export type UpdateAdminMemberAdministratorMutationBody = BodyType<AdminMemberAdministratorUpdate>
+    export type UpdateAdminMemberAdministratorMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type UpdateAdminMemberAdministratorMutationVariables = {userId: string;data: BodyType<AdminMemberAdministratorUpdate>}
+
+    /**
+ * @summary Grant or revoke administrator access for a member
+ */
+export const useUpdateAdminMemberAdministrator = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberAdministrator>>, TError,UpdateAdminMemberAdministratorMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminMemberAdministrator>>,
+        TError,
+        UpdateAdminMemberAdministratorMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminMemberAdministratorMutationOptions(options));
     }
 
 export const getDeleteAdminMemberUrl = (userId: string,) => {

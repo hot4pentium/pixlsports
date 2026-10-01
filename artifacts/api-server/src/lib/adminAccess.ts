@@ -21,6 +21,8 @@ type VerifiedEmailUser = {
   }>;
 };
 
+export const ADMIN_MEMBERSHIP_LOCK_KEY = "pixl-admin-membership";
+
 function productionBootstrapConfig(): BootstrapConfig {
   const secretKey = process.env.CLERK_SECRET_KEY;
   const email = process.env.PIXL_INITIAL_ADMIN_EMAIL?.trim().toLowerCase() || null;
@@ -44,7 +46,7 @@ export async function bootstrapAdminForVerifiedUser(
   config: BootstrapConfig,
   getUser: (id: string) => Promise<VerifiedEmailUser>,
 ) {
-  if (!config.enabled || !config.email) return false;
+  if (process.env.NODE_ENV !== "production" || !config.enabled || !config.email) return false;
 
   const user = await getUser(clerkUserId);
   const hasVerifiedBootstrapEmail = user.emailAddresses.some((emailAddress) =>
@@ -53,7 +55,7 @@ export async function bootstrapAdminForVerifiedUser(
   if (!hasVerifiedBootstrapEmail) return false;
 
   return db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${clerkUserId}, 0))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ADMIN_MEMBERSHIP_LOCK_KEY}, 0))`);
     const [access] = await tx.select({
       lifecycleStatus: accountAccessTable.lifecycleStatus,
       deletionEligibleAt: accountAccessTable.deletionEligibleAt,
@@ -98,6 +100,7 @@ export async function isLastAdmin(clerkUserId: string) {
 }
 
 export async function hasAdminAccess(clerkUserId: string) {
+  if (process.env.NODE_ENV !== "production") return false;
   if (await isAdminUser(clerkUserId)) return true;
   const config = productionBootstrapConfig();
   if (!config.enabled) return false;

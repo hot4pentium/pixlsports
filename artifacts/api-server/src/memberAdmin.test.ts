@@ -14,12 +14,14 @@ import memberAdminRouter from "./routes/memberAdmin";
 import { requireAuth } from "./middlewares/requireAuth";
 import {
   bootstrapAdminForVerifiedUser,
+  hasAdminAccess,
   isAdminUser,
   isLastAdmin,
 } from "./lib/adminAccess";
 import {
   AdminRequestError,
   requestAdminMemberDeletion,
+  updateAdminMemberAdministrator,
   updateAdminMemberProfile,
   updateAdminMemberSuspension,
 } from "./lib/memberAdmin";
@@ -64,6 +66,17 @@ async function withTestServer<T>(run: (baseUrl: string) => Promise<T>) {
   }
 }
 
+async function withNodeEnv<T>(value: string, run: () => Promise<T>) {
+  const previous = process.env.NODE_ENV;
+  process.env.NODE_ENV = value;
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previous;
+  }
+}
+
 function fakeClerkUser(id: string, emailAddress: string) {
   return {
     id,
@@ -102,7 +115,7 @@ test("admin routes reject unauthenticated and non-admin requests, while administ
   const nonAdministratorId = `member-route-${crypto.randomUUID()}`;
   await db.insert(adminUsersTable).values({ clerkUserId: administratorId });
   try {
-    await withTestServer(async (baseUrl) => {
+    await withNodeEnv("production", () => withTestServer(async (baseUrl) => {
       const unauthenticated = await fetch(`${baseUrl}/admin/audit`);
       assert.equal(unauthenticated.status, 401);
 
@@ -119,7 +132,7 @@ test("admin routes reject unauthenticated and non-admin requests, while administ
       const body = await allowed.json() as { items: unknown[]; totalCount: number };
       assert.ok(Array.isArray(body.items));
       assert.ok(body.totalCount >= 0);
-    });
+    }));
   } finally {
     await cleanFixture([administratorId, nonAdministratorId]);
   }
@@ -131,55 +144,156 @@ test("production bootstrap requires the exact verified address and does not enro
   const unverifiedId = `admin-unverified-${crypto.randomUUID()}`;
   const address = `${crypto.randomUUID()}@example.test`;
   try {
-    const bootstrapped = await bootstrapAdminForVerifiedUser(
-      adminId,
-      { enabled: true, email: address.toUpperCase() },
-      async () => ({
-        emailAddresses: [{
-          emailAddress: address,
-          verification: { status: "verified" },
-        }],
-      }),
-    );
-    assert.equal(bootstrapped, true);
-    assert.equal(await isAdminUser(adminId), true);
-    assert.equal(await isLastAdmin(adminId), true);
+    await withNodeEnv("production", async () => {
+      const bootstrapped = await bootstrapAdminForVerifiedUser(
+        adminId,
+        { enabled: true, email: address.toUpperCase() },
+        async () => ({
+          emailAddresses: [{
+            emailAddress: address,
+            verification: { status: "verified" },
+          }],
+        }),
+      );
+      assert.equal(bootstrapped, true);
+      assert.equal(await isAdminUser(adminId), true);
+      assert.equal(await isLastAdmin(adminId), true);
 
-    const disabled = await bootstrapAdminForVerifiedUser(
-      disabledId,
-      { enabled: false, email: address },
-      async () => {
-        throw new Error("Disabled bootstrap must not look up a Clerk identity");
-      },
-    );
-    assert.equal(disabled, false);
+      const disabled = await bootstrapAdminForVerifiedUser(
+        disabledId,
+        { enabled: false, email: address },
+        async () => {
+          throw new Error("Disabled bootstrap must not look up a Clerk identity");
+        },
+      );
+      assert.equal(disabled, false);
 
-    const unverified = await bootstrapAdminForVerifiedUser(
-      unverifiedId,
-      { enabled: true, email: address },
-      async () => ({
-        emailAddresses: [{
-          emailAddress: address,
-          verification: { status: "unverified" },
-        }],
-      }),
-    );
-    assert.equal(unverified, false);
-    assert.equal(await isAdminUser(unverifiedId), false);
+      const unverified = await bootstrapAdminForVerifiedUser(
+        unverifiedId,
+        { enabled: true, email: address },
+        async () => ({
+          emailAddresses: [{
+            emailAddress: address,
+            verification: { status: "unverified" },
+          }],
+        }),
+      );
+      assert.equal(unverified, false);
+      assert.equal(await isAdminUser(unverifiedId), false);
 
-    const mismatched = await bootstrapAdminForVerifiedUser(
-      unverifiedId,
-      { enabled: true, email: `other-${address}` },
-      async () => ({
-        emailAddresses: [{
-          emailAddress: address,
-          verification: { status: "verified" },
-        }],
-      }),
-    );
-    assert.equal(mismatched, false);
+      const mismatched = await bootstrapAdminForVerifiedUser(
+        unverifiedId,
+        { enabled: true, email: `other-${address}` },
+        async () => ({
+          emailAddresses: [{
+            emailAddress: address,
+            verification: { status: "verified" },
+          }],
+        }),
+      );
+      assert.equal(mismatched, false);
+    });
   } finally {
     await cleanFixture([adminId, disabledId, unverifiedId]);
+  }
+});
+
+test("development rejects administrator authorization, bootstrap, and grant attempts", async () => {
+  const administratorId = `admin-development-${crypto.randomUUID()}`;
+  const targetId = `member-development-${crypto.randomUUID()}`;
+  await withNodeEnv("development", async () => {
+    assert.equal(await hasAdminAccess(administratorId), false);
+    const bootstrapped = await bootstrapAdminForVerifiedUser(
+      targetId,
+      { enabled: true, email: `${crypto.randomUUID()}@example.test` },
+      async () => {
+        throw new Error("Development bootstrap must not look up a Clerk identity");
+      },
+    );
+    assert.equal(bootstrapped, false);
+    await assert.rejects(
+      updateAdminMemberAdministrator(administratorId, targetId, true, null, {
+        getUser: async () => {
+          throw new Error("Development must reject admin changes before Clerk lookup");
+        },
+      }),
+      (error: unknown) => error instanceof AdminRequestError && error.statusCode === 409,
+    );
+    await withTestServer(async (baseUrl) => {
+      const session = await fetch(`${baseUrl}/admin/session`, {
+        headers: { "x-test-user": administratorId },
+      });
+      assert.deepEqual(await session.json(), { isAdmin: false });
+      const audit = await fetch(`${baseUrl}/admin/audit`, {
+        headers: { "x-test-user": administratorId },
+      });
+      assert.equal(audit.status, 403);
+    });
+  });
+});
+
+test("production administrators can grant and revoke roles with durable audit entries", async () => {
+  const actorId = `admin-role-actor-${crypto.randomUUID()}`;
+  const secondAdminId = `admin-role-second-${crypto.randomUUID()}`;
+  const targetId = `member-role-target-${crypto.randomUUID()}`;
+  const address = `${crypto.randomUUID()}@example.test`;
+  await db.insert(adminUsersTable).values([{ clerkUserId: actorId }, { clerkUserId: secondAdminId }]);
+  try {
+    await withNodeEnv("production", async () => {
+      const grant = await updateAdminMemberAdministrator(actorId, targetId, true, "Backup coverage", {
+        getUser: async (id) => id === targetId ? fakeClerkUser(targetId, address) as any : null,
+      });
+      assert.equal(grant?.action, "administrator_granted");
+      assert.equal(grant?.status, "completed");
+      assert.equal(await isAdminUser(targetId), true);
+
+      const revoke = await updateAdminMemberAdministrator(actorId, targetId, false, "Role no longer needed");
+      assert.ok(revoke);
+      assert.equal(revoke.action, "administrator_revoked");
+      assert.equal(await isAdminUser(targetId), false);
+
+      const [grantedAudit, revokedAudit] = await Promise.all([
+        db.select().from(adminActionAuditTable)
+          .where(and(
+            eq(adminActionAuditTable.actorClerkUserId, actorId),
+            eq(adminActionAuditTable.targetClerkUserId, targetId),
+            eq(adminActionAuditTable.action, "administrator_granted"),
+          )).limit(1).then(([row]) => row),
+        db.select().from(adminActionAuditTable)
+          .where(and(
+            eq(adminActionAuditTable.actorClerkUserId, actorId),
+            eq(adminActionAuditTable.targetClerkUserId, targetId),
+            eq(adminActionAuditTable.action, "administrator_revoked"),
+          )).limit(1).then(([row]) => row),
+      ]);
+      assert.equal(grantedAudit?.status, "completed");
+      assert.deepEqual(grantedAudit?.changedFields, ["isAdministrator"]);
+      assert.equal(grantedAudit?.reason, "Backup coverage");
+      assert.equal(revokedAudit?.status, "completed");
+      assert.deepEqual(revokedAudit?.changedFields, ["isAdministrator"]);
+      assert.equal(revokedAudit?.reason, "Role no longer needed");
+
+      const concurrentRemovals = await Promise.allSettled([
+        updateAdminMemberAdministrator(actorId, secondAdminId, false, "Concurrent administrator change"),
+        updateAdminMemberAdministrator(secondAdminId, actorId, false, "Concurrent administrator change"),
+      ]);
+      assert.equal(concurrentRemovals.filter((result) => result.status === "fulfilled").length, 1);
+      const actorStillAdmin = await isAdminUser(actorId);
+      const secondAdminStillAdmin = await isAdminUser(secondAdminId);
+      assert.notEqual(actorStillAdmin, secondAdminStillAdmin);
+      const lastRemainingId = actorStillAdmin ? actorId : secondAdminId;
+      assert.equal(await isLastAdmin(lastRemainingId), true);
+      await assert.rejects(
+        updateAdminMemberAdministrator(lastRemainingId, lastRemainingId, false),
+        (error: unknown) => error instanceof AdminRequestError && error.statusCode === 409,
+      );
+      assert.equal(await isAdminUser(lastRemainingId), true);
+      assert.equal(await updateAdminMemberAdministrator(actorId, targetId, true, null, {
+        getUser: async () => null,
+      }), null);
+    });
+  } finally {
+    await cleanFixture([actorId, secondAdminId, targetId]);
   }
 });
 
