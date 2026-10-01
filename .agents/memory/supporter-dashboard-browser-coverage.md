@@ -50,3 +50,9 @@ Keep narrow card-state checks in a focused browser test, separate from the dashb
 **Why:** A broad dashboard check first failed because its default upcoming game was asserted as Complete, then reached an unrelated tracker-completion timeout after the card layout was already correct. A focused viewport check can give a trustworthy result for the card without hiding the separate failure.
 
 **How to apply:** Test collapsed and expanded containment at the target widths in an isolated Chromium fixture; exercise Draft and Complete deliberately, and keep failures from later flows separately diagnosable.
+
+When a fixed card dialog opens, compare the background tile's position relative to its grid instead of comparing viewport coordinates.
+
+**Why:** Dialog focus and scroll-lock behavior can move viewport-relative bounds without reflowing the grid, making exact `getBoundingClientRect()` snapshots fail spuriously.
+
+**How to apply:** Measure both the tile and grid before and after opening; compare their relative offsets, size, and selected/expanded state.

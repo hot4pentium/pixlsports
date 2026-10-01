@@ -181,6 +181,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   };
   const shareEventCard = async () => {
     if (!card.shareToken) return;
+    setShareLinkNotice('');
     const result = await shareGameOnCardPublicLink(card.shareToken, `${card.athleteName}'s Event Card`);
     if (result === 'shared') setShareLinkNotice('Event Card shared.');
     else if (result === 'copied') setShareLinkNotice('Event Card link copied.');

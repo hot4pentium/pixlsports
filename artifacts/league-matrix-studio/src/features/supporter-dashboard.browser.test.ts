@@ -1243,6 +1243,203 @@ test('Game On card stays compact and opens cleanly at 320px and 375px', { concur
   }
 });
 
+test('Event Card sharing sends the selected card link and copies it when sharing is unavailable', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  const fixtures = fixturePaths('supporter-event-card-share-test');
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let tempDirectory: string | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((resolveClose, rejectClose) => viteProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    await writeFile(fixtures.harnessPath, harnessSource(), 'utf8');
+    await writeFile(fixtures.htmlPath, htmlSource(fixtures.harnessPath.slice(appDirectory.length + 1)), 'utf8');
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: {
+        ...process.env,
+        PORT: String(vitePort),
+        BASE_PATH: '/',
+        VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZXhhbXBsZS5jb20k',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-event-card-share-'));
+    await waitForUrl(`http://127.0.0.1:${vitePort}/`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((resolveClose, rejectClose) => debugProbe.close((error) => error ? rejectClose(error) : resolveClose()));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
+    page = await openPage(connection, `http://127.0.0.1:${vitePort}/${fixtures.htmlPath.slice(appDirectory.length + 1)}?game-on-card-save-transition`);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    }, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="game-on-dashboard-collection"]'))`,
+      Boolean);
+
+    await connection.evaluate(`(() => {
+      const publishedCard = {
+        shareToken: 'share-test-card',
+        title: 'Event Card share test',
+        savedAt: new Date().toISOString(),
+        event: {
+          id: 'share-test-event',
+          type: 'game',
+          date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          time: '18:30',
+          location: 'Northside Gym',
+          opponent: 'Share Test Opponent',
+          status: 'upcoming',
+        },
+      };
+      const storageKey = 'pixlsports-game-on-cards:supporter-save-transition';
+      localStorage.setItem(storageKey, JSON.stringify([publishedCard]));
+      window.dispatchEvent(new StorageEvent('storage', { key: storageKey, storageArea: localStorage }));
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:share-test-card"]'))`,
+      Boolean);
+    await connection.evaluate(`document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:share-test-card"] .game-on-collection__summary')?.click()`, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"]'))`,
+      Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:share-test-card"] .game-on-collection__actions')?.hidden === true`,
+      page.sessionId,
+    ), true, 'Share should be offered on the opened card, not the compact grid tile');
+
+    await connection.evaluate(`(() => {
+      window.__eventCardOriginalNavigatorProps = {
+        share: Object.getOwnPropertyDescriptor(navigator, 'share'),
+        clipboard: Object.getOwnPropertyDescriptor(navigator, 'clipboard'),
+      };
+      window.__eventCardShareCalls = [];
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async (payload) => window.__eventCardShareCalls.push(payload),
+      });
+    })()`, page.sessionId);
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-game-on-card-share:share-test-card"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card shared.'`, Boolean);
+    const sharedCardDetails = await connection.evaluate<{
+      sharedUrl: string;
+      expectedUrl: string;
+      selectedCardActionVisible: boolean;
+    }>(`(() => {
+      const dialog = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"]');
+      const link = dialog?.querySelector('[data-testid="link-open-game-on-card-share:share-test-card"]');
+      const cardAction = dialog?.querySelector('[data-testid="button-share-game-on-card-share:share-test-card"]');
+      return {
+        sharedUrl: window.__eventCardShareCalls[0]?.url ?? '',
+        expectedUrl: link instanceof HTMLAnchorElement
+          ? new URL(link.getAttribute('href') || '', location.href).href
+          : '',
+        selectedCardActionVisible: Boolean(cardAction?.getClientRects().length),
+      };
+    })()`, page.sessionId);
+    assert.equal(sharedCardDetails.selectedCardActionVisible, true, 'Share should be visible on the selected Event Card');
+    assert.equal(sharedCardDetails.sharedUrl, sharedCardDetails.expectedUrl,
+      'the device share sheet should receive this Event Card public link');
+
+    await connection.evaluate(`(() => {
+      window.__eventCardCopiedUrl = '';
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (url) => { window.__eventCardCopiedUrl = url; } },
+      });
+    })()`, page.sessionId);
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-game-on-card-share:share-test-card"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card link copied.'`, Boolean);
+    assert.equal(
+      await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId),
+      sharedCardDetails.expectedUrl,
+      'browsers without Web Share should copy the same Event Card link',
+    );
+    await connection.evaluate(`(() => {
+      window.__eventCardCopiedUrl = '';
+      window.__eventCardClipboardCalls = 0;
+      window.__eventCardShareCancelled = false;
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async () => {
+          window.__eventCardShareCancelled = true;
+          throw new DOMException('Share cancelled', 'AbortError');
+        },
+      });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (url) => {
+            window.__eventCardClipboardCalls += 1;
+            window.__eventCardCopiedUrl = url;
+          },
+        },
+      });
+    })()`, page.sessionId);
+    await connection.evaluate(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [data-testid="button-share-game-on-card-share:share-test-card"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `window.__eventCardShareCancelled === true
+      && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:share-test-card"] [role="status"][aria-live="polite"]')`, Boolean);
+    assert.equal(
+      await connection.evaluate<number>('window.__eventCardClipboardCalls', page.sessionId),
+      0,
+      'cancelling the device share sheet should not copy the link as a surprise fallback',
+    );
+    await connection.evaluate(`(() => {
+      const original = window.__eventCardOriginalNavigatorProps;
+      for (const key of ['share', 'clipboard']) {
+        if (original?.[key]) Object.defineProperty(navigator, key, original[key]);
+        else delete navigator[key];
+      }
+    })()`, page.sessionId);
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    await rm(fixtures.harnessPath, { force: true });
+    await rm(fixtures.htmlPath, { force: true });
+    releaseBrowserTestLock();
+  }
+});
+
 test('supporter dashboard keeps Game On Card prominent and the mobile menu accessible', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-mobile-header-test');
@@ -1599,13 +1796,19 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       deviceScaleFactor: 1,
       mobile: true,
     }, page.sessionId);
-    const gameTileRectBeforeDialog = await connection.evaluate<{ left: number; top: number; width: number; height: number }>(`(() => {
+    const gameTileRectBeforeDialog = await connection.evaluate<{ leftInGrid: number; topInGrid: number; width: number; height: number }>(`(() => {
       const grid = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="grid-game-on-cards"]');
       const card = Array.from(grid?.querySelectorAll('.game-on-collection__card') || [])
         .find((item) => item.querySelector('.game-on-collection__kind')?.textContent?.includes('Game'));
-      if (!(card instanceof HTMLElement)) throw new Error('A game card is required for the mobile card-view check');
+      if (!(grid instanceof HTMLElement) || !(card instanceof HTMLElement)) throw new Error('A game card is required for the mobile card-view check');
       const rect = card.getBoundingClientRect();
-      return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+      const gridRect = grid.getBoundingClientRect();
+      return {
+        leftInGrid: rect.left - gridRect.left,
+        topInGrid: rect.top - gridRect.top,
+        width: rect.width,
+        height: rect.height,
+      };
     })()`, page.sessionId);
     await connection.evaluate(`(() => {
       const grid = document.querySelector('.supporter-dashboard-mobile-shell [data-testid="grid-game-on-cards"]');
@@ -1631,16 +1834,17 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       const layoutId = selected?.getAttribute('data-layout-id');
       const tile = Array.from(grid?.querySelectorAll('.game-on-collection__card') || [])
         .find((card) => card.getAttribute('data-layout-id') === layoutId);
-      if (!(tile instanceof HTMLElement)) throw new Error('The selected Game On tile is missing from the grid');
+      if (!(grid instanceof HTMLElement) || !(tile instanceof HTMLElement)) throw new Error('The selected Game On tile is missing from the grid');
       const rect = tile.getBoundingClientRect();
+      const gridRect = grid.getBoundingClientRect();
       return {
         dialogCount: shell?.querySelectorAll('[role="dialog"][data-testid^="dialog-game-on-card-"]').length || 0,
         dialogHasSelectedCard: Boolean(selected),
         gridTileSquare: Math.abs(rect.width / rect.height - 1) < 0.05,
         gridTileUnexpanded: !tile.classList.contains('game-on-collection__card--expanded')
           && !tile.classList.contains('game-on-collection__card--selected'),
-        tilePositionUnchanged: Math.abs(rect.left - ${gameTileRectBeforeDialog.left}) < 1
-          && Math.abs(rect.top - ${gameTileRectBeforeDialog.top}) < 1
+        tilePositionUnchanged: Math.abs(rect.left - gridRect.left - ${gameTileRectBeforeDialog.leftInGrid}) < 1
+          && Math.abs(rect.top - gridRect.top - ${gameTileRectBeforeDialog.topInGrid}) < 1
           && Math.abs(rect.width - ${gameTileRectBeforeDialog.width}) < 1
           && Math.abs(rect.height - ${gameTileRectBeforeDialog.height}) < 1,
       };
@@ -1989,7 +2193,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
           .sort(),
       };
     })()`, page.sessionId), {
-      count: 'Showing 4 of 4 cards',
+      count: 'Showing 4 of 4 Event Cards',
       filterRow: false,
       statusButtons: 0,
       visibleStatuses: ['complete', 'draft', 'live', 'published'],
@@ -2000,7 +2204,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       page.sessionId,
     );
     await connection.send('Input.insertText', { text: 'live opponent' }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 Event Cards'`, Boolean);
     assert.deepEqual(await connection.evaluate<string[]>(
       `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
         .filter((status) => status.getClientRects().length > 0)
@@ -2015,14 +2219,14 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     assert.equal(await connection.evaluate<string>(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
       page.sessionId,
-    ), 'Showing 4 of 4 cards', 'clearing a search should show all card statuses');
+    ), 'Showing 4 of 4 Event Cards', 'clearing a search should show all card statuses');
 
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
       page.sessionId,
     );
     await connection.send('Input.insertText', { text: 'Riverside Arena' }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 Event Cards'`, Boolean);
     assert.deepEqual(await connection.evaluate<string[]>(
       `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
         .filter((status) => status.getClientRects().length > 0)
@@ -2041,7 +2245,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         status: 'live',
       },
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 5 cards'
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 5 Event Cards'
       && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:filter-live-added"]')?.getClientRects().length > 0`, Boolean);
     assert.deepEqual(await connection.evaluate<{
       search: string;
@@ -2061,7 +2265,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     await connection.evaluate(`window.__setSupporterDashboardEvents(
       window.__getSupporterDashboardEvents().filter((event) => event.id !== 'filter-live-added')
     )`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 Event Cards'
       && !document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-draft:filter-live-added"]')`, Boolean);
     assert.deepEqual(await connection.evaluate<{
       search: string;
@@ -2115,7 +2319,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       page.sessionId,
     );
     await connection.send('Input.insertText', { text: `Live Opponent Riverside Arena ${liveCardDate.stored}` }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 1 of 4 Event Cards'`, Boolean);
     assert.deepEqual(await connection.evaluate<string[]>(
       `Array.from(document.querySelectorAll('.supporter-dashboard-desktop-shell [data-testid="grid-game-on-cards"] .game-on-collection__status'))
         .filter((status) => status.getClientRects().length > 0)
@@ -2130,7 +2334,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
     assert.equal(await connection.evaluate<string>(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() || ''`,
       page.sessionId,
-    ), 'Showing 4 of 4 cards', 'clearing a date search should restore all statuses');
+    ), 'Showing 4 of 4 Event Cards', 'clearing a date search should restore all statuses');
 
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="input-search-game-on-cards"]')?.focus()`,
@@ -2146,12 +2350,12 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="button-clear-game-on-search-empty"]')?.click()`,
       page.sessionId,
     );
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 Event Cards'`, Boolean);
 
     await connection.evaluate(`window.__setSupporterDashboardEvents([
       { id: 'filter-complete', type: 'game', date: '2999-01-01', time: '18:30', location: 'Northside Gym', opponent: 'Complete Opponent', status: 'final' }
     ])`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 Event Cards'`, Boolean);
 
     const filterFixtureSetup = `(() => {
       const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -2162,7 +2366,7 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       ]);
     })()`;
     await connection.evaluate(filterFixtureSetup, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 Event Cards'`, Boolean);
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 260,
       height: 563,
@@ -2201,13 +2405,13 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       page.sessionId,
     );
     await connection.send('Input.insertText', { text: 'Northside Gym' }, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 Event Cards'`, Boolean);
     await connection.evaluate(
       `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="button-clear-game-on-search"]')?.click()`,
       page.sessionId,
     );
     await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="input-search-game-on-cards"]')?.value === ''`, Boolean);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 4 of 4 Event Cards'`, Boolean);
     await connection.evaluate(`(() => {
       const storageKey = 'pixlsports-game-on-cards:supporter-save-transition';
       localStorage.removeItem(storageKey);
@@ -2217,14 +2421,14 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
         { id: 'practice-1', type: 'practice', date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), time: '17:00', location: 'Northside Gym', status: 'upcoming' },
       ]);
     })()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 Event Cards'`, Boolean);
     await connection.evaluate(`(() => {
       sessionStorage.setItem('pixlsports-game-on-status-filter:supporter-save-transition', 'Live');
       window.__navigateSupporterDashboardAwayForFilterTest('Prep');
     })()`, page.sessionId);
     await waitFor(connection, page.sessionId, `document.querySelector('[data-testid="supporter-dashboard-away-tool"]')?.textContent === 'Prep'`, Boolean);
     await connection.evaluate(`document.querySelector('[data-testid="button-return-to-supporter-dashboard"]')?.click()`, page.sessionId);
-    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 cards'`, Boolean);
+    await waitFor(connection, page.sessionId, `document.querySelector('.supporter-dashboard-mobile-shell [data-testid="status-game-on-card-count"]')?.textContent?.trim() === 'Showing 2 of 2 Event Cards'`, Boolean);
     assert.deepEqual(await connection.evaluate<{
       filterRow: boolean;
       visibleStatuses: string[];
