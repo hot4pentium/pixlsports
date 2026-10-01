@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { CircleStop, ExternalLink, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react';
 import {
   addStatEvent,
+  addFootballPassReception,
   advanceGamePeriod,
   adjustScore,
   countStatEventsByAttribution,
@@ -10,6 +11,7 @@ import {
   endGame,
   getGamePhaseLabel,
   getSportRule,
+  getLiveTrackingStats,
   getTrackerStorageKeys,
   getTrackerSportForProfile,
   readStoredActiveGame,
@@ -328,7 +330,7 @@ export function GameOnInlineStatTracker({
   const rule = game ? getSportRule(game.sport) : null;
   const featuredStats = rule?.stats.filter((item) => item.featured && !item.liveHidden) ?? [];
   const stats = rule
-    ? (featuredStats.length ? featuredStats : rule.stats.filter((item) => !item.liveHidden).slice(0, 6))
+    ? getLiveTrackingStats(rule.id, featuredStats.length ? featuredStats : rule.stats.filter((item) => !item.liveHidden).slice(0, 6))
     : [];
 
   return (
@@ -473,24 +475,35 @@ export function GameOnInlineStatTracker({
 
           <div className="game-on-quick-tracker__stat-grid">
             {stats.map((item) => {
-              const counts = countStatEventsByAttribution(game, [item.id]);
+              const isPassReception = game.sport === 'football' && item.id === 'pass-reception';
+              const rawCounts = countStatEventsByAttribution(game, isPassReception ? ['pass-yard', 'reception'] : [item.id]);
+              const counts = isPassReception
+                ? { team: Math.ceil(rawCounts.team / 2), athlete: Math.ceil(rawCounts.athlete / 2) }
+                : rawCounts;
+              const count = isPassReception
+                ? Math.max(game.stats['pass-yard'] ?? 0, game.stats.reception ?? 0)
+                : game.stats[item.id] ?? 0;
               return (
                 <div className="game-on-quick-tracker__stat-card" key={item.id} data-testid={`card-inline-stat-${item.id}`}>
                   <button
                     type="button"
                     disabled={game.status !== 'live'}
-                    onClick={() => updateGame((current) => addStatEvent(current, item.id, new Date(), 0, 'team'))}
+                    onClick={() => updateGame((current) => isPassReception
+                      ? addFootballPassReception(current, new Date(), 0, 'team')
+                      : addStatEvent(current, item.id, new Date(), 0, 'team'))}
                     aria-label={`Record ${item.label} for ${teamName || 'team'}`}
                     data-testid={`button-tap-stat-${eventId}-${item.id}-team`}
                   >
                     <span className="game-on-quick-tracker__stat-label">{item.shortLabel}</span>
-                    <strong>{game.stats[item.id] ?? 0}</strong>
+                    <strong>{count}</strong>
                     <span className="game-on-quick-tracker__stat-counts">Team {counts.team} · Athlete {counts.athlete}</span>
                   </button>
                   <button
                     type="button"
                     disabled={game.status !== 'live'}
-                    onClick={() => updateGame((current) => addStatEvent(current, item.id, new Date(), 0, 'athlete'))}
+                    onClick={() => updateGame((current) => isPassReception
+                      ? addFootballPassReception(current, new Date(), 0, 'athlete')
+                      : addStatEvent(current, item.id, new Date(), 0, 'athlete'))}
                     aria-label={`Record ${item.label} for ${athleteName || 'athlete'}`}
                     data-testid={`button-tap-stat-${eventId}-${item.id}-athlete`}
                     className="game-on-quick-tracker__athlete-tap"

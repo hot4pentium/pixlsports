@@ -51,6 +51,7 @@ import {
   footballYardMetricDefinitions,
   getFootballYardMetricId,
   getSportRule,
+  getLiveTrackingStats,
   getTrackerSportForSession,
   hasDivergentCorrectedFinalHistory,
   getTrackerConflict,
@@ -696,13 +697,6 @@ function latestYardEventIds(game: GameSession) {
   }, {});
 }
 
-const footballPassReceptionStat: StatDefinition = {
-  id: 'pass-reception',
-  label: 'Pass/Rec',
-  shortLabel: 'PASS/REC',
-  points: 0,
-};
-
 export function LiveTrackerGame({
   currentGame,
   rule,
@@ -948,12 +942,7 @@ export function LiveTrackerGame({
           </div>
         )}
         <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
-          {(currentGame.sport === 'football'
-            ? displayStats.filter((item) => item.id !== 'reception').map((item) => item.id === 'pass-yard'
-              ? footballPassReceptionStat
-              : item.id === 'rush-yard' ? { ...item, label: 'Rush', shortLabel: 'RUSH' } : item)
-            : displayStats
-          ).map((item) => {
+          {getLiveTrackingStats(currentGame.sport, displayStats).map((item) => {
             const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
             const yardMetricId = isYardageTrackingAvailable(currentGame.sport)
               ? (isCombinedPassReception ? 'pass-yard' : getFootballYardMetricId(item.id))

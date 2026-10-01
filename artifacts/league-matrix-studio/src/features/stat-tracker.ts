@@ -491,6 +491,20 @@ export function getSportRule(sport: Sport): SportRule {
   return sportRules[sport];
 }
 
+/** Share live-card labels between compact and full trackers; preserve stored stat IDs. */
+export function getLiveTrackingStats(sport: Sport, stats: StatDefinition[]): StatDefinition[] {
+  if (sport !== 'football') return stats;
+  return stats.filter((item) => item.id !== 'reception').map((item) => {
+    if (item.id === 'pass-yard') {
+      return { ...item, id: 'pass-reception', label: 'Pass/Rec', shortLabel: 'PASS/REC' };
+    }
+    if (item.id === 'rush-yard') {
+      return { ...item, label: 'Rush', shortLabel: 'RUSH' };
+    }
+    return item;
+  });
+}
+
 export function getGamePhaseLabel(game: GameSession): string {
   return game.sport === 'soccer' && game.soccerPeriodFormat === 'quarters'
     ? 'Quarter'

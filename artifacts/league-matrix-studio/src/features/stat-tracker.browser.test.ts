@@ -453,7 +453,24 @@ function CompletionHarness() {
 
 export function mount() {
   const root = createRoot(document.getElementById('test-root'));
-  if (new URLSearchParams(window.location.search).get('inlineSportChoice') === '1') {
+  const search = new URLSearchParams(window.location.search);
+  if (search.get('inlineFootball') === '1') {
+    root.render(createElement(Router, null,
+      createElement(GameOnInlineStatTracker, {
+        userId: 'inline-football-user',
+        sport: 'football',
+        athleteName: 'Maya',
+        teamName: 'Falcons',
+        eventId: 'inline-football-game',
+        date: '2026-09-21',
+        time: '18:30',
+        location: 'Northside Field',
+        opponent: 'Northside',
+      }),
+    ));
+    return;
+  }
+  if (search.get('inlineSportChoice') === '1') {
     root.render(createElement(Router, null,
       createElement(GameOnInlineStatTracker, {
         userId: 'inline-sport-choice-user',
@@ -1107,6 +1124,43 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       ),
       'volleyball',
       'the inline game must use the sport the supporter chose',
+    );
+
+    await connection.evaluate(`(() => {
+      localStorage.removeItem('leaguematrix-stat-tracker-active-game:inline-football-user');
+      localStorage.removeItem('leaguematrix-stat-tracker:inline-football-user');
+      window.location.href = '/stat-tracker-test.html?inlineFootball=1';
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-inline-scoreboard\\"]") !== null', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"card-inline-stat-pass-reception\\"]") !== null', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '(() => { const pass = document.querySelector("[data-testid=\\"card-inline-stat-pass-reception\\"]"); const rush = document.querySelector("[data-testid=\\"card-inline-stat-rush-yard\\"]"); const interception = document.querySelector("[data-testid=\\"card-inline-stat-interception\\"]"); return pass?.textContent.includes("PASS/REC") && !/yds/i.test(pass?.textContent || "") && rush?.textContent.includes("RUSH") && !/yds/i.test(rush?.textContent || "") && interception?.textContent.includes("INT") && !document.querySelector("[data-testid=\\"card-inline-stat-pass-yard\\"]") && !document.querySelector("[data-testid=\\"card-inline-stat-reception\\"]"); })()',
+        page.sessionId,
+      ),
+      true,
+      'the inline football tracker should show combined PASS/REC, short RUSH, and INT cards',
+    );
+
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-tap-stat-inline-football-game-pass-reception-athlete\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, '(() => { const game = JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user") || "null"); return game?.stats?.["pass-yard"] === 1 && game?.stats?.reception === 1; })()', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '(() => { const game = JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user") || "null"); const paired = game?.events?.filter((event) => event.playId) || []; return paired.length === 2 && paired[0].statId === "pass-yard" && paired[1].statId === "reception" && paired[0].playId === paired[1].playId && paired.every((event) => event.attribution === "athlete"); })()',
+        page.sessionId,
+      ),
+      true,
+      'one inline PASS/REC tap should persist a paired passing and reception play',
+    );
+    await connection.evaluate('document.querySelector("[data-testid=\\"button-inline-stat-undo\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, '(() => { const game = JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user") || "null"); return (game?.stats?.["pass-yard"] ?? 0) === 0 && (game?.stats?.reception ?? 0) === 0 && game?.events?.length === 0; })()', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>(
+        '(() => { const game = JSON.parse(localStorage.getItem("leaguematrix-stat-tracker-active-game:inline-football-user") || "null"); return (game?.stats?.["pass-yard"] ?? 0) === 0 && (game?.stats?.reception ?? 0) === 0 && game?.events?.length === 0 && document.querySelector("[data-testid=\\"button-inline-stat-undo\\"]")?.disabled; })()',
+        page.sessionId,
+      ),
+      true,
+      'undo should remove both persisted stats from the paired inline play',
     );
   } finally {
     if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
