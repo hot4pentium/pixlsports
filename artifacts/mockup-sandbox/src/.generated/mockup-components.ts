@@ -6,12 +6,12 @@ export const modules: ModuleMap = {
   "./components/mockups/pixl/PixlSportsResponsiveUnified.tsx": () => import("../components/mockups/pixl/PixlSportsResponsiveUnified.tsx"),
   "./components/mockups/pixl/PixlSportsSplitVariant.tsx": () => import("../components/mockups/pixl/PixlSportsSplitVariant.tsx"),
   "./components/mockups/pixl/PixlSportsThumbDeckVariant.tsx": () => import("../components/mockups/pixl/PixlSportsThumbDeckVariant.tsx"),
-  "./components/mockups/pixl-auth-path/AccountChoice.tsx": () => import("../components/mockups/pixl-auth-path/AccountChoice.tsx"),
-  "./components/mockups/pixl-auth-path/Current.tsx": () => import("../components/mockups/pixl-auth-path/Current.tsx"),
   "./components/mockups/pixl-background/Current.tsx": () => import("../components/mockups/pixl-background/Current.tsx"),
   "./components/mockups/pixl-background/QuietDepth.tsx": () => import("../components/mockups/pixl-background/QuietDepth.tsx"),
   "./components/mockups/pixl-background/TechnicalGrid.tsx": () => import("../components/mockups/pixl-background/TechnicalGrid.tsx"),
   "./components/mockups/pixl-background/WarmMaterial.tsx": () => import("../components/mockups/pixl-background/WarmMaterial.tsx"),
+  "./components/mockups/pixl-auth-path/AccountChoice.tsx": () => import("../components/mockups/pixl-auth-path/AccountChoice.tsx"),
+  "./components/mockups/pixl-auth-path/Current.tsx": () => import("../components/mockups/pixl-auth-path/Current.tsx"),
   "./components/mockups/supporter-actions-redesign/CombinedCard.tsx": () => import("../components/mockups/supporter-actions-redesign/CombinedCard.tsx"),
   "./components/mockups/supporter-actions-redesign/Current.tsx": () => import("../components/mockups/supporter-actions-redesign/Current.tsx")
 };
