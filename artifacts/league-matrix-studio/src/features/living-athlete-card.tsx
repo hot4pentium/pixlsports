@@ -597,7 +597,7 @@ export function LivingAthleteCardPage({
                     <h2 className="living-card-alt-title">Events.</h2>
                     <p className="living-card-alt-subtitle">
                       {invite.showEvents
-                        ? `All eligible Event Cards shared by ${invite.athleteName}’s card owner appear here.`
+                        ? `All eligible Event Cards saved by ${invite.athleteName}’s card owner appear here.`
                         : 'The card owner has turned off event sharing.'}
                     </p>
                     {invite.showEvents && linkedEvents.length > 0 ? (

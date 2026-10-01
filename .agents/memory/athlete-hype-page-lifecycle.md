@@ -22,3 +22,9 @@ The four-step standalone Hype Card editor is retired. The diagonal â€œHYPE CARDâ
 **Why:** The user explicitly chose the athlete fan card as the new card and asked to remove the old walkthrough path without deleting historical content.
 
 **How to apply:** Route new creation and sharing through the athlete fan card and its manager. Do not restore old editor entry points or delete legacy share links and saved designs during navigation cleanup.
+
+Event Card authoring is save-only: no automatic clipboard copy or standalone Event Card sharing controls. Saved events belong in the Hype Card's Events side, subject to the existing Allow events setting. The Hype Card remains the destination to share.
+
+**Why:** The user explicitly asked to save the Event Card and make it available in the Hype Card, rather than encourage sharing a separate event link.
+
+**How to apply:** Preserve the server persistence that supplies Hype Card Events and reminders; removing link-sharing UI is not permission to remove its backing records, revoke older URLs, or automatically enable event visibility.

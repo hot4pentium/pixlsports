@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetGameOnCardQueryKey,
   useGetGameOnCard,
@@ -12,8 +13,6 @@ import {
   CalendarDays,
   Check,
   ClipboardCheck,
-  Copy,
-  ExternalLink,
   Loader2,
   ShieldCheck,
   Sparkles,
@@ -36,6 +35,7 @@ import {
   type SavedGameOnCard,
 } from './game-on-card-storage';
 import { getBrowserTimeZone, getGameOnTimeZoneOptions, resolveGameOnTimeZone } from './game-on-timezone';
+import { invalidateHypeCardEvents } from './game-on-hype-event-sync';
 
 type GameOnEventType = 'game' | 'practice';
 type CardEvent = GameOnDraft & { type?: GameOnEventType; calendarProjectId?: string };
@@ -105,18 +105,6 @@ function eventFromSaved(saved: SavedGameOnCard): CardEvent {
   };
 }
 
-function appAbsoluteUrl(path: string) {
-  const origin = ['pixlsports.com', 'www.pixlsports.com'].includes(window.location.hostname.toLowerCase())
-    ? 'https://pixlsports.com'
-    : window.location.origin;
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-  return `${origin}${basePath}${path}`;
-}
-
-function publicCardUrl(shareToken: string) {
-  return appAbsoluteUrl(`/game-on/${shareToken}`);
-}
-
 function prettyEventDate(value: string) {
   const parsed = parseISO(value);
   return isValid(parsed) ? format(parsed, 'EEEE, MMM d, yyyy') : value;
@@ -153,6 +141,7 @@ export function GameOnCardPanel({
   onSaveCalendarEvent,
   existingCardTokensByEventId,
 }: GameOnCardPanelProps) {
+  const queryClient = useQueryClient();
   const scheduledEvents = events.filter((event) => event.type === 'game' || event.type === 'practice');
   const createShare = useCreateScheduleShare();
   const updateShare = useUpdateScheduleShare();
@@ -263,21 +252,11 @@ export function GameOnCardPanel({
     };
   }
 
-  async function copyShareLink(shareToken: string) {
-    const url = publicCardUrl(shareToken);
-    if (!navigator.clipboard?.writeText) {
-      setNotice(`Your Event Card is ready: ${url}`);
-      return;
-    }
-    await navigator.clipboard.writeText(url);
-    setNotice('Event Card link copied.');
-  }
-
   async function handleCreateOrUpdate() {
     setError('');
     setNotice('');
     if (!userId) {
-      setError('Sign in to create a shareable Event Card.');
+      setError('Sign in to save an Event Card.');
       return;
     }
     const isPractice = draft.type === 'practice';
@@ -313,11 +292,8 @@ export function GameOnCardPanel({
       };
       saveCard(next);
       setDraft(event);
-      try {
-        await copyShareLink(share.shareToken);
-      } catch {
-        setError('Event Card saved, but the link could not be copied.');
-      }
+      setNotice('Event Card saved. Find it in your Hype Card’s Events section when Allow events is on.');
+      void invalidateHypeCardEvents(queryClient);
       onChanged?.(`share:${share.shareToken}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to save the Event Card. Try again.');
@@ -335,12 +311,13 @@ export function GameOnCardPanel({
       await deleteShare.mutateAsync({ shareToken: saved.shareToken });
       removeSavedGameOnCard(userId, saved.shareToken);
       setSaved(null);
+      void invalidateHypeCardEvents(queryClient);
       onChanged?.();
       setDraft(selectedEvent && selectedEvent.type !== 'meeting' ? draftFromEvent(selectedEvent) : blankDraft());
       setSourceEventId(selectedEvent && selectedEvent.type !== 'meeting' ? selectedEvent.id : 'new');
-      setNotice('Event Card link revoked.');
+      setNotice('Event Card deleted.');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to revoke the Event Card. Try again.');
+      setError(caught instanceof Error ? caught.message : 'Unable to delete the Event Card. Try again.');
     } finally {
       setBusy(false);
     }
@@ -396,17 +373,15 @@ export function GameOnCardPanel({
               <Trophy className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">{isPractice ? 'On-demand practice sharing' : 'On-demand game day sharing'}</p>
+              <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[#55A4FF]">{isPractice ? 'Practice details' : 'Game day details'}</p>
               <p className="mt-1 text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Event Card</p>
             </div>
           </div>
           <h2 id="game-on-card-heading" className="mt-6 font-display text-4xl font-black leading-[.95] tracking-tight sm:text-5xl">
-            {isPractice ? 'Share the practice.' : 'Share the game day.'}
+            {isPractice ? 'Save the practice.' : 'Save the game day.'}
           </h2>
           <p className="mt-3 max-w-3xl text-base font-medium leading-relaxed text-white/65 sm:text-[17px]">
-            {isPractice
-              ? 'One simple link for practice details. Prep stays private unless you choose to share it.'
-              : 'One simple link for event details. Prep and stats appear only when you choose to share them.'}
+            Save your event details here. They’re available in your Hype Card’s Events section when Allow events is on. Share your Hype Card to keep supporters up to date.
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-white/65">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[.04] px-3 py-2">
@@ -426,7 +401,7 @@ export function GameOnCardPanel({
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.18em] text-primary">
-                      <Check className="h-3.5 w-3.5" /> Link is active
+                      <Check className="h-3.5 w-3.5" /> Event Card saved
                     </p>
                     <p className="mt-2 truncate font-display text-xl uppercase">
                       {saved.title}{saved.event.type !== 'practice' && saved.event.opponent ? ` vs ${saved.event.opponent}` : ''}
@@ -435,29 +410,10 @@ export function GameOnCardPanel({
                       {prettyEventDate(saved.event.date)}{saved.event.time ? ` · ${saved.event.time}` : ''}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void copyShareLink(saved.shareToken).catch(() => setError('Unable to copy the link. You can open the card and copy its address.'))}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 bg-primary px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-primary-foreground"
-                      data-testid="button-copy-game-on-card"
-                    >
-                      <Copy className="h-3.5 w-3.5" /> Copy link
-                    </button>
-                    <a
-                      href={publicCardUrl(saved.shareToken)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary"
-                      data-testid="link-open-game-on-card"
-                    >
-                      Open card <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </div>
                 </div>
                 {publicCard.isError && (
                   <p className="mt-3 text-xs font-medium text-amber-100" role="status">
-                    This saved card link is no longer available. Revoke it or create a new card.
+                    This saved Event Card is no longer available. Delete it or save a new card.
                   </p>
                 )}
                 {selectedPublicEvent && saved.event.type !== 'practice' && (
@@ -483,12 +439,12 @@ export function GameOnCardPanel({
                     </Link>
                   )}
                   <Link href="/studio/athlete-page" className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-athlete-page">
-                    <Sparkles className="h-3.5 w-3.5" /> Athlete Hype Page
+                    <Sparkles className="h-3.5 w-3.5" /> Open Hype Card
                   </Link>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-4 border-t border-white/10 pt-3">
                   <button type="button" onClick={() => setIsEditing(true)} className="text-[10px] font-bold uppercase tracking-widest text-white/65 hover:text-white" data-testid="button-edit-game-on-card">Update event details</button>
-                  <button type="button" onClick={() => void handleRevoke()} disabled={busy} className="text-[10px] font-bold uppercase tracking-widest text-red-200 hover:text-red-100 disabled:opacity-50" data-testid="button-revoke-game-on-card">{busy ? 'Working…' : 'Revoke link'}</button>
+                  <button type="button" onClick={() => void handleRevoke()} disabled={busy} className="text-[10px] font-bold uppercase tracking-widest text-red-200 hover:text-red-100 disabled:opacity-50" data-testid="button-revoke-game-on-card">{busy ? 'Working…' : 'Delete Event Card'}</button>
                 </div>
               </div>
             )}
@@ -631,7 +587,7 @@ export function GameOnCardPanel({
                 data-testid="button-save-game-on-card"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
-                {busy ? 'Saving…' : saved ? 'Update Event Card' : 'Create and share Event Card'}
+                {busy ? 'Saving…' : 'Save Event Card'}
                 {!busy && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>

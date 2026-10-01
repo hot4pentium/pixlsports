@@ -1121,7 +1121,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <p className="mt-1 text-xs text-white/60">This setting saves as soon as you change it.</p>
           <OwnerToggle
             label="Allow events"
-            detail="When on, all your eligible shared Event Cards appear on the HYPE Card, including cards you create later. When off, none appear."
+            detail="When on, all your eligible saved Event Cards appear on the HYPE Card, including cards you create later. When off, none appear."
             checked={showEvents}
             disabled={visibilitySaving || updateInvite.isPending}
             onChange={(value) => void saveVisibilityChange('showEvents', value)}

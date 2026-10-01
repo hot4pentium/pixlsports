@@ -30,7 +30,7 @@ test('HYPE Card events use one persistent all-or-none setting', () => {
   assert.match(athleteApiSource, /async function availableAthleteEvents/);
   assert.match(athleteApiSource, /invite\.showEvents \? availableAthleteEvents\(invite\) : Promise\.resolve\(\[\]\)/);
   assert.match(livingCardSource, /The card owner has turned off event sharing/);
-  assert.match(livingCardSource, /All eligible Event Cards shared by/);
+  assert.match(livingCardSource, /All eligible Event Cards saved by/);
   assert.match(eventNotificationsSource, /Turn on “Allow events” above/);
 });
 
@@ -39,7 +39,7 @@ test('HYPE Card event details do not repeat the full Game On Card link', () => {
     livingCardSource.indexOf("{side === 'events' && ("),
     livingCardSource.indexOf('<div className="living-card-controls"'),
   );
-  assert.match(eventsSide, /All eligible Event Cards shared by/);
+  assert.match(eventsSide, /All eligible Event Cards saved by/);
   assert.doesNotMatch(eventsSide, /Full Event Card|gameOnHref|link-living-event-/);
   assert.doesNotMatch(eventsSide, /Open one for its full details/);
 });

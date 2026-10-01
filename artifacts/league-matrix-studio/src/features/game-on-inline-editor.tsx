@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useCreateScheduleShare,
-  useDeleteScheduleShare,
   useUpdateScheduleShare,
 } from '@workspace/api-client-react';
-import { Activity, CalendarDays, ClipboardCheck, Copy, Plus, Trash2 } from 'lucide-react';
+import { Activity, CalendarDays, ClipboardCheck, Plus, Trash2 } from 'lucide-react';
 import type { SupporterEvent } from './supporter-dashboard';
 import type { GameOnDashboardEntry } from './game-on-dashboard-model';
 import {
@@ -15,8 +15,9 @@ import {
   saveEventChecklist,
   type LocalGamedayChecklist,
 } from './gameday-checklist';
-import { removeSavedGameOnCard, upsertSavedGameOnCard } from './game-on-card-storage';
+import { upsertSavedGameOnCard } from './game-on-card-storage';
 import { getBrowserTimeZone, getGameOnTimeZoneOptions, resolveGameOnTimeZone } from './game-on-timezone';
+import { invalidateHypeCardEvents } from './game-on-hype-event-sync';
 
 type EventFields = Pick<SupporterEvent, 'date' | 'time' | 'timezone' | 'location' | 'opponent'>;
 
@@ -53,6 +54,7 @@ export function GameOnInlineEditor({
   onSaveCalendarEvent,
   onChanged,
 }: Props) {
+  const queryClient = useQueryClient();
   const [fields, setFields] = useState<EventFields>({
     date: card.date,
     time: card.time,
@@ -66,7 +68,6 @@ export function GameOnInlineEditor({
   const [notice, setNotice] = useState('');
   const createShare = useCreateScheduleShare();
   const updateShare = useUpdateScheduleShare();
-  const deleteShare = useDeleteScheduleShare();
   const isPractice = card.type === 'practice';
   const event = {
     id: card.eventId,
@@ -88,7 +89,7 @@ export function GameOnInlineEditor({
     }],
   };
 
-  async function saveEvent(publish = false) {
+  async function saveEvent() {
     setError('');
     setNotice('');
     if (!event.date || (!isPractice && !event.opponent)) {
@@ -105,7 +106,7 @@ export function GameOnInlineEditor({
       let token = card.shareToken;
       if (token) {
         await updateShare.mutateAsync({ shareToken: token, data: shareData });
-      } else if (publish || !scheduledEvent) {
+      } else if (view !== 'calendar' || !scheduledEvent) {
         const created = await createShare.mutateAsync({ data: shareData });
         token = created.shareToken;
       }
@@ -113,12 +114,13 @@ export function GameOnInlineEditor({
         upsertSavedGameOnCard(userId, {
           shareToken: token, title: shareData.title, event, savedAt: new Date().toISOString(),
         });
+        void invalidateHypeCardEvents(queryClient);
       }
-      setNotice(token ? 'Event saved. Your Event Card link keeps the same address.' : 'Calendar event saved.');
+      setNotice(token ? 'Event Card saved. Find it in your Hype Card’s Events section when Allow events is on.' : 'Calendar event saved.');
       onChanged(token ? `share:${token}` : `draft:${card.eventId}`);
     } catch (caught) {
       setError(calendarSaved
-        ? 'Calendar saved, but the Event Card link could not be updated. Retry to update the public card.'
+        ? 'Calendar saved, but the Event Card could not be saved. Try again.'
         : caught instanceof Error ? caught.message : 'Could not save this event. Try again.');
     } finally {
       setBusy(false);
@@ -139,33 +141,6 @@ export function GameOnInlineEditor({
       setNotice('Private Prep saved for this event.');
     } catch {
       setError('Private Prep could not be saved on this device. Try again.');
-    }
-  }
-
-  async function revoke() {
-    if (!card.shareToken) return;
-    setBusy(true);
-    setError('');
-    try {
-      await deleteShare.mutateAsync({ shareToken: card.shareToken });
-      removeSavedGameOnCard(userId, card.shareToken);
-      onChanged(scheduledEvent ? `draft:${card.eventId}` : undefined);
-      setNotice('Event Card link revoked.');
-    } catch {
-      setError('Could not revoke the link. Try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function copyLink() {
-    if (!card.shareToken) return;
-    const path = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/game-on/${card.shareToken}`;
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}${path}`);
-      setNotice('Event Card link copied.');
-    } catch {
-      setError('Could not copy the link. Open the card and copy its address.');
     }
   }
 
@@ -191,13 +166,8 @@ export function GameOnInlineEditor({
         </label>
       </div>
       <button type="button" className="game-on-inline__primary" disabled={busy} onClick={() => void saveEvent()} data-testid="button-save-inline-event">
-        {busy ? 'Saving…' : scheduledEvent ? 'Save Calendar details' : 'Save card details'}
+        {busy ? 'Saving…' : view === 'calendar' ? 'Save Calendar details' : 'Save Event Card'}
       </button>
-      {view !== 'calendar' && !card.shareToken && scheduledEvent && (
-        <button type="button" className="game-on-inline__secondary" disabled={busy} onClick={() => void saveEvent(true)} data-testid="button-publish-inline-card">
-          Create shareable Event Card link
-        </button>
-      )}
     </div>
   );
 
@@ -249,13 +219,6 @@ export function GameOnInlineEditor({
         >
           <Activity size={18} aria-hidden="true" /> Open Stat Tracker
         </button>
-      )}
-      {card.shareToken && (
-        <div className="game-on-inline__sharing">
-          <button type="button" onClick={() => void copyLink()}><Copy size={14} /> Copy Event Card link</button>
-          <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/game-on/${card.shareToken}`} target="_blank" rel="noreferrer">View public card</a>
-          <button type="button" disabled={busy} onClick={() => void revoke()}>Revoke link</button>
-        </div>
       )}
       {notice && <p className="game-on-inline__notice" role="status" aria-live="polite">{notice}</p>}
       {error && <p className="game-on-inline__error" role="alert">{error}</p>}
