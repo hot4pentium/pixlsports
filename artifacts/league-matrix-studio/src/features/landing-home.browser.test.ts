@@ -128,11 +128,38 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
          }
          await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=landing-tool-demo]"))', value => value === true);
          assert.equal(await connection.evaluate('document.querySelector("[data-testid=landing-tool-demo]")?.getAttribute("role")', page.sessionId), 'dialog');
+          const demoSafety = await connection.evaluate<{ destination: string | null; notice: string }>(`(() => ({
+            destination: document.querySelector('[data-testid="link-demo-sign-up"]')?.getAttribute('href') ?? null,
+            notice: document.querySelector('[data-testid="landing-tool-demo"] .pixl-demo-footer p')?.textContent ?? '',
+          }))()`, page.sessionId);
+          assert.equal(demoSafety.destination, '/sign-up');
+          assert.ok(demoSafety.notice.includes('Nothing here is saved, sent, or shared; closing starts fresh.'));
          const demoBounds = await connection.evaluate<{ left: number; right: number }>(`(() => {
            const bounds = document.querySelector('[data-testid=landing-tool-demo]').getBoundingClientRect();
            return { left: bounds.left, right: bounds.right };
          })()`, page.sessionId);
          assert.ok(demoBounds.left >= -1 && demoBounds.right <= width + 1, `${step} modal escaped ${width}px viewport: ${JSON.stringify(demoBounds)}`);
+          if (step === 'follow') {
+            const trackerLayout = await connection.evaluate<{
+              stats: string[];
+              trackerFits: boolean;
+              statGridFits: boolean;
+              oldSportSelector: boolean;
+            }>(`(() => {
+              const tracker = document.querySelector('[data-testid="demo-follow-tracker"]');
+              const statGrid = tracker?.querySelector('.game-on-quick-tracker__stat-grid');
+              return {
+                stats: [...(tracker?.querySelectorAll('.game-on-quick-tracker__stat-label') ?? [])].map(label => label.textContent?.trim() || ''),
+                trackerFits: Boolean(tracker && tracker.scrollWidth <= tracker.clientWidth),
+                statGridFits: Boolean(statGrid && statGrid.scrollWidth <= statGrid.clientWidth),
+                oldSportSelector: Boolean(document.querySelector('[data-testid="select-demo-sport"]')),
+              };
+            })()`, page.sessionId);
+            assert.deepEqual(trackerLayout.stats, ['TD', 'FG', 'XP', '2 PT', 'PASS/REC', 'RUSH', 'INT', 'TACKLE']);
+            assert.equal(trackerLayout.trackerFits, true, `Follow tracker should fit at ${width}px`);
+            assert.equal(trackerLayout.statGridFits, true, `Follow stat cards should fit at ${width}px`);
+            assert.equal(trackerLayout.oldSportSelector, false);
+          }
          if (width === 393) {
            if (step === 'plan') {
              await connection.evaluate(`(() => {
@@ -145,8 +172,20 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
              await connection.evaluate(`document.querySelector('[data-testid=button-demo-check-1]').click()`, page.sessionId);
              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-prep-count]')?.textContent.includes('1 of 3')`, Boolean);
            } else if (step === 'follow') {
-             await connection.evaluate(`document.querySelector('[data-testid=button-demo-increase-points]').click()`, page.sessionId);
-             await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-stat-points]')?.textContent === '1'`, Boolean);
+              await connection.evaluate(`document.querySelector('[data-testid=button-demo-follow-opponentScore-increase]').click()`, page.sessionId);
+              await connection.evaluate(`document.querySelector('[data-testid=button-demo-follow-advance-quarter]').click()`, page.sessionId);
+              await connection.evaluate(`document.querySelector('[data-testid=button-demo-follow-stat-touchdown-team]').click()`, page.sessionId);
+              await connection.evaluate(`document.querySelector('[data-testid=button-demo-follow-stat-pass-reception-athlete]').click()`, page.sessionId);
+              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-follow-stat-pass-reception]')?.textContent === '6'`, Boolean);
+              assert.equal(await connection.evaluate(`document.querySelector('[data-testid=text-demo-follow-quarter]')?.textContent === 'Quarter 2'`, page.sessionId), true);
+              assert.equal(await connection.evaluate(`document.querySelector('[data-testid=text-demo-follow-teamScore]')?.textContent === '23' && document.querySelector('[data-testid=text-demo-follow-opponentScore]')?.textContent === '11'`, page.sessionId), true);
+              assert.equal(await connection.evaluate(`document.querySelector('[data-testid=text-demo-follow-attribution-touchdown]')?.textContent === 'Team 3 · Athlete 0'`, page.sessionId), true);
+              assert.equal(await connection.evaluate(`document.querySelector('[data-testid=text-demo-follow-attribution-pass-reception]')?.textContent === 'Team 4 · Athlete 2'`, page.sessionId), true);
+              await connection.evaluate(`document.querySelector('[data-testid=button-demo-follow-undo]').click()`, page.sessionId);
+              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-follow-stat-pass-reception]')?.textContent === '5'`, Boolean);
+              await connection.evaluate(`document.querySelector('[data-testid=button-demo-follow-undo]').click()`, page.sessionId);
+              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=text-demo-follow-stat-touchdown]')?.textContent === '2'`, Boolean);
+              assert.equal(await connection.evaluate(`document.querySelector('[data-testid=text-demo-follow-teamScore]')?.textContent === '17'`, page.sessionId), true);
            } else {
              await waitFor(connection, page.sessionId, `document.querySelector('[data-testid=face-demo-hype-front] img')?.naturalWidth > 0`, Boolean);
               const controlsFit = await connection.evaluate<boolean>(`[...document.querySelectorAll('.pixl-demo-hype-controls button')].every(button => {
@@ -195,7 +234,12 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
              : step === 'prep'
                ? `document.querySelector('[data-testid=text-demo-prep-count]')?.textContent.includes('0 of 3')`
                : step === 'follow'
-                 ? `document.querySelector('[data-testid=text-demo-stat-points]')?.textContent === '0'`
+                  ? `document.querySelector('[data-testid=text-demo-follow-quarter]')?.textContent === 'Quarter 1'
+                    && document.querySelector('[data-testid=text-demo-follow-teamScore]')?.textContent === '17'
+                    && document.querySelector('[data-testid=text-demo-follow-opponentScore]')?.textContent === '10'
+                    && document.querySelector('[data-testid=text-demo-follow-stat-touchdown]')?.textContent === '2'
+                    && document.querySelector('[data-testid=text-demo-follow-stat-pass-reception]')?.textContent === '5'
+                    && document.querySelector('[data-testid=text-demo-follow-summary]')?.textContent === '25 plays · 17 pts'`
                  : `document.querySelector('[data-testid=card-demo-hype-preview]')?.getAttribute('data-side') === 'front' && document.querySelector('[data-testid=input-demo-hype-athlete]')?.value === 'Player 24'`, page.sessionId);
            assert.equal(reset, true, `${step} changes should reset when reopened`);
            await connection.evaluate(`document.querySelector('.pixl-demo-close').click()`, page.sessionId);

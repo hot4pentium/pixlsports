@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'wouter';
 import { ArrowUpRight, CalendarDays, ChartNoAxesCombined, Check, Clock3, Images, MapPin, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
+import './game-on-inline-stat-tracker.css';
 import samplePlayerPhoto from '@/assets/hypecard-player-photo-640.webp';
 import sampleFootballMoment from '@/assets/landing-youth-football-hero.jpg';
 import './landing-tool-demo.css';
@@ -102,37 +103,168 @@ function PrepDemo() {
   </div>;
 }
 
-const sports = {
-  Basketball: ['Points', 'Assists', 'Rebounds', 'Steals'],
-  Football: ['Touchdowns', 'Yards', 'Tackles', 'Catches'],
-  Soccer: ['Goals', 'Assists', 'Saves', 'Shots'],
-  Baseball: ['Hits', 'Runs', 'RBIs', 'Strikeouts'],
-  Volleyball: ['Kills', 'Assists', 'Digs', 'Aces'],
-} as const;
-type Sport = keyof typeof sports;
+type FollowStatId = 'touchdown' | 'field-goal' | 'extra-point' | 'two-point-conversion' | 'pass-reception' | 'rush-yard' | 'interception' | 'tackle';
+type FollowAttribution = 'team' | 'athlete';
+type FollowAction = { statId: FollowStatId; attribution: FollowAttribution };
+type FollowDemoState = {
+  quarter: number;
+  teamScore: number;
+  opponentScore: number;
+  actions: FollowAction[];
+};
+type FollowDemoEvent =
+  | { type: 'record'; statId: FollowStatId; attribution: FollowAttribution }
+  | { type: 'adjust-score'; side: 'teamScore' | 'opponentScore'; by: number }
+  | { type: 'advance-quarter' }
+  | { type: 'undo' };
+
+const followStats: { id: FollowStatId; label: string; shortLabel: string; points: number }[] = [
+  { id: 'touchdown', label: 'Touchdown', shortLabel: 'TD', points: 6 },
+  { id: 'field-goal', label: 'Field goal', shortLabel: 'FG', points: 3 },
+  { id: 'extra-point', label: 'Extra point', shortLabel: 'XP', points: 1 },
+  { id: 'two-point-conversion', label: 'Two-point conversion', shortLabel: '2 PT', points: 2 },
+  { id: 'pass-reception', label: 'Pass/Rec', shortLabel: 'PASS/REC', points: 0 },
+  { id: 'rush-yard', label: 'Rush', shortLabel: 'RUSH', points: 0 },
+  { id: 'interception', label: 'Interception', shortLabel: 'INT', points: 0 },
+  { id: 'tackle', label: 'Tackle', shortLabel: 'TACKLE', points: 0 },
+];
+
+function repeatedFollowActions(statId: FollowStatId, attribution: FollowAttribution, count: number): FollowAction[] {
+  return Array.from({ length: count }, (): FollowAction => ({ statId, attribution }));
+}
+
+const initialFollowActions: FollowAction[] = [
+  { statId: 'touchdown', attribution: 'team' },
+  { statId: 'touchdown', attribution: 'team' },
+  { statId: 'field-goal', attribution: 'team' },
+  { statId: 'extra-point', attribution: 'team' },
+  { statId: 'extra-point', attribution: 'athlete' },
+  ...repeatedFollowActions('pass-reception', 'team', 4),
+  { statId: 'pass-reception', attribution: 'athlete' },
+  ...repeatedFollowActions('rush-yard', 'team', 4),
+  ...repeatedFollowActions('rush-yard', 'athlete', 2),
+  { statId: 'interception', attribution: 'team' },
+  ...repeatedFollowActions('tackle', 'team', 6),
+  ...repeatedFollowActions('tackle', 'athlete', 2),
+];
+
+const initialFollowDemoState: FollowDemoState = {
+  quarter: 1,
+  teamScore: 17,
+  opponentScore: 10,
+  actions: initialFollowActions,
+};
+
+function followDemoReducer(state: FollowDemoState, event: FollowDemoEvent): FollowDemoState {
+  if (event.type === 'record') {
+    const points = followStats.find(stat => stat.id === event.statId)?.points ?? 0;
+    return {
+      ...state,
+      teamScore: state.teamScore + (event.attribution === 'team' ? points : 0),
+      actions: [...state.actions, { statId: event.statId, attribution: event.attribution }],
+    };
+  }
+  if (event.type === 'adjust-score') {
+    return { ...state, [event.side]: Math.max(0, state[event.side] + event.by) };
+  }
+  if (event.type === 'advance-quarter') {
+    return { ...state, quarter: Math.min(4, state.quarter + 1) };
+  }
+  const lastAction = state.actions[state.actions.length - 1];
+  if (!lastAction) return state;
+  const points = followStats.find(stat => stat.id === lastAction.statId)?.points ?? 0;
+  return {
+    ...state,
+    teamScore: Math.max(0, state.teamScore - (lastAction.attribution === 'team' ? points : 0)),
+    actions: state.actions.slice(0, -1),
+  };
+}
+
 function FollowDemo() {
-  const [athlete, setAthlete] = useState('Maya');
-  const [sport, setSport] = useState<Sport>('Basketball');
-  const [opponent, setOpponent] = useState('Tigers');
-  const [stats, setStats] = useState<Record<string, number>>({});
-  const labels: readonly string[] = sports[sport];
-  const change = (label: string, by: number) => setStats(current => ({ ...current, [label]: Math.max(0, (current[label] || 0) + by) }));
-  return <div className="pixl-demo-content">
-    <div className="pixl-demo-editor">
-      <span className="pixl-demo-section-label">03 / Athlete-first tracker</span>
-      <label className="pixl-demo-field"><span>Who are we cheering for?</span><input className="pixl-demo-input" maxLength={40} value={athlete} onChange={e => setAthlete(e.target.value)} placeholder="Athlete's first name" data-testid="input-demo-stat-athlete" /></label>
-      <div className="pixl-demo-field-row">
-        <label className="pixl-demo-field"><span>Sport</span><select className="pixl-demo-select" value={sport} onChange={e => { setSport(e.target.value as Sport); setStats({}); }} data-testid="select-demo-sport">{Object.keys(sports).map(name => <option key={name}>{name}</option>)}</select></label>
-        <label className="pixl-demo-field"><span>Opponent</span><input className="pixl-demo-input" maxLength={50} value={opponent} onChange={e => setOpponent(e.target.value)} data-testid="input-demo-stat-opponent" /></label>
-      </div>
-      <div aria-label="Athlete stats">{labels.map(label => <div className="pixl-demo-stat-row" key={label}><span>{label}</span><div className="pixl-demo-stepper"><button type="button" onClick={() => change(label, -1)} disabled={!stats[label]} aria-label={`Remove one ${label.toLowerCase()} for ${athlete || 'athlete'}`} data-testid={`button-demo-decrease-${label.toLowerCase()}`}><Minus size={16} aria-hidden="true" /></button><output aria-label={`${label}: ${stats[label] || 0}`} data-testid={`text-demo-stat-${label.toLowerCase()}`}>{stats[label] || 0}</output><button type="button" onClick={() => change(label, 1)} aria-label={`Add one ${label.toLowerCase()} for ${athlete || 'athlete'}`} data-testid={`button-demo-increase-${label.toLowerCase()}`}><Plus size={16} aria-hidden="true" /></button></div></div>)}</div>
-      <p className="pixl-demo-muted">Try a few plays. This practice tracker is just for this preview.</p>
-    </div>
-    <div className="pixl-demo-preview-area">
-      <span className="pixl-demo-preview-label">The story so far / live preview</span>
-      <div className="pixl-demo-stat-hero"><span className="pixl-demo-eyebrow">PIXL / {sport} vs {opponent.trim() || 'opponent'}</span><strong>{athlete.trim() || 'Your athlete'}</strong><p>Every contribution counts.</p></div>
-      <div className="pixl-demo-stat-grid">{labels.map(label => <div className="pixl-demo-stat-tile" key={label}><strong>{stats[label] || 0}</strong><span>{label}</span></div>)}</div>
-      <p className="pixl-demo-muted">Keep the focus on their effort, not just the final score.</p>
+  const [game, dispatch] = useReducer(followDemoReducer, initialFollowDemoState);
+  const counts = Object.fromEntries(followStats.map(stat => [stat.id, { team: 0, athlete: 0 }])) as Record<FollowStatId, Record<FollowAttribution, number>>;
+  for (const action of game.actions) counts[action.statId][action.attribution] += 1;
+
+  return <div className="pixl-demo-content pixl-demo-content--follow">
+    <div className="pixl-demo-follow-tracker">
+      <span className="pixl-demo-section-label">03 / Football Stat Tracker</span>
+      <section className="game-on-quick-tracker" aria-label="Fictional football Stat Tracker demo" data-testid="demo-follow-tracker">
+        <div className="game-on-quick-tracker__heading">
+          <div>
+            <p className="game-on-quick-tracker__eyebrow">Game day · Stat Tracker</p>
+            <h3 className="game-on-quick-tracker__title">vs Tigers</h3>
+          </div>
+        </div>
+
+        <div className="game-on-quick-tracker__scoreboard" data-testid="demo-follow-scoreboard" aria-live="polite">
+          <div className="game-on-quick-tracker__scoreboard-top">
+            <span className="game-on-quick-tracker__live"><span aria-hidden="true" /> Live</span>
+            <span className="game-on-quick-tracker__period" data-testid="text-demo-follow-quarter">Quarter {game.quarter}</span>
+          </div>
+          <div className="game-on-quick-tracker__score-grid">
+            {([
+              ['teamScore', 'PIXL ALL-STARS', game.teamScore],
+              ['opponentScore', 'TIGERS', game.opponentScore],
+            ] as const).map(([side, label, score]) => (
+              <div className="game-on-quick-tracker__score-card" key={side}>
+                <span className="game-on-quick-tracker__score-label">{label}</span>
+                <strong className="game-on-quick-tracker__score-value" data-testid={`text-demo-follow-${side}`}>{score}</strong>
+                <div className="game-on-quick-tracker__score-actions">
+                  <button type="button" aria-label={`Subtract one from ${label}`} onClick={() => dispatch({ type: 'adjust-score', side, by: -1 })} data-testid={`button-demo-follow-${side}-decrease`}><Minus size={16} aria-hidden="true" /></button>
+                  <button type="button" aria-label={`Add one to ${label}`} onClick={() => dispatch({ type: 'adjust-score', side, by: 1 })} data-testid={`button-demo-follow-${side}-increase`}><Plus size={16} aria-hidden="true" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="game-on-quick-tracker__period-row">
+            <span>Now tracking quarter {game.quarter}</span>
+            <button type="button" disabled={game.quarter >= 4} onClick={() => dispatch({ type: 'advance-quarter' })} aria-label={`Advance to quarter ${game.quarter + 1}`} data-testid="button-demo-follow-advance-quarter">Next quarter</button>
+          </div>
+        </div>
+
+        <div className="game-on-quick-tracker__stats-heading">
+          <div>
+            <p className="game-on-quick-tracker__eyebrow">Tap a stat</p>
+            <p className="game-on-quick-tracker__stats-summary" role="status" data-testid="text-demo-follow-summary">{game.actions.length} plays · {game.teamScore} pts</p>
+          </div>
+        </div>
+        <div className="game-on-quick-tracker__stat-grid" role="group" aria-label="Football stats">
+          {followStats.map(stat => (
+            <div className="game-on-quick-tracker__stat-card" key={stat.id} data-testid={`card-demo-follow-stat-${stat.id}`}>
+              <button
+                type="button"
+                aria-label={`Record ${stat.label} for PIXL All-Stars`}
+                onClick={() => dispatch({ type: 'record', statId: stat.id, attribution: 'team' })}
+                data-testid={`button-demo-follow-stat-${stat.id}-team`}
+              >
+                <span className="game-on-quick-tracker__stat-label">{stat.shortLabel}</span>
+                <strong data-testid={`text-demo-follow-stat-${stat.id}`}>{counts[stat.id].team + counts[stat.id].athlete}</strong>
+                <span className="game-on-quick-tracker__stat-counts" data-testid={`text-demo-follow-attribution-${stat.id}`}>Team {counts[stat.id].team} · Athlete {counts[stat.id].athlete}</span>
+              </button>
+              <button
+                type="button"
+                className="game-on-quick-tracker__athlete-tap"
+                aria-label={`Record ${stat.label} for Maya Chen`}
+                onClick={() => dispatch({ type: 'record', statId: stat.id, attribution: 'athlete' })}
+                data-testid={`button-demo-follow-stat-${stat.id}-athlete`}
+              >
+                MC
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="game-on-quick-tracker__undo"
+          disabled={game.actions.length === 0}
+          onClick={() => dispatch({ type: 'undo' })}
+          aria-label="Undo last stat"
+          data-testid="button-demo-follow-undo"
+        >
+          <RotateCcw size={15} aria-hidden="true" /> Undo last stat
+        </button>
+        <p className="game-on-quick-tracker__save-note" role="status">Fictional game · Changes stay in this preview only.</p>
+      </section>
     </div>
   </div>;
 }

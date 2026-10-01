@@ -34,6 +34,8 @@
 .pixl-demo-title { font-family: "Barlow Condensed", Impact, sans-serif; text-transform: uppercase; font-size: clamp(36px, 5vw, 56px); letter-spacing: -.025em; line-height: .9; font-weight: 800; }
 .pixl-demo-description { color: #c7d9dc; font-size: 13px; line-height: 1.55; margin-top: 11px; max-width: 610px; }
 .pixl-demo-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .93fr); min-height: 405px; }
+.pixl-demo-content--follow { display: block; min-height: 0; }
+.pixl-demo-follow-tracker { width: 100%; max-width: 760px; margin-inline: auto; padding: 27px 34px 30px; }
 .pixl-demo-editor { padding: 30px 34px 34px; min-width: 0; }
 .pixl-demo-preview-area { min-width: 0; padding: 30px 34px 34px; background: #e7efed; border-left: 1px solid #d4e2df; display: flex; flex-direction: column; justify-content: center; }
 .pixl-demo-section-label { color: #527789; font-size: 10px; text-transform: uppercase; letter-spacing: .16em; font-weight: 800; display: block; margin-bottom: 18px; }
@@ -135,6 +137,7 @@
   .pixl-demo-dialog { max-height: calc(100dvh - 20px); border-radius: 15px; }
   .pixl-demo-head { padding: 26px 60px 22px 23px; }
   .pixl-demo-content { grid-template-columns: 1fr; }
+  .pixl-demo-follow-tracker { padding: 23px; }
   .pixl-demo-editor, .pixl-demo-preview-area { padding: 23px; }
   .pixl-demo-preview-area { border-left: 0; border-top: 1px solid #d4e2df; }
   .pixl-demo-footer { padding: 18px 23px; flex-direction: column; align-items: stretch; }
@@ -143,6 +146,7 @@
 @media (max-width: 390px) {
   .pixl-demo-field-row { grid-template-columns: 1fr; gap: 0; }
   .pixl-demo-editor, .pixl-demo-preview-area { padding: 19px; }
+  .pixl-demo-follow-tracker { padding: 19px; }
   .pixl-demo-hype-controls button { flex-direction: column; gap: 2px; font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
