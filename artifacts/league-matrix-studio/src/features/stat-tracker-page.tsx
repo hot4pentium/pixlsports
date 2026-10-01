@@ -698,8 +698,8 @@ function latestYardEventIds(game: GameSession) {
 
 const footballPassReceptionStat: StatDefinition = {
   id: 'pass-reception',
-  label: 'Pass + reception',
-  shortLabel: 'PASS / REC',
+  label: 'Pass/Rec',
+  shortLabel: 'PASS/REC',
   points: 0,
 };
 
@@ -949,7 +949,9 @@ export function LiveTrackerGame({
         )}
         <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
           {(currentGame.sport === 'football'
-            ? displayStats.filter((item) => item.id !== 'reception').map((item) => item.id === 'pass-yard' ? footballPassReceptionStat : item)
+            ? displayStats.filter((item) => item.id !== 'reception').map((item) => item.id === 'pass-yard'
+              ? footballPassReceptionStat
+              : item.id === 'rush-yard' ? { ...item, label: 'Rush', shortLabel: 'RUSH' } : item)
             : displayStats
           ).map((item) => {
             const isCombinedPassReception = currentGame.sport === 'football' && item.id === 'pass-reception';
@@ -959,10 +961,12 @@ export function LiveTrackerGame({
             const yardTotal = yardMetricId ? currentGame.yardStats?.[yardMetricId] ?? 0 : 0;
             const receivingYardTotal = isCombinedPassReception ? currentGame.yardStats?.['receiving-yard'] ?? 0 : 0;
             const yardSummary = isCombinedPassReception && yardTotal !== receivingYardTotal
-              ? `Pass ${yardTotal} · Rec ${receivingYardTotal} yds`
+              ? `Pass ${yardTotal} · Rec ${receivingYardTotal}`
               : isCombinedPassReception
-                ? `${yardTotal} yds each`
-                : `${yardTotal} yds`;
+                ? `${yardTotal} each`
+                : currentGame.sport === 'football' && item.id === 'rush-yard'
+                  ? `${yardTotal}`
+                  : `${yardTotal} yds`;
             const statCount = isCombinedPassReception
               ? Math.max(currentGame.stats['pass-yard'] ?? 0, currentGame.stats.reception ?? 0)
               : currentGame.sport === 'baseball' && item.id === 'hit'

@@ -636,6 +636,13 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     );
     assert.equal(
       await connection.evaluate<boolean>(
+        '(() => { const pass = document.querySelector("[data-testid=\\"live-stat-pass-reception\\"]"); const rush = document.querySelector("[data-testid=\\"live-stat-rush-yard\\"]"); const interception = document.querySelector("[data-testid=\\"live-stat-interception\\"]"); return pass?.textContent.includes("PASS/REC") && rush?.textContent.includes("RUSH") && !/yds/i.test(pass?.textContent || "") && !/yds/i.test(rush?.textContent || "") && interception?.textContent.includes("INT") && !document.querySelector("[data-testid=\\"live-stat-reception\\"]") && !document.querySelector("[data-testid=\\"live-stat-pass-yard\\"]"); })()',
+        page.sessionId,
+      ),
+      true,
+    );
+    assert.equal(
+      await connection.evaluate<boolean>(
         'document.documentElement.scrollWidth <= document.documentElement.clientWidth && document.querySelector("[data-testid=\\"live-tracker-stat-controls\\"]").scrollWidth <= document.querySelector("[data-testid=\\"live-tracker-stat-controls\\"]").clientWidth',
         page.sessionId,
       ),
@@ -674,6 +681,12 @@ test('stat tracker protects scheduled, live football, and completed-game states 
       true,
     );
 
+    await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-interception\\"]")?.click(); document.querySelector("[data-testid=\\"athlete-stat-target-interception\\"]")?.click()', page.sessionId);
+    await waitFor(connection, page.sessionId, 'JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null")?.stats?.interception === 2', Boolean);
+    assert.equal(
+      await connection.evaluate<boolean>('document.querySelector("[data-testid=\\"live-stat-card-interception\\"]")?.textContent.includes("Team 1") && document.querySelector("[data-testid=\\"live-stat-card-interception\\"]")?.dataset.athleteAssigned === "true"', page.sessionId),
+      true,
+    );
     await connection.evaluate('document.querySelector("[data-testid=\\"live-stat-touchdown\\"]")?.click(); document.querySelector("[data-testid=\\"live-stat-tackle\\"]")?.click()', page.sessionId);
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"live-stat-card-touchdown\\"]")?.textContent.includes("1") && document.querySelector("[data-testid=\\"live-stat-card-tackle\\"]")?.textContent.includes("1")', Boolean);
     assert.equal(
@@ -709,7 +722,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '["pass-reception", "rush-yard", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
+        '["pass-reception", "rush-yard", "interception", "touchdown", "tackle"].every((id) => { const element = document.querySelector(`[data-testid="live-stat-${id}"]`); const rect = element?.getBoundingClientRect(); return Boolean(rect && rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.right <= window.innerWidth); })',
         page.sessionId,
       ),
       true,
@@ -726,7 +739,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     );
     assert.equal(
       await connection.evaluate<boolean>(
-        '(() => { const game = JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null"); return game?.stats?.["pass-yard"] === 3 && game?.stats?.reception === 3 && game?.stats?.["rush-yard"] === 1 && game.events.every((event) => event.yards == null) && Object.keys(game.yardStats || {}).length === 0; })()',
+        '(() => { const game = JSON.parse(localStorage.getItem("stat-tracker-browser-active-game") || "null"); return game?.stats?.["pass-yard"] === 3 && game?.stats?.reception === 3 && game?.stats?.["rush-yard"] === 1 && game?.stats?.interception === 2 && game.events.every((event) => event.yards == null) && Object.keys(game.yardStats || {}).length === 0; })()',
         page.sessionId,
       ),
       true,
@@ -803,7 +816,7 @@ test('stat tracker protects scheduled, live football, and completed-game states 
     await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid^=\\"history-card-\\"]") !== null', Boolean);
     assert.equal(
       await connection.evaluate<string>('document.querySelector("[data-testid^=\\"history-card-\\"]")?.textContent || ""', page.sessionId),
-      'vs Northside 9 plays',
+      'vs Northside 11 plays',
     );
     assert.equal(
       await connection.evaluate<boolean>(
