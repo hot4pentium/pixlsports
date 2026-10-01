@@ -43,9 +43,13 @@ import type { ScheduleEventStatus } from './schedule-draft';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import {
   SupporterDashboardChecklist,
+  SupporterDashboardChecklistCompletionDialog,
   type SupporterDashboardChecklistProps,
 } from './supporter-dashboard-checklist';
-import type { DashboardChecklistItemId } from './supporter-dashboard-checklist-state';
+import {
+  isDashboardChecklistComplete,
+  type DashboardChecklistItemId,
+} from './supporter-dashboard-checklist-state';
 import { GameOnCardPanel } from './game-on-card';
 import { GameOnInlineEditor } from './game-on-inline-editor';
 import {
@@ -399,6 +403,7 @@ export function SupporterDashboardView({
   } | null>(null);
   const [cardLayoutIds, setCardLayoutIds] = useState<Record<string, string>>({});
   const [justCompleted, setJustCompleted] = useState<{ game: GameSession; saveStatus: 'cloud-saved' | 'local-saved' } | null>(null);
+  const [dashboardChecklistCompletionOpen, setDashboardChecklistCompletionOpen] = useState(false);
   const [eventDayDismissalVersion, setEventDayDismissalVersion] = useState(0);
   const eventDayDialogRef = useRef<HTMLDivElement>(null);
   const eventDayReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -622,6 +627,13 @@ export function SupporterDashboardView({
     }
     setCardSelection(null);
   };
+  const saveDashboardChecklistProgress = async (checkedItemIds: DashboardChecklistItemId[]) => {
+    if (!onSaveDashboardChecklistProgress) return;
+    await onSaveDashboardChecklistProgress(checkedItemIds);
+    if (isDashboardChecklistComplete(checkedItemIds)) {
+      setDashboardChecklistCompletionOpen(true);
+    }
+  };
   const dashboardChecklistProps: SupporterDashboardChecklistProps | undefined = showDashboardChecklist
     && userId
     && onSaveDashboardChecklistProgress
@@ -636,7 +648,7 @@ export function SupporterDashboardView({
         installDeviceClass: isDesktopDashboard ? 'desktop' : 'mobile',
         onInstall: () => handleInstallPrompt(isDesktopDashboard ? 'desktop' : 'mobile'),
         onCreateEventCard: openCardWorkspace,
-        onSaveProgress: onSaveDashboardChecklistProgress,
+        onSaveProgress: saveDashboardChecklistProgress,
         onDismiss: onDismissDashboardChecklist,
       }
     : undefined;
@@ -1439,6 +1451,10 @@ export function SupporterDashboardView({
 
     </div>
       </div>
+      <SupporterDashboardChecklistCompletionDialog
+        open={dashboardChecklistCompletionOpen}
+        onOpenChange={setDashboardChecklistCompletionOpen}
+      />
       <TrackerCompletionDialog
         game={justCompleted?.game ?? null}
         open={Boolean(justCompleted)}

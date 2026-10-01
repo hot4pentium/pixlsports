@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
-import { ArrowUpRight, Check, X } from 'lucide-react';
+import { ArrowUpRight, Check, Trophy, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { HypeCardReplyInboxTrigger } from './hype-card-reply-inbox';
 import {
   isDashboardChecklistComplete,
@@ -12,6 +21,65 @@ import type { ScheduleInstallAction } from './schedule-install';
 import './supporter-dashboard-checklist.css';
 
 type InstallDeviceClass = 'mobile' | 'desktop';
+
+export function SupporterDashboardChecklistCompletionDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="tracker-completion-dialog max-h-[85vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto border-primary bg-card p-0 text-card-foreground clip-angled-sm sm:rounded-none"
+        data-testid="dialog-dashboard-checklist-complete"
+        aria-modal="true"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const heading = [
+            document.getElementById('game-on-summary-heading-mobile'),
+            document.getElementById('game-on-summary-heading-desktop'),
+          ].find((element) => element instanceof HTMLElement && element.getClientRects().length > 0);
+          heading?.focus();
+        }}
+      >
+        <div className="tracker-completion-celebration" aria-hidden="true">
+          {Array.from({ length: 14 }, (_, index) => (
+            <span
+              key={index}
+              className="tracker-completion-confetti"
+              style={{ left: `${8 + index * 6.4}%`, animationDelay: `${(index % 5) * 90}ms` }}
+            />
+          ))}
+          <div className="tracker-completion-trophy">
+            <Trophy size={32} strokeWidth={2.2} />
+          </div>
+        </div>
+        <div className="px-6 pb-7 pt-6 sm:px-8">
+          <DialogHeader className="text-left">
+            <p className="text-xs font-bold uppercase tracking-[.22em] text-primary-ink">Dashboard playbook complete</p>
+            <DialogTitle className="font-display text-4xl uppercase">You’re all set!</DialogTitle>
+            <DialogDescription>
+              Your dashboard is ready. Keep up with your athlete’s season, game-day plans, and family updates all in one place.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6">
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="min-h-11 w-full bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+                data-testid="button-dashboard-checklist-completion-done"
+              >
+                Explore your dashboard
+              </button>
+            </DialogClose>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export interface SupporterDashboardChecklistProps {
   userId: string;

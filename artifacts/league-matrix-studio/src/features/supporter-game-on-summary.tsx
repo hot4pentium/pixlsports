@@ -46,7 +46,7 @@ export function SupporterGameOnSummary({
         aria-label={headerAction ? 'Dashboard tools and athlete profile' : 'Athlete profile'}
         data-testid={isMobile ? 'mobile-athlete-summary' : 'athlete-summary'}
       >
-        <h1 id={`game-on-summary-heading-${variant}`} className="sr-only">Athlete overview</h1>
+        <h1 id={`game-on-summary-heading-${variant}`} className="sr-only" tabIndex={-1}>Athlete overview</h1>
         {headerAction && <div className="supporter-game-on-summary__header-action">{headerAction}</div>}
         <Link
           href={profileHref}

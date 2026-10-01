@@ -623,6 +623,14 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       true,
       'a failed save should keep the item unchecked and leave the checklist retryable',
     );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'a failed checklist save must not show the completion celebration',
+    );
 
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
@@ -686,6 +694,42 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       page.sessionId,
       'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null',
       Boolean,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") !== null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]")?.getAttribute("aria-modal")',
+        page.sessionId,
+      ),
+      'true',
+      'completing the final checklist item should open the accessible celebration dialog',
+    );
+    assert.match(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]")?.textContent ?? ""',
+        page.sessionId,
+      ),
+      /You’re all set!/,
+    );
+    await connection.evaluate(
+      'document.querySelector("[data-testid=\\"button-dashboard-checklist-completion-done\\"]")?.click()',
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") === null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate('document.activeElement?.id', page.sessionId),
+      'game-on-summary-heading-mobile',
+      'closing the celebration should return focus to the dashboard heading after the checklist disappears',
     );
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=existing`);
