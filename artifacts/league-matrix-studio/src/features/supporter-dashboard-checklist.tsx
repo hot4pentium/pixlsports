@@ -58,20 +58,24 @@ export function SupporterDashboardChecklistCompletionDialog({
         </div>
         <div className="px-6 pb-7 pt-6 sm:px-8">
           <DialogHeader className="text-left">
-            <p className="text-xs font-bold uppercase tracking-[.22em] text-primary-ink">Dashboard playbook complete</p>
-            <DialogTitle className="font-display text-4xl uppercase">You’re all set!</DialogTitle>
-            <DialogDescription>
-              Your dashboard is ready. Keep up with your athlete’s season, game-day plans, and family updates all in one place.
+            <DialogTitle
+              className="font-display text-3xl leading-tight sm:text-4xl"
+              data-testid="dashboard-checklist-completion-title"
+            >
+              Warm-up complete. You’re game-ready! 🏆
+            </DialogTitle>
+            <DialogDescription data-testid="dashboard-checklist-completion-description">
+              Your setup is done. Let’s make this season one to remember.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6">
             <DialogClose asChild>
               <button
                 type="button"
-                className="min-h-11 w-full bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground"
+                className="min-h-11 w-full bg-primary px-4 text-sm font-bold text-primary-foreground"
                 data-testid="button-dashboard-checklist-completion-done"
               >
-                Explore your dashboard
+                Let’s Play
               </button>
             </DialogClose>
           </DialogFooter>

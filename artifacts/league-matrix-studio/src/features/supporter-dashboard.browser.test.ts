@@ -589,6 +589,14 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       true,
       'a dismissed checklist should not return during the same account session',
     );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'dismissing the checklist must not show the completion celebration',
+    );
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=install`);
     await waitForChecklist();
@@ -606,18 +614,18 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=failure`);
     await waitForChecklist();
     await connection.evaluate(
-      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.click()',
+      'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-install-app\\"]")?.click()',
       page.sessionId,
     );
     await waitFor(
       connection,
       page.sessionId,
-      'Boolean(document.querySelector("[data-testid=\\"dashboard-checklist-error\\"]"))',
+      'document.querySelector("[data-testid=\\"dashboard-checklist-error\\"]")?.textContent?.trim() === "Your checklist progress could not be saved. Try again."',
       Boolean,
     );
     assert.equal(
       await connection.evaluate(
-        'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-profile\\"]")?.checked === false && document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
+        'document.querySelector("[data-testid=\\"dashboard-checklist-checkbox-install-app\\"]")?.checked === false && document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") !== null',
         page.sessionId,
       ),
       true,
@@ -709,12 +717,76 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       'true',
       'completing the final checklist item should open the accessible celebration dialog',
     );
-    assert.match(
+    assert.equal(
       await connection.evaluate(
-        'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]")?.textContent ?? ""',
+        'document.querySelector("[data-testid=\\"dashboard-checklist-completion-title\\"]")?.textContent?.trim()',
         page.sessionId,
       ),
-      /You’re all set!/,
+      'Warm-up complete. You’re game-ready! 🏆',
+      'the celebration should use the supplied heading exactly',
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dashboard-checklist-completion-description\\"]")?.textContent?.trim()',
+        page.sessionId,
+      ),
+      'Your setup is done. Let’s make this season one to remember.',
+      'the celebration should use the supplied body exactly',
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"button-dashboard-checklist-completion-done\\"]")?.textContent?.trim()',
+        page.sessionId,
+      ),
+      'Let’s Play',
+      'the primary action should use the supplied label',
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      `(() => {
+        const dialog = document.querySelector('[data-testid="dialog-dashboard-checklist-complete"]');
+        if (!(dialog instanceof HTMLElement)) return false;
+        const rect = dialog.getBoundingClientRect();
+        return rect.width > 0
+          && rect.left >= 0
+          && rect.right <= window.innerWidth
+          && rect.top >= 0
+          && rect.bottom <= window.innerHeight;
+      })()`,
+      Boolean,
+    );
+    const completionDialogBounds = await connection.evaluate<{
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+      width: number;
+      height: number;
+      viewportWidth: number;
+      viewportHeight: number;
+    }>(`(() => {
+        const dialog = document.querySelector('[data-testid="dialog-dashboard-checklist-complete"]');
+        if (!(dialog instanceof HTMLElement)) {
+          return {
+            left: -1, right: -1, top: -1, bottom: -1, width: 0, height: 0,
+            viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+          };
+        }
+        const rect = dialog.getBoundingClientRect();
+        return {
+          left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+          width: rect.width, height: rect.height,
+          viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+        };
+      })()`, page.sessionId);
+    assert.ok(
+      completionDialogBounds.width > 0
+        && completionDialogBounds.left >= 0
+        && completionDialogBounds.right <= completionDialogBounds.viewportWidth
+        && completionDialogBounds.top >= 0
+        && completionDialogBounds.bottom <= completionDialogBounds.viewportHeight,
+      `the celebration dialog should fit within a phone-sized viewport: ${JSON.stringify(completionDialogBounds)}`,
     );
     await connection.evaluate(
       'document.querySelector("[data-testid=\\"button-dashboard-checklist-completion-done\\"]")?.click()',
@@ -730,6 +802,39 @@ test('supporter dashboard checklist is self-paced, persistent, and responsive', 
       await connection.evaluate('document.activeElement?.id', page.sessionId),
       'game-on-summary-heading-mobile',
       'closing the celebration should return focus to the dashboard heading after the checklist disappears',
+    );
+    await reloadPage(connection, page);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"section-athlete-fan-card\\"]") !== null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null && document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'restoring a saved completed checklist after reload must not replay the celebration',
+    );
+
+    await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=remote`);
+    await waitForChecklist();
+    await connection.evaluate('window.__applyRemoteDashboardChecklistCompletion?.()', page.sessionId);
+    await waitFor(
+      connection,
+      page.sessionId,
+      'document.querySelector("[data-testid=\\"supporter-dashboard-checklist\\"]") === null',
+      Boolean,
+    );
+    assert.equal(
+      await connection.evaluate(
+        'document.querySelector("[data-testid=\\"dialog-dashboard-checklist-complete\\"]") === null',
+        page.sessionId,
+      ),
+      true,
+      'a remote completion update must not replay the celebration',
     );
 
     await navigatePage(connection, page, `${fixtureUrl}?dashboard-checklist=existing`);
@@ -4578,8 +4683,19 @@ export function mount() {
     return;
   }
   const dashboardChecklistScenario = new URLSearchParams(window.location.search).get('dashboard-checklist');
-  let dashboardChecklistItemIds = [];
-  let dashboardChecklistDismissed = false;
+  const dashboardChecklistAllItemIds = ['profile', 'shoutouts', 'hype-card', 'event-card', 'install-app'];
+  const dashboardChecklistStorageKey = dashboardChecklistScenario === 'complete'
+    ? 'supporter-dashboard-checklist-complete'
+    : null;
+  const savedDashboardChecklist = dashboardChecklistStorageKey
+    ? JSON.parse(window.localStorage.getItem(dashboardChecklistStorageKey) || 'null')
+    : null;
+  let dashboardChecklistItemIds = Array.isArray(savedDashboardChecklist?.checkedItemIds)
+    ? savedDashboardChecklist.checkedItemIds
+    : dashboardChecklistScenario === 'failure'
+      ? dashboardChecklistAllItemIds.slice(0, 4)
+      : [];
+  let dashboardChecklistDismissed = Boolean(savedDashboardChecklist?.dismissed);
   window.__dashboardChecklistSaves = [];
   window.__dashboardChecklistDismissals = [];
   let dashboardUserId = dashboardChecklistScenario
@@ -4624,6 +4740,12 @@ export function mount() {
   const saveDashboardChecklistProgress = async (checkedItemIds) => {
     if (dashboardChecklistScenario === 'failure') throw new Error('Checklist progress could not be saved');
     dashboardChecklistItemIds = [...checkedItemIds];
+    if (dashboardChecklistStorageKey) {
+      window.localStorage.setItem(dashboardChecklistStorageKey, JSON.stringify({
+        checkedItemIds: dashboardChecklistItemIds,
+        dismissed: dashboardChecklistDismissed,
+      }));
+    }
     window.__dashboardChecklistSaves = [...window.__dashboardChecklistSaves, [...checkedItemIds]];
     renderDashboard();
   };
@@ -4631,6 +4753,12 @@ export function mount() {
     if (dashboardChecklistScenario === 'failure') throw new Error('Checklist dismissal could not be saved');
     dashboardChecklistItemIds = [...checkedItemIds];
     dashboardChecklistDismissed = true;
+    if (dashboardChecklistStorageKey) {
+      window.localStorage.setItem(dashboardChecklistStorageKey, JSON.stringify({
+        checkedItemIds: dashboardChecklistItemIds,
+        dismissed: dashboardChecklistDismissed,
+      }));
+    }
     window.__dashboardChecklistDismissals = [...window.__dashboardChecklistDismissals, [...checkedItemIds]];
     renderDashboard();
   };
@@ -4672,6 +4800,10 @@ export function mount() {
   );
   window.__setSupporterDashboardEvents = (nextEvents) => {
     dashboardEvents = nextEvents;
+    renderDashboard();
+  };
+  window.__applyRemoteDashboardChecklistCompletion = () => {
+    dashboardChecklistItemIds = [...dashboardChecklistAllItemIds];
     renderDashboard();
   };
   window.__getSupporterDashboardEvents = () => dashboardEvents;
