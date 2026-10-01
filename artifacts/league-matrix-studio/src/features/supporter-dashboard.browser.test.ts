@@ -1911,6 +1911,66 @@ test('supporter dashboard keeps Game On Card prominent and the mobile menu acces
       return grid?.querySelectorAll('.game-on-collection__card').length === 4
         && ['live', 'complete', 'draft', 'published'].every((status) => grid.querySelector('[data-status="' + status + '"]'));
     })()`, Boolean);
+    await connection.evaluate(`(() => {
+      const card = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:filter-test-published"]');
+      card?.querySelector('.game-on-collection__summary')?.click();
+    })()`, page.sessionId);
+    await waitFor(connection, page.sessionId,
+      `Boolean(document.querySelector('.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:filter-test-published"]'))`,
+      Boolean);
+    assert.equal(await connection.evaluate<boolean>(
+      `document.querySelector('.supporter-dashboard-desktop-shell [data-testid="card-game-on-share:filter-test-published"] .game-on-collection__actions')?.hidden === true`,
+      page.sessionId,
+    ), true, 'share actions should remain hidden on compact grid tiles');
+    await connection.evaluate(`(() => {
+      window.__eventCardShareCalls = [];
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async (payload) => window.__eventCardShareCalls.push(payload),
+      });
+    })()`, page.sessionId);
+    await click('[data-testid="button-share-game-on-card-share:filter-test-published"]', page.sessionId);
+    await waitFor(connection, page.sessionId, `window.__eventCardShareCalls?.length === 1
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card shared.'`, Boolean);
+    const sharedCardDetails = await connection.evaluate<{
+      sharedUrl: string;
+      expectedUrl: string;
+      selectedCardActionVisible: boolean;
+    }>(`(() => {
+      const dialog = document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"]');
+      const link = dialog?.querySelector('[data-testid="link-open-game-on-card-share:filter-test-published"]');
+      const cardAction = dialog?.querySelector('[data-testid="button-share-game-on-card-share:filter-test-published"]');
+      return {
+        sharedUrl: window.__eventCardShareCalls[0]?.url ?? '',
+        expectedUrl: link instanceof HTMLAnchorElement
+          ? new URL(link.getAttribute('href') || '', location.href).href
+          : '',
+        selectedCardActionVisible: Boolean(cardAction?.getClientRects().length),
+      };
+    })()`, page.sessionId);
+    assert.deepEqual(sharedCardDetails, {
+      sharedUrl: sharedCardDetails.expectedUrl,
+      expectedUrl: sharedCardDetails.expectedUrl,
+      selectedCardActionVisible: true,
+    }, 'Share should send the selected Event Card public link');
+    await connection.evaluate(`(() => {
+      window.__eventCardCopiedUrl = '';
+      Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (url) => { window.__eventCardCopiedUrl = url; } },
+      });
+    })()`, page.sessionId);
+    await click('[data-testid="button-share-game-on-card-share:filter-test-published"]', page.sessionId);
+    await waitFor(connection, page.sessionId, `Boolean(window.__eventCardCopiedUrl)
+      && document.querySelector('.supporter-dashboard-desktop-shell [data-testid="dialog-game-on-card-share:filter-test-published"] [role="status"][aria-live="polite"]')?.textContent === 'Event Card link copied.'`, Boolean);
+    const copiedCardUrl = await connection.evaluate<string>('window.__eventCardCopiedUrl', page.sessionId);
+    assert.equal(copiedCardUrl, sharedCardDetails.expectedUrl,
+      'browsers without Web Share should copy the same Event Card link');
+    await pressKey(connection, page.sessionId, 'Escape', 'Escape', 27);
+    await waitFor(connection, page.sessionId,
+      `!document.querySelector('.supporter-dashboard-desktop-shell [role="dialog"][data-testid="dialog-game-on-card-share:filter-test-published"]')`,
+      Boolean);
     assert.deepEqual(await connection.evaluate<{
       count: string;
       filterRow: boolean;

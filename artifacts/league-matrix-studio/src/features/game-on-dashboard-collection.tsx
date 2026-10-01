@@ -2,11 +2,11 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { Link } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, Copy, ExternalLink, MapPin, Plus, Search, Swords, Trash2, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, Copy, ExternalLink, MapPin, Plus, Search, Share2, Swords, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
-import { copyGameOnCardPublicLink, gameOnCardPublicHref } from './game-on-card-links';
+import { copyGameOnCardPublicLink, gameOnCardPublicHref, shareGameOnCardPublicLink } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
@@ -179,6 +179,15 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
       ? 'Event Card link copied.'
       : 'Event Card link could not be copied. Open card to copy its address.');
   };
+  const shareEventCard = async () => {
+    if (!card.shareToken) return;
+    const result = await shareGameOnCardPublicLink(card.shareToken, `${card.athleteName}'s Event Card`);
+    if (result === 'shared') setShareLinkNotice('Event Card shared.');
+    else if (result === 'copied') setShareLinkNotice('Event Card link copied.');
+    else if (result === 'failed') {
+      setShareLinkNotice('Event Card link could not be shared or copied. Use Copy link or Open card.');
+    }
+  };
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
@@ -327,6 +336,16 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                 </button>
                 {card.shareToken && (
                   <>
+                    <button
+                      type="button"
+                      className="game-on-collection__action--details"
+                      onClick={() => void shareEventCard()}
+                      aria-label={`Share ${card.athleteName}'s Event Card`}
+                      data-testid={`button-share-game-on-card-${card.id}`}
+                    >
+                      <Share2 size={15} aria-hidden="true" />
+                      <span>Share</span>
+                    </button>
                     <button
                       type="button"
                       className="game-on-collection__action--details"
