@@ -5,7 +5,14 @@ const apiOrigin = new URLSearchParams(location.search).get('api') || '';
 const listeners = new Set<() => void>();
 const clerkListeners = new Set<(state: { user: ReturnType<typeof currentUser> }) => void>();
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
+let firstSaveProfileLoaded = false;
 let userLoaded = id !== 'first-save-supporter';
+
+declare global {
+  interface Window {
+    __lastLifecycleSignOutRedirectUrl?: string | null;
+  }
+}
 
 function currentUser(unsafeMetadata?: Record<string, unknown>) {
   if (!id) return null;
@@ -90,7 +97,14 @@ const clerk = {
     listener({ user: currentUser() });
     return () => { clerkListeners.delete(listener); };
   },
-  signOut: async () => switchAccount(''),
+  signOut: async ({ redirectUrl }: { redirectUrl?: string } = {}) => {
+    window.__lastLifecycleSignOutRedirectUrl = redirectUrl ?? null;
+    switchAccount('');
+    if (redirectUrl) {
+      window.history.pushState({}, '', redirectUrl);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  },
 };
 export function useClerk() { return clerk; }
 export function ClerkProvider({ children }: { children: ReactNode }) { return <>{children}</>; }

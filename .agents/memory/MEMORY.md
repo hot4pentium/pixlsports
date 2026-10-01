@@ -92,3 +92,4 @@
 - [Landing Celebrate card parity](landing-celebrate-card-parity.md) — the signed-out Celebrate demo must use the Hype Card's Front, Stats, Videos, Events sides, not a message back.
 - [Safari engine test boundary](webkit-safari-coverage.md) — Linux WebKitGTK validates Safari’s engine, not Apple’s Safari app; report the distinction clearly.
 - [Development Clerk email fixtures](clerk-dev-email-fixtures.md) — verify the test tenant before creating fixtures; Clerk rejected `.test` addresses but accepted unique `@example.com` addresses.
+- [Account lifecycle identity fixtures](account-lifecycle-browser-identity-fixtures.md) — browser Clerk stubs must model verified-email data and ownership lookup, not just a primary email.

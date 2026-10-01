@@ -90,6 +90,84 @@ test('signed-in account controls survive phone and desktop transitions against r
     const click = (session: string, id: string) => connection!.evaluate(
       `document.querySelector('[data-testid="${id}"]').click()`, session,
     );
+    const pressKey = async (session: string, key: string, code: string, windowsVirtualKeyCode: number) => {
+      await connection!.send('Input.dispatchKeyEvent', {
+        type: 'keyDown', key, code, windowsVirtualKeyCode,
+      }, session);
+      await connection!.send('Input.dispatchKeyEvent', {
+        type: 'keyUp', key, code, windowsVirtualKeyCode,
+      }, session);
+    };
+    const focusTarget = async (session: string, id: string) => {
+      const target = await connection!.evaluate<{
+        focused: boolean; visible: boolean; tag: string; tabIndex: number; label: string;
+      }>(
+        `(() => {
+          const element = document.querySelector('[data-testid="${id}"]');
+          if (!element) return { focused: false, visible: false, tag: '', tabIndex: -1, label: '' };
+          element.focus();
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            focused: document.activeElement === element,
+            visible: style.display !== 'none' && style.visibility !== 'hidden'
+              && rect.width > 0 && rect.height > 0
+              && rect.left >= 0 && rect.right <= innerWidth
+              && rect.top >= 0 && rect.bottom <= innerHeight,
+            tag: element.tagName,
+            tabIndex: element.tabIndex,
+            label: element.innerText || element.getAttribute('aria-label') || '',
+          };
+        })()`,
+        session,
+      );
+      assert.ok(target.focused, `${id} should receive keyboard focus`);
+      assert.ok(target.visible, `${id} should be visible in the current viewport`);
+      assert.equal(target.tag, 'BUTTON', `${id} should be a native button`);
+      assert.ok(target.tabIndex >= 0, `${id} should be in the keyboard tab order`);
+      assert.ok(target.label.trim(), `${id} should have an accessible name`);
+      return target;
+    };
+    const assertSignOutDestination = async (session: string, path: '/' | '/sign-in') => {
+      const destination = path === '/' ? 'lifecycle-public-home' : 'lifecycle-sign-in';
+      await waitVisible(session, destination);
+      await waitFor(connection!, session, `location.pathname === ${JSON.stringify(path)}`, Boolean);
+      const state = await connection!.evaluate<{
+        path: string;
+        accountId: string;
+        redirectUrl: string | null | undefined;
+      }>(`({
+        path: location.pathname,
+        accountId: window.__currentLifecycleAccountId(),
+        redirectUrl: window.__lastLifecycleSignOutRedirectUrl,
+      })`, session);
+      assert.equal(state.path, path, 'sign-out should remain on its intended destination without routing back');
+      assert.equal(state.accountId, '', 'the browser fixture should be signed out at the destination');
+      assert.equal(state.redirectUrl, path, 'the exit should request the intended redirect from Clerk');
+    };
+    const signOutFromSharedNav = async (session: string, mobile: boolean) => {
+      if (mobile) {
+        await focusTarget(session, 'button-mobile-menu');
+        await pressKey(session, ' ', 'Space', 32);
+        await waitVisible(session, 'menu-mobile');
+        await pressKey(session, 'Tab', 'Tab', 9);
+        assert.equal(await connection!.evaluate<string>(
+          "document.activeElement?.getAttribute('data-testid') || ''", session,
+        ), 'link-mobile-studio', 'the first mobile menu link should be keyboard reachable');
+        await pressKey(session, 'Tab', 'Tab', 9);
+        await focusTarget(session, 'btn-mobile-sign-out');
+        await pressKey(session, ' ', 'Space', 32);
+      } else {
+        await focusTarget(session, 'btn-sign-out');
+        await pressKey(session, ' ', 'Space', 32);
+      }
+      await assertSignOutDestination(session, '/');
+    };
+    const signOutFromUnavailablePage = async (session: string) => {
+      await focusTarget(session, 'button-sign-out-unavailable-account');
+      await pressKey(session, ' ', 'Space', 32);
+      await assertSignOutDestination(session, '/sign-in');
+    };
     const waitVisible = (session: string, id: string) =>
       waitFor(connection!, session, visible(id), Boolean, 30_000);
     const fit = async (session: string) => {
@@ -142,6 +220,15 @@ test('signed-in account controls survive phone and desktop transitions against r
     );
     assert.deepEqual(privateDataBeforeRetry, { dashboard: null, tracker: null },
       'a confirmed unprovisioned identity must not restore another private dashboard snapshot');
+
+    const setupPhoneExit = await open(firstSaveOwner, 390, 844, '/studio/setup');
+    await waitVisible(setupPhoneExit, 'button-save-profile');
+    await fit(setupPhoneExit);
+    await signOutFromSharedNav(setupPhoneExit, true);
+    const setupDesktop = await open(firstSaveOwner, 1280, 850, '/studio/setup');
+    await waitVisible(setupDesktop, 'button-save-profile');
+    await fit(setupDesktop);
+    await signOutFromSharedNav(setupDesktop, false);
 
     await connection.evaluate(`(() => {
       const values = {
@@ -256,6 +343,21 @@ test('signed-in account controls survive phone and desktop transitions against r
     await waitVisible(phone, 'button-resume-account');
     assert.equal((await state(owner)).status, 'paused');
     await fit(phone);
+    await signOutFromSharedNav(phone, true);
+    await connection.evaluate(
+      `window.__switchLifecycleAccount(${JSON.stringify(owner)}); window.__navigateLifecycle('/studio/profile')`,
+      phone,
+    );
+    await waitVisible(phone, 'locked-account-page');
+    const lockedDesktop = await open(owner, 1280, 850);
+    await waitVisible(lockedDesktop, 'locked-account-page');
+    await fit(lockedDesktop);
+    await signOutFromSharedNav(lockedDesktop, false);
+    await connection.evaluate(
+      `window.__switchLifecycleAccount(${JSON.stringify(owner)}); window.__navigateLifecycle('/studio/profile')`,
+      phone,
+    );
+    await waitVisible(phone, 'locked-account-page');
     await admin('fail', { viewer: owner, method: 'POST', path: '/account/resume' });
     await click(phone, 'button-resume-account');
     await waitFor(connection, phone, "Boolean(document.querySelector('[role=\"alert\"]')?.textContent.includes('Resume failed'))", Boolean);
@@ -356,6 +458,12 @@ test('signed-in account controls survive phone and desktop transitions against r
       afterDeletion,
     );
     assert.deepEqual(privateCache, { dashboard: null, tracker: null });
+    await fit(afterDeletion);
+    await signOutFromUnavailablePage(afterDeletion);
+    const unavailableDesktop = await open(owner, 1280, 850);
+    await waitVisible(unavailableDesktop, 'account-unavailable-page');
+    await fit(unavailableDesktop);
+    await signOutFromUnavailablePage(unavailableDesktop);
   } finally {
     if (connection) for (const page of pages) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
     connection?.close();

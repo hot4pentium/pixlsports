@@ -28,12 +28,29 @@ const firstSaveClerk = {
         createdAt: Date.now() - 60_000,
         publicMetadata: { ...firstSavePublicMetadata },
         unsafeMetadata: {},
+        emailAddresses: [{
+          emailAddress: "morgan@example.test",
+          verification: { status: "verified" },
+        }],
       };
     },
     async updateUserMetadata(userId: string, metadata: { publicMetadata?: Record<string, unknown> }) {
       if (userId !== firstSaveOwner) throw { status: 404 };
       firstSavePublicMetadata = { ...firstSavePublicMetadata, ...metadata.publicMetadata };
       return { publicMetadata: { ...firstSavePublicMetadata } };
+    },
+    async getUserList({ emailAddress }: { emailAddress?: string[] }) {
+      const verifiedEmail = "morgan@example.test";
+      const matches = emailAddress?.some((address) => address.trim().toLowerCase() === verifiedEmail)
+        ? [{
+          id: firstSaveOwner,
+          emailAddresses: [{
+            emailAddress: verifiedEmail,
+            verification: { status: "verified" },
+          }],
+        }]
+        : [];
+      return { data: matches, totalCount: matches.length };
     },
   },
 } as unknown as AccountProvisioningClerkClient;

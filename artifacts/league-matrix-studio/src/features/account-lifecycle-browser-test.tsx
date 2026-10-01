@@ -16,6 +16,7 @@ declare global {
   interface Window {
     __switchLifecycleAccount: (id: string) => void;
     __navigateLifecycle: (path: string) => void;
+    __currentLifecycleAccountId: () => string;
   }
 }
 
@@ -59,6 +60,7 @@ window.fetch = (input, init) => {
   return originalFetch(`${apiOrigin}${url}`, { ...init, headers });
 };
 window.__switchLifecycleAccount = switchAccount;
+window.__currentLifecycleAccountId = currentAccountId;
 queryClient.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
 
 function NavigationHook() {
@@ -75,6 +77,8 @@ createRoot(document.getElementById('root')!).render(
       <TooltipProvider>
         <AccountLifecycleGate>
           <Switch>
+            <Route path="/" component={() => <main data-testid="lifecycle-public-home">Public home</main>} />
+            <Route path="/sign-in" component={() => <main data-testid="lifecycle-sign-in">Sign in</main>} />
             <Route path="/studio/profile" component={SupporterProfilePage} />
             <Route path="/studio/setup" component={RoleSelectionPage} />
             <Route path="/studio"><main data-testid="studio-restored">Studio access restored</main></Route>
