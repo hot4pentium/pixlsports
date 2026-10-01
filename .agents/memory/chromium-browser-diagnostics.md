@@ -15,6 +15,12 @@ When a browser check owns a temporary HTTP server and Chromium profile, bound cl
 
 **How to apply:** Use a process-group termination with escalation if needed, close active server connections, and keep profile cleanup failures from skipping the server close.
 
+Browser tests that call a fixture API on another origin must handle CORS preflights, including the custom test-auth header.
+
+**Why:** A browser-generated `OPTIONS` request fails before the fixture route runs unless the test server allows the origin, requested headers, and method.
+
+**How to apply:** Add the fixture's required CORS response headers and return a successful response for `OPTIONS` before route handling.
+
 For install-prompt journeys, headless Chromium does not provide a reliable native `beforeinstallprompt` event. Emulate the target UA, platform, and touch points through CDP, then dispatch a cancelable event with test-owned `prompt` and `userChoice` properties.
 
 **Why:** This keeps Android prompt handling and iPhone/iPad fallback rendering testable without depending on a desktop browser's install eligibility or a physical-device Share menu.

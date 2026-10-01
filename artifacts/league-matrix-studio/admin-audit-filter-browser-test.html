@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      window.addEventListener('error', (event) => {
+        document.body.dataset.testError = event.message || 'Script failed';
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        document.body.dataset.testError = String(event.reason);
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/features/admin-audit-filter-browser-test.tsx"></script>
+  </body>
+</html>
