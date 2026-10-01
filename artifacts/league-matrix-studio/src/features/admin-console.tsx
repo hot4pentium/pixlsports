@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useUser } from '@clerk/react';
 import { Link, useLocation } from 'wouter';
 
+import { AdminAuditMemberFilter, type AuditMemberOption } from './admin-audit-member-filter';
 import './admin-console.css';
 
 const PAGE_SIZE = 20;
@@ -79,6 +80,21 @@ function AdminAuditHistory() {
   const [offset, setOffset] = useState(0);
   const [draftFilters, setDraftFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
+  const [memberSearchInput, setMemberSearchInput] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
+  const [selectedMember, setSelectedMember] = useState<AuditMemberOption | null>(null);
+  const memberParams = useMemo(() => ({
+    search: memberSearch || undefined,
+    limit: 50,
+    offset: 0,
+  }), [memberSearch]);
+  const memberResults = useListAdminMembers(memberParams, {
+    query: {
+      enabled: memberSearch.length >= 2 && !selectedMember,
+      queryKey: getListAdminMembersQueryKey(memberParams),
+      staleTime: 0,
+    },
+  });
   const params = useMemo(() => ({
     limit: AUDIT_SIZE,
     offset,
@@ -93,6 +109,14 @@ function AdminAuditHistory() {
   });
   const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
   const invalidDateRange = Boolean(draftFilters.fromDate && draftFilters.toDate && draftFilters.fromDate > draftFilters.toDate);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const trimmed = memberSearchInput.trim();
+      setMemberSearch(trimmed.length >= 2 ? trimmed : '');
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [memberSearchInput]);
 
   const applyFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -109,7 +133,23 @@ function AdminAuditHistory() {
   const clearFilters = () => {
     setDraftFilters(EMPTY_AUDIT_FILTERS);
     setAppliedFilters(EMPTY_AUDIT_FILTERS);
+    setSelectedMember(null);
+    setMemberSearchInput('');
     setOffset(0);
+  };
+
+  const clearMemberSelection = () => {
+    setSelectedMember(null);
+    setMemberSearchInput('');
+    setDraftFilters((current) => ({ ...current, memberClerkUserId: '' }));
+    setAppliedFilters((current) => ({ ...current, memberClerkUserId: '' }));
+    setOffset(0);
+  };
+
+  const updateMemberSearch = (value: string) => {
+    setMemberSearchInput(value);
+    setSelectedMember(null);
+    setDraftFilters((current) => ({ ...current, memberClerkUserId: '' }));
   };
 
   return (
@@ -125,17 +165,23 @@ function AdminAuditHistory() {
       </div>
       <form className="mt-5 border border-[#e5ebe7] bg-white/70 p-4" onSubmit={applyFilters} aria-label="Filter audit history">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <label>
-            <span className="admin-label">Member account ID</span>
-            <input
-              className="admin-input"
-              type="text"
-              maxLength={200}
-              value={draftFilters.memberClerkUserId}
-              onChange={(event) => setDraftFilters((current) => ({ ...current, memberClerkUserId: event.target.value }))}
-              placeholder="Affected member’s Clerk ID"
-            />
-          </label>
+          <AdminAuditMemberFilter
+            searchText={memberSearchInput}
+            selectedMember={selectedMember}
+            members={memberSearchInput.trim() === memberSearch && memberSearch.length >= 2
+              ? memberResults.data?.items ?? []
+              : []}
+            isSearching={memberSearchInput.trim().length >= 2
+              && (memberSearchInput.trim() !== memberSearch || memberResults.isLoading || memberResults.isFetching)}
+            searchError={memberSearchInput.trim() === memberSearch && memberResults.isError}
+            onSearchTextChange={updateMemberSearch}
+            onSelectMember={(member) => {
+              setSelectedMember(member);
+              setMemberSearchInput('');
+              setDraftFilters((current) => ({ ...current, memberClerkUserId: member.clerkUserId }));
+            }}
+            onClearSelection={clearMemberSelection}
+          />
           <label>
             <span className="admin-label">Action</span>
             <select
