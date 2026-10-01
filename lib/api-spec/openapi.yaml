@@ -1181,6 +1181,232 @@ paths:
             video/*: {}
         "404":
           $ref: "#/components/responses/NotFound"
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [member-admin]
+      summary: Check whether the authenticated user has administrator access
+      responses:
+        "200":
+          description: Administrator access status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/members:
+    get:
+      operationId: listAdminMembers
+      tags: [member-admin]
+      summary: Search and page through member accounts
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 200 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: One page of member accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    get:
+      operationId: getAdminMember
+      tags: [member-admin]
+      summary: Get one member account summary
+      responses:
+        "200":
+          description: Member account summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/members/{userId}/profile:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberProfile
+      tags: [member-admin]
+      summary: Edit supported app-profile fields for a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberProfileUpdate"
+      responses:
+        "200":
+          description: Updated member account summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/members/{userId}/suspension:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    patch:
+      operationId: updateAdminMemberSuspension
+      tags: [member-admin]
+      summary: Suspend or restore a member account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberSuspensionInput"
+      responses:
+        "200":
+          description: Updated member account and action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The account cannot be suspended or restored in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/members/{userId}/delete:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, minLength: 1, maxLength: 200 }
+    post:
+      operationId: deleteAdminMember
+      tags: [member-admin]
+      summary: Permanently delete a member account and its associated data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberDeleteInput"
+      responses:
+        "200":
+          description: Deletion completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "202":
+          description: Deletion is pending or failed and will be retried
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberActionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The target account cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /admin/audit:
+    get:
+      operationId: listAdminAudit
+      tags: [member-admin]
+      summary: View the recent member-administration audit trail
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: One page of administrator actions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAuditList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Administrator access is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /account/access:
     get:
       operationId: getAccountAccess
@@ -3078,6 +3304,124 @@ components:
           minimum: 1
         expired:
           type: boolean
+        adminSuspended:
+          type: boolean
+          description: Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.
+    AdminSession:
+      type: object
+      required: [isAdmin]
+      properties:
+        isAdmin: { type: boolean }
+    AdminMemberProfile:
+      type: object
+      required: [displayName, teamName, seasonName, athleteName, jerseyNumber, position, relationship, sport]
+      properties:
+        displayName: { type: ["string", "null"], maxLength: 100 }
+        teamName: { type: ["string", "null"], maxLength: 100 }
+        seasonName: { type: ["string", "null"], maxLength: 100 }
+        athleteName: { type: ["string", "null"], maxLength: 100 }
+        jerseyNumber: { type: ["string", "null"], maxLength: 20 }
+        position: { type: ["string", "null"], maxLength: 60 }
+        relationship: { type: ["string", "null"], maxLength: 60 }
+        sport:
+          type: ["string", "null"]
+          enum: [baseball, basketball, football, soccer, volleyball, null]
+    AdminMemberProfileUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        displayName: { type: ["string", "null"], maxLength: 100 }
+        teamName: { type: ["string", "null"], maxLength: 100 }
+        seasonName: { type: ["string", "null"], maxLength: 100 }
+        athleteName: { type: ["string", "null"], maxLength: 100 }
+        jerseyNumber: { type: ["string", "null"], maxLength: 20 }
+        position: { type: ["string", "null"], maxLength: 60 }
+        relationship: { type: ["string", "null"], maxLength: 60 }
+        sport:
+          type: ["string", "null"]
+          enum: [baseball, basketball, football, soccer, volleyball, null]
+    AdminMember:
+      type: object
+      required: [clerkUserId, primaryEmailAddress, firstName, lastName, createdAt, role, accessMode, lifecycleStatus, adminSuspended, isAdministrator, profile]
+      properties:
+        clerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        primaryEmailAddress: { type: ["string", "null"], maxLength: 320 }
+        firstName: { type: ["string", "null"], maxLength: 100 }
+        lastName: { type: ["string", "null"], maxLength: 100 }
+        createdAt: { type: ["string", "null"], format: date-time }
+        role:
+          type: ["string", "null"]
+          enum: [fan, null]
+        accessMode:
+          type: ["string", "null"]
+          enum: [full, guest, null]
+        lifecycleStatus:
+          type: string
+          enum: [active, paused, cancelled, deletion_pending, not_provisioned]
+        adminSuspended: { type: boolean }
+        isAdministrator: { type: boolean }
+        profile:
+          $ref: "#/components/schemas/AdminMemberProfile"
+    AdminMemberList:
+      type: object
+      required: [items, totalCount, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMember"
+        totalCount: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    AdminMemberSuspensionInput:
+      type: object
+      required: [suspended]
+      properties:
+        suspended: { type: boolean }
+        reason: { type: ["string", "null"], maxLength: 500 }
+    AdminMemberDeleteInput:
+      type: object
+      required: [confirmationText, reason]
+      properties:
+        confirmationText: { type: string, minLength: 1, maxLength: 320 }
+        reason: { type: string, minLength: 3, maxLength: 500 }
+    AdminMemberActionResult:
+      type: object
+      required: [actionId, action, status, targetClerkUserId, message]
+      properties:
+        actionId: { type: string, format: uuid }
+        action: { type: string, enum: [account_suspended, account_reactivated, account_deleted] }
+        status: { type: string, enum: [pending, failed, completed] }
+        targetClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        message: { type: string, maxLength: 500 }
+    AdminAuditEntry:
+      type: object
+      required: [id, actorClerkUserId, targetClerkUserId, action, status, changedFields, reason, failureCode, createdAt, completedAt]
+      properties:
+        id: { type: string, format: uuid }
+        actorClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        targetClerkUserId: { type: string, minLength: 1, maxLength: 200 }
+        action: { type: string, enum: [initial_admin_bootstrapped, profile_updated, account_suspended, account_reactivated, account_deleted] }
+        status: { type: string, enum: [pending, failed, completed] }
+        changedFields:
+          type: array
+          items: { type: string, maxLength: 100 }
+        reason: { type: ["string", "null"], maxLength: 500 }
+        failureCode: { type: ["string", "null"], maxLength: 100 }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    AdminAuditList:
+      type: object
+      required: [items, totalCount, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAuditEntry"
+        totalCount: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
     HypeCardProject:
       type: object
       description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.

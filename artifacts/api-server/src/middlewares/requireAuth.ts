@@ -38,6 +38,13 @@ export const requireAuth: RequestHandler = async (req, res, next): Promise<void>
   res.locals.clerkUserId = userId;
   try {
     const lifecycle = await getAccountLifecycleSnapshot(userId, { touchCancelledActivity: true });
+    if (lifecycle.adminSuspended) {
+      res.status(423).json({
+        error: "This account is temporarily suspended by an administrator.",
+        code: "ACCOUNT_ADMIN_SUSPENDED",
+      });
+      return;
+    }
     if (lifecycle.status !== "active") {
       if (lifecycle.status === "not_provisioned") {
         res.status(423).json({

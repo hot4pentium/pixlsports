@@ -1,0 +1,191 @@
+import { Router, type IRouter } from "express";
+import {
+  DeleteAdminMemberBody,
+  DeleteAdminMemberParams,
+  DeleteAdminMemberResponse,
+  GetAdminMemberParams,
+  GetAdminMemberResponse,
+  GetAdminSessionResponse,
+  ListAdminAuditQueryParams,
+  ListAdminAuditResponse,
+  ListAdminMembersQueryParams,
+  ListAdminMembersResponse,
+  UpdateAdminMemberProfileBody,
+  UpdateAdminMemberProfileParams,
+  UpdateAdminMemberProfileResponse,
+  UpdateAdminMemberSuspensionBody,
+  UpdateAdminMemberSuspensionParams,
+  UpdateAdminMemberSuspensionResponse,
+} from "@workspace/api-zod";
+import { getRequiredClerkUserId, requireAuthenticatedIdentity } from "../middlewares/requireAuth";
+import { hasAdminAccess, requireAdmin } from "../lib/adminAccess";
+import {
+  AdminRequestError,
+  getAdminMember,
+  getAdminMemberActionResult,
+  listAdminAudit,
+  listAdminMembers,
+  requestAdminMemberDeletion,
+  updateAdminMemberProfile,
+  updateAdminMemberSuspension,
+} from "../lib/memberAdmin";
+
+const router: IRouter = Router();
+
+router.get("/admin/session", requireAuthenticatedIdentity, async (_req, res, next): Promise<void> => {
+  try {
+    const isAdmin = await hasAdminAccess(getRequiredClerkUserId(res));
+    res.json(GetAdminSessionResponse.parse({ isAdmin }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/admin/members", requireAdmin, async (req, res, next): Promise<void> => {
+  const parsed = ListAdminMembersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    const result = await listAdminMembers(parsed.data);
+    res.json(ListAdminMembersResponse.parse(result));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/admin/members/:userId", requireAdmin, async (req, res, next): Promise<void> => {
+  const parsed = GetAdminMemberParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    const member = await getAdminMember(parsed.data.userId);
+    if (!member) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    res.json(GetAdminMemberResponse.parse(member));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch("/admin/members/:userId/profile", requireAdmin, async (req, res, next): Promise<void> => {
+  const params = UpdateAdminMemberProfileParams.safeParse(req.params);
+  const body = UpdateAdminMemberProfileBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  try {
+    const member = await updateAdminMemberProfile(
+      getRequiredClerkUserId(res),
+      params.data.userId,
+      body.data,
+    );
+    if (!member) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    res.json(UpdateAdminMemberProfileResponse.parse(member));
+  } catch (error) {
+    if (error instanceof AdminRequestError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.patch("/admin/members/:userId/suspension", requireAdmin, async (req, res, next): Promise<void> => {
+  const params = UpdateAdminMemberSuspensionParams.safeParse(req.params);
+  const body = UpdateAdminMemberSuspensionBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  try {
+    const member = await getAdminMember(params.data.userId);
+    if (!member) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    const action = await updateAdminMemberSuspension(
+      getRequiredClerkUserId(res),
+      params.data.userId,
+      body.data.suspended,
+      body.data.reason,
+    );
+    res.json(UpdateAdminMemberSuspensionResponse.parse(action));
+  } catch (error) {
+    if (error instanceof AdminRequestError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.post("/admin/members/:userId/delete", requireAdmin, async (req, res, next): Promise<void> => {
+  const params = DeleteAdminMemberParams.safeParse(req.params);
+  const body = DeleteAdminMemberBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  try {
+    const action = await requestAdminMemberDeletion(
+      getRequiredClerkUserId(res),
+      params.data.userId,
+      body.data.confirmationText,
+      body.data.reason,
+    );
+    if (!action) {
+      res.status(404).json({ error: "Member account was not found." });
+      return;
+    }
+    const result = await getAdminMemberActionResult(action.id, params.data.userId);
+    if (!result) {
+      res.status(404).json({ error: "Deletion status was not found." });
+      return;
+    }
+    res.status(result.status === "completed" ? 200 : 202)
+      .json(DeleteAdminMemberResponse.parse(result));
+  } catch (error) {
+    if (error instanceof AdminRequestError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.get("/admin/audit", requireAdmin, async (req, res, next): Promise<void> => {
+  const parsed = ListAdminAuditQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    res.json(ListAdminAuditResponse.parse(await listAdminAudit(parsed.data)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

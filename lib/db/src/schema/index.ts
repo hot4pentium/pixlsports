@@ -181,6 +181,9 @@ export const accountAccessTable = pgTable("account_access", {
   deletionEligibleAt: timestamp("deletion_eligible_at", { withTimezone: true }),
   purgeStartedAt: timestamp("purge_started_at", { withTimezone: true }),
   purgeError: text("purge_error"),
+  adminSuspendedAt: timestamp("admin_suspended_at", { withTimezone: true }),
+  adminSuspendedByClerkUserId: text("admin_suspended_by_clerk_user_id"),
+  adminDeletionActionId: uuid("admin_deletion_action_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
@@ -305,6 +308,7 @@ export * from "./athleteInvites";
 export * from "./athleteInviteFans";
 export * from "./supporterActiveGames";
 export * from "./gameOnReminders";
+export * from "./admin";
 
 export const insertCloudProjectSchema = createInsertSchema(cloudProjectsTable).omit({
   id: true,

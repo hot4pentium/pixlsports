@@ -227,6 +227,13 @@ export function createAccountAccessRouter(
 
     const ownerClerkUserId = getRequiredClerkUserId(res);
     const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId, { touchCancelledActivity: true });
+    if (lifecycle.adminSuspended) {
+      res.status(423).json({
+        error: "This account is temporarily suspended by an administrator.",
+        code: "ACCOUNT_ADMIN_SUSPENDED",
+      });
+      return;
+    }
     let initialSetup: Awaited<ReturnType<AccountProvisioning["getInitialAccountSetup"]>> | null = null;
     if (lifecycle.status === "not_provisioned") {
       try {

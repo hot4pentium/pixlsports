@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, sql } from "drizzle-orm";
 import { accountAccessTable, accountEntitlementEventsTable, db } from "@workspace/db";
 
 export const ACCOUNT_RETENTION_DAYS = 90;
@@ -45,6 +45,7 @@ export async function getAccountLifecycleSnapshot(
       deletionEligibleAt: null,
       retentionDays: ACCOUNT_RETENTION_DAYS,
       expired: false,
+      adminSuspended: false,
     };
   }
 
@@ -110,6 +111,7 @@ export async function getAccountLifecycleSnapshot(
     deletionEligibleAt: access?.deletionEligibleAt ?? null,
     retentionDays: ACCOUNT_RETENTION_DAYS,
     expired,
+    adminSuspended: Boolean(access?.adminSuspendedAt),
   };
 }
 
@@ -122,10 +124,11 @@ export async function pauseAccount(ownerClerkUserId: string) {
   }).where(and(
     eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
     eq(accountAccessTable.lifecycleStatus, "active"),
+    isNull(accountAccessTable.adminSuspendedAt),
   )).returning();
   if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
   const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
-  return lifecycle.status === "paused" ? lifecycle : null;
+  return lifecycle.status === "paused" && !lifecycle.adminSuspended ? lifecycle : null;
 }
 
 export async function resumeAccount(ownerClerkUserId: string) {
@@ -137,13 +140,15 @@ export async function resumeAccount(ownerClerkUserId: string) {
   }).where(and(
     eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
     eq(accountAccessTable.lifecycleStatus, "paused"),
+    isNull(accountAccessTable.adminSuspendedAt),
   )).returning();
   if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
   return null;
 }
 
 export async function cancelAccount(ownerClerkUserId: string) {
-  await getAccountLifecycleSnapshot(ownerClerkUserId);
+  const current = await getAccountLifecycleSnapshot(ownerClerkUserId);
+  if (current.adminSuspended) return null;
   const now = new Date();
   const [updated] = await db
     .update(accountAccessTable)
@@ -160,6 +165,7 @@ export async function cancelAccount(ownerClerkUserId: string) {
     .where(and(
       eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
       eq(accountAccessTable.lifecycleStatus, "active"),
+      isNull(accountAccessTable.adminSuspendedAt),
     ))
     .returning();
   if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
@@ -169,10 +175,14 @@ export async function cancelAccount(ownerClerkUserId: string) {
     .from(accountAccessTable)
     .where(eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId))
     .limit(1);
-  return existing ? getAccountLifecycleSnapshot(ownerClerkUserId) : null;
+  if (!existing) return null;
+  const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
+  return lifecycle.adminSuspended ? null : lifecycle;
 }
 
 export async function reactivateAccount(ownerClerkUserId: string) {
+  const current = await getAccountLifecycleSnapshot(ownerClerkUserId);
+  if (current.adminSuspended) return null;
   const now = new Date();
   const [updated] = await db
     .update(accountAccessTable)
@@ -190,6 +200,7 @@ export async function reactivateAccount(ownerClerkUserId: string) {
       eq(accountAccessTable.ownerClerkUserId, ownerClerkUserId),
       eq(accountAccessTable.lifecycleStatus, "cancelled"),
       gt(accountAccessTable.deletionEligibleAt, now),
+      isNull(accountAccessTable.adminSuspendedAt),
     ))
     .returning();
   if (updated) return getAccountLifecycleSnapshot(ownerClerkUserId);
@@ -202,7 +213,7 @@ export async function reactivateAccount(ownerClerkUserId: string) {
   if (!existing) return null;
 
   const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
-  return lifecycle.status === "active" ? lifecycle : null;
+  return lifecycle.status === "active" && !lifecycle.adminSuspended ? lifecycle : null;
 }
 
 export async function reactivateAccountFromEntitlement(entitlement: PaidEntitlement) {
@@ -244,13 +255,13 @@ export async function reactivateAccountFromEntitlement(entitlement: PaidEntitlem
 
 export async function isAccountActive(ownerClerkUserId: string) {
   const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
-  return lifecycle.status === "active";
+  return lifecycle.status === "active" && !lifecycle.adminSuspended;
 }
 
 /** Paid is derived only from the signed entitlement ledger, never accessMode. */
 export async function hasActivePaidEntitlement(ownerClerkUserId: string, now = new Date()) {
   const lifecycle = await getAccountLifecycleSnapshot(ownerClerkUserId);
-  if (lifecycle.status !== "active") return false;
+  if (lifecycle.status !== "active" || lifecycle.adminSuspended) return false;
   const [entitlement] = await db
     .select({ expiresAt: accountEntitlementEventsTable.entitlementExpiresAt })
     .from(accountEntitlementEventsTable)

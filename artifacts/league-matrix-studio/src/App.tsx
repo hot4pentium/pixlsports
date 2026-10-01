@@ -117,6 +117,7 @@ import {
 } from '@/features/workspace-context';
 import { roleSignupHref, roleToolKinds, type ToolKind } from '@/features/landing-role-flow';
 import { StudioRoleBoundary } from '@/features/studio-role-boundary';
+import { AdminConsolePage, AdminEntryLink } from '@/features/admin-console';
 import {
   dashboardChecklistStateAfterSetup,
   getDashboardChecklistItemIds,
@@ -1189,6 +1190,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
                 </Link>
               </>
             )}
+            <AdminEntryLink />
           </div>
         </div>
       )}
@@ -3836,6 +3838,29 @@ function AccountUnavailablePage() {
   );
 }
 
+function AdminSuspendedAccountPage() {
+  const { signOut } = useClerk();
+  return (
+    <div className="noise min-h-dvh bg-background">
+      <SiteNav dark />
+      <main className="mx-auto flex min-h-[calc(100dvh-72px)] w-full max-w-5xl items-center px-5 py-12 sm:px-8">
+        <section className="relative w-full overflow-hidden border-l-4 border-accent bg-card p-7 text-white clip-angled-sm sm:p-10" data-testid="admin-suspended-account-page">
+          <div className="absolute inset-0 bg-tech-grid-dark opacity-30" />
+          <div className="relative z-10 max-w-3xl">
+            <p className="text-xs font-bold uppercase tracking-widest text-accent">Access temporarily restricted</p>
+            <h1 className="mt-4 font-display text-5xl uppercase leading-[0.9] tracking-tight sm:text-7xl">YOUR STUDIO<br /><span className="text-accent">IS ON HOLD.</span></h1>
+            <p className="mt-6 max-w-2xl text-base font-medium leading-relaxed text-white/75 sm:text-lg">
+              An administrator has temporarily suspended access to this Pixl Sports account. Private dashboard data is hidden on this device while the restriction is active. Contact Pixl Sports support for help restoring access.
+            </p>
+            <a href="mailto:support@pixlsports.com?subject=Pixl%20Sports%20account%20access" className="mt-8 inline-flex items-center justify-center gap-2 bg-primary px-6 py-4 text-sm font-bold uppercase tracking-widest text-primary-foreground clip-angled-sm">Contact support <ArrowRight className="h-4 w-4" /></a>
+            <button type="button" onClick={() => void signOut({ redirectUrl: `${basePath}/sign-in` })} className="ml-3 mt-8 inline-flex items-center justify-center border border-white/20 bg-white/5 px-6 py-4 text-sm font-bold uppercase tracking-widest text-white clip-angled-sm">Sign out</button>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
 function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
@@ -3874,13 +3899,22 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
     });
   }, [user?.id, lifecycle?.status, queryClient]);
   useEffect(() => {
+    if (!user?.id || lifecycle?.adminSuspended !== true) return;
+    clearPrivateOfflineAccountData(window.localStorage, user.id);
+    const lifecycleQueryKey = [...getGetAccountLifecycleQueryKey(), user.id];
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey.length !== lifecycleQueryKey.length
+        || query.queryKey.some((part, index) => part !== lifecycleQueryKey[index]),
+    });
+  }, [user?.id, lifecycle?.adminSuspended, queryClient]);
+  useEffect(() => {
     setAllowSlowCache(false);
     if (!cachedDashboard || !isSignedIn) return;
     const timer = window.setTimeout(() => setAllowSlowCache(true), 1800);
     return () => window.clearTimeout(timer);
   }, [user?.id, isSignedIn, Boolean(cachedDashboard)]);
   useEffect(() => {
-    if (!user?.id || !lifecycle || lifecycle.status === 'not_provisioned' || isError || !lifecycleQuery.isFetchedAfterMount) return;
+    if (!user?.id || !lifecycle || lifecycle.status === 'not_provisioned' || lifecycle.adminSuspended === true || isError || !lifecycleQuery.isFetchedAfterMount) return;
     updateOfflineDashboardSnapshot(window.localStorage, user.id, {
       lifecycle,
       verifiedAt: new Date().toISOString(),
@@ -3912,6 +3946,9 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   if (isSignedIn && !bypassLifecycle && lifecycle?.status === 'not_provisioned') {
     if (location.startsWith('/studio/setup') && canShowInitialAccountSetup(user)) return <>{children}</>;
     return <AccountUnavailablePage />;
+  }
+  if (isSignedIn && !bypassLifecycle && lifecycle?.adminSuspended === true) {
+    return <AdminSuspendedAccountPage />;
   }
   if (isSignedIn && !bypassLifecycle && lifecycle && lifecycle.status !== 'active' && lifecycle.status !== 'not_provisioned') {
     return <LockedAccountPage status={lifecycle.status} pauseEndsAt={lifecycle.pauseEndsAt} deletionEligibleAt={lifecycle.deletionEligibleAt} expired={lifecycle.expired} userId={user!.id} />;
@@ -4026,6 +4063,7 @@ function ClerkProviderWithRoutes() {
                <Route path="/player/:inviteToken/manage" component={OwnerAthleteInviteManagePage} />
                <Route path="/player/:inviteToken" component={LegacyAthleteInviteRedirect} />
               <Route path="/studio/profile" component={SupporterProfilePage} />
+              <Route path="/studio/admin" component={() => <StudioLayout><AdminConsolePage /></StudioLayout>} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />
               <Route path="/studio" component={StudioPortal} />
                 <Route path="/studio/schedule/:id?" component={() => <RetiredSchedulePage />} />

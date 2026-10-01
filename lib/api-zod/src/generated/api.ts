@@ -2848,6 +2848,363 @@ export const ServeHypeCardShareMediaResponse = zod.unknown()
 
 
 /**
+ * @summary Check whether the authenticated user has administrator access
+ */
+export const GetAdminSessionResponse = zod.object({
+  "isAdmin": zod.boolean()
+})
+
+
+/**
+ * @summary Search and page through member accounts
+ */
+export const listAdminMembersQuerySearchMax = 200;
+
+export const listAdminMembersQueryLimitDefault = 25;
+export const listAdminMembersQueryLimitMax = 100;
+
+export const listAdminMembersQueryOffsetDefault = 0;
+export const listAdminMembersQueryOffsetMin = 0;
+
+
+
+export const ListAdminMembersQueryParams = zod.object({
+  "search": zod.coerce.string().max(listAdminMembersQuerySearchMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(listAdminMembersQueryLimitMax).default(listAdminMembersQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminMembersQueryOffsetMin).default(listAdminMembersQueryOffsetDefault)
+})
+
+export const listAdminMembersResponseItemsItemClerkUserIdMax = 200;
+
+export const listAdminMembersResponseItemsItemPrimaryEmailAddressMax = 320;
+
+export const listAdminMembersResponseItemsItemFirstNameMax = 100;
+
+export const listAdminMembersResponseItemsItemLastNameMax = 100;
+
+export const listAdminMembersResponseItemsItemProfileDisplayNameMax = 100;
+
+export const listAdminMembersResponseItemsItemProfileTeamNameMax = 100;
+
+export const listAdminMembersResponseItemsItemProfileSeasonNameMax = 100;
+
+export const listAdminMembersResponseItemsItemProfileAthleteNameMax = 100;
+
+export const listAdminMembersResponseItemsItemProfileJerseyNumberMax = 20;
+
+export const listAdminMembersResponseItemsItemProfilePositionMax = 60;
+
+export const listAdminMembersResponseItemsItemProfileRelationshipMax = 60;
+
+export const listAdminMembersResponseTotalCountMin = 0;
+
+export const listAdminMembersResponseLimitMax = 100;
+
+export const listAdminMembersResponseOffsetMin = 0;
+
+
+
+export const ListAdminMembersResponse = zod.object({
+  "items": zod.array(zod.object({
+  "clerkUserId": zod.string().min(1).max(listAdminMembersResponseItemsItemClerkUserIdMax),
+  "primaryEmailAddress": zod.string().max(listAdminMembersResponseItemsItemPrimaryEmailAddressMax).nullable(),
+  "firstName": zod.string().max(listAdminMembersResponseItemsItemFirstNameMax).nullable(),
+  "lastName": zod.string().max(listAdminMembersResponseItemsItemLastNameMax).nullable(),
+  "createdAt": zod.coerce.date().nullable(),
+  "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
+  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
+  "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
+  "adminSuspended": zod.boolean(),
+  "isAdministrator": zod.boolean(),
+  "profile": zod.object({
+  "displayName": zod.string().max(listAdminMembersResponseItemsItemProfileDisplayNameMax).nullable(),
+  "teamName": zod.string().max(listAdminMembersResponseItemsItemProfileTeamNameMax).nullable(),
+  "seasonName": zod.string().max(listAdminMembersResponseItemsItemProfileSeasonNameMax).nullable(),
+  "athleteName": zod.string().max(listAdminMembersResponseItemsItemProfileAthleteNameMax).nullable(),
+  "jerseyNumber": zod.string().max(listAdminMembersResponseItemsItemProfileJerseyNumberMax).nullable(),
+  "position": zod.string().max(listAdminMembersResponseItemsItemProfilePositionMax).nullable(),
+  "relationship": zod.string().max(listAdminMembersResponseItemsItemProfileRelationshipMax).nullable(),
+  "sport": zod.union([zod.literal('baseball'),zod.literal('basketball'),zod.literal('football'),zod.literal('soccer'),zod.literal('volleyball'),zod.literal(null)]).nullable()
+})
+})),
+  "totalCount": zod.number().int().min(listAdminMembersResponseTotalCountMin),
+  "limit": zod.number().int().min(1).max(listAdminMembersResponseLimitMax),
+  "offset": zod.number().int().min(listAdminMembersResponseOffsetMin)
+})
+
+
+/**
+ * @summary Get one member account summary
+ */
+export const getAdminMemberPathUserIdMax = 200;
+
+
+
+export const GetAdminMemberParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(getAdminMemberPathUserIdMax)
+})
+
+export const getAdminMemberResponseClerkUserIdMax = 200;
+
+export const getAdminMemberResponsePrimaryEmailAddressMax = 320;
+
+export const getAdminMemberResponseFirstNameMax = 100;
+
+export const getAdminMemberResponseLastNameMax = 100;
+
+export const getAdminMemberResponseProfileDisplayNameMax = 100;
+
+export const getAdminMemberResponseProfileTeamNameMax = 100;
+
+export const getAdminMemberResponseProfileSeasonNameMax = 100;
+
+export const getAdminMemberResponseProfileAthleteNameMax = 100;
+
+export const getAdminMemberResponseProfileJerseyNumberMax = 20;
+
+export const getAdminMemberResponseProfilePositionMax = 60;
+
+export const getAdminMemberResponseProfileRelationshipMax = 60;
+
+
+
+export const GetAdminMemberResponse = zod.object({
+  "clerkUserId": zod.string().min(1).max(getAdminMemberResponseClerkUserIdMax),
+  "primaryEmailAddress": zod.string().max(getAdminMemberResponsePrimaryEmailAddressMax).nullable(),
+  "firstName": zod.string().max(getAdminMemberResponseFirstNameMax).nullable(),
+  "lastName": zod.string().max(getAdminMemberResponseLastNameMax).nullable(),
+  "createdAt": zod.coerce.date().nullable(),
+  "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
+  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
+  "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
+  "adminSuspended": zod.boolean(),
+  "isAdministrator": zod.boolean(),
+  "profile": zod.object({
+  "displayName": zod.string().max(getAdminMemberResponseProfileDisplayNameMax).nullable(),
+  "teamName": zod.string().max(getAdminMemberResponseProfileTeamNameMax).nullable(),
+  "seasonName": zod.string().max(getAdminMemberResponseProfileSeasonNameMax).nullable(),
+  "athleteName": zod.string().max(getAdminMemberResponseProfileAthleteNameMax).nullable(),
+  "jerseyNumber": zod.string().max(getAdminMemberResponseProfileJerseyNumberMax).nullable(),
+  "position": zod.string().max(getAdminMemberResponseProfilePositionMax).nullable(),
+  "relationship": zod.string().max(getAdminMemberResponseProfileRelationshipMax).nullable(),
+  "sport": zod.union([zod.literal('baseball'),zod.literal('basketball'),zod.literal('football'),zod.literal('soccer'),zod.literal('volleyball'),zod.literal(null)]).nullable()
+})
+})
+
+
+/**
+ * @summary Edit supported app-profile fields for a member
+ */
+export const updateAdminMemberProfilePathUserIdMax = 200;
+
+
+
+export const UpdateAdminMemberProfileParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(updateAdminMemberProfilePathUserIdMax)
+})
+
+export const updateAdminMemberProfileBodyDisplayNameMax = 100;
+
+export const updateAdminMemberProfileBodyTeamNameMax = 100;
+
+export const updateAdminMemberProfileBodySeasonNameMax = 100;
+
+export const updateAdminMemberProfileBodyAthleteNameMax = 100;
+
+export const updateAdminMemberProfileBodyJerseyNumberMax = 20;
+
+export const updateAdminMemberProfileBodyPositionMax = 60;
+
+export const updateAdminMemberProfileBodyRelationshipMax = 60;
+
+
+
+export const UpdateAdminMemberProfileBody = zod.object({
+  "displayName": zod.string().max(updateAdminMemberProfileBodyDisplayNameMax).nullish(),
+  "teamName": zod.string().max(updateAdminMemberProfileBodyTeamNameMax).nullish(),
+  "seasonName": zod.string().max(updateAdminMemberProfileBodySeasonNameMax).nullish(),
+  "athleteName": zod.string().max(updateAdminMemberProfileBodyAthleteNameMax).nullish(),
+  "jerseyNumber": zod.string().max(updateAdminMemberProfileBodyJerseyNumberMax).nullish(),
+  "position": zod.string().max(updateAdminMemberProfileBodyPositionMax).nullish(),
+  "relationship": zod.string().max(updateAdminMemberProfileBodyRelationshipMax).nullish(),
+  "sport": zod.union([zod.literal('baseball'),zod.literal('basketball'),zod.literal('football'),zod.literal('soccer'),zod.literal('volleyball'),zod.literal(null)]).nullish()
+})
+
+export const updateAdminMemberProfileResponseClerkUserIdMax = 200;
+
+export const updateAdminMemberProfileResponsePrimaryEmailAddressMax = 320;
+
+export const updateAdminMemberProfileResponseFirstNameMax = 100;
+
+export const updateAdminMemberProfileResponseLastNameMax = 100;
+
+export const updateAdminMemberProfileResponseProfileDisplayNameMax = 100;
+
+export const updateAdminMemberProfileResponseProfileTeamNameMax = 100;
+
+export const updateAdminMemberProfileResponseProfileSeasonNameMax = 100;
+
+export const updateAdminMemberProfileResponseProfileAthleteNameMax = 100;
+
+export const updateAdminMemberProfileResponseProfileJerseyNumberMax = 20;
+
+export const updateAdminMemberProfileResponseProfilePositionMax = 60;
+
+export const updateAdminMemberProfileResponseProfileRelationshipMax = 60;
+
+
+
+export const UpdateAdminMemberProfileResponse = zod.object({
+  "clerkUserId": zod.string().min(1).max(updateAdminMemberProfileResponseClerkUserIdMax),
+  "primaryEmailAddress": zod.string().max(updateAdminMemberProfileResponsePrimaryEmailAddressMax).nullable(),
+  "firstName": zod.string().max(updateAdminMemberProfileResponseFirstNameMax).nullable(),
+  "lastName": zod.string().max(updateAdminMemberProfileResponseLastNameMax).nullable(),
+  "createdAt": zod.coerce.date().nullable(),
+  "role": zod.union([zod.literal('fan'),zod.literal(null)]).nullable(),
+  "accessMode": zod.union([zod.literal('full'),zod.literal('guest'),zod.literal(null)]).nullable(),
+  "lifecycleStatus": zod.enum(['active', 'paused', 'cancelled', 'deletion_pending', 'not_provisioned']),
+  "adminSuspended": zod.boolean(),
+  "isAdministrator": zod.boolean(),
+  "profile": zod.object({
+  "displayName": zod.string().max(updateAdminMemberProfileResponseProfileDisplayNameMax).nullable(),
+  "teamName": zod.string().max(updateAdminMemberProfileResponseProfileTeamNameMax).nullable(),
+  "seasonName": zod.string().max(updateAdminMemberProfileResponseProfileSeasonNameMax).nullable(),
+  "athleteName": zod.string().max(updateAdminMemberProfileResponseProfileAthleteNameMax).nullable(),
+  "jerseyNumber": zod.string().max(updateAdminMemberProfileResponseProfileJerseyNumberMax).nullable(),
+  "position": zod.string().max(updateAdminMemberProfileResponseProfilePositionMax).nullable(),
+  "relationship": zod.string().max(updateAdminMemberProfileResponseProfileRelationshipMax).nullable(),
+  "sport": zod.union([zod.literal('baseball'),zod.literal('basketball'),zod.literal('football'),zod.literal('soccer'),zod.literal('volleyball'),zod.literal(null)]).nullable()
+})
+})
+
+
+/**
+ * @summary Suspend or restore a member account
+ */
+export const updateAdminMemberSuspensionPathUserIdMax = 200;
+
+
+
+export const UpdateAdminMemberSuspensionParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(updateAdminMemberSuspensionPathUserIdMax)
+})
+
+export const updateAdminMemberSuspensionBodyReasonMax = 500;
+
+
+
+export const UpdateAdminMemberSuspensionBody = zod.object({
+  "suspended": zod.boolean(),
+  "reason": zod.string().max(updateAdminMemberSuspensionBodyReasonMax).nullish()
+})
+
+export const updateAdminMemberSuspensionResponseTargetClerkUserIdMax = 200;
+
+export const updateAdminMemberSuspensionResponseMessageMax = 500;
+
+
+
+export const UpdateAdminMemberSuspensionResponse = zod.object({
+  "actionId": zod.string().uuid(),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted']),
+  "status": zod.enum(['pending', 'failed', 'completed']),
+  "targetClerkUserId": zod.string().min(1).max(updateAdminMemberSuspensionResponseTargetClerkUserIdMax),
+  "message": zod.string().max(updateAdminMemberSuspensionResponseMessageMax)
+})
+
+
+/**
+ * @summary Permanently delete a member account and its associated data
+ */
+export const deleteAdminMemberPathUserIdMax = 200;
+
+
+
+export const DeleteAdminMemberParams = zod.object({
+  "userId": zod.coerce.string().min(1).max(deleteAdminMemberPathUserIdMax)
+})
+
+export const deleteAdminMemberBodyConfirmationTextMax = 320;
+
+export const deleteAdminMemberBodyReasonMin = 3;
+export const deleteAdminMemberBodyReasonMax = 500;
+
+
+
+export const DeleteAdminMemberBody = zod.object({
+  "confirmationText": zod.string().min(1).max(deleteAdminMemberBodyConfirmationTextMax),
+  "reason": zod.string().min(deleteAdminMemberBodyReasonMin).max(deleteAdminMemberBodyReasonMax)
+})
+
+export const deleteAdminMemberResponseTargetClerkUserIdMax = 200;
+
+export const deleteAdminMemberResponseMessageMax = 500;
+
+
+
+export const DeleteAdminMemberResponse = zod.object({
+  "actionId": zod.string().uuid(),
+  "action": zod.enum(['account_suspended', 'account_reactivated', 'account_deleted']),
+  "status": zod.enum(['pending', 'failed', 'completed']),
+  "targetClerkUserId": zod.string().min(1).max(deleteAdminMemberResponseTargetClerkUserIdMax),
+  "message": zod.string().max(deleteAdminMemberResponseMessageMax)
+})
+
+
+/**
+ * @summary View the recent member-administration audit trail
+ */
+export const listAdminAuditQueryLimitDefault = 25;
+export const listAdminAuditQueryLimitMax = 100;
+
+export const listAdminAuditQueryOffsetDefault = 0;
+export const listAdminAuditQueryOffsetMin = 0;
+
+
+
+export const ListAdminAuditQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listAdminAuditQueryLimitMax).default(listAdminAuditQueryLimitDefault),
+  "offset": zod.coerce.number().int().min(listAdminAuditQueryOffsetMin).default(listAdminAuditQueryOffsetDefault)
+})
+
+export const listAdminAuditResponseItemsItemActorClerkUserIdMax = 200;
+
+export const listAdminAuditResponseItemsItemTargetClerkUserIdMax = 200;
+
+export const listAdminAuditResponseItemsItemChangedFieldsItemMax = 100;
+
+export const listAdminAuditResponseItemsItemReasonMax = 500;
+
+export const listAdminAuditResponseItemsItemFailureCodeMax = 100;
+
+export const listAdminAuditResponseTotalCountMin = 0;
+
+export const listAdminAuditResponseLimitMax = 100;
+
+export const listAdminAuditResponseOffsetMin = 0;
+
+
+
+export const ListAdminAuditResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "actorClerkUserId": zod.string().min(1).max(listAdminAuditResponseItemsItemActorClerkUserIdMax),
+  "targetClerkUserId": zod.string().min(1).max(listAdminAuditResponseItemsItemTargetClerkUserIdMax),
+  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_deleted']),
+  "status": zod.enum(['pending', 'failed', 'completed']),
+  "changedFields": zod.array(zod.string().max(listAdminAuditResponseItemsItemChangedFieldsItemMax)),
+  "reason": zod.string().max(listAdminAuditResponseItemsItemReasonMax).nullable(),
+  "failureCode": zod.string().max(listAdminAuditResponseItemsItemFailureCodeMax).nullable(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})),
+  "totalCount": zod.number().int().min(listAdminAuditResponseTotalCountMin),
+  "limit": zod.number().int().min(1).max(listAdminAuditResponseLimitMax),
+  "offset": zod.number().int().min(listAdminAuditResponseOffsetMin)
+})
+
+
+/**
  * @summary Get the authenticated user's account access and Guest usage
  */
 export const getAccountAccessResponseUsageHypeCardsMin = 0;
@@ -2970,7 +3327,8 @@ export const GetAccountLifecycleResponse = zod.object({
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
-  "expired": zod.boolean()
+  "expired": zod.boolean(),
+  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
 })
 
 
@@ -2988,7 +3346,8 @@ export const CancelAccountResponse = zod.object({
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
-  "expired": zod.boolean()
+  "expired": zod.boolean(),
+  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
 })
 
 
@@ -3006,7 +3365,8 @@ export const PauseAccountResponse = zod.object({
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
-  "expired": zod.boolean()
+  "expired": zod.boolean(),
+  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
 })
 
 
@@ -3024,7 +3384,8 @@ export const ResumeAccountResponse = zod.object({
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
-  "expired": zod.boolean()
+  "expired": zod.boolean(),
+  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
 })
 
 
@@ -3042,7 +3403,8 @@ export const ReactivateAccountResponse = zod.object({
   "lastActivityAt": zod.coerce.date().nullable(),
   "deletionEligibleAt": zod.coerce.date().nullable(),
   "retentionDays": zod.number().int().min(1),
-  "expired": zod.boolean()
+  "expired": zod.boolean(),
+  "adminSuspended": zod.boolean().optional().describe('Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state.')
 })
 
 

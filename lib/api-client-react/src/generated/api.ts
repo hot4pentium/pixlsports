@@ -24,6 +24,14 @@ import type {
   AccountAccessInput,
   AccountLifecycle,
   AccountUsageConsumeInput,
+  AdminAuditList,
+  AdminMember,
+  AdminMemberActionResult,
+  AdminMemberDeleteInput,
+  AdminMemberList,
+  AdminMemberProfileUpdate,
+  AdminMemberSuspensionInput,
+  AdminSession,
   AthleteInviteEventNotifyResult,
   AthleteInviteFanFollow,
   AthleteInviteFanFollowCreated,
@@ -59,6 +67,8 @@ import type {
   HypeCardShareReplyReceipt,
   HypeCardShareUpload,
   HypeCardShareUploadInput,
+  ListAdminAuditParams,
+  ListAdminMembersParams,
   ListHypeCardSharesParams,
   Media,
   MediaUpload,
@@ -4857,6 +4867,595 @@ export function useServeHypeCardShareMedia<TData = Awaited<ReturnType<typeof ser
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getServeHypeCardShareMediaQueryOptions(shareToken,mediaKind,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminSessionUrl = () => {
+
+
+
+
+  return `/api/admin/session`
+}
+
+/**
+ * @summary Check whether the authenticated user has administrator access
+ */
+export const getAdminSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminSession> => {
+
+  return customFetch<AdminSession>(getGetAdminSessionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminSessionQueryKey = () => {
+    return [
+    `/api/admin/session`
+    ] as const;
+    }
+
+
+export const getGetAdminSessionQueryOptions = <TData = Awaited<ReturnType<typeof getAdminSession>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminSessionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminSession>>> = ({ signal }) => getAdminSession({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminSession>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminSessionQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminSession>>>
+export type GetAdminSessionQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Check whether the authenticated user has administrator access
+ */
+
+export function useGetAdminSession<TData = Awaited<ReturnType<typeof getAdminSession>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminSession>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminSessionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminMembersUrl = (params?: ListAdminMembersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/members?${stringifiedParams}` : `/api/admin/members`
+}
+
+/**
+ * @summary Search and page through member accounts
+ */
+export const listAdminMembers = async (params?: ListAdminMembersParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberList> => {
+
+  return customFetch<AdminMemberList>(getListAdminMembersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminMembersQueryKey = (params?: ListAdminMembersParams,) => {
+    return [
+    `/api/admin/members`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminMembersQueryOptions = <TData = Awaited<ReturnType<typeof listAdminMembers>>, TError = ErrorType<UnauthorizedResponse | Error>>(params?: ListAdminMembersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminMembersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminMembers>>> = ({ signal }) => listAdminMembers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminMembers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminMembersQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminMembers>>>
+export type ListAdminMembersQueryError = ErrorType<UnauthorizedResponse | Error>
+
+
+/**
+ * @summary Search and page through member accounts
+ */
+
+export function useListAdminMembers<TData = Awaited<ReturnType<typeof listAdminMembers>>, TError = ErrorType<UnauthorizedResponse | Error>>(
+ params?: ListAdminMembersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminMembers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminMembersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminMemberUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}`
+}
+
+/**
+ * @summary Get one member account summary
+ */
+export const getAdminMember = async (userId: string, options?: Parameters<typeof customFetch>[1]): Promise<AdminMember> => {
+
+  return customFetch<AdminMember>(getGetAdminMemberUrl(userId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminMemberQueryKey = (userId: string,) => {
+    return [
+    `/api/admin/members/${userId}`
+    ] as const;
+    }
+
+
+export const getGetAdminMemberQueryOptions = <TData = Awaited<ReturnType<typeof getAdminMember>>, TError = ErrorType<UnauthorizedResponse | Error | NotFoundResponse>>(userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminMember>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminMemberQueryKey(userId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminMember>>> = ({ signal }) => getAdminMember(userId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: userId !== null && userId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminMember>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminMemberQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminMember>>>
+export type GetAdminMemberQueryError = ErrorType<UnauthorizedResponse | Error | NotFoundResponse>
+
+
+/**
+ * @summary Get one member account summary
+ */
+
+export function useGetAdminMember<TData = Awaited<ReturnType<typeof getAdminMember>>, TError = ErrorType<UnauthorizedResponse | Error | NotFoundResponse>>(
+ userId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminMember>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminMemberQueryOptions(userId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminMemberProfileUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}/profile`
+}
+
+/**
+ * @summary Edit supported app-profile fields for a member
+ */
+export const updateAdminMemberProfile = async (userId: string,
+    adminMemberProfileUpdate: AdminMemberProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminMember> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMember>(getUpdateAdminMemberProfileUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMemberProfileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminMemberProfileMutationKey = () => ['updateAdminMemberProfile'] as const;
+
+export const getUpdateAdminMemberProfileMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberProfile>>, TError,UpdateAdminMemberProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberProfile>>, TError,UpdateAdminMemberProfileMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminMemberProfileMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminMemberProfile>>, UpdateAdminMemberProfileMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateAdminMemberProfile(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminMemberProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminMemberProfile>>>
+    export type UpdateAdminMemberProfileMutationBody = BodyType<AdminMemberProfileUpdate>
+    export type UpdateAdminMemberProfileMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type UpdateAdminMemberProfileMutationVariables = {userId: string;data: BodyType<AdminMemberProfileUpdate>}
+
+    /**
+ * @summary Edit supported app-profile fields for a member
+ */
+export const useUpdateAdminMemberProfile = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberProfile>>, TError,UpdateAdminMemberProfileMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminMemberProfile>>,
+        TError,
+        UpdateAdminMemberProfileMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminMemberProfileMutationOptions(options));
+    }
+
+export const getUpdateAdminMemberSuspensionUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}/suspension`
+}
+
+/**
+ * @summary Suspend or restore a member account
+ */
+export const updateAdminMemberSuspension = async (userId: string,
+    adminMemberSuspensionInput: AdminMemberSuspensionInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMemberActionResult>(getUpdateAdminMemberSuspensionUrl(userId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMemberSuspensionInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminMemberSuspensionMutationKey = () => ['updateAdminMemberSuspension'] as const;
+
+export const getUpdateAdminMemberSuspensionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberSuspension>>, TError,UpdateAdminMemberSuspensionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberSuspension>>, TError,UpdateAdminMemberSuspensionMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminMemberSuspensionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminMemberSuspension>>, UpdateAdminMemberSuspensionMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  updateAdminMemberSuspension(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminMemberSuspensionMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminMemberSuspension>>>
+    export type UpdateAdminMemberSuspensionMutationBody = BodyType<AdminMemberSuspensionInput>
+    export type UpdateAdminMemberSuspensionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type UpdateAdminMemberSuspensionMutationVariables = {userId: string;data: BodyType<AdminMemberSuspensionInput>}
+
+    /**
+ * @summary Suspend or restore a member account
+ */
+export const useUpdateAdminMemberSuspension = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMemberSuspension>>, TError,UpdateAdminMemberSuspensionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminMemberSuspension>>,
+        TError,
+        UpdateAdminMemberSuspensionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminMemberSuspensionMutationOptions(options));
+    }
+
+export const getDeleteAdminMemberUrl = (userId: string,) => {
+
+
+
+
+  return `/api/admin/members/${userId}/delete`
+}
+
+/**
+ * @summary Permanently delete a member account and its associated data
+ */
+export const deleteAdminMember = async (userId: string,
+    adminMemberDeleteInput: AdminMemberDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberActionResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminMemberActionResult>(getDeleteAdminMemberUrl(userId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminMemberDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminMemberMutationKey = () => ['deleteAdminMember'] as const;
+
+export const getDeleteAdminMemberMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMember>>, TError,DeleteAdminMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMember>>, TError,DeleteAdminMemberMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminMember>>, DeleteAdminMemberMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  deleteAdminMember(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminMemberMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminMember>>>
+    export type DeleteAdminMemberMutationBody = BodyType<AdminMemberDeleteInput>
+    export type DeleteAdminMemberMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>
+    export type DeleteAdminMemberMutationVariables = {userId: string;data: BodyType<AdminMemberDeleteInput>}
+
+    /**
+ * @summary Permanently delete a member account and its associated data
+ */
+export const useDeleteAdminMember = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMember>>, TError,DeleteAdminMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminMember>>,
+        TError,
+        DeleteAdminMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminMemberMutationOptions(options));
+    }
+
+export const getListAdminAuditUrl = (params?: ListAdminAuditParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/audit?${stringifiedParams}` : `/api/admin/audit`
+}
+
+/**
+ * @summary View the recent member-administration audit trail
+ */
+export const listAdminAudit = async (params?: ListAdminAuditParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminAuditList> => {
+
+  return customFetch<AdminAuditList>(getListAdminAuditUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAuditQueryKey = (params?: ListAdminAuditParams,) => {
+    return [
+    `/api/admin/audit`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminAuditQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAudit>>, TError = ErrorType<UnauthorizedResponse | Error>>(params?: ListAdminAuditParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAuditQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAudit>>> = ({ signal }) => listAdminAudit(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAudit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminAuditQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAudit>>>
+export type ListAdminAuditQueryError = ErrorType<UnauthorizedResponse | Error>
+
+
+/**
+ * @summary View the recent member-administration audit trail
+ */
+
+export function useListAdminAudit<TData = Awaited<ReturnType<typeof listAdminAudit>>, TError = ErrorType<UnauthorizedResponse | Error>>(
+ params?: ListAdminAuditParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminAuditQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

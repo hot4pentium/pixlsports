@@ -22,4 +22,6 @@ export interface AccountLifecycle {
   /** @minimum 1 */
   retentionDays: number;
   expired: boolean;
+  /** Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state. */
+  adminSuspended?: boolean;
 }

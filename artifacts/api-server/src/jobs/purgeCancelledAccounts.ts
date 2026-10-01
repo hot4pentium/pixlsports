@@ -1,22 +1,36 @@
 import { createClerkClient } from "@clerk/express";
-import { and, eq, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import {
+  accountEntitlementEventsTable,
   accountAccessTable,
+  adminActionAuditTable,
+  adminUsersTable,
+  athleteInviteEventDeliveryClaimsTable,
   athleteInviteFanDeliveriesTable,
   athleteInviteFanRateLimitsTable,
   athleteInviteFansTable,
+  athleteInviteEventLinksTable,
   athleteInvitePhotoUploadClaimsTable,
   athleteInvitesTable,
+  checklistSharesTable,
   cloudProjectsTable,
   db,
+  gameOnReminderSyncTable,
+  gameOnScheduledRemindersTable,
   guestUsageEventsTable,
   hypeCardSharesTable,
+  hypeCardShareUploadClaimsTable,
+  meetingWorkspacesTable,
+  plannerNotificationPreferencesTable,
+  plannerOwnerEventAlertClaimsTable,
   projectMediaTable,
   projectMediaUploadClaimsTable,
   scheduleSharesTable,
   statTrackerSharesTable,
+  supporterActiveGamesTable,
   supporterPhotosTable,
   supporterPhotoUploadClaimsTable,
+  webPushSubscriptionsTable,
 } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
@@ -45,29 +59,45 @@ function isClerkNotFound(error: unknown) {
 async function claimAccount(accountId: string) {
   const now = new Date();
   const staleLease = new Date(now.getTime() - PURGE_LEASE_MS);
-  const [claimed] = await db
-    .update(accountAccessTable)
-    .set({
-      lifecycleStatus: "deletion_pending",
-      purgeStartedAt: now,
-      purgeError: null,
-      updatedAt: now,
-    })
-    .where(and(
-      eq(accountAccessTable.id, accountId),
-      or(
-        and(
-          eq(accountAccessTable.lifecycleStatus, "cancelled"),
-          lte(accountAccessTable.deletionEligibleAt, now),
+  return db.transaction(async (tx) => {
+    const [existing] = await tx.select({
+      ownerClerkUserId: accountAccessTable.ownerClerkUserId,
+    }).from(accountAccessTable)
+      .where(eq(accountAccessTable.id, accountId))
+      .limit(1);
+    if (!existing) return undefined;
+
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${existing.ownerClerkUserId}, 0))`);
+    const [administrator] = await tx.select({ clerkUserId: adminUsersTable.clerkUserId })
+      .from(adminUsersTable)
+      .where(eq(adminUsersTable.clerkUserId, existing.ownerClerkUserId))
+      .limit(1);
+    if (administrator) return undefined;
+
+    const [claimed] = await tx
+      .update(accountAccessTable)
+      .set({
+        lifecycleStatus: "deletion_pending",
+        purgeStartedAt: now,
+        purgeError: null,
+        updatedAt: now,
+      })
+      .where(and(
+        eq(accountAccessTable.id, accountId),
+        or(
+          and(
+            eq(accountAccessTable.lifecycleStatus, "cancelled"),
+            lte(accountAccessTable.deletionEligibleAt, now),
+          ),
+          and(
+            eq(accountAccessTable.lifecycleStatus, "deletion_pending"),
+            or(isNull(accountAccessTable.purgeStartedAt), lte(accountAccessTable.purgeStartedAt, staleLease)),
+          ),
         ),
-        and(
-          eq(accountAccessTable.lifecycleStatus, "deletion_pending"),
-          or(isNull(accountAccessTable.purgeStartedAt), lte(accountAccessTable.purgeStartedAt, staleLease)),
-        ),
-      ),
-    ))
-    .returning();
-  return claimed;
+      ))
+      .returning();
+    return claimed;
+  });
 }
 
 function defaultPurgeDependencies(): AccountPurgeDependencies {
@@ -111,42 +141,33 @@ async function purgeAccount(
     .select({ objectPath: athleteInvitePhotoUploadClaimsTable.objectPath })
     .from(athleteInvitePhotoUploadClaimsTable)
     .where(eq(athleteInvitePhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+  const supporterPhotoClaims = await db
+    .select({ objectPath: supporterPhotoUploadClaimsTable.objectPath })
+    .from(supporterPhotoUploadClaimsTable)
+    .where(eq(supporterPhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+  const hypeUploadClaims = await db
+    .select({ objectPath: hypeCardShareUploadClaimsTable.objectPath })
+    .from(hypeCardShareUploadClaimsTable)
+    .where(eq(hypeCardShareUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+  const ownedScheduleShares = await db
+    .select({ id: scheduleSharesTable.id })
+    .from(scheduleSharesTable)
+    .where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+  const scheduleShareIds = ownedScheduleShares.map((share) => share.id);
+  const inviteIds = invites.map((invite) => invite.id);
 
-  for (const item of media) {
-    try {
-      await dependencies.deleteObject(item.objectPath);
-    } catch (error) {
-      if (!(error instanceof ObjectNotFoundError)) throw error;
-    }
-  }
-  for (const item of uploadClaims) {
-    try {
-      await dependencies.deleteObject(item.objectPath);
-    } catch (error) {
-      if (!(error instanceof ObjectNotFoundError)) throw error;
-    }
-  }
-  for (const share of hypeShares) {
-    for (const objectPath of [share.videoObjectPath, share.posterObjectPath]) {
-      if (!objectPath) continue;
-      try {
-        await dependencies.deleteObject(objectPath);
-      } catch (error) {
-        if (!(error instanceof ObjectNotFoundError)) throw error;
-      }
-    }
-  }
-  for (const photo of supporterPhotos) {
-    try {
-      await dependencies.deleteObject(photo.objectPath);
-    } catch (error) {
-      if (!(error instanceof ObjectNotFoundError)) throw error;
-    }
-  }
-  for (const objectPath of new Set([
+  const ownedObjectPaths = new Set([
+    ...media.map((item) => item.objectPath),
+    ...uploadClaims.map((item) => item.objectPath),
+    ...hypeUploadClaims.map((item) => item.objectPath),
+    ...supporterPhotos.map((photo) => photo.objectPath),
+    ...supporterPhotoClaims.map((claim) => claim.objectPath),
+    ...hypeShares.flatMap((share) => [share.videoObjectPath, share.posterObjectPath]
+      .filter((objectPath): objectPath is string => Boolean(objectPath))),
     ...invites.flatMap((invite) => invite.photoObjectPath ? [invite.photoObjectPath] : []),
     ...invitePhotoClaims.map((claim) => claim.objectPath),
-  ])) {
+  ]);
+  for (const objectPath of ownedObjectPaths) {
     try {
       await dependencies.deleteObject(objectPath);
     } catch (error) {
@@ -155,14 +176,29 @@ async function purgeAccount(
   }
 
   await db.transaction(async (tx) => {
+    const relatedDeliveryConditions = [
+      ...(inviteIds.length ? [inArray(athleteInviteEventDeliveryClaimsTable.inviteId, inviteIds)] : []),
+      ...(scheduleShareIds.length ? [inArray(athleteInviteEventDeliveryClaimsTable.shareId, scheduleShareIds)] : []),
+    ];
+    if (relatedDeliveryConditions.length) {
+      await tx.delete(athleteInviteEventDeliveryClaimsTable)
+        .where(relatedDeliveryConditions.length === 1 ? relatedDeliveryConditions[0] : or(...relatedDeliveryConditions));
+    }
+    if (inviteIds.length) {
+      await tx.delete(athleteInviteEventLinksTable)
+        .where(inArray(athleteInviteEventLinksTable.inviteId, inviteIds));
+    }
+    await tx.delete(accountEntitlementEventsTable)
+      .where(eq(accountEntitlementEventsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(projectMediaTable).where(eq(projectMediaTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(projectMediaUploadClaimsTable).where(eq(projectMediaUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(hypeCardShareUploadClaimsTable)
+      .where(eq(hypeCardShareUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(scheduleSharesTable).where(eq(scheduleSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(hypeCardSharesTable).where(eq(hypeCardSharesTable.ownerClerkUserId, account.ownerClerkUserId));
-    if (invites.length) {
-      const inviteIds = invites.map((invite) => invite.id);
+    if (inviteIds.length) {
       await tx.delete(athleteInviteFansTable).where(inArray(athleteInviteFansTable.inviteId, inviteIds));
       await tx.delete(athleteInviteFanDeliveriesTable)
         .where(inArray(athleteInviteFanDeliveriesTable.inviteId, inviteIds));
@@ -175,6 +211,22 @@ async function purgeAccount(
     await tx.delete(guestUsageEventsTable).where(eq(guestUsageEventsTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(supporterPhotosTable).where(eq(supporterPhotosTable.ownerClerkUserId, account.ownerClerkUserId));
     await tx.delete(supporterPhotoUploadClaimsTable).where(eq(supporterPhotoUploadClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(webPushSubscriptionsTable)
+      .where(eq(webPushSubscriptionsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(plannerNotificationPreferencesTable)
+      .where(eq(plannerNotificationPreferencesTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(plannerOwnerEventAlertClaimsTable)
+      .where(eq(plannerOwnerEventAlertClaimsTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(supporterActiveGamesTable)
+      .where(eq(supporterActiveGamesTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(gameOnScheduledRemindersTable)
+      .where(eq(gameOnScheduledRemindersTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(gameOnReminderSyncTable)
+      .where(eq(gameOnReminderSyncTable.key, `owner:${account.ownerClerkUserId}`));
+    await tx.delete(checklistSharesTable)
+      .where(eq(checklistSharesTable.ownerClerkUserId, account.ownerClerkUserId));
+    await tx.delete(meetingWorkspacesTable)
+      .where(eq(meetingWorkspacesTable.ownerClerkUserId, account.ownerClerkUserId));
   });
 
   try {
@@ -183,7 +235,16 @@ async function purgeAccount(
     if (!isClerkNotFound(error)) throw error;
   }
 
-  await db.delete(accountAccessTable).where(eq(accountAccessTable.id, account.id));
+  await db.transaction(async (tx) => {
+    if (account.adminDeletionActionId) {
+      await tx.update(adminActionAuditTable).set({
+        status: "completed",
+        failureCode: null,
+        completedAt: new Date(),
+      }).where(eq(adminActionAuditTable.id, account.adminDeletionActionId));
+    }
+    await tx.delete(accountAccessTable).where(eq(accountAccessTable.id, account.id));
+  });
 }
 
 export async function runExpiredAccountPurge(
@@ -222,14 +283,22 @@ export async function runExpiredAccountPurge(
       logger.info({ clerkUserId: account.ownerClerkUserId }, "Purged expired LeagueMatrix account");
     } catch (error) {
       logger.error({ err: error, clerkUserId: account.ownerClerkUserId }, "Unable to purge expired LeagueMatrix account");
-      await db
-        .update(accountAccessTable)
-        .set({
-          purgeStartedAt: null,
-          purgeError: errorMessage(error),
-          updatedAt: new Date(),
-        })
-        .where(eq(accountAccessTable.id, account.id));
+      await db.transaction(async (tx) => {
+        if (account.adminDeletionActionId) {
+          await tx.update(adminActionAuditTable).set({
+            status: "failed",
+            failureCode: "account_cleanup_failed",
+            completedAt: null,
+          }).where(eq(adminActionAuditTable.id, account.adminDeletionActionId));
+        }
+        await tx.update(accountAccessTable)
+          .set({
+            purgeStartedAt: null,
+            purgeError: errorMessage(error),
+            updatedAt: new Date(),
+          })
+          .where(eq(accountAccessTable.id, account.id));
+      });
     }
   }
 }

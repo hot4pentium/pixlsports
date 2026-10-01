@@ -1591,6 +1591,315 @@ export interface AccountLifecycle {
   /** @minimum 1 */
   retentionDays: number;
   expired: boolean;
+  /** Whether an administrator has temporarily blocked this account without changing its self-service lifecycle state. */
+  adminSuspended?: boolean;
+}
+
+export interface AdminSession {
+  isAdmin: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type AdminMemberProfileSport = typeof AdminMemberProfileSport[keyof typeof AdminMemberProfileSport] | null;
+
+
+export const AdminMemberProfileSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface AdminMemberProfile {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  displayName: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  teamName: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  seasonName: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  athleteName: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  jerseyNumber: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  position: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  relationship: string | null;
+  /** @nullable */
+  sport: AdminMemberProfileSport;
+}
+
+/**
+ * @nullable
+ */
+export type AdminMemberProfileUpdateSport = typeof AdminMemberProfileUpdateSport[keyof typeof AdminMemberProfileUpdateSport] | null;
+
+
+export const AdminMemberProfileUpdateSport = {
+  baseball: 'baseball',
+  basketball: 'basketball',
+  football: 'football',
+  soccer: 'soccer',
+  volleyball: 'volleyball',
+} as const;
+
+export interface AdminMemberProfileUpdate {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  displayName?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  teamName?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  seasonName?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  athleteName?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  jerseyNumber?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  position?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  relationship?: string | null;
+  /** @nullable */
+  sport?: AdminMemberProfileUpdateSport;
+}
+
+/**
+ * @nullable
+ */
+export type AdminMemberRole = typeof AdminMemberRole[keyof typeof AdminMemberRole] | null;
+
+
+export const AdminMemberRole = {
+  fan: 'fan',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminMemberAccessMode = typeof AdminMemberAccessMode[keyof typeof AdminMemberAccessMode] | null;
+
+
+export const AdminMemberAccessMode = {
+  full: 'full',
+  guest: 'guest',
+} as const;
+
+export type AdminMemberLifecycleStatus = typeof AdminMemberLifecycleStatus[keyof typeof AdminMemberLifecycleStatus];
+
+
+export const AdminMemberLifecycleStatus = {
+  active: 'active',
+  paused: 'paused',
+  cancelled: 'cancelled',
+  deletion_pending: 'deletion_pending',
+  not_provisioned: 'not_provisioned',
+} as const;
+
+export interface AdminMember {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  clerkUserId: string;
+  /**
+     * @maxLength 320
+     * @nullable
+     */
+  primaryEmailAddress: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  firstName: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  lastName: string | null;
+  /** @nullable */
+  createdAt: string | null;
+  /** @nullable */
+  role: AdminMemberRole;
+  /** @nullable */
+  accessMode: AdminMemberAccessMode;
+  lifecycleStatus: AdminMemberLifecycleStatus;
+  adminSuspended: boolean;
+  isAdministrator: boolean;
+  profile: AdminMemberProfile;
+}
+
+export interface AdminMemberList {
+  items: AdminMember[];
+  /** @minimum 0 */
+  totalCount: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  limit: number;
+  /** @minimum 0 */
+  offset: number;
+}
+
+export interface AdminMemberSuspensionInput {
+  suspended: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export interface AdminMemberDeleteInput {
+  /**
+     * @minLength 1
+     * @maxLength 320
+     */
+  confirmationText: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type AdminMemberActionResultAction = typeof AdminMemberActionResultAction[keyof typeof AdminMemberActionResultAction];
+
+
+export const AdminMemberActionResultAction = {
+  account_suspended: 'account_suspended',
+  account_reactivated: 'account_reactivated',
+  account_deleted: 'account_deleted',
+} as const;
+
+export type AdminMemberActionResultStatus = typeof AdminMemberActionResultStatus[keyof typeof AdminMemberActionResultStatus];
+
+
+export const AdminMemberActionResultStatus = {
+  pending: 'pending',
+  failed: 'failed',
+  completed: 'completed',
+} as const;
+
+export interface AdminMemberActionResult {
+  actionId: string;
+  action: AdminMemberActionResultAction;
+  status: AdminMemberActionResultStatus;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  targetClerkUserId: string;
+  /** @maxLength 500 */
+  message: string;
+}
+
+export type AdminAuditEntryAction = typeof AdminAuditEntryAction[keyof typeof AdminAuditEntryAction];
+
+
+export const AdminAuditEntryAction = {
+  initial_admin_bootstrapped: 'initial_admin_bootstrapped',
+  profile_updated: 'profile_updated',
+  account_suspended: 'account_suspended',
+  account_reactivated: 'account_reactivated',
+  account_deleted: 'account_deleted',
+} as const;
+
+export type AdminAuditEntryStatus = typeof AdminAuditEntryStatus[keyof typeof AdminAuditEntryStatus];
+
+
+export const AdminAuditEntryStatus = {
+  pending: 'pending',
+  failed: 'failed',
+  completed: 'completed',
+} as const;
+
+export interface AdminAuditEntry {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  actorClerkUserId: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  targetClerkUserId: string;
+  action: AdminAuditEntryAction;
+  status: AdminAuditEntryStatus;
+  /** @items.maxLength 100 */
+  changedFields: string[];
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  reason: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  failureCode: string | null;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
+export interface AdminAuditList {
+  items: AdminAuditEntry[];
+  /** @minimum 0 */
+  totalCount: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  limit: number;
+  /** @minimum 0 */
+  offset: number;
 }
 
 export type HypeCardProjectVersion = typeof HypeCardProjectVersion[keyof typeof HypeCardProjectVersion];
@@ -1971,6 +2280,34 @@ export const ListHypeCardSharesMediaType = {
   image: 'image',
   video: 'video',
 } as const;
+
+export type ListAdminMembersParams = {
+/**
+ * @maxLength 200
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListAdminAuditParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
 
 export type GetNotificationSubscriptionStatusParams = {
 /**
