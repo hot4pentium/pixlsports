@@ -394,6 +394,7 @@ export function SupporterDashboardView({
   });
   const [localGameOnCards, setLocalGameOnCards] = useState<SavedGameOnCard[]>(() => userId ? readSavedGameOnCards(userId) : []);
   const [cardSelection, setCardSelection] = useState<{ kind: 'event' | 'share'; id: string; nonce: number } | null>(null);
+  const [gameOnCardOutcome, setGameOnCardOutcome] = useState('');
   const [newCardDraft, setNewCardDraft] = useState<{
     id: string;
     nonce: number;
@@ -616,7 +617,13 @@ export function SupporterDashboardView({
       kind: id.startsWith('share:') ? 'share' : 'event', id, nonce: (previous?.nonce ?? 0) + 1,
     });
   };
-  const handleGameOnCardChanged = (selectedId?: string) => {
+  const handleGameOnCardChanged = (selectedId?: string, notice?: string) => {
+    if (notice) {
+      setGameOnCardOutcome(notice);
+      window.setTimeout(() => {
+        setGameOnCardOutcome((current) => current === notice ? '' : current);
+      }, 8000);
+    }
     if (userId) setLocalGameOnCards(readSavedGameOnCards(userId));
     void queryClient.invalidateQueries({ queryKey: getListOwnedGameOnCardsQueryKey() });
     if (newCardDraft?.editing) {
@@ -1118,6 +1125,16 @@ export function SupporterDashboardView({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {gameOnCardOutcome && (
+        <div
+          className="fixed inset-x-4 bottom-4 z-[100] mx-auto max-w-xl border border-[#55A4FF]/45 bg-[#0B1F3A] px-5 py-4 text-sm font-semibold text-white shadow-xl"
+          role="status"
+          aria-live="polite"
+          data-testid="status-game-on-card-outcome"
+        >
+          {gameOnCardOutcome}
         </div>
       )}
       {/* MOBILE VIEW */}

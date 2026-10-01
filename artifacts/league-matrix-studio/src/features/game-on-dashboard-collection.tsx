@@ -2,10 +2,11 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { Link } from 'wouter';
 import { trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, MapPin, Plus, Search, Swords, Trash2, X } from 'lucide-react';
+import { Activity, ArrowLeft, ArrowRight, CalendarDays, ClipboardCheck, Clock3, Copy, ExternalLink, MapPin, Plus, Search, Swords, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogClose, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { buildWorkspaceToolHref } from './workspace-context';
+import { copyGameOnCardPublicLink, gameOnCardPublicHref } from './game-on-card-links';
 import { GAME_ON_COLLECTION_ID } from './game-on-navigation';
 import { GameOnInlineStatTracker } from './game-on-inline-stat-tracker';
 import { GameOnInlinePrepChecklist } from './game-on-inline-prep-checklist';
@@ -138,6 +139,7 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
   const frontFaceRef = useRef<HTMLDivElement>(null);
   const backFaceRef = useRef<HTMLDivElement>(null);
   const previousPanel = useRef<typeof panel>(null);
+  const [shareLinkNotice, setShareLinkNotice] = useState('');
   const trackerOpen = panel === 'tracker';
   const prepOpen = panel === 'prep';
   const calendarOpen = panel === 'calendar';
@@ -170,6 +172,13 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
     : undefined;
   const statusLabel = getCardStatus(card);
   const statusKey = statusLabel.toLowerCase().replace(/\s+/g, '-');
+  const copyEventCardLink = async () => {
+    if (!card.shareToken) return;
+    const copied = await copyGameOnCardPublicLink(card.shareToken);
+    setShareLinkNotice(copied
+      ? 'Event Card link copied.'
+      : 'Event Card link could not be copied. Open card to copy its address.');
+  };
   const hasEditor = selected && card.isUnsavedDraft && !panelOpen && Boolean(renderSelectedCard);
   const hasDetails = selected && !card.isUnsavedDraft && Boolean(renderSelectedCard);
   useLayoutEffect(() => {
@@ -316,6 +325,36 @@ function CollectionCard({ card, onOpen, onCancelDraft, selected, triggerSelected
                   <CalendarDays size={15} aria-hidden="true" />
                   <span>Details</span>
                 </button>
+                {card.shareToken && (
+                  <>
+                    <button
+                      type="button"
+                      className="game-on-collection__action--details"
+                      onClick={() => void copyEventCardLink()}
+                      aria-label="Copy Event Card link"
+                      data-testid={`button-copy-game-on-card-link-${card.id}`}
+                    >
+                      <Copy size={15} aria-hidden="true" />
+                      <span>Copy link</span>
+                    </button>
+                    <Link
+                      href={gameOnCardPublicHref(card.shareToken)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="game-on-collection__action--details"
+                      aria-label="Open card"
+                      data-testid={`link-open-game-on-card-${card.id}`}
+                    >
+                      <ExternalLink size={15} aria-hidden="true" />
+                      <span>Open card</span>
+                    </Link>
+                  </>
+                )}
+                {shareLinkNotice && (
+                  <p className="basis-full text-xs font-semibold text-current" role="status" aria-live="polite">
+                    {shareLinkNotice}
+                  </p>
+                )}
               </>
             )}
           </div>

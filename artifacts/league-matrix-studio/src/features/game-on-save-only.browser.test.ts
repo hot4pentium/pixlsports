@@ -79,6 +79,8 @@ const api = {
   createCount: 0,
   failNextCreate: false,
   clipboardCalls: 0,
+  clipboardFails: true,
+  clipboardWrites: [],
   calendarSaves: [],
   changed: [],
 };
@@ -89,6 +91,8 @@ window.__resetSaveOnlyFixture = () => {
   api.createCount = 0;
   api.failNextCreate = false;
   api.clipboardCalls = 0;
+  api.clipboardFails = true;
+  api.clipboardWrites = [];
   api.calendarSaves = [];
   api.changed = [];
   window.localStorage.clear();
@@ -109,9 +113,10 @@ window.__hypeEventQueriesInvalidated = () => hypeEventQueryKeys.map(
 Object.defineProperty(navigator, 'clipboard', {
   configurable: true,
   value: {
-    writeText: async () => {
+    writeText: async (text) => {
       api.clipboardCalls += 1;
-      throw new Error('Unexpected clipboard access in save-only flow');
+      api.clipboardWrites.push(text);
+      if (api.clipboardFails) throw new Error('Simulated clipboard denial');
     },
   },
 });
@@ -273,7 +278,7 @@ async function assertSaveButtonInBounds(
   assert.equal(state.scrollWidth <= width + 1, true, `page should not overflow horizontally at ${width}px`);
 }
 
-test('Game On save-only browser regressions cover create, update, inline calendar sync, and retry', async () => {
+test('Event Card browser regressions cover create/update labels, public links, calendar sync, and retry', async () => {
   await writeFile(harnessPath, harnessSource(), 'utf8');
   await writeFile(htmlPath, `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div><script type="module">import('/game-on-save-only-browser-harness.tsx?test=' + Date.now()).catch(error => { document.body.dataset.testError = String(error); });</script></body></html>`, 'utf8');
 
@@ -311,9 +316,9 @@ test('Game On save-only browser regressions cover create, update, inline calenda
     });
     await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"button-save-game-on-card\\"]")', Boolean, 30_000);
 
-    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Save Event Card', 390);
+    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Create Event Card', 390);
     await setViewport(connection, page, 1280);
-    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Save Event Card', 1280);
+    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Create Event Card', 1280);
     await setViewport(connection, page, 390);
 
     const fillPanel = async (date: string, opponent: string) => {
@@ -350,6 +355,8 @@ test('Game On save-only browser regressions cover create, update, inline calenda
     await waitFor(connection, page.sessionId, 'window.__saveOnlyApi.calls.some(call => call.method === "POST")', Boolean);
     await waitFor(connection, page.sessionId, 'window.__saveOnlyApi.calls.some(call => call.path.startsWith("/api/game-on-cards/"))', Boolean);
     await waitFor(connection, page.sessionId, 'window.__hypeEventQueriesInvalidated().every(Boolean)', Boolean);
+    await waitFor(connection, page.sessionId, 'window.__saveOnlyApi.clipboardCalls === 1', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-card-saved\\"]")?.textContent.includes("could not be copied")', Boolean);
 
     let apiState = await panelApiState();
     assert.equal(apiState.calls[0].method, 'POST');
@@ -357,7 +364,7 @@ test('Game On save-only browser regressions cover create, update, inline calenda
     assert.equal(apiState.calls[0].payload.purpose, 'game-on-card');
     assert.equal(apiState.calls[0].payload.events[0].opponent, 'Falcons');
     assert.equal(apiState.calls[0].payload.events[0].date, '2026-11-13');
-    assert.equal(apiState.clipboardCalls, 0, 'saving should not touch the clipboard');
+    assert.equal(apiState.clipboardCalls, 1, 'creating the public link should attempt to copy it');
     let cards = await localCards();
     assert.equal(cards.length, 1);
     assert.equal(cards[0].event.opponent, 'Falcons');
@@ -365,29 +372,37 @@ test('Game On save-only browser regressions cover create, update, inline calenda
     assert.equal(cards[0].shareToken, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
     assert.equal(apiState.shares[cards[0].shareToken].events[0].opponent, 'Falcons', 'server copy should retain the saved event');
 
-    const savedControls = await connection.evaluate<{ copyOrOpenEventCard: string[]; standaloneCardLinks: number; savedText: string }>(
+    const savedControls = await connection.evaluate<{ copyOrOpenEventCard: string[]; standaloneCardLinks: number; openCardHref: string | null; savedText: string }>(
       `(() => {
         const saved = document.querySelector('[data-testid="game-on-card-saved"]');
         const controls = [...(saved?.querySelectorAll('button, a') || [])];
         return {
           copyOrOpenEventCard: controls.map((control) => control.textContent?.trim() || '')
-            .filter((text) => /copy.*event card|open.*event card/i.test(text)),
+            .filter((text) => /^(copy link|open card)$/i.test(text)),
           standaloneCardLinks: controls.filter((control) => control instanceof HTMLAnchorElement
             && /\\/game-on\\//.test(control.getAttribute('href') || '')).length,
+          openCardHref: controls.find((control) => control.getAttribute('data-testid') === 'link-open-game-on-card')
+            ?.getAttribute('href') || null,
           savedText: saved?.textContent || '',
         };
       })()`,
       page.sessionId,
     );
     assert.match(savedControls.savedText, /Event Card saved/);
-    assert.deepEqual(savedControls.copyOrOpenEventCard, []);
-    assert.equal(savedControls.standaloneCardLinks, 0);
+    assert.deepEqual(savedControls.copyOrOpenEventCard, ['Copy link', 'Open card']);
+    assert.equal(savedControls.standaloneCardLinks, 1);
+    assert.equal(savedControls.openCardHref, '/game-on/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    assert.match(savedControls.savedText, /public link could not be copied/i);
+
+    await click('[data-testid="button-copy-game-on-card-link"]');
+    await waitFor(connection, page.sessionId, 'window.__saveOnlyApi.clipboardCalls === 2', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-card-saved\\"]")?.textContent.includes("Open card to copy its address")', Boolean);
 
     await click('[data-testid="button-edit-game-on-card"]');
     await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"button-save-game-on-card\\"]")', Boolean);
-    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Save Event Card', 390);
+    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Update Event Card', 390);
     await setViewport(connection, page, 1280);
-    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Save Event Card', 1280);
+    await assertSaveButtonInBounds(connection, page, 'button-save-game-on-card', 'Update Event Card', 1280);
     await setViewport(connection, page, 390);
     await fillPanel('2026-11-14', 'Ravens');
     await connection.evaluate('window.__seedHypeEventQueries()', page.sessionId);
@@ -403,7 +418,7 @@ test('Game On save-only browser regressions cover create, update, inline calenda
     assert.equal(updateCall.payload.purpose, 'game-on-card');
     assert.equal(updateCall.payload.events[0].opponent, 'Ravens');
     assert.equal(updateCall.payload.events[0].date, '2026-11-14');
-    assert.equal(apiState.clipboardCalls, 0);
+    assert.equal(apiState.clipboardCalls, 2, 'updating a card should not copy the existing link again');
     cards = await localCards();
     assert.equal(cards.length, 1);
     assert.equal(cards[0].shareToken, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
@@ -420,13 +435,20 @@ test('Game On save-only browser regressions cover create, update, inline calenda
     await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"game-on-card-error\\"]")', Boolean);
     await waitFor(connection, page.sessionId, '(() => { const button = document.querySelector("[data-testid=\\"button-save-game-on-card\\"]"); return !!button && !button.disabled; })()', Boolean);
     assert.equal(await connection.evaluate<boolean>(
-      '(() => { const button = document.querySelector("[data-testid=\\"button-save-game-on-card\\"]"); return !!button && !button.disabled && button.textContent.includes("Save Event Card"); })()',
+      '(() => { const button = document.querySelector("[data-testid=\\"button-save-game-on-card\\"]"); return !!button && !button.disabled && button.textContent.includes("Create Event Card"); })()',
       page.sessionId,
     ), true, 'failed Event Card saves should remain retryable');
     assert.deepEqual(await localCards(), [], 'a failed request must not create a local saved card');
+    await connection.evaluate('window.__saveOnlyApi.clipboardFails = false', page.sessionId);
     await click('[data-testid="button-save-game-on-card"]');
     await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"game-on-card-saved\\"]")', Boolean);
+    await waitFor(connection, page.sessionId, 'window.__saveOnlyApi.clipboardCalls === 1', Boolean);
+    await waitFor(connection, page.sessionId, 'document.querySelector("[data-testid=\\"game-on-card-saved\\"]")?.textContent.includes("link was copied")', Boolean);
     assert.equal((await localCards()).length, 1, 'retry should persist the successfully saved card');
+    assert.match(await connection.evaluate<string>(
+      'window.__saveOnlyApi.clipboardWrites[0] || ""',
+      page.sessionId,
+    ), /\/game-on\/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa$/);
 
     await connection.evaluate('window.__resetSaveOnlyFixture(); window.__showSaveOnlyMode("details")', page.sessionId);
     await waitFor(connection, page.sessionId, '!!document.querySelector("[data-testid=\\"button-save-inline-event\\"]")', Boolean);

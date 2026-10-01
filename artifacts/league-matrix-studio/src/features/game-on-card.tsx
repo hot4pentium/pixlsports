@@ -13,6 +13,8 @@ import {
   CalendarDays,
   Check,
   ClipboardCheck,
+  Copy,
+  ExternalLink,
   Loader2,
   ShieldCheck,
   Sparkles,
@@ -36,6 +38,7 @@ import {
 } from './game-on-card-storage';
 import { getBrowserTimeZone, getGameOnTimeZoneOptions, resolveGameOnTimeZone } from './game-on-timezone';
 import { invalidateHypeCardEvents } from './game-on-hype-event-sync';
+import { copyGameOnCardPublicLink, gameOnCardPublicHref } from './game-on-card-links';
 
 type GameOnEventType = 'game' | 'practice';
 type CardEvent = GameOnDraft & { type?: GameOnEventType; calendarProjectId?: string };
@@ -55,7 +58,7 @@ type GameOnCardPanelProps = {
   initialDraft?: SupporterEvent;
   initialSourceEventId?: string;
   onDraftChange?: (event: SupporterEvent, sourceEventId: string) => void;
-  onChanged?: (selectedId?: string) => void;
+  onChanged?: (selectedId?: string, notice?: string) => void;
   onSaveCalendarEvent?: (event: SupporterEvent) => Promise<void>;
   existingCardTokensByEventId?: Record<string, string>;
 };
@@ -281,6 +284,7 @@ export function GameOnCardPanel({
       }
       const data = buildShareData(event);
       const existingToken = saved?.shareToken ?? (sourceEventId !== 'new' ? existingCardTokensByEventId?.[event.id] : undefined);
+      const isCreating = !existingToken;
       const share = existingToken
         ? await updateShare.mutateAsync({ shareToken: existingToken, data })
         : await createShare.mutateAsync({ data });
@@ -292,9 +296,16 @@ export function GameOnCardPanel({
       };
       saveCard(next);
       setDraft(event);
-      setNotice('Event Card saved. Find it in your Hype Card’s Events section when Allow events is on.');
+      const copied = isCreating ? await copyGameOnCardPublicLink(share.shareToken) : false;
+      const cardAvailability = 'Find it in your Hype Card’s Events section when Allow events is on.';
+      const outcome = isCreating
+        ? copied
+          ? `Event Card saved. Its public link was copied. ${cardAvailability}`
+          : `Event Card saved. Its public link could not be copied; use Copy link to try again or Open card. ${cardAvailability}`
+        : `Event Card updated. ${cardAvailability}`;
+      setNotice(outcome);
       void invalidateHypeCardEvents(queryClient);
-      onChanged?.(`share:${share.shareToken}`);
+      onChanged?.(`share:${share.shareToken}`, outcome);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to save the Event Card. Try again.');
     } finally {
@@ -335,6 +346,10 @@ export function GameOnCardPanel({
 
   const selectedPublicEvent = publicCard.data?.event;
   const isPractice = draft.type === 'practice';
+  const hasExistingShare = Boolean(
+    saved?.shareToken
+    || (sourceEventId !== 'new' && existingCardTokensByEventId?.[draft.id]),
+  );
   const canCreate = Boolean(draft.date && (isPractice || draft.opponent.trim())) && !busy;
   const workspaceEvent = {
     id: draft.id,
@@ -355,6 +370,14 @@ export function GameOnCardPanel({
   }
   const prepToolHref = `${buildWorkspaceToolHref('prep', workspaceEvent)}&${prepDetails.toString()}&view=share`;
   const statsToolHref = isPractice ? undefined : buildWorkspaceToolHref('stats', workspaceEvent);
+
+  async function handleCopySavedLink() {
+    if (!saved) return;
+    const copied = await copyGameOnCardPublicLink(saved.shareToken);
+    setNotice(copied
+      ? 'Event Card link copied.'
+      : 'Event Card link could not be copied. Open card to copy its address.');
+  }
 
   return (
     <section
@@ -430,6 +453,23 @@ export function GameOnCardPanel({
                 {error && <p className="mt-3 text-xs font-semibold text-red-200" role="alert">{error}</p>}
                 {notice && <p className="mt-3 text-xs font-semibold text-primary" role="status" aria-live="polite">{notice}</p>}
                 <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleCopySavedLink()}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary"
+                    data-testid="button-copy-game-on-card-link"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copy link
+                  </button>
+                  <Link
+                    href={gameOnCardPublicHref(saved.shareToken)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary"
+                    data-testid="link-open-game-on-card"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Open card
+                  </Link>
                   <Link href={prepToolHref} className="inline-flex min-h-10 items-center justify-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:border-primary" data-testid="link-game-on-open-prep">
                     <ClipboardCheck className="h-3.5 w-3.5" /> Prep / share if you choose
                   </Link>
@@ -587,7 +627,7 @@ export function GameOnCardPanel({
                 data-testid="button-save-game-on-card"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Trophy className="h-4 w-4" />}
-                {busy ? 'Saving…' : 'Save Event Card'}
+                {busy ? (hasExistingShare ? 'Updating…' : 'Creating…') : (hasExistingShare ? 'Update Event Card' : 'Create Event Card')}
                 {!busy && <ArrowRight className="h-4 w-4" />}
               </button>
             </div>
