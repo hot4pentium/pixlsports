@@ -88,6 +88,7 @@ import {
 import { useAppInstallPrompt } from '@/features/app-install-prompt';
 import { shouldRequireSupporterSetup } from '@/features/supporter-setup-routing';
 import { canShowInitialAccountSetup } from '@/features/initial-account-setup';
+import { getSportRule, sports, type Sport } from '@/features/stat-tracker';
 import {
   updateSupporterPhotoCache,
   useCachedSupporterPhoto,
@@ -3497,7 +3498,7 @@ function SignInPage() {
       subtitle="Your athlete’s season, all in one place. Pick up where you left off."
     >
       <div className="auth-entry-note" role="note" data-testid="auth-signup-first-note">
-        <p><strong>New to Pixl Sports?</strong> Create your account first, then add your athlete and season details.</p>
+        <p><strong>New to Pixl Sports?</strong> Create your account first, then add your athlete, sport, and season details.</p>
         <Link href={signUpUrl}>Create account <ArrowRight size={15} aria-hidden="true" /></Link>
       </div>
       <SignIn appearance={authFormAppearance} routing="path" path={`${basePath}/sign-in`} signUpUrl={signUpUrl} fallbackRedirectUrl={redirectUrl || `${basePath}/studio/setup`} oidcPrompt="select_account" />
@@ -3513,7 +3514,7 @@ function SignUpPage() {
   return (
     <AuthLayout
       title={<>Start their<br/><span>season here.</span></>}
-      subtitle="Plan each week, share game day, and cheer on your athlete together."
+      subtitle="Create your account, then add your athlete’s sport and season so your dashboard is ready."
     >
       <SignUp appearance={authFormAppearance} routing="path" path={`${basePath}/sign-up`} signInUrl={signInUrl} fallbackRedirectUrl={redirectUrl || roleRedirect} oidcPrompt="select_account" />
     </AuthLayout>
@@ -3529,6 +3530,7 @@ export function RoleSelectionPage() {
   const [displayName, setDisplayName] = useState(existingProfile.displayName);
   const [teamName, setTeamName] = useState(existingProfile.teamName);
   const [athleteName, setAthleteName] = useState(existingProfile.athleteName);
+  const [sport, setSport] = useState<Sport | ''>(existingProfile.sport ?? '');
   const [seasonName, setSeasonName] = useState(existingProfile.seasonName);
   const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState('');
@@ -3547,8 +3549,8 @@ export function RoleSelectionPage() {
     const cleanTeam = teamName.trim();
     const cleanAthleteName = athleteName.trim();
     const cleanSeasonName = seasonName.trim();
-    if (!cleanName || !cleanTeam || !cleanAthleteName || !cleanSeasonName) {
-      setError('Add your name, team, athlete name, and season to continue.');
+    if (!cleanName || !cleanTeam || !cleanAthleteName || !sport || !cleanSeasonName) {
+      setError('Add your name, team, athlete name, sport, and season to continue.');
       return;
     }
 
@@ -3571,6 +3573,7 @@ export function RoleSelectionPage() {
           displayName: cleanName,
           teamName: cleanTeam,
           athleteName: cleanAthleteName,
+          sport,
           seasonName: cleanSeasonName,
             ...(dashboardChecklistStateAfterSetup(
              user.unsafeMetadata,
@@ -3610,7 +3613,7 @@ export function RoleSelectionPage() {
               YOUR ATHLETE’S<br /><span className="text-primary">SEASON.</span>
             </h1>
             <p className="mt-6 max-w-lg text-lg font-medium leading-relaxed text-muted-foreground">
-              Tell us about your athlete and season so your supporter dashboard starts with the right details.
+              Tell us about your athlete, their sport, and season so your supporter dashboard and Stats Tracker start with the right details.
             </p>
           </div>
 
@@ -3659,6 +3662,24 @@ export function RoleSelectionPage() {
                     className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
                     data-testid="input-profile-athlete"
                   />
+                </label>
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Athlete sport
+                  <select
+                    value={sport}
+                    onChange={(event) => setSport(event.target.value as Sport | '')}
+                    required
+                    className="mt-2 w-full border border-border bg-background px-4 py-3 text-sm font-medium text-foreground outline-none focus:border-primary"
+                    data-testid="select-profile-sport"
+                  >
+                    <option value="">Choose a sport</option>
+                    {sports.map((option) => (
+                      <option key={option} value={option}>{getSportRule(option).label}</option>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-[11px] font-medium normal-case tracking-normal text-muted-foreground">
+                    This is saved to your athlete profile and sets the default sport in Stats Tracker.
+                  </span>
                 </label>
                 <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Season

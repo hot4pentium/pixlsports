@@ -9,6 +9,7 @@ import {
   SupporterProfilePage,
   queryClient,
 } from '@/App';
+import { StatTrackerPage } from './stat-tracker-page';
 import { currentAccountId, switchAccount } from './account-lifecycle-browser-auth';
 import '../index.css';
 
@@ -81,6 +82,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/sign-in" component={() => <main data-testid="lifecycle-sign-in">Sign in</main>} />
             <Route path="/studio/profile" component={SupporterProfilePage} />
             <Route path="/studio/setup" component={RoleSelectionPage} />
+            <Route path="/studio/stat-tracker" component={StatTrackerPage} />
             <Route path="/studio"><main data-testid="studio-restored">Studio access restored</main></Route>
           </Switch>
         </AccountLifecycleGate>

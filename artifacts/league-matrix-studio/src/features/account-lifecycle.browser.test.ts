@@ -244,11 +244,26 @@ test('signed-in account controls survive phone and desktop transitions against r
         input.dispatchEvent(new Event('input', { bubbles: true }));
       }
     })()`, firstSaveCache);
+    await click(firstSaveCache, 'button-save-profile');
+    assert.equal(await connection.evaluate<boolean>(
+      "document.querySelector('[data-testid=\"select-profile-sport\"]')?.validity.valueMissing === true",
+      firstSaveCache,
+    ), true, 'sport must be selected before supporter setup can be submitted');
+    await connection.evaluate(`(() => {
+      const sport = document.querySelector('[data-testid="select-profile-sport"]');
+      const setSelectValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+      setSelectValue.call(sport, 'soccer');
+      sport.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`, firstSaveCache);
     await admin('fail-clerk-once', { viewer: firstSaveOwner });
     await click(firstSaveCache, 'button-save-profile');
     await waitFor(connection, firstSaveCache,
       "Boolean(document.querySelector('[role=\"alert\"]')?.textContent.includes('could not save your profile'))",
       Boolean, 30_000);
+    assert.equal(await connection.evaluate<string>(
+      "document.querySelector('[data-testid=\"select-profile-sport\"]')?.value || ''",
+      firstSaveCache,
+    ), 'soccer', 'a temporary save failure must not clear the selected sport');
     assert.equal((await state(firstSaveOwner)).status, 'not_provisioned');
     assert.equal((await state(firstSaveOwner)).provisionedMarker, false);
     assert.deepEqual(await connection.evaluate<{ dashboard: string | null; tracker: string | null }>(
@@ -277,12 +292,14 @@ test('signed-in account controls survive phone and desktop transitions against r
       displayName: savedProfile.unsafeMetadata.displayName,
       teamName: savedProfile.unsafeMetadata.teamName,
       athleteName: savedProfile.unsafeMetadata.athleteName,
+      sport: savedProfile.unsafeMetadata.sport,
       seasonName: savedProfile.unsafeMetadata.seasonName,
     }, {
       role: 'fan',
       displayName: 'Morgan Supporter',
       teamName: 'Northside Comets',
       athleteName: 'Alex Morgan',
+      sport: 'soccer',
       seasonName: 'Fall 2026',
     }, 'supporter and athlete details must be persisted in the Clerk profile source');
 
@@ -301,6 +318,15 @@ test('signed-in account controls survive phone and desktop transitions against r
     }, 'the supporter account must remain active after a full document reload');
     assert.deepEqual((await profile(firstSaveOwner)).unsafeMetadata, savedProfile.unsafeMetadata,
       'supporter and athlete details must be restored from the persisted profile after reload');
+    await connection.evaluate("window.__navigateLifecycle('/studio/stat-tracker')", firstSaveCache);
+    await waitVisible(firstSaveCache, 'stat-tracker-setup');
+    await waitFor(connection, firstSaveCache,
+      "document.querySelector('[role=\"tab\"][aria-selected=\"true\"]')?.textContent.trim().toLowerCase() === 'soccer'",
+      Boolean, 30_000);
+    assert.equal(await connection.evaluate<boolean>(
+      "document.querySelector('[data-testid=\"stat-tracker-sport-choice\"]') !== null",
+      firstSaveCache,
+    ), false, 'a saved signup sport should skip the tracker sport prompt');
 
     await admin('fail', { viewer: owner, method: 'GET', path: '/account/lifecycle' });
     const phone = await open(owner, 390, 844);

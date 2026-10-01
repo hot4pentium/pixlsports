@@ -27,20 +27,24 @@ test('legacy metadata always reaches the supporter studio', () => {
   assert.equal(getStudioDestination(getUserRole({ unsafeMetadata: { role: 'legacy' } })), 'supporter');
 });
 
-test('supporter setup requires athlete and season details and carries the season into saved profiles', () => {
+test('supporter setup persists sport and season while retaining legacy completion', () => {
   const user = {
     unsafeMetadata: {
       role: 'fan',
       displayName: 'Jamie Smith',
       teamName: 'Eastside Falcons',
       athleteName: 'Avery Smith',
+      sport: 'soccer',
       seasonName: ' 2026–27 ',
     },
   };
   const profile = getUserProfile(user);
 
   assert.equal(profile.seasonName, '2026–27');
+  assert.equal(profile.sport, 'soccer');
   assert.equal(isSupporterSetupComplete(profile), true);
+  assert.equal(isSupporterSetupComplete({ ...profile, sport: null }), true,
+    'completed legacy profiles without a sport must not be forced back through setup');
   assert.equal(isSupporterSetupComplete({ ...profile, athleteName: '' }), false);
   assert.equal(isSupporterSetupComplete({ ...profile, seasonName: '' }), false);
 
@@ -50,6 +54,7 @@ test('supporter setup requires athlete and season details and carries the season
     seasonName: ' 2026–27 ',
   });
   assert.equal(savePlan.unsafeMetadata.seasonName, '2026–27');
+  assert.equal(savePlan.unsafeMetadata.sport, 'soccer');
   assert.equal(savePlan.unsafeMetadata.retainedMetadata, true);
 });
 
