@@ -3187,7 +3187,7 @@ export const DeleteAdminMemberResponse = zod.object({
 
 
 /**
- * @summary View the recent member-administration audit trail
+ * @summary View and filter the member-administration audit trail
  */
 export const listAdminAuditQueryLimitDefault = 25;
 export const listAdminAuditQueryLimitMax = 100;
@@ -3195,11 +3195,20 @@ export const listAdminAuditQueryLimitMax = 100;
 export const listAdminAuditQueryOffsetDefault = 0;
 export const listAdminAuditQueryOffsetMin = 0;
 
+export const listAdminAuditQueryMemberClerkUserIdMax = 200;
+
+export const listAdminAuditQueryFromDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listAdminAuditQueryToDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
 
 
 export const ListAdminAuditQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listAdminAuditQueryLimitMax).default(listAdminAuditQueryLimitDefault),
-  "offset": zod.coerce.number().int().min(listAdminAuditQueryOffsetMin).default(listAdminAuditQueryOffsetDefault)
+  "offset": zod.coerce.number().int().min(listAdminAuditQueryOffsetMin).default(listAdminAuditQueryOffsetDefault),
+  "memberClerkUserId": zod.coerce.string().min(1).max(listAdminAuditQueryMemberClerkUserIdMax).optional().describe('Filter by the affected member\'s Clerk user ID.'),
+  "action": zod.enum(['initial_admin_bootstrapped', 'profile_updated', 'account_suspended', 'account_reactivated', 'account_deleted', 'administrator_granted', 'administrator_revoked']).optional().describe('Filter by the recorded administrative action.'),
+  "status": zod.enum(['pending', 'failed', 'completed']).optional().describe('Filter by the recorded action outcome.'),
+  "fromDate": zod.coerce.string().regex(listAdminAuditQueryFromDateRegExp).optional().describe('Include entries created on or after this UTC calendar date (YYYY-MM-DD).'),
+  "toDate": zod.coerce.string().regex(listAdminAuditQueryToDateRegExp).optional().describe('Include entries created on or before this UTC calendar date (YYYY-MM-DD).')
 })
 
 export const listAdminAuditResponseItemsItemActorClerkUserIdMax = 200;

@@ -5490,7 +5490,7 @@ export const getListAdminAuditUrl = (params?: ListAdminAuditParams,) => {
 }
 
 /**
- * @summary View the recent member-administration audit trail
+ * @summary View and filter the member-administration audit trail
  */
 export const listAdminAudit = async (params?: ListAdminAuditParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminAuditList> => {
 
@@ -5514,7 +5514,7 @@ export const getListAdminAuditQueryKey = (params?: ListAdminAuditParams,) => {
     }
 
 
-export const getListAdminAuditQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAudit>>, TError = ErrorType<UnauthorizedResponse | Error>>(params?: ListAdminAuditParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAdminAuditQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAudit>>, TError = ErrorType<Error | UnauthorizedResponse>>(params?: ListAdminAuditParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -5533,14 +5533,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListAdminAuditQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAudit>>>
-export type ListAdminAuditQueryError = ErrorType<UnauthorizedResponse | Error>
+export type ListAdminAuditQueryError = ErrorType<Error | UnauthorizedResponse>
 
 
 /**
- * @summary View the recent member-administration audit trail
+ * @summary View and filter the member-administration audit trail
  */
 
-export function useListAdminAudit<TData = Awaited<ReturnType<typeof listAdminAudit>>, TError = ErrorType<UnauthorizedResponse | Error>>(
+export function useListAdminAudit<TData = Awaited<ReturnType<typeof listAdminAudit>>, TError = ErrorType<Error | UnauthorizedResponse>>(
  params?: ListAdminAuditParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAudit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {

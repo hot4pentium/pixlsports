@@ -124,6 +124,11 @@ test("admin routes reject unauthenticated and non-admin requests, while administ
       });
       assert.equal(denied.status, 403);
       assert.deepEqual(await denied.json(), { error: "Administrator access is required." });
+      const deniedFilteredAudit = await fetch(
+        `${baseUrl}/admin/audit?memberClerkUserId=${encodeURIComponent(nonAdministratorId)}&status=failed`,
+        { headers: { "x-test-user": nonAdministratorId } },
+      );
+      assert.equal(deniedFilteredAudit.status, 403);
 
       const allowed = await fetch(`${baseUrl}/admin/audit`, {
         headers: { "x-test-user": administratorId },
@@ -135,6 +140,116 @@ test("admin routes reject unauthenticated and non-admin requests, while administ
     }));
   } finally {
     await cleanFixture([administratorId, nonAdministratorId]);
+  }
+});
+
+test("administrators can filter audit history by member, action, status, dates, and page", async () => {
+  const administratorId = `admin-audit-filter-${crypto.randomUUID()}`;
+  const targetId = `member-audit-filter-${crypto.randomUUID()}`;
+  const otherTargetId = `member-audit-other-${crypto.randomUUID()}`;
+  const otherAdministratorId = `admin-audit-other-${crypto.randomUUID()}`;
+  await db.insert(adminUsersTable).values({ clerkUserId: administratorId });
+  await db.insert(adminActionAuditTable).values([
+    {
+      actorClerkUserId: administratorId,
+      targetClerkUserId: targetId,
+      action: "profile_updated",
+      status: "completed",
+      createdAt: new Date("2025-02-02T09:30:00.000Z"),
+    },
+    {
+      actorClerkUserId: administratorId,
+      targetClerkUserId: targetId,
+      action: "account_suspended",
+      status: "failed",
+      createdAt: new Date("2025-02-02T23:59:59.000Z"),
+    },
+    {
+      actorClerkUserId: administratorId,
+      targetClerkUserId: targetId,
+      action: "administrator_granted",
+      status: "completed",
+      createdAt: new Date("2025-02-03T00:00:00.000Z"),
+    },
+    {
+      actorClerkUserId: otherAdministratorId,
+      targetClerkUserId: otherTargetId,
+      action: "profile_updated",
+      status: "completed",
+      createdAt: new Date("2025-02-02T12:00:00.000Z"),
+    },
+  ]);
+  try {
+    await withTestServer(async (baseUrl) => {
+      const headers = { "x-test-user": administratorId };
+      const query = (params: Record<string, string>) => new URLSearchParams(params).toString();
+
+      const dateRange = await fetch(`${baseUrl}/admin/audit?${query({
+        memberClerkUserId: targetId,
+        fromDate: "2025-02-02",
+        toDate: "2025-02-02",
+      })}`, { headers });
+      assert.equal(dateRange.status, 200);
+      const dateRangeBody = await dateRange.json() as {
+        items: Array<{ action: string; targetClerkUserId: string }>;
+        totalCount: number;
+      };
+      assert.equal(dateRangeBody.totalCount, 2);
+      assert.deepEqual(dateRangeBody.items.map((item) => item.action), ["account_suspended", "profile_updated"]);
+      assert.ok(dateRangeBody.items.every((item) => item.targetClerkUserId === targetId));
+
+      const actionStatus = await fetch(`${baseUrl}/admin/audit?${query({
+        memberClerkUserId: targetId,
+        action: "account_suspended",
+        status: "failed",
+      })}`, { headers });
+      assert.equal(actionStatus.status, 200);
+      const actionStatusBody = await actionStatus.json() as {
+        items: Array<{ action: string; status: string }>;
+        totalCount: number;
+      };
+      assert.equal(actionStatusBody.totalCount, 1);
+      assert.deepEqual(actionStatusBody.items.map(({ action, status }) => ({ action, status })), [
+        { action: "account_suspended", status: "failed" },
+      ]);
+
+      const secondPage = await fetch(`${baseUrl}/admin/audit?${query({
+        memberClerkUserId: targetId,
+        limit: "2",
+        offset: "2",
+      })}`, { headers });
+      assert.equal(secondPage.status, 200);
+      const secondPageBody = await secondPage.json() as {
+        items: Array<{ targetClerkUserId: string }>;
+        totalCount: number;
+        limit: number;
+        offset: number;
+      };
+      assert.equal(secondPageBody.totalCount, 3);
+      assert.equal(secondPageBody.limit, 2);
+      assert.equal(secondPageBody.offset, 2);
+      assert.equal(secondPageBody.items.length, 1);
+      assert.equal(secondPageBody.items[0]?.targetClerkUserId, targetId);
+
+      const invalidRange = await fetch(`${baseUrl}/admin/audit?${query({
+        fromDate: "2025-02-03",
+        toDate: "2025-02-02",
+      })}`, { headers });
+      assert.equal(invalidRange.status, 400);
+      assert.deepEqual(await invalidRange.json(), {
+        error: "The start date must be on or before the end date.",
+      });
+
+      const invalidCalendarDate = await fetch(`${baseUrl}/admin/audit?${query({
+        fromDate: "2025-02-31",
+      })}`, { headers });
+      assert.equal(invalidCalendarDate.status, 400);
+      assert.deepEqual(await invalidCalendarDate.json(), {
+        error: "Dates must be valid YYYY-MM-DD calendar dates.",
+      });
+    });
+  } finally {
+    await cleanFixture([administratorId, targetId, otherTargetId, otherAdministratorId]);
   }
 });
 

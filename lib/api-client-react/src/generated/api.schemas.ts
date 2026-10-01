@@ -2320,7 +2320,53 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+/**
+ * Filter by the affected member's Clerk user ID.
+ * @minLength 1
+ * @maxLength 200
+ */
+memberClerkUserId?: string;
+/**
+ * Filter by the recorded administrative action.
+ */
+action?: ListAdminAuditAction;
+/**
+ * Filter by the recorded action outcome.
+ */
+status?: ListAdminAuditStatus;
+/**
+ * Include entries created on or after this UTC calendar date (YYYY-MM-DD).
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+fromDate?: string;
+/**
+ * Include entries created on or before this UTC calendar date (YYYY-MM-DD).
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
+toDate?: string;
 };
+
+export type ListAdminAuditAction = typeof ListAdminAuditAction[keyof typeof ListAdminAuditAction];
+
+
+export const ListAdminAuditAction = {
+  initial_admin_bootstrapped: 'initial_admin_bootstrapped',
+  profile_updated: 'profile_updated',
+  account_suspended: 'account_suspended',
+  account_reactivated: 'account_reactivated',
+  account_deleted: 'account_deleted',
+  administrator_granted: 'administrator_granted',
+  administrator_revoked: 'administrator_revoked',
+} as const;
+
+export type ListAdminAuditStatus = typeof ListAdminAuditStatus[keyof typeof ListAdminAuditStatus];
+
+
+export const ListAdminAuditStatus = {
+  pending: 'pending',
+  failed: 'failed',
+  completed: 'completed',
+} as const;
 
 export type GetNotificationSubscriptionStatusParams = {
 /**

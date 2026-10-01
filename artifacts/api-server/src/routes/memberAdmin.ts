@@ -217,6 +217,19 @@ router.get("/admin/audit", requireAdmin, async (req, res, next): Promise<void> =
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const dateFilters = [parsed.data.fromDate, parsed.data.toDate].filter((value): value is string => Boolean(value));
+  const hasInvalidCalendarDate = dateFilters.some((value) => {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value;
+  });
+  if (hasInvalidCalendarDate) {
+    res.status(400).json({ error: "Dates must be valid YYYY-MM-DD calendar dates." });
+    return;
+  }
+  if (parsed.data.fromDate && parsed.data.toDate && parsed.data.fromDate > parsed.data.toDate) {
+    res.status(400).json({ error: "The start date must be on or before the end date." });
+    return;
+  }
   try {
     res.json(ListAdminAuditResponse.parse(await listAdminAudit(parsed.data)));
   } catch (error) {

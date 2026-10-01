@@ -3,9 +3,11 @@ import {
   count,
   desc,
   eq,
+  gte,
   inArray,
   isNotNull,
   isNull,
+  lt,
   ne,
   sql,
 } from "drizzle-orm";
@@ -534,9 +536,38 @@ export async function getAdminAction(id: string) {
   return action ?? null;
 }
 
-export async function listAdminAudit(options: { limit: number; offset: number }) {
-  const [total] = await db.select({ value: count() }).from(adminActionAuditTable);
+export async function listAdminAudit(options: {
+  limit: number;
+  offset: number;
+  memberClerkUserId?: string;
+  action?: string;
+  status?: string;
+  fromDate?: string;
+  toDate?: string;
+}) {
+  const conditions = [];
+  if (options.memberClerkUserId) {
+    conditions.push(eq(adminActionAuditTable.targetClerkUserId, options.memberClerkUserId));
+  }
+  if (options.action) conditions.push(eq(adminActionAuditTable.action, options.action));
+  if (options.status) conditions.push(eq(adminActionAuditTable.status, options.status));
+  if (options.fromDate) {
+    conditions.push(gte(
+      adminActionAuditTable.createdAt,
+      new Date(`${options.fromDate}T00:00:00.000Z`),
+    ));
+  }
+  if (options.toDate) {
+    const exclusiveEnd = new Date(`${options.toDate}T00:00:00.000Z`);
+    exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
+    conditions.push(lt(adminActionAuditTable.createdAt, exclusiveEnd));
+  }
+  const where = conditions.length ? and(...conditions) : undefined;
+  const [total] = await db.select({ value: count() })
+    .from(adminActionAuditTable)
+    .where(where);
   const rows = await db.select().from(adminActionAuditTable)
+    .where(where)
     .orderBy(desc(adminActionAuditTable.createdAt))
     .limit(options.limit)
     .offset(options.offset);

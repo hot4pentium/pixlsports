@@ -25,6 +25,32 @@ import './admin-console.css';
 
 const PAGE_SIZE = 20;
 const AUDIT_SIZE = 50;
+const AUDIT_ACTIONS = [
+  ['initial_admin_bootstrapped', 'Initial administrator setup'],
+  ['profile_updated', 'Profile updated'],
+  ['account_suspended', 'Account suspended'],
+  ['account_reactivated', 'Account reactivated'],
+  ['account_deleted', 'Account deleted'],
+  ['administrator_granted', 'Administrator access granted'],
+  ['administrator_revoked', 'Administrator access revoked'],
+] as const;
+const AUDIT_STATUSES = ['pending', 'failed', 'completed'] as const;
+type AuditAction = (typeof AUDIT_ACTIONS)[number][0];
+type AuditStatus = (typeof AUDIT_STATUSES)[number];
+type AuditFilters = {
+  memberClerkUserId: string;
+  action: AuditAction | '';
+  status: AuditStatus | '';
+  fromDate: string;
+  toDate: string;
+};
+const EMPTY_AUDIT_FILTERS: AuditFilters = {
+  memberClerkUserId: '',
+  action: '',
+  status: '',
+  fromDate: '',
+  toDate: '',
+};
 const PROFILE_FIELDS: { key: keyof AdminMemberProfileUpdate; label: string; type?: string }[] = [
   { key: 'displayName', label: 'Display name' },
   { key: 'teamName', label: 'Team name' },
@@ -51,10 +77,41 @@ function statusLabel(value: string) {
 
 function AdminAuditHistory() {
   const [offset, setOffset] = useState(0);
-  const params = useMemo(() => ({ limit: AUDIT_SIZE, offset }), [offset]);
+  const [draftFilters, setDraftFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(EMPTY_AUDIT_FILTERS);
+  const params = useMemo(() => ({
+    limit: AUDIT_SIZE,
+    offset,
+    ...(appliedFilters.memberClerkUserId ? { memberClerkUserId: appliedFilters.memberClerkUserId } : {}),
+    ...(appliedFilters.action ? { action: appliedFilters.action } : {}),
+    ...(appliedFilters.status ? { status: appliedFilters.status } : {}),
+    ...(appliedFilters.fromDate ? { fromDate: appliedFilters.fromDate } : {}),
+    ...(appliedFilters.toDate ? { toDate: appliedFilters.toDate } : {}),
+  }), [offset, appliedFilters]);
   const audit = useListAdminAudit(params, {
     query: { queryKey: getListAdminAuditQueryKey(params), staleTime: 0, refetchOnMount: 'always' },
   });
+  const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
+  const invalidDateRange = Boolean(draftFilters.fromDate && draftFilters.toDate && draftFilters.fromDate > draftFilters.toDate);
+
+  const applyFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (invalidDateRange) return;
+    const nextFilters = {
+      ...draftFilters,
+      memberClerkUserId: draftFilters.memberClerkUserId.trim(),
+    };
+    setDraftFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    setOffset(0);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters(EMPTY_AUDIT_FILTERS);
+    setAppliedFilters(EMPTY_AUDIT_FILTERS);
+    setOffset(0);
+  };
+
   return (
     <section className="admin-card admin-section" aria-labelledby="admin-audit-heading">
       <div className="flex items-start justify-between gap-3">
@@ -66,8 +123,76 @@ function AdminAuditHistory() {
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
       </div>
+      <form className="mt-5 border border-[#e5ebe7] bg-white/70 p-4" onSubmit={applyFilters} aria-label="Filter audit history">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label>
+            <span className="admin-label">Member account ID</span>
+            <input
+              className="admin-input"
+              type="text"
+              maxLength={200}
+              value={draftFilters.memberClerkUserId}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, memberClerkUserId: event.target.value }))}
+              placeholder="Affected member’s Clerk ID"
+            />
+          </label>
+          <label>
+            <span className="admin-label">Action</span>
+            <select
+              className="admin-input"
+              value={draftFilters.action}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, action: event.target.value as AuditFilters['action'] }))}
+            >
+              <option value="">All actions</option>
+              {AUDIT_ACTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span className="admin-label">Status</span>
+            <select
+              className="admin-input"
+              value={draftFilters.status}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, status: event.target.value as AuditFilters['status'] }))}
+            >
+              <option value="">All statuses</option>
+              {AUDIT_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
+            </select>
+          </label>
+          <label>
+            <span className="admin-label">From date (UTC)</span>
+            <input
+              className="admin-input"
+              type="date"
+              value={draftFilters.fromDate}
+              max={draftFilters.toDate || undefined}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, fromDate: event.target.value }))}
+            />
+          </label>
+          <label>
+            <span className="admin-label">To date (UTC)</span>
+            <input
+              className="admin-input"
+              type="date"
+              value={draftFilters.toDate}
+              min={draftFilters.fromDate || undefined}
+              onChange={(event) => setDraftFilters((current) => ({ ...current, toDate: event.target.value }))}
+            />
+          </label>
+        </div>
+        <p className="mt-2 text-[11px] text-[#60778a]">Member filters match the affected account. Date limits include the full selected UTC dates.</p>
+        {invalidDateRange && <p className="mt-2 text-xs font-semibold text-[#a33e25]" role="alert">The start date must be on or before the end date.</p>}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="admin-button admin-button-primary" type="submit" disabled={invalidDateRange || audit.isFetching}>
+            <Search className="h-4 w-4" /> Apply filters
+          </button>
+          <button className="admin-button" type="button" onClick={clearFilters} disabled={audit.isFetching && activeFilterCount === 0 && offset === 0}>
+            Clear filters
+          </button>
+          {activeFilterCount > 0 && <span className="self-center text-xs text-[#60778a]">{activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'} applied</span>}
+        </div>
+      </form>
       {audit.isLoading ? (
-        <div className="mt-6 space-y-4" aria-label="Loading audit history">
+        <div className="mt-6 space-y-4" aria-label="Loading audit history" role="status">
           {[0, 1, 2].map((key) => <div className="admin-skeleton" key={key} />)}
         </div>
       ) : audit.isError ? (
@@ -75,13 +200,23 @@ function AdminAuditHistory() {
           Audit history could not load. <button className="font-bold underline" type="button" onClick={() => void audit.refetch()}>Try again</button>
         </div>
       ) : !audit.data?.items.length ? (
-        <div className="mt-6 border border-dashed border-[#c9d6d1] px-4 py-8 text-center">
+        <div className="mt-6 border border-dashed border-[#c9d6d1] px-4 py-8 text-center" role="status" aria-live="polite">
           <ShieldCheck className="mx-auto h-6 w-6 text-[#2868a0]" />
-          <p className="mt-2 text-sm font-bold">No admin actions recorded</p>
-          <p className="mt-1 text-xs text-[#60778a]">New member operations will appear here.</p>
+          {activeFilterCount > 0 ? (
+            <>
+              <p className="mt-2 text-sm font-bold">No audit entries match these filters</p>
+              <p className="mt-1 text-xs text-[#60778a]">Try a different member, action, status, or date range.</p>
+              <button className="admin-button mt-3" type="button" onClick={clearFilters}>Clear filters</button>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm font-bold">No admin actions recorded</p>
+              <p className="mt-1 text-xs text-[#60778a]">New member operations will appear here.</p>
+            </>
+          )}
         </div>
       ) : (
-        <ol className="mt-6">
+        <ol className="mt-6" aria-label="Audit history entries">
           {audit.data.items.map((entry) => (
             <li className="admin-timeline-item" key={entry.id}>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -99,7 +234,7 @@ function AdminAuditHistory() {
       )}
       {audit.data && audit.data.totalCount > audit.data.items.length && (
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#e5ebe7] pt-3">
-          <p className="text-xs text-[#60778a]">Showing {offset + 1}–{Math.min(offset + audit.data.items.length, audit.data.totalCount)} of {audit.data.totalCount}</p>
+          <p className="text-xs text-[#60778a]">Showing {offset + 1}–{Math.min(offset + audit.data.items.length, audit.data.totalCount)} of {audit.data.totalCount} matching actions</p>
           <div className="flex gap-2">
             <button className="admin-button !min-h-8 !px-2" type="button" disabled={offset <= 0 || audit.isFetching} onClick={() => setOffset(Math.max(0, offset - AUDIT_SIZE))} aria-label="Previous audit page"><ChevronLeft className="h-4 w-4" /></button>
             <button className="admin-button !min-h-8 !px-2" type="button" disabled={offset + AUDIT_SIZE >= audit.data.totalCount || audit.isFetching} onClick={() => setOffset(offset + AUDIT_SIZE)} aria-label="Next audit page"><ChevronRight className="h-4 w-4" /></button>
