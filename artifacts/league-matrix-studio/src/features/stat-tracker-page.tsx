@@ -1634,12 +1634,6 @@ export function StatTrackerPage() {
       .catch(() => undefined);
   };
 
-  if (!isLoaded || (isSignedIn && storageAccountId !== accountId)) return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading tracker…</div>;
-  if (!isSignedIn) {
-    setLocation('/sign-in?redirect_url=%2Fstudio%2Fstat-tracker');
-    return null;
-  }
-
   const beginGame = () => {
     if (requiresSportSelection) return;
     if (sport === 'soccer' && !soccerPeriodFormat) return;
@@ -2033,6 +2027,12 @@ export function StatTrackerPage() {
       setShareNotice('Clipboard unavailable — select the link above to copy it.');
     }
   };
+
+  if (!isLoaded || (isSignedIn && storageAccountId !== accountId)) return <div className="grid min-h-dvh place-items-center bg-background text-sm font-bold uppercase tracking-widest text-muted-foreground">Loading tracker…</div>;
+  if (!isSignedIn) {
+    setLocation('/sign-in?redirect_url=%2Fstudio%2Fstat-tracker');
+    return null;
+  }
 
   if (requiresSportSelection && !currentGame) {
     return (

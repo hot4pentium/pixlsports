@@ -2,6 +2,7 @@ import { useSyncExternalStore, type ReactNode } from 'react';
 
 let id = new URLSearchParams(location.search).get('viewer') || '';
 const apiOrigin = new URLSearchParams(location.search).get('api') || '';
+const statTrackerReturnTest = new URLSearchParams(location.search).get('statTrackerReturnTest') === '1';
 const listeners = new Set<() => void>();
 const clerkListeners = new Set<(state: { user: ReturnType<typeof currentUser> }) => void>();
 let firstSaveUnsafeMetadata: Record<string, unknown> = {};
@@ -31,6 +32,12 @@ function currentUser(unsafeMetadata?: Record<string, unknown>) {
       teamName: workspaceJourney ? 'Northside Comets' : first ? 'Falcons' : 'Otters',
       accessMode: 'full',
       ...(workspaceJourney ? { athleteName: 'Alexandria Montgomery-Williams', sport: 'basketball' } : {}),
+      ...(statTrackerReturnTest ? {
+        displayName: 'Taylor Supporter',
+        teamName: 'Northside Comets',
+        athleteName: 'Alex Morgan',
+        seasonName: 'Fall 2026',
+      } : {}),
     },
     update: async (data: { unsafeMetadata?: Record<string, unknown> }) => {
       if (!userSnapshot || !data.unsafeMetadata) return;

@@ -6929,6 +6929,155 @@ test('deleting selected games and practices falls back across Calendar and works
   }
 });
 
+test('signed-in direct Stat Tracker entry keeps the return link visible and usable on a phone', { concurrency: false }, async () => {
+  const releaseBrowserTestLock = await acquireBrowserTestLock();
+  let devServer: ChildProcess | undefined;
+  let devServerMonitor: ProcessMonitor | undefined;
+  let browser: ChildProcess | undefined;
+  let browserMonitor: ProcessMonitor | undefined;
+  let connection: DevToolsConnection | undefined;
+  let page: { sessionId: string; targetId: string } | undefined;
+  let tempDirectory: string | undefined;
+
+  try {
+    const viteProbe = createServer();
+    const { port: vitePort } = await listen(viteProbe);
+    await new Promise<void>((done) => viteProbe.close(() => done()));
+    devServer = spawn('pnpm', ['exec', 'vite', '--config', 'vite.account-lifecycle-browser.config.ts', '--host', '127.0.0.1'], {
+      cwd: appDirectory,
+      env: { ...process.env, PORT: String(vitePort), BASE_PATH: '/', REPL_ID: '' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    devServerMonitor = monitorProcess(devServer, 'Vite dev server');
+    await waitForUrl(`http://127.0.0.1:${vitePort}/studio/stat-tracker`, 20_000, devServerMonitor);
+
+    const debugProbe = createServer();
+    const { port: debugPort } = await listen(debugProbe);
+    await new Promise<void>((done) => debugProbe.close(() => done()));
+    tempDirectory = await mkdtemp(resolve(tmpdir(), 'pixl-direct-stat-tracker-return-'));
+    browser = spawn(chromiumPath, [
+      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      `--remote-debugging-port=${debugPort}`, `--user-data-dir=${tempDirectory}`, 'about:blank',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserMonitor = monitorProcess(browser, 'Chromium');
+    await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 20_000, browserMonitor);
+    const { webSocketDebuggerUrl } = await fetch(`http://127.0.0.1:${debugPort}/json/version`)
+      .then((response) => response.json() as Promise<{ webSocketDebuggerUrl: string }>);
+    connection = await DevToolsConnection.connect(webSocketDebuggerUrl, browserMonitor.diagnostics);
+
+    const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
+    const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', {
+      targetId: target.targetId,
+      flatten: true,
+    });
+    page = { sessionId: attached.sessionId, targetId: target.targetId };
+    await connection.send('Page.enable', {}, page.sessionId);
+    await connection.send('Runtime.enable', {}, page.sessionId);
+    connection.registerTarget(page.targetId, page.sessionId);
+    await connection.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `(() => {
+        const originalFetch = window.fetch.bind(window);
+        const jsonResponse = (body) => new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+        window.fetch = async (input, init) => {
+          const requestUrl = input instanceof Request ? input.url : input instanceof URL ? input.href : input;
+          const pathname = new URL(requestUrl, window.location.href).pathname;
+          if (pathname === '/api/account/lifecycle') {
+            return jsonResponse({
+              status: 'active',
+              pauseEndsAt: null,
+              planTier: 'free',
+              cancelledAt: null,
+              lastActivityAt: null,
+              deletionEligibleAt: null,
+              retentionDays: 90,
+              expired: false,
+            });
+          }
+          if (pathname === '/api/account/access') return jsonResponse(null);
+          if (pathname.startsWith('/api/')) return jsonResponse([]);
+          return originalFetch(input, init);
+        };
+      })();`,
+    }, page.sessionId);
+    await connection.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    }, page.sessionId);
+
+    const trackerUrl = `http://127.0.0.1:${vitePort}/studio/stat-tracker?viewer=tracker-direct-browser-user&statTrackerReturnTest=1`;
+    const pageLoaded = connection.waitForEvent('Page.loadEventFired', page.sessionId);
+    await connection.send('Page.navigate', { url: trackerUrl }, page.sessionId);
+    await pageLoaded;
+    await waitFor(
+      connection,
+      page.sessionId,
+      `location.pathname === '/studio/stat-tracker'
+        && Boolean(document.querySelector('[data-testid="stat-tracker-sport-choice"]'))
+        && Boolean(document.querySelector('[data-testid="link-stat-tracker-choice-studio"]'))`,
+      Boolean,
+    );
+
+    const inspectReturnLink = async (testId: string) => connection!.evaluate<{
+      label: string;
+      href: string;
+      height: number;
+    }>(`(() => {
+      const link = document.querySelector('[data-testid="${testId}"]');
+      const rect = link?.getBoundingClientRect();
+      return {
+        label: link?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+        href: link instanceof HTMLAnchorElement ? new URL(link.href).pathname : '',
+        height: rect?.height || 0,
+      };
+    })()`, page!.sessionId);
+
+    const sportChoiceLink = await inspectReturnLink('link-stat-tracker-choice-studio');
+    assert.equal(sportChoiceLink.label, 'Back to Game Day Hub');
+    assert.equal(sportChoiceLink.href, '/studio');
+    assert.ok(sportChoiceLink.height >= 44, `sport-choice return link should be at least 44px tall, received ${sportChoiceLink.height}px`);
+
+    await connection.evaluate(
+      `document.querySelector('[data-testid="button-choose-tracker-sport-basketball"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(
+      connection,
+      page.sessionId,
+      `Boolean(document.querySelector('[data-testid="stat-tracker-setup"]'))
+        && Boolean(document.querySelector('[data-testid="link-stat-tracker-studio"]'))`,
+      Boolean,
+    );
+    const setupLink = await inspectReturnLink('link-stat-tracker-studio');
+    assert.equal(setupLink.label, 'Back to Game Day Hub');
+    assert.equal(setupLink.href, '/studio');
+    assert.ok(setupLink.height >= 44, `setup return link should be at least 44px tall, received ${setupLink.height}px`);
+
+    await connection.evaluate(
+      `document.querySelector('[data-testid="link-stat-tracker-studio"]')?.click()`,
+      page.sessionId,
+    );
+    await waitFor(connection, page.sessionId, `location.pathname === '/studio'`, Boolean);
+  } finally {
+    if (page && connection) await connection.send('Target.closeTarget', { targetId: page.targetId }).catch(() => undefined);
+    connection?.close();
+    if (browser && browserMonitor) {
+      if (!browserMonitor.hasExited()) browser.kill('SIGTERM');
+      await browserMonitor.waitForExit();
+    }
+    if (devServer && devServerMonitor) {
+      if (!devServerMonitor.hasExited()) devServer.kill('SIGTERM');
+      await devServerMonitor.waitForExit();
+    }
+    if (tempDirectory) await rm(tempDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    releaseBrowserTestLock();
+  }
+});
+
 test('saved athlete profile names reach game tools and HYPE Card setup stays the entrypoint', { concurrency: false }, async () => {
   const releaseBrowserTestLock = await acquireBrowserTestLock();
   const fixtures = fixturePaths('supporter-dashboard-profile-test');
