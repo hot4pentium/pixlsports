@@ -1158,6 +1158,7 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
   const visibleTools = roleToolKinds[activeRole];
   const homeLabel = activeRole === 'fan' ? 'Supporter Hub' : 'Command Center';
   const isFanDashboard = activeRole === 'fan' && location === '/studio';
+  const isSupporterProfile = activeRole === 'fan' && location === '/studio/profile';
   const isChecklistPage = location === '/studio/checklist' || location.startsWith('/checklist/');
   const isEditorPage = location === '/studio/checklist'
     || location.startsWith('/checklist/')
@@ -1172,7 +1173,10 @@ function StudioLayout({ children, role, landingBackground = false }: { children:
         <div className={isFanDashboard ? 'hidden lg:block border-b border-border bg-background bg-tech-grid' : 'border-b border-border bg-background bg-tech-grid'} data-testid="studio-tool-toolbar">
           <div className="mx-auto flex max-w-[1400px] items-center gap-8 overflow-x-auto px-5 sm:px-8 bg-background/90 backdrop-blur-sm no-scrollbar">
             <Link href="/studio" className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors ${location === '/studio' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid="link-studio-directory">{homeLabel}</Link>
-            {visibleTools.map((key) => {
+            {visibleTools.filter((key) => !(
+              isSupporterProfile
+              && (key === 'hype' || key === 'stat-tracker' || key === 'checklist')
+            )).map((key) => {
               const tool = toolData[key];
               return (
               <Link key={key} href={`/studio/${tool.slug}`} className={`shrink-0 border-b-4 py-4 text-sm font-bold uppercase tracking-widest transition-colors lg:hidden ${location.includes(tool.slug) ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} data-testid={`link-toolbar-${key}`}>

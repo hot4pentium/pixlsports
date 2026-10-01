@@ -334,6 +334,31 @@ test('signed-in account controls survive phone and desktop transitions against r
     assert.equal(await state(owner).then((result) => result.status), 'active');
     await connection.evaluate("Array.from(document.querySelectorAll('button')).find(button => /try again|retry/i.test(button.textContent || ''))?.click()", phone);
     await waitVisible(phone, 'button-hype-manager-account-information');
+    await waitFor(connection, phone,
+      "Boolean(document.querySelector('[data-testid=\"studio-tool-toolbar\"]'))", Boolean, 30_000);
+    const profileMobileNavigation = await connection.evaluate<{
+      hub: boolean;
+      athletePage: boolean;
+      profile: boolean;
+      hype: boolean;
+      statTracker: boolean;
+      checklist: boolean;
+    }>(`({
+      hub: Boolean(document.querySelector('[data-testid="link-studio-directory"]')),
+      athletePage: Boolean(document.querySelector('[data-testid="link-toolbar-athlete-page"]')),
+      profile: Boolean(document.querySelector('[data-testid="link-toolbar-profile"]')),
+      hype: Boolean(document.querySelector('[data-testid="link-toolbar-hype"]')),
+      statTracker: Boolean(document.querySelector('[data-testid="link-toolbar-stat-tracker"]')),
+      checklist: Boolean(document.querySelector('[data-testid="link-toolbar-checklist"]')),
+    })`, phone);
+    assert.deepEqual(profileMobileNavigation, {
+      hub: true,
+      athletePage: true,
+      profile: true,
+      hype: false,
+      statTracker: false,
+      checklist: false,
+    }, 'the mobile supporter profile header should keep profile navigation without obsolete tool links');
     await click(phone, 'button-hype-manager-account-information');
     await waitVisible(phone, 'account-information');
     await waitFor(connection, phone, "document.querySelector('[data-testid=\"account-plan\"]')?.textContent.trim() === 'Pro'", Boolean);
