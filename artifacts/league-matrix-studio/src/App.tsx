@@ -48,7 +48,7 @@ import {
 import { Utensils } from 'lucide-react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter, Redirect } from 'wouter';
-import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
+import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { useRef } from 'react';
@@ -143,6 +143,7 @@ import {
 } from '@/features/gameday-checklist';
 import { readChecklistForEvent, useChecklistSave, type ChecklistSyncStatus } from '@/features/use-checklist-save';
 import MeetingCapture from '@/features/meeting-capture';
+import { PublicLandingPage } from '@/features/landing-home';
 import heroBanner from '@/assets/hero-banner.webp';
 import footballFieldAsset from '@/assets/football-field.svg';
 import hypeCardFootballTemplate from '@/assets/hype-card-football-template.png';
@@ -166,9 +167,6 @@ import gameDayChecklist1404 from '@/assets/game-day-checklist-1404.webp';
 import './landing-unified.css';
 import './auth-page.css';
 
-const PublicLandingPage = lazy(() =>
-  import('@/features/landing-home').then(({ PublicLandingPage }) => ({ default: PublicLandingPage })),
-);
 const HypeCardReplyInboxTrigger = lazy(() =>
   import('@/features/hype-card-reply-inbox').then(({ HypeCardReplyInboxTrigger }) => ({ default: HypeCardReplyInboxTrigger })),
 );
@@ -3869,7 +3867,8 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isLoaded, isSignedIn, user } = useUser();
   const queryClient = useQueryClient();
-  const bypassLifecycle = location.startsWith('/schedule/')
+  const bypassLifecycle = location === '/'
+    || location.startsWith('/schedule/')
     || location.startsWith('/checklist/')
     || location.startsWith('/watch/')
     || location.startsWith('/live/')
@@ -3974,16 +3973,9 @@ function SupporterSetupGate({ children }: { children: ReactNode }) {
 }
 
 function HomeRedirect() {
-  return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/studio" />
-      </Show>
-      <Show when="signed-out">
-        <PublicLandingPage />
-      </Show>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useUser();
+  if (isLoaded && isSignedIn) return <Redirect to="/studio" />;
+  return <PublicLandingPage />;
 }
 
 function ClerkQueryClientCacheInvalidator() {
