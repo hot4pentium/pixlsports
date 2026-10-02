@@ -56,9 +56,32 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       connection.registerTarget(page.targetId, page.sessionId);
       await connection.send('Page.enable', {}, page.sessionId);
       await connection.send('Runtime.enable', {}, page.sessionId);
+       await connection.send('Page.addScriptToEvaluateOnNewDocument', {
+         source: `(() => {
+           window.__pixlStartupBlockedFrames = [];
+           const recordBlockedFrame = () => {
+             const accountGate = Boolean(document.querySelector('.account-loading-screen'));
+             const routeLoader = document.body?.textContent?.includes('Loading your studio…') ?? false;
+             if (accountGate || routeLoader) {
+               window.__pixlStartupBlockedFrames.push({ accountGate, routeLoader });
+             }
+           };
+           new MutationObserver(recordBlockedFrame).observe(document, {
+             childList: true,
+             subtree: true,
+             characterData: true,
+           });
+           document.addEventListener('DOMContentLoaded', recordBlockedFrame, { once: true });
+         })();`,
+       }, page.sessionId);
       await connection.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 }, page.sessionId);
       await connection.send('Page.navigate', { url: `http://127.0.0.1:${port}/` }, page.sessionId);
       await waitFor(connection, page.sessionId, 'Boolean(document.querySelector("[data-testid=text-landing-headline]"))', value => value === true);
+       const startupBlockedFrames = await connection.evaluate<Array<{ accountGate: boolean; routeLoader: boolean }>>(
+         'window.__pixlStartupBlockedFrames ?? []',
+         page.sessionId,
+       );
+       assert.deepEqual(startupBlockedFrames, [], `the root route showed an account or route splash at ${width}px`);
       await connection.evaluate('document.fonts.ready', page.sessionId);
        await waitFor(connection, page.sessionId, 'document.querySelector(".landing-athlete-render")?.naturalWidth === 1228', Boolean);
       const heroCopy = await connection.evaluate<{ headline: string; obsoleteLabel: boolean; photoCaption: boolean; heroCardLabel: boolean }>(`(() => ({
