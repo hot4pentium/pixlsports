@@ -71,6 +71,16 @@ test('hero message omits the numbered athlete-card label', () => {
   assert.match(source, /Every player has a story worth sharing\./);
 });
 
+test('landing Hype Card artwork shows the current sides without video references', () => {
+  assert.match(source, /className="landing-hype-card-tabs"/);
+  for (const side of ['Card front', 'Stats', 'Events']) {
+    assert.ok(source.includes(`<span>${side}</span>`), `landing artwork should show ${side}`);
+  }
+  assert.match(styles, /landing-hype-card-tabs/);
+  assert.doesNotMatch(source, /\bvideos?\b/i);
+  assert.doesNotMatch(demoSource, /\bvideos?\b|<video/i);
+});
+
 test('Hype Card copy comes before its preview on phones without changing the desktop columns', () => {
   const copy = source.indexOf('<div className="athlete-copy">');
   const preview = source.indexOf('<AthletePreview />');

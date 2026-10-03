@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, X, WifiOff, CloudUpload } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, ClipboardCheck, Activity, Heart, Share2, Bell, Check, Menu, RotateCcw, X, WifiOff, CloudUpload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import youthFootballHero from '@/assets/landing-youth-football-hero.jpg';
 import kimberlyHypeCard from '@/assets/landing-kimberly-hype-card.png';
@@ -97,13 +97,20 @@ function DemoStepCard({ step: { number, title, description, icon: Icon }, onOpen
 function AthletePreview() {
   return (
     <div className="athlete-showcase">
-      <img
-        className="landing-athlete-render"
-        src={kimberlyHypeCard}
-        alt="Kimberly in a pink soccer jersey holding a ball on a Pixl Hype Card."
-        width="1228"
-        height="1981"
-      />
+      <div className="landing-hype-card-art">
+        <img
+          className="landing-athlete-render"
+          src={kimberlyHypeCard}
+          alt="Kimberly in a pink soccer jersey holding a ball on a Pixl Hype Card."
+          width="1228"
+          height="1981"
+        />
+        <div className="landing-hype-card-tabs" aria-hidden="true" data-testid="landing-hype-card-tabs">
+          <span className="landing-hype-card-tab landing-hype-card-tab--active"><RotateCcw size={10} /><span>Card front</span></span>
+          <span className="landing-hype-card-tab"><ChartNoAxesCombined size={10} /><span>Stats</span></span>
+          <span className="landing-hype-card-tab"><CalendarDays size={10} /><span>Events</span></span>
+        </div>
+      </div>
       <span className="showcase-note">Product preview · Hype Card</span>
     </div>
   );

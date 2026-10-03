@@ -122,7 +122,13 @@
 .new-landing .athlete-showcase { grid-area: preview; min-height: 505px; border-radius: 17px; background: radial-gradient(circle at 60% 22%,#347c99,#17445b 45%,#092739); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px #ffffff24; }
 .new-landing .athlete-copy { grid-area: copy; }
 .new-landing .athlete-showcase::before { content: ""; position: absolute; inset: 0; opacity: .11; background: repeating-linear-gradient(145deg, transparent 0 16px,#fff 17px 18px); }
-.new-landing .landing-athlete-render { display: block; width: min(70%, 265px); height: auto; border-radius: 17px; transform: rotate(-5deg); box-shadow: 0 18px 32px #051e2c70; }
+.new-landing .landing-hype-card-art { position: relative; isolation: isolate; display: block; width: min(70%, 265px); aspect-ratio: 1228 / 1981; border-radius: 17px; transform: rotate(-5deg); box-shadow: 0 18px 32px #051e2c70; }
+.new-landing .landing-athlete-render { display: block; width: 100%; height: 100%; border-radius: 17px; object-fit: cover; }
+.new-landing .landing-hype-card-tabs { position: absolute; z-index: 1; left: 7.2%; right: 7.2%; bottom: 3.5%; height: 7.1%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid #3a536d; border-radius: 9px; background: #07172a; box-shadow: 0 0 0 1px #020914; }
+.new-landing .landing-hype-card-tab { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 2px; color: #9db0c0; background: #0b2035; font: 800 7px/1 "Barlow Condensed", Impact, sans-serif; letter-spacing: .025em; text-transform: uppercase; white-space: nowrap; }
+.new-landing .landing-hype-card-tab + .landing-hype-card-tab { border-left: 1px solid #304b64; }
+.new-landing .landing-hype-card-tab svg { width: 9px; height: 9px; flex: none; }
+.new-landing .landing-hype-card-tab--active { color: #102338; background: #f1f4f2; }
 .new-landing .athlete-showcase .showcase-note {position:absolute;bottom:23px;left:25px;color:#d1e6e9;font-size:10px;letter-spacing:.1em;text-transform:uppercase;}
 .new-landing .athlete-copy h2 { max-width: 480px; }
 .new-landing .athlete-copy .hype-word { color: var(--pixl-lime); -webkit-text-stroke: 1px var(--pixl-navy); paint-order: stroke fill; }
@@ -181,7 +187,7 @@
   .new-landing .hero-image-frame {inset:15px 12px 32px 5px;}
   .new-landing .athlete-grid {gap:45px;}
   .new-landing .athlete-showcase {min-height:410px;}
-  .new-landing .landing-athlete-render {width:min(70%,230px);}
+  .new-landing .landing-hype-card-art {width:min(70%,230px);}
   .new-landing .offline-grid {gap:38px;}
 }
 @media (max-width: 700px) {
@@ -218,7 +224,7 @@
   .new-landing .step-card p {font-size:11px;}
   .new-landing .athlete-grid {grid-template-columns:1fr;grid-template-areas:"copy" "preview";gap:41px;}
   .new-landing .athlete-showcase {min-height:400px;}
-  .new-landing .landing-athlete-render {width:min(70%,225px);}
+  .new-landing .landing-hype-card-art {width:min(70%,225px);}
   .new-landing .athlete-copy > p {font-size:14px;}
   .new-landing .tool-grid {grid-template-columns:1fr;}
    .new-landing .capability-highlight-list { grid-template-columns: 1fr; }
@@ -234,7 +240,7 @@
   .new-landing .hero-message strong {font-size:24px;}
   .new-landing .ribbon-inner {font-size:7px;}
   .new-landing .step-card h3 {font-size:24px;}
-  .new-landing .landing-athlete-render {width:min(72%,198px);}
+  .new-landing .landing-hype-card-art {width:min(72%,198px);}
   .new-landing .athlete-showcase {min-height:355px;}
 }
 @media (prefers-reduced-motion: reduce) {
