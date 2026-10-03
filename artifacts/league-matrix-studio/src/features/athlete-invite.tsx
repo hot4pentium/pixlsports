@@ -13,6 +13,7 @@ import {
   ImagePlus,
   Link2,
   MessageCircle,
+  QrCode,
   Radio,
   Share2,
   SlidersHorizontal,
@@ -26,6 +27,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { Link } from 'wouter';
 import {
   getListAthleteInvitesQueryKey,
@@ -883,8 +885,8 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       retry: false,
     },
   });
-  const [familyTapUrl, setFamilyTapUrl] = useState('');
-  const [familyTapLinkId, setFamilyTapLinkId] = useState('');
+  const [familyTapQrDataUrl, setFamilyTapQrDataUrl] = useState('');
+  const [familyTapAccessId, setFamilyTapAccessId] = useState('');
   const [familyTapNotice, setFamilyTapNotice] = useState('');
   const [notice, setNotice] = useState('');
   const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
@@ -1009,43 +1011,46 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
     setNotice('HYPE Card URL copied.');
   };
-  const createFamilyTapLink = async () => {
+  const createFamilyTapQrCode = async () => {
     setFamilyTapNotice('');
+    setFamilyTapQrDataUrl('');
     try {
       const created = await createLiveTapAccessLink.mutateAsync({ inviteToken: invite.inviteToken });
-      setFamilyTapUrl(`${fanCardUrl(invite.inviteToken)}#live-taps=${encodeURIComponent(created.accessToken)}`);
-      setFamilyTapLinkId(created.id);
-      setFamilyTapNotice('Private family link created. Copy it below and send it only to the family member who will tap.');
-      await queryClient.invalidateQueries({
+      setFamilyTapAccessId(created.id);
+      const accessUrl = `${fanCardUrl(invite.inviteToken)}#live-taps=${encodeURIComponent(created.accessToken)}`;
+      void queryClient.invalidateQueries({
         queryKey: getListAthleteInviteLiveTapAccessLinksQueryKey(invite.inviteToken),
       });
+      try {
+        const qrDataUrl = await QRCode.toDataURL(accessUrl, {
+          errorCorrectionLevel: 'Q',
+          margin: 3,
+          width: 360,
+          color: { dark: '#07172b', light: '#ffffff' },
+        });
+        setFamilyTapQrDataUrl(qrDataUrl);
+        setFamilyTapNotice('QR code ready. Show it to family in person; anyone who scans it can cheer until you revoke access.');
+      } catch {
+        setFamilyTapNotice('Family access was created, but its QR code could not be generated. Revoke it below before trying again.');
+      }
     } catch {
-      setFamilyTapNotice('The family link could not be created. Please try again.');
+      setFamilyTapNotice('The family QR code could not be created. Please try again.');
     }
   };
-  const copyFamilyTapLink = async () => {
-    if (!familyTapUrl) return;
-    try {
-      await navigator.clipboard.writeText(familyTapUrl);
-      setFamilyTapNotice('Family Live Taps link copied.');
-    } catch {
-      setFamilyTapNotice('Copy was unavailable. Select and copy the private link from the field.');
-    }
-  };
-  const revokeFamilyTapLink = async (accessId: string) => {
+  const revokeFamilyTapQr = async (accessId: string) => {
     setFamilyTapNotice('');
     try {
       await revokeLiveTapAccessLink.mutateAsync({ inviteToken: invite.inviteToken, accessId });
       await queryClient.invalidateQueries({
         queryKey: getListAthleteInviteLiveTapAccessLinksQueryKey(invite.inviteToken),
       });
-      if (familyTapLinkId === accessId) {
-        setFamilyTapLinkId('');
-        setFamilyTapUrl('');
+      if (familyTapAccessId === accessId) {
+        setFamilyTapAccessId('');
+        setFamilyTapQrDataUrl('');
       }
-      setFamilyTapNotice('Family link revoked. It can no longer add cheers.');
+      setFamilyTapNotice('Family QR access revoked. It can no longer add cheers.');
     } catch {
-      setFamilyTapNotice('The family link could not be revoked. Please try again.');
+      setFamilyTapNotice('Family QR access could not be revoked. Please try again.');
     }
   };
   const shareFanCard = async () => {
@@ -1141,7 +1146,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       <HypeManagerTaskCard
         id="live-taps"
         title="Family Live Taps"
-        description="Create and revoke family cheer links"
+        description="Create and revoke in-person family QR codes"
         Icon={Zap}
         active={activeTask === 'live-taps'}
         onSelect={() => toggleTask('live-taps')}
@@ -1150,58 +1155,50 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <section aria-labelledby="owner-live-taps-title" data-testid="section-owner-live-taps">
           <h3 id="owner-live-taps-title" className="font-display text-2xl uppercase">Family Live Taps</h3>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-white/65">
-            The public HYPE Card link is view-only. Create a separate private link for each family member; anyone with a link can cheer during Game Day Live, and you can revoke each link here.
+            The public HYPE Card link is view-only. Create a private QR code for family to scan in person. Anyone who scans it can cheer during Game Day Live, and you can revoke access here.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button
               type="button"
               className="rounded-none"
-              onClick={() => void createFamilyTapLink()}
+              onClick={() => void createFamilyTapQrCode()}
               disabled={createLiveTapAccessLink.isPending}
-              data-testid="button-create-live-tap-link"
+              data-testid="button-create-live-tap-qr"
             >
-              <Zap className="mr-2 h-4 w-4" />{createLiveTapAccessLink.isPending ? 'Creating…' : 'Create family link'}
+              <QrCode className="mr-2 h-4 w-4" />{createLiveTapAccessLink.isPending ? 'Creating…' : 'Create family QR code'}
             </Button>
           </div>
-          {familyTapUrl && (
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center" data-testid="created-live-tap-link">
-              <input
-                readOnly
-                value={familyTapUrl}
-                onFocus={(event) => event.currentTarget.select()}
-                aria-label="Private family Live Taps URL"
-                className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white"
-                data-testid="input-created-live-tap-link"
+          {familyTapQrDataUrl && (
+            <figure className="mt-4 flex flex-col items-start gap-4 border border-white/15 bg-black/15 p-4 sm:flex-row sm:items-center" data-testid="created-live-tap-qr">
+              <img
+                src={familyTapQrDataUrl}
+                alt={`Private Family Live Taps QR code for ${invite.athleteName}`}
+                className="h-56 w-56 shrink-0 border-4 border-white bg-white object-contain"
+                data-testid="img-created-live-tap-qr"
               />
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                onClick={() => void copyFamilyTapLink()}
-                data-testid="button-copy-live-tap-link"
-              >
-                <Clipboard className="mr-2 h-4 w-4" />Copy link
-              </Button>
-            </div>
+              <figcaption className="max-w-sm text-xs leading-relaxed text-white/70">
+                Show this code to family at the game so they can scan it in person. Anyone who scans it can send cheers until you revoke this access.
+              </figcaption>
+            </figure>
           )}
           {liveTapAccessLinks.isLoading ? (
-            <p role="status" className="mt-4 text-xs text-white/55">Checking active family links…</p>
+            <p role="status" className="mt-4 text-xs text-white/55">Checking active family QR codes…</p>
           ) : liveTapAccessLinks.isError ? (
-            <p role="alert" className="mt-4 text-xs text-amber-200">Active family links could not be loaded.</p>
+            <p role="alert" className="mt-4 text-xs text-amber-200">Active family QR codes could not be loaded.</p>
           ) : liveTapAccessLinks.data?.length ? (
-            <ul className="mt-4 divide-y divide-white/15 border-y border-white/15" data-testid="live-tap-link-list">
+            <ul className="mt-4 divide-y divide-white/15 border-y border-white/15" data-testid="live-tap-qr-list">
               {liveTapAccessLinks.data.map((link) => (
                 <li key={link.id} className="flex flex-col justify-between gap-3 py-3 sm:flex-row sm:items-center">
                   <p className="text-xs text-white/65">
-                    Family link · created <time dateTime={link.createdAt}>{new Date(link.createdAt).toLocaleDateString()}</time>
+                    Family QR code · created <time dateTime={link.createdAt}>{new Date(link.createdAt).toLocaleDateString()}</time>
                   </p>
                   <Button
                     type="button"
                     variant="outline"
                     className="rounded-none border-white/30 bg-transparent text-red-200 hover:bg-red-500/10 hover:text-red-100"
-                    onClick={() => void revokeFamilyTapLink(link.id)}
+                    onClick={() => void revokeFamilyTapQr(link.id)}
                     disabled={revokeLiveTapAccessLink.isPending}
-                    data-testid={`button-revoke-live-tap-link-${link.id}`}
+                    data-testid={`button-revoke-live-tap-qr-${link.id}`}
                   >
                     Revoke
                   </Button>
@@ -1209,7 +1206,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
               ))}
             </ul>
           ) : (
-            <p className="mt-4 border border-white/15 bg-black/15 p-3 text-xs text-white/55">No active family links yet.</p>
+            <p className="mt-4 border border-white/15 bg-black/15 p-3 text-xs text-white/55">No active family QR codes yet.</p>
           )}
           <p role={familyTapNotice.includes('could not') ? 'alert' : 'status'} aria-live="polite" className="mt-3 text-xs font-semibold text-white/70" data-testid="status-owner-live-taps">
             {familyTapNotice}

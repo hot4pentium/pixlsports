@@ -349,6 +349,17 @@ test('player-page owner tools remain private across account changes and pause', 
       viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/public-shoutouts`
     )), 'visitors load the public-shoutouts endpoint');
     for (const side of ['stats', 'live-taps', 'events']) {
+      await connection.evaluate(
+        `document.querySelector('[data-testid="button-living-card-${side}"]').click()`,
+        visitorFanCard,
+      );
+      await waitFor(
+        connection,
+        visitorFanCard,
+        `document.querySelector('#living-card-display')?.dataset.side === '${side}'`,
+        Boolean,
+        12_000,
+      );
       if (side === 'live-taps') {
         assert.equal(await connection.evaluate(
           "document.querySelector('[data-testid=\"live-taps-family-link-required\"]')?.textContent.includes('public HYPE Card link is view-only')",
@@ -359,7 +370,6 @@ test('player-page owner tools remain private across account changes and pause', 
           visitorFanCard,
         ), true, 'the public card link alone cannot submit a Live Tap');
       }
-      await connection.evaluate(`document.querySelector('[data-testid="button-living-card-${side}"]').click()`, visitorFanCard);
     }
     await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.dataset.side === 'events' && Boolean(document.querySelector('[data-testid=\"living-card-events-side\"]'))", Boolean, 12_000);
     assert.equal(await connection.evaluate(
@@ -405,6 +415,10 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.ok(
       desktopCardBounds.top >= 0 && desktopCardBounds.bottom <= desktopCardBounds.viewportHeight,
       'the Hype Card should fit in a typical desktop viewport without cropping',
+    );
+    assert.ok(
+      desktopCardBounds.height >= desktopCardBounds.viewportHeight * 0.72,
+      'the desktop HYPE Card uses the taller portrait layout',
     );
     assert.ok(
       desktopCardBounds.height <= desktopCardBounds.viewportHeight * 0.75,
@@ -583,7 +597,7 @@ test('player-page owner tools remain private across account changes and pause', 
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === true && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'false'", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"] .hype-manager-task-chevron').click()", ownerManage);
     await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false && document.querySelector('[data-testid=\"button-hype-manager-hypes\"]')?.getAttribute('aria-expanded') === 'true'", Boolean, 12_000);
-    for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Shoutouts', 'Add Media']) {
+    for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Shoutouts']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
     }
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
