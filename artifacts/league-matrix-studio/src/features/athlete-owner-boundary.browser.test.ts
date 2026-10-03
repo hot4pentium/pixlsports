@@ -348,8 +348,8 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.ok(requests.some(({ viewer, method, path }) => (
       viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/public-shoutouts`
     )), 'visitors load the public-shoutouts endpoint');
-    for (const side of ['stats', 'videos', 'live-taps', 'events']) {
-      if (side === 'events') {
+    for (const side of ['stats', 'live-taps', 'events']) {
+      if (side === 'live-taps') {
         assert.equal(await connection.evaluate(
           "document.querySelector('[data-testid=\"live-taps-family-link-required\"]')?.textContent.includes('public HYPE Card link is view-only')",
           visitorFanCard,

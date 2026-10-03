@@ -93,6 +93,11 @@ test('the real HYPE Card flips paired 3D faces and respects reduced motion', () 
   assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\)\s+\.living-card-flip-back\s*\{\s*display:\s*block/);
 });
 
+test('desktop HYPE Cards are taller with a smaller athlete name while mobile sizing stays intact', () => {
+  assert.match(livingCardStyles, /@media \(min-width: 801px\)\s*\{\s*\.living-card-frame\s*\{\s*height:\s*min\(72dvh,\s*920px\);\s*\}\s*\.living-card-athlete-name\s*\{\s*font-size:\s*clamp\(44px,\s*5vw,\s*68px\);\s*\}\s*\}/);
+  assert.match(livingCardStyles, /@media \(max-width: 520px\)[\s\S]*?\.living-card-frame\s*\{\s*min-height:\s*540px;\s*height:\s*144vw;\s*max-height:\s*700px;\s*\}/);
+});
+
 test('the HYPE Card no longer exposes a Videos side', () => {
   assert.doesNotMatch(livingCardSource, /side === 'videos'|button-living-card-videos|video-living-card/);
   assert.match(publicPageSource, /invite\.hypeCard\?\.posterUrl/, 'the separate Athlete Hype Page still supports its image shares');
