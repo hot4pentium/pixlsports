@@ -454,13 +454,15 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     : '';
   const defs = `
      ${buildStadiumCardClipMarkup(ns)}
+     <clipPath id="cardClip-${ns}"><rect x="8" y="8" width="984" height="1384" rx="46"/></clipPath>
     <clipPath id="stadiumPhotoClip-${ns}"><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}"/></clipPath>
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
     <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
-    <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <filter id="breakoutShadow-${ns}" x="-35%" y="-15%" width="170%" height="145%"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#000" flood-opacity=".62"/></filter>`;
-  const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
+     <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+     <filter id="breakoutShadow-${ns}" x="-35%" y="-15%" width="170%" height="145%"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#000" flood-opacity=".62"/></filter>
+     ${getPremiumDefs(palette, ns)}`;
+   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/>${getFinishBackground(project, ns)}</g>`;
   const fgContent = `
     <g clip-path="url(#stadiumCardClip-${ns})">
       <rect width="1000" height="330" fill="url(#stadiumTop-${ns})"/>
@@ -478,6 +480,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${logo}
       ${branding}
      </g>
+       ${getFinishForeground(project, ns)}
       ${breakoutCutout}
       ${nameplate}
      ${buildStatsUrlMarkup(statsUrl, 1000, 1400, palette)}`;

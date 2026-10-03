@@ -57,12 +57,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId,
-  templates, cardLayouts, defaultProject, getDimensions, cardFinishes,
+  cardLayouts, defaultProject, getDimensions,
   normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, isSafeCutoutDataUrl, designOnlyProject, clearHypeCardMedia,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE,
   persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
 } from './hype-card-types';
 import { HypeCardBreakoutControls, type BreakoutTransform } from './hype-card-breakout-controls';
+import { CardFinishOptions } from './hype-card-design-controls';
 import { hasUsableTransparency } from './hype-card-breakout-validation';
 import { applyLatestLinkedStat } from './hype-card-stat-sync';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
@@ -432,6 +433,7 @@ function LayoutOption({
       project.breakoutTransform.x,
       project.breakoutTransform.y,
       project.palette,
+      project.finish,
       project.overlay,
       project.branding,
       project.playerName,
@@ -495,7 +497,7 @@ function Section({
 const hypeWalkthroughSteps = [
   { label: 'Moment', hint: 'Write your own moment' },
   { label: 'Media', hint: 'Add player media' },
-  { label: 'Layout', hint: 'Choose the scene' },
+  { label: 'Design', hint: 'Choose a card finish and stadium scene' },
   { label: 'Review', hint: 'Preview and export' },
 ] as const;
 
@@ -3329,11 +3331,21 @@ export function HypeCardEditor() {
               </div>
             </Section>}
 
-            {walkthroughStep === 2 && <Section title="Layout" icon={LayoutGrid}>
-              <div className="grid grid-cols-1 gap-3">
-                {cardLayouts.map((l) => (
-                  <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id} onSelect={() => updateProject('layout', l.id)} />
-                ))}
+            {walkthroughStep === 2 && <Section title="Design" icon={LayoutGrid}>
+              <div className="space-y-7">
+                <CardFinishOptions project={project} onFinishChange={(finish) => updateProject('finish', finish)} />
+
+                <div className="border-t border-border pt-5">
+                  <div className="mb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">Stadium scene</h3>
+                    <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">Choose the setting behind the player.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {cardLayouts.map((l) => (
+                      <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id} onSelect={() => updateProject('layout', l.id)} />
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="mt-6">
                 <HypeCardBreakoutControls
