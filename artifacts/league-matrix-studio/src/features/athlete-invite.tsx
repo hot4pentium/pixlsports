@@ -1532,7 +1532,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                             poster={video.posterUrl ?? undefined}
                             controls
                             playsInline
-                            preload="metadata"
+                            preload="none"
                             aria-label={`Play ${video.title}`}
                             className="aspect-video w-full bg-black object-contain"
                             onPlay={(event) => keepOneVideoPlaying(event.currentTarget)}

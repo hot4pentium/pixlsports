@@ -285,7 +285,10 @@ test('public Athlete Hype Pages present direct videos in an accessible horizonta
   assert.match(source, /poster=\{video\.posterUrl \?\? undefined\}/);
   assert.match(source, /controls/);
   assert.match(source, /playsInline/);
-  assert.match(source, /preload="metadata"/);
+  assert.match(
+    source,
+    /src=\{video\.videoUrl\}[\s\S]*?poster=\{video\.posterUrl \?\? undefined\}[\s\S]*?controls[\s\S]*?playsInline[\s\S]*?preload="none"/,
+  );
   assert.match(source, /aria-label=\{`Play \$\{video\.title\}`\}/);
   assert.match(source, /video\.jerseyNumber/);
   assert.match(source, /video\.position/);
