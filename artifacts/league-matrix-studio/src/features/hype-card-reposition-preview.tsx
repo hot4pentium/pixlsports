@@ -1,13 +1,13 @@
-import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { useRef, type PointerEvent, type ReactNode } from 'react';
 import { normalizeCardAppearance, type HypeCardAppearance } from './hype-card-appearance';
 
 /** Repositioning is explicit so ordinary phone scrolling remains available. */
-export function HypeCardRepositionPreview({ appearance, onChange, children }: {
+export function HypeCardRepositionPreview({ appearance, onChange, children, moving }: {
   appearance: HypeCardAppearance;
   onChange: (next: HypeCardAppearance) => void;
   children: ReactNode;
+  moving: boolean;
 }) {
-  const [moving, setMoving] = useState(false);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const onDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!moving) return;
@@ -29,19 +29,20 @@ export function HypeCardRepositionPreview({ appearance, onChange, children }: {
   return (
     <div>
       <div className="mx-auto aspect-[5/7] w-full max-w-[320px]"
+        tabIndex={moving ? 0 : undefined} role={moving ? 'group' : undefined} aria-label={moving ? 'Position photo preview. Use arrow keys to move the photo.' : undefined}
+        onKeyDown={(event) => {
+          if (!moving) return;
+          const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
+          const direction = directions[event.key];
+          if (!direction) return;
+          event.preventDefault();
+          onChange(normalizeCardAppearance({ ...appearance, athleteX: appearance.athleteX + direction[0], athleteY: appearance.athleteY + direction[1] }));
+        }}
         style={{ touchAction: moving ? 'none' : 'auto', cursor: moving ? 'grab' : 'auto' }}
         onPointerDown={onDown} onPointerMove={onMove}
         onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
         <div className="h-full w-full" style={{ pointerEvents: moving ? 'none' : 'auto' }}>{children}</div>
       </div>
-      <button type="button" aria-pressed={moving}
-        onClick={() => { drag.current = null; setMoving(value => !value); }}
-        className="mt-3 min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white">
-        {moving ? 'Done moving' : 'Move athlete'}
-      </button>
-      <p className="mt-2 text-xs text-white/70">
-        {moving ? 'Drag the preview to move the athlete. Choose Done moving to scroll.' : 'Placement matches your saved and exported card.'}
-      </p>
     </div>
   );
 }

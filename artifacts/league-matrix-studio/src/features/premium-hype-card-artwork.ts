@@ -108,7 +108,7 @@ function athlete(input: PremiumHypeCardInput, box: { x: number; y: number; w: nu
   const s = Math.max(0.65, Math.min(1.45, num(a.athleteScale, 1)));
   const tx = Math.max(-.25, Math.min(.25, num(a.athleteX, 0))) * 1000;
   const ty = Math.max(-.18, Math.min(.18, num(a.athleteY, 0))) * 1400;
-  return `<g transform="translate(${cx + tx} ${by + ty}) scale(${s}) translate(${-cx} ${-by})">
+  return `<g data-photo-placement="cutout" transform="translate(${cx + tx} ${by + ty}) scale(${s}) translate(${-cx} ${-by})">
 <image href="${url}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMax meet" filter="url(#${shadow})"/></g>`;
 }
 const initialsOf = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join('') || 'P';
@@ -117,7 +117,12 @@ const initialsArt = (input: PremiumHypeCardInput, cx: number, cy: number, fill: 
 const photoFallback = (input: PremiumHypeCardInput, box: { x: number; y: number; w: number; h: number }, clip: string, opacity = 1) => {
   const url = safeUrl(input.photoUrl);
   if (!url || safeUrl(input.cutoutUrl)) return '';
-  return `<g clip-path="url(#${clip})" opacity="${opacity}"><image href="${url}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid slice"/></g>`;
+  const a = input.appearance;
+  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+  const scale = Math.max(.65, Math.min(1.45, num(a.athleteScale, 1)));
+  const x = Math.max(-.25, Math.min(.25, num(a.athleteX, 0))) * 1000;
+  const y = Math.max(-.18, Math.min(.18, num(a.athleteY, 0))) * 1400;
+  return `<g clip-path="url(#${clip})" opacity="${opacity}"><g data-photo-placement="original" transform="translate(${cx + x} ${cy + y}) scale(${scale}) translate(${-cx} ${-cy})"><image href="${url}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" preserveAspectRatio="xMidYMid slice"/></g></g>`;
 };
 const shadowFilter = (id: string, blur: number, dy: number, op: number) => `<filter id="${id}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="${dy}" stdDeviation="${blur}" flood-color="#0A1020" flood-opacity="${op}"/></filter>`;
 

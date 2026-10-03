@@ -40,7 +40,7 @@ window.runRemoval=async()=>{
  window.removalResult={type:blob.type,size:blob.size,width:image.width,height:image.height,transparent,opaque};image.close();
  }catch(e){window.removalResult={error:String(e)};}
 };
-const invite={inviteToken:'fixture',athleteName:'Jordan Alexander Matthews',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cutoutUrl:cutout,cardAppearance:saved};
+const invite={inviteToken:'fixture',athleteName:'Jordan Alexander Matthews',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cutoutUrl:new URLSearchParams(location.search).has('fallback')?null:cutout,cardAppearance:saved};
 function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};
 return <section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/><div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div></section>}
 function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20}}><h1 style={{fontSize:24,marginBottom:16}}>Gallery & Spotlight — component verification</h1><div className="grid grid-cols-1 sm:grid-cols-2" style={{maxWidth:744,margin:'auto',gap:24,justifyContent:'center'}}><Card design="gallery"/><Card design="spotlight"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite}/></div></div>}
@@ -83,10 +83,42 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       return Math.abs(box.height/box.width-1.4)<.02 && nav.bottom<=box.bottom && details.every(t=>t.getBoundingClientRect().bottom<=nav.top);
     })`, session);
     assert.ok(framing, 'phone navigation stays inside the portrait card without covering identity text');
-    await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').click()`, session);
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').style.touchAction`, session), 'none');
-    await connection.evaluate(`document.querySelector('[data-testid="button-reposition-mode"]').click()`, session);
-    assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').style.touchAction`, session), 'auto');
+    for (const fallback of [false, true]) {
+      await connection.send('Page.navigate', { url: `http://localhost:80/premium-appearance-fixture.html${fallback ? '?fallback=1' : ''}` }, session);
+      await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-photo-placement]")', Boolean, 10_000);
+      for (const design of ['gallery', 'spotlight']) {
+        await connection.evaluate(`document.querySelector('[data-testid="button-design-${design}"]').click()`, session);
+        await connection.evaluate(`document.querySelector('[data-testid="button-reset-placement"]').click()`, session);
+        const actorBounds = `(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement] image').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`;
+        await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').scrollIntoView({block:'center'});`, session);
+        const before = await connection.evaluate<{ x: number; y: number; width: number }>(actorBounds, session);
+        await connection.evaluate(`(()=>{const button=document.querySelector('[data-testid="button-reposition-mode"]');if(button.getAttribute('aria-pressed')!=='true')button.click()})()`, session);
+        assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').style.touchAction`, session), 'none');
+        const point = await connection.evaluate<{ x: number; y: number }>(`(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`, session);
+        await connection.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 }, session);
+        await connection.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: point.x + 24, y: point.y + 24, button: 'left', buttons: 1 }, session);
+        await connection.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x + 24, y: point.y + 24, button: 'left', clickCount: 1 }, session);
+        const moved = await connection.evaluate<{ x: number; y: number; width: number }>(actorBounds, session);
+        assert.ok(moved.x > before.x + 15 && moved.y > before.y + 15, `${design}/${fallback ? 'original' : 'cutout'} must visibly move`);
+        await connection.evaluate(`(()=>{const range=document.querySelector('[data-testid="hype-card-appearance-controls"] input[type="range"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(range,'1.3');range.dispatchEvent(new Event('input',{bubbles:true}));range.dispatchEvent(new Event('change',{bubbles:true}));})()`, session);
+        const resized = await connection.evaluate<{ width: number }>(actorBounds, session);
+        assert.ok(resized.width > before.width * 1.2, `${design} size must visibly change`);
+        await connection.evaluate(`document.querySelector('[data-testid="button-save-appearance"]').click()`, session);
+        await waitFor(connection, session, 'JSON.parse(localStorage.getItem("premium-test-settings")).athleteScale', value => value === 1.3, 5_000);
+        const placementSaved = await connection.evaluate<{ athleteX: number; athleteY: number }>('JSON.parse(localStorage.getItem("premium-test-settings"))', session);
+        assert.ok(placementSaved.athleteX > 0 && placementSaved.athleteY > 0);
+        const savedTransform = await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement]').getAttribute('transform')`, session);
+        await connection.send('Page.navigate', { url: `http://localhost:80/premium-appearance-fixture.html${fallback ? '?fallback=1' : ''}` }, session);
+        await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-photo-placement]")', Boolean, 10_000);
+        assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement]').getAttribute('transform')`, session), savedTransform);
+        await connection.evaluate(`document.querySelector('[data-testid="button-reset-placement"]').click()`, session);
+        const reset = await connection.evaluate<{ width: number }>(actorBounds, session);
+        assert.ok(Math.abs(reset.width - before.width) < 1);
+        assert.equal(await connection.evaluate(`document.querySelector('[data-testid="appearance-preview-surface"]').style.touchAction`, session), 'auto');
+        assert.equal(await connection.evaluate(`document.querySelectorAll('[data-testid="hype-card-appearance-controls"] input[type="range"]').length`, session), 1);
+        assert.equal(await connection.evaluate(`!!document.querySelector('[data-testid="button-preview-reset"]')`, session), false);
+      }
+    }
     await connection.evaluate(`window.exportBlob=null;const create=URL.createObjectURL.bind(URL);URL.createObjectURL=b=>{if(b.type==='image/png')window.exportBlob=b;return create(b)};HTMLAnchorElement.prototype.click=function(){};document.querySelector('[data-testid="button-export-appearance-png"]').click()`, session);
     await waitFor(connection, session, '!!window.exportBlob', Boolean, 30_000);
     const dimensions = await connection.evaluate(`(async()=>{const image=await createImageBitmap(window.exportBlob);return {width:image.width,height:image.height}})()`, session);

@@ -14,3 +14,9 @@ Prebundle lazy browser-inference dependencies before the first upload in Vite de
 **Why:** First-use optimization of Transformers.js caused a full page reload during inference; the pending worker promise disappeared even though the inference code itself was sound.
 
 **How to apply:** Warm/prebundle the dependency before browser smoke tests. Test real inference as well as download-failure fallback; a screenshot cannot establish that a worker completed.
+
+Keep one placement workflow, not separate "Move athlete" and horizontal/vertical placement panels.
+
+**Why:** The user called those controls redundant and reported that neither moved their photo. The original-photo fallback had not been receiving the placement transform.
+
+**How to apply:** Offer positioning, size, and one placement reset together. Verify visible movement and resize for both original photos and cutouts, not only changes in saved numeric settings.

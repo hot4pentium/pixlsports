@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildPremiumHypeCardArtwork } from './premium-hype-card-artwork';
+test('placement changes the original fallback as well as the cutout in both designs', () => {
+  for (const design of ['gallery', 'spotlight'] as const) {
+    for (const cutoutUrl of [null, 'data:image/png;base64,AAAA']) {
+      const input = { athleteName: 'Jordan', photoUrl: 'data:image/png;base64,AAAA', cutoutUrl, appearance: defaultCardAppearance(design) };
+      const before = buildPremiumHypeCardArtwork(input);
+      const moved = buildPremiumHypeCardArtwork({ ...input, appearance: { ...input.appearance, athleteX: .1, athleteY: .08, athleteScale: 1.2 } });
+      const placement = /data-photo-placement="[^"]+" transform="([^"]+)"/;
+      assert.ok(placement.test(before));
+      assert.notEqual(before.match(placement)![1], moved.match(placement)![1]);
+      assert.match(moved, /scale\(1.2\)/);
+    }
+  }
+});
 import { defaultCardAppearance } from './hype-card-appearance';
 
 const base = { athleteName: 'A <b>&"', sport: 'Soccer', jerseyNumber: '01', cutoutUrl: 'data:image/png;base64,AAAA' };

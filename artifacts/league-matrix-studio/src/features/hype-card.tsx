@@ -1086,6 +1086,7 @@ export function HypeCardEditor() {
   const [breakoutAvailabilityMessage, setBreakoutAvailabilityMessage] = useState<string | null>(null);
   const [templateMediaNotice, setTemplateMediaNotice] = useState(false);
   const [backgroundRemovalBusy, setBackgroundRemovalBusy] = useState(false);
+  const [positioningPhoto, setPositioningPhoto] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(
     cloudProjectId
@@ -3359,13 +3360,16 @@ export function HypeCardEditor() {
             {walkthroughStep === 2 && <Section title="Design" icon={LayoutGrid}>
               <div className="space-y-7">
                 <div className="rounded-xl bg-[#10243D] p-4">
-                  {project.cardAppearance.design !== 'classic' && <HypeCardRepositionPreview appearance={project.cardAppearance} onChange={(appearance) => updateProject('cardAppearance', appearance)}>
+                  {project.cardAppearance.design !== 'classic' && <HypeCardRepositionPreview appearance={project.cardAppearance} moving={positioningPhoto} onChange={(appearance) => updateProject('cardAppearance', appearance)}>
                     <PreviewCanvas project={project} videoUrl={videoUrl} videoRef={videoRef} onRequestPlay={loadPreviewForPlay} />
                   </HypeCardRepositionPreview>}
                   <HypeCardAppearanceControls appearance={{ ...project.cardAppearance, jerseyNumber: project.jerseyNumber, position: project.position }} onChange={(cardAppearance) => setProject((current) => ({
                     ...current, cardAppearance, cardSport: current.cardSport || profile.sport || '',
                     jerseyNumber: cardAppearance.jerseyNumber, position: cardAppearance.position,
-                  }))} />
+                  }))} placementActions={<div>
+                    <button type="button" aria-pressed={positioningPhoto} onClick={() => setPositioningPhoto(value => !value)} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white">{positioningPhoto ? 'Done positioning' : 'Position photo'}</button>
+                    <p className="mt-2 text-xs text-white/70">{positioningPhoto ? 'Drag the preview to position the photo. Choose Done positioning to scroll.' : 'Choose Position photo, then drag the preview.'}</p>
+                  </div>} />
                   <label className="mt-4 block text-xs text-white">Sport venue
                     <select className="mt-2 min-h-11 w-full rounded border border-white/30 bg-[#10243D] p-2" value={project.cardSport || profile.sport || ''} onChange={(event) => updateProject('cardSport', event.target.value)}>
                       <option value="">Field / unspecified sport</option>

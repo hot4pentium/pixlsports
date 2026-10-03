@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { appearanceSwatches, defaultCardAppearance, normalizeCardAppearance, type HypeCardAppearance, type HypeCardDesign } from './hype-card-appearance';
 
 const designs: Array<{ id: HypeCardDesign; name: string; blurb: string }> = [
@@ -46,7 +46,7 @@ function HexField({ value, label, disabled, onValid }: { value: string; label: s
 
 const slider = 'w-full accent-[#EF3996] min-h-11';
 
-export function HypeCardAppearanceControls({ appearance, onChange, disabled = false }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean }) {
+export function HypeCardAppearanceControls({ appearance, onChange, disabled = false, placementActions }: { appearance: HypeCardAppearance; onChange: (next: HypeCardAppearance) => void; disabled?: boolean; placementActions?: ReactNode }) {
   const set = (patch: Partial<HypeCardAppearance>) => onChange(normalizeCardAppearance({ ...appearance, ...patch }));
   const setBorder = (c: string) => set(appearance.accentLinked ? { borderColor: c, accentColor: c } : { borderColor: c });
   const swatches = (current: string, apply: (c: string) => void, label: string) => (
@@ -114,9 +114,8 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
         </div>
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-white/80">Athlete placement</p>
+          {placementActions}
           {range('Size', appearance.athleteScale, .65, 1.45, .01, 'athleteScale', (v) => `${Math.round(v * 100)}%`)}
-          {range('Horizontal', appearance.athleteX, -.25, .25, .005, 'athleteX', (v) => `${Math.round(v * 100)}`)}
-          {range('Vertical', appearance.athleteY, -.18, .18, .005, 'athleteY', (v) => `${Math.round(v * 100)}`)}
           <button type="button" disabled={disabled} onClick={() => set({ athleteScale: 1, athleteX: 0, athleteY: 0 })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-placement">Reset placement</button>
         </div>
         <button type="button" disabled={disabled} onClick={() => onChange({ ...reset, jerseyNumber: appearance.jerseyNumber, position: appearance.position })} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest" data-testid="button-reset-appearance">Reset appearance</button>

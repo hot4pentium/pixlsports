@@ -164,17 +164,25 @@ export function FanCardAppearanceManager({ invite }: { invite: FanCardAppearance
         <div className="mx-auto w-full max-w-[280px] overflow-visible rounded-2xl" data-testid="appearance-preview">
           {draft.design === 'classic'
             ? <div className="grid aspect-[5/7] place-items-center rounded-2xl border border-white/20 bg-[#10243D] p-4 text-center text-sm text-white/80">{previewCard ? <img src={previewCard} alt="" className="max-h-full rounded-lg object-cover" /> : 'Classic design uses your photo and team details.'}</div>
-            : <div role="img" aria-label={`${draft.design} preview for ${invite.athleteName}`} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab ring-2 ring-white' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
+            : <div role="img" aria-label={`${draft.design} preview for ${invite.athleteName}${moving ? '. Use arrow keys to position the photo.' : ''}`} tabIndex={moving ? 0 : undefined} onKeyDown={(event) => {
+              if (!moving) return;
+              const directions: Record<string, [number, number]> = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] };
+              const direction = directions[event.key];
+              if (!direction) return;
+              event.preventDefault();
+              setDraft(current => clampPlacement(current, current.athleteX + direction[0], current.athleteY + direction[1]));
+              setStatus('idle');
+            }} className={`select-none [&>svg]:h-auto [&>svg]:w-full ${moving ? 'cursor-grab ring-2 ring-white' : ''}`} style={{ touchAction: moving ? 'none' : 'auto' }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="appearance-preview-surface" dangerouslySetInnerHTML={{ __html: svg }} />}
         </div>
-        {draft.design !== 'classic' && <div className="mt-3 flex flex-wrap justify-center gap-2">
-          <button type="button" aria-pressed={moving} onClick={() => setMoving((m) => !m)} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white aria-pressed:bg-white aria-pressed:text-[#10243D]" data-testid="button-reposition-mode">{moving ? 'Done moving' : 'Move athlete'}</button>
-          <button type="button" onClick={() => setDraft((d) => clampPlacement({ ...d, athleteScale: 1 }, 0, 0))} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white" data-testid="button-preview-reset">Reset</button>
-          {moving && <p className="w-full text-center text-[11px] text-white/60">Drag the card to move the athlete. Turn off to scroll the page.</p>}
-        </div>}
         <p className="mt-2 text-center text-[11px] uppercase tracking-widest text-white/60">{dirty ? 'Unsaved draft preview' : 'Saved design'}</p>
       </div>
       <div className="space-y-5">
-        <HypeCardAppearanceControls appearance={draft} onChange={(next) => { setDraft(next); setStatus('idle'); }} disabled={mutation.isPending} />
+        <HypeCardAppearanceControls appearance={draft} onChange={(next) => { setDraft(next); setStatus('idle'); }} disabled={mutation.isPending} placementActions={
+          <div>
+            <button type="button" disabled={mutation.isPending} aria-pressed={moving} onClick={() => { dragRef.current = null; setMoving((m) => !m); }} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold text-white aria-pressed:bg-white aria-pressed:text-[#10243D]" data-testid="button-reposition-mode">{moving ? 'Done positioning' : 'Position photo'}</button>
+            <p className="mt-2 text-xs text-white/70">{moving ? 'Drag the preview to position the photo. Choose Done positioning to scroll.' : 'Choose Position photo, then drag the preview.'}</p>
+          </div>
+        } />
         <div className="flex flex-wrap items-center gap-3 border-t border-white/15 pt-4">
           <button type="button" onClick={save} disabled={!dirty || mutation.isPending} className="min-h-11 rounded bg-white px-5 text-xs font-black uppercase tracking-widest text-[#10243D] disabled:opacity-50" data-testid="button-save-appearance">{mutation.isPending ? 'Saving…' : 'Save design'}</button>
           <button type="button" onClick={() => { setDraft(saved); setStatus('idle'); }} disabled={!dirty || mutation.isPending} className="min-h-11 rounded border border-white/30 px-4 text-xs font-bold uppercase tracking-widest text-white disabled:opacity-50" data-testid="button-revert-appearance">Revert to saved</button>
