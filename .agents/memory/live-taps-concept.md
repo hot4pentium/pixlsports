@@ -3,8 +3,8 @@ name: Live Taps concept
 description: The original game-day interaction idea behind Live Taps.
 ---
 
-Live Taps lets family members at a game tap to recognize a great play; parents can add other team members for supporters to tap for. Treat this as a potential core interaction distinct from hosting video.
+Live Taps is scoped to one athlete. Family members can tap sport-specific, preloaded cheer options to add to a tally. Do not add teammate selection or treat the cheers as official stats.
 
-**Why:** The user described Live Taps as the original product idea while reconsidering whether Pixl needs video.
+**Why:** The user clarified that the goal is a tally of sport-specific cheers from family members, not adding other athletes as tap targets.
 
-**How to apply:** Before designing its behavior, clarify whether a tap is a live cheer, a marker for later review, or both. Do not treat taps as verified tracker stats unless separately confirmed.
+**How to apply:** Keep the interaction separate from stat tracking and video. Family members may cheer for the athlete; do not turn a tap into a tracked play or teammate feature.
