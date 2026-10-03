@@ -98,3 +98,4 @@
 - [OpenAPI date query strings](openapi-date-query-strings.md) — generated client serializers stringify `Date` values directly; date-only query filters should stay validated `YYYY-MM-DD` strings.
 - [Stale API client declarations](stale-api-client-declarations.md) — refresh API client project-reference declarations before diagnosing missing generated exports in consumer type checks.
 - [Live Taps and in-person QR access](live-taps-concept.md) — keep cheers separate from stats; only an owner-created, revocable family QR grants tap access, not the public card URL.
+- [Browser-native control testing](browser-native-control-fixtures.md) — drive file, color, and range controls through native Chromium interactions so React state and disabled semantics are tested correctly.
