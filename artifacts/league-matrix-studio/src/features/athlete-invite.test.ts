@@ -67,6 +67,10 @@ test('real Hype Card replaces the front slot with responses and moves flip under
   assert.match(controls, /button-living-card-front/);
   assert.ok(controls.indexOf('button-living-card-front') > controls.indexOf('</div>\n              </div>'));
   assert.match(livingCardSource, /living-card-responses-side/);
+  assert.match(livingCardSource, /button-living-card-live-taps/);
+  assert.match(livingCardSource, /living-card-live-taps-side/);
+  assert.match(livingCardSource, /family-link-required/);
+  assert.match(livingCardSource, /The public HYPE Card link is view-only/);
   assert.match(livingCardSource, /ownerInvite && <button/);
   assert.match(livingCardSource, /onClick=\{\(\) => void removeShoutout\(item\.id\)\}/);
   assert.match(livingCardSource, /window\.confirm\('Remove this Shoutout/);

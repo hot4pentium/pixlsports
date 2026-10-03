@@ -1632,6 +1632,8 @@ export const getAthleteInviteResponseRepliesItemReactionMax = 40;
 
 export const getAthleteInviteResponseRepliesItemMessageMax = 240;
 
+export const getAthleteInviteResponseLiveTapsCheersItemCountMin = 0;
+
 
 
 export const GetAthleteInviteResponse = zod.object({
@@ -1715,6 +1717,16 @@ export const GetAthleteInviteResponse = zod.object({
   "gameId": zod.string(),
   "expiresAt": zod.coerce.date()
 }),zod.null()]),
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteInviteResponseLiveTapsCheersItemCountMin)
+}))
+}),
   "updatedAt": zod.coerce.date()
 })
 
@@ -1873,6 +1885,8 @@ export const getAthleteFanCardResponseLiveScoreboardOneAthleteNameMax = 100;
 
 export const getAthleteFanCardResponseLiveScoreboardOneTeamNameMax = 160;
 
+export const getAthleteFanCardResponseLiveTapsCheersItemCountMin = 0;
+
 
 
 export const GetAthleteFanCardResponse = zod.object({
@@ -1962,6 +1976,16 @@ export const GetAthleteFanCardResponse = zod.object({
   "athleteName": zod.string().max(getAthleteFanCardResponseLiveScoreboardOneAthleteNameMax),
   "teamName": zod.string().max(getAthleteFanCardResponseLiveScoreboardOneTeamNameMax)
 }),zod.null()]),
+  "liveTaps": zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(getAthleteFanCardResponseLiveTapsCheersItemCountMin)
+}))
+}),
   "updatedAt": zod.coerce.date()
 })
 
@@ -2029,6 +2053,105 @@ export const GetAthleteInviteEventNotificationProgressResponse = zod.object({
   "pending": zod.number().int().min(getAthleteInviteEventNotificationProgressResponsePendingMin),
   "remaining": zod.number().int().min(getAthleteInviteEventNotificationProgressResponseRemainingMin)
 })
+
+
+/**
+ * Requires the card owner's account or an unrevoked family access token; the public card URL alone never authorizes a tap.
+ * @summary Add a family cheer to the current live game
+ */
+export const sendAthleteLiveTapPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const SendAthleteLiveTapParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(sendAthleteLiveTapPathInviteTokenRegExp)
+})
+
+export const sendAthleteLiveTapBodyAccessTokenMin = 40;
+export const sendAthleteLiveTapBodyAccessTokenMax = 100;
+
+
+export const sendAthleteLiveTapBodyAccessTokenRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+export const sendAthleteLiveTapBodyCheerKeyMax = 40;
+
+
+export const sendAthleteLiveTapBodyCheerKeyRegExp = new RegExp('^[a-z0-9-]+$');
+
+
+export const SendAthleteLiveTapBody = zod.object({
+  "accessToken": zod.string().min(sendAthleteLiveTapBodyAccessTokenMin).max(sendAthleteLiveTapBodyAccessTokenMax).regex(sendAthleteLiveTapBodyAccessTokenRegExp).optional(),
+  "cheerKey": zod.string().min(1).max(sendAthleteLiveTapBodyCheerKeyMax).regex(sendAthleteLiveTapBodyCheerKeyRegExp)
+})
+
+export const sendAthleteLiveTapResponseCheersItemCountMin = 0;
+
+
+
+export const SendAthleteLiveTapResponse = zod.object({
+  "active": zod.boolean(),
+  "gameId": zod.string().nullable(),
+  "cheers": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "emoji": zod.string(),
+  "count": zod.number().int().min(sendAthleteLiveTapResponseCheersItemCountMin)
+}))
+})
+
+
+/**
+ * @summary List active family Live Taps links as the card owner
+ */
+export const listAthleteInviteLiveTapAccessLinksPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const ListAthleteInviteLiveTapAccessLinksParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(listAthleteInviteLiveTapAccessLinksPathInviteTokenRegExp)
+})
+
+export const ListAthleteInviteLiveTapAccessLinksResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAthleteInviteLiveTapAccessLinksResponse = zod.array(ListAthleteInviteLiveTapAccessLinksResponseItem)
+
+
+/**
+ * @summary Create a revocable family Live Taps link as the card owner
+ */
+export const createAthleteInviteLiveTapAccessLinkPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const CreateAthleteInviteLiveTapAccessLinkParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(createAthleteInviteLiveTapAccessLinkPathInviteTokenRegExp)
+})
+
+export const createAthleteInviteLiveTapAccessLinkResponseTwoAccessTokenMin = 40;
+export const createAthleteInviteLiveTapAccessLinkResponseTwoAccessTokenMax = 100;
+
+
+export const createAthleteInviteLiveTapAccessLinkResponseTwoAccessTokenRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
+export const CreateAthleteInviteLiveTapAccessLinkResponse = zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "accessToken": zod.string().min(createAthleteInviteLiveTapAccessLinkResponseTwoAccessTokenMin).max(createAthleteInviteLiveTapAccessLinkResponseTwoAccessTokenMax).regex(createAthleteInviteLiveTapAccessLinkResponseTwoAccessTokenRegExp)
+}))
+
+
+/**
+ * @summary Revoke one family Live Taps link as the card owner
+ */
+export const revokeAthleteInviteLiveTapAccessLinkPathInviteTokenRegExp = new RegExp('^[A-Za-z0-9_-]{24,80}$');
+
+
+export const RevokeAthleteInviteLiveTapAccessLinkParams = zod.object({
+  "inviteToken": zod.coerce.string().regex(revokeAthleteInviteLiveTapAccessLinkPathInviteTokenRegExp),
+  "accessId": zod.coerce.string().uuid()
+})
+
+export const RevokeAthleteInviteLiveTapAccessLinkResponse = zod.void()
 
 
 /**

@@ -305,6 +305,7 @@ export * from "./checklistShares";
 export * from "./meetingWorkspaces";
 export * from "./statTrackerShares";
 export * from "./athleteInvites";
+export * from "./athleteInviteLiveTaps";
 export * from "./athleteInviteFans";
 export * from "./supporterActiveGames";
 export * from "./gameOnReminders";

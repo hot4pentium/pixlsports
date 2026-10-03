@@ -7,6 +7,7 @@ import {
   accountAccessTable,
   athleteInvitesTable,
   athleteInviteHypesTable,
+  athleteInviteLiveTapsTable,
   cloudProjectsTable,
   db,
   hypeCardSharesTable,
@@ -16,9 +17,12 @@ import {
   GetAthleteFanCardResponse,
   GetAthleteInviteResponse,
   StartAthleteInviteLiveResponse,
+  CreateAthleteInviteLiveTapAccessLinkResponse,
+  SendAthleteLiveTapResponse,
 } from "@workspace/api-zod";
 
 import athleteInvitesRouter from "./routes/athleteInvites";
+import athleteLiveTapsRouter from "./routes/athleteLiveTaps";
 
 function dateKey(offsetDays: number) {
   const date = new Date();
@@ -40,6 +44,7 @@ test("athlete invites evolve from owned sources and revoke without exposing priv
     next();
   });
   app.use("/api", athleteInvitesRouter);
+  app.use("/api", athleteLiveTapsRouter);
   const server = app.listen(0);
 
   try {
@@ -594,6 +599,7 @@ test("athlete pages expose at most three active videos newest first and ignore i
 
 test("Game Day Live follows the Hype Page lifecycle and falls back to finalized stats", async () => {
   const ownerId = `athlete-live-${randomUUID()}`;
+  const otherId = `athlete-live-other-${randomUUID()}`;
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -605,11 +611,17 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     next();
   });
   app.use("/api", athleteInvitesRouter);
+  app.use("/api", athleteLiveTapsRouter);
   const server = app.listen(0);
 
   try {
     await db.insert(accountAccessTable).values({
       ownerClerkUserId: ownerId,
+      role: "fan",
+      accessMode: "full",
+    });
+    await db.insert(accountAccessTable).values({
+      ownerClerkUserId: otherId,
       role: "fan",
       accessMode: "full",
     });
@@ -681,6 +693,83 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     const liveSession = StartAthleteInviteLiveResponse.parse(await started.json());
     assert.equal(liveSession.gameId, "live-game");
     assert.ok(liveSession.expiresAt.getTime() > Date.now());
+    const accessLinksUrl = `${publicUrl}/live-taps/access-links`;
+    const tapUrl = `${publicUrl}/live-taps`;
+    assert.equal((await fetch(accessLinksUrl)).status, 401);
+    assert.equal((await fetch(accessLinksUrl, {
+      method: "POST",
+      headers: { "x-test-user": otherId },
+    })).status, 404);
+    assert.equal((await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket" }),
+    })).status, 403);
+    const createdLinkResponse = await fetch(accessLinksUrl, {
+      method: "POST",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(createdLinkResponse.status, 201);
+    const familyLink = CreateAthleteInviteLiveTapAccessLinkResponse.parse(await createdLinkResponse.json());
+    assert.match(familyLink.accessToken, /^[A-Za-z0-9_-]{40,100}$/);
+    assert.equal((await fetch(accessLinksUrl, { headers: { "x-test-user": otherId } })).status, 404);
+    const listedLinksResponse = await fetch(accessLinksUrl, { headers: { "x-test-user": ownerId } });
+    const listedLinks = await listedLinksResponse.json() as Array<Record<string, unknown>>;
+    assert.equal(listedLinksResponse.status, 200);
+    assert.equal(listedLinks.length, 1);
+    assert.equal(listedLinks[0]?.id, familyLink.id);
+    assert.equal("accessToken" in (listedLinks[0] ?? {}), false);
+
+    assert.equal((await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": otherId },
+      body: JSON.stringify({ cheerKey: "bucket" }),
+    })).status, 403);
+    assert.equal((await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "touchdown", accessToken: familyLink.accessToken }),
+    })).status, 400);
+    const tapResponse = await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket", accessToken: familyLink.accessToken }),
+    });
+    assert.equal(tapResponse.status, 201);
+    const tapSummary = SendAthleteLiveTapResponse.parse(await tapResponse.json());
+    assert.equal(tapSummary.active, true);
+    assert.equal(tapSummary.gameId, liveSession.gameId);
+    assert.equal(tapSummary.cheers.find((cheer) => cheer.key === "bucket")?.count, 1);
+    const concurrentTaps = await Promise.all(Array.from({ length: 8 }, () => fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket", accessToken: familyLink.accessToken }),
+    })));
+    assert.ok(concurrentTaps.every((response) => response.status === 201));
+
+    const [inviteRow] = await db.select({ id: athleteInvitesTable.id }).from(athleteInvitesTable)
+      .where(eq(athleteInvitesTable.publicToken, created.inviteToken));
+    assert.ok(inviteRow);
+    await db.insert(athleteInviteLiveTapsTable).values({
+      inviteId: inviteRow.id,
+      gameId: "previous-game",
+      cheerKey: "bucket",
+    });
+    const fanWithTap = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
+    assert.equal(fanWithTap.liveTaps.gameId, liveSession.gameId);
+    assert.equal(fanWithTap.liveTaps.cheers.find((cheer) => cheer.key === "bucket")?.count, 9);
+
+    const revokedLink = await fetch(`${accessLinksUrl}/${familyLink.id}`, {
+      method: "DELETE",
+      headers: { "x-test-user": ownerId },
+    });
+    assert.equal(revokedLink.status, 204);
+    assert.deepEqual(await (await fetch(accessLinksUrl, { headers: { "x-test-user": ownerId } })).json(), []);
+    assert.equal((await fetch(tapUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cheerKey: "bucket", accessToken: familyLink.accessToken }),
+    })).status, 403);
 
     const livePublicResponse = await fetch(publicUrl);
     assert.equal(livePublicResponse.status, 200);
@@ -721,6 +810,16 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(stoppedPublic.liveGame, null);
     assert.equal(stoppedPublic.stats?.gamesPlayed, 1);
     assert.equal(stoppedPublic.stats?.stats.points, 18);
+    assert.equal(stoppedPublic.liveTaps.active, false);
+    assert.equal(stoppedPublic.liveTaps.gameId, null);
+    const savedTaps = await db.select({
+      gameId: athleteInviteLiveTapsTable.gameId,
+      cheerKey: athleteInviteLiveTapsTable.cheerKey,
+    }).from(athleteInviteLiveTapsTable).where(eq(athleteInviteLiveTapsTable.inviteId, inviteRow.id));
+    assert.deepEqual(savedTaps.sort((left, right) => left.gameId.localeCompare(right.gameId)), [
+      ...Array.from({ length: 9 }, () => ({ gameId: liveSession.gameId, cheerKey: "bucket" })),
+      { gameId: "previous-game", cheerKey: "bucket" },
+    ].sort((left, right) => left.gameId.localeCompare(right.gameId)));
 
     const attachedAgain = await fetch(liveUrl, {
       method: "POST",
@@ -819,6 +918,7 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     await db.delete(statTrackerSharesTable).where(eq(statTrackerSharesTable.ownerClerkUserId, ownerId));
     await db.delete(cloudProjectsTable).where(eq(cloudProjectsTable.ownerClerkUserId, ownerId));
     await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, ownerId));
+    await db.delete(accountAccessTable).where(eq(accountAccessTable.ownerClerkUserId, otherId));
   }
 });
 

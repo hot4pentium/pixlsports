@@ -95,4 +95,4 @@
 - [Account lifecycle identity fixtures](account-lifecycle-browser-identity-fixtures.md) — browser Clerk stubs must model verified-email data and ownership lookup, not just a primary email.
 - [OpenAPI date query strings](openapi-date-query-strings.md) — generated client serializers stringify `Date` values directly; date-only query filters should stay validated `YYYY-MM-DD` strings.
 - [Stale API client declarations](stale-api-client-declarations.md) — refresh API client project-reference declarations before diagnosing missing generated exports in consumer type checks.
-- [Live Taps concept](live-taps-concept.md) — family members tap sport-specific cheer options for one athlete; keep the tally separate from official stats.
+- [Live Taps and access links](live-taps-concept.md) — keep cheers separate from stats; only an owner-created, revocable family link grants tap access, not the public card URL.

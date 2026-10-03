@@ -1120,6 +1120,50 @@ export interface AthleteInviteHypeAccepted {
   accepted: boolean;
 }
 
+export interface AthleteInviteLiveTapInput {
+  /**
+     * @minLength 40
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  accessToken?: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     * @pattern ^[a-z0-9-]+$
+     */
+  cheerKey: string;
+}
+
+export interface AthleteInviteLiveTapCheer {
+  key: string;
+  label: string;
+  emoji: string;
+  /** @minimum 0 */
+  count: number;
+}
+
+export interface AthleteInviteLiveTaps {
+  active: boolean;
+  /** @nullable */
+  gameId: string | null;
+  cheers: AthleteInviteLiveTapCheer[];
+}
+
+export interface AthleteInviteLiveTapAccessLink {
+  id: string;
+  createdAt: string;
+}
+
+export type AthleteInviteLiveTapAccessLinkCreated = AthleteInviteLiveTapAccessLink & {
+  /**
+     * @minLength 40
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  accessToken: string;
+};
+
 export interface AthleteInviteHype {
   id: string;
   reaction: string;
@@ -1253,6 +1297,7 @@ export interface PublicAthleteInvite {
   events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveGame: AthleteInviteLiveSessionPublic | null;
+  liveTaps: AthleteInviteLiveTaps;
   updatedAt: string;
 }
 
@@ -2168,6 +2213,7 @@ export interface PublicAthleteFanCard {
   events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveScoreboard: AthleteInviteLiveScoreboard | null;
+  liveTaps: AthleteInviteLiveTaps;
   updatedAt: string;
 }
 

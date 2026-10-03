@@ -44,6 +44,7 @@ import {
 import { isAccountActive } from "../lib/accountLifecycle";
 import { computeHypeCardShareStats, isHypeCardSport } from "../lib/hypeCardShareStats";
 import { notifyAthleteInviteHypeOwner } from "../lib/athleteInviteHypeNotification";
+import { getAthleteLiveTapsSummary } from "../lib/athleteLiveTaps";
 import { getOptionalClerkUserId, getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isIanaTimezone } from "../lib/timezone";
 import { GAME_ON_CARD_MARKER } from "./scheduleShares";
@@ -336,6 +337,11 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
       teamName: invite.teamName,
     }
     : null;
+  const liveTaps = await getAthleteLiveTapsSummary(
+    invite.id,
+    invite.sport,
+    liveGame && liveShare?.gameId ? liveShare.gameId : null,
+  );
 
   return {
     inviteToken: invite.publicToken,
@@ -373,6 +379,7 @@ async function publicAthleteInviteData(invite: InviteRow, isOwner: boolean) {
       expiresAt: liveShare.expiresAt,
     } : null,
     liveScoreboard,
+    liveTaps,
     updatedAt,
   };
 }

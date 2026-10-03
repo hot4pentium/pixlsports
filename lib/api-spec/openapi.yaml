@@ -602,6 +602,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}/live-taps:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    post:
+      operationId: sendAthleteLiveTap
+      tags: [athlete-invites]
+      summary: Add a family cheer to the current live game
+      description: Requires the card owner's account or an unrevoked family access token; the public card URL alone never authorizes a tap.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteLiveTapInput"
+      responses:
+        "201":
+          description: Updated per-game cheer tally
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteLiveTaps"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: A valid family tap link or card-owner session is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Game Day Live is not active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: This family link has reached its tap rate limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /athlete-invites/{inviteToken}/live-taps/access-links:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+    get:
+      operationId: listAthleteInviteLiveTapAccessLinks
+      tags: [athlete-invites]
+      summary: List active family Live Taps links as the card owner
+      responses:
+        "200":
+          description: Active links; access tokens are never returned by this operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AthleteInviteLiveTapAccessLink"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: createAthleteInviteLiveTapAccessLink
+      tags: [athlete-invites]
+      summary: Create a revocable family Live Taps link as the card owner
+      responses:
+        "201":
+          description: New private access token, shown only once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteInviteLiveTapAccessLinkCreated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /athlete-invites/{inviteToken}/live-taps/access-links/{accessId}:
+    parameters:
+      - $ref: "#/components/parameters/AthleteInviteToken"
+      - in: path
+        name: accessId
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      operationId: revokeAthleteInviteLiveTapAccessLink
+      tags: [athlete-invites]
+      summary: Revoke one family Live Taps link as the card owner
+      responses:
+        "204":
+          description: Link revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /athlete-invites/{inviteToken}/hypes:
     parameters:
       - $ref: "#/components/parameters/AthleteInviteToken"
@@ -3061,6 +3157,43 @@ components:
       required: [accepted]
       properties:
         accepted: { type: boolean }
+    AthleteInviteLiveTapInput:
+      type: object
+      required: [cheerKey]
+      properties:
+        accessToken: { type: string, minLength: 40, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
+        cheerKey: { type: string, minLength: 1, maxLength: 40, pattern: "^[a-z0-9-]+$" }
+    AthleteInviteLiveTapCheer:
+      type: object
+      required: [key, label, emoji, count]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        emoji: { type: string }
+        count: { type: integer, minimum: 0 }
+    AthleteInviteLiveTaps:
+      type: object
+      required: [active, gameId, cheers]
+      properties:
+        active: { type: boolean }
+        gameId: { type: ["string", "null"] }
+        cheers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AthleteInviteLiveTapCheer"
+    AthleteInviteLiveTapAccessLink:
+      type: object
+      required: [id, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    AthleteInviteLiveTapAccessLinkCreated:
+      allOf:
+        - $ref: "#/components/schemas/AthleteInviteLiveTapAccessLink"
+        - type: object
+          required: [accessToken]
+          properties:
+            accessToken: { type: string, minLength: 40, maxLength: 100, pattern: "^[A-Za-z0-9_-]+$" }
     AthleteInviteHype:
       type: object
       required: [id, reaction, senderName, message, createdAt, publiclyVisible]
@@ -3136,7 +3269,7 @@ components:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"
     PublicAthleteInvite:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveGame, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveGame, liveTaps, updatedAt]
       properties:
         inviteToken: { type: string }
         athleteName: { type: string }
@@ -3177,6 +3310,8 @@ components:
           anyOf:
             - $ref: "#/components/schemas/AthleteInviteLiveSessionPublic"
             - type: "null"
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
         updatedAt:
           type: string
           format: date-time
@@ -3614,7 +3749,7 @@ components:
         teamName: { type: string, maxLength: 160 }
     PublicAthleteFanCard:
       type: object
-      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, hypesEnabled, updatedAt]
+      required: [inviteToken, athleteName, teamName, seasonName, seasonEndsAt, sport, timezone, photoUrl, hypeCard, videos, stats, scheduleEvents, showEvents, events, replies, liveScoreboard, liveTaps, hypesEnabled, updatedAt]
       properties:
         inviteToken: { type: string }
         hypesEnabled: { type: boolean }
@@ -3660,6 +3795,8 @@ components:
           anyOf:
             - $ref: "#/components/schemas/AthleteInviteLiveScoreboard"
             - type: "null"
+        liveTaps:
+          $ref: "#/components/schemas/AthleteInviteLiveTaps"
         updatedAt: { type: string, format: date-time }
     ProjectList:
       type: array

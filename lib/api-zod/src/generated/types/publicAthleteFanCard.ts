@@ -8,6 +8,7 @@
 import type { AthleteInviteEventSummary } from './athleteInviteEventSummary';
 import type { AthleteInviteHypeCard } from './athleteInviteHypeCard';
 import type { AthleteInviteLiveScoreboard } from './athleteInviteLiveScoreboard';
+import type { AthleteInviteLiveTaps } from './athleteInviteLiveTaps';
 import type { AthleteInviteReply } from './athleteInviteReply';
 import type { AthleteInviteScheduleEvent } from './athleteInviteScheduleEvent';
 import type { AthleteInviteVideo } from './athleteInviteVideo';
@@ -39,5 +40,6 @@ export interface PublicAthleteFanCard {
   events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveScoreboard: AthleteInviteLiveScoreboard | null;
+  liveTaps: AthleteInviteLiveTaps;
   updatedAt: Date;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send } from 'lucide-react';
+import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send, Zap } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
@@ -14,6 +14,7 @@ import {
   useListAthleteInvites,
   useListPublicAthleteInviteHypes,
   useSendAthleteInviteHype,
+  useSendAthleteLiveTap,
   type PublicAthleteFanCard,
   type AthleteInviteHypeInput,
 } from '@workspace/api-client-react';
@@ -32,9 +33,10 @@ import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 
-type CardSide = 'front' | 'responses' | 'stats' | 'videos' | 'events';
+type CardSide = 'front' | 'responses' | 'stats' | 'videos' | 'events' | 'live-taps';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
 type FanVideo = PublicAthleteFanCard['videos'][number];
+const liveTapAccessTokenPattern = /^[A-Za-z0-9_-]{40,100}$/;
 const hypeReactions = [
   { emoji: '👏', label: 'Applause' },
   { emoji: '💪', label: 'Strong' },
@@ -146,6 +148,8 @@ export function LivingAthleteCardPage({
   const [publicConsent, setPublicConsent] = useState(false);
   const [hypeFeedback, setHypeFeedback] = useState('');
   const [responseFeedback, setResponseFeedback] = useState('');
+  const [liveTapAccessToken, setLiveTapAccessToken] = useState<string | null>(null);
+  const [liveTapFeedback, setLiveTapFeedback] = useState('');
   const [followDialogOpen, setFollowDialogOpen] = useState(false);
   const [hypeDialogOpen, setHypeDialogOpen] = useState(false);
   const { isLoaded: clerkLoaded, isSignedIn } = useUser();
@@ -159,6 +163,7 @@ export function LivingAthleteCardPage({
   });
   const ownedInvites = ownedInvitesQuery.data;
   const sendHype = useSendAthleteInviteHype();
+  const sendLiveTap = useSendAthleteLiveTap();
   const deleteHype = useDeleteAthleteInviteHype();
   const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
@@ -167,7 +172,7 @@ export function LivingAthleteCardPage({
       queryKey: getGetAthleteFanCardQueryKey(inviteToken),
       retry: false,
       refetchOnWindowFocus: true,
-      refetchInterval: 60_000,
+      refetchInterval: (query) => query.state.data?.liveTaps.active ? 5_000 : 60_000,
     },
   });
   const ownerInvite = ownedInvites?.find((item) => item.inviteToken === inviteToken) ?? null;
@@ -204,6 +209,23 @@ export function LivingAthleteCardPage({
     setLocalReplies([]);
     setFollowDialogOpen(false);
     setHypeDialogOpen(false);
+    setLiveTapFeedback('');
+  }, [inviteToken]);
+  useEffect(() => {
+    const storageKey = `pixlSports:liveTaps:${inviteToken}`;
+    try {
+      const suppliedToken = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('live-taps');
+      if (suppliedToken && liveTapAccessTokenPattern.test(suppliedToken)) {
+        window.localStorage.setItem(storageKey, suppliedToken);
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
+        setLiveTapAccessToken(suppliedToken);
+        return;
+      }
+      const savedToken = window.localStorage.getItem(storageKey);
+      setLiveTapAccessToken(savedToken && liveTapAccessTokenPattern.test(savedToken) ? savedToken : null);
+    } catch {
+      setLiveTapAccessToken(null);
+    }
   }, [inviteToken]);
   useEffect(() => { setBrokenPhoto(false); }, [photoUrl]);
   useEffect(() => {
@@ -326,6 +348,59 @@ export function LivingAthleteCardPage({
         : 'Your shoutout could not be sent. Please try again.');
     }
   };
+  const submitLiveTap = async (cheerKey: string) => {
+    if (!invite.liveTaps.active || (!ownerInvite && !liveTapAccessToken)) return;
+    setLiveTapFeedback('');
+    try {
+      const updated = await sendLiveTap.mutateAsync({
+        inviteToken,
+        data: {
+          cheerKey,
+          ...(liveTapAccessToken ? { accessToken: liveTapAccessToken } : {}),
+        },
+      });
+      queryClient.setQueryData<PublicAthleteFanCard>(
+        getGetAthleteFanCardQueryKey(inviteToken),
+        (current) => {
+          if (!current || current.liveTaps.gameId !== updated.gameId) return current;
+          return {
+            ...current,
+            liveTaps: {
+              ...updated,
+              cheers: updated.cheers.map((cheer) => ({
+                ...cheer,
+                count: Math.max(
+                  cheer.count,
+                  current.liveTaps.cheers.find((item) => item.key === cheer.key)?.count ?? 0,
+                ),
+              })),
+            },
+          };
+        },
+      );
+      const cheer = updated.cheers.find((item) => item.key === cheerKey);
+      setLiveTapFeedback(`${cheer?.label ?? 'Cheer'} counted for this game.`);
+    } catch (error) {
+      const status = error && typeof error === 'object' && 'status' in error ? Number(error.status) : 0;
+      if (status === 403 && liveTapAccessToken) {
+        try {
+          window.localStorage.removeItem(`pixlSports:liveTaps:${inviteToken}`);
+        } catch {
+          // Keep the visible authorization error useful when storage is unavailable.
+        }
+        setLiveTapAccessToken(null);
+      }
+      setLiveTapFeedback(status === 403
+        ? 'This family link is invalid or has been revoked. Ask the card owner for a new link.'
+        : status === 404
+          ? 'This HYPE Card is unavailable for Live Taps.'
+          : status === 409
+            ? 'Live Taps are closed because Game Day Live is not active.'
+            : status === 429
+              ? 'This family link has sent several taps. Try again in a moment.'
+              : 'Your cheer could not be counted. Please try again.');
+    }
+  };
   const removeShoutout = async (hypeId: string) => {
     if (!ownerInvite || !window.confirm('Remove this Shoutout from the card? This cannot be undone.')) return;
     setResponseFeedback('');
@@ -355,7 +430,7 @@ export function LivingAthleteCardPage({
         <div className="living-card-layout living-card-layout-solo">
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" data-side={side} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : 'events'}`}>
+              <div className="living-card-frame" data-side={side} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
                 <div className="living-card-flip-inner">
                   <div className="living-card-flip-face living-card-flip-front">
                     {side === 'front' && (
@@ -623,6 +698,64 @@ export function LivingAthleteCardPage({
                     ) : null}
                   </div>
                 )}
+                {side === 'live-taps' && (
+                  <div className="living-card-face living-card-face-alt" key="live-taps" data-testid="living-card-live-taps-side">
+                    <div className="living-card-alt-top"><span className="living-card-overline">Pixl / Family cheers</span><span>{invite.seasonName}</span></div>
+                    <h2 className="living-card-alt-title">Live Taps.</h2>
+                    <p className="living-card-alt-subtitle">
+                      {invite.liveTaps.active
+                        ? `Cheer for ${invite.athleteName} during Game Day Live.`
+                        : 'The tally opens when the card owner starts Game Day Live.'}
+                    </p>
+                    <section className="living-card-live-taps" aria-labelledby="living-card-live-taps-title">
+                      <div className="living-card-live-taps-heading">
+                        <div>
+                          <p className="living-card-overline">Current game</p>
+                          <h3 id="living-card-live-taps-title">{invite.liveTaps.active ? 'Family cheer tally' : 'Waiting for Game Day Live'}</h3>
+                        </div>
+                        <strong data-testid="text-live-tap-total">
+                          {invite.liveTaps.cheers.reduce((total, cheer) => total + cheer.count, 0)}
+                        </strong>
+                      </div>
+                      <ul className="living-card-live-tap-list" aria-label="Sport-specific cheers">
+                        {invite.liveTaps.cheers.map((cheer) => (
+                          <li key={cheer.key}>
+                            <button
+                              type="button"
+                              onClick={() => void submitLiveTap(cheer.key)}
+                              disabled={!invite.liveTaps.active || (!ownerInvite && !liveTapAccessToken) || sendLiveTap.isPending}
+                              aria-label={`${cheer.label}, ${cheer.count} taps`}
+                              data-testid={`button-live-tap-${cheer.key}`}
+                            >
+                              <span aria-hidden="true">{cheer.emoji}</span>
+                              <span>{cheer.label}</span>
+                              <strong data-testid={`text-live-tap-count-${cheer.key}`}>{cheer.count}</strong>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {!invite.liveTaps.active ? (
+                        <p className="living-card-live-tap-note" data-testid="live-taps-not-active">
+                          Cheers are tallied separately from official stats and cannot be added until Game Day Live is active.
+                        </p>
+                      ) : !ownerInvite && !liveTapAccessToken ? (
+                        <p className="living-card-live-tap-note" data-testid="live-taps-family-link-required">
+                          To tap, open the private family link from the card owner. The public HYPE Card link is view-only.
+                        </p>
+                      ) : (
+                        <p className="living-card-live-tap-note">Every tap adds one cheer to this game. Cheers never change official stats.</p>
+                      )}
+                      <p
+                        className="living-card-live-tap-feedback"
+                        role={liveTapFeedback.includes('could not') || liveTapFeedback.includes('revoked') || liveTapFeedback.includes('limit') ? 'alert' : 'status'}
+                        aria-live="polite"
+                        data-testid="status-live-tap-feedback"
+                      >
+                        {liveTapFeedback}
+                      </p>
+                    </section>
+                  </div>
+                )}
                 {side === 'responses' && (
                   <div className="living-card-face living-card-face-alt" key="responses" data-testid="living-card-responses-side">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / From the stands</span><span>{invite.seasonName}</span></div>
@@ -652,8 +785,9 @@ export function LivingAthleteCardPage({
                   </div>
                 </div>
                 <div className="living-card-controls" role="group" aria-label="Choose a side of the athlete card">
-                  <button type="button" className="living-card-control" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => selectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Responses</button>
+                  <button type="button" className="living-card-control" aria-label="Responses" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => selectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Replies</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
+                  <button type="button" className="living-card-control" aria-label="Live Taps" aria-pressed={side === 'live-taps'} aria-controls="living-card-display" onClick={() => selectSide('live-taps')} data-testid="button-living-card-live-taps"><Zap aria-hidden="true" /> Taps</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 && <span className="living-card-control-count">({recentVideos.length})</span>}</button>
                   <button type="button" className={`living-card-control${eventToday ? ' living-card-control-today' : ''}`} aria-pressed={side === 'events'} aria-controls="living-card-display" onClick={() => selectSide('events')} data-testid="button-living-card-events"><CalendarDays aria-hidden="true" /> Events{linkedEvents.length > 0 && <span className="living-card-control-count">({linkedEvents.length})</span>}{eventToday && <span className="sr-only"> · Event today</span>}</button>
                 </div>

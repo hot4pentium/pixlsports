@@ -43,6 +43,10 @@ import type {
   AthleteInviteHypeInput,
   AthleteInviteInput,
   AthleteInviteLiveSession,
+  AthleteInviteLiveTapAccessLink,
+  AthleteInviteLiveTapAccessLinkCreated,
+  AthleteInviteLiveTapInput,
+  AthleteInviteLiveTaps,
   AthleteInviteManifest,
   AthleteInvitePhoto,
   AthleteInvitePhotoConfirmInput,
@@ -2553,6 +2557,323 @@ export function useGetAthleteInviteEventNotificationProgress<TData = Awaited<Ret
 
 
 
+
+export const getSendAthleteLiveTapUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live-taps`
+}
+
+/**
+ * Requires the card owner's account or an unrevoked family access token; the public card URL alone never authorizes a tap.
+ * @summary Add a family cheer to the current live game
+ */
+export const sendAthleteLiveTap = async (inviteToken: string,
+    athleteInviteLiveTapInput: AthleteInviteLiveTapInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteLiveTaps> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInviteLiveTaps>(getSendAthleteLiveTapUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteLiveTapInput)
+  }
+);}
+
+
+
+
+
+export const getSendAthleteLiveTapMutationKey = () => ['sendAthleteLiveTap'] as const;
+
+export const getSendAthleteLiveTapMutationOptions = <TError = ErrorType<BadRequestResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAthleteLiveTap>>, TError,SendAthleteLiveTapMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendAthleteLiveTap>>, TError,SendAthleteLiveTapMutationVariables, TContext> => {
+
+const mutationKey = getSendAthleteLiveTapMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendAthleteLiveTap>>, SendAthleteLiveTapMutationVariables> = (props) => {
+          const {inviteToken,data} = props ?? {};
+
+          return  sendAthleteLiveTap(inviteToken,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendAthleteLiveTapMutationResult = NonNullable<Awaited<ReturnType<typeof sendAthleteLiveTap>>>
+    export type SendAthleteLiveTapMutationBody = BodyType<AthleteInviteLiveTapInput>
+    export type SendAthleteLiveTapMutationError = ErrorType<BadRequestResponse | Error | NotFoundResponse>
+    export type SendAthleteLiveTapMutationVariables = {inviteToken: string;data: BodyType<AthleteInviteLiveTapInput>}
+
+    /**
+ * @summary Add a family cheer to the current live game
+ */
+export const useSendAthleteLiveTap = <TError = ErrorType<BadRequestResponse | Error | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAthleteLiveTap>>, TError,SendAthleteLiveTapMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendAthleteLiveTap>>,
+        TError,
+        SendAthleteLiveTapMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSendAthleteLiveTapMutationOptions(options));
+    }
+
+export const getListAthleteInviteLiveTapAccessLinksUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live-taps/access-links`
+}
+
+/**
+ * @summary List active family Live Taps links as the card owner
+ */
+export const listAthleteInviteLiveTapAccessLinks = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteLiveTapAccessLink[]> => {
+
+  return customFetch<AthleteInviteLiveTapAccessLink[]>(getListAthleteInviteLiveTapAccessLinksUrl(inviteToken),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAthleteInviteLiveTapAccessLinksQueryKey = (inviteToken: string,) => {
+    return [
+    `/api/athlete-invites/${inviteToken}/live-taps/access-links`
+    ] as const;
+    }
+
+
+export const getListAthleteInviteLiveTapAccessLinksQueryOptions = <TData = Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAthleteInviteLiveTapAccessLinksQueryKey(inviteToken);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>> = ({ signal }) => listAthleteInviteLiveTapAccessLinks(inviteToken, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: inviteToken !== null && inviteToken !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAthleteInviteLiveTapAccessLinksQueryResult = NonNullable<Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>>
+export type ListAthleteInviteLiveTapAccessLinksQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary List active family Live Taps links as the card owner
+ */
+
+export function useListAthleteInviteLiveTapAccessLinks<TData = Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ inviteToken: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAthleteInviteLiveTapAccessLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAthleteInviteLiveTapAccessLinksQueryOptions(inviteToken,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAthleteInviteLiveTapAccessLinkUrl = (inviteToken: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live-taps/access-links`
+}
+
+/**
+ * @summary Create a revocable family Live Taps link as the card owner
+ */
+export const createAthleteInviteLiveTapAccessLink = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteLiveTapAccessLinkCreated> => {
+
+  return customFetch<AthleteInviteLiveTapAccessLinkCreated>(getCreateAthleteInviteLiveTapAccessLinkUrl(inviteToken),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateAthleteInviteLiveTapAccessLinkMutationKey = () => ['createAthleteInviteLiveTapAccessLink'] as const;
+
+export const getCreateAthleteInviteLiveTapAccessLinkMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteLiveTapAccessLink>>, TError,CreateAthleteInviteLiveTapAccessLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteLiveTapAccessLink>>, TError,CreateAthleteInviteLiveTapAccessLinkMutationVariables, TContext> => {
+
+const mutationKey = getCreateAthleteInviteLiveTapAccessLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAthleteInviteLiveTapAccessLink>>, CreateAthleteInviteLiveTapAccessLinkMutationVariables> = (props) => {
+          const {inviteToken} = props ?? {};
+
+          return  createAthleteInviteLiveTapAccessLink(inviteToken,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAthleteInviteLiveTapAccessLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createAthleteInviteLiveTapAccessLink>>>
+
+    export type CreateAthleteInviteLiveTapAccessLinkMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type CreateAthleteInviteLiveTapAccessLinkMutationVariables = {inviteToken: string}
+
+    /**
+ * @summary Create a revocable family Live Taps link as the card owner
+ */
+export const useCreateAthleteInviteLiveTapAccessLink = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAthleteInviteLiveTapAccessLink>>, TError,CreateAthleteInviteLiveTapAccessLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAthleteInviteLiveTapAccessLink>>,
+        TError,
+        CreateAthleteInviteLiveTapAccessLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAthleteInviteLiveTapAccessLinkMutationOptions(options));
+    }
+
+export const getRevokeAthleteInviteLiveTapAccessLinkUrl = (inviteToken: string,
+    accessId: string,) => {
+
+
+
+
+  return `/api/athlete-invites/${inviteToken}/live-taps/access-links/${accessId}`
+}
+
+/**
+ * @summary Revoke one family Live Taps link as the card owner
+ */
+export const revokeAthleteInviteLiveTapAccessLink = async (inviteToken: string,
+    accessId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRevokeAthleteInviteLiveTapAccessLinkUrl(inviteToken,accessId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeAthleteInviteLiveTapAccessLinkMutationKey = () => ['revokeAthleteInviteLiveTapAccessLink'] as const;
+
+export const getRevokeAthleteInviteLiveTapAccessLinkMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAthleteInviteLiveTapAccessLink>>, TError,RevokeAthleteInviteLiveTapAccessLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeAthleteInviteLiveTapAccessLink>>, TError,RevokeAthleteInviteLiveTapAccessLinkMutationVariables, TContext> => {
+
+const mutationKey = getRevokeAthleteInviteLiveTapAccessLinkMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeAthleteInviteLiveTapAccessLink>>, RevokeAthleteInviteLiveTapAccessLinkMutationVariables> = (props) => {
+          const {inviteToken,accessId} = props ?? {};
+
+          return  revokeAthleteInviteLiveTapAccessLink(inviteToken,accessId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeAthleteInviteLiveTapAccessLinkMutationResult = NonNullable<Awaited<ReturnType<typeof revokeAthleteInviteLiveTapAccessLink>>>
+
+    export type RevokeAthleteInviteLiveTapAccessLinkMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type RevokeAthleteInviteLiveTapAccessLinkMutationVariables = {inviteToken: string;accessId: string}
+
+    /**
+ * @summary Revoke one family Live Taps link as the card owner
+ */
+export const useRevokeAthleteInviteLiveTapAccessLink = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAthleteInviteLiveTapAccessLink>>, TError,RevokeAthleteInviteLiveTapAccessLinkMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeAthleteInviteLiveTapAccessLink>>,
+        TError,
+        RevokeAthleteInviteLiveTapAccessLinkMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevokeAthleteInviteLiveTapAccessLinkMutationOptions(options));
+    }
 
 export const getSendAthleteInviteHypeUrl = (inviteToken: string,) => {
 

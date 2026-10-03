@@ -152,6 +152,17 @@ test('player-page owner tools remain private across account changes and pause', 
     events: [],
     replies: [],
     liveScoreboard: null,
+    liveTaps: {
+      active: false,
+      gameId: null,
+      cheers: [
+        { key: 'bucket', label: 'Bucket', emoji: '🏀', count: 0 },
+        { key: 'three', label: 'Three!', emoji: '🎯', count: 0 },
+        { key: 'and-one', label: 'And one', emoji: '💥', count: 0 },
+        { key: 'big-stop', label: 'Big stop', emoji: '🛡️', count: 0 },
+        { key: 'lets-go', label: "Let's go", emoji: '💙', count: 0 },
+      ],
+    },
     updatedAt: new Date().toISOString(),
   };
   const apiServer = createServer(async (request, response) => {
@@ -296,6 +307,8 @@ test('player-page owner tools remain private across account changes and pause', 
     const otherFanCard = await open('other', 'fan');
     await waitFor(connection, otherFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), otherFanCard), true);
+    fanCard.liveTaps.active = true;
+    fanCard.liveTaps.gameId = 'live-game';
     const visitorFanCard = await open('visitor', 'fan');
     await waitFor(connection, visitorFanCard, element('[data-testid="button-open-fan-card-follow"]'), Boolean, 30_000);
     assert.equal(await connection.evaluate(element('[data-testid="button-open-fan-card-hypes"]'), visitorFanCard), true);
@@ -335,7 +348,17 @@ test('player-page owner tools remain private across account changes and pause', 
     assert.ok(requests.some(({ viewer, method, path }) => (
       viewer === 'visitor' && method === 'GET' && path === `/api/athlete-invites/${token}/public-shoutouts`
     )), 'visitors load the public-shoutouts endpoint');
-    for (const side of ['stats', 'videos', 'events']) {
+    for (const side of ['stats', 'videos', 'live-taps', 'events']) {
+      if (side === 'events') {
+        assert.equal(await connection.evaluate(
+          "document.querySelector('[data-testid=\"live-taps-family-link-required\"]')?.textContent.includes('public HYPE Card link is view-only')",
+          visitorFanCard,
+        ), true, 'public card visitors see that Live Taps require the private family link');
+        assert.equal(await connection.evaluate(
+          "document.querySelector('[data-testid=\"button-live-tap-bucket\"]')?.disabled",
+          visitorFanCard,
+        ), true, 'the public card link alone cannot submit a Live Tap');
+      }
       await connection.evaluate(`document.querySelector('[data-testid="button-living-card-${side}"]').click()`, visitorFanCard);
     }
     await waitFor(connection, visitorFanCard, "document.querySelector('#living-card-display')?.dataset.side === 'events' && Boolean(document.querySelector('[data-testid=\"living-card-events-side\"]'))", Boolean, 12_000);
@@ -355,7 +378,7 @@ test('player-page owner tools remain private across account changes and pause', 
       content.selectNodeContents(button);
       const contentBounds = content.getBoundingClientRect();
       return contentBounds.left >= bounds.left - 1 && contentBounds.right <= bounds.right + 1;
-    })`, visitorFanCard), true, 'all four card controls fit at narrow phone width');
+    })`, visitorFanCard), true, 'all five card controls fit at narrow phone width');
     await connection.send('Emulation.setDeviceMetricsOverride', {
       width: 1024,
       height: 768,
@@ -649,6 +672,17 @@ test('Hype Card flips stay readable in Firefox and WebKit at phone and desktop w
     events: [],
     replies: [],
     liveScoreboard: null,
+    liveTaps: {
+      active: false,
+      gameId: null,
+      cheers: [
+        { key: 'bucket', label: 'Bucket', emoji: '🏀', count: 0 },
+        { key: 'three', label: 'Three!', emoji: '🎯', count: 0 },
+        { key: 'and-one', label: 'And one', emoji: '💥', count: 0 },
+        { key: 'big-stop', label: 'Big stop', emoji: '🛡️', count: 0 },
+        { key: 'lets-go', label: "Let's go", emoji: '💙', count: 0 },
+      ],
+    },
     updatedAt: new Date().toISOString(),
   };
   const apiServer = createServer((request, response) => {

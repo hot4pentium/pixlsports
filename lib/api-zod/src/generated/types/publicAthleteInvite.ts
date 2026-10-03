@@ -8,6 +8,7 @@
 import type { AthleteInviteEventSummary } from './athleteInviteEventSummary';
 import type { AthleteInviteHypeCard } from './athleteInviteHypeCard';
 import type { AthleteInviteLiveSessionPublic } from './athleteInviteLiveSessionPublic';
+import type { AthleteInviteLiveTaps } from './athleteInviteLiveTaps';
 import type { AthleteInviteReply } from './athleteInviteReply';
 import type { AthleteInviteScheduleEvent } from './athleteInviteScheduleEvent';
 import type { AthleteInviteVideo } from './athleteInviteVideo';
@@ -32,5 +33,6 @@ export interface PublicAthleteInvite {
   events: AthleteInviteEventSummary[];
   replies: AthleteInviteReply[];
   liveGame: AthleteInviteLiveSessionPublic | null;
+  liveTaps: AthleteInviteLiveTaps;
   updatedAt: Date;
 }

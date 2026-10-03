@@ -48,6 +48,10 @@ import {
   useUpdateAthleteInvite,
   useListAthleteInviteHypes,
   useDeleteAthleteInviteHype,
+  getListAthleteInviteLiveTapAccessLinksQueryKey,
+  useCreateAthleteInviteLiveTapAccessLink,
+  useListAthleteInviteLiveTapAccessLinks,
+  useRevokeAthleteInviteLiveTapAccessLink,
   type AthleteInviteEventSummary,
   type AthleteInviteInput,
 } from '@workspace/api-client-react';
@@ -857,7 +861,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const [visibilitySaving, setVisibilitySaving] = useState(false);
   const visibilitySavingRef = useRef(false);
   const [visibilityStatus, setVisibilityStatus] = useState<'idle' | 'saving' | 'saved' | 'refresh-error' | 'error'>('idle');
-  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'events' | 'hypes' | 'media' | null>(
+  const [activeTask, setActiveTask] = useState<'share' | 'photo' | 'sections' | 'events' | 'hypes' | 'media' | 'live-taps' | null>(
     () => window.location.hash === '#owner-fan-hypes'
       ? 'hypes'
       : window.location.hash === '#owner-notify-followers' ? 'events' : null,
@@ -870,6 +874,18 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     query: { queryKey: getListAthleteInviteHypesQueryKey(invite.inviteToken), refetchOnMount: 'always', refetchInterval: 30_000 },
   });
   const deleteHype = useDeleteAthleteInviteHype();
+  const createLiveTapAccessLink = useCreateAthleteInviteLiveTapAccessLink();
+  const revokeLiveTapAccessLink = useRevokeAthleteInviteLiveTapAccessLink();
+  const liveTapAccessLinks = useListAthleteInviteLiveTapAccessLinks(invite.inviteToken, {
+    query: {
+      enabled: activeTask === 'live-taps',
+      queryKey: getListAthleteInviteLiveTapAccessLinksQueryKey(invite.inviteToken),
+      retry: false,
+    },
+  });
+  const [familyTapUrl, setFamilyTapUrl] = useState('');
+  const [familyTapLinkId, setFamilyTapLinkId] = useState('');
+  const [familyTapNotice, setFamilyTapNotice] = useState('');
   const [notice, setNotice] = useState('');
   const { data: hypeCardShares, isLoading: videosLoading, isError: videosError } = useListHypeCardShares(hostedVideoQuery, {
     query: {
@@ -993,6 +1009,45 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     await navigator.clipboard.writeText(fanCardUrl(invite.inviteToken));
     setNotice('HYPE Card URL copied.');
   };
+  const createFamilyTapLink = async () => {
+    setFamilyTapNotice('');
+    try {
+      const created = await createLiveTapAccessLink.mutateAsync({ inviteToken: invite.inviteToken });
+      setFamilyTapUrl(`${fanCardUrl(invite.inviteToken)}#live-taps=${encodeURIComponent(created.accessToken)}`);
+      setFamilyTapLinkId(created.id);
+      setFamilyTapNotice('Private family link created. Copy it below and send it only to the family member who will tap.');
+      await queryClient.invalidateQueries({
+        queryKey: getListAthleteInviteLiveTapAccessLinksQueryKey(invite.inviteToken),
+      });
+    } catch {
+      setFamilyTapNotice('The family link could not be created. Please try again.');
+    }
+  };
+  const copyFamilyTapLink = async () => {
+    if (!familyTapUrl) return;
+    try {
+      await navigator.clipboard.writeText(familyTapUrl);
+      setFamilyTapNotice('Family Live Taps link copied.');
+    } catch {
+      setFamilyTapNotice('Copy was unavailable. Select and copy the private link from the field.');
+    }
+  };
+  const revokeFamilyTapLink = async (accessId: string) => {
+    setFamilyTapNotice('');
+    try {
+      await revokeLiveTapAccessLink.mutateAsync({ inviteToken: invite.inviteToken, accessId });
+      await queryClient.invalidateQueries({
+        queryKey: getListAthleteInviteLiveTapAccessLinksQueryKey(invite.inviteToken),
+      });
+      if (familyTapLinkId === accessId) {
+        setFamilyTapLinkId('');
+        setFamilyTapUrl('');
+      }
+      setFamilyTapNotice('Family link revoked. It can no longer add cheers.');
+    } catch {
+      setFamilyTapNotice('The family link could not be revoked. Please try again.');
+    }
+  };
   const shareFanCard = async () => {
     const url = fanCardUrl(invite.inviteToken);
     if (navigator.share) await navigator.share({ title: `${invite.athleteName} HYPE Card`, text: `Follow ${invite.athleteName}'s season.`, url });
@@ -1081,6 +1136,85 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           <Link2 className="mr-2 h-4 w-4" />{invite.paused ? 'Resume Hype Page' : 'Pause Hype Page'}
         </Button>
       </div>
+      </HypeManagerTaskCard>
+
+      <HypeManagerTaskCard
+        id="live-taps"
+        title="Family Live Taps"
+        description="Create and revoke family cheer links"
+        Icon={Zap}
+        active={activeTask === 'live-taps'}
+        onSelect={() => toggleTask('live-taps')}
+        badge={liveTapAccessLinks.data?.length ? `${liveTapAccessLinks.data.length} active` : undefined}
+      >
+        <section aria-labelledby="owner-live-taps-title" data-testid="section-owner-live-taps">
+          <h3 id="owner-live-taps-title" className="font-display text-2xl uppercase">Family Live Taps</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-white/65">
+            The public HYPE Card link is view-only. Create a separate private link for each family member; anyone with a link can cheer during Game Day Live, and you can revoke each link here.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button
+              type="button"
+              className="rounded-none"
+              onClick={() => void createFamilyTapLink()}
+              disabled={createLiveTapAccessLink.isPending}
+              data-testid="button-create-live-tap-link"
+            >
+              <Zap className="mr-2 h-4 w-4" />{createLiveTapAccessLink.isPending ? 'Creating…' : 'Create family link'}
+            </Button>
+          </div>
+          {familyTapUrl && (
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center" data-testid="created-live-tap-link">
+              <input
+                readOnly
+                value={familyTapUrl}
+                onFocus={(event) => event.currentTarget.select()}
+                aria-label="Private family Live Taps URL"
+                className="min-w-0 flex-1 border border-white/20 bg-black/20 px-3 py-3 text-xs font-medium text-white"
+                data-testid="input-created-live-tap-link"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                onClick={() => void copyFamilyTapLink()}
+                data-testid="button-copy-live-tap-link"
+              >
+                <Clipboard className="mr-2 h-4 w-4" />Copy link
+              </Button>
+            </div>
+          )}
+          {liveTapAccessLinks.isLoading ? (
+            <p role="status" className="mt-4 text-xs text-white/55">Checking active family links…</p>
+          ) : liveTapAccessLinks.isError ? (
+            <p role="alert" className="mt-4 text-xs text-amber-200">Active family links could not be loaded.</p>
+          ) : liveTapAccessLinks.data?.length ? (
+            <ul className="mt-4 divide-y divide-white/15 border-y border-white/15" data-testid="live-tap-link-list">
+              {liveTapAccessLinks.data.map((link) => (
+                <li key={link.id} className="flex flex-col justify-between gap-3 py-3 sm:flex-row sm:items-center">
+                  <p className="text-xs text-white/65">
+                    Family link · created <time dateTime={link.createdAt}>{new Date(link.createdAt).toLocaleDateString()}</time>
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-none border-white/30 bg-transparent text-red-200 hover:bg-red-500/10 hover:text-red-100"
+                    onClick={() => void revokeFamilyTapLink(link.id)}
+                    disabled={revokeLiveTapAccessLink.isPending}
+                    data-testid={`button-revoke-live-tap-link-${link.id}`}
+                  >
+                    Revoke
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 border border-white/15 bg-black/15 p-3 text-xs text-white/55">No active family links yet.</p>
+          )}
+          <p role={familyTapNotice.includes('could not') ? 'alert' : 'status'} aria-live="polite" className="mt-3 text-xs font-semibold text-white/70" data-testid="status-owner-live-taps">
+            {familyTapNotice}
+          </p>
+        </section>
       </HypeManagerTaskCard>
 
       <HypeManagerTaskCard id="photo" title="Upload Photo" description="Add a new athlete photo" Icon={ImagePlus} active={activeTask === 'photo'} onSelect={() => toggleTask('photo')} badge={invite.photoUrl ? 'Photo added' : undefined}>
