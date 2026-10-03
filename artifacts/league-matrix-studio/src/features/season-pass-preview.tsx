@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'wouter';
 import { ArrowDown, ArrowRight, Check, ChevronDown, CircleHelp, Crown, Download, Layers3, ShieldCheck, Sparkles, UsersRound } from 'lucide-react';
 
 import { PreviewArtwork } from './hype-card-preview';
@@ -24,7 +25,7 @@ function athleteIllustration(top: string, jersey: string, trim: string, pose: 'p
     ? `<path d="M194 132c12-35 34-53 67-53 29 0 50 16 63 47l29 76-34 13-20-39 4 102H198l4-99-21 41-33-17 46-71Z" fill="${jersey}"/><path d="m200 166-31 47 22 15 31-43M300 160l35 48-23 18-31-44" fill="none" stroke="${trim}" stroke-width="13" stroke-linecap="round"/><path d="M220 280h28l-6 85h-39l17-85Zm43 0h29l24 85h-39l-14-85Z" fill="#182b45"/><path d="m207 360-7 17h48l2-16m33 0 4 16h44l-5-17" fill="#f6f2e8"/>`
     : `<path d="M194 133c14-35 36-53 67-53 30 0 52 18 66 50l23 69-33 15-17-39 7 105H191l6-103-19 42-33-17 49-69Z" fill="${jersey}"/><path d="M205 169 175 214l24 15 31-43m61-15 34 48-23 17-31-44" fill="none" stroke="${trim}" stroke-width="13" stroke-linecap="round"/><path d="M219 280h28l-13 82h-40l25-82Zm43 0h30l25 82h-40l-15-82Z" fill="#182b45"/><circle cx="357" cy="182" r="26" fill="#d58c48"/><path d="M341 163c20 6 29 19 31 37m-37-9 42-18" fill="none" stroke="#633d2e" stroke-width="2"/>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 510"><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="${top}"/><stop offset="1" stop-color="#101d32"/></linearGradient><radialGradient id="light"><stop stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><rect width="500" height="510" fill="url(#bg)"/><circle cx="252" cy="177" r="210" fill="url(#light)" opacity=".38"/><path d="M0 335 500 250v260H0Z" fill="#081426" opacity=".48"/><path d="M0 382h500M0 410h500M0 438h500" stroke="#fff" stroke-opacity=".13" stroke-width="2"/>${Array.from({ length: 13 }, (_, i) => `<circle cx="${25 + i * 39}" cy="${72 + (i % 3) * 17}" r="${i % 4 === 0 ? 5 : 3}" fill="${i % 2 ? '#ff784f' : '#a9d6ff'}" opacity=".8"/>`).join('')}<circle cx="262" cy="65" r="43" fill="#96674e"/><path d="M220 63c4-33 21-53 48-49 23 3 36 19 37 44-17-13-43-19-85 5Z" fill="#182033"/>${shape}<path d="M242 154h39v48h-39z" fill="${trim}" opacity=".96"/><text x="260" y="189" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="25" font-weight="900">12</text><path d="M90 510c17-88 58-139 127-153h89c69 14 110 65 127 153" fill="#0b1728" opacity=".35"/></svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg.replace('>12</text>', `>${pose === 'pitch' ? '12' : '08'}</text>`))}`;
 }
 
 const ATHLETES: Athlete[] = [
@@ -56,10 +57,10 @@ const ATHLETES: Athlete[] = [
   },
 ];
 
-const LOOKS: Array<{ id: CardFinishId; title: string; note: string }> = [
-  { id: 'gold-spotlight', title: 'Spotlight', note: 'Stadium light, quiet confidence' },
-  { id: 'cosmic-clash', title: 'Signature', note: 'Team color with electric edges' },
-  { id: 'neon-prism', title: 'Chrome', note: 'A collectible, high-contrast frame' },
+const LOOKS: Array<{ id: CardFinishId; title: string; note: string; layout: HypeCardProject['layout'] }> = [
+  { id: 'gold-spotlight', title: 'Spotlight', note: 'Stadium light, quiet confidence', layout: 'all-star' },
+  { id: 'cosmic-clash', title: 'Signature', note: 'Blue and orange arena edges', layout: 'dugout' },
+  { id: 'neon-prism', title: 'Walkout', note: 'A dark corridor with warm gold light', layout: 'rookie' },
 ];
 
 const INTERVIEW_QUESTIONS = [
@@ -71,6 +72,34 @@ const INTERVIEW_QUESTIONS = [
 ];
 
 export default function SeasonPassPreview() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = 'Season Pass Research Preview | Pixl Sports';
+    const description = 'Explore a fictional one-season family pass with Hype Card designs, multiple athletes, and a keepsake concept. Research only; no purchase available.';
+    const cleanups = [
+      ['name', 'description', description],
+      ['name', 'robots', 'noindex, nofollow'],
+      ['property', 'og:title', document.title],
+      ['property', 'og:description', description],
+      ['property', 'og:type', 'website'],
+    ].map(([attribute, key, content]) => {
+      const existing = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
+      const element = existing ?? document.createElement('meta');
+      const previous = element.getAttribute('content');
+      element.setAttribute(attribute, key);
+      element.content = content;
+      if (!existing) document.head.appendChild(element);
+      return () => {
+        if (!existing) element.remove();
+        else if (previous === null) element.removeAttribute('content');
+        else element.content = previous;
+      };
+    });
+    return () => {
+      document.title = previousTitle;
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, []);
   const [athleteId, setAthleteId] = useState(ATHLETES[0].id);
   const [selectedLook, setSelectedLook] = useState<CardFinishId>(ATHLETES[0].finish);
   const [selectedMoments, setSelectedMoments] = useState<string[]>(ATHLETES[0].highlights.slice(0, 2));
@@ -92,7 +121,7 @@ export default function SeasonPassPreview() {
     message: 'Every little moment counts.',
     palette: athlete.palette,
     finish: selectedLook,
-    layout: 'all-star',
+    layout: LOOKS.find((look) => look.id === selectedLook)!.layout,
     template: 'spotlight',
     format: 'card',
     visibility: { stat: true, achievement: true, message: true },
@@ -116,10 +145,10 @@ export default function SeasonPassPreview() {
     <main className="season-pass-page" data-testid="season-pass-preview-page">
       <div className="sp-shell">
         <header className="sp-topline">
-          <a href="/" className="sp-wordmark" aria-label="Pixl Sports home" data-testid="link-pixl-home">
+          <Link href="/" className="sp-wordmark" aria-label="Pixl Sports home" data-testid="link-pixl-home">
             <span className="sp-mark" aria-hidden="true">P</span>
             <span>PIXL <b>SPORTS</b></span>
-          </a>
+          </Link>
           <span className="sp-research-label"><span /> RESEARCH PREVIEW</span>
         </header>
 
@@ -240,7 +269,7 @@ export default function SeasonPassPreview() {
             </aside>
 
             <div className="sp-card-stage">
-              <div className="sp-stage-meta"><span>PROPOSED {selectedLookName.toUpperCase()} LOOK</span><span>HYPE CARD · SAMPLE</span></div>
+               <div className="sp-stage-meta"><span data-testid="text-selected-look">PROPOSED {selectedLookName.toUpperCase()} LOOK</span><span>HYPE CARD · SAMPLE</span></div>
               <div className="sp-stage-card" key={`${athlete.id}-${selectedLook}`}>
                 <PreviewArtwork project={project} ns={`season-pass-${athlete.id}-${selectedLook}`} testId="artwork-interactive-card" />
               </div>
@@ -267,9 +296,9 @@ export default function SeasonPassPreview() {
               </div>
               <div className="sp-keepsake-details">
                 <p className="sp-keepsake-lead">A digital season page built from fictional results and moments a family might choose to remember.</p>
-                <div className="sp-fictional-stat"><span>SEASON SNAPSHOT</span><strong>{athlete.stat}</strong><small>Example result · Fictional sample</small></div>
+                 <div className="sp-fictional-stat"><span>SEASON SNAPSHOT</span><strong data-testid="text-season-stat">{athlete.stat}</strong><small>Example result · Fictional sample</small></div>
                 <div className="sp-moments">
-                  <div className="sp-moments-label"><span>OWNER-SELECTED MOMENTS</span><small>{selectedMoments.length} selected</small></div>
+                   <div className="sp-moments-label"><span>OWNER-SELECTED MOMENTS</span><small data-testid="text-selected-moment-count">{selectedMoments.length} selected</small></div>
                   {athlete.highlights.map((moment, index) => {
                     const selected = selectedMoments.includes(moment);
                     return (
@@ -288,6 +317,12 @@ export default function SeasonPassPreview() {
                     );
                   })}
                 </div>
+                 <div className="sp-keepsake-result" data-testid="preview-keepsake-result" aria-live="polite">
+                   <strong>{athlete.name} · Keepsake preview</strong>
+                   {selectedMoments.length > 0
+                     ? <ul>{selectedMoments.map((moment) => <li key={moment}>{moment}</li>)}</ul>
+                     : <p>No moments selected. Choose a moment above to include it.</p>}
+                 </div>
                 <p className="sp-keep-note">A real keepsake might reflect moments a parent chooses. This preview uses only fictional examples and selection stays on this page.</p>
               </div>
             </div>
@@ -320,14 +355,23 @@ export default function SeasonPassPreview() {
                     <span>0{index + 1}</span><p>{question}</p>
                   </li>
                 ))}
-                <p className="sp-interview-reminder">Ask openly. There are no right answers; do not request private family details.</p>
               </ol>
+            )}
+            {interviewOpen && (
+              <div className="sp-research-signals" data-testid="text-research-decision-signals">
+                <p className="sp-interview-reminder">Ask openly. There are no right answers; do not request private family details. Record only anonymous research notes outside this page.</p>
+                <h3>Go / revise / stop signals</h3>
+                <p><strong>Explore further:</strong> Parents explain a specific use for the bundle, select moments they would keep, and describe a realistic reason to pay without prompting.</p>
+                <p><strong>Revise:</strong> Only one benefit matters, or season duration, athlete limits, or the keepsake format remain unclear. Test those details before pricing.</p>
+                <p><strong>Stop or rethink:</strong> Parents prefer the free card and cannot describe added value or a reason to pay. Praise for the artwork alone is not purchase intent.</p>
+                <p>These are discussion signals, not validated demand. No final price or launch decision is implied.</p>
+              </div>
             )}
           </div>
         </section>
 
         <footer className="sp-footer">
-          <a href="/" className="sp-wordmark" data-testid="link-footer-home"><span className="sp-mark" aria-hidden="true">P</span><span>PIXL <b>SPORTS</b></span></a>
+          <Link href="/" className="sp-wordmark" data-testid="link-footer-home"><span className="sp-mark" aria-hidden="true">P</span><span>PIXL <b>SPORTS</b></span></Link>
           <p>Made for the people in the stands.</p>
           <span>RESEARCH PREVIEW · NO PURCHASE AVAILABLE</span>
         </footer>

@@ -209,6 +209,7 @@ const PublicStatTrackerPage = lazy(() =>
 const PublicGameOnCardPage = lazy(() =>
   import('@/features/game-on-card').then(({ PublicGameOnCardPage }) => ({ default: PublicGameOnCardPage })),
 );
+const SeasonPassPreview = lazy(() => import('@/features/season-pass-preview'));
 const SupporterDashboardView = lazy(() =>
   import('@/features/supporter-dashboard').then(({ SupporterDashboardView }) => ({ default: SupporterDashboardView })),
 );
@@ -3868,6 +3869,7 @@ function AccountLifecycleGate({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser();
   const queryClient = useQueryClient();
   const bypassLifecycle = location === '/'
+    || location === '/season-pass-preview'
     || location.startsWith('/schedule/')
     || location.startsWith('/checklist/')
     || location.startsWith('/watch/')
@@ -4044,6 +4046,7 @@ function ClerkProviderWithRoutes() {
                 <SupporterSetupGate>
                 <Switch>
               <Route path="/" component={HomeRedirect} />
+              <Route path="/season-pass-preview" component={SeasonPassPreview} />
               <Route path="/auth" component={AuthChoicePage} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />

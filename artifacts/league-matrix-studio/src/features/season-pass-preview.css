@@ -16,6 +16,7 @@
 .season-pass-page * { box-sizing: border-box; }
 .season-pass-page button, .season-pass-page a { font: inherit; }
 .season-pass-page button { cursor: pointer; }
+.season-pass-page :is(button, a):focus-visible { outline: 3px solid var(--sp-coral); outline-offset: 4px; }
 .sp-shell { width: min(1160px, calc(100% - 48px)); margin: 0 auto; }
 .sp-topline { height: 78px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgb(16 43 77 / 12%); }
 .sp-wordmark { display: inline-flex; align-items: center; gap: 9px; color: var(--sp-navy); text-decoration: none; font-size: 12px; font-weight: 800; letter-spacing: .13em; }
@@ -161,6 +162,9 @@
 .sp-moment > small { color: #8da5bf; font-size: 7px; font-weight: 800; letter-spacing: .08em; white-space: nowrap; }
 .sp-moment.is-selected > small { color: #f5cc66; }
 .sp-keep-note { margin: 12px 0 0; color: #92a8bf; font-size: 9px; line-height: 1.55; }
+.sp-keepsake-result { margin-top: 16px; padding: 14px; border: 1px solid rgb(143 197 255 / 25%); color: #dce7f2; font-size: 12px; line-height: 1.6; }
+.sp-keepsake-result ul { margin: 8px 0 0; padding-left: 18px; }
+.sp-keepsake-result p { margin: 8px 0 0; }
 .sp-keepsake-bottom { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 18px; border-top: 1px solid rgb(255 255 255 / 11%); color: #91a9c2; font-size: 8px; font-weight: 700; letter-spacing: .04em; }
 .sp-keepsake-bottom > span:first-child { display: flex; align-items: center; gap: 7px; }
 .sp-keepsake-bottom svg { flex: 0 0 15px; color: #8fc5ff; }
@@ -181,6 +185,8 @@
 .sp-question-list li > span { color: var(--sp-coral); font-size: 9px; font-weight: 800; letter-spacing: .06em; }
 .sp-question-list li p { margin: 0; color: #455d75; font-size: 11px; line-height: 1.65; }
 .sp-interview-reminder { margin: 14px 0 0; color: #7a8897; font-size: 9px; line-height: 1.6; }
+.sp-research-signals h3 { margin: 20px 0 10px; font-size: 15px; }
+.sp-research-signals p { color: #455d75; font-size: 12px; line-height: 1.65; }
 .sp-footer { min-height: 78px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-top: 1px solid #d0d8dc; }
 .sp-footer > p { margin: 0; color: #68798c; font-size: 10px; }
 .sp-footer > span { color: #8795a2; font-size: 8px; font-weight: 800; letter-spacing: .13em; text-align: right; }
