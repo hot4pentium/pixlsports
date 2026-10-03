@@ -26,6 +26,7 @@ import {
   StartAthleteInviteLiveResponse,
   StopAthleteInviteLiveParams,
   StopAthleteInviteLiveResponse,
+  StartAthleteInviteLiveBody,
   UpdateAthleteInviteBody,
   UpdateAthleteInviteParams,
   UpdateAthleteInviteResponse,
@@ -737,8 +738,14 @@ router.delete("/athlete-invites/:inviteToken", requireAuth, async (req, res): Pr
 
 router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res): Promise<void> => {
   const params = StartAthleteInviteLiveParams.safeParse(req.params);
+  const bodyWasProvided = req.body !== undefined;
+  const parsedBody = bodyWasProvided ? StartAthleteInviteLiveBody.safeParse(req.body) : null;
   if (!params.success) {
     res.status(404).json({ error: "Athlete Hype Page not found" });
+    return;
+  }
+  if (parsedBody && !parsedBody.success) {
+    res.status(400).json({ error: "Choose a valid live tracker share." });
     return;
   }
   const ownerClerkUserId = getRequiredClerkUserId(res);
@@ -751,43 +758,67 @@ router.post("/athlete-invites/:inviteToken/live", requireAuth, async (req, res):
     res.status(404).json({ error: "Athlete Hype Page not found" });
     return;
   }
-  const project = await resolveTrackerProject(invite.trackerProjectId, ownerClerkUserId, invite.sport, "live");
-  const payload = project?.project && typeof project.project === "object"
-    ? project.project as { games?: unknown }
-    : null;
-  const sourceGame = Array.isArray(payload?.games)
-    ? payload.games.find((game) => game && typeof game === "object" && (game as { status?: unknown }).status === "live")
-    : null;
-  if (!sourceGame || typeof sourceGame !== "object") {
-    res.status(409).json({ error: "Start a live game in the selected Stat Tracker first." });
-    return;
-  }
-  const game = cleanLiveGame(sourceGame, "live-game");
-  if (!game) {
-    res.status(409).json({ error: "The selected live game is unavailable." });
-    return;
-  }
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const existingShare = invite.liveTrackerShareToken
-    ? (await db.select().from(statTrackerSharesTable).where(and(
-      eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+  let game: ReturnType<typeof cleanLiveGame> = null;
+  let share: typeof statTrackerSharesTable.$inferSelect | undefined;
+  if (parsedBody?.success) {
+    const [linkedShare] = await db.select().from(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.id, parsedBody.data.shareToken),
       eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
       gt(statTrackerSharesTable.expiresAt, new Date()),
-    )))[0]
-    : null;
-  const sameGameShare = existingShare ?? (await db.select().from(statTrackerSharesTable).where(and(
-    eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
-    eq(statTrackerSharesTable.gameId, game.id),
-    gt(statTrackerSharesTable.expiresAt, new Date()),
-  )))[0];
-  const share = sameGameShare ?? (await db.insert(statTrackerSharesTable).values({
-    ownerClerkUserId,
-    gameId: game.id,
-    athleteName: invite.athleteName,
-    teamName: invite.teamName,
-    game,
-    expiresAt,
-  }).returning())[0];
+    ));
+    const rawGame = linkedShare?.game && typeof linkedShare.game === "object" && !Array.isArray(linkedShare.game)
+      ? linkedShare.game as Record<string, unknown>
+      : null;
+    game = rawGame?.status === "live" ? cleanLiveGame(rawGame, linkedShare?.gameId ?? "live-game") : null;
+    if (
+      !linkedShare
+      || !game
+      || game.sport !== invite.sport
+      || game.id !== linkedShare.gameId
+    ) {
+      res.status(409).json({ error: "Choose a live tracker share for this athlete's sport." });
+      return;
+    }
+    share = linkedShare;
+  } else {
+    const project = await resolveTrackerProject(invite.trackerProjectId, ownerClerkUserId, invite.sport, "live");
+    const payload = project?.project && typeof project.project === "object"
+      ? project.project as { games?: unknown }
+      : null;
+    const sourceGame = Array.isArray(payload?.games)
+      ? payload.games.find((candidate) => candidate && typeof candidate === "object" && (candidate as { status?: unknown }).status === "live")
+      : null;
+    if (!sourceGame || typeof sourceGame !== "object") {
+      res.status(409).json({ error: "Start a live game in the selected Stat Tracker first." });
+      return;
+    }
+    game = cleanLiveGame(sourceGame, "live-game");
+    if (!game) {
+      res.status(409).json({ error: "The selected live game is unavailable." });
+      return;
+    }
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const existingShare = invite.liveTrackerShareToken
+      ? (await db.select().from(statTrackerSharesTable).where(and(
+        eq(statTrackerSharesTable.id, invite.liveTrackerShareToken),
+        eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+        gt(statTrackerSharesTable.expiresAt, new Date()),
+      )))[0]
+      : null;
+    const sameGameShare = existingShare ?? (await db.select().from(statTrackerSharesTable).where(and(
+      eq(statTrackerSharesTable.ownerClerkUserId, ownerClerkUserId),
+      eq(statTrackerSharesTable.gameId, game.id),
+      gt(statTrackerSharesTable.expiresAt, new Date()),
+    )))[0];
+    share = sameGameShare ?? (await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId,
+      gameId: game.id,
+      athleteName: invite.athleteName,
+      teamName: invite.teamName,
+      game,
+      expiresAt,
+    }).returning())[0];
+  }
   if (!share) {
     res.status(409).json({ error: "Unable to start Game Day Live." });
     return;

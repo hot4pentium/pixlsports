@@ -60,6 +60,7 @@ export * from './athleteInviteLiveScoreboard';
 export * from './athleteInviteLiveScoreboardStatus';
 export * from './athleteInviteLiveSession';
 export * from './athleteInviteLiveSessionPublic';
+export * from './athleteInviteLiveStartInput';
 export * from './athleteInviteLiveTapAccessLink';
 export * from './athleteInviteLiveTapAccessLinkCreated';
 export * from './athleteInviteLiveTapCheer';

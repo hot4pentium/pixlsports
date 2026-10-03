@@ -23,6 +23,7 @@ import {
 
 import athleteInvitesRouter from "./routes/athleteInvites";
 import athleteLiveTapsRouter from "./routes/athleteLiveTaps";
+import statTrackerSharesRouter from "./routes/statTrackerShares";
 
 function dateKey(offsetDays: number) {
   const date = new Date();
@@ -612,6 +613,7 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
   });
   app.use("/api", athleteInvitesRouter);
   app.use("/api", athleteLiveTapsRouter);
+  app.use("/api", statTrackerSharesRouter);
   const server = app.listen(0);
 
   try {
@@ -693,6 +695,16 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     const liveSession = StartAthleteInviteLiveResponse.parse(await started.json());
     assert.equal(liveSession.gameId, "live-game");
     assert.ok(liveSession.expiresAt.getTime() > Date.now());
+    const linkedFromTracker = await fetch(liveUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({ shareToken: liveSession.shareToken }),
+    });
+    assert.equal(linkedFromTracker.status, 201);
+    assert.deepEqual(
+      StartAthleteInviteLiveResponse.parse(await linkedFromTracker.json()),
+      liveSession,
+    );
     const accessLinksUrl = `${publicUrl}/live-taps/access-links`;
     const tapUrl = `${publicUrl}/live-taps`;
     assert.equal((await fetch(accessLinksUrl)).status, 401);
@@ -912,6 +924,66 @@ test("Game Day Live follows the Hype Page lifecycle and falls back to finalized 
     assert.equal(expiredFallback.liveGame, null);
     assert.equal(expiredFallback.stats?.gamesPlayed, 1);
     assert.equal(expiredFallback.stats?.stats.points, 18);
+
+    const finalizingGame = {
+      id: "closing-live-game",
+      sport: "basketball",
+      status: "live",
+      date: dateKey(0),
+      opponent: "Stars",
+      period: 2,
+      score: 8,
+      opponentScore: 7,
+      stats: { points: 6 },
+      trackYards: false,
+      yardStats: {},
+      events: [],
+    };
+    const [finalizingShare] = await db.insert(statTrackerSharesTable).values({
+      ownerClerkUserId: ownerId,
+      gameId: finalizingGame.id,
+      athleteName: "Jordan",
+      teamName: "City Hoops",
+      game: finalizingGame,
+      expiresAt: new Date(Date.now() + 60_000),
+    }).returning();
+    await db.update(athleteInvitesTable).set({
+      liveTrackerShareToken: finalizingShare.id,
+    }).where(eq(athleteInvitesTable.publicToken, created.inviteToken));
+    await db.insert(athleteInviteLiveTapsTable).values({
+      inviteId: inviteRow.id,
+      gameId: finalizingGame.id,
+      cheerKey: "bucket",
+    });
+    const tapsBeforeFinal = await db.select({
+      gameId: athleteInviteLiveTapsTable.gameId,
+      cheerKey: athleteInviteLiveTapsTable.cheerKey,
+    }).from(athleteInviteLiveTapsTable).where(eq(athleteInviteLiveTapsTable.inviteId, inviteRow.id));
+    const finalUpdate = await fetch(`${baseUrl}/api/stat-tracker-shares/${finalizingShare.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-test-user": ownerId },
+      body: JSON.stringify({
+        athleteName: "Jordan",
+        teamName: "City Hoops",
+        game: { ...finalizingGame, status: "final" },
+        expectedRevision: finalizingShare.revision,
+      }),
+    });
+    assert.equal(finalUpdate.status, 200);
+    const detachedInvite = await db.select({
+      liveTrackerShareToken: athleteInvitesTable.liveTrackerShareToken,
+    }).from(athleteInvitesTable).where(eq(athleteInvitesTable.id, inviteRow.id));
+    assert.equal(detachedInvite[0]?.liveTrackerShareToken, null);
+    const closedFanCard = GetAthleteFanCardResponse.parse(await (await fetch(`${publicUrl}/fan`)).json());
+    assert.equal(closedFanCard.liveScoreboard, null);
+    assert.equal(closedFanCard.liveTaps.active, false);
+    assert.deepEqual(
+      await db.select({
+        gameId: athleteInviteLiveTapsTable.gameId,
+        cheerKey: athleteInviteLiveTapsTable.cheerKey,
+      }).from(athleteInviteLiveTapsTable).where(eq(athleteInviteLiveTapsTable.inviteId, inviteRow.id)),
+      tapsBeforeFinal,
+    );
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     await db.delete(athleteInvitesTable).where(eq(athleteInvitesTable.ownerClerkUserId, ownerId));

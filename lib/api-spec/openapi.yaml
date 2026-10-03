@@ -793,6 +793,12 @@ paths:
       operationId: startAthleteInviteLive
       tags: [athlete-invites]
       summary: Start a short-lived Game Day Live session for an Athlete Hype Page
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInviteLiveStartInput"
       responses:
         "201":
           description: Short-lived live session started
@@ -3264,6 +3270,11 @@ components:
         shareToken: { type: string }
         gameId: { type: string }
         expiresAt: { type: string, format: date-time }
+    AthleteInviteLiveStartInput:
+      type: object
+      required: [shareToken]
+      properties:
+        shareToken: { type: string, format: uuid }
     AthleteInviteLiveSessionPublic:
       allOf:
         - $ref: "#/components/schemas/AthleteInviteLiveSession"

@@ -9,7 +9,7 @@ import {
   UpdateStatTrackerShareBody,
   UpdateStatTrackerShareResponse,
 } from "@workspace/api-zod";
-import { db, statTrackerSharesTable } from "@workspace/db";
+import { athleteInvitesTable, db, statTrackerSharesTable } from "@workspace/db";
 import { getRequiredClerkUserId, requireAuth } from "../middlewares/requireAuth";
 import { isAccountActive } from "../lib/accountLifecycle";
 
@@ -320,6 +320,15 @@ router.patch("/stat-tracker-shares/:shareToken", requireAuth, async (req, res): 
     }
     const response = publicResponse(updated, true);
     broadcast(params.data.shareToken, "stat-tracker", publicResponse(updated), updated.revision);
+    if (parsed.data.game.status === "final") {
+      await db.update(athleteInvitesTable).set({
+        liveTrackerShareToken: null,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(athleteInvitesTable.liveTrackerShareToken, params.data.shareToken),
+        eq(athleteInvitesTable.ownerClerkUserId, ownerId),
+      ));
+    }
     res.json(UpdateStatTrackerShareResponse.parse(response));
   } catch (error) {
     req.log.error({ err: error }, "Unable to update stat tracker share");

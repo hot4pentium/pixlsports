@@ -1266,6 +1266,10 @@ export interface AthleteInviteLiveSession {
   expiresAt: string;
 }
 
+export interface AthleteInviteLiveStartInput {
+  shareToken: string;
+}
+
 export type AthleteInviteLiveSessionPublic = AthleteInviteLiveSession;
 
 export type PublicAthleteInviteSport = typeof PublicAthleteInviteSport[keyof typeof PublicAthleteInviteSport];

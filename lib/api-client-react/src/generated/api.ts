@@ -43,6 +43,7 @@ import type {
   AthleteInviteHypeInput,
   AthleteInviteInput,
   AthleteInviteLiveSession,
+  AthleteInviteLiveStartInput,
   AthleteInviteLiveTapAccessLink,
   AthleteInviteLiveTapAccessLinkCreated,
   AthleteInviteLiveTapInput,
@@ -3205,14 +3206,29 @@ export const getStartAthleteInviteLiveUrl = (inviteToken: string,) => {
 /**
  * @summary Start a short-lived Game Day Live session for an Athlete Hype Page
  */
-export const startAthleteInviteLive = async (inviteToken: string, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteLiveSession> => {
+export const startAthleteInviteLive = async (inviteToken: string,
+    athleteInviteLiveStartInput?: AthleteInviteLiveStartInput, options?: Parameters<typeof customFetch>[1]): Promise<AthleteInviteLiveSession> => {
 
-  return customFetch<AthleteInviteLiveSession>(getStartAthleteInviteLiveUrl(inviteToken),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AthleteInviteLiveSession>(getStartAthleteInviteLiveUrl(inviteToken),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(athleteInviteLiveStartInput)
   }
 );}
 
@@ -3237,9 +3253,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAthleteInviteLive>>, StartAthleteInviteLiveMutationVariables> = (props) => {
-          const {inviteToken} = props ?? {};
+          const {inviteToken,data} = props ?? {};
 
-          return  startAthleteInviteLive(inviteToken,requestOptions)
+          return  startAthleteInviteLive(inviteToken,data,requestOptions)
         }
 
 
@@ -3250,9 +3266,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type StartAthleteInviteLiveMutationResult = NonNullable<Awaited<ReturnType<typeof startAthleteInviteLive>>>
-
+    export type StartAthleteInviteLiveMutationBody = BodyType<AthleteInviteLiveStartInput> | undefined
     export type StartAthleteInviteLiveMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse | Error>
-    export type StartAthleteInviteLiveMutationVariables = {inviteToken: string}
+    export type StartAthleteInviteLiveMutationVariables = {inviteToken: string;data?: BodyType<AthleteInviteLiveStartInput>}
 
     /**
  * @summary Start a short-lived Game Day Live session for an Athlete Hype Page

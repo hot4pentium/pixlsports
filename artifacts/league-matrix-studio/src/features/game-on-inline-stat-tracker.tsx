@@ -1,6 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { CircleStop, ExternalLink, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  getListAthleteInvitesQueryKey,
+  getListStatTrackerSharesQueryKey,
+  useCreateStatTrackerShare,
+  useListAthleteInvites,
+  useListStatTrackerShares,
+  useStartAthleteInviteLive,
+  useUpdateStatTrackerShare,
+  type StatTrackerShare,
+} from '@workspace/api-client-react';
 import {
   addStatEvent,
   addFootballPassReception,
@@ -28,6 +39,7 @@ import { TrackerEndGameChoices } from './tracker-end-game-choices';
 import { SoccerPeriodChoice } from './tracker-period-controls';
 import { saveCompletionHandoff, trackerCompletionHandoffEvent } from './tracker-completion-handoff';
 import { clearPendingTrackerCalendarSync, savePendingTrackerCalendarSync, trackerCalendarSyncEvent } from './tracker-calendar-sync';
+import { toStatTrackerShareInput } from './stat-tracker-share';
 import './game-on-inline-stat-tracker.css';
 
 type GameOnInlineStatTrackerProps = {
@@ -102,6 +114,32 @@ export function GameOnInlineStatTracker({
   const [confirmEndGame, setConfirmEndGame] = useState(false);
   const [includeFinalScore, setIncludeFinalScore] = useState(false);
   const [manualOutcome, setManualOutcome] = useState<GameOutcome | null>(null);
+  const [liveTapStatus, setLiveTapStatus] = useState('');
+  const [liveTapError, setLiveTapError] = useState('');
+  const [liveTapRetry, setLiveTapRetry] = useState(0);
+  const [liveTapShare, setLiveTapShare] = useState<StatTrackerShare | null>(null);
+  const liveTapShareRef = useRef<StatTrackerShare | null>(null);
+  const attemptedLiveTapGameId = useRef<string | null>(null);
+  const liveShareUpdateQueue = useRef(Promise.resolve());
+  const queryClient = useQueryClient();
+  const athleteInvitesQuery = useListAthleteInvites({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getListAthleteInvitesQueryKey(), userId],
+      staleTime: 10_000,
+    },
+  });
+  const trackerShareQueryKey = [...getListStatTrackerSharesQueryKey(), userId];
+  const trackerSharesQuery = useListStatTrackerShares({
+    query: {
+      enabled: Boolean(userId && game),
+      queryKey: trackerShareQueryKey,
+      staleTime: 10_000,
+    },
+  });
+  const createLiveTrackerShare = useCreateStatTrackerShare();
+  const updateLiveTrackerShare = useUpdateStatTrackerShare();
+  const startAthleteLive = useStartAthleteInviteLive();
   const trackerHref = buildWorkspaceToolHref('stats', {
     id: eventId,
     type: 'game',
@@ -162,6 +200,109 @@ export function GameOnInlineStatTracker({
       setError('This game could not be saved on this device. Check storage access and try again.');
     }
   };
+
+  const publishLiveTrackerGame = (next: GameSession) => {
+    if (!liveTapShareRef.current || liveTapShareRef.current.game.id !== next.id) return Promise.resolve();
+    liveShareUpdateQueue.current = liveShareUpdateQueue.current.catch(() => undefined).then(async () => {
+      const currentShare = liveTapShareRef.current;
+      if (!currentShare || currentShare.game.id !== next.id) return;
+      const data = {
+        ...toStatTrackerShareInput(next, athleteName, teamName),
+        expectedRevision: currentShare.revision,
+      };
+      try {
+        const updated = await updateLiveTrackerShare.mutateAsync({
+          shareToken: currentShare.shareToken,
+          data,
+        });
+        liveTapShareRef.current = updated;
+        setLiveTapShare(updated);
+      } catch (error) {
+        const refreshed = await trackerSharesQuery.refetch();
+        const latest = (refreshed.data ?? queryClient.getQueryData<StatTrackerShare[]>(trackerShareQueryKey))
+          ?.find((share) => share.shareToken === currentShare.shareToken);
+        if (!latest || latest.game.id !== next.id) {
+          setLiveTapError('The live scoreboard could not sync. Tracking is still saved on this device.');
+          return;
+        }
+        try {
+          const updated = await updateLiveTrackerShare.mutateAsync({
+            shareToken: latest.shareToken,
+            data: {
+              ...toStatTrackerShareInput(next, athleteName, teamName),
+              expectedRevision: latest.revision,
+            },
+          });
+          liveTapShareRef.current = updated;
+          setLiveTapShare(updated);
+          setLiveTapError('');
+        } catch {
+          setLiveTapError('The live scoreboard could not sync. Tracking is still saved on this device.');
+        }
+      }
+      if (next.status === 'final') {
+        await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+        setLiveTapStatus('Game Day Live ended. Family Live Taps are closed for this game.');
+      }
+    });
+    return liveShareUpdateQueue.current;
+  };
+
+  useEffect(() => {
+    const activeGame = game;
+    if (
+      !activeGame
+      || activeGame.status !== 'live'
+      || !userId
+      || !athleteInvitesQuery.isSuccess
+      || attemptedLiveTapGameId.current === activeGame.id
+    ) return;
+    const invite = athleteInvitesQuery.data?.find((candidate) => (
+      !candidate.paused && candidate.sport === activeGame.sport
+    ));
+    if (!invite) return;
+
+    attemptedLiveTapGameId.current = activeGame.id;
+    setLiveTapError('');
+    setLiveTapStatus('');
+    void (async () => {
+      try {
+        const share = await createLiveTrackerShare.mutateAsync({
+          data: toStatTrackerShareInput(activeGame, athleteName, teamName),
+        });
+        if (currentGameRef.current?.id !== activeGame.id) return;
+        liveTapShareRef.current = share;
+        setLiveTapShare(share);
+        await startAthleteLive.mutateAsync({
+          inviteToken: invite.inviteToken,
+          data: { shareToken: share.shareToken },
+        });
+        await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+        setLiveTapStatus('Game Day Live is active. The public HYPE Card shows the scoreboard; family Live Taps require QR access.');
+        const latestGame = currentGameRef.current;
+        if (latestGame?.id === activeGame.id) await publishLiveTrackerGame(latestGame);
+      } catch (error) {
+        const detail = error && typeof error === 'object' && 'data' in error
+          ? (error as { data?: { error?: string } }).data?.error
+          : null;
+        setLiveTapError(detail || 'The game is tracking on this device, but Game Day Live and family Live Taps could not start.');
+      }
+    })();
+  }, [
+    game?.id,
+    game?.status,
+    userId,
+    athleteInvitesQuery.data,
+    athleteInvitesQuery.isSuccess,
+    liveTapRetry,
+  ]);
+
+  useEffect(() => {
+    if (!game || !liveTapShare || game.id !== liveTapShare.game.id) return;
+    const timer = window.setTimeout(() => { void publishLiveTrackerGame(game); }, 450);
+    return () => window.clearTimeout(timer);
+  }, [game, liveTapShare?.shareToken]);
 
   useEffect(() => {
     setLoading(true);
@@ -303,6 +444,7 @@ export function GameOnInlineStatTracker({
     let handedOff = false;
     try {
       const completed = endGame({ ...current, ...(manualOutcome ? { outcome: manualOutcome } : {}) }, new Date(), includeFinalScore);
+      await publishLiveTrackerGame(completed);
       const storedData = readStoredTrackerData(window.localStorage, userId);
       const nextData = {
         ...storedData,
@@ -349,6 +491,30 @@ export function GameOnInlineStatTracker({
           Full tracker <ExternalLink size={14} aria-hidden="true" />
         </Link>
       </div>
+
+      {liveTapStatus && (
+        <p className="game-on-quick-tracker__message" role="status" data-testid="status-inline-athlete-live">
+          {liveTapStatus}
+        </p>
+      )}
+      {liveTapError && (
+        <div className="game-on-quick-tracker__message" role="alert" data-testid="error-inline-athlete-live">
+          <p>{liveTapError}</p>
+          {game?.status === 'live' && (
+            <button
+              type="button"
+              className="game-on-quick-tracker__primary"
+              onClick={() => {
+                attemptedLiveTapGameId.current = null;
+                setLiveTapRetry((value) => value + 1);
+              }}
+              data-testid="button-retry-inline-athlete-live"
+            >
+              Retry Game Day Live
+            </button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <p className="game-on-quick-tracker__message" role="status">Opening this game’s tracker…</p>

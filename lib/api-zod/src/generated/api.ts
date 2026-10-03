@@ -2246,6 +2246,10 @@ export const StartAthleteInviteLiveParams = zod.object({
   "inviteToken": zod.coerce.string().regex(startAthleteInviteLivePathInviteTokenRegExp)
 })
 
+export const StartAthleteInviteLiveBody = zod.object({
+  "shareToken": zod.string().uuid()
+})
+
 export const StartAthleteInviteLiveResponse = zod.object({
   "shareToken": zod.string(),
   "gameId": zod.string(),

@@ -11,9 +11,12 @@ import {
   getGetAccountAccessQueryKey,
   getGetSupporterPhotoQueryKey,
   getListProjectsQueryKey,
+  getListAthleteInvitesQueryKey,
   useCreateStatTrackerShare,
   useDeleteStatTrackerShare,
   useListStatTrackerShares,
+  useListAthleteInvites,
+  useStartAthleteInviteLive,
   useUpdateStatTrackerShare,
   getListStatTrackerSharesQueryKey,
   type StatTrackerShare,
@@ -1308,8 +1311,20 @@ export function StatTrackerPage() {
   const deleteTrackerShare = useDeleteStatTrackerShare();
   const [shareNotice, setShareNotice] = useState('');
   const [shareError, setShareError] = useState('');
+  const [athleteLiveNotice, setAthleteLiveNotice] = useState('');
+  const [athleteLiveError, setAthleteLiveError] = useState('');
+  const [athleteLiveRetry, setAthleteLiveRetry] = useState(0);
+  const attemptedAthleteLiveGameId = useRef<string | null>(null);
   const shareUpdateTimer = useRef<number | null>(null);
   const shareUpdateQueue = useRef(Promise.resolve());
+  const athleteInvitesQuery = useListAthleteInvites({
+    query: {
+      enabled: Boolean(accountId),
+      queryKey: [...getListAthleteInvitesQueryKey(), accountId],
+      staleTime: 10_000,
+    },
+  });
+  const startAthleteInviteLive = useStartAthleteInviteLive();
 
   const ownedScheduleProject = useMemo(
     () => (projects ?? []).find((project) => isScheduleProject(project.project)),
@@ -1345,6 +1360,9 @@ export function StatTrackerPage() {
             data: { ...input, expectedRevision: share.revision },
           });
           await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+          if (game.status === 'final') {
+            await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+          }
           setShareError('');
           setShareNotice(updated.revision === share.revision ? '' : 'Live link updated');
         } catch {
@@ -1357,6 +1375,9 @@ export function StatTrackerPage() {
                 shareToken: latest.shareToken,
                 data: { ...input, expectedRevision: latest.revision },
               });
+              if (game.status === 'final') {
+                await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+              }
               setShareError('');
               return;
             } catch {
@@ -1377,6 +1398,51 @@ export function StatTrackerPage() {
       if (shareUpdateTimer.current) window.clearTimeout(shareUpdateTimer.current);
     };
   }, [currentGame, activeTrackerShare?.shareToken]);
+
+  useEffect(() => {
+    const game = currentGame;
+    if (
+      !accountId
+      || !game
+      || game.status !== 'live'
+      || !athleteInvitesQuery.isSuccess
+      || attemptedAthleteLiveGameId.current === game.id
+    ) return;
+    const invite = athleteInvitesQuery.data?.find((candidate) => (
+      !candidate.paused && candidate.sport === game.sport
+    ));
+    if (!invite) return;
+
+    attemptedAthleteLiveGameId.current = game.id;
+    setAthleteLiveError('');
+    setAthleteLiveNotice('');
+    void (async () => {
+      try {
+        const share = await createTrackerShare.mutateAsync({
+          data: toStatTrackerShareInput(game, profile.athleteName, profile.teamName),
+        });
+        await startAthleteInviteLive.mutateAsync({
+          inviteToken: invite.inviteToken,
+          data: { shareToken: share.shareToken },
+        });
+        await queryClient.invalidateQueries({ queryKey: getListStatTrackerSharesQueryKey() });
+        await queryClient.invalidateQueries({ queryKey: getListAthleteInvitesQueryKey() });
+        setAthleteLiveNotice('Game Day Live is active. The public HYPE Card shows the scoreboard; family Live Taps require QR access.');
+      } catch (error) {
+        const detail = error && typeof error === 'object' && 'data' in error
+          ? (error as { data?: { error?: string } }).data?.error
+          : null;
+        setAthleteLiveError(detail || 'The game is tracking on this device, but Game Day Live and family Live Taps could not start.');
+      }
+    })();
+  }, [
+    accountId,
+    athleteInvitesQuery.data,
+    athleteInvitesQuery.isSuccess,
+    currentGame?.id,
+    currentGame?.status,
+    athleteLiveRetry,
+  ]);
 
   useEffect(() => {
     initializedCloud.current = false;
@@ -2240,6 +2306,27 @@ export function StatTrackerPage() {
           onRevoke={() => void revokeSupporterLink()}
           onCopy={() => void copySupporterLink()}
         />
+        {athleteLiveNotice && (
+          <p className="mb-5 border-l-2 border-primary bg-primary/10 px-4 py-3 text-xs font-bold leading-relaxed text-primary-ink" role="status" data-testid="status-athlete-live-taps">
+            {athleteLiveNotice}
+          </p>
+        )}
+        {athleteLiveError && (
+          <div className="mb-5 flex flex-col gap-3 border-l-2 border-destructive bg-destructive/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between" role="alert" data-testid="error-athlete-live-taps">
+            <p className="text-xs font-bold leading-relaxed text-destructive">{athleteLiveError}</p>
+            <button
+              type="button"
+              className="min-h-10 shrink-0 border border-destructive px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => {
+                attemptedAthleteLiveGameId.current = null;
+                setAthleteLiveRetry((value) => value + 1);
+              }}
+              data-testid="button-retry-athlete-live-taps"
+            >
+              Retry Game Day Live
+            </button>
+          </div>
+        )}
         <LiveTrackerGame
           currentGame={currentGame}
           rule={rule}
