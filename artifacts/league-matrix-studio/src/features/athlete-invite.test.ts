@@ -75,6 +75,19 @@ test('real Hype Card replaces the front slot with responses and moves flip under
   assert.match(livingCardSource, /onClick=\{\(\) => void removeShoutout\(item\.id\)\}/);
   assert.match(livingCardSource, /window\.confirm\('Remove this Shoutout/);
 });
+
+test('family Live Taps access is shown as a private QR code, not a shareable link', () => {
+  assert.match(source, /import QRCode from 'qrcode'/);
+  assert.match(source, /QRCode\.toDataURL\(accessUrl,[\s\S]*?errorCorrectionLevel: 'Q'/);
+  assert.match(source, /data-testid="button-create-live-tap-qr"/);
+  assert.match(source, /data-testid="img-created-live-tap-qr"/);
+  assert.match(source, /button-revoke-live-tap-qr-\$\{link\.id\}/);
+  assert.doesNotMatch(source, /input-created-live-tap-link|button-copy-live-tap-link|Copy link/);
+  assert.match(livingCardSource, /scan the private family QR code/);
+  assert.match(livingCardSource, /The public HYPE Card link is view-only/);
+  assert.match(livingCardSource, /family QR code is invalid or has been revoked/);
+});
+
 const livingCardStyles = readFileSync(new URL('./living-athlete-card.css', import.meta.url), 'utf8');
 const publicPageSource = source.slice(source.indexOf('export function PublicAthleteInvitePage'));
 

@@ -914,6 +914,9 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
     if (changedInvite) {
       setSettingsDirty(false);
       setVisibilityStatus('idle');
+      setFamilyTapQrDataUrl('');
+      setFamilyTapAccessId('');
+      setFamilyTapNotice('');
       setActiveTask(window.location.hash === '#owner-fan-hypes'
         ? 'hypes'
         : window.location.hash === '#owner-notify-followers' ? 'events' : null);
@@ -1014,6 +1017,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
   const createFamilyTapQrCode = async () => {
     setFamilyTapNotice('');
     setFamilyTapQrDataUrl('');
+    setFamilyTapAccessId('');
     try {
       const created = await createLiveTapAccessLink.mutateAsync({ inviteToken: invite.inviteToken });
       setFamilyTapAccessId(created.id);
@@ -1029,7 +1033,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
           color: { dark: '#07172b', light: '#ffffff' },
         });
         setFamilyTapQrDataUrl(qrDataUrl);
-        setFamilyTapNotice('QR code ready. Show it to family in person; anyone who scans it can cheer until you revoke access.');
+        setFamilyTapNotice('QR code ready. Show it to family in person; anyone who sees it can cheer during Game Day Live until you revoke access.');
       } catch {
         setFamilyTapNotice('Family access was created, but its QR code could not be generated. Revoke it below before trying again.');
       }
@@ -1155,7 +1159,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         <section aria-labelledby="owner-live-taps-title" data-testid="section-owner-live-taps">
           <h3 id="owner-live-taps-title" className="font-display text-2xl uppercase">Family Live Taps</h3>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-white/65">
-            The public HYPE Card link is view-only. Create a private QR code for family to scan in person. Anyone who scans it can cheer during Game Day Live, and you can revoke access here.
+            The public HYPE Card link is view-only. Create a private QR code for family to scan in person. Anyone who sees the code can cheer during Game Day Live. Revoke it here if it is copied or lost, then create a new one.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button
@@ -1177,7 +1181,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
                 data-testid="img-created-live-tap-qr"
               />
               <figcaption className="max-w-sm text-xs leading-relaxed text-white/70">
-                Show this code to family at the game so they can scan it in person. Anyone who scans it can send cheers until you revoke this access.
+                Show this code to family at the game so they can scan it in person. Anyone who sees or photographs it can send cheers during Game Day Live until you revoke this access.
               </figcaption>
             </figure>
           )}

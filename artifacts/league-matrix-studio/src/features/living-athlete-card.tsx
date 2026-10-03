@@ -333,13 +333,13 @@ export function LivingAthleteCardPage({
         setLiveTapAccessToken(null);
       }
       setLiveTapFeedback(status === 403
-        ? 'This family link is invalid or has been revoked. Ask the card owner for a new link.'
+        ? 'This family QR code is invalid or has been revoked. Ask the card owner for a new code.'
         : status === 404
           ? 'This HYPE Card is unavailable for Live Taps.'
           : status === 409
             ? 'Live Taps are closed because Game Day Live is not active.'
             : status === 429
-              ? 'This family link has sent several taps. Try again in a moment.'
+              ? 'This family QR code has sent several taps. Try again in a moment.'
               : 'Your cheer could not be counted. Please try again.');
     }
   };
@@ -611,7 +611,7 @@ export function LivingAthleteCardPage({
                         </p>
                       ) : !ownerInvite && !liveTapAccessToken ? (
                         <p className="living-card-live-tap-note" data-testid="live-taps-family-link-required">
-                          To tap, open the private family link from the card owner. The public HYPE Card link is view-only.
+                          To tap, scan the private family QR code from the card owner. The public HYPE Card link is view-only.
                         </p>
                       ) : (
                         <p className="living-card-live-tap-note">Every tap adds one cheer to this game. Cheers never change official stats.</p>

@@ -9,8 +9,8 @@ Live Taps is scoped to one athlete. Family members can tap sport-specific, prelo
 
 **How to apply:** Keep the interaction separate from stat tracking and video. Family members may cheer for the athlete; do not turn a tap into a tracked play or teammate feature.
 
-For write access, the owner creates revocable family links. Store only a hash of each bearer token; carry the raw token in the URL fragment and remove it from the address bar after the card reads it. A public HYPE Card URL is always view-only. Store each tap by athlete invite, game, and cheer; revoking a link must not erase its earlier taps. Show the active game's tally without merging it into official stats.
+For write access, the owner creates revocable family QR codes for in-person scanning. Store only a hash of each bearer token; encode the raw token in the QR code's URL fragment and remove it from the address bar after the card reads it. A public HYPE Card URL is always view-only. Store each tap by athlete invite, game, and cheer; revoking access must not erase its earlier taps. Show the active game's tally without merging it into official stats.
 
-**Why:** The public card is meant to be shared broadly, so its URL cannot also grant write access. Game-scoped records preserve cheer history without changing the official stat record.
+**Why:** The public card is meant to be shared broadly, so its URL cannot also grant write access. The user prefers QR access because family members need to be present to send Live Taps. Game-scoped records preserve cheer history without changing the official stat record.
 
-**How to apply:** Keep link authorization independent of public-card loading, and preserve old tap rows when access is revoked or a live share ends.
+**How to apply:** Keep QR authorization independent of public-card loading, and preserve old tap rows when access is revoked or a live share ends.

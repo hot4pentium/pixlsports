@@ -92,6 +92,9 @@ test('player-page owner tools remain private across account changes and pause', 
       createdAt: new Date(Date.now() - 60_000).toISOString(),
     },
   ];
+  const liveTapAccesses: Array<{ id: string; createdAt: string }> = [];
+  const testLiveTapAccessId = '123e4567-e89b-42d3-a456-426614174002';
+  const testLiveTapAccessToken = 'family-live-tap-qr-test-access-token-0123456789';
   const owned = {
     inviteToken: token, athleteName: 'Jordan', teamName: 'City Hoops',
     seasonName: 'Fall 2026', seasonEndsAt: new Date(Date.now() + 90 * 86_400_000).toISOString(),
@@ -213,6 +216,15 @@ test('player-page owner tools remain private across account changes and pause', 
       json(200, publicShoutouts);
     } else if (path === `/api/athlete-invites/${token}/hypes` && method === 'GET' && viewer === 'owner') {
       json(200, ownerShoutouts);
+    } else if (path === `/api/athlete-invites/${token}/live-taps/access-links` && method === 'GET' && viewer === 'owner') {
+      json(200, liveTapAccesses);
+    } else if (path === `/api/athlete-invites/${token}/live-taps/access-links` && method === 'POST' && viewer === 'owner') {
+      const access = { id: testLiveTapAccessId, createdAt: new Date().toISOString() };
+      liveTapAccesses.push(access);
+      json(201, { ...access, accessToken: testLiveTapAccessToken });
+    } else if (path === `/api/athlete-invites/${token}/live-taps/access-links/${testLiveTapAccessId}` && method === 'DELETE' && viewer === 'owner') {
+      liveTapAccesses.splice(0, liveTapAccesses.length);
+      response.writeHead(204).end();
     } else if (path.startsWith(`/api/athlete-invites/${token}/hypes/`) && method === 'DELETE' && viewer === 'owner') {
       const hypeId = path.split('/').at(-1);
       const index = ownerShoutouts.findIndex((item) => item.id === hypeId);
@@ -362,9 +374,9 @@ test('player-page owner tools remain private across account changes and pause', 
       );
       if (side === 'live-taps') {
         assert.equal(await connection.evaluate(
-          "document.querySelector('[data-testid=\"live-taps-family-link-required\"]')?.textContent.includes('public HYPE Card link is view-only')",
+          "document.querySelector('[data-testid=\"live-taps-family-link-required\"]')?.textContent.includes('private family QR code') && document.querySelector('[data-testid=\"live-taps-family-link-required\"]')?.textContent.includes('public HYPE Card link is view-only')",
           visitorFanCard,
-        ), true, 'public card visitors see that Live Taps require the private family link');
+        ), true, 'public card visitors are directed to the private family QR code');
         assert.equal(await connection.evaluate(
           "document.querySelector('[data-testid=\"button-live-tap-bucket\"]')?.disabled",
           visitorFanCard,
@@ -600,6 +612,27 @@ test('player-page owner tools remain private across account changes and pause', 
     for (const label of ['Share Hype Card', 'Upload Photo', 'Visible Sections', 'Fan Shoutouts']) {
       assert.ok((await connection.evaluate<string>("document.body.innerText", ownerManage)).toLowerCase().includes(label.toLowerCase()), label);
     }
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-live-taps\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-live-taps')?.hidden === false", Boolean, 12_000);
+    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"button-create-live-tap-qr\"]') !== null", Boolean, 12_000);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-create-live-tap-qr\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"img-created-live-tap-qr\"]')?.getAttribute('src')?.startsWith('data:image/png;base64,')", Boolean, 12_000);
+    const familyQrImage = await connection.evaluate<{ alt: string; src: string }>(`(() => {
+      const image = document.querySelector('[data-testid="img-created-live-tap-qr"]');
+      return { alt: image?.getAttribute('alt') || '', src: image?.getAttribute('src') || '' };
+    })()`, ownerManage);
+    assert.match(familyQrImage.alt, /Private Family Live Taps QR code for Jordan/);
+    assert.ok(familyQrImage.src.length > 1000, 'the owner sees a rendered QR image instead of a copyable family URL');
+    assert.equal(await connection.evaluate(
+      "Boolean(document.querySelector('[data-testid=\"input-created-live-tap-link\"], [data-testid=\"button-copy-live-tap-link\"]'))",
+      ownerManage,
+    ), false, 'the private family URL is not displayed or offered for copying');
+    await waitFor(connection, ownerManage, `document.querySelector('[data-testid="button-revoke-live-tap-qr-${testLiveTapAccessId}"]') !== null`, Boolean, 12_000);
+    await connection.evaluate(`document.querySelector('[data-testid="button-revoke-live-tap-qr-${testLiveTapAccessId}"]').click()`, ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('[data-testid=\"img-created-live-tap-qr\"]') === null && document.querySelector('[data-testid=\"status-owner-live-taps\"]')?.textContent?.includes('revoked')", Boolean, 12_000);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-live-taps\"]').click()", ownerManage);
+    await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-hypes\"]').click()", ownerManage);
+    await waitFor(connection, ownerManage, "document.querySelector('#hype-manager-panel-hypes')?.hidden === false", Boolean, 12_000);
     await connection.evaluate("document.querySelector('[data-testid=\"button-hype-manager-sections\"]').click()", ownerManage);
     assert.equal(await connection.evaluate("document.querySelector('#hype-manager-panel-sections')?.hidden", ownerManage), false);
     const originalSetting = await connection.evaluate<string>("document.querySelector('[data-testid=\"section-visible-athlete-page\"] button[role=\"switch\"]')?.getAttribute('aria-checked') || ''", ownerManage);
