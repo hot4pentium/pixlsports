@@ -1,0 +1,245 @@
+Implement two new premium Hype Card appearance options for PIXL Sports: **Gallery** and **Spotlight**. Use the attached concept images as the visual references.
+
+These should be reusable card templates populated with the user’s athlete photo, name, team, sport, and position. Build the backgrounds, borders, typography, and controls as separate layers so users can customize their cards.
+
+## Shared requirements
+
+### Athlete photo and depth
+
+Both templates use a background-removed athlete photo to create depth. Preserve the original uploaded image and store the transparent cutout separately. Background removal should preserve the athlete’s face, uniform, hair, and equipment.
+
+Layer the cutout above the background and frame so selected parts of the athlete can overlap the photo window. Add subtle shadows behind the cutout to separate it from the background.
+
+Give the user controls to:
+- Upload or replace the photo.
+- Move the athlete horizontally and vertically.
+- Adjust the athlete’s size.
+- Reset to the suggested placement.
+
+Provide a live preview. On mobile, support dragging and a simple size slider without interfering with normal page scrolling.
+
+Keep the athlete’s face visible and prevent the nameplate or controls from covering it. Allow enough space around the composition for overlaps to remain visible.
+
+If a usable cutout is unavailable, display the original photo neatly within the photo window. Preserve the user’s work and provide a clear option to retry background removal.
+
+### Appearance controls
+
+Include:
+- Design selector: existing styles, Gallery, and Spotlight.
+- Border color: preset swatches plus a custom color picker and hex input.
+- Accent color: default to matching the border, with an option to customize it separately.
+- Reset appearance.
+
+Suggested swatches: blue, red, green, gold, purple, pink, silver, and navy.
+
+Color changes should update the preview immediately. Keep text readable regardless of the selected color. Do not recolor the athlete’s photo.
+
+Save the selected template, colors, photo position, and photo scale with each card.
+
+### Existing features
+
+Retain the current card data, sharing, flip behavior, and navigation:
+- Replies
+- Stats
+- Taps
+- Events
+
+Use the existing actions and data connections. These designs change the presentation.
+
+The owner’s preview, saved card, and shared card should use the same template and settings. Where image export is supported, include the full design and overlapping athlete without cropping.
+
+## Design 1: Gallery
+
+### Overall character
+
+Gallery should feel like a premium printed collectible or an athlete keepsake. Use a warm ivory surface, tactile paper texture, soft daylight, subtle embossed details, and strong navy typography.
+
+The design should feel bright, refined, and athletic. Match the reference image’s restrained use of pink accents and dimensional paper layers.
+
+### Card shell
+
+Use a tall portrait card with softly rounded outer corners.
+
+The main surface is warm ivory with a fine paper grain. Keep the texture subtle enough that text remains crisp.
+
+Add a soft outer shadow that makes the card appear slightly raised from the surrounding page. Include a delicate edge highlight to suggest thick cardstock.
+
+The user-selected border color should appear as a thin outer outline and a restrained inset photo-window trim. Preserve the ivory surface as the dominant color.
+
+### Header
+
+Place a compact PIXL Sports brand mark at the upper left and the athlete’s sport at the upper right.
+
+Use the actual PIXL Sports logo asset where appropriate rather than recreating the logo as generated text.
+
+Keep both elements small, with generous spacing above the photo window.
+
+### Photo window
+
+Place a large rounded rectangular photo window beneath the header, occupying approximately the upper two-thirds of the usable card content.
+
+Create a shallow recessed appearance using:
+- A narrow ivory bevel.
+- A subtle inner shadow.
+- A fine highlight along the opposite edge.
+
+Use a softly blurred daytime sports setting inside the window. Choose the setting by sport: soccer field, baseball field, gymnasium, football field, or another appropriate venue.
+
+The background should support the athlete without distracting from them.
+
+Clip the background to the window. Place the athlete cutout in a separate layer above it.
+
+Let the athlete’s head overlap the top edge of the photo window. Where the uploaded pose allows, hands or equipment can overlap the window’s sides. Keep these overlaps inside the outer card boundary by default.
+
+### Layered paper accents
+
+Place two restrained accent shapes behind the photo window:
+- One peeking out near the upper-left corner.
+- One peeking out near the lower-right corner.
+
+Give them slightly different angles, rounded corners, a subtle paper texture, and soft shadows. Use the selected accent color.
+
+These should look like layered cardstock, with only a small portion visible.
+
+### Embossed decoration
+
+Add a low-contrast embossed motif to selected areas of the ivory surface.
+
+The Gallery reference uses a hurricane swirl. Treat that as an example, not a universal motif for every team.
+
+Use approved team artwork when available. Otherwise use a restrained sport-related pattern or a neutral curved motif.
+
+Create the embossing with paired light and shadow edges close to the ivory surface color. Keep it away from essential text and avoid repeating it across the entire card.
+
+### Athlete information
+
+Below the photo window, display the athlete’s name in large, condensed, bold navy typography.
+
+Place the position beneath the name in smaller uppercase text with wider letter spacing and short accent-colored rules.
+
+Include the team name as a small vertical label along the left photo-window margin, as shown in the reference. If the name is too long, use a horizontal label instead.
+
+Support long athlete names with controlled font-size adjustment or a balanced two-line layout. Keep the name readable without overlapping nearby elements.
+
+Hide missing optional fields cleanly.
+
+### Navigation
+
+Integrate the four existing actions into the bottom ivory section.
+
+Use clean navy icons, small uppercase labels, and fine vertical separators. Indicate the active action with a short accent-colored underline or another subtle marker.
+
+Keep the navigation visually light while preserving comfortable touch targets.
+
+## Design 2: Spotlight
+
+### Overall character
+
+Spotlight should feel like a professional sports campaign poster translated into a collectible card.
+
+Use a deep navy background, dramatic stadium lighting, a dominant athlete portrait, oversized background typography, and a floating nameplate.
+
+The athlete should remain the strongest visual element.
+
+### Card shell
+
+Use a tall portrait card with rounded corners and a thin colored perimeter border.
+
+Default to the pink accent shown in the reference, while allowing the user to change it.
+
+A faint border glow is acceptable, but keep it restrained. The frame should remain thin and elegant.
+
+### Header
+
+Place a small PIXL Sports brand mark at the upper left and the sport at the upper right.
+
+Use white or pale text for contrast. Add short accent-colored rules beneath or beside these labels.
+
+### Stadium background
+
+Fill the main portrait area with a dark, softly blurred sports venue appropriate to the athlete’s sport.
+
+For soccer, use a night field with distant goals and floodlights. For indoor sports, use arena or gym lighting.
+
+Include two soft lighting sources behind the athlete to create a sense of depth and atmosphere.
+
+Apply the selected accent color to a separate lighting overlay. Keep the venue recognizable and avoid washing the entire image in a single color.
+
+Use subtle haze if helpful, while preserving clear separation between the athlete and background.
+
+### Oversized jersey number
+
+Place the athlete’s jersey number in very large condensed typography behind the athlete.
+
+The number should:
+- Occupy much of the upper background.
+- Be partially hidden by the athlete.
+- Use a subdued version of the accent color.
+- Include a restrained texture if it helps match the reference.
+
+Use the athlete’s actual saved number. Do not insert a placeholder number into a published card. If the athlete has no number, omit this element.
+
+### Athlete layer
+
+Center the background-removed athlete prominently in front of the stadium and number.
+
+The athlete should occupy most of the portrait area, with their head close to the upper section and their body continuing behind the nameplate.
+
+Use soft separation shadows and optional restrained edge lighting to strengthen depth. Apply edge effects around the cutout without altering facial features or recoloring the uniform.
+
+Where the pose supports it, let the athlete overlap the inset portrait boundary or extend slightly above the frame. Keep the face clear of the header and leave safe space around any outer overlap.
+
+### Floating nameplate
+
+Place a large warm ivory nameplate across the lower portion of the athlete image.
+
+Give it softly rounded corners, a slight paper texture, and a soft shadow.
+
+Behind it, add one or two offset accent-colored backing panels at small angles. Their visible edges should make the nameplate feel layered and raised.
+
+The front panel should remain level enough for comfortable reading.
+
+Display:
+- Athlete name in large condensed navy typography.
+- Team name in smaller uppercase text beneath it.
+- Position in a smaller label on the opposite side when space allows.
+
+Use a thin divider to separate team and position details. Stack these details on narrow screens if needed.
+
+Support long names and hide missing optional fields without leaving empty spaces.
+
+### Navigation
+
+Below the nameplate, place a compact rounded navy navigation bar.
+
+Use four evenly spaced actions with thin separators. Icons can use the accent color; labels should remain pale and readable.
+
+Keep the navigation visually connected to the card while clearly separating it from the athlete information.
+
+## Responsive behavior and implementation
+
+Use a consistent portrait aspect ratio for each template and scale the composition with the card container. The approximate proportions above are guides; prioritize the reference images and readable content.
+
+Use relative positioning for decorative layers and store athlete placement as normalized values so the composition scales consistently between desktop and mobile.
+
+Separate the clipped background from the overlapping athlete layer. Avoid a parent overflow rule that accidentally cuts off the athlete.
+
+Keep interactive controls accessible, with visible focus states and touch targets around 44 pixels. Decorative layers should not intercept taps.
+
+Load visual effects efficiently. Use static textures, gradients, and shadows where possible. Background removal should run when a photo is uploaded or replaced, not each time the card is viewed.
+
+If the existing export renderer cannot reproduce a particular effect, use a compatible implementation that keeps the exported card close to the live preview.
+
+## Completion criteria
+
+Both designs should:
+- Closely match their respective reference images.
+- Work with different athlete photos and long names.
+- Allow independent border and accent color changes.
+- Preserve those settings after saving and reopening.
+- Maintain the existing card interactions.
+- Display correctly on mobile and shared views.
+- Preserve depth and overlaps in supported exports.
+- Handle missing numbers, positions, and cutouts gracefully.
+
+Gallery should achieve its depth through recessed paper framing, embossing, and layered accents. Spotlight should achieve its impact through stadium atmosphere, oversized number typography, athlete separation, and a floating nameplate.
