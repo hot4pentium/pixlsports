@@ -9,6 +9,7 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "test": "tsx --test $(find src/features -type f \\( -name '*.test.ts' -o -name '*.test.tsx' \\) ! -name '*.browser.test.*' | sort)",
     "test:stat-tracker-browser": "tsx --test src/features/stat-tracker.browser.test.ts",
+    "test:athlete-live-start-browser": "tsx --test --test-concurrency=1 src/features/athlete-live-start.browser.test.ts",
     "test:stat-tracker-spectator-browser": "tsx --test --test-concurrency=1 src/features/stat-tracker-spectator.browser.test.ts",
     "test:landing-home-browser": "tsx --test src/features/landing-home.browser.test.ts",
     "test:hype-card-stats-link-browser": "tsx --test --test-concurrency=1 src/features/hype-card-stats-link.browser.test.ts",

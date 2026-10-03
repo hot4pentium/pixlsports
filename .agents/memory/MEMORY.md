@@ -21,6 +21,7 @@
 - [Completion feedback boundaries](completion-feedback-boundaries.md) — celebrate direct user actions transiently; show remote or restored completion as persistent state without replaying effects.
 - [Supporter profile propagation](supporter-profile-propagation.md) — profile athlete details seed new local work, while saved cloud designs and published snapshots remain authored independently.
 - [Browser route coverage](browser-route-coverage.md) — cross-route browser checks should use stable test IDs and tolerate presentation-copy casing.
+- [Shared live browser checks](shared-live-browser-checks.md) — keep a spectator page open across owner updates to verify shared refresh, not just a fresh fetch.
 - [Chromium browser diagnostics](chromium-browser-diagnostics.md) — CDP release checks should preserve bounded process output and page lifecycle failures through shared monitors.
 - [Vite artifact entrypoints](vite-artifact-entrypoints.md) — use a relative HTML module entry so root and subpath production builds resolve the same current app.
 - [OpenAPI path nesting](openapi-path-nesting.md) — successful codegen does not guarantee operations stayed under the intended route.
