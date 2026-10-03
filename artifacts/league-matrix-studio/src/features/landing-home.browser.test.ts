@@ -24,7 +24,7 @@ async function freePort() {
   return port;
 }
 
-test('landing layout, links, and mobile menu work at phone and desktop widths', async () => {
+test('landing layout, links, and mobile menu work across phone, tablet, and desktop widths', async () => {
   const port = await freePort();
   const debugPort = await freePort();
   const profile = await mkdtemp(resolve(tmpdir(), 'pixl-landing-browser-'));
@@ -48,7 +48,7 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
     await waitForUrl(`http://127.0.0.1:${debugPort}/json/version`, 30_000, browserMonitor);
     const version = await fetch(`http://127.0.0.1:${debugPort}/json/version`).then(res => res.json() as Promise<{ webSocketDebuggerUrl: string }>);
     connection = await DevToolsConnection.connect(version.webSocketDebuggerUrl, browserMonitor.diagnostics);
-    for (const width of [320, 393, 1440]) {
+    for (const width of [320, 393, 768, 900, 1440]) {
       const target = await connection.send<{ targetId: string }>('Target.createTarget', { url: 'about:blank' });
       const attached = await connection.send<{ sessionId: string }>('Target.attachToTarget', { targetId: target.targetId, flatten: true });
       const page = { targetId: target.targetId, sessionId: attached.sessionId };
@@ -116,12 +116,34 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       await waitFor(connection, page.sessionId, `document.querySelector('.landing-athlete-render')?.naturalWidth === 1228`, Boolean);
       const layout = await connection.evaluate<{
         doc: number; body: number; heroImage: boolean; fanCardImage: boolean; sections: number; hypeCardBeforeOffline: boolean;
-         cardSides: string[]; cta: string; help: string; support: string; privacy: string; explainer: boolean; menuVisible: boolean;
+        cardSides: string[];
+        cardTabLayout: { text: string; labelFitsTab: boolean; tabInsideCard: boolean }[];
+        cta: string; help: string; support: string; privacy: string; explainer: boolean; menuVisible: boolean;
       }>(`(() => ({
         doc: document.documentElement.scrollWidth, body: document.body.scrollWidth,
         heroImage: document.querySelector('.hero-image-frame img')?.complete && document.querySelector('.hero-image-frame img')?.naturalWidth > 0,
         fanCardImage: document.querySelector('.landing-athlete-render')?.complete && document.querySelector('.landing-athlete-render')?.naturalWidth === 1228,
-         cardSides: [...document.querySelectorAll('[data-testid="landing-hype-card-tabs"] > span')].map(tab => tab.textContent?.replace(/\\s+/g, ' ').trim() || ''),
+        cardSides: [...document.querySelectorAll('.landing-hype-card-tab > span')].map(label => label.textContent?.replace(/\\s+/g, ' ').trim() || ''),
+        cardTabLayout: (() => {
+          const card = document.querySelector('.landing-hype-card-art')?.getBoundingClientRect();
+          return [...document.querySelectorAll('.landing-hype-card-tabs > .landing-hype-card-tab')].map(tab => {
+            const label = tab.querySelector(':scope > span');
+            const tabBounds = tab.getBoundingClientRect();
+            const labelBounds = label?.getBoundingClientRect();
+            return {
+              text: label?.textContent?.replace(/\\s+/g, ' ').trim() || '',
+              labelFitsTab: Boolean(label && labelBounds
+                && label.scrollWidth <= label.clientWidth
+                && labelBounds.left >= tabBounds.left - 1
+                && labelBounds.right <= tabBounds.right + 1),
+              tabInsideCard: Boolean(card
+                && tabBounds.left >= card.left - 1
+                && tabBounds.right <= card.right + 1
+                && tabBounds.top >= card.top - 1
+                && tabBounds.bottom <= card.bottom + 1),
+            };
+          });
+        })(),
         sections: document.querySelectorAll('.step-card').length,
         hypeCardBeforeOffline: Boolean(
           document.querySelector('#athlete-cards')
@@ -137,8 +159,17 @@ test('landing layout, links, and mobile menu work at phone and desktop widths', 
       }))()`, page.sessionId);
       assert.ok(layout.doc <= width && layout.body <= width, `horizontal overflow at ${width}px: ${JSON.stringify(layout)}`);
       assert.equal(layout.heroImage, true);
-      assert.equal(layout.fanCardImage, true);
-       assert.deepEqual(layout.cardSides, ['Card front', 'Stats', 'Events']);
+      assert.equal(layout.fanCardImage, true, `Hype Card artwork should load at ${width}px: ${JSON.stringify(layout)}`);
+      assert.deepEqual(layout.cardSides, ['Card front', 'Stats', 'Events']);
+      assert.deepEqual(
+        layout.cardTabLayout.map(tab => tab.text),
+        ['Card front', 'Stats', 'Events'],
+        `all Hype Card footer labels should be present at ${width}px`,
+      );
+      for (const tab of layout.cardTabLayout) {
+        assert.equal(tab.labelFitsTab, true, `${tab.text} label should fit inside its tab at ${width}px`);
+        assert.equal(tab.tabInsideCard, true, `${tab.text} tab should stay inside the card at ${width}px`);
+      }
       assert.equal(layout.sections, 4);
       assert.equal(layout.hypeCardBeforeOffline, true);
       assert.equal(layout.cta, '/sign-up');
