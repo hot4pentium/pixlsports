@@ -476,9 +476,9 @@ const hypeWalkthroughSteps = [
 ] as const;
 
 const mobileMediaSteps = [
-  { label: 'Add media', hint: 'Choose the player media and team logo.' },
-  { label: 'Frame', hint: 'Set the crop, position, and video framing.' },
-  { label: 'Fine-tune', hint: 'Adjust color, trim video, and export options.' },
+  { label: 'Add photo', hint: 'Choose the player photo and team logo.' },
+  { label: 'Frame', hint: 'Set the crop and position.' },
+  { label: 'Fine-tune', hint: 'Adjust color and image export options.' },
 ] as const;
 
 function HypeField({
@@ -515,7 +515,7 @@ function AssetButton({
   hasAsset,
   onChange,
   onRemove,
-  accept = 'image/*,video/*',
+  accept = 'image/*',
 }: {
   label: string;
   hasAsset: boolean;
@@ -557,7 +557,7 @@ function MediaAssetControls({
   return (
     <div className="space-y-3">
       <AssetButton
-        label="Media"
+        label="Photo"
         hasAsset={hasMedia}
         onChange={onMediaChange}
         onRemove={onMediaRemove}
@@ -2009,11 +2009,11 @@ export function HypeCardEditor() {
     if (!file) return;
 
     if (file.type.startsWith('video/')) {
-      if (file.size > 120 * 1024 * 1024) {
-        setNotice('Video is too large. Please choose a video under 120MB.');
-        return;
-      }
-      
+      setNotice('Choose a photo for this Hype Card.');
+      return;
+    }
+
+    if (file.type.startsWith('video/')) {
       const id = slugify(`${file.name}-${Date.now()}`);
       const url = URL.createObjectURL(file);
       mediaPreparationAbortRef.current?.abort();
@@ -2229,8 +2229,12 @@ export function HypeCardEditor() {
   const handleExport = async (statsUrl?: string) => {
     setValidation('');
     setNotice('');
+    if (project.mediaType === 'video') {
+      setValidation('Replace the older media with a photo before exporting.');
+      return;
+    }
     if (!project.photo && !project.mediaType) {
-      setValidation('Please add a photo or video first.');
+      setValidation('Please add a photo first.');
       return;
     }
     if (project.mediaType === 'image' && !project.photo) {
@@ -2265,117 +2269,7 @@ export function HypeCardEditor() {
       }
     }
     
-    if (project.mediaType === 'video') {
-      setExporting(true);
-      setExportProgress(0);
-      exportAbortRef.current = new AbortController();
-      let temporaryExportUrl: string | null = null;
-      try {
-        let video = videoRef.current;
-        if (project.downloadMediaId) {
-          let downloadBlob = await loadMediaBlob(project.downloadMediaId);
-          if (!downloadBlob && cloudProjectId) downloadBlob = await serveProjectMedia(project.downloadMediaId);
-          if (!downloadBlob) throw new Error('Download-quality video is unavailable. Please choose the video again.');
-          temporaryExportUrl = URL.createObjectURL(downloadBlob);
-          video = document.createElement('video');
-          video.preload = 'auto';
-          video.muted = true;
-          video.playsInline = true;
-          video.src = temporaryExportUrl;
-          await waitForVideoEvent(video, 'loadedmetadata', 10_000, true);
-        }
-        if (!video) throw new Error('The download-quality video is unavailable. Please choose the video again.');
-        const { width, height } = getDimensions(project.format);
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Could not create canvas context');
-
-        const ns = 'export';
-        const bgSvg = buildHypeCardSvg(project, 'bg', ns);
-        const fgSvg = buildHypeCardSvg(exportProject, 'fg', ns, statsUrl);
-        const clipInfo = getPhotoClipInfo(project, ns);
-
-        // Load background and foreground as images
-        const [bgImg, fgImg] = await Promise.all([
-          svgToImage(bgSvg, width, height),
-          svgToImage(fgSvg, width, height)
-        ]);
-
-        const originalTime = video.currentTime;
-        
-        const { blob, ext, audioIncluded } = await exportVideoCanvas(
-          canvas,
-          video,
-          30,
-          (progress) => setExportProgress(progress),
-          exportAbortRef.current.signal,
-          includeAudio,
-          project.trimStart,
-          project.trimEnd,
-          (ctx, v) => {
-            // Draw BG
-            ctx.drawImage(bgImg, 0, 0, width, height);
-            
-            // Draw Video
-            ctx.save();
-            // Create Path for clip
-            const p = new Path2D();
-            if (project.format !== 'card') {
-              const frame = getPhotoFrame(project.format);
-              p.roundRect(frame.x, frame.y, frame.width, frame.height, frame.radius);
-            } else {
-              const frame = STADIUM_MEDIA_FRAME;
-              p.roundRect(frame.x, frame.y, frame.width, frame.height, frame.radius);
-            }
-            ctx.clip(p);
-
-            // Draw video with transform
-            ctx.translate(clipInfo.cx, clipInfo.cy);
-            ctx.rotate((project.photoTransform.rotation * Math.PI) / 180);
-            ctx.scale(project.photoTransform.flip ? -1 : 1, 1);
-            ctx.translate(-clipInfo.cx, -clipInfo.cy);
-            ctx.filter = `brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation})`;
-             if (project.videoFit === 'fit') {
-               ctx.save();
-               ctx.filter = 'blur(18px) brightness(0.35)';
-               drawVideoContain(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h, 'fill');
-               ctx.restore();
-             }
-             drawVideoContain(ctx, v, clipInfo.x, clipInfo.y, clipInfo.w, clipInfo.h, project.videoFit);
-            ctx.restore();
-            
-            // Draw FG
-            ctx.drawImage(fgImg, 0, 0, width, height);
-          }
-        );
-        
-         video.currentTime = originalTime; // restore playback
-
-        const a = document.createElement('a');
-        const downloadUrl = URL.createObjectURL(blob);
-        a.href = downloadUrl;
-        a.download = `hype_card_${Date.now()}.${ext}`;
-        a.click();
-        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-        if (ext === 'webm') {
-          setNotice('Exported as WebM because MP4 encoding is not supported in this browser. If this video does not play on your phone, try exporting from a different browser like Chrome.');
-        } else if (includeAudio && !audioIncluded) {
-          setNotice('The video exported without sound because this browser could not capture the clip audio.');
-        }
-      } catch (err: any) {
-        if (err.message !== 'Export cancelled') {
-          console.error(err);
-          setNotice(err.message || 'Export failed.');
-        }
-      } finally {
-        if (temporaryExportUrl) URL.revokeObjectURL(temporaryExportUrl);
-        setExporting(false);
-      }
-    } else {
-      // Fallback to existing image export...
-      try {
+    try {
         const dimensions = getDimensions(project.format);
         const svg = buildHypeCardSvg(exportProject, 'all', 'export', statsUrl);
         const { dataUrl, extension } = await rasterizeSvgForDownload(
@@ -2388,9 +2282,8 @@ export function HypeCardEditor() {
         a.href = dataUrl;
         a.download = `hype_card_${Date.now()}.${extension}`;
         a.click();
-      } catch {
-        setNotice('Could not generate the card for download.');
-      }
+    } catch {
+      setNotice('Could not generate the card for download.');
     }
   };
 
@@ -3032,15 +2925,15 @@ export function HypeCardEditor() {
 
             {walkthroughStep === 1 && <Section title="Media" icon={ImagePlus}>
               <div className="hidden sm:block">
-               <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. Guest and unpaid saves keep design settings only. Preview video loads after Play; download quality loads only when you export. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo or video up to 120MB. Guest and unpaid cloud saves contain design settings only; {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
+               <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos and logos in cloud storage. Guest and unpaid saves keep design settings only. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo. Guest and unpaid cloud saves contain design settings only; {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
               {cloudProjectId && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
-                  This saved design does not include media. Add a photo or video before exporting.
+                  This saved design does not include a photo. Add one before exporting.
                 </p>
               )}
               {templateMediaNotice && !project.mediaType && (
                 <p className="mb-4 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-portable-template-media-notice">
-                  {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo or video before exporting.
+                  {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo before exporting.
                 </p>
               )}
               <MediaAssetControls
@@ -3075,7 +2968,7 @@ export function HypeCardEditor() {
                   </MediaFramingControls>
                 </div>
               )}
-              {project.mediaType === 'video' && (
+              {false && project.mediaType === 'video' && (
                 <div className="mt-3">
                   <MediaTrimAndAudioControls
                     project={project}
@@ -3094,7 +2987,7 @@ export function HypeCardEditor() {
               )}
               </div>
               <div className="sm:hidden">
-                 <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos, logos, posters, and two prepared video qualities in cloud storage. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo or video up to 120MB. {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
+                 <p className="mb-4 text-xs text-muted-foreground">{accountAccess?.paid ? <>Paid accounts keep private photos and logos in cloud storage. {PUBLIC_SHARE_MEDIA}</> : <>Add a photo. {LOCAL_MEDIA_DEFAULT} {PUBLIC_SHARE_MEDIA}</>}</p>
 
                 <div className="mb-4 flex gap-1 overflow-x-auto border-y border-border py-2" role="tablist" aria-label="Mobile media editing steps">
                   {mobileMediaSteps.map((step, index) => (
@@ -3118,12 +3011,12 @@ export function HypeCardEditor() {
                   <div className="space-y-3">
                     {cloudProjectId && !project.mediaType && (
                       <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-design-only-media-prompt">
-                        This saved design does not include media. Add a photo or video before exporting.
+                        This saved design does not include a photo. Add one before exporting.
                       </p>
                     )}
                     {templateMediaNotice && !project.mediaType && (
                       <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium text-foreground" data-testid="text-portable-template-media-notice">
-                        {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo or video before exporting.
+                        {PORTABLE_TEMPLATE_MEDIA_NOTE} Add a photo before exporting.
                       </p>
                     )}
                     <MediaAssetControls
@@ -3151,7 +3044,7 @@ export function HypeCardEditor() {
                     />
                   ) : (
                     <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
-                      Add a photo or video in the first step to adjust its framing.
+                      Add a photo in the first step to adjust its framing.
                     </div>
                   )
                 )}
@@ -3166,7 +3059,7 @@ export function HypeCardEditor() {
                           onToggle={() => setShowAdvanced((open) => !open)}
                           onAdjustmentChange={updateAdjustment}
                         />
-                        {project.mediaType === 'video' && (
+                        {false && project.mediaType === 'video' && (
                           <MediaTrimAndAudioControls
                             project={project}
                             exportSupport={exportSupport}
@@ -3182,7 +3075,7 @@ export function HypeCardEditor() {
                       </>
                     ) : (
                       <div className="border-l-2 border-border bg-muted px-3 py-3 text-xs font-medium text-muted-foreground">
-                        Add a photo or video in the first step to fine-tune it.
+                        Add a photo in the first step to fine-tune it.
                       </div>
                     )}
                   </div>
@@ -3233,7 +3126,7 @@ export function HypeCardEditor() {
                     ['Moment', project.headline || 'Not added'],
                     ['Player', project.playerName || 'Your player'],
                     ['Team', project.teamName || 'Your team'],
-                    ['Output', project.format === 'landscape' ? 'Landscape video' : 'Portrait card'],
+                    ['Output', 'Portrait card'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between gap-4 border-b border-border py-2">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
@@ -3338,7 +3231,7 @@ export function HypeCardEditor() {
               </button>
              </div>
             )}
-            {shareMode === 'card' && project.mediaType === 'video' && (
+            {false && shareMode === 'card' && project.mediaType === 'video' && (
                <>
                  <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs font-medium leading-relaxed text-muted-foreground" data-testid="text-hosted-video-preparation">
                    The Athlete Hype Page receives a smaller web copy of the selected clip and a poster image. Your original video remains on this device.

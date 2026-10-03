@@ -93,21 +93,13 @@ test('the real HYPE Card flips paired 3D faces and respects reduced motion', () 
   assert.match(livingCardStyles, /\.living-card-frame:not\(\[data-side="front"\]\)\s+\.living-card-flip-back\s*\{\s*display:\s*block/);
 });
 
-test('the HYPE Card Videos side excludes photos inherited from older shares', () => {
-  const videosSide = livingCardSource.slice(
-    livingCardSource.indexOf("{side === 'videos' && ("),
-    livingCardSource.indexOf('<div className="living-card-controls"'),
-  );
-  assert.doesNotMatch(videosSide, /invite\.hypeCard|living-card-image-highlight/);
-  assert.match(videosSide, /recentVideos\.length > 0/);
-  assert.match(videosSide, /Moments on the way/);
+test('the HYPE Card no longer exposes a Videos side', () => {
+  assert.doesNotMatch(livingCardSource, /side === 'videos'|button-living-card-videos|video-living-card/);
   assert.match(publicPageSource, /invite\.hypeCard\?\.posterUrl/, 'the separate Athlete Hype Page still supports its image shares');
 });
 
-test('public Athlete Hype Pages keep replies on-page and update recent reactions after sending', () => {
-  assert.match(source, /HypeCardReplyComposer/);
-  assert.match(source, /Choose a reaction and add an optional message for the latest shared video without leaving this athlete page/);
-  assert.match(source, /shareToken=\{invite\.videos\[0\]\.shareToken\}/);
+test('public Athlete Hype Pages do not expose video reply controls', () => {
+  assert.match(source, /\{false && invite\?\.videos\[0\] && \(/);
   assert.match(source, /setLocalReplies/);
   assert.doesNotMatch(source, /Send your own reply →/);
 });
@@ -244,7 +236,7 @@ test('Athlete Hype Pages cap active highlight videos at three', () => {
   assert.match(source, /const MAX_ATHLETE_HIGHLIGHT_VIDEOS = 3/);
   assert.match(source, /hostedVideos\.length >= MAX_ATHLETE_HIGHLIGHT_VIDEOS/);
   assert.match(source, /hostedVideos\.length\} \/ \{MAX_ATHLETE_HIGHLIGHT_VIDEOS\}/);
-  assert.match(source, /Shows up to 3 active videos, newest first/);
+  assert.doesNotMatch(source, /Shows up to 3 active videos, newest first/);
   assert.match(apiSource, /const MAX_ACTIVE_HYPE_PAGE_VIDEOS = 3/);
   assert.match(apiSource, /pg_advisory_xact_lock\(hashtext\(/);
   assert.match(apiSource, /activeVideos\?\.total \?\? 0\) >= MAX_ACTIVE_HYPE_PAGE_VIDEOS/);
@@ -276,35 +268,12 @@ test('athlete pages retire schedule content and force retired API fields off', (
   assert.doesNotMatch(livingCardSource, /scheduleEvents|living-card-schedule|Add to calendar|scheduled-event alerts/);
 });
 
-test('public Athlete Hype Pages present direct videos in an accessible horizontal carousel', () => {
+test('public Athlete Hype Pages keep stored videos out of the rendered profile', () => {
+  assert.match(source, /\{false && \(invite\?\.videos\.length \?\? 0\) > 0 \? \(/);
   assert.match(source, /data-testid="athlete-video-carousel"/);
   assert.match(source, /athlete-highlights-panel/);
-  assert.match(source, /athlete-video-stage/);
-  assert.match(source, /data-testid="athlete-video-reflection"/);
-  assert.match(source, /href="#athlete-reply-composer"/);
-  assert.match(source, /Leave a reply/);
-  assert.match(source, /data-testid="button-send-hype-for-video"/);
-  assert.match(source, /invite\.videos\.map\(\(video, index\)/);
-  assert.match(source, /src=\{video\.videoUrl\}/);
-  assert.match(source, /poster=\{video\.posterUrl \?\? undefined\}/);
-  assert.match(source, /controls/);
-  assert.match(source, /playsInline/);
-  assert.match(
-    source,
-    /src=\{video\.videoUrl\}[\s\S]*?poster=\{video\.posterUrl \?\? undefined\}[\s\S]*?controls[\s\S]*?playsInline[\s\S]*?preload="none"/,
-  );
-  assert.match(source, /aria-label=\{`Play \$\{video\.title\}`\}/);
-  assert.match(source, /video\.jerseyNumber/);
-  assert.match(source, /video\.position/);
-  assert.match(source, /snap-x snap-mandatory/);
-  assert.match(source, /w-\[82%\][\s\S]*?sm:w-\[58%\][\s\S]*?lg:w-\[50%\]/);
-  assert.doesNotMatch(source, /invite\.videos\.length === 1 \? 'w-full'/);
-  assert.match(source, /event\.key === 'ArrowLeft'/);
-  assert.match(source, /event\.key === 'ArrowRight'/);
-  assert.match(source, /if \(event\.target !== event\.currentTarget\) return/);
-  assert.match(source, /aria-label="Previous video"/);
-  assert.match(source, /aria-label="Next video"/);
   assert.match(source, /data-testid="athlete-video-empty-state"/);
+  assert.match(source, /data-testid="athlete-image-highlight"/);
   assert.doesNotMatch(source, /data-testid="athlete-image-hype-card"/);
   assert.doesNotMatch(source, /Open image Hype Card/);
 });

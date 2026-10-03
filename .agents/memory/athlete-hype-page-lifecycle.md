@@ -11,11 +11,11 @@ Owner management belongs on its own owner-only route reached from the stable Hyp
 
 **How to apply:** Share the card URL first, preserve the original page and legacy one-off share URLs, and keep the athlete token stable across pause/resume. Let only the owner load a paused page. A public card may show a view-only live scoreboard but must not expose the reusable live-session token or raw tracker events; treat the live session as an independently revocable attachment rather than replacing either durable experience.
 
-The new fan card's Videos side is for videos, not older Hype Card photo shares. The original Athlete Hype Page may still show those image shares.
+The fan card and Athlete Hype Page are photo-first and do not expose video upload, playback, or video-side controls. Preserve older media records and direct share URLs.
 
-**Why:** An old Hype Card photo appeared unexpectedly when a supporter opened Videos on the new fan card. Removing it from that view should not delete the photo or break old shares.
+**Why:** The user removed video from Hype Cards and athlete profiles while explicitly preserving existing saved media and share records.
 
-**How to apply:** Do not reuse the legacy Hype Card image slot on the new card's Videos side. Keep any changes to media provenance separate from deleting existing shared media.
+**How to apply:** Keep photo features available, omit video from current card/profile UI and copy, and treat removal of historical files or links as separate destructive work requiring explicit approval.
 
 The four-step standalone Hype Card editor is retired. The diagonal “HYPE CARD” label belongs on the new athlete fan card’s photo, not as a reason to reopen the old creator. Existing one-off public shares and historical saved-design bytes remain intact even though the old editor is no longer an active destination.
 

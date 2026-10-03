@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Images, Play, Radio, RotateCcw, Send, Zap } from 'lucide-react';
+import { ArrowRight, Bell, CalendarDays, ChartNoAxesCombined, Radio, RotateCcw, Send, Zap } from 'lucide-react';
 import { useUser } from '@clerk/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
@@ -28,14 +28,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { HypeCardReplyComposer } from './public-hype-card';
-import { captureVideoThumbnail, isBlankVideoPoster } from './video-thumbnail';
 import { LivingAthleteCardFront } from './living-athlete-card-front';
 import { BackNavigationLink } from '@/components/back-navigation-link';
 
-type CardSide = 'front' | 'responses' | 'stats' | 'videos' | 'events' | 'live-taps';
+type CardSide = 'front' | 'responses' | 'stats' | 'events' | 'live-taps';
 type FanGame = NonNullable<PublicAthleteFanCard['stats']>['games'][number];
-type FanVideo = PublicAthleteFanCard['videos'][number];
 const liveTapAccessTokenPattern = /^[A-Za-z0-9_-]{40,100}$/;
 const hypeReactions = [
   { emoji: '👏', label: 'Applause' },
@@ -76,57 +73,6 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-function FanCardVideo({
-  video,
-  index,
-  onError,
-  onPlay,
-}: {
-  video: FanVideo;
-  index: number;
-  onError: () => void;
-  onPlay: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
-}) {
-  const [poster, setPoster] = useState(video.posterUrl ?? undefined);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    let fallbackUrl: string | undefined;
-    const recoverBlankPoster = async () => {
-      if (video.posterUrl) {
-        try {
-          if (!(await isBlankVideoPoster(video.posterUrl, controller.signal))) return;
-        } catch {
-          if (controller.signal.aborted) return;
-        }
-      }
-      const image = await captureVideoThumbnail(video.videoUrl, controller.signal);
-      if (controller.signal.aborted) return;
-      fallbackUrl = URL.createObjectURL(image);
-      setPoster(fallbackUrl);
-    };
-    void recoverBlankPoster().catch(() => undefined);
-    return () => {
-      controller.abort();
-      if (fallbackUrl) URL.revokeObjectURL(fallbackUrl);
-    };
-  }, [video.posterUrl, video.videoUrl]);
-
-  return (
-    <video
-      src={video.videoUrl}
-      poster={poster}
-      controls
-      preload="none"
-      playsInline
-      aria-label={`Video: ${video.title || video.mediaName}`}
-      data-testid={`video-living-card-${index}`}
-      onError={onError}
-      onPlay={onPlay}
-    />
-  );
-}
-
 export function LivingAthleteCardPage({
   params,
   followControls,
@@ -138,7 +84,6 @@ export function LivingAthleteCardPage({
   const [side, setSide] = useState<CardSide>('front');
   const [todayTick, setTodayTick] = useState(() => Date.now());
   const [brokenPhoto, setBrokenPhoto] = useState(false);
-  const [failedVideos, setFailedVideos] = useState<string[]>([]);
   const [selectedGameKey, setSelectedGameKey] = useState('');
   const [trendStatId, setTrendStatId] = useState('score');
   const [localReplies, setLocalReplies] = useState<Array<{ reaction: string; message: string | null; createdAt: string }>>([]);
@@ -165,7 +110,6 @@ export function LivingAthleteCardPage({
   const sendHype = useSendAthleteInviteHype();
   const sendLiveTap = useSendAthleteLiveTap();
   const deleteHype = useDeleteAthleteInviteHype();
-  const videosRef = useRef<HTMLDivElement>(null);
   const { data: invite, isLoading, isError, refetch } = useGetAthleteFanCard(inviteToken, {
     query: {
       enabled: !!inviteToken,
@@ -272,7 +216,6 @@ export function LivingAthleteCardPage({
     );
   }
 
-  const recentVideos = [...invite.videos].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const linkedEvents = invite.events ?? [];
   const eventToday = hasEventToday(linkedEvents, invite.timezone, new Date(todayTick));
   const sport = invite.sport.charAt(0).toUpperCase() + invite.sport.slice(1);
@@ -319,7 +262,6 @@ export function LivingAthleteCardPage({
     .slice(0, 6);
   const selectSide = (next: CardSide) => {
     if (side === next) return;
-    videosRef.current?.querySelectorAll('video').forEach((video) => video.pause());
     setSide(next);
   };
   const submitHype = async (event: React.FormEvent) => {
@@ -430,7 +372,7 @@ export function LivingAthleteCardPage({
         <div className="living-card-layout living-card-layout-solo">
           <section className="living-card-stage" aria-label={`${invite.athleteName}'s HYPE Card`}>
             <div className="living-card-frame-outer">
-              <div className="living-card-frame" data-side={side} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'videos' ? 'videos' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
+              <div className="living-card-frame" data-side={side} id="living-card-display" role="region" aria-label={`${invite.athleteName} — ${side === 'front' ? 'card front' : side === 'responses' ? 'viewer responses' : side === 'stats' ? 'finalized stats' : side === 'events' ? 'events' : 'Live Taps tally'}`}>
                 <div className="living-card-flip-inner">
                   <div className="living-card-flip-face living-card-flip-front">
                     {side === 'front' && (
@@ -595,77 +537,6 @@ export function LivingAthleteCardPage({
                   </div>
                 )}
 
-                {side === 'videos' && (
-                  <div className="living-card-face living-card-face-alt" key="videos" ref={videosRef}>
-                    <div className="living-card-alt-top"><span className="living-card-overline">Pixl / The moments</span><span>{invite.seasonName}</span></div>
-                    <h2 className="living-card-alt-title">Season moments.</h2>
-                    <p className="living-card-alt-subtitle">Highlights and reactions stay together with {invite.athleteName}’s season.</p>
-                    {recentVideos.length > 0 ? (
-                      <ol className="living-card-video-list">
-                        {recentVideos.map((video, index) => (
-                          <li key={video.shareToken}>
-                            <div className="living-card-video-heading">
-                              <strong>{video.title || video.mediaName}</strong>
-                              <span>{String(index + 1).padStart(2, '0')} / {String(recentVideos.length).padStart(2, '0')}</span>
-                            </div>
-                            {failedVideos.includes(video.shareToken) ? (
-                              <p className="living-card-video-error" role="status">This highlight is unavailable right now.</p>
-                            ) : (
-                              <FanCardVideo
-                                video={video}
-                                index={index}
-                                onError={() => setFailedVideos((tokens) => tokens.includes(video.shareToken) ? tokens : [...tokens, video.shareToken])}
-                                onPlay={(event) => {
-                                  videosRef.current?.querySelectorAll('video').forEach((other) => {
-                                    if (other !== event.currentTarget) other.pause();
-                                  });
-                                }}
-                              />
-                            )}
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <div className="living-card-empty">
-                        <Play size={30} strokeWidth={1.5} aria-hidden="true" />
-                        <h3>Moments on the way.</h3>
-                        <p>When highlights are shared, they will appear here.</p>
-                      </div>
-                    )}
-                    {invite.videos[0] && (
-                      <section id="living-card-reply-composer" className="living-card-media-reply" aria-labelledby="living-card-media-reply-title">
-                        <h3 id="living-card-media-reply-title">Reply to this moment</h3>
-                        <p>Choose a reaction and add an optional message without leaving this card. Replies stay separate from Hypes sent from the card front.</p>
-                        <HypeCardReplyComposer
-                          shareToken={invite.videos[0].shareToken}
-                          className="living-card-reply-composer"
-                          onSent={(reply) => {
-                            setLocalReplies((current) => [{
-                              reaction: reply.reaction,
-                              message: reply.message ?? null,
-                              createdAt: new Date().toISOString(),
-                            }, ...current]);
-                          }}
-                        />
-                      </section>
-                    )}
-                    {recentReplies.length > 0 && (
-                      <section className="living-card-recent-replies" aria-labelledby="living-card-recent-replies-title" data-testid="living-card-recent-replies">
-                        <p className="living-card-overline">From the people cheering</p>
-                        <h3 id="living-card-recent-replies-title">Recent reactions</h3>
-                        <ul>
-                          {recentReplies.map((reply, index) => (
-                            <li key={`${reply.createdAt}-${index}`}>
-                              <strong>{reply.reaction}</strong>
-                              {reply.message && <p>{reply.message}</p>}
-                              <small>{new Date(reply.createdAt).toLocaleDateString()}</small>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    )}
-                  </div>
-                )}
                 {side === 'events' && (
                   <div className="living-card-face living-card-face-alt" key="events" data-testid="living-card-events-side">
                     <div className="living-card-alt-top"><span className="living-card-overline">Pixl / Game days</span><span>{invite.seasonName}</span></div>
@@ -788,7 +659,6 @@ export function LivingAthleteCardPage({
                   <button type="button" className="living-card-control" aria-label="Responses" aria-pressed={side === 'responses'} aria-controls="living-card-display" onClick={() => selectSide('responses')} data-testid="button-living-card-responses"><span className="living-card-control-emoji" aria-hidden="true">👍</span> Replies</button>
                   <button type="button" className="living-card-control" aria-pressed={side === 'stats'} aria-controls="living-card-display" onClick={() => selectSide('stats')} data-testid="button-living-card-stats"><ChartNoAxesCombined aria-hidden="true" /> Stats</button>
                   <button type="button" className="living-card-control" aria-label="Live Taps" aria-pressed={side === 'live-taps'} aria-controls="living-card-display" onClick={() => selectSide('live-taps')} data-testid="button-living-card-live-taps"><Zap aria-hidden="true" /> Taps</button>
-                  <button type="button" className="living-card-control" aria-pressed={side === 'videos'} aria-controls="living-card-display" onClick={() => selectSide('videos')} data-testid="button-living-card-videos"><Images aria-hidden="true" /> Videos{recentVideos.length > 0 && <span className="living-card-control-count">({recentVideos.length})</span>}</button>
                   <button type="button" className={`living-card-control${eventToday ? ' living-card-control-today' : ''}`} aria-pressed={side === 'events'} aria-controls="living-card-display" onClick={() => selectSide('events')} data-testid="button-living-card-events"><CalendarDays aria-hidden="true" /> Events{linkedEvents.length > 0 && <span className="living-card-control-count">({linkedEvents.length})</span>}{eventToday && <span className="sr-only"> · Event today</span>}</button>
                 </div>
               </div>
@@ -868,7 +738,7 @@ export function LivingAthleteCardPage({
                  </DialogContent>
                </Dialog>
               </div>}
-            <p className="living-card-instruction">Choose a side to turn the card. Videos play only when you press play.</p>
+            <p className="living-card-instruction">Choose a side to turn the card.</p>
           </section>
 
         </div>

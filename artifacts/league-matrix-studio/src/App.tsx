@@ -399,7 +399,7 @@ const landingRoleCopy: Record<string, LandingRoleCopy> = {
       {
         icon: Zap,
         title: '03 / Catch the moment',
-        body: 'Turn a photo or short video into the post the group chat wants.',
+        body: 'Turn a favorite photo into the post the group chat wants.',
         label: 'Hype card creator',
         hub: 'Your best moment is ready to share.',
         notification: 'Your Hype Card is ready',
@@ -977,7 +977,7 @@ function ToolWalkthroughCard({ kind, step, role }: { kind: ToolKind; step: numbe
       steps: ['Tap live plays', 'Watch the line update', 'Build the season total'],
     },
     hype: {
-      what: 'Turn a photo or short video into a polished moment card without leaving the sideline.',
+      what: 'Turn a favorite photo into a polished moment card without leaving the sideline.',
       next: 'Choose the media, pick a look, attach optional season stats, and share the finished celebration with your people.',
       steps: ['Choose the moment', 'Attach season stats', 'Share the card'],
     },
@@ -3251,7 +3251,7 @@ function Help() {
         <div className="mt-12 space-y-10">
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">How do I create and share a HYPE Card?</h2>
-            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Open the HYPE Card tool in your studio to create or manage your athlete’s card. Share its public link from the manager; owners can return to update card details and highlights.</p>
+            <p className="mt-3 text-base font-medium leading-relaxed text-muted-foreground">Open the HYPE Card tool in your studio to create or manage your athlete’s card. Share its public link from the manager; owners can return to update the photo and card details.</p>
           </section>
           <section>
             <h2 className="font-display text-3xl uppercase tracking-wide">Where can owners manage a shared card?</h2>
@@ -3292,7 +3292,7 @@ function Privacy() {
         <div className="prose prose-lg mt-12 max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-a:text-primary hover:prose-a:text-foreground">
            <p className="lead font-medium text-xl">The short version: We don't track your team, and Pixl Sports keeps source media on your device by default. Account saves contain reusable design settings only unless you use private media storage on a paid Hype Card account. {PUBLIC_SHARE_MEDIA}</p>
           <h3>1. Local Execution</h3>
-            <p>Pixl Sports is built as a local-first application. When you attach a photo, video, or logo to create a graphic, that source media is processed on your device using browser APIs. Guest and unpaid design saves send the layout, text, colors, crop settings, and output configuration, but not the attached media. Paid Hype Card accounts can keep private project media in cloud storage under the account quota. {PUBLIC_SHARE_MEDIA} Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
+            <p>Pixl Sports is built as a local-first application. When you attach a photo or logo to create a graphic, that source media is processed on your device using browser APIs. Guest and unpaid design saves send the layout, text, colors, crop settings, and output configuration, but not the attached media. Paid Hype Card accounts can keep private project media in cloud storage under the account quota. {PUBLIC_SHARE_MEDIA} Older cloud projects created before this policy may temporarily retain their previously uploaded media until it is removed in a later migration.</p>
           <h3>2. Analytics</h3>
           <p>We do not use tracking pixels, session recording tools, or advertising analytics in this release.</p>
           <h3>3. Cookies</h3>

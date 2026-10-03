@@ -100,7 +100,7 @@ function AthletePreview() {
       <img
         className="landing-athlete-render"
         src={kimberlyHypeCard}
-        alt="Kimberly in a pink soccer jersey holding a ball on a Pixl Hype Card, with Card Front, Stats, and Videos tabs."
+        alt="Kimberly in a pink soccer jersey holding a ball on a Pixl Hype Card."
         width="1228"
         height="1981"
       />
@@ -153,7 +153,7 @@ export function PublicLandingPage() {
               </div>
               <div className="hero-message">
                 <strong>Every player has a story worth sharing.</strong>
-                <p>One place for the highlights, photos, and shoutouts.</p>
+                <p>One place for the photos, stats, events, and shoutouts.</p>
                 <div className="message-line" aria-hidden="true" />
               </div>
             </div>
@@ -182,7 +182,7 @@ export function PublicLandingPage() {
             <div className="athlete-copy">
               <span className="micro">More than a profile</span>
               <h2 className="display" id="athlete-heading">Their moments.<br />Their <span className="hype-word">Hype</span> Card.</h2>
-              <p>Make a Hype Card they’ll want to show off. Add photos and videos, share it with family, and let supporters send a shoutout.</p>
+              <p>Make a Hype Card they’ll want to show off. Add a favorite photo, share it with family, and let supporters send a shoutout.</p>
               <ul className="check-list">
                 <li><Check size={16} aria-hidden="true" /> Make it theirs</li>
                 <li><Check size={16} aria-hidden="true" /> Share it easily</li>

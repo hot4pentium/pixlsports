@@ -125,7 +125,7 @@
 .pixl-demo-hype-event dl div { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; }
 .pixl-demo-hype-event dt { color: #a9bfd3; }
 .pixl-demo-hype-event dd { margin: 0; font-weight: 800; text-align: right; }
-.pixl-demo-hype-controls { position: absolute; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 5px; height: 60px; background: #0b2544; }
+.pixl-demo-hype-controls { position: absolute; inset: auto 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 5px; height: 60px; background: #0b2544; }
 .pixl-demo-hype-controls button { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 2px; border: 1px solid #8498a9; border-radius: 7px; background: #143451; color: #f2f8f3; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
 .pixl-demo-hype-controls button svg { flex: none; width: 13px; height: 13px; }
 .pixl-demo-hype-controls button[aria-pressed="true"] { border-color: #f2f8f3; background: #f2f8f3; color: #082336; }

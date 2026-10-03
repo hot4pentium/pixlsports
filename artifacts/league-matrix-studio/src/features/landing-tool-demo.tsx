@@ -20,7 +20,7 @@ const copy: Record<DemoStep, { title: string; description: string }> = {
   '01': { title: 'Plan the next event.', description: 'Try filling out an Event Card. The details take shape as you type.' },
   '02': { title: 'Show up ready.', description: 'Check off the essentials, add your own, and leave a note for game day.' },
   '03': { title: 'Follow their game.', description: 'The little moments add up. Track an athlete’s stats one play at a time.' },
-  '04': { title: 'Their season, one card.', description: 'Explore a Hype Card with its athlete photo, stats, videos, and events.' },
+  '04': { title: 'Their season, one card.', description: 'Explore a Hype Card with its athlete photo, stats, shoutouts, and events.' },
 };
 
 function PlanDemo() {
@@ -269,11 +269,10 @@ function FollowDemo() {
   </div>;
 }
 
-type HypeSide = 'front' | 'stats' | 'videos' | 'events';
+type HypeSide = 'front' | 'stats' | 'events';
 const hypeSides = [
   { id: 'front', label: 'Card front', icon: RotateCcw },
   { id: 'stats', label: 'Stats', icon: ChartNoAxesCombined },
-  { id: 'videos', label: 'Videos', icon: Images },
   { id: 'events', label: 'Events', icon: CalendarDays },
 ] as const;
 const sampleStats = [
@@ -285,11 +284,6 @@ const sampleStats = [
   { label: 'Sacks', value: '0' },
   { label: 'Extra points', value: '2' },
   { label: 'Fumbles', value: '0' },
-];
-const sampleVideos = [
-  { title: 'The breakaway', description: 'Sample highlight · Game 01', photo: samplePlayerPhoto, position: 'center 55%' },
-  { title: 'After the whistle', description: 'Sample highlight · Game 02', photo: sampleFootballMoment, position: 'center 35%' },
-  { title: 'One more run', description: 'Sample highlight · Game 03', photo: samplePlayerPhoto, position: 'center 75%' },
 ];
 const sampleEvents = [
   { day: 'Saturday', date: 'Oct 10', dateTime: '2026-10-10', opponent: 'Tigers', time: '10:00 AM', location: 'Upper Field' },
@@ -305,7 +299,7 @@ function CelebrateDemo() {
       <span className="pixl-demo-section-label">04 / Hype Card</span>
       <label className="pixl-demo-field"><span>Athlete</span><input className="pixl-demo-input" maxLength={35} value={athlete} onChange={e => setAthlete(e.target.value)} placeholder="Athlete's first name" data-testid="input-demo-hype-athlete" /></label>
       <label className="pixl-demo-field"><span>Team</span><input className="pixl-demo-input" maxLength={45} value={team} onChange={e => setTeam(e.target.value)} placeholder="Team name" data-testid="input-demo-hype-team" /></label>
-      <p className="pixl-demo-muted">Tap the four buttons on the card to see what fans can follow. The photo and season examples are fictional; only your athlete and team names change here.</p>
+      <p className="pixl-demo-muted">Tap the buttons on the card to see what fans can follow. The photo and season examples are fictional; only your athlete and team names change here.</p>
     </div>
     <div className="pixl-demo-preview-area">
       <span className="pixl-demo-preview-label">Hype Card / interactive sample</span>
@@ -326,18 +320,6 @@ function CelebrateDemo() {
             <div className="pixl-demo-hype-stat-grid">{sampleStats.map(({ label, value }) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
             <small>Fictional sample stats · A real card shows finalized games.</small>
           </div>}
-          {side === 'videos' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-videos">
-            <div className="pixl-demo-hype-panel-top"><span>PIXL / THE MOMENTS</span><span>EXAMPLE SEASON</span></div>
-            <h3>Season moments.</h3>
-            <p>Highlights shared to a real Hype Card live here.</p>
-            <ol className="pixl-demo-hype-video-list" aria-label="Sample video thumbnails">
-              {sampleVideos.map(({ title, description, photo, position }, index) => <li key={title} data-testid={`card-demo-hype-video-${index + 1}`}>
-                <div className="pixl-demo-hype-video-thumb"><img src={photo} alt={`Fictional football moment ${index + 1}`} style={{ objectPosition: position }} /><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span></div>
-                <div><strong>{title}</strong><span>{description}</span></div>
-              </li>)}
-            </ol>
-            <small>Mock thumbnails only · No videos play or upload in this demo.</small>
-          </div>}
           {side === 'events' && <div className="pixl-demo-hype-panel" data-testid="face-demo-hype-events">
             <div className="pixl-demo-hype-panel-top"><span>PIXL / GAME DAYS</span><span>EXAMPLE SEASON</span></div>
             <h3>Events.</h3>
@@ -355,7 +337,7 @@ function CelebrateDemo() {
           {hypeSides.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={side === id} aria-controls="pixl-demo-hype-card" onClick={() => setSide(id)} data-testid={`button-demo-hype-${id}`}><Icon size={15} aria-hidden="true" /><span>{label}</span></button>)}
         </div>
       </div>
-      <p className="pixl-demo-muted">Fictional stats and events · Mock video thumbnails do not play. Nothing is saved or shared.</p>
+      <p className="pixl-demo-muted">Fictional stats and events. Nothing is saved or shared.</p>
     </div>
   </div>;
 }

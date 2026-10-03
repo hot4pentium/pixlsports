@@ -30,12 +30,11 @@ test('stats-only shares have no hosted media object paths and still require a li
   assert.match(serverSource, /video\/mp4.*video\/webm/);
 });
 
-test('linked exports create or reuse a stats URL and burn it into still and video renders', () => {
+test('linked exports create or reuse a stats URL and burn it into still renders', () => {
   assert.doesNotMatch(editorSource, /data-testid="button-export-stats-link"/);
   assert.match(editorSource, /const handleExport = async \(statsUrl\?: string\)/);
   assert.match(editorSource, /if \(existingStatsShare\) \{\s*void handleExport\(shareUrlFor\(existingStatsShare\)\);/);
   assert.match(editorSource, /setLinkedExportPending\(true\)/);
-  assert.match(editorSource, /buildHypeCardSvg\(exportProject, 'fg', ns, statsUrl\)/);
   assert.match(editorSource, /buildHypeCardSvg\(exportProject, 'all', 'export', statsUrl\)/);
   assert.match(editorSource, /data-testid="text-stats-link-export-warning"/);
   assert.match(editorSource, /data-testid="button-copy-success-destination"/);

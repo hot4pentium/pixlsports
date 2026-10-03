@@ -112,14 +112,15 @@ test('mobile navigation and accessibility basics are built in', () => {
   assert.match(styles, /@media \(max-width: 700px\)/);
 });
 
-test('week steps open temporary demos and Celebrate has the real Hype Card sides', () => {
+test('week steps open temporary demos and Celebrate has the photo-first Hype Card sides', () => {
   assert.match(source, /steps\.map\(step => <DemoStepCard/);
   assert.match(source, /activeDemo && <LandingToolDemo/);
   assert.match(demoSource, /<LivingAthleteCardFront/);
-  for (const side of ['front', 'stats', 'videos', 'events']) {
+  for (const side of ['front', 'stats', 'events']) {
     assert.match(demoSource, new RegExp(`id: '${side}'`));
     assert.match(demoSource, new RegExp(`side === '${side}' && <div`));
   }
+  assert.doesNotMatch(demoSource, /id: 'videos'|face-demo-hype-videos|<video/);
   assert.match(demoSource, /aria-pressed=\{side === id\}/);
-  assert.match(demoStyles, /pixl-demo-hype-controls \{[^}]*grid-template-columns: repeat\(4/);
+  assert.match(demoStyles, /pixl-demo-hype-controls \{[^}]*grid-template-columns: repeat\(3/);
 });

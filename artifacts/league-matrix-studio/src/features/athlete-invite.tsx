@@ -1225,7 +1225,6 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       <section data-testid="section-visible-athlete-page">
         <h3 className="font-display text-2xl uppercase">Visible sections</h3>
         <p className="mt-1 text-xs text-white/60">Section switches save as soon as you change them.</p>
-        <OwnerToggle label="Video highlights" detail="Shows up to 3 active videos, newest first." checked={showHypeCard} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showHypeCard', value)} />
         <OwnerToggle label="Finalized stats" detail="Never exposes live tracker activity." checked={showStats} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('showStats', value)} />
         <OwnerToggle label="Fan Shoutouts" detail="Fans can send a short encouragement from the HYPE Card. You can turn this off at any time." checked={hypesEnabled} disabled={visibilitySaving || updateInvite.isPending} onChange={(value) => void saveVisibilityChange('hypesEnabled', value)} />
         {visibilityStatus !== 'idle' && (
@@ -1291,7 +1290,7 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
       </section>
       </HypeManagerTaskCard>
 
-      <HypeManagerTaskCard id="media" title="Add Media" description="Add a video or highlight" Icon={Video} active={activeTask === 'media'} onSelect={() => toggleTask('media')} badge={hostedVideos.length ? `${hostedVideos.length} posted` : undefined}>
+      {false && <HypeManagerTaskCard id="media" title="Add Media" description="Add media" Icon={Video} active={activeTask === 'media'} onSelect={() => toggleTask('media')} badge={hostedVideos.length ? `${hostedVideos.length} posted` : undefined}>
       <div aria-live="polite" data-testid="section-manage-athlete-videos">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -1338,15 +1337,15 @@ function OwnerHypePageManage({ invite }: { invite: OwnedAthleteInvite }) {
         )}
         {hostedImage && !mediaError && (
           <div className="mt-5 border-t border-white/15 pt-4" data-testid="hosted-image-hype-card">
-            <p className="text-sm font-bold">{hostedImage.mediaName}</p>
+            <p className="text-sm font-bold">{hostedImage!.mediaName}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void downloadMedia(hostedImage, 'image')}><Download className="mr-2 h-4 w-4" />Download image</Button>
-              <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => void removeMedia(hostedImage, hostedImageQuery)} disabled={deleteHypeCard.isPending}><Trash2 className="mr-2 h-4 w-4" />Delete image</Button>
+              <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => void downloadMedia(hostedImage!, 'image')}><Download className="mr-2 h-4 w-4" />Download image</Button>
+              <Button type="button" variant="outline" className="rounded-none border-white/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => void removeMedia(hostedImage!, hostedImageQuery)} disabled={deleteHypeCard.isPending}><Trash2 className="mr-2 h-4 w-4" />Delete image</Button>
             </div>
           </div>
         )}
       </div>
-      </HypeManagerTaskCard>
+      </HypeManagerTaskCard>}
       </div>
     </section>
   );
@@ -1460,7 +1459,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
   const selectedGameAthleteStats = selectedGameOption
     ? Object.entries(selectedGameOption.game.athleteStats).sort(([left], [right]) => left.localeCompare(right))
     : [];
-  const hasHighlights = invite.videos.length > 0 || Boolean(invite.hypeCard?.posterUrl);
+  const hasHighlights = Boolean(invite.hypeCard?.posterUrl);
   const trendValues = selectedTrend
     ? trendGames.map((game) => selectedTrend.id === 'score' ? game.score : game.stats[selectedTrend.id] ?? 0)
     : [];
@@ -1587,17 +1586,17 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
             <div className="athlete-highlights-heading col-span-2 row-start-2 flex min-w-0 flex-col gap-4 border-t border-white/15 pt-5 sm:flex-row sm:items-end sm:justify-between sm:gap-5 lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:border-0 lg:pt-0" data-testid="athlete-highlights-heading">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">Featured moments</p>
-                <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">{invite.videos.length > 0 ? 'Video highlights' : 'Highlights'}</h2>
+                <h2 id="athlete-video-highlights" className="mt-2 font-display text-4xl uppercase leading-none sm:text-5xl">Highlights</h2>
                 <p className="mt-3 max-w-md text-xs font-medium leading-relaxed text-white/55">
-                  {invite.videos.length > 0 ? 'The latest plays, captured and ready to replay.' : 'A season moment, saved to revisit.'}
+                  A season moment, saved to revisit.
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {invite.videos.length > 1 && (
+                {false && (invite?.videos.length ?? 0) > 1 && (
                   <>
                     <button type="button" onClick={() => moveToVideo(activeVideoIndex - 1)} disabled={activeVideoIndex === 0} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Previous video" data-testid="button-previous-athlete-video"><ChevronLeft className="h-5 w-5" /></button>
-                    <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite.videos.length}</span>
-                    <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
+                    <span className="min-w-12 text-center text-[10px] font-bold uppercase tracking-widest text-white/50" aria-live="polite">{activeVideoIndex + 1} / {invite!.videos.length}</span>
+                    <button type="button" onClick={() => moveToVideo(activeVideoIndex + 1)} disabled={activeVideoIndex === invite!.videos.length - 1} className="grid h-11 w-11 place-items-center border border-white/20 text-white transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label="Next video" data-testid="button-next-athlete-video"><ChevronRight className="h-5 w-5" /></button>
                   </>
                 )}
               </div>
@@ -1635,7 +1634,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </figcaption>
               </figure>
             )}
-            {invite.videos.length > 0 ? (
+            {false && (invite?.videos.length ?? 0) > 0 ? (
               <ol
                 ref={videoCarouselRef}
                 className="athlete-video-carousel flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -1655,10 +1654,10 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 }}
                 data-testid="athlete-video-carousel"
               >
-                {invite.videos.map((video, index) => {
+                {invite!.videos.map((video, index) => {
                   const details = [video.jerseyNumber ? `#${video.jerseyNumber}` : '', video.position].filter(Boolean).join(' · ');
                   return (
-                    <li key={video.shareToken} className="w-[82%] shrink-0 snap-start sm:w-[58%] lg:w-[50%]" aria-label={`Video ${index + 1} of ${invite.videos.length}`} data-testid="athlete-video-slide">
+                    <li key={video.shareToken} className="w-[82%] shrink-0 snap-start sm:w-[58%] lg:w-[50%]" aria-label={`Video ${index + 1} of ${invite!.videos.length}`} data-testid="athlete-video-slide">
                       <div className="athlete-video-stage">
                         <div className="athlete-video-frame">
                           <video
@@ -1775,13 +1774,13 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 <p className="mt-4 text-right text-[9px] font-bold uppercase tracking-widest text-white/30">Updated {new Date(invite.stats.updatedAt).toLocaleDateString()}</p>
               </section>
             )}
-            {invite.videos[0] && (
+            {false && invite?.videos[0] && (
               <section className="border border-primary/40 bg-primary/10 p-5 sm:p-7" aria-labelledby="athlete-reply-composer">
                 <p className="text-[10px] font-bold uppercase tracking-[.2em] text-primary">For the athlete</p>
                 <h2 id="athlete-reply-composer" className="mt-2 font-display text-3xl uppercase">Reply to the latest highlight</h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/60">Choose a reaction and add an optional message for the latest shared video without leaving this athlete page.</p>
                 <HypeCardReplyComposer
-                  shareToken={invite.videos[0].shareToken}
+                  shareToken={invite!.videos[0].shareToken}
                   className="mt-5 border-t border-primary/20 pt-5"
                   onSent={(reply) => {
                     setLocalReplies((current) => [{ ...reply, createdAt: new Date().toISOString() }, ...current]);
@@ -1804,7 +1803,7 @@ export function PublicAthleteInvitePage({ params }: { params: { inviteToken?: st
                 </ul>
               </section>
             )}
-            {invite.videos.length === 0 && !invite.stats && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
+            {!invite.stats && <div className="border border-white/10 bg-white/5 p-8 text-center"><p className="font-display text-3xl uppercase">Season updates are coming</p><p className="mt-2 text-sm text-white/50">Save this page and check back after the next update.</p></div>}
           </div>
           <aside className="h-fit border border-white/10 bg-[#11141b] p-5 sm:p-6">
             <Smartphone className="h-7 w-7 text-primary" />

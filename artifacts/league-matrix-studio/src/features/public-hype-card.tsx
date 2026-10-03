@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Check, ChevronDown, Pause, Play, Send, Volume2, VolumeX, Zap } from 'lucide-react';
+import { ArrowUpRight, Check, ChevronDown, Send, Zap } from 'lucide-react';
 import { Link } from 'wouter';
 import { useCreateHypeCardShareReply, useGetHypeCardShare, type HypeCardShare } from '@workspace/api-client-react';
 
@@ -15,10 +15,7 @@ const reactions = ['🔥', '👏', '💪', '⭐', '❤️'] as const;
 
 export function PublicHypeCardPage({ params }: { params: { slug?: string; shareToken?: string } }) {
   const shareToken = params.shareToken ?? '';
-  const [isMuted, setIsMuted] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const { data: share, isLoading, isError } = useGetHypeCardShare(shareToken, {
     query: { enabled: Boolean(shareToken), queryKey: ['/api/hype-card-shares', shareToken], retry: false },
   });
@@ -33,22 +30,6 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
        photo: share?.mediaType === 'image' ? share.mediaUrl ?? null : null,
     });
   }, [share]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || share?.mediaType !== 'video') return;
-    const syncPlaying = () => setIsPlaying(!video.paused && !video.ended);
-    video.addEventListener('play', syncPlaying);
-    video.addEventListener('pause', syncPlaying);
-    video.addEventListener('ended', syncPlaying);
-    video.addEventListener('error', syncPlaying);
-    return () => {
-      video.removeEventListener('play', syncPlaying);
-      video.removeEventListener('pause', syncPlaying);
-      video.removeEventListener('ended', syncPlaying);
-      video.removeEventListener('error', syncPlaying);
-    };
-  }, [share?.mediaType, share?.videoUrl]);
 
   useEffect(() => {
     if (!share) return;
@@ -67,7 +48,7 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
     };
     const cleanups = [
       upsert('og:title', share.title),
-       upsert('og:description', share.shareMode === 'stats' ? 'View finalized athlete stats from Pixl Sports.' : 'Watch this Hype Card from Pixl Sports.'),
+       upsert('og:description', share.shareMode === 'stats' ? 'View finalized athlete stats from Pixl Sports.' : 'View this Hype Card from Pixl Sports.'),
        upsert('og:image', share.posterUrl ? new URL(share.posterUrl, window.location.origin).href : ''),
        upsert('og:type', share.shareMode === 'stats' ? 'website' : share.mediaType === 'video' ? 'video.other' : 'website'),
       upsert('og:video', share.videoUrl ? new URL(share.videoUrl, window.location.origin).href : ''),
@@ -97,21 +78,6 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
   }
 
   const dimensions = getDimensions(project.format);
-  const togglePlayback = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      try {
-        await video.play();
-        setIsPlaying(true);
-      } catch {
-        setIsPlaying(false);
-      }
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  };
   const toggleStats = () => {
     if (!showStats) {
       trackEvent('hype_card_stats_viewed', {
@@ -134,42 +100,13 @@ export function PublicHypeCardPage({ params }: { params: { slug?: string; shareT
       </header>
       <main className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1280px] items-center gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="relative mx-auto w-full max-w-[660px] overflow-hidden rounded-[22px] shadow-[0_30px_100px_rgba(0,0,0,.65)]" style={{ aspectRatio: `${dimensions.width}/${dimensions.height}` }}>
-          {share.mediaType === 'image' ? (
-            <img src={share.mediaUrl ?? ''} alt={share.mediaName} className="h-full w-full object-contain" />
-          ) : (
-            <>
-              <PreviewArtwork project={project} videoUrl={share.videoUrl ?? undefined} videoRef={videoRef} poster={share.posterUrl ?? undefined} ns="public-share" testId="public-hype-card" muted={isMuted} />
-              <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 bg-black/75 p-2 backdrop-blur">
-                <button
-                  type="button"
-                  onClick={togglePlayback}
-                  className="flex min-h-10 items-center gap-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-primary hover:text-primary-foreground"
-                  aria-label={isPlaying ? 'Pause highlight' : 'Play highlight'}
-                >
-                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  {isPlaying ? 'Pause' : 'Play'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMuted((muted) => !muted);
-                    if (isMuted && videoRef.current?.paused) void togglePlayback();
-                  }}
-                  className="flex min-h-10 items-center gap-2 px-3 text-[10px] font-bold uppercase tracking-widest text-white hover:bg-primary hover:text-primary-foreground"
-                  aria-label={isMuted ? 'Enable audio' : 'Mute audio'}
-                >
-                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                  {isMuted ? 'Audio' : 'Mute'}
-                </button>
-              </div>
-            </>
-          )}
+          <img src={share.mediaType === 'image' ? share.mediaUrl ?? '' : share.posterUrl ?? ''} alt={share.mediaName} className="h-full w-full object-contain" />
         </div>
         <aside className="border-l-4 border-primary pl-5">
           <p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Shared Hype Card</p>
           <h1 className="mt-3 font-display text-5xl uppercase leading-[.9] sm:text-6xl">{share.title}</h1>
           <p className="mt-5 text-sm font-medium leading-relaxed text-white/60">
-            {share.mediaType === 'video' ? 'The selected highlight plays directly in the card.' : 'High quality Hype Card featured.'} No Pixl Sports account is required.
+            This Hype Card is available to view without a Pixl Sports account.
           </p>
           {share.stats ? (
             <section className="mt-6 border border-white/10 bg-white/5 p-4 clip-angled-sm" data-testid="hype-card-recipient-stats">
