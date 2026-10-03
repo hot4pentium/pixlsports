@@ -11,4 +11,5 @@ export type HypeCardProjectVersion = typeof HypeCardProjectVersion[keyof typeof 
 
 export const HypeCardProjectVersion = {
   NUMBER_2: 2,
+  NUMBER_3: 3,
 } as const;

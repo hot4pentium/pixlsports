@@ -41,3 +41,17 @@ test('a refreshed pending video draft retains every local rendition for retry', 
   assert.match(editorSource, /if \(next\.posterMediaId && !isCloudMediaId\(next\.posterMediaId\)\) \{\s*obsoleteLocalIds\.push\(next\.posterMediaId\);/);
   assert.match(editorSource, /nextSaveDataRef\.current = project;\s*setSaveStatus\('Waiting to sync'\);\s*void processNextSaveRef\.current\(\)/);
 });
+
+test('transparent cutouts use a distinct private role and hydrate only the saved media ID', () => {
+  assert.match(editorSource, /uploadProjectMedia\(cloudProjectId, 'cutout', blob, 'player-cutout'/);
+  assert.match(editorSource, /item\.mediaRole === 'cutout' && item\.id === source\.breakoutCutoutMediaId/);
+  assert.match(editorSource, /await saveMediaBlob\(media\.id, blob\);[\s\S]*?next = \{ \.\.\.next, breakoutCutoutMediaId: media\.id \}/);
+  assert.match(editorSource, /project\.breakoutCutoutMediaId \? \{ breakoutCutout: null \} : \{\}/);
+});
+
+test('the first cloud save records the uploaded cutout ID in the versioned project', () => {
+  assert.match(
+    editorSource,
+    /const cloudProject = \{ \.\.\.project, breakoutCutoutMediaId: cutoutMedia\.id \};[\s\S]*?projectId: created\.id,[\s\S]*?project: projectForCloudSave\(cloudProject, true\),[\s\S]*?expectedRevision: created\.revision,[\s\S]*?currentRevision\.current = saved\.revision/,
+  );
+});

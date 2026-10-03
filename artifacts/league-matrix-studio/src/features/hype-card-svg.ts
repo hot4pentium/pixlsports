@@ -407,6 +407,19 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
   const lowerThirdDetails = project.teamName.trim() ? detailsLine : '';
   const lowerThirdPlayerSize = lowerThirdPlayer ? fitText(lowerThirdPlayer, 760, 76, 0.7, 2) : 0;
   const lowerThirdDetailsSize = lowerThirdDetails ? fitText(lowerThirdDetails, 620, 23, 0.63, 3) : 0;
+  const breakoutColor = /^#[\da-f]{6}$/i.test(project.breakoutBorderColor)
+    ? project.breakoutBorderColor
+    : palette.primary;
+  const breakoutActive = project.breakoutEnabled && project.mediaType !== 'video';
+  const breakoutCutout = breakoutActive
+    && typeof project.breakoutCutout === 'string'
+    && /^data:image\/(png|webp);base64,[a-z0-9+/]+={0,2}$/i.test(project.breakoutCutout)
+    ? `<g filter="url(#breakoutShadow-${ns})" transform="translate(${project.breakoutTransform?.x ?? 0} ${project.breakoutTransform?.y ?? 0})">
+        <g transform="translate(500 700) scale(${project.breakoutTransform?.zoom ?? 1}) translate(-500 -700)">
+          <image href="${project.breakoutCutout}" x="90" y="115" width="820" height="1140" preserveAspectRatio="xMidYMax meet"/>
+        </g>
+      </g>`
+    : '';
   const positionBadgeMarkup = buildPositionBadgeMarkup(project.position, palette.secondary, palette.accent);
   const photo = project.photo
     ? `<image href="${project.photo}" x="${photoX}" y="${photoY}" width="${photoWidth}" height="${photoHeight}" preserveAspectRatio="xMidYMid meet" style="filter:brightness(${project.adjustments.brightness}) contrast(${project.adjustments.contrast}) saturate(${project.adjustments.saturation});transform-origin:${photoX + photoWidth / 2}px ${photoY + photoHeight / 2}px;transform:rotate(${project.photoTransform.rotation}deg) scaleX(${project.photoTransform.flip ? -1 : 1})"/>`
@@ -429,13 +442,15 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       details: lowerThirdDetails,
       playerSize: lowerThirdPlayerSize,
       detailsSize: lowerThirdDetailsSize,
-      accent: palette.accent,
+      accent: breakoutActive ? breakoutColor : palette.accent,
       ns,
       offsetY: statsUrl ? -290 : 0,
     })
     : '';
-  const mediaGlow = project.mediaType || project.photo
-    ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.primary}" stroke-width="8" stroke-opacity=".58" filter="url(#stadiumMediaGlow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".82"/>`
+  const mediaGlow = project.mediaType || project.photo || (breakoutActive && project.breakoutCutout)
+    ? breakoutActive
+      ? `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="#000" stroke-opacity=".65" stroke-width="15" filter="url(#stadiumShadow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${breakoutColor}" stroke-width="10"/><rect x="${frame.x + 5}" y="${frame.y + 5}" width="${frame.width - 10}" height="${frame.height - 10}" rx="${frame.radius - 5}" fill="none" stroke="#fff" stroke-width="2" stroke-opacity=".65"/><path d="M${frame.x + frame.radius} ${frame.y + 4} H${frame.x + frame.width - frame.radius}" stroke="#fff" stroke-width="2" stroke-opacity=".76"/>`
+      : `<rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.primary}" stroke-width="8" stroke-opacity=".58" filter="url(#stadiumMediaGlow-${ns})"/><rect x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" rx="${frame.radius}" fill="none" stroke="${palette.accent}" stroke-width="3" stroke-opacity=".82"/>`
     : '';
   const defs = `
      ${buildStadiumCardClipMarkup(ns)}
@@ -443,7 +458,8 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
     <linearGradient id="stadiumTop-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity=".9"/><stop offset="1" stop-color="#02060d" stop-opacity="0"/></linearGradient>
     <linearGradient id="stadiumBottom-${ns}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02060d" stop-opacity="0"/><stop offset=".35" stop-color="#02060d" stop-opacity=".76"/><stop offset="1" stop-color="#02060d" stop-opacity=".96"/></linearGradient>
     <filter id="stadiumShadow-${ns}" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity=".85"/></filter>
-    <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    <filter id="stadiumMediaGlow-${ns}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="14" result="softGlow"/><feMerge><feMergeNode in="softGlow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="breakoutShadow-${ns}" x="-35%" y="-15%" width="170%" height="145%"><feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#000" flood-opacity=".62"/></filter>`;
   const bgContent = `<g clip-path="url(#stadiumCardClip-${ns})"><image href="${backgroundImage}" x="0" y="0" width="1000" height="1400" preserveAspectRatio="xMidYMid slice"/></g>`;
   const fgContent = `
     <g clip-path="url(#stadiumCardClip-${ns})">
@@ -462,6 +478,7 @@ function buildStadiumCardSvg(project: HypeCardProject, layer: SvgLayer, ns: stri
       ${logo}
       ${branding}
      </g>
+      ${breakoutCutout}
       ${nameplate}
      ${buildStatsUrlMarkup(statsUrl, 1000, 1400, palette)}`;
   const photoMarkup = `<g clip-path="url(#stadiumPhotoClip-${ns})">${photo}</g>`;

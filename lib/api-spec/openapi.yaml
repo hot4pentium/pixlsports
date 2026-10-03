@@ -3650,12 +3650,12 @@ components:
         offset: { type: integer, minimum: 0 }
     HypeCardProject:
       type: object
-      description: HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
-      required: [version, headline, mediaType, mediaId, videoMeta, trimStart, trimEnd, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, grade, stat, achievement, message, visibility, photo, logo, photoTransform, adjustments]
+      description: HypeCardProject document. Versions 2 and 3 are supported. New cloud writes keep source media private and store only reusable design settings plus private media references.
+      required: [version, headline, mediaType, mediaId, videoMeta, trimStart, trimEnd, template, layout, format, palette, finish, background, overlay, branding, playerName, jerseyNumber, teamName, position, stat, achievement, message, visibility, photo, logo, photoTransform, adjustments]
       properties:
         version:
           type: integer
-          enum: [2]
+          enum: [2, 3]
         headline: { type: string }
         mediaType: { type: ["string", "null"], enum: [image, video, null] }
         mediaId: { type: ["string", "null"] }
@@ -3670,6 +3670,15 @@ components:
         format: { type: string, enum: [square, story, landscape, card] }
         palette: { type: string, enum: [coral, teal, gold, midnight] }
         finish: { type: string, enum: [classic, cosmic-clash, gold-spotlight, neon-prism, paint-impact] }
+        breakoutEnabled: { type: boolean }
+        breakoutBorderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
+        breakoutCutoutMediaId: { type: ["string", "null"] }
+        breakoutTransform:
+          type: object
+          properties:
+            zoom: { type: number, minimum: 0.7, maximum: 1.65 }
+            x: { type: number, minimum: -240, maximum: 240 }
+            y: { type: number, minimum: -240, maximum: 240 }
         background: { type: string, enum: [solid, gradient, paper] }
         overlay: { type: boolean }
         branding: { type: boolean }
@@ -3869,7 +3878,7 @@ components:
           enum: [image, video]
         mediaRole:
           type: string
-          enum: [photo, logo, poster, video_preview, video_download, legacy]
+          enum: [photo, logo, poster, cutout, video_preview, video_download, legacy]
         createdAt:
           type: string
           format: date-time
@@ -3894,7 +3903,7 @@ components:
           enum: [image, video]
         mediaRole:
           type: string
-          enum: [photo, logo, poster, video_preview, video_download]
+          enum: [photo, logo, poster, cutout, video_preview, video_download]
     MediaUpload:
       type: object
       required: [uploadURL, objectPath, claimId, expiresAt]

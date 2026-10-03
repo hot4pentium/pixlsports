@@ -3691,7 +3691,7 @@ export const ListProjectsResponseItem = zod.object({
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -3730,7 +3730,7 @@ export const CreateProjectResponse = zod.object({
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -3760,7 +3760,7 @@ export const GetProjectResponse = zod.object({
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -3801,7 +3801,7 @@ export const UpdateProjectResponse = zod.object({
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -3831,7 +3831,7 @@ export const RequestProjectMediaUploadUrlBody = zod.object({
   "size": zod.number().int().min(1),
   "contentType": zod.string(),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download'])
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download'])
 })
 
 
@@ -3848,7 +3848,7 @@ export const RequestProjectMediaUploadUrlResponse = zod.object({
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 }).optional()
 })
@@ -3874,7 +3874,7 @@ export const CompleteProjectMediaUploadResponse = zod.object({
   "contentType": zod.string(),
   "size": zod.number().int().min(1),
   "mediaType": zod.enum(['image', 'video']),
-  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'video_preview', 'video_download', 'legacy']),
+  "mediaRole": zod.enum(['photo', 'logo', 'poster', 'cutout', 'video_preview', 'video_download', 'legacy']),
   "createdAt": zod.coerce.date()
 })
 

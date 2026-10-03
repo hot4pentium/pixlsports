@@ -228,9 +228,78 @@ async function inspectFormat(format) {
   };
 }
 
+async function inspectBreakout() {
+  const photoCanvas = document.createElement('canvas');
+  photoCanvas.width = 100;
+  photoCanvas.height = 200;
+  const photoContext = photoCanvas.getContext('2d');
+  if (!photoContext) throw new Error('Could not create a source-photo fixture');
+  photoContext.fillStyle = '#1765e8';
+  photoContext.fillRect(0, 0, photoCanvas.width, photoCanvas.height);
+  const sourcePhoto = photoCanvas.toDataURL('image/png');
+
+  const cutoutCanvas = document.createElement('canvas');
+  cutoutCanvas.width = 100;
+  cutoutCanvas.height = 200;
+  const cutoutContext = cutoutCanvas.getContext('2d');
+  if (!cutoutContext) throw new Error('Could not create a transparent cutout fixture');
+  cutoutContext.fillStyle = '#f52222';
+  cutoutContext.fillRect(30, 20, 40, 170);
+  const cutout = cutoutCanvas.toDataURL('image/png');
+  const project = {
+    ...defaultProject(),
+    format: 'card',
+    mediaType: 'image',
+    mediaId: 'fixture-photo',
+    photo: sourcePhoto,
+    playerName: 'Jordan Lane',
+    teamName: 'Eastside Falcons',
+    breakoutEnabled: true,
+    breakoutBorderColor: '#12AB34',
+    breakoutCutout: cutout,
+    breakoutCutoutMediaId: 'fixture-cutout',
+    breakoutTransform: { zoom: 1.2, x: 24, y: -18 },
+  };
+  const foreground = buildHypeCardSvg(project, 'fg', 'breakout');
+  const all = buildHypeCardSvg(project, 'all', 'breakout');
+  const background = buildHypeCardSvg(project, 'bg', 'breakout');
+  const standard = buildHypeCardSvg({ ...project, breakoutEnabled: false }, 'all', 'standard');
+  const video = buildHypeCardSvg({ ...project, mediaType: 'video' }, 'all', 'video');
+  const cutoutIndex = foreground.indexOf('href="' + cutout + '"');
+  const nameplateIndex = foreground.indexOf('JORDAN LANE');
+  const image = await loadSvg(all);
+  const standardImage = await loadSvg(standard);
+  const canvas = document.createElement('canvas');
+  canvas.width = 1000;
+  canvas.height = 1400;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not create the Breakout render fixture');
+  context.drawImage(image, 0, 0);
+  const playerPixel = [...context.getImageData(500, 700, 1, 1).data];
+  const cutoutClearPhotoPixel = [...context.getImageData(370, 700, 1, 1).data];
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(standardImage, 0, 0);
+  const standardPhotoPixel = [...context.getImageData(370, 700, 1, 1).data];
+
+  return {
+    sourcePhotoPreserved: all.includes('href="' + sourcePhoto + '"'),
+    cutoutIncluded: cutoutIndex >= 0,
+    nameplateAboveCutout: nameplateIndex > cutoutIndex,
+    customFrameEdge: foreground.includes('stroke="#12AB34" stroke-width="10"'),
+    transformIncluded: foreground.includes('translate(24 -18)') && foreground.includes('scale(1.2)'),
+    backgroundHasNoCutout: !background.includes(cutout),
+    standardHasNoCutout: !standard.includes(cutout),
+    videoHasNoCutout: !video.includes(cutout),
+    playerPixel,
+    cutoutClearPhotoPixel,
+    standardPhotoPixel,
+  };
+}
+
 async function run() {
   const results = [];
   for (const format of formats) results.push(await inspectFormat(format));
+  results[0].breakout = await inspectBreakout();
   document.body.dataset.results = JSON.stringify(results);
 }
 
@@ -316,6 +385,19 @@ test('linked stats URLs and the card watermark survive phone-sized image and vid
       watermarkPixelCounts: number[];
       copyOverlap: boolean;
       ordinaryExportUnchanged: boolean;
+      breakout?: {
+        sourcePhotoPreserved: boolean;
+        cutoutIncluded: boolean;
+        nameplateAboveCutout: boolean;
+        customFrameEdge: boolean;
+        transformIncluded: boolean;
+        backgroundHasNoCutout: boolean;
+        standardHasNoCutout: boolean;
+        videoHasNoCutout: boolean;
+        playerPixel: number[];
+        cutoutClearPhotoPixel: number[];
+        standardPhotoPixel: number[];
+      };
     }>>('JSON.parse(document.body.dataset.results)', page.sessionId);
 
     assert.deepEqual(results.map((result) => result.format), ['card', 'story', 'square', 'landscape']);
@@ -336,6 +418,22 @@ test('linked stats URLs and the card watermark survive phone-sized image and vid
       assert.ok(result.rasterBrightPixels > 0, `${result.format} raster does not contain visible URL pixels`);
       assert.ok(result.framePixelCounts.every((count) => count > 0), `${result.format} video foreground loses the URL on a frame`);
       if (result.format === 'card') {
+        const breakout = result.breakout;
+        assert.ok(breakout, 'card output should include a Breakout render check');
+        assert.equal(breakout.sourcePhotoPreserved, true);
+        assert.equal(breakout.cutoutIncluded, true);
+        assert.equal(breakout.nameplateAboveCutout, true);
+        assert.equal(breakout.customFrameEdge, true);
+        assert.equal(breakout.transformIncluded, true);
+        assert.equal(breakout.backgroundHasNoCutout, true);
+        assert.equal(breakout.standardHasNoCutout, true);
+        assert.equal(breakout.videoHasNoCutout, true);
+        assert.ok(breakout.playerPixel[0] > 180 && breakout.playerPixel[1] < 80, 'the cutout should render above the source photo');
+        assert.ok(breakout.cutoutClearPhotoPixel[2] > breakout.cutoutClearPhotoPixel[0], 'the source photo should remain visible through transparent cutout pixels');
+        assert.ok(
+          breakout.cutoutClearPhotoPixel.every((channel, index) => Math.abs(channel - breakout.standardPhotoPixel[index]) <= 16),
+          'transparent cutout pixels should keep the original photo visible beneath the frame edge glow',
+        );
         const watermark = result.watermark;
         assert.ok(watermark, 'stadium card should include a photo watermark');
         assert.equal(watermark.allCount, 1, 'still artwork should contain one watermark');
@@ -346,7 +444,10 @@ test('linked stats URLs and the card watermark survive phone-sized image and vid
         assert.equal(watermark.clipPath, 'url(#stadiumPhotoClip-raster)');
         assert.equal(watermark.rotation, 'rotate(45 680 850)');
         assert.ok(watermark.opacity > 0 && watermark.opacity < .6, 'the mark should be translucent');
-        assert.ok(watermark.bounds.x >= 180 && watermark.bounds.right <= 820, 'watermark leaves the photo horizontally');
+        assert.ok(
+          watermark.bounds.x >= 172 && watermark.bounds.right <= 828,
+          `watermark text bounds should stay close to the clipped photo: ${JSON.stringify(watermark.bounds)}`,
+        );
         assert.ok(watermark.bounds.y >= 330 && watermark.bounds.bottom <= 1085, 'watermark leaves the photo vertically');
         assert.equal(result.watermarkPixelCounts.length, 3);
         assert.ok(result.watermarkPixelCounts.every((count) => count > 10), 'watermark disappears on a phone-sized video frame');

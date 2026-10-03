@@ -58,10 +58,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   HypeCardProject, HypeFormat, TemplateId, CardLayoutId,
   templates, cardLayouts, defaultProject, getDimensions, cardFinishes,
-  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, designOnlyProject, clearHypeCardMedia,
+  normalizeHypeCardProject, readHypeCardProject, saveHypeCardProject, isSafeRasterDataUrl, isSafeCutoutDataUrl, designOnlyProject, clearHypeCardMedia,
   serializeHypeCardTemplate, parseHypeCardTemplate, PORTABLE_TEMPLATE_MEDIA_NOTE,
   persistCompletedHypeCardCloudSave, readHypeCardCloudDraft, saveHypeCardCloudDraft,
 } from './hype-card-types';
+import { HypeCardBreakoutControls, type BreakoutTransform } from './hype-card-breakout-controls';
+import { hasUsableTransparency } from './hype-card-breakout-validation';
 import { applyLatestLinkedStat } from './hype-card-stat-sync';
 import { buildHypeCardSvg, getPhotoClipInfo, SvgLayer, getPhotoFrame, STADIUM_MEDIA_FRAME } from './hype-card-svg';
 import { getHypeCardNoticeTone } from './hype-card-notice';
@@ -230,7 +232,7 @@ function formatMediaBytes(bytes: number) {
 }
 
 function hasDeviceOnlyMedia(project: HypeCardProject) {
-  return [project.mediaId, project.downloadMediaId, project.posterMediaId, project.logoMediaId]
+  return [project.mediaId, project.downloadMediaId, project.posterMediaId, project.logoMediaId, project.breakoutCutoutMediaId]
     .some((id) => Boolean(id && !isCloudMediaId(id)));
 }
 
@@ -258,14 +260,17 @@ async function cleanupProjectMediaUploads(records: ProjectMediaUploadRecord[]): 
 }
 
 function projectForLocalSave(project: HypeCardProject) {
-  return project.mediaType === 'image' && project.mediaId
-    ? { ...project, photo: null }
-    : project;
+  return {
+    ...project,
+    ...(project.mediaType === 'image' && project.mediaId ? { photo: null } : {}),
+    ...(project.breakoutCutoutMediaId ? { breakoutCutout: null } : {}),
+  };
 }
 
 function mergeDeviceMedia(serverProject: HypeCardProject, localProject: HypeCardProject) {
   const localPhoto = localProject.mediaId && !isCloudMediaId(localProject.mediaId);
   const localLogo = localProject.logoMediaId && !isCloudMediaId(localProject.logoMediaId);
+  const localCutout = localProject.breakoutCutoutMediaId && !isCloudMediaId(localProject.breakoutCutoutMediaId);
   return {
     ...serverProject,
     ...(localPhoto ? {
@@ -281,6 +286,10 @@ function mergeDeviceMedia(serverProject: HypeCardProject, localProject: HypeCard
       logoMediaId: localProject.logoMediaId,
       logo: localProject.logo,
     } : {}),
+    ...(localCutout ? {
+      breakoutCutoutMediaId: localProject.breakoutCutoutMediaId,
+      breakoutCutout: localProject.breakoutCutout,
+    } : {}),
   };
 }
 
@@ -291,6 +300,9 @@ function hydrateCloudHypeCard(cloudProject: Project) {
   const poster = cloudProject.media.find((item) => item.mediaRole === 'poster');
   const preview = cloudProject.media.find((item) => item.mediaRole === 'video_preview');
   const download = cloudProject.media.find((item) => item.mediaRole === 'video_download');
+  const cutout = cloudProject.media.find((item) =>
+    item.mediaRole === 'cutout' && item.id === source.breakoutCutoutMediaId
+  );
   return normalizeHypeCardProject({
     ...source,
     format: 'card',
@@ -299,6 +311,8 @@ function hydrateCloudHypeCard(cloudProject: Project) {
     downloadMediaId: download?.id ?? null,
     posterMediaId: poster?.id ?? null,
     logoMediaId: logo?.id ?? null,
+    breakoutCutoutMediaId: cutout?.id ?? null,
+    breakoutCutout: null,
   });
 }
 
@@ -324,7 +338,7 @@ async function cacheCloudStaticMedia(cloudProject: Project) {
 
 async function uploadProjectMedia(
   projectId: string,
-  mediaRole: 'photo' | 'logo' | 'poster' | 'video_preview' | 'video_download',
+  mediaRole: 'photo' | 'logo' | 'poster' | 'cutout' | 'video_preview' | 'video_download',
   blob: Blob,
   name: string,
   options: {
@@ -357,11 +371,15 @@ async function uploadProjectMedia(
   return media;
 }
 
-function projectForCloudSave(project: HypeCardProject, paid: boolean): HypeCardProject {
+function projectForCloudSave(project: HypeCardProject, paid: boolean, keepExistingCloudMedia = true): HypeCardProject {
   const design = designOnlyProject(project);
-  return paid
-    ? { ...design, videoMeta: project.videoMeta }
-    : design;
+  return {
+    ...design,
+    ...(paid ? { videoMeta: project.videoMeta } : {}),
+    breakoutCutoutMediaId: paid && keepExistingCloudMedia && isCloudMediaId(project.breakoutCutoutMediaId)
+      ? project.breakoutCutoutMediaId
+      : null,
+  };
 }
 
 function assetUpload(
@@ -407,6 +425,12 @@ function LayoutOption({
       project.headline,
       project.mediaType,
       project.photo,
+      project.breakoutEnabled,
+      project.breakoutBorderColor,
+      project.breakoutCutout,
+      project.breakoutTransform.zoom,
+      project.breakoutTransform.x,
+      project.breakoutTransform.y,
       project.palette,
       project.overlay,
       project.branding,
@@ -1054,6 +1078,7 @@ export function HypeCardEditor() {
   });
 
   const [notice, setNotice] = useState('');
+  const [breakoutAvailabilityMessage, setBreakoutAvailabilityMessage] = useState<string | null>(null);
   const [templateMediaNotice, setTemplateMediaNotice] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(
@@ -1384,6 +1409,66 @@ export function HypeCardEditor() {
   }, [cloudProjectData, cloudProjectId, isOnline]);
 
   useEffect(() => {
+    const mediaId = project.breakoutCutoutMediaId;
+    if (!mediaId || project.breakoutCutout) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        let blob = await loadMediaBlob(mediaId);
+        if (!blob && isCloudMediaId(mediaId) && isOnline) {
+          blob = await serveProjectMedia(mediaId);
+          await saveMediaBlob(mediaId, blob);
+        }
+        if (!blob) {
+          setBreakoutAvailabilityMessage(
+            isCloudMediaId(mediaId) && !isOnline
+              ? 'Reconnect to load this saved cutout. Your original photo is unchanged.'
+              : 'This saved cutout is unavailable on this device. Choose it again; your original photo is unchanged.',
+          );
+          return;
+        }
+        const dataUrl = await blobToDataUrl(blob);
+        if (!cancelled) {
+          setProject((current) => current.breakoutCutoutMediaId === mediaId && !current.breakoutCutout
+            ? { ...current, breakoutCutout: dataUrl }
+            : current);
+          setBreakoutAvailabilityMessage(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setBreakoutAvailabilityMessage('The saved cutout could not be loaded. Reconnect or choose it again; your original photo is unchanged.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.breakoutCutoutMediaId, project.breakoutCutout, isOnline]);
+
+  useEffect(() => {
+    const currentCutoutId = project.breakoutCutoutMediaId;
+    if (
+      !cloudProjectId
+      || !isOnline
+      || !cloudProjectData
+      || (currentCutoutId && !isCloudMediaId(currentCutoutId))
+    ) return;
+    const staleCutouts = cloudProjectData.media.filter((item) =>
+      item.mediaRole === 'cutout' && item.id !== currentCutoutId
+    );
+    if (staleCutouts.length === 0) return;
+    void Promise.all(staleCutouts.map((item) => deleteProjectMedia(item.id).catch(() => null)))
+      .then((results) => {
+        const failed = results.some((result) => result === null);
+        if (failed) {
+          setNotice('The design no longer uses its old cutout, but a private cloud copy could not be removed. Reconnect and retry.');
+        } else {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(cloudProjectId) });
+        }
+      });
+  }, [cloudProjectId, cloudProjectData?.media, isOnline, project.breakoutCutoutMediaId, queryClient]);
+
+  useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
     const previousRootOverflow = document.documentElement.style.overflow;
     const desktopEditor = window.matchMedia('(min-width: 640px)');
@@ -1586,9 +1671,7 @@ export function HypeCardEditor() {
     const timeout = window.setTimeout(async () => {
       if (!cloudProjectId) {
         try {
-          const savedProject = project.mediaType === 'image' && project.mediaId
-            ? { ...project, photo: null }
-            : project;
+           const savedProject = projectForLocalSave(project);
            saveHypeCardProject(window.localStorage, savedProject);
           window.localStorage.setItem('leaguematrix-project', 'true');
           setAutosaveWarning('');
@@ -1637,7 +1720,7 @@ export function HypeCardEditor() {
       const created = await createProject.mutateAsync({
         data: {
           name: `${project.teamName || 'Untitled'} - ${project.headline || 'Project'}`,
-          project: projectForCloudSave(project, Boolean(accountAccess?.paid)),
+           project: projectForCloudSave(project, Boolean(accountAccess?.paid), false),
           ...(accountAccess?.accessMode === 'guest' ? { guestUsageKey } : {}),
         }
       });
@@ -1669,6 +1752,33 @@ export function HypeCardEditor() {
             if (project.photo) uploads.push(uploadProjectMedia(created.id, 'poster', await (await fetch(project.photo)).blob(), 'poster.jpg'));
           }
           await Promise.all(uploads);
+          const localCutoutId = project.breakoutCutoutMediaId;
+          const cutoutBlob = (localCutoutId ? await loadMediaBlob(localCutoutId) : undefined)
+            ?? (project.breakoutCutout ? await (await fetch(project.breakoutCutout)).blob() : undefined);
+          if (cutoutBlob) {
+            const cutoutMedia = await uploadProjectMedia(created.id, 'cutout', cutoutBlob, 'player-cutout');
+            await saveMediaBlob(cutoutMedia.id, cutoutBlob);
+            const cloudProject = { ...project, breakoutCutoutMediaId: cutoutMedia.id };
+            const saved = await mutateFnRef.current({
+              projectId: created.id,
+              data: {
+                project: projectForCloudSave(cloudProject, true),
+                expectedRevision: created.revision,
+              },
+            });
+            currentRevision.current = saved.revision;
+            queryClient.setQueryData(getGetProjectQueryKey(created.id), saved);
+            setProject(cloudProject);
+            lastSaved.current = cloudProject;
+            saveHypeCardCloudDraft(created.id, window.localStorage, {
+              project: projectForLocalSave(cloudProject),
+              syncState: 'synced',
+              cloudRevision: saved.revision,
+            });
+            if (localCutoutId && !isCloudMediaId(localCutoutId)) {
+              await deleteMediaBlob(localCutoutId).catch(() => undefined);
+            }
+          }
           queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(created.id) });
           setNotice('Project and private media saved. Video preview loads when you press Play; download quality loads when you export.');
         } catch (error) {
@@ -1746,6 +1856,29 @@ export function HypeCardEditor() {
               videoMeta: null,
             };
           }
+        }
+
+        if (next.breakoutCutoutMediaId && !isCloudMediaId(next.breakoutCutoutMediaId)) {
+          const localCutoutId = next.breakoutCutoutMediaId;
+          const blob = await loadMediaBlob(localCutoutId);
+          if (!blob) throw new Error('The local transparent cutout is missing. Choose it again before syncing.');
+          const media = await uploadProjectMedia(cloudProjectId, 'cutout', blob, 'player-cutout', {
+            signal: syncAbortController.signal,
+            onClaimCreated: trackUpload,
+          });
+          await saveMediaBlob(media.id, blob);
+          const obsoleteCloudCutouts = cloudProjectData?.media.filter((item) =>
+            item.mediaRole === 'cutout' && item.id !== media.id
+          ) ?? [];
+          await Promise.all(obsoleteCloudCutouts.map(async (item) => {
+            try {
+              await deleteProjectMedia(item.id);
+            } catch (error: any) {
+              if (error?.status !== 404) throw error;
+            }
+          }));
+          obsoleteLocalIds.push(localCutoutId);
+          next = { ...next, breakoutCutoutMediaId: media.id };
         }
 
         if (next.logoMediaId && !isCloudMediaId(next.logoMediaId)) {
@@ -2213,11 +2346,94 @@ export function HypeCardEditor() {
     }
   };
 
+  const handleBreakoutCutoutSelect = async (file: File) => {
+    setBreakoutAvailabilityMessage(null);
+    const fail = (message: string) => {
+      setBreakoutAvailabilityMessage(message);
+      setNotice(message);
+    };
+    if (file.type !== 'image/png' && file.type !== 'image/webp') {
+      fail('Choose a transparent PNG or WebP cutout. Your original photo is unchanged.');
+      return;
+    }
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+      fail('Cutouts must be 10 MB or smaller. Your original photo is unchanged.');
+      return;
+    }
+    if (typeof createImageBitmap !== 'function') {
+      fail('This browser could not verify image transparency. Try a browser with PNG/WebP canvas support.');
+      return;
+    }
+
+    let bitmap: ImageBitmap | undefined;
+    try {
+      bitmap = await createImageBitmap(file);
+      const pixelCount = bitmap.width * bitmap.height;
+      if (!bitmap.width || !bitmap.height || pixelCount > 16_000_000) {
+        fail('This cutout is too large to check safely. Choose an image under 16 megapixels.');
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Transparency could not be checked in this browser.');
+      context.drawImage(bitmap, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      canvas.width = 0;
+      canvas.height = 0;
+      if (!hasUsableTransparency(pixels, bitmap.width, bitmap.height)) {
+        fail('This image does not have a usable transparent background. Choose a background-removed PNG or WebP; your original photo is unchanged.');
+        return;
+      }
+
+      const dataUrl = await blobToDataUrl(file);
+      if (!isSafeCutoutDataUrl(dataUrl)) throw new Error('That cutout is not a supported transparent image.');
+      const cutoutId = `cutout-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      await saveMediaBlob(cutoutId, file);
+      const previousId = project.breakoutCutoutMediaId;
+      setProject((current) => ({
+        ...current,
+        breakoutEnabled: true,
+        breakoutCutout: dataUrl,
+        breakoutCutoutMediaId: cutoutId,
+      }));
+      if (previousId && !isCloudMediaId(previousId)) {
+        await deleteMediaBlob(previousId).catch(() => undefined);
+      }
+      setBreakoutAvailabilityMessage(null);
+      setNotice('Transparent cutout added. Your original photo is preserved separately.');
+    } catch (error) {
+      fail(error instanceof Error
+        ? `${error.message} Your original photo is unchanged.`
+        : 'This cutout could not be checked. Choose another PNG or WebP.');
+    } finally {
+      bitmap?.close();
+    }
+  };
+
+  const handleBreakoutCutoutRemove = async () => {
+    const previousId = project.breakoutCutoutMediaId;
+    setProject((current) => ({
+      ...current,
+      breakoutCutout: null,
+      breakoutCutoutMediaId: null,
+    }));
+    if (previousId && !isCloudMediaId(previousId)) {
+      await deleteMediaBlob(previousId).catch(() => undefined);
+    }
+    setBreakoutAvailabilityMessage('Breakout needs a transparent cutout. Your original photo remains unchanged.');
+    setNotice('Transparent cutout removed. Your original photo remains unchanged.');
+  };
+
   const handleMediaRemove = async () => {
     if (project.mediaId) {
       await deleteMediaBlob(project.mediaId).catch(console.warn);
     }
     if (project.downloadMediaId) await deleteMediaBlob(project.downloadMediaId).catch(console.warn);
+    if (project.breakoutCutoutMediaId && !isCloudMediaId(project.breakoutCutoutMediaId)) {
+      await deleteMediaBlob(project.breakoutCutoutMediaId).catch(() => undefined);
+    }
     for (const id of [project.mediaId, project.downloadMediaId, project.posterMediaId]) {
       if (isOnline && isCloudMediaId(id)) await deleteProjectMedia(id).catch(() => undefined);
     }
@@ -2540,7 +2756,13 @@ export function HypeCardEditor() {
       setShareStage(isStatsOnly ? 'Saving the finalized stats link…' : 'Saving the Athlete Hype Page video…');
       const shareManifestProject = isStatsOnly
         ? null
-        : { ...shareProject, statSource: null, mediaName: shareMediaName.trim() };
+        : {
+            ...shareProject,
+            statSource: null,
+            mediaName: shareMediaName.trim(),
+            breakoutCutout: null,
+            breakoutCutoutMediaId: null,
+          };
       const created = await createHypeShare.mutateAsync({
         data: {
           mediaName: shareMediaName.trim(),
@@ -3112,6 +3334,24 @@ export function HypeCardEditor() {
                 {cardLayouts.map((l) => (
                   <LayoutOption key={l.id} layout={l} project={project} selected={project.layout === l.id} onSelect={() => updateProject('layout', l.id)} />
                 ))}
+              </div>
+              <div className="mt-6">
+                <HypeCardBreakoutControls
+                  enabled={project.breakoutEnabled}
+                  borderColor={project.breakoutBorderColor}
+                  cutoutDataUrl={project.breakoutCutout}
+                  availabilityMessage={project.mediaType === 'video'
+                    ? 'Breakout is for still-photo cards. Your video stays unchanged.'
+                    : breakoutAvailabilityMessage}
+                  disabled={project.mediaType === 'video'}
+                  transform={project.breakoutTransform}
+                  onEnabledChange={(enabled) => updateProject('breakoutEnabled', enabled)}
+                  onBorderColorChange={(color) => updateProject('breakoutBorderColor', color)}
+                  onCutoutSelect={handleBreakoutCutoutSelect}
+                  onCutoutRemove={handleBreakoutCutoutRemove}
+                  onTransformChange={(transform: BreakoutTransform) => updateProject('breakoutTransform', transform)}
+                  onTransformReset={() => updateProject('breakoutTransform', defaultProject().breakoutTransform)}
+                />
               </div>
             </Section>}
 

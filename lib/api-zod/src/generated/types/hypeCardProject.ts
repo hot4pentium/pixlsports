@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HypeCardProjectBackground } from './hypeCardProjectBackground';
+import type { HypeCardProjectBreakoutTransform } from './hypeCardProjectBreakoutTransform';
 import type { HypeCardProjectFinish } from './hypeCardProjectFinish';
 import type { HypeCardProjectFormat } from './hypeCardProjectFormat';
 import type { HypeCardProjectLayout } from './hypeCardProjectLayout';
@@ -19,7 +20,7 @@ import type { ProjectVisibility } from './projectVisibility';
 import type { VideoMeta } from './videoMeta';
 
 /**
- * HypeCardProject document. Version 2 is currently supported. New cloud writes force mediaType, mediaId, videoMeta, photo, and logo to null; non-null values remain readable for legacy projects.
+ * HypeCardProject document. Versions 2 and 3 are supported. New cloud writes keep source media private and store only reusable design settings plus private media references.
  */
 export interface HypeCardProject {
   version: HypeCardProjectVersion;
@@ -38,6 +39,12 @@ export interface HypeCardProject {
   format: HypeCardProjectFormat;
   palette: HypeCardProjectPalette;
   finish: HypeCardProjectFinish;
+  breakoutEnabled?: boolean;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  breakoutBorderColor?: string;
+  /** @nullable */
+  breakoutCutoutMediaId?: string | null;
+  breakoutTransform?: HypeCardProjectBreakoutTransform;
   background: HypeCardProjectBackground;
   overlay: boolean;
   branding: boolean;
@@ -45,7 +52,7 @@ export interface HypeCardProject {
   jerseyNumber: string;
   teamName: string;
   position: string;
-  grade: string;
+  grade?: string;
   stat: string;
   achievement: string;
   message: string;

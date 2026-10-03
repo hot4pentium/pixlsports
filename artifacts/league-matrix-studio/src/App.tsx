@@ -170,6 +170,9 @@ import './auth-page.css';
 const HypeCardReplyInboxTrigger = lazy(() =>
   import('@/features/hype-card-reply-inbox').then(({ HypeCardReplyInboxTrigger }) => ({ default: HypeCardReplyInboxTrigger })),
 );
+const HypeCardEditor = lazy(() =>
+  import('@/features/hype-card').then(({ HypeCardEditor }) => ({ default: HypeCardEditor })),
+);
 const AthleteInviteManager = lazy(() =>
   import('@/features/athlete-invite').then(({ AthleteInviteManager }) => ({ default: AthleteInviteManager })),
 );
@@ -4064,6 +4067,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/studio/profile" component={SupporterProfilePage} />
               <Route path="/studio/admin" component={() => <StudioLayout><AdminConsolePage /></StudioLayout>} />
                <Route path="/studio/athlete-page" component={AthleteInviteManager} />
+               <Route path="/studio/hype-card/:id?"><ProtectedEditor kind="hype"><HypeCardEditor /></ProtectedEditor></Route>
               <Route path="/studio" component={StudioPortal} />
                 <Route path="/studio/schedule/:id?" component={() => <RetiredSchedulePage />} />
               <Route path="/studio/stat-tracker"><ProtectedEditor kind="stat-tracker"><StatTrackerPage /></ProtectedEditor></Route>

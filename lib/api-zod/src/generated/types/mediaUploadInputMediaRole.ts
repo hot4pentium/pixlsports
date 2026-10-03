@@ -13,6 +13,7 @@ export const MediaUploadInputMediaRole = {
   photo: 'photo',
   logo: 'logo',
   poster: 'poster',
+  cutout: 'cutout',
   video_preview: 'video_preview',
   video_download: 'video_download',
 } as const;

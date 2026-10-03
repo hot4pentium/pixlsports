@@ -122,7 +122,7 @@ test('public Athlete Hype Pages do not expose video reply controls', () => {
   assert.doesNotMatch(source, /Send your own reply →/);
 });
 
-test('the HYPE Card manager retires the legacy editor route', () => {
+test('the HYPE Card manager preserves the public page path and protected studio editor', () => {
   assert.match(
     hypeCardSource,
     /const athleteHypePage = athleteInvites\?\.\[0\] \?\? null;/,
@@ -140,7 +140,10 @@ test('the HYPE Card manager retires the legacy editor route', () => {
     /if \(linkedExport\) await handleExport\(url\);\s*if \(!isStatsOnly && !linkedExport\)/,
   );
   assert.doesNotMatch(source, /Hype Card editor|studio\/hype-card/);
-  assert.doesNotMatch(appSource, /path="\/studio\/hype-card(?:\/:id)?"|import\(['"]@\/features\/hype-card['"]\)/);
+  assert.match(
+    appSource,
+    /<Route path="\/studio\/hype-card\/:id\?"><ProtectedEditor kind="hype"><HypeCardEditor \/><\/ProtectedEditor><\/Route>/,
+  );
   assert.match(appSource, /slug: 'athlete-page'/);
   assert.match(source, /href=\{`\/player\/\$\{existing\.inviteToken\}\/manage`\}/);
   assert.match(source, /href=\{`\/fan\/\$\{existing\.inviteToken\}`\}/);

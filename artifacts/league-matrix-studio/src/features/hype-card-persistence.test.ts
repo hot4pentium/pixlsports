@@ -46,6 +46,42 @@ test('new Hype Card projects leave the moment blank for custom entry', () => {
   assert.equal(normalizeHypeCardProject({}).headline, '');
 });
 
+test('Breakout color and framing survive local reload while cloud designs omit cutout media', () => {
+  const storage = new MemoryStorage();
+  const project: HypeCardProject = {
+    ...defaultProject(),
+    breakoutEnabled: true,
+    breakoutBorderColor: '#12AB34',
+    breakoutCutoutMediaId: 'local-cutout',
+    breakoutTransform: { zoom: 1.35, x: 54, y: -28 },
+  };
+
+  saveHypeCardProject(storage as Storage, project);
+  const reloaded = readHypeCardProject(storage as Storage);
+  const cloudDesign = designOnlyProject(project);
+
+  assert.ok(reloaded);
+  assert.equal(reloaded.breakoutEnabled, true);
+  assert.equal(reloaded.breakoutBorderColor, '#12AB34');
+  assert.equal(reloaded.breakoutCutoutMediaId, 'local-cutout');
+  assert.deepEqual(reloaded.breakoutTransform, { zoom: 1.35, x: 54, y: -28 });
+  assert.equal(cloudDesign.breakoutEnabled, true);
+  assert.equal(cloudDesign.breakoutBorderColor, '#12AB34');
+  assert.equal(cloudDesign.breakoutCutout, null);
+  assert.equal(cloudDesign.breakoutCutoutMediaId, null);
+  assert.deepEqual(cloudDesign.breakoutTransform, project.breakoutTransform);
+});
+
+test('rejects cutout data URLs that can escape the base64 image payload', () => {
+  const project = normalizeHypeCardProject({
+    ...defaultProject(),
+    breakoutEnabled: true,
+    breakoutCutout: 'data:image/png;base64,cGxheWVy"><script>alert(1)</script>',
+  });
+
+  assert.equal(project.breakoutCutout, null);
+});
+
 test('custom position labels survive local save, reload, and exported badge markup', () => {
   const labels = [
     'GK',

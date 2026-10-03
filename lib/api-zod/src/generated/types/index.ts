@@ -107,6 +107,7 @@ export * from './getNotificationSubscriptionStatusParams';
 export * from './healthStatus';
 export * from './hypeCardProject';
 export * from './hypeCardProjectBackground';
+export * from './hypeCardProjectBreakoutTransform';
 export * from './hypeCardProjectFinish';
 export * from './hypeCardProjectFormat';
 export * from './hypeCardProjectLayout';

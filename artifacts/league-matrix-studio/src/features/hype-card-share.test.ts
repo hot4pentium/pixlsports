@@ -7,6 +7,7 @@ import { hostedVideoBudgetBytes, isUsableHostedVideo, monotonicProgress } from '
 const shareSource = readFileSync(new URL('./hype-card-share.tsx', import.meta.url), 'utf8');
 const exportSource = readFileSync(new URL('./hype-card-export.ts', import.meta.url), 'utf8');
 const thumbnailSource = readFileSync(new URL('./video-thumbnail.ts', import.meta.url), 'utf8');
+const editorSource = readFileSync(new URL('./hype-card.tsx', import.meta.url), 'utf8');
 
 test('preparation progress starts visibly and never moves backward between phases', () => {
   assert.equal(monotonicProgress(0, 0.01), 0.01);
@@ -53,4 +54,9 @@ test('hosted preparation activates one audio context before awaiting and passes 
   assert.match(shareSource, /finally \{[\s\S]*?audioSession\.context\.close\(\)/);
   assert.match(shareSource, /audioSession,\s*\n\s*\},\s*\n\s*\);/);
   assert.match(exportSource, /hasAudibleAudioSamples\(blob, signal, audioSession\)/);
+});
+
+test('published photo cards flatten Breakout into the shared image without exposing the private cutout', () => {
+  assert.match(editorSource, /const svg = buildHypeCardSvg\(project, 'all', 'export'\)/);
+  assert.match(editorSource, /breakoutCutout: null,\s*breakoutCutoutMediaId: null/);
 });

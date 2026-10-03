@@ -27,6 +27,15 @@ export type HypeCardProject = {
   format: HypeFormat;
   palette: PaletteId;
   finish: CardFinishId;
+  breakoutEnabled: boolean;
+  breakoutBorderColor: string;
+  breakoutCutout: string | null;
+  breakoutCutoutMediaId: string | null;
+  breakoutTransform: {
+    zoom: number;
+    x: number;
+    y: number;
+  };
   background: 'solid' | 'gradient' | 'paper';
   overlay: boolean;
   branding: boolean;
@@ -69,7 +78,7 @@ export type HypeCardTemplateFile = {
 };
 
 export const PORTABLE_TEMPLATE_MEDIA_NOTE =
-  'Portable templates include design settings and text only. Uploaded photos, logos, and videos are not included.';
+  'Portable templates include design settings and text only. Uploaded photos, transparent cutouts, logos, and videos are not included.';
 export const templates: Array<{ id: TemplateId; name: string; summary: string }> = [
   { id: 'spotlight', name: 'Spotlight', summary: 'Dramatic lights and a player-first frame.' },
   { id: 'impact', name: 'Impact', summary: 'A bold number with motion and team color.' },
@@ -116,6 +125,11 @@ export const defaultProject = (): HypeCardProject => ({
   format: 'card',
   palette: 'coral',
   finish: 'classic',
+  breakoutEnabled: false,
+  breakoutBorderColor: '#35A8FF',
+  breakoutCutout: null,
+  breakoutCutoutMediaId: null,
+  breakoutTransform: { zoom: 1, x: 0, y: 0 },
   background: 'gradient',
   overlay: true,
   branding: true,
@@ -150,6 +164,10 @@ export function isSafeRasterDataUrl(url: unknown): url is string {
   return typeof url === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(url);
 }
 
+export function isSafeCutoutDataUrl(url: unknown): url is string {
+  return typeof url === 'string' && /^data:image\/(png|webp);base64,[a-z0-9+/]+={0,2}$/i.test(url);
+}
+
 export function designOnlyProject(project: HypeCardProject): HypeCardProject {
   return {
     ...project,
@@ -162,6 +180,8 @@ export function designOnlyProject(project: HypeCardProject): HypeCardProject {
     videoMeta: null,
     photo: null,
     logo: null,
+    breakoutCutout: null,
+    breakoutCutoutMediaId: null,
   };
 }
 
@@ -177,6 +197,8 @@ export function clearHypeCardMedia(project: HypeCardProject): HypeCardProject {
     videoMeta: null,
     videoPrepared: false,
     photo: null,
+    breakoutCutout: null,
+    breakoutCutoutMediaId: null,
     photoTransform: defaults.photoTransform,
     adjustments: defaults.adjustments,
   };
@@ -201,6 +223,7 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
   const legacyVisibilityMessage = visibility[legacyMessageKey];
   const safePhoto = isSafeRasterDataUrl(project.photo) ? project.photo : null;
   const safeLogo = isSafeRasterDataUrl(project.logo) ? project.logo : null;
+  const safeBreakoutCutout = isSafeCutoutDataUrl(project.breakoutCutout) ? project.breakoutCutout : null;
   const isLegacy = project.version === 1;
   const mediaType = isLegacy
     ? (safePhoto ? 'image' : null)
@@ -241,6 +264,23 @@ export function normalizeHypeCardProject(value: unknown): HypeCardProject {
       : defaults.trimEnd,
     layout: project.layout ?? defaults.layout,
     finish: cardFinishes.some(f => f.id === project.finish) ? project.finish : defaults.finish,
+    breakoutEnabled: project.breakoutEnabled === true,
+    breakoutBorderColor: typeof project.breakoutBorderColor === 'string' && /^#[\da-f]{6}$/i.test(project.breakoutBorderColor)
+      ? project.breakoutBorderColor
+      : defaults.breakoutBorderColor,
+    breakoutCutout: safeBreakoutCutout,
+    breakoutCutoutMediaId: typeof project.breakoutCutoutMediaId === 'string' ? project.breakoutCutoutMediaId : null,
+    breakoutTransform: {
+      zoom: Number.isFinite(Number(project.breakoutTransform?.zoom))
+        ? Math.max(0.7, Math.min(1.65, Number(project.breakoutTransform.zoom)))
+        : defaults.breakoutTransform.zoom,
+      x: Number.isFinite(Number(project.breakoutTransform?.x))
+        ? Math.max(-240, Math.min(240, Number(project.breakoutTransform.x)))
+        : defaults.breakoutTransform.x,
+      y: Number.isFinite(Number(project.breakoutTransform?.y))
+        ? Math.max(-240, Math.min(240, Number(project.breakoutTransform.y)))
+        : defaults.breakoutTransform.y,
+    },
     photoTransform: { ...defaults.photoTransform, ...project.photoTransform },
     adjustments: { ...defaults.adjustments, ...project.adjustments },
     visibility: {

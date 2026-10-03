@@ -28,6 +28,7 @@ const ROLE_LIMITS: Record<string, { type: "image" | "video"; max: number; types:
   photo: { type: "image", max: 10 * 1024 * 1024, types: new Set(["image/jpeg", "image/png", "image/webp"]) },
   logo: { type: "image", max: 10 * 1024 * 1024, types: new Set(["image/jpeg", "image/png", "image/webp"]) },
   poster: { type: "image", max: 10 * 1024 * 1024, types: new Set(["image/jpeg", "image/png", "image/webp"]) },
+  cutout: { type: "image", max: 10 * 1024 * 1024, types: new Set(["image/png", "image/webp"]) },
   video_preview: { type: "video", max: 25 * 1024 * 1024, types: new Set(["video/mp4", "video/webm"]) },
   video_download: { type: "video", max: 80 * 1024 * 1024, types: new Set(["video/mp4", "video/webm"]) },
 };
