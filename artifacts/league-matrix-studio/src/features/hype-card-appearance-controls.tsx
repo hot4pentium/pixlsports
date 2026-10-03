@@ -5,6 +5,7 @@ const designs: Array<{ id: HypeCardDesign; name: string; blurb: string }> = [
   { id: 'classic', name: 'Classic', blurb: 'Full-bleed photo with navy identity strip.' },
   { id: 'gallery', name: 'Gallery', blurb: 'Warm ivory paper, recessed photo window, athlete pops out.' },
   { id: 'spotlight', name: 'Spotlight', blurb: 'Night stadium poster, giant number, floating nameplate.' },
+  { id: 'breakout', name: 'Breakout', blurb: 'Chrome stadium frame, raised athlete, bold nameplate.' },
 ];
 
 function Thumb({ id, border, accent }: { id: HypeCardDesign; border: string; accent: string }) {
@@ -19,6 +20,12 @@ function Thumb({ id, border, accent }: { id: HypeCardDesign; border: string; acc
     <span aria-hidden="true" className="relative block h-full w-full overflow-hidden rounded-md" style={{ background: 'linear-gradient(#0A1226,#1E3A2A)', boxShadow: `inset 0 0 0 2px ${border}` }}>
       <span className="absolute inset-x-0 top-[8%] text-center text-[34px] font-black leading-none" style={{ color: accent, opacity: .45 }}>07</span>
       <span className="absolute inset-x-[12%] bottom-[22%] h-[18%] rounded-sm bg-[#F6EFE2]" style={{ boxShadow: `3px 3px 0 ${accent}` }} />
+    </span>
+  );
+  if (id === 'breakout') return (
+    <span aria-hidden="true" className="relative block h-full w-full overflow-hidden rounded-md" style={{ background: 'radial-gradient(ellipse at 50% 36%,#35577f,#091527 72%)', boxShadow: `inset 0 0 0 2px ${border}` }}>
+      <span className="absolute inset-x-[12%] top-[12%] h-[69%] rounded-md" style={{ border: '4px ridge #B7C4D4', boxShadow: `inset 0 0 0 2px ${accent},0 0 8px ${accent}` }} />
+      <span className="absolute inset-x-[12%] bottom-[10%] h-[17%] bg-[#081429]" style={{ clipPath: 'polygon(10% 0,90% 0,100% 20%,100% 85%,90% 100%,10% 100%,0 85%,0 20%)', border: `2px solid ${accent}` }} />
     </span>
   );
   return (
@@ -76,9 +83,9 @@ export function HypeCardAppearanceControls({ appearance, onChange, disabled = fa
     <div className="space-y-6 text-white" data-testid="hype-card-appearance-controls">
       <fieldset disabled={disabled}>
         <legend className="mb-2 text-xs font-bold uppercase tracking-widest text-white/80">Design</legend>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {designs.map((d) => (
-            <button key={d.id} type="button" aria-pressed={appearance.design === d.id} onClick={() => set({ design: d.id })}
+            <button key={d.id} type="button" aria-pressed={appearance.design === d.id} onClick={() => onChange(d.id === 'breakout' && appearance.design === 'classic' ? defaultCardAppearance('breakout') : normalizeCardAppearance({ ...appearance, design: d.id }))}
               className="flex min-h-11 flex-col gap-2 rounded-lg border border-white/25 p-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-white aria-pressed:border-white aria-pressed:bg-white/15" data-testid={`button-design-${d.id}`}>
               <span className="block aspect-[5/7] w-full"><Thumb id={d.id} border={appearance.borderColor} accent={appearance.accentColor} /></span>
               <span className="text-sm font-black">{d.name}</span>

@@ -3101,7 +3101,7 @@ components:
       type: object
       required: [design, borderColor, accentColor, accentLinked, athleteX, athleteY, athleteScale, jerseyNumber, position]
       properties:
-        design: { type: string, enum: [classic, gallery, spotlight] }
+        design: { type: string, enum: [classic, gallery, spotlight, breakout] }
         borderColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentColor: { type: string, pattern: "^#[0-9A-Fa-f]{6}$" }
         accentLinked: { type: boolean }

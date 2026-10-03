@@ -950,7 +950,9 @@ export function getPhotoClipInfo(project: HypeCardProject, ns: string) {
     const scale = Math.min(width / 1000, height / 1400);
     const frame = project.cardAppearance.design === 'gallery'
       ? { x: 90, y: 160, width: 820, height: 800, radius: 40 }
-      : { x: 70, y: 170, width: 860, height: 830, radius: 40 };
+      : project.cardAppearance.design === 'breakout'
+        ? { x: 108, y: 150, width: 784, height: 820, radius: 56 }
+        : { x: 70, y: 170, width: 860, height: 830, radius: 40 };
     const x = (width - 1000 * scale) / 2 + frame.x * scale;
     const y = (height - 1400 * scale) / 2 + frame.y * scale;
     const w = frame.width * scale;

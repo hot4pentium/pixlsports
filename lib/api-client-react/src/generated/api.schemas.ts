@@ -971,6 +971,7 @@ export const HypeCardAppearanceDesign = {
   classic: 'classic',
   gallery: 'gallery',
   spotlight: 'spotlight',
+  breakout: 'breakout',
 } as const;
 
 export interface HypeCardAppearance {

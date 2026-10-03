@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildPremiumHypeCardArtwork } from './premium-hype-card-artwork';
-test('placement changes the original fallback as well as the cutout in both designs', () => {
-  for (const design of ['gallery', 'spotlight'] as const) {
+test('placement changes the original fallback as well as the cutout in every premium design', () => {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     for (const cutoutUrl of [null, 'data:image/png;base64,AAAA']) {
       const input = { athleteName: 'Jordan', photoUrl: 'data:image/png;base64,AAAA', cutoutUrl, appearance: defaultCardAppearance(design) };
       const before = buildPremiumHypeCardArtwork(input);
@@ -35,7 +35,7 @@ test('omits number when missing', () => {
 });
 
 test('each layer is self-contained and fg has no bg venue', () => {
-  for (const design of ['gallery', 'spotlight'] as const) {
+  for (const design of ['gallery', 'spotlight', 'breakout'] as const) {
     for (const layer of ['all', 'bg', 'fg'] as const) {
       const svg = buildPremiumHypeCardArtwork({ ...base, athleteName: 'Maximilian Alexander Thornberry-Wells', appearance: defaultCardAppearance(design) }, layer, 'n');
       const ids = new Set(Array.from(svg.matchAll(/\sid="([^"]+)"/g), (m) => m[1]));
@@ -43,4 +43,15 @@ test('each layer is self-contained and fg has no bg venue', () => {
       for (const m of svg.matchAll(/href="#([^"]+)"/g)) assert.ok(ids.has(m[1]), `${design}/${layer} missing ${m[1]}`);
     }
   }
+});
+
+test('Breakout layers keep a smaller stadium window, metallic frame and cutout extending above the window', () => {
+  const input = { ...base, appearance: defaultCardAppearance('breakout') };
+  const bg = buildPremiumHypeCardArtwork(input, 'bg');
+  const fg = buildPremiumHypeCardArtwork(input, 'fg');
+  assert.match(bg, /id="b-window"/);
+  assert.match(bg, /fill="url\(#b-metal\)"/);
+  assert.match(fg, /data-photo-placement="cutout" transform=/);
+  assert.match(fg, /<image href="data:image\/png;base64,AAAA" x="115" y="-210"/);
+  assert.match(fg, /<path d="M116 934H884/);
 });

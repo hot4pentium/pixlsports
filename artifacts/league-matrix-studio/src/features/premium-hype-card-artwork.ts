@@ -245,6 +245,59 @@ ${position ? (team ? `<line x1="${splitX - 20}" y1="${detailY - 32}" x2="${split
   return (layer !== 'fg' ? bg : '') + (layer !== 'bg' ? fg : '');
 }
 
+function breakout(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer): string {
+  const a = input.appearance;
+  const border = hex(a.borderColor, '#B7C4D4'), accent = hex(a.accentColor, '#26A9FF');
+  const sport = (input.sport || '').trim().toUpperCase();
+  const team = (input.teamName || '').trim().toUpperCase();
+  const win = { x: 108, y: 150, w: 784, h: 820 };
+  const nm = fitName(input.athleteName || 'Athlete', 760, 132, 96, 96);
+  const nameY = nm.lines.length > 1 ? 988 : 1058;
+  const bg = `
+<defs>
+<linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient>
+<linearGradient id="b-stage" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#101F39"/><stop offset=".54" stop-color="#172C49"/><stop offset=".83" stop-color="#364B62"/><stop offset="1" stop-color="#101C2E"/></linearGradient>
+<linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>
+<filter id="b-glow" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="20"/></filter>
+<filter id="b-cut" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#020711" flood-opacity=".72"/></filter>
+<clipPath id="b-window"><rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56"/></clipPath>
+<clipPath id="b-card"><rect x="18" y="18" width="964" height="1364" rx="62"/></clipPath>
+</defs>
+<g id="breakout-bg" clip-path="url(#b-card)">
+<rect width="1000" height="1400" fill="#061225"/>
+<rect x="18" y="18" width="964" height="1364" rx="62" fill="url(#b-stage)"/>
+<ellipse cx="500" cy="478" rx="470" ry="335" fill="${accent}" opacity=".17" filter="url(#b-glow)"/>
+${venue('b-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}
+<rect x="45" y="92" width="910" height="1094" rx="74" fill="url(#b-metal)" stroke="${border}" stroke-width="5" stroke-opacity=".88"/>
+<rect x="68" y="115" width="864" height="1048" rx="58" fill="#0A172A" stroke="#FFFFFF" stroke-opacity=".68" stroke-width="3"/>
+<g clip-path="url(#b-window)">${venue('b-window-venue', win.x, win.y, win.w, win.h, venueFor(input.sport), true)}</g>
+${photoFallback(input, win, 'b-window')}
+${initialsArt(input, 500, 560, accent)}
+<rect x="${win.x}" y="${win.y}" width="${win.w}" height="${win.h}" rx="56" fill="#081528" fill-opacity=".13"/>
+<rect x="${win.x - 24}" y="${win.y - 25}" width="${win.w + 48}" height="${win.h + 50}" rx="78" fill="none" stroke="url(#b-metal)" stroke-width="28"/>
+<rect x="${win.x - 5}" y="${win.y - 6}" width="${win.w + 10}" height="${win.h + 12}" rx="63" fill="none" stroke="${accent}" stroke-width="5" filter="url(#b-glow)" opacity=".72"/>
+<rect x="${win.x - 5}" y="${win.y - 6}" width="${win.w + 10}" height="${win.h + 12}" rx="63" fill="none" stroke="${accent}" stroke-width="3"/>
+<rect x="${win.x - 17}" y="${win.y - 18}" width="${win.w + 34}" height="${win.h + 36}" rx="73" fill="none" stroke="#FFFFFF" stroke-opacity=".82" stroke-width="2"/>
+<g fill="#EAF6FF" filter="url(#b-glow)" opacity=".66"><ellipse cx="116" cy="382" rx="56" ry="30"/><ellipse cx="884" cy="382" rx="56" ry="30"/></g>
+<path d="M20 1260H980V1400H20Z" fill="#071326"/>
+<rect x="22" y="22" width="956" height="1356" rx="60" fill="none" stroke="${border}" stroke-opacity=".72" stroke-width="5"/>
+</g>`;
+  const plate = `<path d="M116 934H884L924 978V1128Q924 1160 892 1160H108Q76 1160 76 1128V978Z" fill="url(#b-plate)" stroke="url(#b-metal)" stroke-width="15" stroke-linejoin="round"/>
+<path d="M128 940H872L914 982V1125Q914 1148 889 1148H111Q86 1148 86 1125V982Z" fill="none" stroke="${accent}" stroke-width="3"/>
+<path d="M156 956H844" stroke="#FFFFFF" stroke-opacity=".24" stroke-width="2"/>
+${nameText(nm.lines, 500, nameY, nm.size, nm.tl, '#F7F9FC', 'middle')}
+${team ? `<path d="M184 1114h95m442 0h95" stroke="${accent}" stroke-width="3"/><text x="500" y="1129" text-anchor="middle" font-family="${FONT_TEXT}" font-size="30" font-weight="700" letter-spacing="8" fill="#DFE8F4">${escapeXml(team.slice(0, 24))}</text>` : ''}
+${sport ? `<text x="872" y="112" text-anchor="end" font-family="${FONT_TEXT}" font-size="24" font-weight="800" letter-spacing="5" fill="#E8EEF8">${escapeXml(sport)}</text>` : ''}
+${logo(input, 92, 62, 148)}`;
+  const fg = `<defs><linearGradient id="b-metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#69798D"/><stop offset=".13" stop-color="#F5F8FC"/><stop offset=".26" stop-color="#778598"/><stop offset=".48" stop-color="#DDE5EF"/><stop offset=".64" stop-color="#657588"/><stop offset=".82" stop-color="#F7FAFC"/><stop offset="1" stop-color="#68778A"/></linearGradient><linearGradient id="b-plate" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#192C4A"/><stop offset=".54" stop-color="#071329"/><stop offset="1" stop-color="#132C50"/></linearGradient>${shadowFilter('b-cut', 14, 10, .42)}${shadowFilter('b-name-shadow', 8, 7, .6)}</defs>
+<g id="breakout-fg">
+${athlete(input, { x: 115, y: -210, w: 770, h: 1020 }, 'b-cut')}
+<g filter="url(#b-name-shadow)">${plate}</g>
+<path d="M88 1156H912" stroke="${accent}" stroke-width="4" opacity=".9"/>
+</g>`;
+  return (layer !== 'fg' ? bg : '') + (layer !== 'bg' ? fg : '');
+}
+
 /** Prefix every id and reference so several SVGs can be mounted in one document. */
 export function namespacePremiumSvg(svg: string, ns: string): string {
   const prefix = ns.replace(/[^A-Za-z0-9_-]/g, '');
@@ -259,9 +312,9 @@ export function namespacePremiumSvg(svg: string, ns: string): string {
 
 export function buildPremiumHypeCardArtwork(input: PremiumHypeCardInput, layer: PremiumHypeCardLayer = 'all', ns?: string): string {
   const appearance = input.appearance;
-  const design = appearance?.design === 'spotlight' ? 'spotlight' : 'gallery';
+  const design = appearance?.design === 'spotlight' ? 'spotlight' : appearance?.design === 'breakout' ? 'breakout' : 'gallery';
   const safe = { ...input, athleteName: input.athleteName || '' };
-  const body = design === 'spotlight' ? spotlight(safe, layer) : gallery(safe, layer);
+  const body = design === 'spotlight' ? spotlight(safe, layer) : design === 'breakout' ? breakout(safe, layer) : gallery(safe, layer);
   const out = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1000 1400" width="1000" height="1400" role="img" aria-label="${escapeXml(input.athleteName)} Hype Card" data-layer="${layer}" data-design="${design}">${body}</svg>`;
   return ns ? namespacePremiumSvg(out, ns) : out;
 }
@@ -277,7 +330,7 @@ const navIcon = (i: number, c: string) => [
 /** Static Replies/Stats/Taps/Events strip for PNG export only. The live card uses real HTML buttons. */
 export function buildPremiumNavStripExport(appearance: HypeCardAppearance): string {
   const accent = hex(appearance.accentColor, '#EF3996');
-  const gallery = appearance.design !== 'spotlight';
+  const gallery = appearance.design === 'gallery';
   const x = gallery ? 90 : 70, w = gallery ? 820 : 860, y = 1298, h = 56, cw = w / 4;
   const ink = gallery ? NAVY : '#E9EEF7';
   const cells = NAV_ITEMS.map((label, i) => {

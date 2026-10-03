@@ -43,7 +43,7 @@ window.runRemoval=async()=>{
 const invite={inviteToken:'fixture',athleteName:'Jordan Alexander Matthews',teamName:'Eastside Falcons',sport:'football',photoUrl:photo,cutoutUrl:new URLSearchParams(location.search).has('fallback')?null:cutout,cardAppearance:saved};
 function Card({design}){const a={...defaultCardAppearance(design),jerseyNumber:'9',position:'Quarterback'};
 return <section className="living-card-frame" data-design={design} data-side="front" style={{position:'relative',width:'100%',aspectRatio:'1000/1400'}}><LivingAthleteCardFront athleteName={invite.athleteName} teamName={invite.teamName} sport={invite.sport} appearance={a} photoUrl={photo} cutoutUrl={cutout}/><div className="living-card-controls">{['Replies','Stats','Taps','Events'].map(s=><button className="living-card-control" key={s}>{s}</button>)}</div></section>}
-function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20}}><h1 style={{fontSize:24,marginBottom:16}}>Gallery & Spotlight — component verification</h1><div className="grid grid-cols-1 sm:grid-cols-2" style={{maxWidth:744,margin:'auto',gap:24,justifyContent:'center'}}><Card design="gallery"/><Card design="spotlight"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite}/></div></div>}
+ function App(){return <div style={{background:'#07172b',color:'white',minHeight:'100vh',padding:20}}><h1 style={{fontSize:24,marginBottom:16}}>Premium card design verification</h1><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',maxWidth:1000,margin:'auto',gap:24,justifyContent:'center'}}><Card design="gallery"/><Card design="spotlight"/><Card design="breakout"/></div><div style={{maxWidth:960,margin:'32px auto'}}><FanCardAppearanceManager invite={invite}/></div></div>}
 createRoot(document.getElementById('root')).render(<QueryClientProvider client={client}><App/></QueryClientProvider>);
 `);
   const directory = await mkdtemp(resolve(tmpdir(), 'premium-card-browser-'));
@@ -83,10 +83,12 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       return Math.abs(box.height/box.width-1.4)<.02 && nav.bottom<=box.bottom && details.every(t=>t.getBoundingClientRect().bottom<=nav.top);
     })`, session);
     assert.ok(framing, 'phone navigation stays inside the portrait card without covering identity text');
+    const breakoutCutoutOverhang = await connection.evaluate(`(()=>{const athlete=document.querySelector('[data-design="breakout"] [data-photo-placement] image');return !!athlete&&athlete.y.baseVal.value<92})()`, session);
+    assert.ok(breakoutCutoutOverhang, 'Breakout cutout begins above its smaller stadium frame');
     for (const fallback of [false, true]) {
       await connection.send('Page.navigate', { url: `http://localhost:80/premium-appearance-fixture.html${fallback ? '?fallback=1' : ''}` }, session);
       await waitFor(connection, session, '!!document.querySelector("[data-testid=appearance-preview-surface] [data-photo-placement]")', Boolean, 10_000);
-      for (const design of ['gallery', 'spotlight']) {
+      for (const design of ['gallery', 'spotlight', 'breakout']) {
         await connection.evaluate(`document.querySelector('[data-testid="button-design-${design}"]').click()`, session);
         await connection.evaluate(`document.querySelector('[data-testid="button-reset-placement"]').click()`, session);
         const actorBounds = `(()=>{const r=document.querySelector('[data-testid="appearance-preview-surface"] [data-photo-placement] image').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`;

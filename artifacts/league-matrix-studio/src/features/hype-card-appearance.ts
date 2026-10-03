@@ -1,4 +1,4 @@
-export type HypeCardDesign = 'classic' | 'gallery' | 'spotlight';
+export type HypeCardDesign = 'classic' | 'gallery' | 'spotlight' | 'breakout';
 export type HypeCardAppearance = {
   design: HypeCardDesign;
   borderColor: string;
@@ -16,7 +16,10 @@ export const appearanceSwatches = [
   ['Purple', '#A855F7'], ['Pink', '#EF3996'], ['Silver', '#A8B3C2'], ['Navy', '#10243D'],
 ] as const;
 export const defaultCardAppearance = (design: HypeCardDesign = 'classic'): HypeCardAppearance => ({
-  design, borderColor: '#EF3996', accentColor: '#EF3996', accentLinked: true,
+  design,
+  borderColor: design === 'breakout' ? '#B7C4D4' : '#EF3996',
+  accentColor: design === 'breakout' ? '#26A9FF' : '#EF3996',
+  accentLinked: design !== 'breakout',
   athleteX: 0, athleteY: 0, athleteScale: 1, jerseyNumber: '', position: '',
 });
 export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
@@ -27,7 +30,7 @@ export function normalizeCardAppearance(value: unknown): HypeCardAppearance {
   const borderColor = color(source.borderColor, defaults.borderColor);
   const accentLinked = source.accentLinked !== false;
   return {
-    design: source.design === 'gallery' || source.design === 'spotlight' ? source.design : 'classic',
+    design: source.design === 'gallery' || source.design === 'spotlight' || source.design === 'breakout' ? source.design : 'classic',
     borderColor,
     accentColor: accentLinked ? borderColor : color(source.accentColor, defaults.accentColor),
     accentLinked,

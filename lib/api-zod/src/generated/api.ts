@@ -1513,7 +1513,7 @@ export const ListAthleteInvitesResponseItem = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(listAthleteInvitesResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -1610,7 +1610,7 @@ export const CreateAthleteInviteResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(createAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -1717,7 +1717,7 @@ export const GetAthleteInviteResponse = zod.object({
   "photoUrl": zod.string().nullable(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(getAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -1891,7 +1891,7 @@ export const UpdateAthleteInviteResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -2027,7 +2027,7 @@ export const GetAthleteFanCardResponse = zod.object({
   "photoUrl": zod.string().nullable(),
   "cutoutUrl": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(getAthleteFanCardResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -2436,7 +2436,7 @@ export const updateAthleteInviteAppearanceBodyPositionMax = 80;
 
 
 export const UpdateAthleteInviteAppearanceBody = zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceBodyBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteAppearanceBodyAccentColorRegExp),
   "accentLinked": zod.boolean(),
@@ -2487,7 +2487,7 @@ export const UpdateAthleteInviteAppearanceResponse = zod.object({
   "cutoutUrl": zod.string().nullish(),
   "photoRevision": zod.string().nullish(),
   "cardAppearance": zod.union([zod.object({
-  "design": zod.enum(['classic', 'gallery', 'spotlight']),
+  "design": zod.enum(['classic', 'gallery', 'spotlight', 'breakout']),
   "borderColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneBorderColorRegExp),
   "accentColor": zod.string().regex(updateAthleteInviteAppearanceResponseCardAppearanceOneAccentColorRegExp),
   "accentLinked": zod.boolean(),

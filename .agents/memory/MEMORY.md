@@ -100,3 +100,4 @@
 - [Live Taps and in-person QR access](live-taps-concept.md) — keep cheers separate from stats; only an owner-created, revocable family QR grants tap access, not the public card URL.
 - [Browser-native control testing](browser-native-control-fixtures.md) — drive file, color, and range controls through native Chromium interactions so React state and disabled semantics are tested correctly.
 - [Premium card cutout runtime](premium-card-background-removal.md) — keep removal local and originals intact; prebundle inference dependencies so first-use Vite reloads cannot abort uploads.
+- [Premium artwork layer resources](premium-artwork-layers.md) — each independently rendered SVG layer must define all resources it uses; verify background, foreground, and combined output.
